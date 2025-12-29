@@ -15,10 +15,13 @@ class WidgetType(str, Enum):
     PIE_CHART = "pie_chart"
     HEATMAP = "heatmap"
     TABLE = "table"
+    KPI = "kpi"
     KPI_SINGLE = "kpi_single"
     KPI_TREND = "kpi_trend"
     SKILL_MATRIX = "skill_matrix"
     NETWORK_GRAPH = "network_graph"
+    NETWORK = "network"
+    GAUGE = "gauge"
 
 
 class MetricType(str, Enum):
@@ -26,11 +29,21 @@ class MetricType(str, Enum):
 
     COMMITS = "commits"
     PULL_REQUESTS = "prs"
+    PRS_MERGED = "prs_merged"
     CODE_REVIEWS = "reviews"
+    REVIEWS_GIVEN = "reviews_given"
     VELOCITY = "velocity"
     SKILL_GROWTH = "skill_growth"
+    SKILL_COVERAGE = "skill_coverage"
     WORKLOAD = "workload"
     COLLABORATION = "collaboration"
+    REVIEW_TURNAROUND = "review_turnaround"
+    CODE_QUALITY = "code_quality"
+    CODE_COMPLEXITY = "code_complexity"
+    BUS_FACTOR = "bus_factor"
+    TEAM_HEALTH = "team_health"
+    ATTRITION_RISK = "attrition_risk"
+    ACTIVITY = "activity"
 
 
 class ScheduleFrequency(str, Enum):
