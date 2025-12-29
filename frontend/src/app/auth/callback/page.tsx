@@ -10,20 +10,24 @@ function AuthCallbackContent() {
   const setToken = useSetToken();
 
   useEffect(() => {
-    const token = searchParams.get("token");
-    const error = searchParams.get("error");
+    const handleAuth = async () => {
+      const token = searchParams.get("token");
+      const error = searchParams.get("error");
 
-    if (error) {
-      console.error("Auth error:", error);
-      window.location.href = `/?error=${encodeURIComponent(error)}`;
-      return;
-    }
+      if (error) {
+        console.error("Auth error:", error);
+        window.location.href = `/?error=${encodeURIComponent(error)}`;
+        return;
+      }
 
-    if (token) {
-      setToken(token);
-    } else {
-      window.location.href = "/?error=no_token";
-    }
+      if (token) {
+        await setToken(token);
+      } else {
+        window.location.href = "/?error=no_token";
+      }
+    };
+
+    handleAuth();
   }, [searchParams, setToken]);
 
   return (

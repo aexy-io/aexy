@@ -86,8 +86,9 @@ export function WorkloadPieChart({ data, isLoading }: WorkloadPieChartProps) {
             outerRadius={100}
             paddingAngle={2}
             dataKey="value"
-            label={({ name, percentage }) =>
-              `${name}: ${percentage.toFixed(0)}%`
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            label={(entry: any) =>
+              `${entry.name}: ${entry.percentage.toFixed(0)}%`
             }
             labelLine={false}
           >
@@ -104,7 +105,8 @@ export function WorkloadPieChart({ data, isLoading }: WorkloadPieChartProps) {
               border: "1px solid #374151",
               borderRadius: "8px",
             }}
-            formatter={(value: number, name: string) => [
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            formatter={(value: any, name: any) => [
               `${value} activities`,
               name,
             ]}

@@ -49,7 +49,7 @@ export default function AnalyticsPage() {
     collaboration: false,
   });
 
-  const fetchDevelopers = useCallback(async () => {
+  const fetchDevelopers = useCallback(async (): Promise<Developer[]> => {
     try {
       const data = await developerApi.list();
       setDevelopers(data);

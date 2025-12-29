@@ -110,10 +110,25 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/devograph"
     database_echo: bool = False
 
-    # GitHub OAuth
+    # GitHub App (for OAuth and installations)
+    github_app_id: str = ""
     github_client_id: str = ""
     github_client_secret: str = ""
+    github_private_key: str = ""  # PEM format, can use \n for newlines
+    github_private_key_path: str = ""  # Alternative: path to PEM file
     github_redirect_uri: str = "http://localhost:8000/api/v1/auth/github/callback"
+    github_app_install_url: str = ""  # e.g., https://github.com/apps/your-app/installations/new
+
+    def get_github_private_key(self) -> str:
+        """Get the GitHub private key, either from env var or file."""
+        if self.github_private_key_path:
+            try:
+                with open(self.github_private_key_path, "r") as f:
+                    return f.read()
+            except FileNotFoundError:
+                pass
+        # Handle escaped newlines in env var
+        return self.github_private_key.replace("\\n", "\n")
 
     # JWT
     secret_key: str = "dev-secret-key-change-in-production"

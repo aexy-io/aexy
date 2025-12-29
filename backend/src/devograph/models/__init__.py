@@ -1,6 +1,6 @@
 """Database models for Devograph."""
 
-from devograph.models.developer import Developer, GitHubConnection
+from devograph.models.developer import Developer, GitHubConnection, GitHubInstallation
 from devograph.models.activity import Commit, PullRequest, CodeReview
 from devograph.models.career import (
     CareerRole,
@@ -19,11 +19,18 @@ from devograph.models.integrations import (
     SlackIntegration,
     SlackNotificationLog,
 )
+from devograph.models.repository import (
+    Organization,
+    Repository,
+    DeveloperRepository,
+    DeveloperOrganization,
+)
 
 __all__ = [
     # Developer
     "Developer",
     "GitHubConnection",
+    "GitHubInstallation",
     # Activity
     "Commit",
     "PullRequest",
@@ -42,4 +49,9 @@ __all__ = [
     # Integrations (Phase 4)
     "SlackIntegration",
     "SlackNotificationLog",
+    # Repository
+    "Organization",
+    "Repository",
+    "DeveloperRepository",
+    "DeveloperOrganization",
 ]

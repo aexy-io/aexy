@@ -47,9 +47,9 @@ export default function InsightsPage() {
   const [loadingTeamHealth, setLoadingTeamHealth] = useState(false);
   const [loadingDevelopers, setLoadingDevelopers] = useState(true);
 
-  const fetchDevelopers = useCallback(async () => {
+  const fetchDevelopers = useCallback(async (): Promise<Developer[]> => {
     try {
-      const data = await developerApi.list();
+      const data: Developer[] = await developerApi.list();
       setDevelopers(data);
       setDeveloperInsights(
         data.map((dev) => ({
@@ -331,7 +331,7 @@ export default function InsightsPage() {
         </div>
 
         {/* Recommendations */}
-        {teamHealth?.recommendations.length > 0 && (
+        {teamHealth?.recommendations && teamHealth.recommendations.length > 0 && (
           <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 mb-8">
             <h3 className="text-lg font-semibold text-white mb-4">
               Recommendations

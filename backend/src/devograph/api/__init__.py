@@ -18,6 +18,7 @@ from devograph.api.reports import router as reports_router
 from devograph.api.predictions import router as predictions_router
 from devograph.api.exports import router as exports_router
 from devograph.api.slack import router as slack_router
+from devograph.api.repositories import router as repositories_router
 
 api_router = APIRouter()
 
@@ -39,3 +40,5 @@ api_router.include_router(predictions_router, tags=["predictions"])
 api_router.include_router(exports_router, tags=["exports"])
 # Phase 4: Ecosystem Integrations
 api_router.include_router(slack_router, tags=["slack"])
+# Repository Management
+api_router.include_router(repositories_router, tags=["repositories"])

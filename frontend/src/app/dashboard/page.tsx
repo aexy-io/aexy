@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { redirect } from "next/navigation";
-import { GitBranch, Code, TrendingUp, Clock, LogOut, Calendar, GraduationCap, Users } from "lucide-react";
+import { GitBranch, Code, TrendingUp, Clock, LogOut, Calendar, GraduationCap, Users, Settings } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { analysisApi, DeveloperInsights, SoftSkillsProfile } from "@/lib/api";
@@ -122,6 +122,13 @@ export default function DashboardPage() {
               >
                 <Users className="h-4 w-4" />
                 Hiring
+              </Link>
+              <Link
+                href="/settings/repositories"
+                className="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm font-medium transition flex items-center gap-2"
+              >
+                <Settings className="h-4 w-4" />
+                Settings
               </Link>
             </nav>
           </div>

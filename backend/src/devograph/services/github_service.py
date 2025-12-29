@@ -215,3 +215,167 @@ class GitHubService:
             raise GitHubAPIError(f"Failed to get PR reviews: {response.text}")
 
         return response.json()
+
+    # Organization methods
+
+    async def get_user_orgs(self, per_page: int = 100, page: int = 1) -> list[dict[str, Any]]:
+        """Get organizations the authenticated user belongs to."""
+        if not self._client:
+            raise GitHubServiceError("Service not initialized. Use async context manager.")
+
+        response = await self._client.get(
+            "/user/orgs",
+            params={"per_page": per_page, "page": page},
+        )
+
+        if response.status_code != 200:
+            raise GitHubAPIError(f"Failed to get user orgs: {response.text}")
+
+        return response.json()
+
+    async def get_org(self, org: str) -> dict[str, Any]:
+        """Get organization details by login name."""
+        if not self._client:
+            raise GitHubServiceError("Service not initialized. Use async context manager.")
+
+        response = await self._client.get(f"/orgs/{org}")
+
+        if response.status_code != 200:
+            raise GitHubAPIError(f"Failed to get org: {response.text}")
+
+        return response.json()
+
+    async def get_org_repos(
+        self,
+        org: str,
+        per_page: int = 100,
+        page: int = 1,
+        type: str = "all",
+    ) -> list[dict[str, Any]]:
+        """Get repositories for an organization."""
+        if not self._client:
+            raise GitHubServiceError("Service not initialized. Use async context manager.")
+
+        response = await self._client.get(
+            f"/orgs/{org}/repos",
+            params={
+                "per_page": per_page,
+                "page": page,
+                "type": type,
+                "sort": "updated",
+            },
+        )
+
+        if response.status_code != 200:
+            raise GitHubAPIError(f"Failed to get org repos: {response.text}")
+
+        return response.json()
+
+    # Webhook methods
+
+    async def create_repo_webhook(
+        self,
+        owner: str,
+        repo: str,
+        callback_url: str,
+        secret: str,
+        events: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Create a webhook on a repository."""
+        if not self._client:
+            raise GitHubServiceError("Service not initialized. Use async context manager.")
+
+        if events is None:
+            events = ["push", "pull_request", "pull_request_review"]
+
+        response = await self._client.post(
+            f"/repos/{owner}/{repo}/hooks",
+            json={
+                "name": "web",
+                "active": True,
+                "events": events,
+                "config": {
+                    "url": callback_url,
+                    "content_type": "json",
+                    "secret": secret,
+                    "insecure_ssl": "0",
+                },
+            },
+        )
+
+        if response.status_code not in (200, 201):
+            raise GitHubAPIError(f"Failed to create webhook: {response.text}")
+
+        return response.json()
+
+    async def delete_repo_webhook(self, owner: str, repo: str, hook_id: int) -> None:
+        """Delete a webhook from a repository."""
+        if not self._client:
+            raise GitHubServiceError("Service not initialized. Use async context manager.")
+
+        response = await self._client.delete(f"/repos/{owner}/{repo}/hooks/{hook_id}")
+
+        if response.status_code != 204:
+            raise GitHubAPIError(f"Failed to delete webhook: {response.text}")
+
+    async def get_repo_webhooks(self, owner: str, repo: str) -> list[dict[str, Any]]:
+        """Get all webhooks for a repository."""
+        if not self._client:
+            raise GitHubServiceError("Service not initialized. Use async context manager.")
+
+        response = await self._client.get(f"/repos/{owner}/{repo}/hooks")
+
+        if response.status_code != 200:
+            raise GitHubAPIError(f"Failed to get webhooks: {response.text}")
+
+        return response.json()
+
+    # Pagination helpers for historical sync
+
+    async def get_all_user_repos(self) -> list[dict[str, Any]]:
+        """Get all repositories the user has access to (handles pagination)."""
+        all_repos = []
+        page = 1
+
+        while True:
+            repos = await self.get_user_repos(per_page=100, page=page)
+            if not repos:
+                break
+            all_repos.extend(repos)
+            if len(repos) < 100:
+                break
+            page += 1
+
+        return all_repos
+
+    async def get_all_org_repos(self, org: str) -> list[dict[str, Any]]:
+        """Get all repositories for an organization (handles pagination)."""
+        all_repos = []
+        page = 1
+
+        while True:
+            repos = await self.get_org_repos(org, per_page=100, page=page)
+            if not repos:
+                break
+            all_repos.extend(repos)
+            if len(repos) < 100:
+                break
+            page += 1
+
+        return all_repos
+
+    async def get_all_user_orgs(self) -> list[dict[str, Any]]:
+        """Get all organizations the user belongs to (handles pagination)."""
+        all_orgs = []
+        page = 1
+
+        while True:
+            orgs = await self.get_user_orgs(per_page=100, page=page)
+            if not orgs:
+                break
+            all_orgs.extend(orgs)
+            if len(orgs) < 100:
+                break
+            page += 1
+
+        return all_orgs

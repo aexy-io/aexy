@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from devograph.models.activity import CodeReview, Commit, PullRequest
     from devograph.models.analytics import CustomReport, ExportJob, PredictiveInsight
     from devograph.models.career import LearningPath
+    from devograph.models.repository import DeveloperOrganization, DeveloperRepository
 
 
 class Developer(Base):
@@ -38,6 +39,9 @@ class Developer(Base):
 
     # Growth trajectory stored as JSON
     growth_trajectory: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    # Onboarding state
+    has_completed_onboarding: Mapped[bool] = mapped_column(Boolean, default=False)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -83,6 +87,16 @@ class Developer(Base):
         "PredictiveInsight",
         back_populates="developer",
     )
+    developer_repositories: Mapped[list["DeveloperRepository"]] = relationship(
+        "DeveloperRepository",
+        back_populates="developer",
+        cascade="all, delete-orphan",
+    )
+    developer_organizations: Mapped[list["DeveloperOrganization"]] = relationship(
+        "DeveloperOrganization",
+        back_populates="developer",
+        cascade="all, delete-orphan",
+    )
 
 
 class GitHubConnection(Base):
@@ -126,8 +140,68 @@ class GitHubConnection(Base):
         onupdate=func.now(),
     )
 
-    # Relationship
+    # Relationships
     developer: Mapped["Developer"] = relationship(
         "Developer",
         back_populates="github_connection",
+    )
+    installations: Mapped[list["GitHubInstallation"]] = relationship(
+        "GitHubInstallation",
+        back_populates="github_connection",
+        cascade="all, delete-orphan",
+    )
+
+
+class GitHubInstallation(Base):
+    """GitHub App installation for accessing repositories."""
+
+    __tablename__ = "github_installations"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    github_connection_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("github_connections.id", ondelete="CASCADE"),
+        index=True,
+    )
+
+    # GitHub App installation data
+    installation_id: Mapped[int] = mapped_column(BigInteger, unique=True, index=True)
+    account_id: Mapped[int] = mapped_column(BigInteger, index=True)  # User or Org ID
+    account_login: Mapped[str] = mapped_column(String(255), index=True)
+    account_type: Mapped[str] = mapped_column(String(50))  # "User" or "Organization"
+
+    # Repository selection
+    repository_selection: Mapped[str] = mapped_column(
+        String(50),
+        default="selected",
+    )  # "all" or "selected"
+
+    # Permissions granted (stored as JSON)
+    permissions: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    # Installation status
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    suspended_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    # Relationship
+    github_connection: Mapped["GitHubConnection"] = relationship(
+        "GitHubConnection",
+        back_populates="installations",
     )

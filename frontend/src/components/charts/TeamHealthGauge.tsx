@@ -1,7 +1,7 @@
 "use client";
 
 interface TeamHealthData {
-  team_id?: string;
+  team_id?: string | null;
   health_score: number;
   health_grade: string;
   strengths: string[];

@@ -1103,3 +1103,163 @@ export const exportsApi = {
 
   getDownloadUrl: (jobId: string) => `${api.defaults.baseURL}/exports/${jobId}/download`,
 };
+
+// ============================================================================
+// Repository Management Types & API
+// ============================================================================
+
+export interface Organization {
+  id: string;
+  github_id: number;
+  login: string;
+  name: string | null;
+  avatar_url: string | null;
+  is_enabled: boolean;
+  repository_count: number;
+  enabled_repository_count: number;
+}
+
+export interface Repository {
+  id: string;
+  github_id: number;
+  full_name: string;
+  name: string;
+  owner_login: string;
+  owner_type: string;
+  description: string | null;
+  is_private: boolean;
+  language: string | null;
+  organization_id: string | null;
+  is_enabled: boolean;
+  sync_status: "pending" | "syncing" | "synced" | "failed";
+  last_sync_at: string | null;
+  commits_synced: number;
+  prs_synced: number;
+  reviews_synced: number;
+  webhook_status: "none" | "pending" | "active" | "failed";
+}
+
+export interface RepositoryStatus {
+  repository_id: string;
+  is_enabled: boolean;
+  sync_status: string;
+  last_sync_at: string | null;
+  sync_error: string | null;
+  commits_synced: number;
+  prs_synced: number;
+  reviews_synced: number;
+  webhook_id: number | null;
+  webhook_status: string;
+}
+
+export interface OnboardingStatus {
+  completed: boolean;
+}
+
+export interface Installation {
+  installation_id: number;
+  account_login: string;
+  account_type: string;
+  repository_selection: string;
+  is_active: boolean;
+}
+
+export interface InstallationStatus {
+  has_installation: boolean;
+  installations: Installation[];
+  install_url: string | null;
+}
+
+export const repositoriesApi = {
+  // Organizations
+  listOrganizations: async (): Promise<Organization[]> => {
+    const response = await api.get("/repositories/organizations");
+    return response.data;
+  },
+
+  enableOrganization: async (orgId: string): Promise<{ message: string; count: number }> => {
+    const response = await api.post(`/repositories/organizations/${orgId}/enable`);
+    return response.data;
+  },
+
+  disableOrganization: async (orgId: string): Promise<{ message: string; count: number }> => {
+    const response = await api.post(`/repositories/organizations/${orgId}/disable`);
+    return response.data;
+  },
+
+  // Repositories
+  listRepositories: async (params?: {
+    organization_id?: string;
+    enabled_only?: boolean;
+  }): Promise<Repository[]> => {
+    const response = await api.get("/repositories", { params });
+    return response.data;
+  },
+
+  enableRepository: async (repoId: string): Promise<{
+    id: string;
+    repository_id: string;
+    is_enabled: boolean;
+    sync_status: string;
+  }> => {
+    const response = await api.post(`/repositories/${repoId}/enable`);
+    return response.data;
+  },
+
+  disableRepository: async (repoId: string): Promise<{ message: string }> => {
+    const response = await api.post(`/repositories/${repoId}/disable`);
+    return response.data;
+  },
+
+  getRepositoryStatus: async (repoId: string): Promise<RepositoryStatus> => {
+    const response = await api.get(`/repositories/${repoId}/status`);
+    return response.data;
+  },
+
+  // Sync
+  refreshAvailableRepos: async (): Promise<{
+    organizations: { created: number; updated: number };
+    repositories: { created: number; updated: number };
+  }> => {
+    const response = await api.post("/repositories/sync/refresh");
+    return response.data;
+  },
+
+  startSync: async (repoId: string): Promise<{ job_id: string; message: string }> => {
+    const response = await api.post(`/repositories/${repoId}/sync/start`);
+    return response.data;
+  },
+
+  // Webhooks
+  registerWebhook: async (repoId: string): Promise<{ webhook_id: number; status: string }> => {
+    const response = await api.post(`/repositories/${repoId}/webhook/register`);
+    return response.data;
+  },
+
+  unregisterWebhook: async (repoId: string): Promise<{ message: string }> => {
+    const response = await api.post(`/repositories/${repoId}/webhook/unregister`);
+    return response.data;
+  },
+
+  // Onboarding
+  getOnboardingStatus: async (): Promise<OnboardingStatus> => {
+    const response = await api.get("/repositories/onboarding/status");
+    return response.data;
+  },
+
+  completeOnboarding: async (): Promise<{ message: string }> => {
+    const response = await api.post("/repositories/onboarding/complete");
+    return response.data;
+  },
+
+  // Installation (GitHub App)
+  getInstallationStatus: async (): Promise<InstallationStatus> => {
+    const response = await api.get("/repositories/installation/status");
+    return response.data;
+  },
+
+  syncInstallations: async (): Promise<{ message: string; count: number }> => {
+    const response = await api.post("/repositories/installation/sync");
+    return response.data;
+  },
+};

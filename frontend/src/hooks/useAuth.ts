@@ -1,8 +1,8 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { developerApi, Developer } from "@/lib/api";
+import { developerApi, repositoriesApi, Developer } from "@/lib/api";
 
 export function useAuth() {
   const router = useRouter();
@@ -39,9 +39,22 @@ export function useSetToken() {
   const queryClient = useQueryClient();
   const router = useRouter();
 
-  return (token: string) => {
+  return async (token: string) => {
     localStorage.setItem("token", token);
     queryClient.invalidateQueries({ queryKey: ["currentUser"] });
-    router.push("/dashboard");
+
+    try {
+      // Check if onboarding is complete
+      const status = await repositoriesApi.getOnboardingStatus();
+      if (status.completed) {
+        router.push("/dashboard");
+      } else {
+        router.push("/onboarding");
+      }
+    } catch (error) {
+      // If we can't check onboarding status, assume it's not complete
+      console.error("Failed to check onboarding status:", error);
+      router.push("/onboarding");
+    }
   };
 }
