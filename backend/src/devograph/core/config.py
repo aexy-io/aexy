@@ -23,6 +23,7 @@ class LLMSettings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",
     )
 
     # Provider selection (switchable)
@@ -103,6 +104,7 @@ class Settings(BaseSettings):
     app_name: str = "Devograph"
     debug: bool = False
     api_v1_prefix: str = "/api/v1"
+    frontend_url: str = "http://localhost:3000"
 
     # Database
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/devograph"

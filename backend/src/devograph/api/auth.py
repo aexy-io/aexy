@@ -55,14 +55,13 @@ async def github_callback(
     code: str,
     state: str,
     db: AsyncSession = Depends(get_db),
-) -> TokenResponse:
+) -> RedirectResponse:
     """Handle GitHub OAuth callback."""
+    frontend_url = settings.frontend_url or "http://localhost:3000"
+
     # Verify state
     if state not in oauth_states:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired OAuth state",
-        )
+        return RedirectResponse(url=f"{frontend_url}/?error=invalid_state")
     del oauth_states[state]
 
     github_service = GitHubService()
@@ -71,10 +70,7 @@ async def github_callback(
         # Exchange code for token
         auth_response = await github_service.exchange_code_for_token(code)
     except GitHubAuthError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
+        return RedirectResponse(url=f"{frontend_url}/?error={str(e)}")
 
     # Get user info from GitHub
     async with GitHubService(access_token=auth_response.access_token) as gh:
@@ -92,10 +88,7 @@ async def github_callback(
                 email = primary_email["email"]
 
     if not email:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Could not retrieve email from GitHub. Please ensure your email is verified.",
-        )
+        return RedirectResponse(url=f"{frontend_url}/?error=no_email")
 
     # Get or create developer
     dev_service = DeveloperService(db)
@@ -114,8 +107,5 @@ async def github_callback(
     # Create JWT
     access_token = create_access_token(developer.id)
 
-    return TokenResponse(
-        access_token=access_token,
-        token_type="bearer",
-        expires_in=settings.access_token_expire_minutes * 60,
-    )
+    # Redirect to frontend callback with token
+    return RedirectResponse(url=f"{frontend_url}/auth/callback?token={access_token}")

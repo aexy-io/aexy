@@ -12,18 +12,18 @@ export default function Home() {
             <span className="text-2xl font-bold text-white">Devograph</span>
           </div>
           <nav className="flex items-center gap-6">
-            <Link
-              href="/login"
+            <a
+              href="http://localhost:8000/api/v1/auth/github/login"
               className="text-slate-300 hover:text-white transition"
             >
               Sign In
-            </Link>
-            <Link
-              href="/api/v1/auth/github/login"
+            </a>
+            <a
+              href="http://localhost:8000/api/v1/auth/github/login"
               className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition"
             >
               Connect GitHub
-            </Link>
+            </a>
           </nav>
         </div>
       </header>
@@ -40,12 +40,12 @@ export default function Home() {
           provide personalized career pathways - all from GitHub activity data.
         </p>
         <div className="flex justify-center gap-4">
-          <Link
-            href="/api/v1/auth/github/login"
+          <a
+            href="http://localhost:8000/api/v1/auth/github/login"
             className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-3 rounded-lg text-lg font-medium transition"
           >
             Get Started Free
-          </Link>
+          </a>
           <Link
             href="#features"
             className="border border-slate-600 text-slate-300 hover:bg-slate-800 px-8 py-3 rounded-lg text-lg font-medium transition"
