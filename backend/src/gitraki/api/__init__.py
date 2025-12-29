@@ -5,8 +5,11 @@ from fastapi import APIRouter
 from gitraki.api.admin import router as admin_router
 from gitraki.api.analysis import router as analysis_router
 from gitraki.api.auth import router as auth_router
+from gitraki.api.career import router as career_router
 from gitraki.api.developers import router as developers_router
 from gitraki.api.health import router as health_router
+from gitraki.api.hiring import router as hiring_router
+from gitraki.api.learning import router as learning_router
 from gitraki.api.teams import router as teams_router
 from gitraki.api.webhooks import router as webhooks_router
 
@@ -19,3 +22,7 @@ api_router.include_router(webhooks_router, prefix="/webhooks", tags=["webhooks"]
 api_router.include_router(teams_router, prefix="/teams", tags=["teams"])
 api_router.include_router(analysis_router, tags=["analysis"])
 api_router.include_router(admin_router, tags=["admin"])
+# Phase 3: Career Intelligence
+api_router.include_router(career_router, tags=["career"])
+api_router.include_router(learning_router, tags=["learning"])
+api_router.include_router(hiring_router, tags=["hiring"])

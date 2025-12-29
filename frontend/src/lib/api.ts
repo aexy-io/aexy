@@ -350,3 +350,363 @@ export const analysisApi = {
     return response.data;
   },
 };
+
+// ============================================================================
+// Phase 3: Career Intelligence Types
+// ============================================================================
+
+export interface CareerRole {
+  id: string;
+  name: string;
+  level: number;
+  track: string;
+  description: string | null;
+  responsibilities: string[];
+  required_skills: Record<string, number>;
+  preferred_skills: Record<string, number>;
+  soft_skill_requirements: Record<string, number>;
+  is_active: boolean;
+  organization_id: string | null;
+}
+
+export interface SkillGap {
+  skill: string;
+  current: number;
+  target: number;
+  gap: number;
+}
+
+export interface RoleGapAnalysis {
+  developer_id: string;
+  role_id: string;
+  role_name: string;
+  overall_readiness: number;
+  skill_gaps: SkillGap[];
+  met_requirements: string[];
+  soft_skill_gaps: Record<string, number>;
+  estimated_time_to_ready_months: number | null;
+}
+
+export interface RoleSuggestion {
+  role: CareerRole;
+  readiness_score: number;
+  progression_type: string;
+  key_gaps: string[];
+  estimated_preparation_months: number;
+}
+
+export interface PromotionReadiness {
+  developer_id: string;
+  target_role_id: string;
+  target_role_name: string;
+  overall_readiness: number;
+  met_criteria: string[];
+  missing_criteria: string[];
+  recommendations: string[];
+  timeline_estimate: string | null;
+}
+
+export interface LearningActivity {
+  type: string;
+  description: string;
+  source: string;
+  url: string | null;
+  estimated_hours: number | null;
+}
+
+export interface LearningMilestone {
+  id: string;
+  learning_path_id: string;
+  skill_name: string;
+  target_score: number;
+  current_score: number;
+  status: "not_started" | "in_progress" | "completed" | "behind";
+  target_date: string | null;
+  completed_date: string | null;
+  recommended_activities: LearningActivity[];
+  completed_activities: string[];
+  sequence: number;
+}
+
+export interface LearningPath {
+  id: string;
+  developer_id: string;
+  target_role_id: string | null;
+  target_role_name: string | null;
+  skill_gaps: Record<string, { current: number; target: number; gap: number }>;
+  phases: {
+    name: string;
+    duration_weeks: number;
+    skills: string[];
+    activities: LearningActivity[];
+  }[];
+  milestones: LearningMilestone[];
+  status: "active" | "completed" | "paused" | "abandoned";
+  progress_percentage: number;
+  trajectory_status: "on_track" | "ahead" | "behind" | "at_risk";
+  estimated_success_probability: number | null;
+  risk_factors: string[];
+  recommendations: string[];
+  started_at: string;
+  target_completion: string | null;
+  actual_completion: string | null;
+  generated_by_model: string | null;
+}
+
+export interface StretchAssignment {
+  task_id: string;
+  task_title: string;
+  source: string;
+  skill_growth: string[];
+  alignment_score: number;
+  challenge_level: string;
+}
+
+export interface TeamSkillGapDetail {
+  skill: string;
+  current_coverage: number;
+  average_proficiency: number;
+  gap_severity: "critical" | "moderate" | "low";
+  developers_with_skill: string[];
+}
+
+export interface BusFactorRisk {
+  skill_or_area: string;
+  risk_level: "critical" | "high" | "medium";
+  single_developer: string | null;
+  developer_name: string | null;
+  impact_description: string;
+  mitigation_suggestion: string;
+}
+
+export interface TeamGapAnalysis {
+  team_id: string | null;
+  organization_id: string;
+  total_developers: number;
+  skill_gaps: TeamSkillGapDetail[];
+  bus_factor_risks: BusFactorRisk[];
+  critical_missing_skills: string[];
+  analysis_date: string;
+}
+
+export interface GeneratedJD {
+  role_title: string;
+  level: string;
+  summary: string;
+  must_have_skills: { skill: string; level: number; reasoning: string | null }[];
+  nice_to_have_skills: { skill: string; level: number; reasoning: string | null }[];
+  responsibilities: string[];
+  qualifications: string[];
+  cultural_indicators: string[];
+  full_text: string;
+}
+
+export interface InterviewQuestion {
+  question: string;
+  skill_assessed: string;
+  difficulty: string;
+  evaluation_criteria: string[];
+  red_flags: string[];
+  bonus_indicators: string[];
+}
+
+export interface InterviewRubric {
+  role_title: string;
+  technical_questions: InterviewQuestion[];
+  behavioral_questions: InterviewQuestion[];
+  system_design_prompt: string | null;
+  culture_fit_criteria: string[];
+}
+
+export interface HiringRequirement {
+  id: string;
+  organization_id: string;
+  team_id: string | null;
+  target_role_id: string | null;
+  role_title: string;
+  priority: "critical" | "high" | "medium" | "low";
+  timeline: string | null;
+  must_have_skills: { skill: string; level: number; reasoning: string }[];
+  nice_to_have_skills: { skill: string; level: number; reasoning: string }[];
+  soft_skill_requirements: Record<string, number>;
+  gap_analysis: Record<string, unknown>;
+  roadmap_items: string[];
+  job_description: string | null;
+  interview_rubric: Record<string, unknown>;
+  status: "draft" | "active" | "filled" | "cancelled";
+}
+
+export interface CandidateScorecard {
+  requirement_id: string;
+  role_title: string;
+  candidate_name: string | null;
+  overall_score: number;
+  must_have_met: number;
+  must_have_total: number;
+  nice_to_have_met: number;
+  nice_to_have_total: number;
+  skill_assessments: {
+    skill: string;
+    candidate_level: number;
+    required_level: number;
+    meets_requirement: boolean;
+    gap: number;
+  }[];
+  strengths: string[];
+  concerns: string[];
+  recommendation: "strong_yes" | "yes" | "maybe" | "no";
+}
+
+// Career API
+export const careerApi = {
+  listRoles: async (organizationId?: string): Promise<CareerRole[]> => {
+    const params = organizationId ? { organization_id: organizationId } : {};
+    const response = await api.get("/career/roles", { params });
+    return response.data;
+  },
+
+  getRoleRequirements: async (roleId: string) => {
+    const response = await api.get(`/career/roles/${roleId}/requirements`);
+    return response.data;
+  },
+
+  suggestNextRoles: async (developerId: string, organizationId?: string): Promise<RoleSuggestion[]> => {
+    const params = organizationId ? { organization_id: organizationId } : {};
+    const response = await api.get(`/career/developers/${developerId}/next-roles`, { params });
+    return response.data;
+  },
+
+  getPromotionReadiness: async (developerId: string, roleId: string): Promise<PromotionReadiness> => {
+    const response = await api.get(`/career/developers/${developerId}/readiness/${roleId}`);
+    return response.data;
+  },
+
+  compareToRole: async (developerId: string, roleId: string): Promise<RoleGapAnalysis> => {
+    const response = await api.get(`/career/developers/${developerId}/gap/${roleId}`);
+    return response.data;
+  },
+};
+
+// Learning API
+export const learningApi = {
+  listPaths: async (developerId: string): Promise<LearningPath[]> => {
+    const response = await api.get("/learning/paths", { params: { developer_id: developerId } });
+    return response.data;
+  },
+
+  getPath: async (pathId: string): Promise<LearningPath> => {
+    const response = await api.get(`/learning/paths/${pathId}`);
+    return response.data;
+  },
+
+  generatePath: async (developerId: string, targetRoleId: string, timelineMonths?: number, includeExternal?: boolean): Promise<LearningPath> => {
+    const response = await api.post("/learning/paths", {
+      target_role_id: targetRoleId,
+      timeline_months: timelineMonths || 12,
+      include_external_resources: includeExternal || false,
+    }, { params: { developer_id: developerId } });
+    return response.data;
+  },
+
+  regeneratePath: async (pathId: string): Promise<LearningPath> => {
+    const response = await api.post(`/learning/paths/${pathId}/regenerate`);
+    return response.data;
+  },
+
+  getProgress: async (pathId: string) => {
+    const response = await api.get(`/learning/paths/${pathId}/progress`);
+    return response.data;
+  },
+
+  getMilestones: async (pathId: string): Promise<LearningMilestone[]> => {
+    const response = await api.get(`/learning/paths/${pathId}/milestones`);
+    return response.data;
+  },
+
+  getActivities: async (pathId: string): Promise<LearningActivity[]> => {
+    const response = await api.get(`/learning/paths/${pathId}/activities`);
+    return response.data;
+  },
+
+  getStretchAssignments: async (developerId: string): Promise<StretchAssignment[]> => {
+    const response = await api.get(`/learning/developers/${developerId}/stretch-tasks`);
+    return response.data;
+  },
+
+  pausePath: async (pathId: string) => {
+    const response = await api.post(`/learning/paths/${pathId}/pause`);
+    return response.data;
+  },
+
+  resumePath: async (pathId: string) => {
+    const response = await api.post(`/learning/paths/${pathId}/resume`);
+    return response.data;
+  },
+};
+
+// Hiring API
+export const hiringApi = {
+  analyzeTeamGaps: async (developerIds: string[], targetSkills?: string[]): Promise<TeamGapAnalysis> => {
+    const response = await api.post("/hiring/team-gaps", {
+      developer_ids: developerIds,
+      target_skills: targetSkills,
+    });
+    return response.data;
+  },
+
+  getBusFactorRisks: async (developerIds: string[]): Promise<BusFactorRisk[]> => {
+    const response = await api.post("/hiring/bus-factor", {
+      developer_ids: developerIds,
+    });
+    return response.data;
+  },
+
+  listRequirements: async (organizationId: string, status?: string): Promise<HiringRequirement[]> => {
+    const params: Record<string, string> = { organization_id: organizationId };
+    if (status) params.status_filter = status;
+    const response = await api.get("/hiring/requirements", { params });
+    return response.data;
+  },
+
+  getRequirement: async (requirementId: string): Promise<HiringRequirement> => {
+    const response = await api.get(`/hiring/requirements/${requirementId}`);
+    return response.data;
+  },
+
+  createRequirement: async (data: {
+    organization_id: string;
+    role_title: string;
+    team_id?: string;
+    priority?: string;
+    timeline?: string;
+  }): Promise<HiringRequirement> => {
+    const response = await api.post("/hiring/requirements", data);
+    return response.data;
+  },
+
+  generateJD: async (requirementId: string): Promise<GeneratedJD> => {
+    const response = await api.post(`/hiring/requirements/${requirementId}/jd`);
+    return response.data;
+  },
+
+  generateRubric: async (requirementId: string): Promise<InterviewRubric> => {
+    const response = await api.post(`/hiring/requirements/${requirementId}/rubric`);
+    return response.data;
+  },
+
+  createScorecard: async (requirementId: string, candidateSkills: Record<string, number>, candidateName?: string): Promise<CandidateScorecard> => {
+    const response = await api.post(`/hiring/requirements/${requirementId}/scorecard`, {
+      requirement_id: requirementId,
+      candidate_skills: candidateSkills,
+      candidate_name: candidateName,
+    });
+    return response.data;
+  },
+
+  updateStatus: async (requirementId: string, status: string) => {
+    const response = await api.patch(`/hiring/requirements/${requirementId}/status`, null, {
+      params: { new_status: status },
+    });
+    return response.data;
+  },
+};

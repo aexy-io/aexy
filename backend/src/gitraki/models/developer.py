@@ -12,6 +12,7 @@ from gitraki.core.database import Base
 
 if TYPE_CHECKING:
     from gitraki.models.activity import CodeReview, Commit, PullRequest
+    from gitraki.models.career import LearningPath
 
 
 class Developer(Base):
@@ -63,6 +64,10 @@ class Developer(Base):
     )
     code_reviews: Mapped[list["CodeReview"]] = relationship(
         "CodeReview",
+        back_populates="developer",
+    )
+    learning_paths: Mapped[list["LearningPath"]] = relationship(
+        "LearningPath",
         back_populates="developer",
     )
 

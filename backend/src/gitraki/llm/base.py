@@ -15,6 +15,13 @@ class AnalysisType(str, Enum):
     PR_DESCRIPTION = "pr_description"
     REVIEW_COMMENT = "review_comment"
     TASK_DESCRIPTION = "task_description"
+    # Phase 3: Career Intelligence
+    LEARNING_PATH = "learning_path"
+    MILESTONE_EVALUATION = "milestone_evaluation"
+    JOB_DESCRIPTION = "job_description"
+    INTERVIEW_RUBRIC = "interview_rubric"
+    STRETCH_ASSIGNMENT = "stretch_assignment"
+    ROADMAP_SKILLS = "roadmap_skills"
 
 
 class LLMConfig(BaseModel):

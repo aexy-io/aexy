@@ -2,7 +2,7 @@
 
 **Project:** GitHub-Based Developer Profiling & Analytics Platform
 **Last Updated:** December 2024
-**Status:** Phase 2 Complete
+**Status:** Phase 3 Complete
 
 ---
 
@@ -125,23 +125,23 @@ This document tracks the implementation progress of Gitraki across all four phas
 | Task | Status | Notes |
 |------|--------|-------|
 | Individual dashboard | [x] | Basic profile view in `dashboard/page.tsx` |
-| Target role definition | [ ] | Next level, lateral move, specialization |
-| Gap analysis engine | [ ] | Current vs target role skills |
-| Learning recommendation engine | [ ] | Personalized course/task suggestions |
-| Progress tracking automation | [ ] | Auto-detect skill improvements |
-| Milestone tracking | [ ] | On-track, ahead, behind indicators |
-| Stretch assignment matching | [ ] | Surface growth opportunities |
+| Target role definition | [x] | `CareerProgressionService` with predefined + custom roles |
+| Gap analysis engine | [x] | `compare_developer_to_role()` in `career_progression.py` |
+| Learning recommendation engine | [x] | `LearningPathService` with LLM-powered path generation |
+| Progress tracking automation | [x] | `update_progress()` auto-detects skill improvements |
+| Milestone tracking | [x] | `LearningMilestone` model with on_track/ahead/behind status |
+| Stretch assignment matching | [x] | `get_stretch_assignments()` surfaces growth opportunities |
 
 ### Milestone 3.2: Hiring Intelligence
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Team skill gap aggregation | [ ] | Identify underrepresented skills |
-| Bus factor analysis | [ ] | Single-point-of-failure risks |
-| Roadmap integration | [ ] | Map roadmap to required skills |
-| Automated JD generation | [ ] | Must-have, nice-to-have skills |
-| Interview rubric templates | [ ] | Skill-specific assessment |
-| Candidate comparison scoring | [ ] | Standardized scoring |
+| Team skill gap aggregation | [x] | `HiringIntelligenceService.analyze_team_gaps()` |
+| Bus factor analysis | [x] | `get_bus_factor_risks()` identifies single-point-of-failure |
+| Roadmap integration | [x] | `extract_roadmap_skills()` from Jira/Linear/GitHub |
+| Automated JD generation | [x] | `generate_job_description()` with LLM |
+| Interview rubric templates | [x] | `generate_interview_rubric()` skill-specific assessment |
+| Candidate comparison scoring | [x] | `create_candidate_scorecard()` standardized scoring |
 
 ### Phase 3 Success Criteria
 
@@ -201,7 +201,9 @@ This document tracks the implementation progress of Gitraki across all four phas
 | Profile Engine | [x] | `ProfileAnalyzer` in `services/profile_analyzer.py` |
 | LLM Enhanced Profile Engine | [x] | `LLMEnhancedProfileAnalyzer` with LLM integration |
 | Task Matcher | [x] | `services/task_matcher.py` - Matching, scoring, allocation |
-| Learning Recommender | [ ] | Path generation, progress tracking |
+| Learning Recommender | [x] | `services/learning_path.py` - Path generation, progress tracking |
+| Career Progression | [x] | `services/career_progression.py` - Role definitions, gap analysis |
+| Hiring Intelligence | [x] | `services/hiring_intelligence.py` - JD generation, rubrics |
 
 ### Processing Infrastructure
 
@@ -251,19 +253,19 @@ This document tracks the implementation progress of Gitraki across all four phas
 
 | ID | Story | Status |
 |----|-------|--------|
-| EM-1 | See best-suited developers for tasks | [ ] |
-| EM-2 | Understand team skill gaps | [ ] |
+| EM-1 | See best-suited developers for tasks | [x] | Task matching via Sprint Planning |
+| EM-2 | Understand team skill gaps | [x] | Hiring Intelligence dashboard |
 | EM-3 | Identify burnout/disengagement risk | [ ] |
-| EM-4 | Generate data-backed job requirements | [ ] |
+| EM-4 | Generate data-backed job requirements | [x] | LLM-powered JD generation |
 
 ### Developer Stories
 
 | ID | Story | Status |
 |----|-------|--------|
-| DEV-1 | View skill profile vs career goals | [~] | Basic profile view done |
-| DEV-2 | Receive personalized learning recommendations | [ ] |
+| DEV-1 | View skill profile vs career goals | [x] | Learning Paths with role comparison |
+| DEV-2 | Receive personalized learning recommendations | [x] | LLM-generated learning activities |
 | DEV-3 | Opt out of analytics (privacy) | [ ] |
-| DEV-4 | Discover stretch assignments | [ ] |
+| DEV-4 | Discover stretch assignments | [x] | Stretch assignments in Learning page |
 
 ### Technical Lead Stories
 
@@ -276,7 +278,7 @@ This document tracks the implementation progress of Gitraki across all four phas
 
 | ID | Story | Status |
 |----|-------|--------|
-| HR-1 | Generate skill-specific interview rubrics | [ ] |
+| HR-1 | Generate skill-specific interview rubrics | [x] | LLM-powered interview rubric generation |
 | HR-2 | Track org-wide skill development | [ ] |
 
 ---
@@ -305,15 +307,18 @@ This document tracks the implementation progress of Gitraki across all four phas
 gitraki/
 ├── backend/
 │   ├── src/gitraki/
-│   │   ├── api/           # FastAPI routes (auth, developers, analysis, admin)
+│   │   ├── api/           # FastAPI routes (auth, developers, analysis, admin, career, learning, hiring)
 │   │   ├── cache/         # Analysis caching (Redis + in-memory)
 │   │   ├── core/          # Config, database, settings
 │   │   ├── llm/           # LLM abstraction layer (Claude, Ollama)
-│   │   ├── models/        # SQLAlchemy models
+│   │   ├── models/        # SQLAlchemy models (developer, activity, career)
 │   │   ├── processing/    # Celery tasks, queue, scheduler
-│   │   ├── schemas/       # Pydantic schemas
+│   │   ├── schemas/       # Pydantic schemas (developer, activity, career)
 │   │   ├── services/      # Business logic
-│   │   │   └── task_sources/  # Jira, Linear, GitHub Issues
+│   │   │   ├── task_sources/      # Jira, Linear, GitHub Issues
+│   │   │   ├── career_progression.py  # Role definitions, gap analysis
+│   │   │   ├── learning_path.py       # Learning path generation
+│   │   │   └── hiring_intelligence.py # JD/rubric generation
 │   │   └── main.py        # App entry point
 │   ├── tests/
 │   │   ├── unit/          # Unit tests
@@ -321,10 +326,10 @@ gitraki/
 │   └── pyproject.toml
 ├── frontend/
 │   ├── src/
-│   │   ├── app/           # Next.js pages
+│   │   ├── app/           # Next.js pages (dashboard, sprint-planning, learning, hiring)
 │   │   ├── components/    # React components (insights, soft skills, task matcher)
 │   │   ├── hooks/         # Custom hooks
-│   │   └── lib/           # API client
+│   │   └── lib/           # API client (Phase 3 APIs included)
 │   └── package.json
 ├── prds/                  # Product requirements
 └── tracker.md             # This file
@@ -375,3 +380,12 @@ gitraki/
 | Dec 2024 | What-if analysis service for simulating assignments | — |
 | Dec 2024 | Peer benchmarking service and UI component | — |
 | Dec 2024 | **Phase 2 Complete**: Full LLM integration with switchable providers | — |
+| Dec 2024 | Phase 3 database models: CareerRole, LearningPath, LearningMilestone, HiringRequirement | — |
+| Dec 2024 | CareerProgressionService with predefined career ladder (Junior → Principal) | — |
+| Dec 2024 | LearningPathService with LLM-powered path generation and milestone tracking | — |
+| Dec 2024 | HiringIntelligenceService with gap analysis, JD generation, interview rubrics | — |
+| Dec 2024 | Phase 3 LLM prompts: learning path, job description, interview rubric, stretch assignments | — |
+| Dec 2024 | Career, Learning, Hiring API routers with full endpoint coverage | — |
+| Dec 2024 | Frontend Learning Paths page with path management, milestones, activities | — |
+| Dec 2024 | Frontend Hiring Intelligence page with gap analysis, JD/rubric generation | — |
+| Dec 2024 | **Phase 3 Complete**: Career Intelligence with Learning Paths and Hiring Intelligence | — |
