@@ -710,3 +710,396 @@ export const hiringApi = {
     return response.data;
   },
 };
+
+// ============================================================================
+// Phase 4: Advanced Analytics Types
+// ============================================================================
+
+export interface DeveloperSkillData {
+  developer_id: string;
+  developer_name: string;
+  skills: { skill: string; value: number }[];
+}
+
+export interface SkillHeatmapData {
+  skills: string[];
+  developer_skills: DeveloperSkillData[];
+  generated_at: string;
+}
+
+export interface DeveloperTrend {
+  developer_id: string;
+  commits: number[];
+  prs_merged: number[];
+  reviews: number[];
+}
+
+export interface ProductivityTrends {
+  periods: string[];
+  developer_trends: DeveloperTrend[];
+  overall_trend: string;
+}
+
+export interface WorkloadItem {
+  developer_id: string;
+  developer_name: string;
+  workload: number;
+  percentage: number;
+}
+
+export interface WorkloadDistribution {
+  workloads: WorkloadItem[];
+  total_workload: number;
+  average_workload: number;
+  imbalance_score: number;
+}
+
+export interface CollaborationNode {
+  id: string;
+  name: string;
+  activity_level: number;
+}
+
+export interface CollaborationEdge {
+  source: string;
+  target: string;
+  weight: number;
+  interaction_type: string;
+}
+
+export interface CollaborationGraph {
+  nodes: CollaborationNode[];
+  edges: CollaborationEdge[];
+  density: number;
+}
+
+export interface RiskFactor {
+  factor: string;
+  weight: number;
+  evidence: string;
+  trend?: string;
+}
+
+export interface AttritionRiskAnalysis {
+  developer_id: string;
+  risk_score: number;
+  confidence: number;
+  risk_level: "low" | "moderate" | "high" | "critical";
+  factors: RiskFactor[];
+  positive_signals: string[];
+  recommendations: string[];
+  suggested_actions: string[];
+  analyzed_at: string;
+}
+
+export interface BurnoutRiskAssessment {
+  developer_id: string;
+  risk_score: number;
+  confidence: number;
+  risk_level: "low" | "moderate" | "high" | "critical";
+  indicators: string[];
+  factors: RiskFactor[];
+  recommendations: string[];
+  analyzed_at: string;
+}
+
+export interface SkillGrowthPrediction {
+  skill: string;
+  current: number;
+  predicted: number;
+  timeline: string;
+}
+
+export interface CareerReadiness {
+  next_level: string;
+  readiness_score: number;
+  blockers: string[];
+}
+
+export interface PerformanceTrajectory {
+  developer_id: string;
+  trajectory: "accelerating" | "steady" | "plateauing" | "declining";
+  confidence: number;
+  predicted_growth: SkillGrowthPrediction[];
+  challenges: string[];
+  opportunities: string[];
+  career_readiness: CareerReadiness;
+  recommendations: string[];
+  analyzed_at: string;
+}
+
+export interface TeamRisk {
+  risk: string;
+  severity: "low" | "moderate" | "high" | "critical";
+  mitigation: string;
+}
+
+export interface CapacityAssessment {
+  current_utilization: number;
+  sustainable_velocity: boolean;
+  bottlenecks: string[];
+}
+
+export interface TeamHealthAnalysis {
+  team_id: string | null;
+  health_score: number;
+  health_grade: "A" | "B" | "C" | "D" | "F";
+  strengths: string[];
+  risks: TeamRisk[];
+  capacity_assessment: CapacityAssessment;
+  recommendations: string[];
+  suggested_hires: string[];
+  analyzed_at: string;
+}
+
+// Analytics API
+export const analyticsApi = {
+  getSkillHeatmap: async (developerIds: string[], skills?: string[], maxSkills?: number): Promise<SkillHeatmapData> => {
+    const response = await api.post("/analytics/heatmap/skills", {
+      developer_ids: developerIds,
+      skills,
+      max_skills: maxSkills || 15,
+    });
+    return response.data;
+  },
+
+  getProductivityTrends: async (
+    developerIds: string[],
+    dateRange?: { start_date: string; end_date: string },
+    groupBy?: string
+  ): Promise<ProductivityTrends> => {
+    const response = await api.post("/analytics/productivity", {
+      developer_ids: developerIds,
+      date_range: dateRange,
+      group_by: groupBy || "week",
+    });
+    return response.data;
+  },
+
+  getWorkloadDistribution: async (developerIds: string[], days?: number): Promise<WorkloadDistribution> => {
+    const response = await api.post("/analytics/workload", {
+      developer_ids: developerIds,
+      days: days || 30,
+    });
+    return response.data;
+  },
+
+  getCollaborationNetwork: async (developerIds: string[], days?: number): Promise<CollaborationGraph> => {
+    const response = await api.post("/analytics/collaboration", {
+      developer_ids: developerIds,
+      days: days || 90,
+    });
+    return response.data;
+  },
+};
+
+// Predictions API
+export const predictionsApi = {
+  getAttritionRisk: async (developerId: string, days?: number): Promise<AttritionRiskAnalysis> => {
+    const response = await api.get(`/predictions/attrition/${developerId}`, {
+      params: { days: days || 90 },
+    });
+    return response.data;
+  },
+
+  getBurnoutRisk: async (developerId: string, days?: number): Promise<BurnoutRiskAssessment> => {
+    const response = await api.get(`/predictions/burnout/${developerId}`, {
+      params: { days: days || 30 },
+    });
+    return response.data;
+  },
+
+  getPerformanceTrajectory: async (developerId: string, months?: number): Promise<PerformanceTrajectory> => {
+    const response = await api.get(`/predictions/trajectory/${developerId}`, {
+      params: { months: months || 6 },
+    });
+    return response.data;
+  },
+
+  getTeamHealth: async (developerIds: string[], teamId?: string): Promise<TeamHealthAnalysis> => {
+    const response = await api.post("/predictions/team-health", {
+      developer_ids: developerIds,
+      team_id: teamId,
+    });
+    return response.data;
+  },
+
+  refreshDeveloperInsights: async (developerId: string) => {
+    const response = await api.post(`/predictions/insights/refresh/${developerId}`);
+    return response.data;
+  },
+};
+
+// Report Types
+export interface WidgetConfig {
+  id: string;
+  type: string;
+  metric: string;
+  title: string;
+  config?: Record<string, unknown>;
+  position: { x: number; y: number; w: number; h: number };
+}
+
+export interface ReportFilters {
+  date_range?: { days?: number; start_date?: string; end_date?: string };
+  developer_ids?: string[];
+  team_ids?: string[];
+}
+
+export interface CustomReport {
+  id: string;
+  creator_id: string;
+  organization_id: string | null;
+  name: string;
+  description: string | null;
+  widgets: WidgetConfig[];
+  filters: ReportFilters;
+  layout: Record<string, unknown>;
+  is_template: boolean;
+  is_public: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReportTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  preview_widgets: WidgetConfig[];
+  widget_count: number;
+}
+
+export interface ScheduledReport {
+  id: string;
+  report_id: string;
+  schedule: "daily" | "weekly" | "monthly";
+  day_of_week: number | null;
+  day_of_month: number | null;
+  time_utc: string;
+  recipients: string[];
+  delivery_method: "email" | "slack" | "both";
+  export_format: "pdf" | "csv" | "json" | "xlsx";
+  is_active: boolean;
+  last_sent_at: string | null;
+  next_run_at: string;
+}
+
+// Reports API
+export const reportsApi = {
+  listReports: async (includePublic = true, includeTemplates = false): Promise<CustomReport[]> => {
+    const response = await api.get("/reports", {
+      params: { include_public: includePublic, include_templates: includeTemplates },
+    });
+    return response.data;
+  },
+
+  getReport: async (reportId: string): Promise<CustomReport> => {
+    const response = await api.get(`/reports/${reportId}`);
+    return response.data;
+  },
+
+  createReport: async (data: {
+    name: string;
+    description?: string;
+    widgets: WidgetConfig[];
+    filters?: ReportFilters;
+    layout?: Record<string, unknown>;
+    is_public?: boolean;
+  }): Promise<CustomReport> => {
+    const response = await api.post("/reports", data);
+    return response.data;
+  },
+
+  updateReport: async (reportId: string, data: Partial<{
+    name: string;
+    description: string;
+    widgets: WidgetConfig[];
+    filters: ReportFilters;
+    layout: Record<string, unknown>;
+    is_public: boolean;
+  }>): Promise<CustomReport> => {
+    const response = await api.put(`/reports/${reportId}`, data);
+    return response.data;
+  },
+
+  deleteReport: async (reportId: string): Promise<void> => {
+    await api.delete(`/reports/${reportId}`);
+  },
+
+  cloneReport: async (reportId: string, newName: string): Promise<CustomReport> => {
+    const response = await api.post(`/reports/${reportId}/clone`, null, {
+      params: { new_name: newName },
+    });
+    return response.data;
+  },
+
+  getReportData: async (reportId: string, developerIds?: string[]): Promise<Record<string, unknown>> => {
+    const response = await api.post(`/reports/${reportId}/data`, {
+      developer_ids: developerIds,
+    });
+    return response.data;
+  },
+
+  listTemplates: async (category?: string): Promise<ReportTemplate[]> => {
+    const response = await api.get("/reports/templates/list", {
+      params: category ? { category } : {},
+    });
+    return response.data;
+  },
+
+  createFromTemplate: async (templateId: string, name?: string): Promise<CustomReport> => {
+    const response = await api.post(`/reports/templates/${templateId}/create`, null, {
+      params: name ? { name } : {},
+    });
+    return response.data;
+  },
+
+  listSchedules: async (reportId?: string): Promise<ScheduledReport[]> => {
+    const response = await api.get("/reports/schedules/list", {
+      params: reportId ? { report_id: reportId } : {},
+    });
+    return response.data;
+  },
+
+  createSchedule: async (reportId: string, data: {
+    schedule: "daily" | "weekly" | "monthly";
+    time_utc: string;
+    recipients: string[];
+    delivery_method: "email" | "slack" | "both";
+    export_format: "pdf" | "csv" | "json" | "xlsx";
+    day_of_week?: number;
+    day_of_month?: number;
+  }): Promise<ScheduledReport> => {
+    const response = await api.post(`/reports/${reportId}/schedules`, data);
+    return response.data;
+  },
+
+  deleteSchedule: async (scheduleId: string): Promise<void> => {
+    await api.delete(`/reports/schedules/${scheduleId}`);
+  },
+};
+
+// Exports API
+export const exportsApi = {
+  createExport: async (data: {
+    export_type: "report" | "developer_profile" | "team_analytics";
+    format: "pdf" | "csv" | "json" | "xlsx";
+    config?: Record<string, unknown>;
+  }) => {
+    const response = await api.post("/exports", data);
+    return response.data;
+  },
+
+  getExportStatus: async (jobId: string) => {
+    const response = await api.get(`/exports/${jobId}`);
+    return response.data;
+  },
+
+  listExports: async (limit = 20) => {
+    const response = await api.get("/exports", { params: { limit } });
+    return response.data;
+  },
+
+  getDownloadUrl: (jobId: string) => `${api.defaults.baseURL}/exports/${jobId}/download`,
+};

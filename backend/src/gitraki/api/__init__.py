@@ -12,6 +12,12 @@ from gitraki.api.hiring import router as hiring_router
 from gitraki.api.learning import router as learning_router
 from gitraki.api.teams import router as teams_router
 from gitraki.api.webhooks import router as webhooks_router
+# Phase 4: Advanced Analytics
+from gitraki.api.analytics import router as analytics_router
+from gitraki.api.reports import router as reports_router
+from gitraki.api.predictions import router as predictions_router
+from gitraki.api.exports import router as exports_router
+from gitraki.api.slack import router as slack_router
 
 api_router = APIRouter()
 
@@ -26,3 +32,10 @@ api_router.include_router(admin_router, tags=["admin"])
 api_router.include_router(career_router, tags=["career"])
 api_router.include_router(learning_router, tags=["learning"])
 api_router.include_router(hiring_router, tags=["hiring"])
+# Phase 4: Advanced Analytics
+api_router.include_router(analytics_router, tags=["analytics"])
+api_router.include_router(reports_router, tags=["reports"])
+api_router.include_router(predictions_router, tags=["predictions"])
+api_router.include_router(exports_router, tags=["exports"])
+# Phase 4: Ecosystem Integrations
+api_router.include_router(slack_router, tags=["slack"])
