@@ -1,12 +1,30 @@
 """FastAPI application entry point."""
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from devograph.api import api_router
 from devograph.core.config import get_settings
+from devograph.core.database import engine, Base
 
 settings = get_settings()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan - create tables on startup."""
+    # Import models to register them with Base
+    from devograph import models  # noqa: F401
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    yield
+
+    # Cleanup on shutdown
+    await engine.dispose()
 
 
 def create_app() -> FastAPI:
@@ -17,6 +35,7 @@ def create_app() -> FastAPI:
         version="0.1.0",
         docs_url="/docs",
         redoc_url="/redoc",
+        lifespan=lifespan,
     )
 
     # CORS middleware
