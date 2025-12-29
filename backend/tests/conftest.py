@@ -218,3 +218,237 @@ def sample_pull_requests_batch() -> list[dict[str, Any]]:
             "deletions": 0,
         },
     ]
+
+
+# Phase 4 Fixtures
+
+@pytest_asyncio.fixture
+async def sample_developer(db_session: AsyncSession):
+    """Create a sample developer in the database."""
+    from gitraki.models.developer import Developer
+
+    developer = Developer(
+        github_id=12345,
+        github_username="testdev",
+        name="Test Developer",
+        email="testdev@example.com",
+        skills=["Python", "TypeScript", "React", "PostgreSQL"],
+        seniority_level="senior",
+        seniority_score=75,
+    )
+    db_session.add(developer)
+    await db_session.commit()
+    await db_session.refresh(developer)
+    return developer
+
+
+@pytest_asyncio.fixture
+async def sample_developers(db_session: AsyncSession):
+    """Create multiple sample developers."""
+    from gitraki.models.developer import Developer
+
+    developers = [
+        Developer(
+            github_id=1001,
+            github_username="dev1",
+            name="Developer One",
+            skills=["Python", "FastAPI", "PostgreSQL"],
+            seniority_level="senior",
+            seniority_score=80,
+        ),
+        Developer(
+            github_id=1002,
+            github_username="dev2",
+            name="Developer Two",
+            skills=["TypeScript", "React", "Node.js"],
+            seniority_level="mid",
+            seniority_score=55,
+        ),
+        Developer(
+            github_id=1003,
+            github_username="dev3",
+            name="Developer Three",
+            skills=["Python", "Django", "Redis"],
+            seniority_level="junior",
+            seniority_score=30,
+        ),
+        Developer(
+            github_id=1004,
+            github_username="dev4",
+            name="Developer Four",
+            skills=["Go", "Kubernetes", "Docker"],
+            seniority_level="senior",
+            seniority_score=85,
+        ),
+    ]
+
+    for dev in developers:
+        db_session.add(dev)
+
+    await db_session.commit()
+
+    for dev in developers:
+        await db_session.refresh(dev)
+
+    return developers
+
+
+@pytest_asyncio.fixture
+async def sample_team(db_session: AsyncSession, sample_developers):
+    """Create a sample team with developers."""
+    from gitraki.models.team import Team
+
+    team = Team(
+        name="Backend Team",
+        description="Backend development team",
+        developer_ids=[dev.id for dev in sample_developers[:3]],
+    )
+    db_session.add(team)
+    await db_session.commit()
+    await db_session.refresh(team)
+    return team
+
+
+@pytest_asyncio.fixture
+async def sample_commits_db(db_session: AsyncSession, sample_developer):
+    """Create sample commits in the database."""
+    from datetime import datetime, timedelta
+    from gitraki.models.activity import Commit
+
+    commits = []
+    base_date = datetime.utcnow() - timedelta(days=30)
+
+    for i in range(10):
+        commit = Commit(
+            sha=f"sha_{i}_{sample_developer.id}",
+            developer_id=sample_developer.id,
+            repository_name="test-repo",
+            message=f"Commit {i}: Feature implementation",
+            additions=50 + i * 10,
+            deletions=10 + i * 2,
+            files_changed=3 + i,
+            committed_at=base_date + timedelta(days=i),
+        )
+        db_session.add(commit)
+        commits.append(commit)
+
+    await db_session.commit()
+    return commits
+
+
+@pytest_asyncio.fixture
+async def sample_pull_requests_db(db_session: AsyncSession, sample_developer):
+    """Create sample pull requests in the database."""
+    from datetime import datetime, timedelta
+    from gitraki.models.activity import PullRequest
+
+    prs = []
+    base_date = datetime.utcnow() - timedelta(days=30)
+
+    for i in range(5):
+        pr = PullRequest(
+            github_id=1000 + i,
+            number=i + 1,
+            developer_id=sample_developer.id,
+            repository_name="test-repo",
+            title=f"PR {i}: Add feature",
+            body=f"Description for PR {i}",
+            state="merged" if i < 3 else "open",
+            additions=100 + i * 20,
+            deletions=20 + i * 5,
+            changed_files=5 + i,
+            commits_count=3 + i,
+            created_at=base_date + timedelta(days=i * 5),
+            merged_at=base_date + timedelta(days=i * 5 + 2) if i < 3 else None,
+        )
+        db_session.add(pr)
+        prs.append(pr)
+
+    await db_session.commit()
+    return prs
+
+
+@pytest_asyncio.fixture
+async def sample_reviews_db(db_session: AsyncSession, sample_developer, sample_pull_requests_db):
+    """Create sample code reviews in the database."""
+    from datetime import datetime, timedelta
+    from gitraki.models.activity import CodeReview
+
+    reviews = []
+    base_date = datetime.utcnow() - timedelta(days=25)
+
+    for i, pr in enumerate(sample_pull_requests_db[:3]):
+        review = CodeReview(
+            github_id=2000 + i,
+            pull_request_id=pr.id,
+            reviewer_id=sample_developer.id,
+            state="approved" if i % 2 == 0 else "changes_requested",
+            body=f"Review comment for PR {pr.number}",
+            submitted_at=base_date + timedelta(days=i * 3),
+        )
+        db_session.add(review)
+        reviews.append(review)
+
+    await db_session.commit()
+    return reviews
+
+
+@pytest.fixture
+def mock_llm_gateway(mocker):
+    """Mock the LLM gateway for tests."""
+    mock = mocker.patch("gitraki.llm.gateway.LLMGateway")
+    mock_instance = mock.return_value
+
+    # Default mock response
+    mock_instance.analyze.return_value = {
+        "risk_score": 0.35,
+        "risk_level": "low",
+        "confidence": 0.8,
+        "factors": [
+            {"factor": "stable_activity", "weight": 0.3, "evidence": "Consistent commits"}
+        ],
+        "recommendations": ["Continue current trajectory"],
+    }
+
+    return mock_instance
+
+
+@pytest.fixture
+def sample_report_config() -> dict[str, Any]:
+    """Sample report configuration."""
+    return {
+        "name": "Weekly Team Report",
+        "description": "Weekly summary of team performance",
+        "widgets": [
+            {
+                "type": "skill_heatmap",
+                "config": {"show_legend": True},
+                "position": {"x": 0, "y": 0, "w": 2, "h": 1},
+            },
+            {
+                "type": "productivity_chart",
+                "config": {"period": "7d"},
+                "position": {"x": 0, "y": 1, "w": 1, "h": 1},
+            },
+        ],
+        "filters": {
+            "date_range": "last_7_days",
+        },
+    }
+
+
+@pytest.fixture
+def sample_slack_command() -> dict[str, Any]:
+    """Sample Slack slash command data."""
+    return {
+        "command": "/gitraki",
+        "text": "profile @testdev",
+        "user_id": "U12345",
+        "user_name": "slackuser",
+        "channel_id": "C12345",
+        "channel_name": "general",
+        "team_id": "T12345",
+        "team_domain": "testworkspace",
+        "response_url": "https://hooks.slack.com/commands/xxx",
+        "trigger_id": "123456.789",
+    }

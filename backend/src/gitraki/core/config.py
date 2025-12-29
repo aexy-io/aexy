@@ -149,3 +149,7 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Get cached application settings."""
     return Settings()
+
+
+# Convenience singleton for direct imports
+settings = get_settings()
