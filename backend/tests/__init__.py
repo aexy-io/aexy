@@ -1,1 +1,1 @@
-"""Test package for Gitraki."""
+"""Test package for Devograph."""

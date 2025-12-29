@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide covers deploying Gitraki to production environments, including Docker, Kubernetes, and cloud platforms.
+This guide covers deploying Devograph to production environments, including Docker, Kubernetes, and cloud platforms.
 
 ## Prerequisites
 
@@ -31,7 +31,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql+asyncpg://gitraki:${DB_PASSWORD}@postgres:5432/gitraki
+      - DATABASE_URL=postgresql+asyncpg://devograph:${DB_PASSWORD}@postgres:5432/devograph
       - REDIS_URL=redis://redis:6379/0
       - LLM_PROVIDER=${LLM_PROVIDER}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
@@ -59,9 +59,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A gitraki.processing.celery_app worker --loglevel=info
+    command: celery -A devograph.processing.celery_app worker --loglevel=info
     environment:
-      - DATABASE_URL=postgresql+asyncpg://gitraki:${DB_PASSWORD}@postgres:5432/gitraki
+      - DATABASE_URL=postgresql+asyncpg://devograph:${DB_PASSWORD}@postgres:5432/devograph
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       - postgres
@@ -72,9 +72,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A gitraki.processing.celery_app beat --loglevel=info
+    command: celery -A devograph.processing.celery_app beat --loglevel=info
     environment:
-      - DATABASE_URL=postgresql+asyncpg://gitraki:${DB_PASSWORD}@postgres:5432/gitraki
+      - DATABASE_URL=postgresql+asyncpg://devograph:${DB_PASSWORD}@postgres:5432/devograph
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       - postgres
@@ -86,8 +86,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      - POSTGRES_DB=gitraki
-      - POSTGRES_USER=gitraki
+      - POSTGRES_DB=devograph
+      - POSTGRES_USER=devograph
       - POSTGRES_PASSWORD=${DB_PASSWORD}
     restart: unless-stopped
 
@@ -147,7 +147,7 @@ Best for large-scale deployments with auto-scaling.
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: gitraki
+  name: devograph
 ```
 
 #### Backend Deployment
@@ -157,28 +157,28 @@ metadata:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: gitraki-backend
-  namespace: gitraki
+  name: devograph-backend
+  namespace: devograph
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: gitraki-backend
+      app: devograph-backend
   template:
     metadata:
       labels:
-        app: gitraki-backend
+        app: devograph-backend
     spec:
       containers:
         - name: backend
-          image: gitraki/backend:latest
+          image: devograph/backend:latest
           ports:
             - containerPort: 8000
           envFrom:
             - secretRef:
-                name: gitraki-secrets
+                name: devograph-secrets
             - configMapRef:
-                name: gitraki-config
+                name: devograph-config
           resources:
             requests:
               memory: "512Mi"
@@ -202,11 +202,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: gitraki-backend
-  namespace: gitraki
+  name: devograph-backend
+  namespace: devograph
 spec:
   selector:
-    app: gitraki-backend
+    app: devograph-backend
   ports:
     - port: 80
       targetPort: 8000
@@ -219,11 +219,11 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: gitraki-secrets
-  namespace: gitraki
+  name: devograph-secrets
+  namespace: devograph
 type: Opaque
 stringData:
-  DATABASE_URL: postgresql+asyncpg://user:pass@postgres:5432/gitraki
+  DATABASE_URL: postgresql+asyncpg://user:pass@postgres:5432/devograph
   REDIS_URL: redis://redis:6379/0
   GITHUB_CLIENT_SECRET: your-secret
   ANTHROPIC_API_KEY: your-api-key
@@ -237,8 +237,8 @@ stringData:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: gitraki-config
-  namespace: gitraki
+  name: devograph-config
+  namespace: devograph
 data:
   LLM_PROVIDER: "claude"
   GITHUB_CLIENT_ID: "your-client-id"
@@ -252,36 +252,36 @@ data:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: gitraki-ingress
-  namespace: gitraki
+  name: devograph-ingress
+  namespace: devograph
   annotations:
     kubernetes.io/ingress.class: nginx
     cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   tls:
     - hosts:
-        - api.gitraki.io
-        - gitraki.io
-      secretName: gitraki-tls
+        - api.devograph.io
+        - devograph.io
+      secretName: devograph-tls
   rules:
-    - host: api.gitraki.io
+    - host: api.devograph.io
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: gitraki-backend
+                name: devograph-backend
                 port:
                   number: 80
-    - host: gitraki.io
+    - host: devograph.io
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: gitraki-frontend
+                name: devograph-frontend
                 port:
                   number: 80
 ```
@@ -300,8 +300,8 @@ kubectl apply -f k8s/configmap.yaml
 kubectl apply -f k8s/
 
 # Check status
-kubectl get pods -n gitraki
-kubectl get services -n gitraki
+kubectl get pods -n devograph
+kubectl get services -n devograph
 ```
 
 ### Option 3: Cloud Platforms
@@ -322,25 +322,25 @@ kubectl get services -n gitraki
 # terraform/main.tf
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
-  name   = "gitraki-vpc"
+  name   = "devograph-vpc"
   cidr   = "10.0.0.0/16"
 }
 
 module "rds" {
   source               = "terraform-aws-modules/rds/aws"
-  identifier           = "gitraki-db"
+  identifier           = "devograph-db"
   engine               = "postgres"
   engine_version       = "16"
   instance_class       = "db.t3.medium"
   allocated_storage    = 20
-  db_name              = "gitraki"
-  username             = "gitraki"
+  db_name              = "devograph"
+  username             = "devograph"
   password             = var.db_password
 }
 
 module "elasticache" {
   source                 = "terraform-aws-modules/elasticache/aws"
-  cluster_id             = "gitraki-cache"
+  cluster_id             = "devograph-cache"
   engine                 = "redis"
   node_type              = "cache.t3.micro"
   num_cache_nodes        = 1
@@ -409,7 +409,7 @@ DEBUG=false
 LOG_LEVEL=info
 
 # Database
-DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/gitraki
+DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/devograph
 DATABASE_POOL_SIZE=20
 DATABASE_MAX_OVERFLOW=10
 
@@ -431,10 +431,10 @@ JWT_ALGORITHM=HS256
 JWT_EXPIRE_MINUTES=1440
 
 # CORS
-CORS_ORIGINS=https://gitraki.io,https://app.gitraki.io
+CORS_ORIGINS=https://devograph.io,https://app.devograph.io
 
 # Frontend
-NEXT_PUBLIC_API_URL=https://api.gitraki.io/api
+NEXT_PUBLIC_API_URL=https://api.devograph.io/api
 ```
 
 ## Backup and Recovery
@@ -443,17 +443,17 @@ NEXT_PUBLIC_API_URL=https://api.gitraki.io/api
 
 ```bash
 # Manual backup
-pg_dump -h host -U gitraki gitraki > backup.sql
+pg_dump -h host -U devograph devograph > backup.sql
 
 # Automated backup (cron)
-0 2 * * * pg_dump -h host -U gitraki gitraki | gzip > /backups/gitraki-$(date +%Y%m%d).sql.gz
+0 2 * * * pg_dump -h host -U devograph devograph | gzip > /backups/devograph-$(date +%Y%m%d).sql.gz
 ```
 
 ### Restore
 
 ```bash
 # Restore from backup
-psql -h host -U gitraki gitraki < backup.sql
+psql -h host -U devograph devograph < backup.sql
 ```
 
 ## Scaling
@@ -476,7 +476,7 @@ For analytics-heavy workloads:
 
 ```python
 # Configure read replica
-ANALYTICS_DATABASE_URL=postgresql+asyncpg://user:pass@replica:5432/gitraki
+ANALYTICS_DATABASE_URL=postgresql+asyncpg://user:pass@replica:5432/devograph
 ```
 
 ## Troubleshooting
@@ -489,16 +489,16 @@ ANALYTICS_DATABASE_URL=postgresql+asyncpg://user:pass@replica:5432/gitraki
 docker-compose logs backend
 
 # Check health endpoint
-curl https://api.gitraki.io/api/health
+curl https://api.devograph.io/api/health
 ```
 
 **Database Connection Issues**
 ```bash
 # Test connection
-psql -h host -U gitraki -d gitraki
+psql -h host -U devograph -d devograph
 
 # Check connection pool
-kubectl exec -it gitraki-backend-xxx -- python -c "from gitraki.core.database import engine; print(engine.pool.status())"
+kubectl exec -it devograph-backend-xxx -- python -c "from devograph.core.database import engine; print(engine.pool.status())"
 ```
 
 **Redis Connection Issues**
@@ -510,8 +510,8 @@ redis-cli -h host ping
 **Celery Workers Not Processing**
 ```bash
 # Check worker status
-celery -A gitraki.processing.celery_app inspect active
+celery -A devograph.processing.celery_app inspect active
 
 # Check queue
-celery -A gitraki.processing.celery_app inspect reserved
+celery -A devograph.processing.celery_app inspect reserved
 ```

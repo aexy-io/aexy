@@ -4,9 +4,9 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from gitraki.models.activity import Commit, PullRequest, CodeReview
-from gitraki.models.developer import Developer, GitHubConnection
-from gitraki.services.profile_sync import ProfileSyncService
+from devograph.models.activity import Commit, PullRequest, CodeReview
+from devograph.models.developer import Developer, GitHubConnection
+from devograph.services.profile_sync import ProfileSyncService
 
 
 class TestProfileSyncBasic:

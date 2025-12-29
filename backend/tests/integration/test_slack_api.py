@@ -98,7 +98,7 @@ class TestSlackAPI:
     async def test_handle_slash_command_match(
         self, client: AsyncClient, sample_slack_command, valid_slack_signature
     ):
-        """Test /gitraki match command."""
+        """Test /devograph match command."""
         sample_slack_command["text"] = "match Implement OAuth authentication"
         body = "&".join(f"{k}={v}" for k, v in sample_slack_command.items())
         timestamp, signature = valid_slack_signature(body)
@@ -119,7 +119,7 @@ class TestSlackAPI:
     async def test_handle_slash_command_team(
         self, client: AsyncClient, sample_slack_command, valid_slack_signature
     ):
-        """Test /gitraki team command."""
+        """Test /devograph team command."""
         sample_slack_command["text"] = "team"
         body = "&".join(f"{k}={v}" for k, v in sample_slack_command.items())
         timestamp, signature = valid_slack_signature(body)
@@ -140,7 +140,7 @@ class TestSlackAPI:
     async def test_handle_slash_command_help(
         self, client: AsyncClient, sample_slack_command, valid_slack_signature
     ):
-        """Test /gitraki help command."""
+        """Test /devograph help command."""
         sample_slack_command["text"] = "help"
         body = "&".join(f"{k}={v}" for k, v in sample_slack_command.items())
         timestamp, signature = valid_slack_signature(body)

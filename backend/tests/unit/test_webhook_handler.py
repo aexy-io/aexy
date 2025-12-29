@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from gitraki.services.webhook_handler import (
+from devograph.services.webhook_handler import (
     WebhookHandler,
     WebhookEvent,
     WebhookVerificationError,

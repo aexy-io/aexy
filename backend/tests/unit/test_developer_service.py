@@ -2,9 +2,9 @@
 
 import pytest
 
-from gitraki.models.developer import Developer, GitHubConnection
-from gitraki.schemas.developer import DeveloperCreate, DeveloperUpdate, SkillFingerprint, LanguageSkill
-from gitraki.services.developer_service import (
+from devograph.models.developer import Developer, GitHubConnection
+from devograph.schemas.developer import DeveloperCreate, DeveloperUpdate, SkillFingerprint, LanguageSkill
+from devograph.services.developer_service import (
     DeveloperAlreadyExistsError,
     DeveloperNotFoundError,
     DeveloperService,

@@ -195,7 +195,7 @@ export default function LearningPage() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <GitBranch className="h-8 w-8 text-primary-500" />
-              <span className="text-2xl font-bold text-white">Gitraki</span>
+              <span className="text-2xl font-bold text-white">Devograph</span>
             </div>
             <nav className="hidden md:flex items-center gap-1 ml-6">
               <Link

@@ -9,7 +9,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <GitBranch className="h-8 w-8 text-primary-500" />
-            <span className="text-2xl font-bold text-white">Gitraki</span>
+            <span className="text-2xl font-bold text-white">Devograph</span>
           </div>
           <nav className="flex items-center gap-6">
             <Link
@@ -98,7 +98,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-slate-700 py-8">
         <div className="max-w-7xl mx-auto px-4 text-center text-slate-400">
-          <p>&copy; 2024 Gitraki. GitHub-Based Developer Analytics Platform.</p>
+          <p>&copy; 2024 Devograph. GitHub-Based Developer Analytics Platform.</p>
         </div>
       </footer>
     </main>

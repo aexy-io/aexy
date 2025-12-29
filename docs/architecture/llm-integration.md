@@ -2,7 +2,7 @@
 
 ## Overview
 
-Gitraki uses a provider-agnostic LLM abstraction layer that supports multiple AI providers, enabling flexibility between cloud and local models.
+Devograph uses a provider-agnostic LLM abstraction layer that supports multiple AI providers, enabling flexibility between cloud and local models.
 
 ## Architecture
 

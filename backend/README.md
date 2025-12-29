@@ -1,4 +1,4 @@
-# Gitraki Backend
+# Devograph Backend
 
 GitHub-Based Developer Profiling & Analytics Platform - Backend API
 
@@ -12,7 +12,7 @@ pip install -e ".[dev]"
 pytest
 
 # Start development server
-uvicorn gitraki.main:app --reload
+uvicorn devograph.main:app --reload
 ```
 
 ## Architecture

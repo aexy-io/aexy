@@ -1,1 +1,1 @@
-"""Unit tests for Gitraki."""
+"""Unit tests for Devograph."""

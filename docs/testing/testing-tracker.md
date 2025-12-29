@@ -1,4 +1,4 @@
-# Gitraki Testing Tracker
+# Devograph Testing Tracker
 
 **Last Updated:** December 2024
 **Overall Test Coverage Target:** 80%
@@ -7,7 +7,7 @@
 
 ## Testing Overview
 
-This document tracks all testing activities across the Gitraki platform, including unit tests, integration tests, end-to-end tests, and manual testing checklists.
+This document tracks all testing activities across the Devograph platform, including unit tests, integration tests, end-to-end tests, and manual testing checklists.
 
 ### Legend
 
@@ -224,9 +224,9 @@ This document tracks all testing activities across the Gitraki platform, includi
 |-----------|--------|-------|
 | `test_complete_oauth` | [ ] | OAuth flow |
 | `test_send_message` | [ ] | Message sending |
-| `test_handle_slash_command_profile` | [ ] | /gitraki profile |
-| `test_handle_slash_command_match` | [ ] | /gitraki match |
-| `test_handle_slash_command_team` | [ ] | /gitraki team |
+| `test_handle_slash_command_profile` | [ ] | /devograph profile |
+| `test_handle_slash_command_match` | [ ] | /devograph match |
+| `test_handle_slash_command_team` | [ ] | /devograph team |
 | `test_verify_request` | [ ] | Signature verification |
 
 **Status:** 0/6 tests - TO BE WRITTEN
@@ -285,12 +285,12 @@ This document tracks all testing activities across the Gitraki platform, includi
 
 | Command | Status | Notes |
 |---------|--------|-------|
-| `gitraki login` | [ ] | |
-| `gitraki profile show` | [ ] | |
-| `gitraki team skills` | [ ] | |
-| `gitraki match` | [ ] | |
-| `gitraki insights attrition` | [ ] | |
-| `gitraki report generate` | [ ] | |
+| `devograph login` | [ ] | |
+| `devograph profile show` | [ ] | |
+| `devograph team skills` | [ ] | |
+| `devograph match` | [ ] | |
+| `devograph insights attrition` | [ ] | |
+| `devograph report generate` | [ ] | |
 
 ---
 
@@ -405,10 +405,10 @@ This document tracks all testing activities across the Gitraki platform, includi
 ### Slack Bot Testing (Manual)
 
 - [ ] OAuth install works
-- [ ] /gitraki help responds
-- [ ] /gitraki profile works
-- [ ] /gitraki team works
-- [ ] /gitraki match works
+- [ ] /devograph help responds
+- [ ] /devograph profile works
+- [ ] /devograph team works
+- [ ] /devograph match works
 - [ ] Notifications deliver
 - [ ] Error messages helpful
 
@@ -528,7 +528,7 @@ cd backend
 pytest
 
 # Run with coverage
-pytest --cov=gitraki --cov-report=html
+pytest --cov=devograph --cov-report=html
 
 # Run specific test file
 pytest tests/unit/test_profile_analyzer.py
@@ -558,13 +558,13 @@ npm run test:watch
 ### CLI
 
 ```bash
-cd gitraki-cli
+cd devograph-cli
 
 # Run tests
 pytest
 
 # Run with coverage
-pytest --cov=gitraki_cli
+pytest --cov=devograph_cli
 ```
 
 ---
@@ -588,7 +588,7 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install -e ".[dev]"
-      - run: pytest --cov=gitraki
+      - run: pytest --cov=devograph
 
   frontend-tests:
     runs-on: ubuntu-latest
