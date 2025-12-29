@@ -467,3 +467,238 @@ Respond with JSON:
   "summary": "Overall skill landscape summary",
   "hiring_implications": ["implications for hiring strategy"]
 }}"""
+
+# Phase 4: Predictive Analytics Prompts
+
+ATTRITION_RISK_SYSTEM_PROMPT = """You are an expert organizational psychologist analyzing developer engagement patterns.
+Identify potential attrition risks based on activity patterns, collaboration changes, and behavioral signals.
+Be balanced - consider both risk factors and positive signals.
+Respond ONLY with valid JSON."""
+
+ATTRITION_RISK_PROMPT = """Analyze the following developer's activity patterns for attrition risk indicators.
+
+Developer Profile:
+- Name: {developer_name}
+- Tenure: {tenure}
+- Current Skills: {skills}
+- Role Level: {role_level}
+
+Activity Trends (last 90 days vs previous 90 days):
+- Commit frequency: {commit_trend}
+- PR submission rate: {pr_trend}
+- Code review participation: {review_trend}
+- Work hours distribution: {hours_pattern}
+- Collaboration changes: {collab_changes}
+
+Historical Baseline:
+{baseline_metrics}
+
+Work Patterns:
+- Preferred complexity: {preferred_complexity}
+- Collaboration style: {collaboration_style}
+- Peak productivity hours: {peak_hours}
+
+Analyze for risk factors such as:
+1. Declining activity (gradual disengagement)
+2. Changed work patterns (burnout indicators)
+3. Reduced collaboration (isolation)
+4. Scope changes (being sidelined)
+5. Quality changes (reduced investment)
+
+Respond with JSON:
+{{
+  "risk_score": 0.0-1.0,
+  "confidence": 0.0-1.0,
+  "risk_level": "low|moderate|high|critical",
+  "factors": [
+    {{
+      "factor": "factor name",
+      "weight": 0.0-1.0,
+      "evidence": "specific evidence",
+      "trend": "improving|stable|declining"
+    }}
+  ],
+  "positive_signals": ["observed positive indicators"],
+  "recommendations": ["management recommendations"],
+  "suggested_actions": ["specific actions to take"]
+}}"""
+
+BURNOUT_RISK_SYSTEM_PROMPT = """You are an expert in developer wellness and burnout prevention.
+Analyze work patterns to identify potential burnout risks before they become critical.
+Focus on sustainable work practices and work-life balance indicators.
+Respond ONLY with valid JSON."""
+
+BURNOUT_RISK_PROMPT = """Assess burnout risk for this developer based on recent activity patterns.
+
+Developer: {developer_name}
+Recent Period: Last {days} days
+
+Activity Patterns:
+- Average daily commits: {avg_daily_commits}
+- Weekend work percentage: {weekend_work_pct}
+- After-hours work percentage: {after_hours_pct}
+- Longest work streak (days without break): {longest_streak}
+- Average PR size: {avg_pr_size}
+- Review turnaround time: {review_turnaround}
+
+Workload Indicators:
+- Active PRs: {active_prs}
+- Pending reviews: {pending_reviews}
+- Recent sprint velocity: {velocity}
+
+Historical Comparison:
+- Current vs 3-month average activity: {activity_change}
+- Collaboration pattern changes: {collab_changes}
+
+Assess for burnout indicators:
+1. Overwork patterns (extended hours, weekends)
+2. Quality decline indicators
+3. Response time changes
+4. Scope changes
+5. Communication pattern shifts
+
+Respond with JSON:
+{{
+  "risk_score": 0.0-1.0,
+  "confidence": 0.0-1.0,
+  "risk_level": "low|moderate|high|critical",
+  "indicators": ["observed burnout indicators"],
+  "factors": [
+    {{
+      "factor": "factor name",
+      "weight": 0.0-1.0,
+      "evidence": "specific evidence",
+      "trend": "improving|stable|declining"
+    }}
+  ],
+  "recommendations": ["wellness recommendations"],
+  "immediate_actions": ["urgent actions if needed"]
+}}"""
+
+PERFORMANCE_TRAJECTORY_SYSTEM_PROMPT = """You are an expert in developer career growth and performance prediction.
+Analyze historical growth patterns to predict future performance trajectory.
+Consider learning velocity, skill acquisition, and career progression indicators.
+Respond ONLY with valid JSON."""
+
+PERFORMANCE_TRAJECTORY_PROMPT = """Predict the performance trajectory for this developer over the next {months} months.
+
+Developer Profile:
+- Name: {developer_name}
+- Current Level: {current_level}
+- Tenure: {tenure}
+- Primary Skills: {primary_skills}
+
+Growth History (last 12 months):
+- Skills acquired: {skills_acquired}
+- Learning velocity: {learning_velocity} new skills/quarter
+- Complexity progression: {complexity_trend}
+- Domain expansion: {domain_growth}
+
+Current Learning Path:
+{learning_path}
+
+Recent Performance:
+- Code quality trend: {code_quality_trend}
+- Review quality: {review_quality}
+- Mentoring activity: {mentoring_activity}
+- Project impact: {project_impact}
+
+Team Context:
+- Team size: {team_size}
+- Skill gaps developer could fill: {potential_growth_areas}
+
+Predict:
+1. Expected skill growth areas
+2. Potential plateaus or challenges
+3. Readiness for next career level
+4. Recommended focus areas
+
+Respond with JSON:
+{{
+  "trajectory": "accelerating|steady|plateauing|declining",
+  "confidence": 0.0-1.0,
+  "predicted_growth": [
+    {{
+      "skill": "skill name",
+      "current": 0-100,
+      "predicted": 0-100,
+      "timeline": "3 months|6 months|12 months"
+    }}
+  ],
+  "challenges": ["potential challenges"],
+  "opportunities": ["growth opportunities"],
+  "career_readiness": {{
+    "next_level": "next career level",
+    "readiness_score": 0.0-1.0,
+    "blockers": ["what's blocking progression"],
+    "accelerators": ["what could speed up progression"]
+  }},
+  "recommendations": ["specific development recommendations"]
+}}"""
+
+TEAM_HEALTH_SYSTEM_PROMPT = """You are an expert in engineering team dynamics and organizational health.
+Assess overall team health based on collaboration patterns, skill coverage, and sustainability metrics.
+Provide actionable insights for team improvement.
+Respond ONLY with valid JSON."""
+
+TEAM_HEALTH_PROMPT = """Assess the overall health of this engineering team.
+
+Team Composition:
+- Size: {team_size}
+- Members: {team_members}
+- Average tenure: {avg_tenure}
+- Seniority distribution: {seniority_dist}
+
+Skill Coverage:
+{skill_coverage}
+
+Bus Factor Risks:
+{bus_factors}
+
+Workload Distribution:
+{workload_dist}
+
+Collaboration Patterns:
+{collab_patterns}
+
+Recent Trends (30 days):
+- Velocity trend: {velocity_trend}
+- Quality trend: {quality_trend}
+- Collaboration density: {collab_density}
+
+Historical Context:
+- Recent departures: {recent_departures}
+- New joiners: {new_joiners}
+
+Assess:
+1. Overall team health score
+2. Key strengths
+3. Critical risks
+4. Capacity concerns
+5. Culture/collaboration indicators
+
+Respond with JSON:
+{{
+  "health_score": 0.0-1.0,
+  "health_grade": "A|B|C|D|F",
+  "strengths": ["team strengths"],
+  "risks": [
+    {{
+      "risk": "risk description",
+      "severity": "low|medium|high",
+      "mitigation": "recommended mitigation"
+    }}
+  ],
+  "capacity_assessment": {{
+    "current_utilization": 0.0-1.0,
+    "sustainable_velocity": true|false,
+    "bottlenecks": ["identified bottlenecks"]
+  }},
+  "collaboration_health": {{
+    "score": 0.0-1.0,
+    "patterns": ["observed patterns"],
+    "improvements": ["suggestions"]
+  }},
+  "recommendations": ["team improvement recommendations"],
+  "suggested_hires": ["skills to hire for"]
+}}"""

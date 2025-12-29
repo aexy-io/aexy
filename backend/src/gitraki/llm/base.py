@@ -22,6 +22,11 @@ class AnalysisType(str, Enum):
     INTERVIEW_RUBRIC = "interview_rubric"
     STRETCH_ASSIGNMENT = "stretch_assignment"
     ROADMAP_SKILLS = "roadmap_skills"
+    # Phase 4: Predictive Analytics
+    ATTRITION_RISK = "attrition_risk"
+    BURNOUT_RISK = "burnout_risk"
+    PERFORMANCE_TRAJECTORY = "performance_trajectory"
+    TEAM_HEALTH = "team_health"
 
 
 class LLMConfig(BaseModel):

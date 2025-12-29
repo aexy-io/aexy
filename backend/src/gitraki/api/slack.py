@@ -1,0 +1,318 @@
+"""Slack integration API endpoints."""
+
+import json
+import logging
+import secrets
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import RedirectResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from gitraki.core.database import get_db
+from gitraki.core.config import settings
+from gitraki.schemas.integrations import (
+    SlackCommandResponse,
+    SlackIntegrationResponse,
+    SlackIntegrationUpdate,
+    SlackMessage,
+    SlackNotificationLogResponse,
+    SlackNotificationRequest,
+    SlackNotificationResponse,
+    SlackOAuthCallback,
+    SlackSlashCommand,
+    SlackUserMappingRequest,
+    SlackUserMappingResponse,
+)
+from gitraki.services.slack_integration import SlackIntegrationService
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/slack", tags=["slack"])
+
+# In-memory state store for OAuth (use Redis in production)
+oauth_states: dict[str, dict] = {}
+
+
+def get_slack_service() -> SlackIntegrationService:
+    """Get Slack integration service instance."""
+    return SlackIntegrationService()
+
+
+@router.get("/install")
+async def start_oauth_install(
+    organization_id: str,
+    installer_id: str,
+    redirect_url: str | None = None,
+    service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
+):
+    """Start Slack OAuth installation flow."""
+    state = secrets.token_urlsafe(32)
+    oauth_states[state] = {
+        "organization_id": organization_id,
+        "installer_id": installer_id,
+        "redirect_url": redirect_url or f"{settings.FRONTEND_URL}/settings/integrations",
+    }
+
+    install_url = service.get_install_url(state)
+    return RedirectResponse(url=install_url)
+
+
+@router.get("/callback")
+async def oauth_callback(
+    code: str,
+    state: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
+):
+    """Handle Slack OAuth callback."""
+    state_data = oauth_states.pop(state, None)
+    if not state_data:
+        raise HTTPException(status_code=400, detail="Invalid or expired OAuth state")
+
+    try:
+        callback = SlackOAuthCallback(code=code, state=state)
+        integration = await service.complete_oauth(
+            callback=callback,
+            installer_id=state_data["installer_id"],
+            organization_id=state_data["organization_id"],
+            db=db,
+        )
+
+        # Redirect back to the frontend
+        redirect_url = state_data["redirect_url"]
+        return RedirectResponse(url=f"{redirect_url}?slack_installed=true")
+    except ValueError as e:
+        logger.error(f"Slack OAuth failed: {e}")
+        redirect_url = state_data["redirect_url"]
+        return RedirectResponse(url=f"{redirect_url}?slack_error={str(e)}")
+
+
+@router.get("/integration/{integration_id}", response_model=SlackIntegrationResponse)
+async def get_integration(
+    integration_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
+):
+    """Get Slack integration details."""
+    integration = await service.get_integration(integration_id, db)
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration not found")
+    return SlackIntegrationResponse.model_validate(integration)
+
+
+@router.get("/integration/org/{organization_id}", response_model=SlackIntegrationResponse | None)
+async def get_integration_by_org(
+    organization_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
+):
+    """Get Slack integration for an organization."""
+    integration = await service.get_integration_by_org(organization_id, db)
+    if not integration:
+        return None
+    return SlackIntegrationResponse.model_validate(integration)
+
+
+@router.put("/integration/{integration_id}", response_model=SlackIntegrationResponse)
+async def update_integration(
+    integration_id: str,
+    data: SlackIntegrationUpdate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
+):
+    """Update Slack integration settings."""
+    integration = await service.update_integration(integration_id, data, db)
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration not found")
+    return integration
+
+
+@router.delete("/integration/{integration_id}")
+async def uninstall_integration(
+    integration_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
+):
+    """Uninstall Slack integration."""
+    success = await service.uninstall(integration_id, db)
+    if not success:
+        raise HTTPException(status_code=404, detail="Integration not found")
+    return {"success": True}
+
+
+@router.post("/notify", response_model=SlackNotificationResponse)
+async def send_notification(
+    request: SlackNotificationRequest,
+    integration_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
+):
+    """Send a notification to a Slack channel."""
+    integration = await service.get_integration(integration_id, db)
+    if not integration or not integration.is_active:
+        raise HTTPException(status_code=404, detail="Integration not found or inactive")
+
+    return await service.send_message(
+        integration=integration,
+        channel_id=request.channel_id,
+        message=request.message,
+        notification_type=request.notification_type,
+        db=db,
+    )
+
+
+@router.post("/commands", response_model=SlackCommandResponse)
+async def handle_slash_command(
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
+):
+    """Handle incoming Slack slash commands."""
+    # Get the raw body for verification
+    body = await request.body()
+
+    # Verify the request came from Slack
+    timestamp = request.headers.get("X-Slack-Request-Timestamp", "")
+    signature = request.headers.get("X-Slack-Signature", "")
+
+    if not service.verify_request(timestamp, signature, body):
+        raise HTTPException(status_code=401, detail="Invalid request signature")
+
+    # Parse form data
+    form_data = await request.form()
+    command = SlackSlashCommand(
+        command=form_data.get("command", ""),
+        text=form_data.get("text", ""),
+        user_id=form_data.get("user_id", ""),
+        user_name=form_data.get("user_name", ""),
+        channel_id=form_data.get("channel_id", ""),
+        channel_name=form_data.get("channel_name", ""),
+        team_id=form_data.get("team_id", ""),
+        team_domain=form_data.get("team_domain", ""),
+        response_url=form_data.get("response_url", ""),
+        trigger_id=form_data.get("trigger_id", ""),
+    )
+
+    response = await service.handle_slash_command(command, db)
+    return response
+
+
+@router.post("/events")
+async def handle_events(
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
+):
+    """Handle incoming Slack events."""
+    body = await request.body()
+    data = json.loads(body)
+
+    # Handle URL verification challenge
+    if data.get("type") == "url_verification":
+        return {"challenge": data.get("challenge")}
+
+    # Verify the request came from Slack
+    timestamp = request.headers.get("X-Slack-Request-Timestamp", "")
+    signature = request.headers.get("X-Slack-Signature", "")
+
+    if not service.verify_request(timestamp, signature, body):
+        raise HTTPException(status_code=401, detail="Invalid request signature")
+
+    # Handle event callbacks
+    if data.get("type") == "event_callback":
+        event = data.get("event", {})
+        event_type = event.get("type")
+        team_id = data.get("team_id")
+
+        await service.handle_event(event_type, event, team_id, db)
+
+    return Response(status_code=200)
+
+
+@router.post("/interactions")
+async def handle_interactions(
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
+):
+    """Handle Slack interactive components (buttons, modals, etc.)."""
+    body = await request.body()
+
+    # Verify the request came from Slack
+    timestamp = request.headers.get("X-Slack-Request-Timestamp", "")
+    signature = request.headers.get("X-Slack-Signature", "")
+
+    if not service.verify_request(timestamp, signature, body):
+        raise HTTPException(status_code=401, detail="Invalid request signature")
+
+    # Parse the payload (it comes as form data with a 'payload' field)
+    form_data = await request.form()
+    payload = json.loads(form_data.get("payload", "{}"))
+
+    interaction_type = payload.get("type")
+
+    # Handle different interaction types
+    if interaction_type == "block_actions":
+        # Handle button clicks
+        actions = payload.get("actions", [])
+        for action in actions:
+            action_id = action.get("action_id")
+            # Route to appropriate handler based on action_id
+            logger.info(f"Received block action: {action_id}")
+
+    elif interaction_type == "view_submission":
+        # Handle modal submissions
+        callback_id = payload.get("view", {}).get("callback_id")
+        logger.info(f"Received modal submission: {callback_id}")
+
+    return Response(status_code=200)
+
+
+@router.post("/integration/{integration_id}/user-mapping", response_model=SlackUserMappingResponse)
+async def create_user_mapping(
+    integration_id: str,
+    mapping: SlackUserMappingRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
+):
+    """Map a Slack user to a Gitraki developer."""
+    success = await service.map_user(
+        integration_id=integration_id,
+        slack_user_id=mapping.slack_user_id,
+        developer_id=mapping.developer_id,
+        db=db,
+    )
+    if not success:
+        raise HTTPException(status_code=404, detail="Integration not found")
+
+    return SlackUserMappingResponse(
+        slack_user_id=mapping.slack_user_id,
+        developer_id=mapping.developer_id,
+    )
+
+
+@router.delete("/integration/{integration_id}/user-mapping/{slack_user_id}")
+async def delete_user_mapping(
+    integration_id: str,
+    slack_user_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
+):
+    """Remove a Slack user mapping."""
+    success = await service.unmap_user(integration_id, slack_user_id, db)
+    if not success:
+        raise HTTPException(status_code=404, detail="Integration not found")
+    return {"success": True}
+
+
+@router.get("/integration/{integration_id}/logs", response_model=list[SlackNotificationLogResponse])
+async def get_notification_logs(
+    integration_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = 50,
+    service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
+):
+    """Get notification logs for an integration."""
+    logs = await service.get_notification_logs(integration_id, db, limit)
+    return [SlackNotificationLogResponse.model_validate(log) for log in logs]

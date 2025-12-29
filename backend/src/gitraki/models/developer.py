@@ -12,6 +12,7 @@ from gitraki.core.database import Base
 
 if TYPE_CHECKING:
     from gitraki.models.activity import CodeReview, Commit, PullRequest
+    from gitraki.models.analytics import CustomReport, ExportJob, PredictiveInsight
     from gitraki.models.career import LearningPath
 
 
@@ -68,6 +69,18 @@ class Developer(Base):
     )
     learning_paths: Mapped[list["LearningPath"]] = relationship(
         "LearningPath",
+        back_populates="developer",
+    )
+    custom_reports: Mapped[list["CustomReport"]] = relationship(
+        "CustomReport",
+        back_populates="creator",
+    )
+    export_jobs: Mapped[list["ExportJob"]] = relationship(
+        "ExportJob",
+        back_populates="requester",
+    )
+    predictive_insights: Mapped[list["PredictiveInsight"]] = relationship(
+        "PredictiveInsight",
         back_populates="developer",
     )
 

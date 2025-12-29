@@ -12,6 +12,12 @@ from gitraki.services.whatif_analyzer import WhatIfAnalyzer
 from gitraki.services.career_progression import CareerProgressionService
 from gitraki.services.learning_path import LearningPathService
 from gitraki.services.hiring_intelligence import HiringIntelligenceService
+# Phase 4: Advanced Analytics
+from gitraki.services.analytics_dashboard import AnalyticsDashboardService
+from gitraki.services.predictive_analytics import PredictiveAnalyticsService
+from gitraki.services.report_builder import ReportBuilderService
+from gitraki.services.export_service import ExportService
+from gitraki.services.slack_integration import SlackIntegrationService
 
 __all__ = [
     "GitHubService",
@@ -26,4 +32,11 @@ __all__ = [
     "CareerProgressionService",
     "LearningPathService",
     "HiringIntelligenceService",
+    # Phase 4: Advanced Analytics
+    "AnalyticsDashboardService",
+    "PredictiveAnalyticsService",
+    "ReportBuilderService",
+    "ExportService",
+    # Phase 4: Ecosystem Integrations
+    "SlackIntegrationService",
 ]
