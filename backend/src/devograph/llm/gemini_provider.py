@@ -1,4 +1,4 @@
-"""Ollama LLM provider for OSS models (Llama, Mistral, CodeLlama)."""
+"""Google Gemini LLM provider implementation."""
 
 import json
 import logging
@@ -36,31 +36,37 @@ from devograph.llm.prompts import (
 logger = logging.getLogger(__name__)
 
 
-class OllamaProvider(LLMProvider):
-    """Ollama provider for OSS models like Llama, Mistral, CodeLlama."""
+class GeminiProvider(LLMProvider):
+    """Google Gemini API provider implementation."""
 
-    DEFAULT_MODEL = "codellama:13b"
-    DEFAULT_BASE_URL = "http://localhost:11434"
+    GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta"
+    DEFAULT_MODEL = "gemini-2.0-flash"
 
     def __init__(self, config: LLMConfig) -> None:
-        """Initialize the Ollama provider.
+        """Initialize the Gemini provider.
 
         Args:
-            config: LLM configuration with model and base URL.
+            config: LLM configuration with API key and model settings.
         """
         self.config = config
         self._model = config.model or self.DEFAULT_MODEL
-        self._base_url = config.base_url or self.DEFAULT_BASE_URL
 
+        if not config.api_key:
+            raise ValueError("Gemini API key is required for Gemini provider")
+
+        self._api_key = config.api_key
         self._client = httpx.AsyncClient(
-            base_url=self._base_url,
+            base_url=self.GEMINI_API_URL,
+            headers={
+                "Content-Type": "application/json",
+            },
             timeout=config.timeout,
         )
 
     @property
     def provider_name(self) -> str:
         """Get the provider name."""
-        return "ollama"
+        return "gemini"
 
     @property
     def model_name(self) -> str:
@@ -72,7 +78,10 @@ class OllamaProvider(LLMProvider):
         system_prompt: str,
         user_prompt: str,
     ) -> tuple[str, int, int, int]:
-        """Make an API call to Ollama.
+        """Make an API call to Gemini.
+
+        Gemini uses a different API structure than Anthropic:
+        POST /models/{model}:generateContent
 
         Args:
             system_prompt: System instructions.
@@ -81,49 +90,57 @@ class OllamaProvider(LLMProvider):
         Returns:
             Tuple of (response text, total tokens, input tokens, output tokens).
         """
-        # Combine prompts for Ollama (simpler prompt format)
-        full_prompt = f"""<|system|>
-{system_prompt}
-<|user|>
-{user_prompt}
-<|assistant|>"""
+        url = f"/models/{self._model}:generateContent?key={self._api_key}"
 
+        # Gemini API structure
         payload = {
-            "model": self._model,
-            "prompt": full_prompt,
-            "stream": False,
-            "options": {
+            "contents": [
+                {
+                    "role": "user",
+                    "parts": [{"text": user_prompt}],
+                }
+            ],
+            "systemInstruction": {
+                "parts": [{"text": system_prompt}]
+            },
+            "generationConfig": {
                 "temperature": self.config.temperature,
-                "num_predict": self.config.max_tokens,
+                "maxOutputTokens": self.config.max_tokens,
+                "topP": 0.95,
             },
         }
 
         try:
-            response = await self._client.post("/api/generate", json=payload)
+            response = await self._client.post(url, json=payload)
             response.raise_for_status()
             data = response.json()
 
-            text = data.get("response", "")
+            # Extract text from Gemini response
+            candidates = data.get("candidates", [])
+            if not candidates:
+                return "", 0, 0, 0
 
-            # Estimate tokens (Ollama doesn't always provide exact counts)
-            input_tokens = data.get("prompt_eval_count", len(full_prompt) // 4)
-            output_tokens = data.get("eval_count", len(text) // 4)
+            content = candidates[0].get("content", {})
+            parts = content.get("parts", [])
+            text = parts[0].get("text", "") if parts else ""
+
+            # Get token usage
+            usage = data.get("usageMetadata", {})
+            input_tokens = usage.get("promptTokenCount", 0)
+            output_tokens = usage.get("candidatesTokenCount", 0)
             total_tokens = input_tokens + output_tokens
 
             return text, total_tokens, input_tokens, output_tokens
 
         except httpx.HTTPStatusError as e:
-            logger.error(f"Ollama API error: {e.response.status_code} - {e.response.text}")
-            raise
-        except httpx.ConnectError as e:
-            logger.error(f"Cannot connect to Ollama at {self._base_url}: {e}")
+            logger.error(f"Gemini API error: {e.response.status_code} - {e.response.text}")
             raise
         except Exception as e:
-            logger.error(f"Ollama API call failed: {e}")
+            logger.error(f"Gemini API call failed: {e}")
             raise
 
     def _parse_json_response(self, text: str) -> dict[str, Any]:
-        """Parse JSON from LLM response.
+        """Parse JSON from LLM response, handling markdown code blocks.
 
         Args:
             text: Raw response text.
@@ -131,9 +148,8 @@ class OllamaProvider(LLMProvider):
         Returns:
             Parsed JSON dict.
         """
+        # Strip markdown code blocks if present
         text = text.strip()
-
-        # Handle markdown code blocks
         if text.startswith("```json"):
             text = text[7:]
         elif text.startswith("```"):
@@ -142,18 +158,10 @@ class OllamaProvider(LLMProvider):
             text = text[:-3]
         text = text.strip()
 
-        # Try to find JSON object in response
-        start_idx = text.find("{")
-        end_idx = text.rfind("}") + 1
-
-        if start_idx != -1 and end_idx > start_idx:
-            text = text[start_idx:end_idx]
-
         try:
             return json.loads(text)
         except json.JSONDecodeError as e:
             logger.warning(f"Failed to parse JSON response: {e}")
-            logger.debug(f"Raw response: {text[:500]}")
             return {}
 
     async def analyze(self, request: AnalysisRequest) -> AnalysisResult:
@@ -189,7 +197,7 @@ class OllamaProvider(LLMProvider):
                 CODE_ANALYSIS_PROMPT.format(
                     file_path=request.file_path or "unknown",
                     language_hint=request.language_hint or "auto-detect",
-                    code=request.content[:10000],  # Smaller limit for OSS models
+                    code=request.content[:15000],  # Limit code length
                 ),
             )
 
@@ -229,12 +237,13 @@ class OllamaProvider(LLMProvider):
             )
 
         else:
+            # Default to code analysis
             return (
                 CODE_ANALYSIS_SYSTEM_PROMPT,
                 CODE_ANALYSIS_PROMPT.format(
                     file_path=request.file_path or "unknown",
                     language_hint=request.language_hint or "auto-detect",
-                    code=request.content[:10000],
+                    code=request.content[:15000],
                 ),
             )
 
@@ -296,10 +305,11 @@ class OllamaProvider(LLMProvider):
                 concerns=cq.get("concerns", []),
             )
 
+        # Calculate overall confidence
         all_confidences = (
-            [lang.confidence for lang in languages]
-            + [fw.confidence for fw in frameworks]
-            + [dom.confidence for dom in domains]
+            [l.confidence for l in languages]
+            + [f.confidence for f in frameworks]
+            + [d.confidence for d in domains]
         )
         avg_confidence = sum(all_confidences) / len(all_confidences) if all_confidences else 0.0
 
@@ -321,6 +331,7 @@ class OllamaProvider(LLMProvider):
 
     async def extract_task_signals(self, task_description: str) -> TaskSignals:
         """Extract skill signals from a task description."""
+        # Parse task description - could be JSON with metadata
         title = ""
         description = task_description
         labels: list[str] = []
@@ -373,13 +384,13 @@ class OllamaProvider(LLMProvider):
             domain=task_signals.domain or "unspecified",
             complexity=task_signals.complexity,
             languages=", ".join(
-                [lang.get("name", "") for lang in developer_skills.get("languages", [])]
+                [l.get("name", "") for l in developer_skills.get("languages", [])]
             ),
             frameworks=", ".join(
-                [fw.get("name", "") for fw in developer_skills.get("frameworks", [])]
+                [f.get("name", "") for f in developer_skills.get("frameworks", [])]
             ),
             developer_domains=", ".join(
-                [dom.get("name", "") for dom in developer_skills.get("domains", [])]
+                [d.get("name", "") for d in developer_skills.get("domains", [])]
             ),
             recent_activity=developer_skills.get("recent_activity", "unknown"),
         )
@@ -413,15 +424,21 @@ class OllamaProvider(LLMProvider):
     async def health_check(self) -> bool:
         """Check if the provider is healthy."""
         try:
-            response = await self._client.get("/api/tags")
-            if response.status_code != 200:
-                return False
-
-            # Check if our model is available
-            data = response.json()
-            models = [m.get("name", "") for m in data.get("models", [])]
-            return self._model in models or any(self._model in m for m in models)
-
+            # Make a minimal API call
+            url = f"/models/{self._model}:generateContent?key={self._api_key}"
+            payload = {
+                "contents": [
+                    {
+                        "role": "user",
+                        "parts": [{"text": "ping"}],
+                    }
+                ],
+                "generationConfig": {
+                    "maxOutputTokens": 10,
+                },
+            }
+            response = await self._client.post(url, json=payload)
+            return response.status_code == 200
         except Exception as e:
             logger.error(f"Health check failed: {e}")
             return False

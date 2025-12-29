@@ -150,6 +150,19 @@ class DeveloperRepository(Base):
     prs_synced: Mapped[int] = mapped_column(Integer, default=0)
     reviews_synced: Mapped[int] = mapped_column(Integer, default=0)
 
+    # Incremental sync tracking
+    last_commit_sha: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    last_commit_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    last_pr_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    last_pr_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    incremental_sync_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+
     # Webhook state
     webhook_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     webhook_status: Mapped[str] = mapped_column(

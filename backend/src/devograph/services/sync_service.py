@@ -3,7 +3,7 @@
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from devograph.core.config import get_settings
+from devograph.core.database import async_session_maker
 from devograph.models.activity import CodeReview, Commit, PullRequest
 from devograph.models.developer import GitHubConnection
 from devograph.models.repository import DeveloperRepository, Repository
@@ -18,6 +19,10 @@ from devograph.services.github_service import GitHubAPIError, GitHubService
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+
+# Sync mode types
+SyncMode = Literal["async", "celery"]
+SyncType = Literal["full", "incremental"]
 
 
 class SyncService:
@@ -30,9 +35,17 @@ class SyncService:
         self,
         developer_id: str,
         repository_id: str,
+        sync_type: SyncType = "incremental",
+        use_celery: bool = False,
     ) -> str:
         """
         Start historical sync for a repository.
+
+        Args:
+            developer_id: Developer ID.
+            repository_id: Repository ID.
+            sync_type: "full" or "incremental" sync.
+            use_celery: Use Celery task queue instead of async background task.
 
         Returns job ID for tracking.
         """
@@ -68,18 +81,32 @@ class SyncService:
         if not connection:
             raise ValueError("GitHub connection not found")
 
-        # Start sync in background
         job_id = str(uuid4())
-        asyncio.create_task(
-            self._run_sync(
+
+        if use_celery:
+            # Use Celery task for production workloads
+            from devograph.processing.sync_tasks import sync_repository_task
+
+            result = sync_repository_task.delay(
                 developer_id=developer_id,
                 repository_id=repository_id,
+                sync_type=sync_type,
                 access_token=connection.access_token,
-                job_id=job_id,
             )
-        )
+            return result.id
+        else:
+            # Start sync in background (async task)
+            asyncio.create_task(
+                self._run_sync(
+                    developer_id=developer_id,
+                    repository_id=repository_id,
+                    access_token=connection.access_token,
+                    job_id=job_id,
+                    sync_type=sync_type,
+                )
+            )
 
-        return job_id
+            return job_id
 
     async def _run_sync(
         self,
@@ -87,83 +114,98 @@ class SyncService:
         repository_id: str,
         access_token: str,
         job_id: str,
+        sync_type: SyncType = "incremental",
     ) -> None:
-        """Run the actual sync operation."""
-        try:
-            # Re-fetch developer repo since we're in a new task
-            stmt = (
-                select(DeveloperRepository)
-                .where(
-                    DeveloperRepository.developer_id == developer_id,
-                    DeveloperRepository.repository_id == repository_id,
+        """Run the actual sync operation with its own database session."""
+        # Create a fresh database session for this background task
+        async with async_session_maker() as db:
+            try:
+                # Re-fetch developer repo since we're in a new task
+                stmt = (
+                    select(DeveloperRepository)
+                    .where(
+                        DeveloperRepository.developer_id == developer_id,
+                        DeveloperRepository.repository_id == repository_id,
+                    )
+                    .options(selectinload(DeveloperRepository.repository))
                 )
-                .options(selectinload(DeveloperRepository.repository))
-            )
-            result = await self.db.execute(stmt)
-            dev_repo = result.scalar_one_or_none()
+                result = await db.execute(stmt)
+                dev_repo = result.scalar_one_or_none()
 
-            if not dev_repo:
-                return
+                if not dev_repo:
+                    return
 
-            repo = dev_repo.repository
-            owner, repo_name = repo.full_name.split("/")
+                repo = dev_repo.repository
+                owner, repo_name = repo.full_name.split("/")
 
-            # Get GitHub username for filtering
-            stmt = select(GitHubConnection).where(GitHubConnection.developer_id == developer_id)
-            result = await self.db.execute(stmt)
-            connection = result.scalar_one_or_none()
-            github_username = connection.github_username if connection else None
+                # Get GitHub username for filtering
+                stmt = select(GitHubConnection).where(GitHubConnection.developer_id == developer_id)
+                result = await db.execute(stmt)
+                connection = result.scalar_one_or_none()
+                github_username = connection.github_username if connection else None
 
-            async with GitHubService(access_token=access_token) as gh:
-                # Sync commits
-                commits_synced = await self._sync_commits(
-                    gh, owner, repo_name, developer_id, repository_id, github_username
+                async with GitHubService(access_token=access_token) as gh:
+                    # Sync commits
+                    commits_synced = await self._sync_commits_with_session(
+                        db, gh, owner, repo_name, developer_id, repository_id, github_username
+                    )
+
+                    # Sync PRs
+                    prs_synced = await self._sync_pull_requests_with_session(
+                        db, gh, owner, repo_name, developer_id, repository_id, github_username
+                    )
+
+                    # Sync reviews
+                    reviews_synced = await self._sync_reviews_with_session(
+                        db, gh, owner, repo_name, developer_id, repository_id, github_username
+                    )
+
+                # Refetch to update
+                result = await db.execute(
+                    select(DeveloperRepository).where(
+                        DeveloperRepository.developer_id == developer_id,
+                        DeveloperRepository.repository_id == repository_id,
+                    )
+                )
+                dev_repo = result.scalar_one_or_none()
+
+                if dev_repo:
+                    dev_repo.sync_status = "synced"
+                    dev_repo.last_sync_at = datetime.now(timezone.utc)
+                    dev_repo.commits_synced = commits_synced
+                    dev_repo.prs_synced = prs_synced
+                    dev_repo.reviews_synced = reviews_synced
+                    dev_repo.updated_at = datetime.now(timezone.utc)
+                    await db.commit()
+
+                logger.info(
+                    f"Sync complete for {repo.full_name}: "
+                    f"{commits_synced} commits, {prs_synced} PRs, {reviews_synced} reviews"
                 )
 
-                # Sync PRs
-                prs_synced = await self._sync_pull_requests(
-                    gh, owner, repo_name, developer_id, repository_id, github_username
-                )
+            except Exception as e:
+                logger.error(f"Sync failed for repository {repository_id}: {e}")
 
-                # Sync reviews
-                reviews_synced = await self._sync_reviews(
-                    gh, owner, repo_name, developer_id, repository_id, github_username
-                )
+                # Update status to failed with fresh query
+                try:
+                    stmt = select(DeveloperRepository).where(
+                        DeveloperRepository.developer_id == developer_id,
+                        DeveloperRepository.repository_id == repository_id,
+                    )
+                    result = await db.execute(stmt)
+                    dev_repo = result.scalar_one_or_none()
 
-            # Update sync status
-            dev_repo.sync_status = "synced"
-            dev_repo.last_sync_at = datetime.now(timezone.utc)
-            dev_repo.commits_synced = commits_synced
-            dev_repo.prs_synced = prs_synced
-            dev_repo.reviews_synced = reviews_synced
-            dev_repo.updated_at = datetime.now(timezone.utc)
+                    if dev_repo:
+                        dev_repo.sync_status = "failed"
+                        dev_repo.sync_error = str(e)
+                        dev_repo.updated_at = datetime.now(timezone.utc)
+                        await db.commit()
+                except Exception as inner_e:
+                    logger.error(f"Failed to update sync status: {inner_e}")
 
-            await self.db.commit()
-
-            logger.info(
-                f"Sync complete for {repo.full_name}: "
-                f"{commits_synced} commits, {prs_synced} PRs, {reviews_synced} reviews"
-            )
-
-        except Exception as e:
-            logger.error(f"Sync failed for repository {repository_id}: {e}")
-
-            # Update status to failed
-            stmt = select(DeveloperRepository).where(
-                DeveloperRepository.developer_id == developer_id,
-                DeveloperRepository.repository_id == repository_id,
-            )
-            result = await self.db.execute(stmt)
-            dev_repo = result.scalar_one_or_none()
-
-            if dev_repo:
-                dev_repo.sync_status = "failed"
-                dev_repo.sync_error = str(e)
-                dev_repo.updated_at = datetime.now(timezone.utc)
-                await self.db.commit()
-
-    async def _sync_commits(
+    async def _sync_commits_with_session(
         self,
+        db: AsyncSession,
         gh: GitHubService,
         owner: str,
         repo: str,
@@ -189,7 +231,7 @@ class SyncService:
             for commit_data in commits:
                 # Check if commit already exists
                 stmt = select(Commit).where(Commit.sha == commit_data["sha"])
-                result = await self.db.execute(stmt)
+                result = await db.execute(stmt)
                 existing = result.scalar_one_or_none()
 
                 if not existing:
@@ -213,7 +255,7 @@ class SyncService:
                             commit_data["commit"]["committer"]["date"].replace("Z", "+00:00")
                         ),
                     )
-                    self.db.add(commit)
+                    db.add(commit)
                     synced += 1
 
             if len(commits) < 100:
@@ -222,13 +264,14 @@ class SyncService:
 
             # Batch commit every 100 records
             if synced % 100 == 0:
-                await self.db.commit()
+                await db.commit()
 
-        await self.db.commit()
+        await db.commit()
         return synced
 
-    async def _sync_pull_requests(
+    async def _sync_pull_requests_with_session(
         self,
+        db: AsyncSession,
         gh: GitHubService,
         owner: str,
         repo: str,
@@ -258,7 +301,7 @@ class SyncService:
                 stmt = select(PullRequest).where(
                     PullRequest.github_id == pr_data["id"],
                 )
-                result = await self.db.execute(stmt)
+                result = await db.execute(stmt)
                 existing = result.scalar_one_or_none()
 
                 if not existing:
@@ -285,7 +328,7 @@ class SyncService:
                             pr_data["closed_at"].replace("Z", "+00:00")
                         ) if pr_data.get("closed_at") else None,
                     )
-                    self.db.add(pr)
+                    db.add(pr)
                     synced += 1
 
             if len(prs) < 100:
@@ -293,13 +336,14 @@ class SyncService:
             page += 1
 
             if synced % 100 == 0:
-                await self.db.commit()
+                await db.commit()
 
-        await self.db.commit()
+        await db.commit()
         return synced
 
-    async def _sync_reviews(
+    async def _sync_reviews_with_session(
         self,
+        db: AsyncSession,
         gh: GitHubService,
         owner: str,
         repo: str,
@@ -336,7 +380,7 @@ class SyncService:
                     stmt = select(CodeReview).where(
                         CodeReview.github_id == review_data["id"],
                     )
-                    result = await self.db.execute(stmt)
+                    result = await db.execute(stmt)
                     existing = result.scalar_one_or_none()
 
                     if not existing:
@@ -352,7 +396,7 @@ class SyncService:
                                 review_data["submitted_at"].replace("Z", "+00:00")
                             ) if review_data.get("submitted_at") else None,
                         )
-                        self.db.add(review)
+                        db.add(review)
                         synced += 1
 
             if len(prs) < 100:
@@ -360,9 +404,9 @@ class SyncService:
             page += 1
 
             if synced % 50 == 0:
-                await self.db.commit()
+                await db.commit()
 
-        await self.db.commit()
+        await db.commit()
         return synced
 
     async def register_webhook(

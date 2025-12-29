@@ -52,6 +52,16 @@ class LLMSettings(BaseSettings):
         description="Ollama model name",
     )
 
+    # Gemini/Google settings
+    gemini_api_key: str = Field(
+        default="",
+        description="Google Gemini API key",
+    )
+    gemini_model: str = Field(
+        default="gemini-2.0-flash",
+        description="Gemini model name",
+    )
+
     # Processing mode (configurable per billing plan)
     processing_mode: ProcessingMode = Field(
         default=ProcessingMode.BATCH,
@@ -141,6 +151,44 @@ class Settings(BaseSettings):
 
     # GitHub Webhook
     github_webhook_secret: str = ""
+
+    # Stripe Configuration
+    stripe_secret_key: str = Field(
+        default="",
+        description="Stripe secret API key",
+    )
+    stripe_publishable_key: str = Field(
+        default="",
+        description="Stripe publishable API key",
+    )
+    stripe_webhook_secret: str = Field(
+        default="",
+        description="Stripe webhook signing secret",
+    )
+
+    # Pricing Configuration (margin applied to token costs)
+    token_margin_percent: float = Field(
+        default=30.0,
+        description="Margin percentage to add on top of LLM token costs",
+    )
+
+    # Base token prices (in cents per 1M tokens) - can be overridden per provider
+    claude_input_price_per_million: float = Field(
+        default=300.0,  # $3.00 per 1M input tokens for Claude Sonnet
+        description="Claude input token price per million tokens (cents)",
+    )
+    claude_output_price_per_million: float = Field(
+        default=1500.0,  # $15.00 per 1M output tokens for Claude Sonnet
+        description="Claude output token price per million tokens (cents)",
+    )
+    gemini_input_price_per_million: float = Field(
+        default=7.5,  # $0.075 per 1M input tokens for Gemini Flash
+        description="Gemini input token price per million tokens (cents)",
+    )
+    gemini_output_price_per_million: float = Field(
+        default=30.0,  # $0.30 per 1M output tokens for Gemini Flash
+        description="Gemini output token price per million tokens (cents)",
+    )
 
     # Redis (for caching and job queue)
     redis_url: str = Field(

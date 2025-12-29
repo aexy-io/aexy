@@ -353,6 +353,150 @@ def batch_profile_sync_task() -> dict[str, Any]:
         raise
 
 
+@shared_task
+def reset_daily_limits_task() -> dict[str, Any]:
+    """Reset daily LLM usage limits for developers.
+
+    Returns:
+        Summary of reset operations.
+    """
+    logger.info("Checking for daily limit resets")
+
+    try:
+        result = run_async(_reset_daily_limits())
+        return result
+    except Exception as exc:
+        logger.error(f"Daily limit reset failed: {exc}")
+        raise
+
+
+async def _reset_daily_limits() -> dict[str, Any]:
+    """Async implementation of daily limit reset."""
+    from datetime import datetime, timezone
+
+    from sqlalchemy import select
+
+    from devograph.core.database import async_session_maker
+    from devograph.models.developer import Developer
+
+    async with async_session_maker() as db:
+        now = datetime.now(timezone.utc)
+
+        # Find developers whose reset time has passed
+        result = await db.execute(
+            select(Developer).where(
+                Developer.llm_requests_reset_at <= now
+            )
+        )
+        developers = result.scalars().all()
+
+        reset_count = 0
+        for developer in developers:
+            developer.llm_requests_today = 0
+            # Set next reset to tomorrow at midnight UTC
+            next_reset = now.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+            from datetime import timedelta
+            next_reset += timedelta(days=1)
+            developer.llm_requests_reset_at = next_reset
+            reset_count += 1
+
+        await db.commit()
+
+        return {
+            "developers_reset": reset_count,
+            "timestamp": now.isoformat(),
+        }
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=300)
+def report_usage_to_stripe_task(self, developer_id: str) -> dict[str, Any]:
+    """Report accumulated usage to Stripe for a developer.
+
+    Args:
+        developer_id: Developer ID.
+
+    Returns:
+        Summary of reported usage.
+    """
+    logger.info(f"Reporting usage to Stripe for developer {developer_id}")
+
+    try:
+        result = run_async(_report_usage_to_stripe(developer_id))
+        return result
+    except Exception as exc:
+        logger.error(f"Usage reporting failed: {exc}")
+        raise self.retry(exc=exc)
+
+
+async def _report_usage_to_stripe(developer_id: str) -> dict[str, Any]:
+    """Async implementation of Stripe usage reporting."""
+    from devograph.core.database import async_session_maker
+    from devograph.services.usage_service import UsageService
+
+    async with async_session_maker() as db:
+        usage_service = UsageService(db)
+        result = await usage_service.report_usage_to_stripe(developer_id)
+        return result
+
+
+@shared_task
+def batch_report_usage_task() -> dict[str, Any]:
+    """Report usage to Stripe for all developers with unreported usage.
+
+    Returns:
+        Summary of reporting operations.
+    """
+    logger.info("Starting batch usage reporting to Stripe")
+
+    try:
+        result = run_async(_batch_report_usage())
+        return result
+    except Exception as exc:
+        logger.error(f"Batch usage reporting failed: {exc}")
+        raise
+
+
+async def _batch_report_usage() -> dict[str, Any]:
+    """Async implementation of batch usage reporting."""
+    from datetime import datetime, timezone
+
+    from sqlalchemy import select, func
+
+    from devograph.core.database import async_session_maker
+    from devograph.models.billing import UsageRecord
+    from devograph.services.usage_service import UsageService
+
+    async with async_session_maker() as db:
+        # Find developers with unreported usage
+        result = await db.execute(
+            select(UsageRecord.developer_id)
+            .where(UsageRecord.reported_to_stripe == False)
+            .group_by(UsageRecord.developer_id)
+        )
+        developer_ids = [row[0] for row in result.fetchall()]
+
+        usage_service = UsageService(db)
+        reported = 0
+        errors = 0
+
+        for developer_id in developer_ids:
+            try:
+                await usage_service.report_usage_to_stripe(developer_id)
+                reported += 1
+            except Exception as e:
+                logger.error(f"Failed to report usage for {developer_id}: {e}")
+                errors += 1
+
+        return {
+            "developers_processed": len(developer_ids),
+            "developers_reported": reported,
+            "errors": errors,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+
 async def _batch_profile_sync() -> dict[str, Any]:
     """Async implementation of batch profile sync."""
     from datetime import datetime, timedelta, timezone

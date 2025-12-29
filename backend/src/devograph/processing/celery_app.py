@@ -10,7 +10,10 @@ celery_app = Celery(
     "devograph",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["devograph.processing.tasks"],
+    include=[
+        "devograph.processing.tasks",
+        "devograph.processing.sync_tasks",
+    ],
 )
 
 # Celery configuration
@@ -26,8 +29,9 @@ celery_app.conf.update(
     task_acks_late=True,
     task_reject_on_worker_lost=True,
 
-    # Rate limiting
+    # Rate limiting - different limits for different task types
     task_annotations={
+        # LLM analysis tasks - conservative limits
         "devograph.processing.tasks.analyze_commit_task": {
             "rate_limit": "10/m",  # 10 per minute for LLM API
         },
@@ -37,6 +41,20 @@ celery_app.conf.update(
         "devograph.processing.tasks.analyze_developer_task": {
             "rate_limit": "5/m",
         },
+        # GitHub sync tasks - more conservative for API limits
+        "devograph.processing.sync_tasks.sync_repository_task": {
+            "rate_limit": "30/m",  # 30 repos per minute
+        },
+        "devograph.processing.sync_tasks.sync_commits_task": {
+            "rate_limit": "60/m",  # Individual commit sync
+        },
+    },
+
+    # Task routing - separate queues for different task types
+    task_routes={
+        "devograph.processing.sync_tasks.*": {"queue": "sync"},
+        "devograph.processing.tasks.analyze_*": {"queue": "analysis"},
+        "devograph.processing.tasks.batch_*": {"queue": "batch"},
     },
 
     # Retry settings
@@ -54,7 +72,15 @@ celery_app.conf.update(
     beat_schedule={
         "nightly-batch-sync": {
             "task": "devograph.processing.tasks.batch_profile_sync_task",
-            "schedule": 3600 * 24,  # Daily (will be configured via APScheduler)
+            "schedule": 3600 * 24,  # Daily
+        },
+        "reset-daily-limits": {
+            "task": "devograph.processing.tasks.reset_daily_limits_task",
+            "schedule": 3600,  # Hourly check for limit resets
+        },
+        "report-usage-to-stripe": {
+            "task": "devograph.processing.tasks.batch_report_usage_task",
+            "schedule": 3600,  # Hourly usage reporting to Stripe
         },
     },
 )

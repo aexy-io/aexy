@@ -81,11 +81,26 @@ class EnableRepositoryResponse(BaseModel):
     sync_status: str
 
 
+class SyncStartRequest(BaseModel):
+    """Request to start a sync."""
+
+    sync_type: str = Field(
+        default="incremental",
+        description="Sync type: 'full' or 'incremental'",
+    )
+    use_celery: bool = Field(
+        default=False,
+        description="Use Celery task queue for background processing",
+    )
+
+
 class SyncStartResponse(BaseModel):
     """Response after starting a sync."""
 
     job_id: str
     message: str
+    sync_type: str = "incremental"
+    use_celery: bool = False
 
 
 class OnboardingStatusResponse(BaseModel):

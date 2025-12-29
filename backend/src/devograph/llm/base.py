@@ -108,6 +108,8 @@ class AnalysisResult(BaseModel):
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     raw_response: str = Field(default="", description="Raw LLM response for debugging")
     tokens_used: int = Field(default=0)
+    input_tokens: int = Field(default=0, description="Input tokens consumed")
+    output_tokens: int = Field(default=0, description="Output tokens generated")
     provider: str = Field(default="")
     model: str = Field(default="")
 

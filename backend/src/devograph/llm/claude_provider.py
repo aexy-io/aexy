@@ -78,7 +78,7 @@ class ClaudeProvider(LLMProvider):
         self,
         system_prompt: str,
         user_prompt: str,
-    ) -> tuple[str, int]:
+    ) -> tuple[str, int, int, int]:
         """Make an API call to Claude.
 
         Args:
@@ -86,7 +86,7 @@ class ClaudeProvider(LLMProvider):
             user_prompt: User message.
 
         Returns:
-            Tuple of (response text, tokens used).
+            Tuple of (response text, total tokens, input tokens, output tokens).
         """
         payload = {
             "model": self._model,
@@ -105,9 +105,11 @@ class ClaudeProvider(LLMProvider):
             text = content[0].get("text", "") if content else ""
 
             usage = data.get("usage", {})
-            tokens = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
+            input_tokens = usage.get("input_tokens", 0)
+            output_tokens = usage.get("output_tokens", 0)
+            total_tokens = input_tokens + output_tokens
 
-            return text, tokens
+            return text, total_tokens, input_tokens, output_tokens
 
         except httpx.HTTPStatusError as e:
             logger.error(f"Claude API error: {e.response.status_code} - {e.response.text}")
@@ -146,10 +148,14 @@ class ClaudeProvider(LLMProvider):
         system_prompt, user_prompt = self._build_analysis_prompts(request)
 
         try:
-            response_text, tokens = await self._call_api(system_prompt, user_prompt)
+            response_text, tokens, input_tokens, output_tokens = await self._call_api(
+                system_prompt, user_prompt
+            )
             data = self._parse_json_response(response_text)
 
-            return self._parse_analysis_result(data, response_text, tokens)
+            return self._parse_analysis_result(
+                data, response_text, tokens, input_tokens, output_tokens
+            )
 
         except Exception as e:
             logger.error(f"Analysis failed: {e}")
@@ -225,6 +231,8 @@ class ClaudeProvider(LLMProvider):
         data: dict[str, Any],
         raw_response: str,
         tokens: int,
+        input_tokens: int,
+        output_tokens: int,
     ) -> AnalysisResult:
         """Parse API response into AnalysisResult."""
         languages = [
@@ -294,6 +302,8 @@ class ClaudeProvider(LLMProvider):
             confidence=avg_confidence,
             raw_response=raw_response,
             tokens_used=tokens,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
             provider=self.provider_name,
             model=self.model_name,
         )

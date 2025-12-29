@@ -5,6 +5,8 @@ import logging
 from functools import lru_cache
 from typing import Any
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from devograph.llm.base import (
     AnalysisRequest,
     AnalysisResult,
@@ -34,6 +36,43 @@ class LLMGateway:
         self.provider = provider
         self.cache = cache
 
+    async def _record_usage(
+        self,
+        db: AsyncSession | None,
+        developer_id: str | None,
+        result: AnalysisResult,
+        operation: str = "analysis",
+    ) -> None:
+        """Record token usage for billing.
+
+        Args:
+            db: Database session.
+            developer_id: Developer ID for billing.
+            result: Analysis result containing token counts.
+            operation: Type of operation performed.
+        """
+        if not db or not developer_id:
+            return
+
+        if result.input_tokens == 0 and result.output_tokens == 0:
+            return
+
+        try:
+            from devograph.services.usage_service import UsageService
+
+            usage_service = UsageService(db)
+            await usage_service.record_usage(
+                developer_id=developer_id,
+                provider=result.provider,
+                model=result.model,
+                input_tokens=result.input_tokens,
+                output_tokens=result.output_tokens,
+                operation=operation,
+            )
+        except Exception as e:
+            # Log but don't fail the request if usage tracking fails
+            logger.warning(f"Failed to record usage: {e}")
+
     @staticmethod
     def _hash_content(content: str) -> str:
         """Generate a hash for content-based caching.
@@ -51,6 +90,8 @@ class LLMGateway:
         request: AnalysisRequest,
         use_cache: bool = True,
         cache_ttl: int = 86400,
+        db: AsyncSession | None = None,
+        developer_id: str | None = None,
     ) -> AnalysisResult:
         """Analyze content with optional caching.
 
@@ -58,6 +99,8 @@ class LLMGateway:
             request: The analysis request.
             use_cache: Whether to use caching.
             cache_ttl: Cache TTL in seconds (default 24 hours).
+            db: Database session for usage tracking.
+            developer_id: Developer ID for billing usage.
 
         Returns:
             Analysis result.
@@ -75,6 +118,14 @@ class LLMGateway:
 
         result = await self.provider.analyze(request)
 
+        # Track usage for billing
+        await self._record_usage(
+            db=db,
+            developer_id=developer_id,
+            result=result,
+            operation=f"analysis:{request.analysis_type.value}",
+        )
+
         if use_cache and self.cache and cache_key and result.confidence > 0:
             await self.cache.set(cache_key, result, ttl=cache_ttl)
             logger.debug(f"Cached result for {cache_key[:16]}...")
@@ -85,19 +136,28 @@ class LLMGateway:
         self,
         requests: list[AnalysisRequest],
         use_cache: bool = True,
+        db: AsyncSession | None = None,
+        developer_id: str | None = None,
     ) -> list[AnalysisResult]:
         """Analyze multiple requests.
 
         Args:
             requests: List of analysis requests.
             use_cache: Whether to use caching.
+            db: Database session for usage tracking.
+            developer_id: Developer ID for billing usage.
 
         Returns:
             List of analysis results.
         """
         results = []
         for request in requests:
-            result = await self.analyze(request, use_cache=use_cache)
+            result = await self.analyze(
+                request,
+                use_cache=use_cache,
+                db=db,
+                developer_id=developer_id,
+            )
             results.append(result)
         return results
 
@@ -232,6 +292,11 @@ def create_provider(config: LLMConfig) -> LLMProvider:
 
         return OllamaProvider(config)
 
+    elif config.provider == "gemini":
+        from devograph.llm.gemini_provider import GeminiProvider
+
+        return GeminiProvider(config)
+
     else:
         raise ValueError(f"Unsupported LLM provider: {config.provider}")
 
@@ -248,20 +313,47 @@ def get_llm_gateway() -> LLMGateway | None:
     settings = get_settings()
 
     # Check if LLM is configured
-    if not hasattr(settings, "llm") or not settings.llm.anthropic_api_key:
+    if not hasattr(settings, "llm"):
         logger.warning("LLM not configured - gateway not available")
         return None
 
+    llm_settings = settings.llm
+    provider_name = llm_settings.llm_provider
+
+    # Get the appropriate API key based on provider
+    api_key = None
+    base_url = None
+
+    if provider_name == "claude":
+        api_key = llm_settings.anthropic_api_key
+        if not api_key:
+            logger.warning("Anthropic API key not configured for Claude provider")
+            return None
+    elif provider_name == "gemini":
+        api_key = llm_settings.gemini_api_key
+        if not api_key:
+            logger.warning("Gemini API key not configured for Gemini provider")
+            return None
+    elif provider_name == "ollama":
+        base_url = llm_settings.ollama_base_url
+        # Ollama doesn't need an API key
+    else:
+        logger.warning(f"Unknown LLM provider: {provider_name}")
+        return None
+
     config = LLMConfig(
-        provider=settings.llm.llm_provider,
-        model=settings.llm.llm_model,
-        api_key=settings.llm.anthropic_api_key,
-        base_url=settings.llm.ollama_base_url if settings.llm.llm_provider == "ollama" else None,
-        max_tokens=settings.llm.max_tokens_per_request,
+        provider=provider_name,
+        model=llm_settings.llm_model,
+        api_key=api_key,
+        base_url=base_url,
+        max_tokens=llm_settings.max_tokens_per_request,
         temperature=0.0,
     )
 
-    provider = create_provider(config)
-
-    # TODO: Add cache when implemented
-    return LLMGateway(provider=provider, cache=None)
+    try:
+        provider = create_provider(config)
+        # TODO: Add cache when implemented
+        return LLMGateway(provider=provider, cache=None)
+    except Exception as e:
+        logger.error(f"Failed to create LLM provider: {e}")
+        return None

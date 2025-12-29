@@ -301,16 +301,48 @@ async def get_repository_status(
 @router.post("/{repo_id}/sync/start", response_model=SyncStartResponse)
 async def start_sync(
     repo_id: str,
+    sync_type: str = Query("incremental", description="Sync type: 'full' or 'incremental'"),
+    use_celery: bool = Query(False, description="Use Celery task queue"),
     developer_id: str = Depends(get_current_developer_id),
     db: AsyncSession = Depends(get_db),
 ) -> SyncStartResponse:
-    """Start historical sync for a repository."""
+    """Start historical sync for a repository.
+
+    Args:
+        repo_id: Repository ID.
+        sync_type: 'full' for complete sync, 'incremental' for only new data.
+        use_celery: If True, use Celery task queue (better for large repos).
+    """
+    # Validate sync_type
+    if sync_type not in ("full", "incremental"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="sync_type must be 'full' or 'incremental'",
+        )
+
+    # Check plan limits
+    from devograph.services.limits_service import LimitsService
+    limits_service = LimitsService(db)
+    can_sync, error = await limits_service.can_sync_repo(developer_id)
+    if not can_sync:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error or "Repository limit reached",
+        )
+
     service = SyncService(db)
     try:
-        job_id = await service.start_historical_sync(developer_id, repo_id)
+        job_id = await service.start_historical_sync(
+            developer_id=developer_id,
+            repository_id=repo_id,
+            sync_type=sync_type,
+            use_celery=use_celery,
+        )
         return SyncStartResponse(
             job_id=job_id,
-            message="Sync started successfully",
+            message=f"{sync_type.title()} sync started successfully",
+            sync_type=sync_type,
+            use_celery=use_celery,
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -344,3 +376,23 @@ async def unregister_webhook(
         return {"message": "Webhook removed"}
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+# === USAGE AND LIMITS ===
+
+
+@router.get("/usage/summary")
+async def get_usage_summary(
+    developer_id: str = Depends(get_current_developer_id),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Get usage summary including plan limits and current usage.
+
+    Returns repository limits, LLM usage, and enabled features.
+    """
+    from devograph.services.limits_service import LimitsService
+    limits_service = LimitsService(db)
+    try:
+        return await limits_service.get_usage_summary(developer_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

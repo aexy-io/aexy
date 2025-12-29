@@ -13,7 +13,9 @@ from devograph.core.database import Base
 if TYPE_CHECKING:
     from devograph.models.activity import CodeReview, Commit, PullRequest
     from devograph.models.analytics import CustomReport, ExportJob, PredictiveInsight
+    from devograph.models.billing import CustomerBilling
     from devograph.models.career import LearningPath
+    from devograph.models.plan import Plan
     from devograph.models.repository import DeveloperOrganization, DeveloperRepository
 
 
@@ -30,6 +32,22 @@ class Developer(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    # Subscription plan
+    plan_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("plans.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # Usage tracking for rate limiting
+    repos_synced_count: Mapped[int] = mapped_column(Integer, default=0)
+    llm_requests_today: Mapped[int] = mapped_column(Integer, default=0)
+    llm_requests_reset_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
     # Skill fingerprint stored as JSON
     skill_fingerprint: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
@@ -54,6 +72,10 @@ class Developer(Base):
     )
 
     # Relationships
+    plan: Mapped["Plan | None"] = relationship(
+        "Plan",
+        back_populates="developers",
+    )
     github_connection: Mapped["GitHubConnection | None"] = relationship(
         "GitHubConnection",
         back_populates="developer",
@@ -96,6 +118,11 @@ class Developer(Base):
         "DeveloperOrganization",
         back_populates="developer",
         cascade="all, delete-orphan",
+    )
+    customer_billing: Mapped["CustomerBilling | None"] = relationship(
+        "CustomerBilling",
+        back_populates="developer",
+        uselist=False,
     )
 
 
