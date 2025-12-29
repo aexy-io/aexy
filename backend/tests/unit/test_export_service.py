@@ -14,8 +14,8 @@ import os
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from gitraki.services.export_service import ExportService
-from gitraki.schemas.analytics import ExportRequest
+from devograph.services.export_service import ExportService
+from devograph.schemas.analytics import ExportRequest
 
 
 class TestExportService:

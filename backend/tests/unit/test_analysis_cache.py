@@ -2,8 +2,8 @@
 
 import pytest
 
-from gitraki.cache.analysis_cache import InMemoryCache
-from gitraki.llm.base import AnalysisResult, LanguageAnalysis
+from devograph.cache.analysis_cache import InMemoryCache
+from devograph.llm.base import AnalysisResult, LanguageAnalysis
 
 
 class TestInMemoryCache:

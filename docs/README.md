@@ -1,6 +1,6 @@
-# Gitraki Documentation
+# Devograph Documentation
 
-**Gitraki** is a GitHub-based developer profiling and analytics platform that uses AI to provide insights into developer skills, team dynamics, and organizational health.
+**Devograph** is a GitHub-based developer profiling and analytics platform that uses AI to provide insights into developer skills, team dynamics, and organizational health.
 
 ## Documentation Index
 

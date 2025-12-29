@@ -4,9 +4,9 @@ from datetime import datetime, timezone
 
 import pytest
 
-from gitraki.models.developer import Developer
-from gitraki.models.activity import Commit, PullRequest
-from gitraki.services.team_service import TeamService
+from devograph.models.developer import Developer
+from devograph.models.activity import Commit, PullRequest
+from devograph.services.team_service import TeamService
 
 
 class TestTeamAggregation:

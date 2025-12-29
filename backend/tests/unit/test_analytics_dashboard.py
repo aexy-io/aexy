@@ -11,8 +11,8 @@ These tests verify:
 import pytest
 from datetime import datetime, timedelta
 
-from gitraki.services.analytics_dashboard import AnalyticsDashboardService
-from gitraki.schemas.analytics import DateRange
+from devograph.services.analytics_dashboard import AnalyticsDashboardService
+from devograph.schemas.analytics import DateRange
 
 
 class TestAnalyticsDashboardService:

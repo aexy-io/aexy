@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from gitraki.llm.base import (
+from devograph.llm.base import (
     AnalysisRequest,
     AnalysisResult,
     AnalysisType,
@@ -14,7 +14,7 @@ from gitraki.llm.base import (
     MatchScore,
     TaskSignals,
 )
-from gitraki.llm.gateway import LLMGateway
+from devograph.llm.gateway import LLMGateway
 
 
 class MockLLMProvider(LLMProvider):

@@ -3,7 +3,7 @@
 ## Base URL
 
 ```
-Production: https://api.gitraki.io/api
+Production: https://api.devograph.io/api
 Development: http://localhost:8000/api
 ```
 
@@ -11,7 +11,7 @@ Development: http://localhost:8000/api
 
 ### GitHub OAuth
 
-Gitraki uses GitHub OAuth 2.0 for user authentication.
+Devograph uses GitHub OAuth 2.0 for user authentication.
 
 ```
 GET /auth/github/login

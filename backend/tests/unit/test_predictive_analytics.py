@@ -13,8 +13,8 @@ import pytest
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
-from gitraki.services.predictive_analytics import PredictiveAnalyticsService
-from gitraki.schemas.analytics import (
+from devograph.services.predictive_analytics import PredictiveAnalyticsService
+from devograph.schemas.analytics import (
     AttritionRiskAnalysis,
     BurnoutRiskAssessment,
     PerformanceTrajectory,

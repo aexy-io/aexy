@@ -1,17 +1,17 @@
-# Gitraki CLI Usage Guide
+# Devograph CLI Usage Guide
 
 ## Installation
 
 ### From PyPI
 
 ```bash
-pip install gitraki-cli
+pip install devograph-cli
 ```
 
 ### From Source
 
 ```bash
-cd gitraki-cli
+cd devograph-cli
 pip install -e .
 ```
 
@@ -20,8 +20,8 @@ pip install -e .
 ### Authentication
 
 ```bash
-# Get your API token from the Gitraki web dashboard
-gitraki login <your-api-token>
+# Get your API token from the Devograph web dashboard
+devograph login <your-api-token>
 ```
 
 Token is stored securely in system keychain.
@@ -30,13 +30,13 @@ Token is stored securely in system keychain.
 
 ```bash
 # Default: http://localhost:8000/api
-export GITRAKI_API_URL=https://api.gitraki.io/api
+export DEVOGRAPH_API_URL=https://api.devograph.io/api
 ```
 
 ### Check Status
 
 ```bash
-gitraki status
+devograph status
 ```
 
 ## Commands
@@ -45,89 +45,89 @@ gitraki status
 
 ```bash
 # Show developer profile
-gitraki profile show @username
+devograph profile show @username
 
 # Show full profile with analysis
-gitraki profile show @username --full
+devograph profile show @username --full
 
 # List all developers
-gitraki profile list
-gitraki profile list --limit 50
+devograph profile list
+devograph profile list --limit 50
 
 # Export profile
-gitraki profile export @username --format pdf
-gitraki profile export @username --format csv --output profile.csv
+devograph profile export @username --format pdf
+devograph profile export @username --format csv --output profile.csv
 ```
 
 ### Team Commands
 
 ```bash
 # List all teams
-gitraki team list
+devograph team list
 
 # Show team skill distribution
-gitraki team skills
-gitraki team skills "Backend Team"
+devograph team skills
+devograph team skills "Backend Team"
 
 # Identify skill gaps
-gitraki team gaps
-gitraki team gaps "Backend Team" --target-skills python,kubernetes
+devograph team gaps
+devograph team gaps "Backend Team" --target-skills python,kubernetes
 
 # Show workload distribution
-gitraki team workload
-gitraki team workload "Backend Team"
+devograph team workload
+devograph team workload "Backend Team"
 ```
 
 ### Task Matching
 
 ```bash
 # Match a task to best developers
-gitraki match "Fix authentication bug in OAuth flow"
+devograph match "Fix authentication bug in OAuth flow"
 
 # With required skills
-gitraki match "Build Kubernetes operator" -s python -s kubernetes -s go
+devograph match "Build Kubernetes operator" -s python -s kubernetes -s go
 
 # Show top N matches
-gitraki match "Implement caching layer" --top 10
+devograph match "Implement caching layer" --top 10
 ```
 
 ### Insights Commands
 
 ```bash
 # View attrition risk for a developer
-gitraki insights attrition @username
+devograph insights attrition @username
 
 # View all developers' attrition risk
-gitraki insights attrition --all
+devograph insights attrition --all
 
 # View burnout risk
-gitraki insights burnout @username
+devograph insights burnout @username
 
 # View performance trajectory
-gitraki insights trajectory @username --months 6
+devograph insights trajectory @username --months 6
 
 # View team health analysis
-gitraki insights team-health
-gitraki insights team-health "Backend Team"
+devograph insights team-health
+devograph insights team-health "Backend Team"
 ```
 
 ### Report Commands
 
 ```bash
 # List available reports
-gitraki report list
+devograph report list
 
 # Generate a report
-gitraki report generate weekly
-gitraki report generate monthly --format pdf
-gitraki report generate team --format xlsx --output team-report.xlsx
+devograph report generate weekly
+devograph report generate monthly --format pdf
+devograph report generate team --format xlsx --output team-report.xlsx
 
 # Check export status
-gitraki report status <job-id>
+devograph report status <job-id>
 
 # Export raw data
-gitraki report export developers --format csv --output developers.csv
-gitraki report export skills --format json --output skills.json
+devograph report export developers --format csv --output developers.csv
+devograph report export skills --format json --output skills.json
 ```
 
 ## Output Examples
@@ -215,8 +215,8 @@ Recommendations:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `GITRAKI_API_URL` | API base URL | `http://localhost:8000/api` |
-| `GITRAKI_API_TOKEN` | API token (alternative to keyring) | - |
+| `DEVOGRAPH_API_URL` | API base URL | `http://localhost:8000/api` |
+| `DEVOGRAPH_API_TOKEN` | API token (alternative to keyring) | - |
 
 ## Tips
 
@@ -224,10 +224,10 @@ Recommendations:
 
 ```bash
 # Export all developer profiles to JSON
-gitraki report export developers --format json --output /tmp/devs.json
+devograph report export developers --format json --output /tmp/devs.json
 
 # Get attrition risks in machine-readable format
-gitraki insights attrition --all --format json 2>/dev/null | jq '.[] | select(.risk_score > 0.5)'
+devograph insights attrition --all --format json 2>/dev/null | jq '.[] | select(.risk_score > 0.5)'
 ```
 
 ### Aliases
@@ -235,21 +235,21 @@ gitraki insights attrition --all --format json 2>/dev/null | jq '.[] | select(.r
 Add to your shell config:
 
 ```bash
-alias gp='gitraki profile'
-alias gt='gitraki team'
-alias gm='gitraki match'
-alias gi='gitraki insights'
+alias gp='devograph profile'
+alias gt='devograph team'
+alias gm='devograph match'
+alias gi='devograph insights'
 ```
 
 ### Shell Completion
 
 ```bash
 # Bash
-eval "$(_GITRAKI_COMPLETE=bash_source gitraki)"
+eval "$(_DEVOGRAPH_COMPLETE=bash_source devograph)"
 
 # Zsh
-eval "$(_GITRAKI_COMPLETE=zsh_source gitraki)"
+eval "$(_DEVOGRAPH_COMPLETE=zsh_source devograph)"
 
 # Fish
-_GITRAKI_COMPLETE=fish_source gitraki | source
+_DEVOGRAPH_COMPLETE=fish_source devograph | source
 ```

@@ -6,7 +6,7 @@ import { Providers } from "./providers";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Gitraki - Developer Analytics Platform",
+  title: "Devograph - Developer Analytics Platform",
   description:
     "GitHub-based developer profiling and analytics for intelligent task allocation and career growth",
 };

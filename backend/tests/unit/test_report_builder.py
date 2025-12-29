@@ -12,8 +12,8 @@ import pytest
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
-from gitraki.services.report_builder import ReportBuilderService
-from gitraki.schemas.analytics import (
+from devograph.services.report_builder import ReportBuilderService
+from devograph.schemas.analytics import (
     CustomReportCreate,
     CustomReportUpdate,
     WidgetConfig,

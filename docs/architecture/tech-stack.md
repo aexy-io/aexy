@@ -2,7 +2,7 @@
 
 ## Overview
 
-Gitraki uses a modern, production-ready technology stack optimized for developer experience and scalability.
+Devograph uses a modern, production-ready technology stack optimized for developer experience and scalability.
 
 ## Backend
 
@@ -180,7 +180,7 @@ Gitraki uses a modern, production-ready technology stack optimized for developer
 
 ```bash
 # Database
-DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/gitraki
+DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/devograph
 
 # Redis
 REDIS_URL=redis://localhost:6379/0

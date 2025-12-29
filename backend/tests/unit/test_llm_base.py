@@ -2,7 +2,7 @@
 
 import pytest
 
-from gitraki.llm.base import (
+from devograph.llm.base import (
     AnalysisRequest,
     AnalysisResult,
     AnalysisType,

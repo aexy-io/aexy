@@ -1,1 +1,1 @@
-"""Integration tests for Gitraki."""
+"""Integration tests for Devograph."""

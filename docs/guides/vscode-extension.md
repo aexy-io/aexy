@@ -4,18 +4,18 @@
 
 ### From Marketplace
 
-Search for "Gitraki" in VS Code Extensions marketplace.
+Search for "Devograph" in VS Code Extensions marketplace.
 
 ### From VSIX
 
 ```bash
-code --install-extension gitraki-vscode-0.1.0.vsix
+code --install-extension devograph-vscode-0.1.0.vsix
 ```
 
 ### From Source
 
 ```bash
-cd gitraki-vscode
+cd devograph-vscode
 npm install
 npm run compile
 # Press F5 in VS Code to launch Extension Development Host
@@ -23,27 +23,27 @@ npm run compile
 
 ## Configuration
 
-Open VS Code Settings (`Cmd/Ctrl + ,`) and search for "Gitraki":
+Open VS Code Settings (`Cmd/Ctrl + ,`) and search for "Devograph":
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| `gitraki.apiUrl` | Gitraki API URL | `http://localhost:8000/api` |
-| `gitraki.apiToken` | API authentication token | - |
-| `gitraki.autoRefresh` | Auto-refresh data | `true` |
-| `gitraki.refreshInterval` | Refresh interval (seconds) | `300` |
+| `devograph.apiUrl` | Devograph API URL | `http://localhost:8000/api` |
+| `devograph.apiToken` | API authentication token | - |
+| `devograph.autoRefresh` | Auto-refresh data | `true` |
+| `devograph.refreshInterval` | Refresh interval (seconds) | `300` |
 
 ### Setting API Token
 
-1. Get your token from Gitraki web dashboard (Settings > API)
+1. Get your token from Devograph web dashboard (Settings > API)
 2. Open VS Code Settings
-3. Search for "Gitraki API Token"
+3. Search for "Devograph API Token"
 4. Enter your token
 
 Or in `settings.json`:
 ```json
 {
-  "gitraki.apiUrl": "https://api.gitraki.io/api",
-  "gitraki.apiToken": "your-api-token"
+  "devograph.apiUrl": "https://api.devograph.io/api",
+  "devograph.apiToken": "your-api-token"
 }
 ```
 
@@ -51,7 +51,7 @@ Or in `settings.json`:
 
 ### Sidebar Views
 
-The Gitraki icon in the Activity Bar opens three views:
+The Devograph icon in the Activity Bar opens three views:
 
 #### 1. Developer Profile View
 - Shows current developer's profile
@@ -70,26 +70,26 @@ The Gitraki icon in the Activity Bar opens three views:
 
 ### Commands
 
-Open Command Palette (`Cmd/Ctrl + Shift + P`) and type "Gitraki":
+Open Command Palette (`Cmd/Ctrl + Shift + P`) and type "Devograph":
 
 | Command | Description |
 |---------|-------------|
-| `Gitraki: Show Developer Profile` | View a developer's profile |
-| `Gitraki: Match Task to Developer` | Find best developer for a task |
-| `Gitraki: Show Team Skills` | Refresh team skill view |
-| `Gitraki: Show Predictive Insights` | Load insights data |
-| `Gitraki: Refresh Data` | Refresh all views |
-| `Gitraki: Configure API Settings` | Open settings |
+| `Devograph: Show Developer Profile` | View a developer's profile |
+| `Devograph: Match Task to Developer` | Find best developer for a task |
+| `Devograph: Show Team Skills` | Refresh team skill view |
+| `Devograph: Show Predictive Insights` | Load insights data |
+| `Devograph: Refresh Data` | Refresh all views |
+| `Devograph: Configure API Settings` | Open settings |
 
 ### Show Developer Profile
 
-1. Run `Gitraki: Show Developer Profile` command
+1. Run `Devograph: Show Developer Profile` command
 2. Enter GitHub username
 3. Profile appears in sidebar
 
 ### Match Task to Developer
 
-1. Run `Gitraki: Match Task to Developer` command
+1. Run `Devograph: Match Task to Developer` command
 2. Enter task description (e.g., "Fix OAuth bug in login flow")
 3. Optionally enter required skills (comma-separated)
 4. Select from matched developers
@@ -103,15 +103,15 @@ Add custom shortcuts in `keybindings.json`:
 [
   {
     "key": "ctrl+shift+g p",
-    "command": "gitraki.showProfile"
+    "command": "devograph.showProfile"
   },
   {
     "key": "ctrl+shift+g m",
-    "command": "gitraki.matchTask"
+    "command": "devograph.matchTask"
   },
   {
     "key": "ctrl+shift+g r",
-    "command": "gitraki.refresh"
+    "command": "devograph.refresh"
   }
 ]
 ```
@@ -126,7 +126,7 @@ When connected, you'll see:
 
 ### Extension Not Loading
 
-1. Check Output panel (`View > Output > Gitraki`)
+1. Check Output panel (`View > Output > Devograph`)
 2. Verify API URL is correct
 3. Check API token is set
 
@@ -138,14 +138,14 @@ When connected, you'll see:
 
 ### Refresh Not Working
 
-1. Check `gitraki.autoRefresh` setting
-2. Manually trigger with `Gitraki: Refresh Data`
+1. Check `devograph.autoRefresh` setting
+2. Manually trigger with `Devograph: Refresh Data`
 3. Check API rate limits
 
 ### Performance Issues
 
-1. Increase `gitraki.refreshInterval`
-2. Disable `gitraki.autoRefresh` if not needed
+1. Increase `devograph.refreshInterval`
+2. Disable `devograph.autoRefresh` if not needed
 3. Check API server performance
 
 ## Development
@@ -153,7 +153,7 @@ When connected, you'll see:
 ### Building
 
 ```bash
-cd gitraki-vscode
+cd devograph-vscode
 npm install
 npm run compile
 ```
@@ -168,7 +168,7 @@ npm test
 
 ```bash
 npm run package
-# Creates gitraki-vscode-x.x.x.vsix
+# Creates devograph-vscode-x.x.x.vsix
 ```
 
 ### Publishing

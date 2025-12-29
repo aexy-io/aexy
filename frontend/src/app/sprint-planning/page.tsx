@@ -261,7 +261,7 @@ export default function SprintPlanningPage() {
           <div className="flex items-center gap-4">
             <Link href="/dashboard" className="flex items-center gap-2">
               <GitBranch className="h-8 w-8 text-primary-500" />
-              <span className="text-2xl font-bold text-white">Gitraki</span>
+              <span className="text-2xl font-bold text-white">Devograph</span>
             </Link>
             <span className="text-slate-500">|</span>
             <span className="text-white font-medium">Sprint Planning</span>

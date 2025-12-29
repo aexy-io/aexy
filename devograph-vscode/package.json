@@ -1,0 +1,137 @@
+{
+  "name": "devograph-vscode",
+  "displayName": "Devograph",
+  "description": "Developer intelligence and team insights for VS Code",
+  "version": "0.1.0",
+  "publisher": "devograph",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "developer",
+    "analytics",
+    "team",
+    "skills",
+    "insights"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "devograph.showProfile",
+        "title": "Show Developer Profile",
+        "category": "Devograph"
+      },
+      {
+        "command": "devograph.matchTask",
+        "title": "Match Task to Developer",
+        "category": "Devograph"
+      },
+      {
+        "command": "devograph.teamSkills",
+        "title": "Show Team Skills",
+        "category": "Devograph"
+      },
+      {
+        "command": "devograph.insights",
+        "title": "Show Predictive Insights",
+        "category": "Devograph"
+      },
+      {
+        "command": "devograph.refresh",
+        "title": "Refresh Data",
+        "category": "Devograph",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "devograph.configure",
+        "title": "Configure API Settings",
+        "category": "Devograph"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "devograph",
+          "title": "Devograph",
+          "icon": "resources/icons/devograph.svg"
+        }
+      ]
+    },
+    "views": {
+      "devograph": [
+        {
+          "id": "devograph.profile",
+          "name": "Developer Profile"
+        },
+        {
+          "id": "devograph.insights",
+          "name": "Insights"
+        },
+        {
+          "id": "devograph.team",
+          "name": "Team Overview"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "devograph.refresh",
+          "when": "view =~ /devograph\\./",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Devograph",
+      "properties": {
+        "devograph.apiUrl": {
+          "type": "string",
+          "default": "http://localhost:8000/api",
+          "description": "Devograph API URL"
+        },
+        "devograph.apiToken": {
+          "type": "string",
+          "default": "",
+          "description": "Devograph API Token"
+        },
+        "devograph.autoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically refresh data periodically"
+        },
+        "devograph.refreshInterval": {
+          "type": "number",
+          "default": 300,
+          "description": "Refresh interval in seconds"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.2"
+  },
+  "dependencies": {
+    "axios": "^1.6.2"
+  }
+}

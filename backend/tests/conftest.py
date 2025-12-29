@@ -10,8 +10,8 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from gitraki.core.database import Base, get_db
-from gitraki.main import app
+from devograph.core.database import Base, get_db
+from devograph.main import app
 
 
 # Test database URL (SQLite for testing)
@@ -225,7 +225,7 @@ def sample_pull_requests_batch() -> list[dict[str, Any]]:
 @pytest_asyncio.fixture
 async def sample_developer(db_session: AsyncSession):
     """Create a sample developer in the database."""
-    from gitraki.models.developer import Developer
+    from devograph.models.developer import Developer
 
     developer = Developer(
         github_id=12345,
@@ -245,7 +245,7 @@ async def sample_developer(db_session: AsyncSession):
 @pytest_asyncio.fixture
 async def sample_developers(db_session: AsyncSession):
     """Create multiple sample developers."""
-    from gitraki.models.developer import Developer
+    from devograph.models.developer import Developer
 
     developers = [
         Developer(
@@ -296,7 +296,7 @@ async def sample_developers(db_session: AsyncSession):
 @pytest_asyncio.fixture
 async def sample_team(db_session: AsyncSession, sample_developers):
     """Create a sample team with developers."""
-    from gitraki.models.team import Team
+    from devograph.models.team import Team
 
     team = Team(
         name="Backend Team",
@@ -313,7 +313,7 @@ async def sample_team(db_session: AsyncSession, sample_developers):
 async def sample_commits_db(db_session: AsyncSession, sample_developer):
     """Create sample commits in the database."""
     from datetime import datetime, timedelta
-    from gitraki.models.activity import Commit
+    from devograph.models.activity import Commit
 
     commits = []
     base_date = datetime.utcnow() - timedelta(days=30)
@@ -340,7 +340,7 @@ async def sample_commits_db(db_session: AsyncSession, sample_developer):
 async def sample_pull_requests_db(db_session: AsyncSession, sample_developer):
     """Create sample pull requests in the database."""
     from datetime import datetime, timedelta
-    from gitraki.models.activity import PullRequest
+    from devograph.models.activity import PullRequest
 
     prs = []
     base_date = datetime.utcnow() - timedelta(days=30)
@@ -372,7 +372,7 @@ async def sample_pull_requests_db(db_session: AsyncSession, sample_developer):
 async def sample_reviews_db(db_session: AsyncSession, sample_developer, sample_pull_requests_db):
     """Create sample code reviews in the database."""
     from datetime import datetime, timedelta
-    from gitraki.models.activity import CodeReview
+    from devograph.models.activity import CodeReview
 
     reviews = []
     base_date = datetime.utcnow() - timedelta(days=25)
@@ -396,7 +396,7 @@ async def sample_reviews_db(db_session: AsyncSession, sample_developer, sample_p
 @pytest.fixture
 def mock_llm_gateway(mocker):
     """Mock the LLM gateway for tests."""
-    mock = mocker.patch("gitraki.llm.gateway.LLMGateway")
+    mock = mocker.patch("devograph.llm.gateway.LLMGateway")
     mock_instance = mock.return_value
 
     # Default mock response
@@ -441,7 +441,7 @@ def sample_report_config() -> dict[str, Any]:
 def sample_slack_command() -> dict[str, Any]:
     """Sample Slack slash command data."""
     return {
-        "command": "/gitraki",
+        "command": "/devograph",
         "text": "profile @testdev",
         "user_id": "U12345",
         "user_name": "slackuser",
