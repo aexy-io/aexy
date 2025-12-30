@@ -1,9 +1,19 @@
 """Learning path API endpoints."""
 
+import re
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+
+
+def is_valid_uuid(value: str) -> bool:
+    """Check if a string is a valid UUID."""
+    uuid_pattern = re.compile(
+        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+        re.IGNORECASE
+    )
+    return bool(uuid_pattern.match(value))
 
 from devograph.core.database import get_db
 from devograph.llm.gateway import get_llm_gateway
@@ -85,7 +95,7 @@ async def generate_learning_path(
         Generated learning path.
     """
     dev_service = DeveloperService(db)
-    developer = await dev_service.get_developer(developer_id)
+    developer = await dev_service.get_by_id(developer_id)
 
     if not developer:
         raise HTTPException(
@@ -96,10 +106,19 @@ async def generate_learning_path(
     llm_gateway = get_llm_gateway()
     service = LearningPathService(db, llm_gateway)
 
+    # Determine if target_role_id is a UUID or a role name
+    if is_valid_uuid(data.target_role_id):
+        target_role_id = data.target_role_id
+        target_role_name = None
+    else:
+        target_role_id = None
+        target_role_name = data.target_role_id
+
     try:
         path = await service.generate_learning_path(
             developer=developer,
-            target_role_id=data.target_role_id,
+            target_role_id=target_role_id,
+            target_role_name=target_role_name,
             timeline_months=data.timeline_months,
             include_external_resources=data.include_external_resources,
         )
@@ -113,7 +132,7 @@ async def generate_learning_path(
         id=str(path.id),
         developer_id=str(path.developer_id),
         target_role_id=str(path.target_role_id) if path.target_role_id else None,
-        target_role_name=None,
+        target_role_name=target_role_name,
         skill_gaps=path.skill_gaps or {},
         phases=path.phases or [],
         milestones=[],
@@ -229,7 +248,7 @@ async def regenerate_learning_path(
 
     # Get the developer
     dev_service = DeveloperService(db)
-    developer = await dev_service.get_developer(str(path.developer_id))
+    developer = await dev_service.get_by_id(str(path.developer_id))
 
     if not developer:
         raise HTTPException(
@@ -297,7 +316,7 @@ async def get_path_progress(
 
     # Get the developer and update progress
     dev_service = DeveloperService(db)
-    developer = await dev_service.get_developer(str(path.developer_id))
+    developer = await dev_service.get_by_id(str(path.developer_id))
 
     if not developer:
         raise HTTPException(
@@ -424,7 +443,7 @@ async def get_stretch_assignments(
         List of stretch assignments.
     """
     dev_service = DeveloperService(db)
-    developer = await dev_service.get_developer(developer_id)
+    developer = await dev_service.get_by_id(developer_id)
 
     if not developer:
         raise HTTPException(

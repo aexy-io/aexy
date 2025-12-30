@@ -496,7 +496,13 @@ class CareerProgressionService:
         # Calculate skill gaps
         skill_gaps: list[SkillGapDetail] = []
         met_requirements: list[str] = []
-        required_skills = role.get("required_skills", {})
+        required_skills_raw = role.get("required_skills", [])
+
+        # Handle both list and dict formats for required_skills
+        if isinstance(required_skills_raw, list):
+            required_skills = {item["skill"]: item["level"] for item in required_skills_raw}
+        else:
+            required_skills = required_skills_raw
 
         for skill, target in required_skills.items():
             current = dev_skills.get(skill, 0)
@@ -512,7 +518,14 @@ class CareerProgressionService:
 
         # Check soft skills
         soft_skill_gaps: dict[str, float] = {}
-        soft_skill_reqs = role.get("soft_skill_requirements", {})
+        soft_skill_reqs_raw = role.get("soft_skill_requirements", role.get("soft_skills", []))
+
+        # Handle both list and dict formats for soft skills
+        if isinstance(soft_skill_reqs_raw, list):
+            soft_skill_reqs = {item["skill"]: item["weight"] for item in soft_skill_reqs_raw}
+        else:
+            soft_skill_reqs = soft_skill_reqs_raw
+
         # TODO: Integrate with SoftSkillsAnalyzer for actual scores
         # For now, assume 0.5 baseline
         for skill, target in soft_skill_reqs.items():

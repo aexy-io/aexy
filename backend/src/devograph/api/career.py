@@ -179,7 +179,7 @@ async def suggest_next_roles(
         List of role suggestions.
     """
     dev_service = DeveloperService(db)
-    developer = await dev_service.get_developer(developer_id)
+    developer = await dev_service.get_by_id(developer_id)
 
     if not developer:
         raise HTTPException(
@@ -234,7 +234,7 @@ async def get_promotion_readiness(
         Promotion readiness assessment.
     """
     dev_service = DeveloperService(db)
-    developer = await dev_service.get_developer(developer_id)
+    developer = await dev_service.get_by_id(developer_id)
 
     if not developer:
         raise HTTPException(
@@ -282,7 +282,7 @@ async def compare_developer_to_role(
         Detailed gap analysis.
     """
     dev_service = DeveloperService(db)
-    developer = await dev_service.get_developer(developer_id)
+    developer = await dev_service.get_by_id(developer_id)
 
     if not developer:
         raise HTTPException(
