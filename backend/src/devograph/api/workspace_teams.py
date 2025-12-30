@@ -101,8 +101,16 @@ async def create_team(
         source_repository_ids=data.source_repository_ids,
     )
 
+    # Auto-add the creator as a team lead
+    await service.add_team_member(
+        team_id=str(team.id),
+        developer_id=str(current_user.id),
+        role="lead",
+        source="manual",
+    )
+
     await db.commit()
-    return team_to_response(team, member_count=0)
+    return team_to_response(team, member_count=1)
 
 
 @router.get("", response_model=list[TeamListResponse])

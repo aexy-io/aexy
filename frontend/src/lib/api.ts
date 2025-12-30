@@ -1393,6 +1393,151 @@ export interface TeamSkillCoverage {
   missing_skills: string[];
 }
 
+// Sprint Types
+export type SprintStatus = "planning" | "active" | "review" | "retrospective" | "completed";
+export type TaskStatus = "backlog" | "todo" | "in_progress" | "review" | "done";
+export type TaskPriority = "critical" | "high" | "medium" | "low";
+export type TaskSourceType = "github_issue" | "jira" | "linear" | "manual";
+
+export interface Sprint {
+  id: string;
+  team_id: string;
+  workspace_id: string;
+  name: string;
+  goal: string | null;
+  status: SprintStatus;
+  start_date: string;
+  end_date: string;
+  capacity_hours: number | null;
+  velocity_commitment: number | null;
+  settings: Record<string, unknown>;
+  created_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+  tasks_count: number;
+  completed_count: number;
+  total_points: number;
+  completed_points: number;
+}
+
+export interface SprintListItem {
+  id: string;
+  team_id: string;
+  name: string;
+  goal: string | null;
+  status: SprintStatus;
+  start_date: string;
+  end_date: string;
+  tasks_count: number;
+  completed_count: number;
+  total_points: number;
+  completed_points: number;
+}
+
+export interface SprintTask {
+  id: string;
+  sprint_id: string;
+  source_type: TaskSourceType;
+  source_id: string;
+  source_url: string | null;
+  title: string;
+  description: string | null;
+  story_points: number | null;
+  priority: TaskPriority;
+  labels: string[];
+  assignee_id: string | null;
+  assignee_name: string | null;
+  assignee_avatar_url: string | null;
+  assignment_reason: string | null;
+  assignment_confidence: number | null;
+  status: TaskStatus;
+  started_at: string | null;
+  completed_at: string | null;
+  carried_over_from_sprint_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SprintStats {
+  total_tasks: number;
+  completed_tasks: number;
+  in_progress_tasks: number;
+  todo_tasks: number;
+  total_points: number;
+  completed_points: number;
+  remaining_points: number;
+  completion_percentage: number;
+}
+
+export interface BurndownData {
+  dates: string[];
+  ideal: number[];
+  actual: number[];
+  scope_changes: { date: string; change: number; new_total: number }[];
+}
+
+export interface VelocityDataPoint {
+  sprint_id: string;
+  sprint_name: string;
+  committed: number;
+  completed: number;
+  carry_over: number;
+  completion_rate: number;
+}
+
+export interface VelocityTrend {
+  sprints: VelocityDataPoint[];
+  average_velocity: number;
+  trend: "improving" | "stable" | "declining";
+}
+
+export interface AssignmentSuggestion {
+  task_id: string;
+  task_title: string;
+  suggested_developer_id: string;
+  suggested_developer_name: string | null;
+  confidence: number;
+  reasoning: string;
+  alternative_developers: { developer_id: string; developer_name: string | null; score: number }[];
+}
+
+export interface CapacityAnalysis {
+  total_capacity_hours: number;
+  committed_hours: number;
+  utilization_rate: number;
+  overcommitted: boolean;
+  per_member_capacity: {
+    developer_id: string;
+    developer_name: string | null;
+    assigned_tasks: number;
+    assigned_points: number;
+    committed_hours: number;
+    capacity_hours: number;
+    utilization: number;
+  }[];
+  recommendations: string[];
+}
+
+export interface CompletionPrediction {
+  predicted_completion_rate: number;
+  confidence: number;
+  risk_factors: string[];
+  at_risk_tasks: { task_id: string; title: string; risk: string }[];
+  recommendations: string[];
+}
+
+export interface SprintRetrospective {
+  id: string;
+  sprint_id: string;
+  went_well: { id: string; content: string; author_id: string | null; votes: number }[];
+  to_improve: { id: string; content: string; author_id: string | null; votes: number }[];
+  action_items: { id: string; item: string; assignee_id: string | null; status: string; due_date: string | null }[];
+  team_mood_score: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // Workspace API
 export const workspaceApi = {
   list: async (): Promise<WorkspaceListItem[]> => {
@@ -1597,6 +1742,256 @@ export const teamApi = {
     const response = await api.get(`/workspaces/${workspaceId}/teams/${teamId}/skill-coverage`, {
       params: requiredSkills ? { required_skills: requiredSkills.join(",") } : {},
     });
+    return response.data;
+  },
+};
+
+// Sprint API
+export const sprintApi = {
+  // Sprint CRUD
+  list: async (workspaceId: string, teamId: string, statusFilter?: SprintStatus): Promise<SprintListItem[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/teams/${teamId}/sprints`, {
+      params: statusFilter ? { status_filter: statusFilter } : {},
+    });
+    return response.data;
+  },
+
+  getActive: async (workspaceId: string, teamId: string): Promise<Sprint | null> => {
+    const response = await api.get(`/workspaces/${workspaceId}/teams/${teamId}/sprints/active`);
+    return response.data;
+  },
+
+  get: async (workspaceId: string, teamId: string, sprintId: string): Promise<Sprint> => {
+    const response = await api.get(`/workspaces/${workspaceId}/teams/${teamId}/sprints/${sprintId}`);
+    return response.data;
+  },
+
+  create: async (workspaceId: string, teamId: string, data: {
+    name: string;
+    start_date: string;
+    end_date: string;
+    goal?: string;
+    capacity_hours?: number;
+    velocity_commitment?: number;
+    settings?: Record<string, unknown>;
+  }): Promise<Sprint> => {
+    const response = await api.post(`/workspaces/${workspaceId}/teams/${teamId}/sprints`, data);
+    return response.data;
+  },
+
+  update: async (workspaceId: string, teamId: string, sprintId: string, data: {
+    name?: string;
+    goal?: string;
+    start_date?: string;
+    end_date?: string;
+    capacity_hours?: number;
+    velocity_commitment?: number;
+    settings?: Record<string, unknown>;
+  }): Promise<Sprint> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/teams/${teamId}/sprints/${sprintId}`, data);
+    return response.data;
+  },
+
+  delete: async (workspaceId: string, teamId: string, sprintId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/teams/${teamId}/sprints/${sprintId}`);
+  },
+
+  // Lifecycle
+  start: async (workspaceId: string, teamId: string, sprintId: string): Promise<Sprint> => {
+    const response = await api.post(`/workspaces/${workspaceId}/teams/${teamId}/sprints/${sprintId}/start`);
+    return response.data;
+  },
+
+  startReview: async (workspaceId: string, teamId: string, sprintId: string): Promise<Sprint> => {
+    const response = await api.post(`/workspaces/${workspaceId}/teams/${teamId}/sprints/${sprintId}/review`);
+    return response.data;
+  },
+
+  startRetrospective: async (workspaceId: string, teamId: string, sprintId: string): Promise<Sprint> => {
+    const response = await api.post(`/workspaces/${workspaceId}/teams/${teamId}/sprints/${sprintId}/retro`);
+    return response.data;
+  },
+
+  complete: async (workspaceId: string, teamId: string, sprintId: string): Promise<Sprint> => {
+    const response = await api.post(`/workspaces/${workspaceId}/teams/${teamId}/sprints/${sprintId}/complete`);
+    return response.data;
+  },
+
+  getStats: async (workspaceId: string, teamId: string, sprintId: string): Promise<SprintStats> => {
+    const response = await api.get(`/workspaces/${workspaceId}/teams/${teamId}/sprints/${sprintId}/stats`);
+    return response.data;
+  },
+
+  // Tasks
+  getTasks: async (sprintId: string, statusFilter?: TaskStatus, assigneeId?: string): Promise<SprintTask[]> => {
+    const response = await api.get(`/sprints/${sprintId}/tasks`, {
+      params: {
+        ...(statusFilter && { status_filter: statusFilter }),
+        ...(assigneeId && { assignee_id: assigneeId }),
+      },
+    });
+    return response.data;
+  },
+
+  addTask: async (sprintId: string, data: {
+    title: string;
+    source_type?: TaskSourceType;
+    source_id?: string;
+    source_url?: string;
+    description?: string;
+    story_points?: number;
+    priority?: TaskPriority;
+    labels?: string[];
+    assignee_id?: string;
+    status?: TaskStatus;
+  }): Promise<SprintTask> => {
+    const response = await api.post(`/sprints/${sprintId}/tasks`, data);
+    return response.data;
+  },
+
+  updateTask: async (sprintId: string, taskId: string, data: {
+    title?: string;
+    description?: string;
+    story_points?: number;
+    priority?: TaskPriority;
+    labels?: string[];
+  }): Promise<SprintTask> => {
+    const response = await api.patch(`/sprints/${sprintId}/tasks/${taskId}`, data);
+    return response.data;
+  },
+
+  updateTaskStatus: async (sprintId: string, taskId: string, status: TaskStatus): Promise<SprintTask> => {
+    const response = await api.patch(`/sprints/${sprintId}/tasks/${taskId}/status`, { status });
+    return response.data;
+  },
+
+  removeTask: async (sprintId: string, taskId: string): Promise<void> => {
+    await api.delete(`/sprints/${sprintId}/tasks/${taskId}`);
+  },
+
+  assignTask: async (sprintId: string, taskId: string, developerId: string, reason?: string, confidence?: number): Promise<SprintTask> => {
+    const response = await api.post(`/sprints/${sprintId}/tasks/${taskId}/assign`, {
+      developer_id: developerId,
+      ...(reason && { reason }),
+      ...(confidence !== undefined && { confidence }),
+    });
+    return response.data;
+  },
+
+  unassignTask: async (sprintId: string, taskId: string): Promise<SprintTask> => {
+    const response = await api.delete(`/sprints/${sprintId}/tasks/${taskId}/assign`);
+    return response.data;
+  },
+
+  bulkAssignTasks: async (sprintId: string, assignments: { task_id: string; developer_id: string; reason?: string; confidence?: number }[]): Promise<SprintTask[]> => {
+    const response = await api.post(`/sprints/${sprintId}/tasks/bulk-assign`, { assignments });
+    return response.data;
+  },
+
+  importTasks: async (sprintId: string, source: TaskSourceType, config: {
+    github?: { owner: string; repo: string; api_token?: string; labels?: string[]; limit?: number };
+    jira?: { api_url: string; api_key: string; project_key: string; jql_filter?: string; limit?: number };
+    linear?: { api_key: string; team_id?: string; labels?: string[]; limit?: number };
+  }): Promise<{ imported_count: number; tasks: SprintTask[] }> => {
+    const response = await api.post(`/sprints/${sprintId}/tasks/import`, { source, ...config });
+    return response.data;
+  },
+
+  // AI-powered
+  getSuggestions: async (sprintId: string): Promise<AssignmentSuggestion[]> => {
+    const response = await api.post(`/sprints/${sprintId}/tasks/suggest-assignments`);
+    return response.data;
+  },
+
+  optimize: async (sprintId: string): Promise<{
+    original_score: number;
+    optimized_score: number;
+    improvement: number;
+    changes: { task_id: string; task_title: string; current_developer_id: string; new_developer_id: string; reason: string }[];
+    recommendations: string[];
+  }> => {
+    const response = await api.post(`/sprints/${sprintId}/tasks/optimize`);
+    return response.data;
+  },
+
+  getCapacity: async (sprintId: string): Promise<CapacityAnalysis> => {
+    const response = await api.get(`/sprints/${sprintId}/tasks/capacity`);
+    return response.data;
+  },
+
+  getPrediction: async (sprintId: string): Promise<CompletionPrediction> => {
+    const response = await api.get(`/sprints/${sprintId}/tasks/completion-prediction`);
+    return response.data;
+  },
+
+  // Analytics
+  getBurndown: async (sprintId: string): Promise<BurndownData> => {
+    const response = await api.get(`/sprints/${sprintId}/burndown`);
+    return response.data;
+  },
+
+  getVelocity: async (teamId: string, numSprints = 6): Promise<VelocityTrend> => {
+    const response = await api.get(`/teams/${teamId}/velocity`, {
+      params: { num_sprints: numSprints },
+    });
+    return response.data;
+  },
+
+  getCarryOver: async (teamId: string): Promise<{
+    total_carry_over: number;
+    average_carry_over: number;
+    carry_over_rate: number;
+    trend: string;
+    sprints: { sprint_id: string; sprint_name: string; carry_over_points: number; carry_over_rate: number }[];
+  }> => {
+    const response = await api.get(`/teams/${teamId}/carry-over`);
+    return response.data;
+  },
+
+  getTeamHealth: async (teamId: string): Promise<{
+    overall_score: number;
+    velocity_score: number;
+    consistency_score: number;
+    completion_score: number;
+    carry_over_rate: number;
+    average_velocity: number;
+    velocity_trend: string;
+    recommendations: string[];
+  }> => {
+    const response = await api.get(`/teams/${teamId}/health`);
+    return response.data;
+  },
+
+  // Retrospective
+  getRetrospective: async (sprintId: string): Promise<SprintRetrospective | null> => {
+    try {
+      const response = await api.get(`/sprints/${sprintId}/retrospective`);
+      return response.data;
+    } catch {
+      return null;
+    }
+  },
+
+  saveRetrospective: async (sprintId: string, data: {
+    went_well?: { id?: string; content: string; author_id?: string; votes?: number }[];
+    to_improve?: { id?: string; content: string; author_id?: string; votes?: number }[];
+    action_items?: { id?: string; item: string; assignee_id?: string; status?: string; due_date?: string }[];
+    team_mood_score?: number;
+    notes?: string;
+  }): Promise<SprintRetrospective> => {
+    const response = await api.post(`/sprints/${sprintId}/retrospective`, data);
+    return response.data;
+  },
+
+  // Carry over
+  carryOver: async (workspaceId: string, teamId: string, fromSprintId: string, toSprintId: string, taskIds: string[]): Promise<{
+    carried_count: number;
+    tasks: SprintTask[];
+  }> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/teams/${teamId}/sprints/${fromSprintId}/carry-over/${toSprintId}`,
+      { task_ids: taskIds }
+    );
     return response.data;
   },
 };

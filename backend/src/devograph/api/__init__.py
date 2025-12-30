@@ -23,6 +23,11 @@ from devograph.api.billing import router as billing_router
 # Organization & Team Management
 from devograph.api.workspaces import router as workspaces_router
 from devograph.api.workspace_teams import router as workspace_teams_router
+# Sprint Planning
+from devograph.api.sprints import router as sprints_router
+from devograph.api.sprint_tasks import router as sprint_tasks_router
+from devograph.api.sprint_analytics import router as sprint_analytics_router
+from devograph.api.retrospectives import router as retrospectives_router
 
 api_router = APIRouter()
 
@@ -51,3 +56,8 @@ api_router.include_router(billing_router, tags=["billing"])
 # Organization & Team Management
 api_router.include_router(workspaces_router, tags=["workspaces"])
 api_router.include_router(workspace_teams_router, tags=["workspace-teams"])
+# Sprint Planning
+api_router.include_router(sprints_router, tags=["sprints"])
+api_router.include_router(sprint_tasks_router, tags=["sprint-tasks"])
+api_router.include_router(sprint_analytics_router, tags=["sprint-analytics"])
+api_router.include_router(retrospectives_router, tags=["retrospectives"])

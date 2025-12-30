@@ -12,6 +12,7 @@ import {
   Plus,
   RefreshCw,
   Settings,
+  Target,
   Trash2,
   UserMinus,
   Users,
@@ -131,6 +132,14 @@ function TeamCard({ team, workspaceId, isAdmin, onDelete }: TeamCardProps) {
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
                 <div className="absolute right-0 top-full mt-1 w-48 bg-slate-700 rounded-lg shadow-xl z-20 py-1">
+                  <Link
+                    href={`/sprints/${team.id}`}
+                    className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-600 flex items-center gap-2"
+                    onClick={() => setShowMenu(false)}
+                  >
+                    <Target className="h-4 w-4" />
+                    Sprint Planning
+                  </Link>
                   {team.type === "repo_based" && (
                     <button
                       onClick={() => {

@@ -44,6 +44,14 @@ from devograph.models.team import (
     Team,
     TeamMember,
 )
+from devograph.models.sprint import (
+    Sprint,
+    SprintTask,
+    SprintMetrics,
+    TeamVelocity,
+    SprintPlanningSession,
+    SprintRetrospective,
+)
 
 __all__ = [
     # Plan
@@ -92,4 +100,11 @@ __all__ = [
     # Team
     "Team",
     "TeamMember",
+    # Sprint
+    "Sprint",
+    "SprintTask",
+    "SprintMetrics",
+    "TeamVelocity",
+    "SprintPlanningSession",
+    "SprintRetrospective",
 ]
