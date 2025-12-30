@@ -255,6 +255,16 @@ async def enable_repository(
     db: AsyncSession = Depends(get_db),
 ) -> EnableRepositoryResponse:
     """Enable a repository for syncing."""
+    # Check plan limits before enabling
+    from devograph.services.limits_service import LimitsService
+    limits_service = LimitsService(db)
+    can_enable, error = await limits_service.can_sync_repo(developer_id)
+    if not can_enable:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error or "Repository limit reached",
+        )
+
     service = RepositoryService(db)
     try:
         dev_repo = await service.enable_repository(developer_id, repo_id)
@@ -318,16 +328,6 @@ async def start_sync(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="sync_type must be 'full' or 'incremental'",
-        )
-
-    # Check plan limits
-    from devograph.services.limits_service import LimitsService
-    limits_service = LimitsService(db)
-    can_sync, error = await limits_service.can_sync_repo(developer_id)
-    if not can_sync:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error or "Repository limit reached",
         )
 
     service = SyncService(db)
