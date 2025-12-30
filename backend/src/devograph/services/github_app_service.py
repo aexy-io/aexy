@@ -228,15 +228,22 @@ class GitHubAppService:
 
         for inst in all_installations:
             if inst["account"]["type"] == "Organization":
-                # Check if this installation is already tracked
+                # Check if this installation already exists (by installation_id only)
                 stmt = select(GitHubInstallation).where(
                     GitHubInstallation.installation_id == inst["id"],
-                    GitHubInstallation.github_connection_id == github_connection_id,
                 )
                 result = await self.db.execute(stmt)
                 existing = result.scalar_one_or_none()
 
-                if not existing:
+                if existing:
+                    # Update existing installation
+                    existing.account_login = inst["account"]["login"]
+                    existing.repository_selection = inst.get("repository_selection", "selected")
+                    existing.permissions = inst.get("permissions")
+                    existing.is_active = inst.get("suspended_at") is None
+                    existing.updated_at = datetime.now(timezone.utc)
+                    installations.append(existing)
+                else:
                     new_install = GitHubInstallation(
                         id=str(uuid4()),
                         github_connection_id=github_connection_id,

@@ -12,7 +12,7 @@ from devograph.core.config import get_settings
 from devograph.core.database import get_db
 from devograph.schemas.auth import TokenResponse
 from devograph.services.developer_service import DeveloperService
-from devograph.services.github_service import GitHubAuthError, GitHubService
+from devograph.services.github_service import GitHubAPIError, GitHubAuthError, GitHubService
 
 router = APIRouter()
 settings = get_settings()
@@ -90,13 +90,17 @@ async def github_callback(
         # Get email if not in user info
         email = user_info.email
         if not email:
-            emails = await gh.get_user_emails()
-            primary_email = next(
-                (e for e in emails if e.get("primary") and e.get("verified")),
-                None,
-            )
-            if primary_email:
-                email = primary_email["email"]
+            try:
+                emails = await gh.get_user_emails()
+                primary_email = next(
+                    (e for e in emails if e.get("primary") and e.get("verified")),
+                    None,
+                )
+                if primary_email:
+                    email = primary_email["email"]
+            except GitHubAPIError:
+                # Email permission not available - will fail below if no email
+                pass
 
     if not email:
         return RedirectResponse(url=f"{frontend_url}/?error=no_email")
