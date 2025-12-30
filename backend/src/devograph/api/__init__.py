@@ -20,6 +20,9 @@ from devograph.api.exports import router as exports_router
 from devograph.api.slack import router as slack_router
 from devograph.api.repositories import router as repositories_router
 from devograph.api.billing import router as billing_router
+# Organization & Team Management
+from devograph.api.workspaces import router as workspaces_router
+from devograph.api.workspace_teams import router as workspace_teams_router
 
 api_router = APIRouter()
 
@@ -45,3 +48,6 @@ api_router.include_router(slack_router, tags=["slack"])
 api_router.include_router(repositories_router, tags=["repositories"])
 # Billing & Subscriptions
 api_router.include_router(billing_router, tags=["billing"])
+# Organization & Team Management
+api_router.include_router(workspaces_router, tags=["workspaces"])
+api_router.include_router(workspace_teams_router, tags=["workspace-teams"])

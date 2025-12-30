@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import {
+  Building2,
   GitBranch,
   Users,
   AlertTriangle,
@@ -34,6 +36,7 @@ import {
 
 export default function HiringPage() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
+  const { currentWorkspaceId, currentWorkspace, workspacesLoading, hasWorkspaces } = useWorkspace();
   const [developers, setDevelopers] = useState<Developer[]>([]);
   const [gapAnalysis, setGapAnalysis] = useState<TeamGapAnalysis | null>(null);
   const [requirements, setRequirements] = useState<HiringRequirement[]>([]);
@@ -58,17 +61,24 @@ export default function HiringPage() {
       const devs = await developerApi.list();
       setDevelopers(devs);
 
-      // For demo, use a placeholder org ID
-      // In production, this would come from user context
-      const orgId = "demo-org";
-      const reqs = await hiringApi.listRequirements(orgId);
-      setRequirements(reqs);
+      // Fetch requirements if we have a workspace
+      if (currentWorkspaceId) {
+        try {
+          const reqs = await hiringApi.listRequirements(currentWorkspaceId);
+          setRequirements(reqs);
+        } catch (error) {
+          console.error("Failed to fetch requirements:", error);
+          setRequirements([]);
+        }
+      } else {
+        setRequirements([]);
+      }
     } catch (error) {
       console.error("Failed to fetch hiring data:", error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentWorkspaceId]);
 
   useEffect(() => {
     fetchData();
@@ -89,17 +99,15 @@ export default function HiringPage() {
   };
 
   const handleCreateRequirement = async () => {
-    if (!newReqTitle) return;
+    if (!newReqTitle || !currentWorkspaceId) return;
     try {
-      const req = await hiringApi.createRequirement({
-        organization_id: "demo-org",
+      const newReq = await hiringApi.createRequirement({
+        organization_id: currentWorkspaceId,
         role_title: newReqTitle,
-        priority: "high",
       });
-      setRequirements([req, ...requirements]);
-      setNewReqTitle("");
+      setRequirements([...requirements, newReq]);
       setShowNewReqForm(false);
-      setSelectedRequirement(req);
+      setNewReqTitle("");
     } catch (error) {
       console.error("Failed to create requirement:", error);
     }
@@ -135,7 +143,7 @@ export default function HiringPage() {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
-  if (isLoading || loading) {
+  if (isLoading || loading || workspacesLoading) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
@@ -145,6 +153,28 @@ export default function HiringPage() {
 
   if (!isAuthenticated) {
     redirect("/");
+  }
+
+  // Show workspace required message if no workspace
+  if (!hasWorkspaces) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <Building2 className="h-16 w-16 text-slate-600 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-white mb-2">Workspace Required</h2>
+          <p className="text-slate-400 mb-6">
+            Create a workspace first to start using Hiring Intelligence.
+          </p>
+          <Link
+            href="/settings/organization"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition font-medium"
+          >
+            <Building2 className="h-5 w-5" />
+            Create Workspace
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   const getSeverityColor = (severity: string) => {
@@ -244,10 +274,18 @@ export default function HiringPage() {
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-            <Users className="h-8 w-8 text-primary-500" />
-            Hiring Intelligence
-          </h1>
+          <div>
+            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+              <Users className="h-8 w-8 text-primary-500" />
+              Hiring Intelligence
+            </h1>
+            {currentWorkspace && (
+              <p className="text-slate-400 mt-1 flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                {currentWorkspace.name}
+              </p>
+            )}
+          </div>
           <button
             onClick={handleAnalyzeTeam}
             disabled={analyzing || developers.length === 0}
@@ -384,7 +422,9 @@ export default function HiringPage() {
                 </h2>
                 <button
                   onClick={() => setShowNewReqForm(!showNewReqForm)}
-                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                  disabled={!currentWorkspaceId}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={currentWorkspaceId ? "Create new requirement" : "Select a workspace first"}
                 >
                   <Plus className="h-5 w-5" />
                 </button>
@@ -414,7 +454,9 @@ export default function HiringPage() {
               <div className="divide-y divide-slate-700">
                 {requirements.length === 0 ? (
                   <div className="p-4 text-slate-400 text-center">
-                    No hiring requirements yet. Create one to get started!
+                    {currentWorkspaceId
+                      ? "No hiring requirements yet. Create one to get started!"
+                      : "Select a workspace to view hiring requirements."}
                   </div>
                 ) : (
                   requirements.map((req) => (
