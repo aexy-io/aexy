@@ -1,7 +1,11 @@
 import { GitBranch, Users, TrendingUp, Target } from "lucide-react";
 import Link from "next/link";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+
 export default function Home() {
+  const loginUrl = `${API_BASE_URL}/auth/github/login`;
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
       {/* Header */}
@@ -13,13 +17,13 @@ export default function Home() {
           </div>
           <nav className="flex items-center gap-6">
             <a
-              href="http://localhost:8000/api/v1/auth/github/login"
+              href={loginUrl}
               className="text-slate-300 hover:text-white transition"
             >
               Sign In
             </a>
             <a
-              href="http://localhost:8000/api/v1/auth/github/login"
+              href={loginUrl}
               className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition"
             >
               Connect GitHub
@@ -41,7 +45,7 @@ export default function Home() {
         </p>
         <div className="flex justify-center gap-4">
           <a
-            href="http://localhost:8000/api/v1/auth/github/login"
+            href={loginUrl}
             className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-3 rounded-lg text-lg font-medium transition"
           >
             Get Started Free
@@ -98,7 +102,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-slate-700 py-8">
         <div className="max-w-7xl mx-auto px-4 text-center text-slate-400">
-          <p>&copy; 2024 Devograph. GitHub-Based Developer Analytics Platform.</p>
+          <p>&copy; 2025 Devograph. GitHub-Based Developer Analytics Platform.</p>
         </div>
       </footer>
     </main>
