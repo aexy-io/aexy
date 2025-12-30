@@ -29,7 +29,17 @@ import {
   CareerRole,
   LearningMilestone,
   LearningActivity,
+  CreateActivityData,
 } from "@/lib/api";
+import { useLearningActivities, useActivityStats, useDailySummaries } from "@/hooks/useLearningActivities";
+import { ActivityList } from "@/components/learning/ActivityList";
+import { CourseSearch } from "@/components/learning/CourseSearch";
+import { Award, Flame, Timer, Search as SearchIcon, Zap } from "lucide-react";
+import { courseApi, ExternalCourse } from "@/lib/api";
+import { useGamification, formatPoints } from "@/hooks/useGamification";
+import { ProgressRing } from "@/components/learning/ProgressRing";
+import { BadgeGrid } from "@/components/learning/BadgeGrid";
+import { LearningCalendar, StreakCalendar } from "@/components/learning/LearningCalendar";
 
 export default function LearningPage() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
@@ -42,6 +52,67 @@ export default function LearningPage() {
   const [generating, setGenerating] = useState(false);
   const [selectedRoleId, setSelectedRoleId] = useState<string>("");
   const [showNewPathForm, setShowNewPathForm] = useState(false);
+  const [activeTab, setActiveTab] = useState<"path" | "activities">("path");
+  const [activeSessionActivityId, setActiveSessionActivityId] = useState<string | null>(null);
+
+  // Activity tracking hooks
+  const {
+    activities: trackedActivities,
+    isLoading: activitiesLoading,
+    createActivity,
+    deleteActivity,
+  } = useLearningActivities(user?.id || null, {
+    learning_path_id: selectedPath?.id,
+  });
+
+  void useActivityStats(user?.id || null); // Stats are shown in gamification section
+  const { summaries: dailySummaries } = useDailySummaries(user?.id || null, 90);
+
+  // Gamification hooks
+  const { profile, streak, levelProgress, allBadges } = useGamification();
+
+  // Helper functions for activity actions
+  const handleCreateActivity = async (data: CreateActivityData) => {
+    const activityData: CreateActivityData = {
+      ...data,
+      learning_path_id: selectedPath?.id,
+    };
+    await createActivity(activityData);
+  };
+
+  const handleStartActivity = async (activityId: string) => {
+    const { learningActivityApi } = await import("@/lib/api");
+    await learningActivityApi.startActivity(activityId, user!.id);
+  };
+
+  const handleCompleteActivity = async (activityId: string, data?: { rating?: number; notes?: string }) => {
+    const { learningActivityApi } = await import("@/lib/api");
+    await learningActivityApi.completeActivity(activityId, user!.id, data);
+  };
+
+  const handleStartSession = async (activityId: string) => {
+    const { learningActivityApi } = await import("@/lib/api");
+    await learningActivityApi.startTimeSession(activityId, user!.id);
+    setActiveSessionActivityId(activityId);
+  };
+
+  const handleEndSession = async (activityId: string) => {
+    const { learningActivityApi } = await import("@/lib/api");
+    await learningActivityApi.endTimeSession(activityId, user!.id);
+    setActiveSessionActivityId(null);
+  };
+
+  const handleImportCourse = async (course: ExternalCourse) => {
+    if (!user?.id) return;
+    await courseApi.importCourse(
+      user.id,
+      course,
+      selectedPath?.id,
+      undefined
+    );
+    // Refetch activities to show the imported course
+    // The useLearningActivities hook will auto-refresh
+  };
 
   const fetchData = useCallback(async () => {
     if (!user?.id) return;
@@ -260,6 +331,139 @@ export default function LearningPage() {
             Create New Path
           </button>
         </div>
+
+        {/* Gamification Section */}
+        {profile && levelProgress && streak && (
+          <div className="grid lg:grid-cols-4 gap-6 mb-8">
+            {/* Level Progress */}
+            <div className="lg:col-span-1">
+              <div className="bg-gradient-to-br from-purple-900 to-indigo-900 rounded-xl p-4 border border-purple-700/50">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <div className="text-purple-300 text-xs font-medium">Level {profile.level}</div>
+                    <div className="text-white text-lg font-bold">{levelProgress.current_level_name}</div>
+                  </div>
+                  <ProgressRing
+                    progress={levelProgress.progress_percentage}
+                    size={56}
+                    strokeWidth={5}
+                    color="purple"
+                    showLabel={false}
+                    className="bg-purple-900/50 rounded-full"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-purple-300">
+                    <span>{levelProgress.points_in_level} pts</span>
+                    <span>{levelProgress.points_for_next_level} pts to next</span>
+                  </div>
+                  <div className="h-1.5 bg-purple-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-purple-400 to-pink-400 rounded-full transition-all"
+                      style={{ width: `${levelProgress.progress_percentage}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="lg:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-slate-800 rounded-xl p-3 border border-slate-700">
+                <div className="flex items-center gap-2 mb-1">
+                  <Zap className="h-4 w-4 text-amber-400" />
+                  <span className="text-xs text-slate-400">Points</span>
+                </div>
+                <div className="text-xl font-bold text-white">{formatPoints(profile.total_points)}</div>
+              </div>
+              <div className="bg-slate-800 rounded-xl p-3 border border-slate-700">
+                <div className="flex items-center gap-2 mb-1">
+                  <Flame className="h-4 w-4 text-orange-400" />
+                  <span className="text-xs text-slate-400">Streak</span>
+                </div>
+                <div className="text-xl font-bold text-white flex items-center gap-2">
+                  {streak.current_streak}
+                  {streak.streak_at_risk && (
+                    <span className="text-xs text-amber-400 font-normal">At Risk!</span>
+                  )}
+                </div>
+              </div>
+              <div className="bg-slate-800 rounded-xl p-3 border border-slate-700">
+                <div className="flex items-center gap-2 mb-1">
+                  <BookOpen className="h-4 w-4 text-blue-400" />
+                  <span className="text-xs text-slate-400">Activities</span>
+                </div>
+                <div className="text-xl font-bold text-white">{profile.activities_completed}</div>
+              </div>
+              <div className="bg-slate-800 rounded-xl p-3 border border-slate-700">
+                <div className="flex items-center gap-2 mb-1">
+                  <Timer className="h-4 w-4 text-purple-400" />
+                  <span className="text-xs text-slate-400">Time</span>
+                </div>
+                <div className="text-xl font-bold text-white">
+                  {Math.floor(profile.total_learning_minutes / 60)}h
+                </div>
+              </div>
+            </div>
+
+            {/* Weekly Streak Calendar */}
+            <div className="lg:col-span-1">
+              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 h-full">
+                <div className="text-sm font-medium text-white mb-3">This Week</div>
+                {dailySummaries && dailySummaries.length > 0 ? (
+                  <StreakCalendar data={dailySummaries} />
+                ) : (
+                  <div className="flex gap-1">
+                    {[...Array(7)].map((_, i) => (
+                      <div key={i} className="w-6 h-6 rounded-full bg-slate-700" />
+                    ))}
+                  </div>
+                )}
+                <div className="mt-3 text-xs text-slate-400">
+                  {streak.is_active_today ? (
+                    <span className="text-green-400">Active today!</span>
+                  ) : streak.streak_at_risk ? (
+                    <span className="text-amber-400">Learn today to keep your streak!</span>
+                  ) : (
+                    <span>Start learning to build your streak</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Badges Section */}
+        {profile && allBadges && profile.earned_badges.length > 0 && (
+          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Award className="h-5 w-5 text-amber-400" />
+                Your Badges
+              </h3>
+              <span className="text-sm text-slate-400">
+                {profile.earned_badges.length} / {allBadges.length} earned
+              </span>
+            </div>
+            <BadgeGrid
+              allBadges={allBadges}
+              earnedBadges={profile.earned_badges}
+              showAll={false}
+              maxDisplay={10}
+            />
+          </div>
+        )}
+
+        {/* Learning Activity Calendar */}
+        {dailySummaries && dailySummaries.length > 0 && (
+          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 mb-8">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-green-400" />
+              Learning Activity
+            </h3>
+            <LearningCalendar data={dailySummaries} weeks={12} />
+          </div>
+        )}
 
         {/* New Path Form */}
         {showNewPathForm && (
@@ -552,6 +756,45 @@ export default function LearningPage() {
                     </ul>
                   </div>
                 )}
+
+                {/* Course Search Section */}
+                <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <SearchIcon className="h-5 w-5 text-primary-400" />
+                    Find Courses
+                  </h3>
+                  <p className="text-slate-400 text-sm mb-4">
+                    Search for tutorials and courses from YouTube and other platforms to add to your learning activities.
+                  </p>
+                  <CourseSearch
+                    onImportCourse={handleImportCourse}
+                    suggestedSkills={Object.keys(selectedPath?.skill_gaps || {})}
+                    learningPathId={selectedPath?.id}
+                  />
+                </div>
+
+                {/* Activity Tracking Section */}
+                <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <Target className="h-5 w-5 text-primary-400" />
+                    Track Your Progress
+                  </h3>
+                  <p className="text-slate-400 text-sm mb-4">
+                    Log your learning activities to track progress, earn points, and stay motivated!
+                  </p>
+                  <ActivityList
+                    activities={trackedActivities}
+                    isLoading={activitiesLoading}
+                    onCreateActivity={handleCreateActivity}
+                    onStartActivity={handleStartActivity}
+                    onCompleteActivity={handleCompleteActivity}
+                    onDeleteActivity={deleteActivity}
+                    onStartSession={handleStartSession}
+                    onEndSession={handleEndSession}
+                    activeSessionId={activeSessionActivityId || undefined}
+                    emptyMessage="No activities tracked yet. Add your first learning activity!"
+                  />
+                </div>
               </>
             ) : (
               <div className="bg-slate-800 rounded-xl p-12 border border-slate-700 text-center">

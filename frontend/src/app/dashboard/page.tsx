@@ -12,7 +12,7 @@ import { InsightsCard } from "@/components/InsightsCard";
 import { GrowthTrajectoryCard } from "@/components/GrowthTrajectoryCard";
 import { TaskMatcherCard } from "@/components/TaskMatcherCard";
 import { PeerBenchmarkCard } from "@/components/PeerBenchmarkCard";
-import { Tooltip } from "@/components/ui/Tooltip";
+import { SimpleTooltip as Tooltip } from "@/components/ui/tooltip";
 
 export default function DashboardPage() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
