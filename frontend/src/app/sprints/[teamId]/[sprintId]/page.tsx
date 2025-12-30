@@ -287,7 +287,7 @@ interface AddTaskModalProps {
     story_points?: number;
     priority?: TaskPriority;
     status?: TaskStatus;
-  }) => Promise<void>;
+  }) => Promise<unknown>;
   isAdding: boolean;
 }
 

@@ -3,6 +3,7 @@
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
+import re
 
 from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -14,6 +15,122 @@ if TYPE_CHECKING:
     from devograph.models.developer import Developer
     from devograph.models.team import Team
     from devograph.models.workspace import Workspace
+
+
+def slugify(text: str) -> str:
+    """Convert text to a URL-friendly slug."""
+    text = text.lower()
+    text = re.sub(r'[^\w\s-]', '', text)
+    text = re.sub(r'[-\s]+', '_', text)
+    return text.strip('_')
+
+
+class WorkspaceTaskStatus(Base):
+    """Custom task statuses per workspace."""
+
+    __tablename__ = "workspace_task_statuses"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Status info
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    slug: Mapped[str] = mapped_column(String(100), nullable=False)
+    category: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="todo"
+    )  # "todo" | "in_progress" | "done" - for burndown calculations
+    color: Mapped[str] = mapped_column(String(20), nullable=False, default="#6B7280")
+    icon: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # Ordering and defaults
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    # Relationships
+    workspace: Mapped["Workspace"] = relationship("Workspace", lazy="selectin")
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "slug", name="uq_workspace_task_status_slug"),
+    )
+
+
+class WorkspaceCustomField(Base):
+    """Custom fields for tasks per workspace."""
+
+    __tablename__ = "workspace_custom_fields"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Field info
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    slug: Mapped[str] = mapped_column(String(100), nullable=False)
+    field_type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # "text" | "number" | "select" | "multiselect" | "date" | "url"
+    options: Mapped[list | None] = mapped_column(
+        JSONB, nullable=True
+    )  # For select/multiselect: [{value, label, color}]
+
+    # Configuration
+    is_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    default_value: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    # Ordering
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    # Relationships
+    workspace: Mapped["Workspace"] = relationship("Workspace", lazy="selectin")
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "slug", name="uq_workspace_custom_field_slug"),
+    )
 
 
 class Sprint(Base):
@@ -163,10 +280,24 @@ class SprintTask(Base):
     assignment_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     assignment_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
 
-    # Status tracking
+    # Status tracking (legacy status field kept for backwards compatibility)
     status: Mapped[str] = mapped_column(
         String(50), nullable=False, default="backlog"
     )  # "backlog" | "todo" | "in_progress" | "review" | "done"
+
+    # Custom status reference (for custom workspace statuses)
+    status_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspace_task_statuses.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # Custom field values (JSONB for flexibility)
+    custom_fields: Mapped[dict] = mapped_column(
+        JSONB, default=dict, nullable=False
+    )  # {field_slug: value}
+
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -204,6 +335,10 @@ class SprintTask(Base):
     carried_over_from: Mapped["Sprint | None"] = relationship(
         "Sprint",
         foreign_keys=[carried_over_from_sprint_id],
+        lazy="selectin",
+    )
+    custom_status: Mapped["WorkspaceTaskStatus | None"] = relationship(
+        "WorkspaceTaskStatus",
         lazy="selectin",
     )
 

@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from devograph.models.workspace import Workspace, WorkspaceMember, WorkspaceSubscription
 from devograph.models.developer import Developer
 from devograph.models.repository import Organization, DeveloperOrganization
+from devograph.services.task_config_service import TaskConfigService
 
 
 def generate_slug(name: str) -> str:
@@ -89,6 +90,10 @@ class WorkspaceService:
 
         await self.db.flush()
         await self.db.refresh(workspace)
+
+        # Seed default task statuses for the workspace
+        task_config_service = TaskConfigService(self.db)
+        await task_config_service.seed_default_statuses(workspace.id)
 
         return workspace
 

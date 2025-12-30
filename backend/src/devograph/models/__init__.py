@@ -28,6 +28,8 @@ from devograph.models.analytics import (
 from devograph.models.integrations import (
     SlackIntegration,
     SlackNotificationLog,
+    JiraIntegration,
+    LinearIntegration,
 )
 from devograph.models.repository import (
     Organization,
@@ -51,6 +53,8 @@ from devograph.models.sprint import (
     TeamVelocity,
     SprintPlanningSession,
     SprintRetrospective,
+    WorkspaceTaskStatus,
+    WorkspaceCustomField,
 )
 
 __all__ = [
@@ -88,6 +92,8 @@ __all__ = [
     # Integrations (Phase 4)
     "SlackIntegration",
     "SlackNotificationLog",
+    "JiraIntegration",
+    "LinearIntegration",
     # Repository
     "Organization",
     "Repository",
@@ -107,4 +113,7 @@ __all__ = [
     "TeamVelocity",
     "SprintPlanningSession",
     "SprintRetrospective",
+    # Task Configuration
+    "WorkspaceTaskStatus",
+    "WorkspaceCustomField",
 ]

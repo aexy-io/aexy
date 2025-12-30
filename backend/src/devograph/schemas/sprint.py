@@ -10,6 +10,109 @@ SprintStatus = Literal["planning", "active", "review", "retrospective", "complet
 TaskStatus = Literal["backlog", "todo", "in_progress", "review", "done"]
 TaskPriority = Literal["critical", "high", "medium", "low"]
 TaskSourceType = Literal["github_issue", "jira", "linear", "manual"]
+StatusCategory = Literal["todo", "in_progress", "done"]
+CustomFieldType = Literal["text", "number", "select", "multiselect", "date", "url"]
+
+
+# ==================== Custom Task Status Schemas ====================
+
+class TaskStatusCreate(BaseModel):
+    """Schema for creating a custom task status."""
+
+    name: str = Field(..., min_length=1, max_length=100)
+    category: StatusCategory = "todo"
+    color: str = Field(default="#6B7280", max_length=20)
+    icon: str | None = Field(default=None, max_length=50)
+    is_default: bool = False
+
+
+class TaskStatusUpdate(BaseModel):
+    """Schema for updating a custom task status."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    category: StatusCategory | None = None
+    color: str | None = Field(default=None, max_length=20)
+    icon: str | None = Field(default=None, max_length=50)
+    is_default: bool | None = None
+
+
+class TaskStatusResponse(BaseModel):
+    """Schema for custom task status response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    workspace_id: str
+    name: str
+    slug: str
+    category: StatusCategory
+    color: str
+    icon: str | None = None
+    position: int
+    is_default: bool
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class TaskStatusReorder(BaseModel):
+    """Schema for reordering statuses."""
+
+    status_ids: list[str] = Field(..., min_length=1)
+
+
+# ==================== Custom Field Schemas ====================
+
+class CustomFieldOptionCreate(BaseModel):
+    """Schema for custom field option (select/multiselect)."""
+
+    value: str = Field(..., min_length=1, max_length=100)
+    label: str = Field(..., min_length=1, max_length=100)
+    color: str | None = Field(default=None, max_length=20)
+
+
+class CustomFieldCreate(BaseModel):
+    """Schema for creating a custom field."""
+
+    name: str = Field(..., min_length=1, max_length=100)
+    field_type: CustomFieldType
+    options: list[CustomFieldOptionCreate] | None = None  # For select/multiselect
+    is_required: bool = False
+    default_value: str | None = Field(default=None, max_length=500)
+
+
+class CustomFieldUpdate(BaseModel):
+    """Schema for updating a custom field."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    options: list[CustomFieldOptionCreate] | None = None
+    is_required: bool | None = None
+    default_value: str | None = Field(default=None, max_length=500)
+
+
+class CustomFieldResponse(BaseModel):
+    """Schema for custom field response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    workspace_id: str
+    name: str
+    slug: str
+    field_type: CustomFieldType
+    options: list[dict] | None = None
+    is_required: bool
+    default_value: str | None = None
+    position: int
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class CustomFieldReorder(BaseModel):
+    """Schema for reordering custom fields."""
+
+    field_ids: list[str] = Field(..., min_length=1)
 
 
 # Sprint Schemas
@@ -152,6 +255,8 @@ class SprintTaskResponse(BaseModel):
     assignment_reason: str | None = None
     assignment_confidence: float | None = None
     status: TaskStatus
+    status_id: str | None = None  # Custom status reference
+    custom_fields: dict = Field(default_factory=dict)  # Custom field values
     started_at: datetime | None = None
     completed_at: datetime | None = None
     carried_over_from_sprint_id: str | None = None

@@ -281,6 +281,8 @@ export default function RetrospectivePage({
     saveRetrospective,
     addItem,
     updateItem,
+    deleteItem,
+    voteItem,
     isSaving,
   } = useSprintRetrospective(sprintId);
 
@@ -329,7 +331,7 @@ export default function RetrospectivePage({
 
   const handleVote = async (itemId: string) => {
     try {
-      await updateItem({ itemId, data: { votes: 1 } }); // Server handles increment
+      await voteItem(itemId);
     } catch (error) {
       console.error("Failed to vote:", error);
     }
@@ -344,8 +346,11 @@ export default function RetrospectivePage({
   };
 
   const handleDeleteItem = async (itemId: string) => {
-    // This would need a delete endpoint - for now just save without the item
-    // The actual implementation should call the delete endpoint
+    try {
+      await deleteItem(itemId);
+    } catch (error) {
+      console.error("Failed to delete item:", error);
+    }
   };
 
   const handleSave = async () => {

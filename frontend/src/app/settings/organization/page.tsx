@@ -261,7 +261,7 @@ function InviteMemberModal({ onClose, onInvite, isInviting }: InviteMemberModalP
 
 interface CreateWorkspaceModalProps {
   onClose: () => void;
-  onCreate: (data: { name: string; type?: string; github_org_id?: string; description?: string }) => Promise<void>;
+  onCreate: (data: { name: string; type?: string; github_org_id?: string; description?: string }) => Promise<unknown>;
   isCreating: boolean;
   organizations: Organization[];
 }

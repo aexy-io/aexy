@@ -92,7 +92,7 @@ This document tracks the implementation progress of Devograph across all four ph
 | Task source abstraction | [x] | `services/task_sources/base.py` - Unified TaskItem model |
 | Task signal extraction (NLP) | [x] | `services/task_matcher.py` - LLM-powered signal extraction |
 | Match scoring algorithm (v1) | [x] | `services/task_matcher.py` - LLM-based matching with weights |
-| Sprint planning interface | [x] | `frontend/src/app/sprint-planning/page.tsx` - Drag-and-drop UI |
+| Sprint planning interface | [x] | `frontend/src/app/sprints/page.tsx` - Drag-and-drop UI |
 | Bulk assignment feature | [x] | `TaskMatcher.bulk_match()` + `optimize_assignments()` |
 | What-if analysis | [x] | `services/whatif_analyzer.py` + API endpoints |
 

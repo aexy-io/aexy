@@ -43,6 +43,8 @@ def task_to_response(task) -> SprintTaskResponse:
         assignment_reason=task.assignment_reason,
         assignment_confidence=task.assignment_confidence,
         status=task.status,
+        status_id=str(task.status_id) if task.status_id else None,
+        custom_fields=task.custom_fields or {},
         started_at=task.started_at,
         completed_at=task.completed_at,
         carried_over_from_sprint_id=str(task.carried_over_from_sprint_id) if task.carried_over_from_sprint_id else None,

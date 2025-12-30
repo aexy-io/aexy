@@ -73,7 +73,7 @@ function TeamSprintCard({ team, workspaceId }: { team: TeamListItem; workspaceId
                 <div className="flex items-center gap-4 text-xs text-slate-400">
                   <span className="flex items-center gap-1">
                     <CheckCircle className="h-3 w-3" />
-                    {activeSprint.completed_tasks}/{activeSprint.total_tasks} tasks
+                    {activeSprint.completed_count}/{activeSprint.tasks_count} tasks
                   </span>
                   <span className="flex items-center gap-1">
                     <Target className="h-3 w-3" />
@@ -85,8 +85,8 @@ function TeamSprintCard({ team, workspaceId }: { team: TeamListItem; workspaceId
                   <div
                     className="h-full bg-green-500 rounded-full"
                     style={{
-                      width: `${activeSprint.total_tasks > 0
-                        ? Math.round((activeSprint.completed_tasks / activeSprint.total_tasks) * 100)
+                      width: `${activeSprint.tasks_count > 0
+                        ? Math.round((activeSprint.completed_count / activeSprint.tasks_count) * 100)
                         : 0}%`,
                     }}
                   />

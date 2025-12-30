@@ -18,6 +18,7 @@ from devograph.services.predictive_analytics import PredictiveAnalyticsService
 from devograph.services.report_builder import ReportBuilderService
 from devograph.services.export_service import ExportService
 from devograph.services.slack_integration import SlackIntegrationService
+from devograph.services.task_config_service import TaskConfigService
 
 __all__ = [
     "GitHubService",
@@ -39,4 +40,6 @@ __all__ = [
     "ExportService",
     # Phase 4: Ecosystem Integrations
     "SlackIntegrationService",
+    # Task Configuration
+    "TaskConfigService",
 ]

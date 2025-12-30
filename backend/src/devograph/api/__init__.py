@@ -28,6 +28,10 @@ from devograph.api.sprints import router as sprints_router
 from devograph.api.sprint_tasks import router as sprint_tasks_router
 from devograph.api.sprint_analytics import router as sprint_analytics_router
 from devograph.api.retrospectives import router as retrospectives_router
+# Task Configuration
+from devograph.api.task_config import router as task_config_router
+# External Integrations
+from devograph.api.integrations import router as integrations_router
 
 api_router = APIRouter()
 
@@ -61,3 +65,7 @@ api_router.include_router(sprints_router, tags=["sprints"])
 api_router.include_router(sprint_tasks_router, tags=["sprint-tasks"])
 api_router.include_router(sprint_analytics_router, tags=["sprint-analytics"])
 api_router.include_router(retrospectives_router, tags=["retrospectives"])
+# Task Configuration
+api_router.include_router(task_config_router, tags=["task-config"])
+# External Integrations
+api_router.include_router(integrations_router, tags=["integrations"])

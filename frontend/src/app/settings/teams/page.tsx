@@ -257,8 +257,8 @@ function TeamCard({ team, workspaceId, isAdmin, onDelete }: TeamCardProps) {
 
 interface CreateTeamModalProps {
   onClose: () => void;
-  onCreate: (data: { name: string; description?: string; type?: string; source_repository_ids?: string[] }) => Promise<void>;
-  onCreateFromRepo: (data: { repository_id: string; team_name?: string }) => Promise<void>;
+  onCreate: (data: { name: string; description?: string; type?: string; source_repository_ids?: string[] }) => Promise<unknown>;
+  onCreateFromRepo: (data: { repository_id: string; team_name?: string }) => Promise<unknown>;
   isCreating: boolean;
   repositories: Repository[];
 }

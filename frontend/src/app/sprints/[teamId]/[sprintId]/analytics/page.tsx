@@ -208,7 +208,7 @@ export default function SprintAnalyticsPage({
             value={velocity?.average_velocity || 0}
             subtitle="points per sprint"
             icon={<Zap className="h-5 w-5 text-purple-400" />}
-            trend={velocity?.trend === "up" ? "up" : velocity?.trend === "down" ? "down" : "neutral"}
+            trend={velocity?.trend === "improving" ? "up" : velocity?.trend === "declining" ? "down" : "neutral"}
             trendValue={velocity?.trend || "stable"}
           />
         </div>
@@ -430,7 +430,7 @@ export default function SprintAnalyticsPage({
                       {prediction.at_risk_tasks.slice(0, 3).map((task, i) => (
                         <div key={i} className="text-sm bg-slate-700/50 rounded p-2">
                           <span className="text-white">{task.title}</span>
-                          <span className="text-slate-500 ml-2">({task.reason})</span>
+                          <span className="text-slate-500 ml-2">({task.risk})</span>
                         </div>
                       ))}
                     </div>

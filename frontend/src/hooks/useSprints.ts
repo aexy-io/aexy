@@ -457,12 +457,64 @@ export function useSprintRetrospective(sprintId: string | null) {
     },
   });
 
+  const addItemMutation = useMutation({
+    mutationFn: (data: {
+      category: "went_well" | "to_improve" | "action_item";
+      content: string;
+      assignee_id?: string;
+      due_date?: string;
+    }) => sprintApi.addRetroItem(sprintId!, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["retrospective", sprintId] });
+    },
+  });
+
+  const updateItemMutation = useMutation({
+    mutationFn: ({
+      itemId,
+      data,
+    }: {
+      itemId: string;
+      data: {
+        content?: string;
+        status?: "pending" | "in_progress" | "done";
+        assignee_id?: string;
+        due_date?: string;
+      };
+    }) => sprintApi.updateRetroItem(sprintId!, itemId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["retrospective", sprintId] });
+    },
+  });
+
+  const deleteItemMutation = useMutation({
+    mutationFn: (itemId: string) => sprintApi.deleteRetroItem(sprintId!, itemId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["retrospective", sprintId] });
+    },
+  });
+
+  const voteItemMutation = useMutation({
+    mutationFn: (itemId: string) => sprintApi.voteRetroItem(sprintId!, itemId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["retrospective", sprintId] });
+    },
+  });
+
   return {
     retrospective,
     isLoading,
     error,
     refetch,
     saveRetrospective: saveMutation.mutateAsync,
+    addItem: addItemMutation.mutateAsync,
+    updateItem: updateItemMutation.mutateAsync,
+    deleteItem: deleteItemMutation.mutateAsync,
+    voteItem: voteItemMutation.mutateAsync,
     isSaving: saveMutation.isPending,
+    isAddingItem: addItemMutation.isPending,
+    isUpdatingItem: updateItemMutation.isPending,
+    isDeletingItem: deleteItemMutation.isPending,
+    isVoting: voteItemMutation.isPending,
   };
 }

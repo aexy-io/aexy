@@ -85,8 +85,8 @@ function SprintCard({ sprint, teamId, onDelete, isActive }: SprintCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const statusConfig = STATUS_CONFIG[sprint.status];
   const daysRemaining = getDaysRemaining(sprint.end_date);
-  const completionRate = sprint.total_tasks > 0
-    ? Math.round((sprint.completed_tasks / sprint.total_tasks) * 100)
+  const completionRate = sprint.tasks_count > 0
+    ? Math.round((sprint.completed_count / sprint.tasks_count) * 100)
     : 0;
 
   return (
@@ -189,11 +189,11 @@ function SprintCard({ sprint, teamId, onDelete, isActive }: SprintCardProps) {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 text-center">
           <div className="bg-slate-700/50 rounded-lg p-2">
-            <div className="text-lg font-semibold text-white">{sprint.total_tasks}</div>
+            <div className="text-lg font-semibold text-white">{sprint.tasks_count}</div>
             <div className="text-xs text-slate-400">Total Tasks</div>
           </div>
           <div className="bg-slate-700/50 rounded-lg p-2">
-            <div className="text-lg font-semibold text-green-400">{sprint.completed_tasks}</div>
+            <div className="text-lg font-semibold text-green-400">{sprint.completed_count}</div>
             <div className="text-xs text-slate-400">Completed</div>
           </div>
           <div className="bg-slate-700/50 rounded-lg p-2">
@@ -211,9 +211,9 @@ interface CreateSprintModalProps {
   onCreate: (data: {
     name: string;
     goal?: string;
-    start_date?: string;
-    end_date?: string;
-  }) => Promise<void>;
+    start_date: string;
+    end_date: string;
+  }) => Promise<unknown>;
   isCreating: boolean;
 }
 

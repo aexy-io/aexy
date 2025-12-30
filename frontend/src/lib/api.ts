@@ -1983,6 +1983,36 @@ export const sprintApi = {
     return response.data;
   },
 
+  addRetroItem: async (sprintId: string, data: {
+    category: "went_well" | "to_improve" | "action_item";
+    content: string;
+    assignee_id?: string;
+    due_date?: string;
+  }): Promise<SprintRetrospective> => {
+    const response = await api.post(`/sprints/${sprintId}/retrospective/items`, data);
+    return response.data;
+  },
+
+  updateRetroItem: async (sprintId: string, itemId: string, data: {
+    content?: string;
+    status?: "pending" | "in_progress" | "done";
+    assignee_id?: string;
+    due_date?: string;
+  }): Promise<SprintRetrospective> => {
+    const response = await api.patch(`/sprints/${sprintId}/retrospective/items/${itemId}`, data);
+    return response.data;
+  },
+
+  deleteRetroItem: async (sprintId: string, itemId: string): Promise<SprintRetrospective> => {
+    const response = await api.delete(`/sprints/${sprintId}/retrospective/items/${itemId}`);
+    return response.data;
+  },
+
+  voteRetroItem: async (sprintId: string, itemId: string): Promise<SprintRetrospective> => {
+    const response = await api.post(`/sprints/${sprintId}/retrospective/items/${itemId}/vote`);
+    return response.data;
+  },
+
   // Carry over
   carryOver: async (workspaceId: string, teamId: string, fromSprintId: string, toSprintId: string, taskIds: string[]): Promise<{
     carried_count: number;
@@ -1992,6 +2022,351 @@ export const sprintApi = {
       `/workspaces/${workspaceId}/teams/${teamId}/sprints/${fromSprintId}/carry-over/${toSprintId}`,
       { task_ids: taskIds }
     );
+    return response.data;
+  },
+};
+
+// ============================================================================
+// Task Configuration Types & API
+// ============================================================================
+
+export type StatusCategory = "todo" | "in_progress" | "done";
+export type CustomFieldType = "text" | "number" | "select" | "multiselect" | "date" | "url";
+
+export interface TaskStatusConfig {
+  id: string;
+  workspace_id: string;
+  name: string;
+  slug: string;
+  category: StatusCategory;
+  color: string;
+  icon: string | null;
+  position: number;
+  is_default: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomFieldOption {
+  value: string;
+  label: string;
+  color?: string;
+}
+
+export interface CustomField {
+  id: string;
+  workspace_id: string;
+  name: string;
+  slug: string;
+  field_type: CustomFieldType;
+  options: CustomFieldOption[] | null;
+  is_required: boolean;
+  default_value: string | null;
+  position: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export const taskConfigApi = {
+  // Task Statuses
+  getStatuses: async (workspaceId: string): Promise<TaskStatusConfig[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/task-statuses`);
+    return response.data;
+  },
+
+  createStatus: async (workspaceId: string, data: {
+    name: string;
+    category?: StatusCategory;
+    color?: string;
+    icon?: string;
+    is_default?: boolean;
+  }): Promise<TaskStatusConfig> => {
+    const response = await api.post(`/workspaces/${workspaceId}/task-statuses`, data);
+    return response.data;
+  },
+
+  getStatus: async (workspaceId: string, statusId: string): Promise<TaskStatusConfig> => {
+    const response = await api.get(`/workspaces/${workspaceId}/task-statuses/${statusId}`);
+    return response.data;
+  },
+
+  updateStatus: async (workspaceId: string, statusId: string, data: {
+    name?: string;
+    category?: StatusCategory;
+    color?: string;
+    icon?: string;
+    is_default?: boolean;
+  }): Promise<TaskStatusConfig> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/task-statuses/${statusId}`, data);
+    return response.data;
+  },
+
+  deleteStatus: async (workspaceId: string, statusId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/task-statuses/${statusId}`);
+  },
+
+  reorderStatuses: async (workspaceId: string, statusIds: string[]): Promise<TaskStatusConfig[]> => {
+    const response = await api.post(`/workspaces/${workspaceId}/task-statuses/reorder`, {
+      status_ids: statusIds,
+    });
+    return response.data;
+  },
+
+  // Custom Fields
+  getCustomFields: async (workspaceId: string): Promise<CustomField[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/custom-fields`);
+    return response.data;
+  },
+
+  createCustomField: async (workspaceId: string, data: {
+    name: string;
+    field_type: CustomFieldType;
+    options?: CustomFieldOption[];
+    is_required?: boolean;
+    default_value?: string;
+  }): Promise<CustomField> => {
+    const response = await api.post(`/workspaces/${workspaceId}/custom-fields`, data);
+    return response.data;
+  },
+
+  getCustomField: async (workspaceId: string, fieldId: string): Promise<CustomField> => {
+    const response = await api.get(`/workspaces/${workspaceId}/custom-fields/${fieldId}`);
+    return response.data;
+  },
+
+  updateCustomField: async (workspaceId: string, fieldId: string, data: {
+    name?: string;
+    options?: CustomFieldOption[];
+    is_required?: boolean;
+    default_value?: string;
+  }): Promise<CustomField> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/custom-fields/${fieldId}`, data);
+    return response.data;
+  },
+
+  deleteCustomField: async (workspaceId: string, fieldId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/custom-fields/${fieldId}`);
+  },
+
+  reorderCustomFields: async (workspaceId: string, fieldIds: string[]): Promise<CustomField[]> => {
+    const response = await api.post(`/workspaces/${workspaceId}/custom-fields/reorder`, {
+      field_ids: fieldIds,
+    });
+    return response.data;
+  },
+};
+
+// ============================================================================
+// Jira & Linear Integration Types & API
+// ============================================================================
+
+export interface StatusMapping {
+  remote_status: string;
+  workspace_status_slug: string;
+}
+
+export interface FieldMapping {
+  remote_field: string;
+  workspace_field_slug: string;
+}
+
+export interface JiraIntegration {
+  id: string;
+  workspace_id: string;
+  site_url: string;
+  user_email: string;
+  project_mappings: Record<string, { project_key: string; jql_filter?: string }>;
+  status_mappings: Record<string, string>;
+  field_mappings: Record<string, string>;
+  sync_enabled: boolean;
+  sync_direction: "import" | "bidirectional";
+  last_sync_at: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LinearIntegration {
+  id: string;
+  workspace_id: string;
+  organization_id: string | null;
+  organization_name: string | null;
+  team_mappings: Record<string, { linear_team_id: string; labels_filter?: string[] }>;
+  status_mappings: Record<string, string>;
+  field_mappings: Record<string, string>;
+  sync_enabled: boolean;
+  last_sync_at: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RemoteProject {
+  key: string;
+  name: string;
+}
+
+export interface RemoteTeam {
+  id: string;
+  name: string;
+}
+
+export interface RemoteStatus {
+  id: string;
+  name: string;
+  category: string | null;
+}
+
+export interface RemoteField {
+  id: string;
+  name: string;
+  field_type: string;
+}
+
+export interface ConnectionTestResult {
+  success: boolean;
+  message: string;
+  available_projects?: RemoteProject[];
+  available_teams?: RemoteTeam[];
+  available_statuses?: RemoteStatus[];
+  available_fields?: RemoteField[];
+}
+
+export interface SyncResult {
+  success: boolean;
+  message: string;
+  synced_count: number;
+  created_count: number;
+  updated_count: number;
+  error_count: number;
+  errors: string[];
+}
+
+export const integrationsApi = {
+  // Jira Integration
+  getJiraIntegration: async (workspaceId: string): Promise<JiraIntegration | null> => {
+    try {
+      const response = await api.get(`/workspaces/${workspaceId}/integrations/jira`);
+      return response.data;
+    } catch {
+      return null;
+    }
+  },
+
+  createJiraIntegration: async (workspaceId: string, data: {
+    site_url: string;
+    user_email: string;
+    api_token: string;
+  }): Promise<JiraIntegration> => {
+    const response = await api.post(`/workspaces/${workspaceId}/integrations/jira`, data);
+    return response.data;
+  },
+
+  testJiraConnection: async (workspaceId: string, data?: {
+    site_url: string;
+    user_email: string;
+    api_token: string;
+  }): Promise<ConnectionTestResult> => {
+    const response = await api.post(`/workspaces/${workspaceId}/integrations/jira/test`, data);
+    return response.data;
+  },
+
+  updateJiraIntegration: async (workspaceId: string, data: {
+    project_mappings?: Record<string, { project_key: string; jql_filter?: string }>;
+    status_mappings?: StatusMapping[];
+    field_mappings?: FieldMapping[];
+    sync_enabled?: boolean;
+    sync_direction?: "import" | "bidirectional";
+  }): Promise<JiraIntegration> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/integrations/jira`, data);
+    return response.data;
+  },
+
+  deleteJiraIntegration: async (workspaceId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/integrations/jira`);
+  },
+
+  syncJira: async (workspaceId: string, teamId?: string): Promise<SyncResult> => {
+    const response = await api.post(`/workspaces/${workspaceId}/integrations/jira/sync`, null, {
+      params: teamId ? { team_id: teamId } : undefined,
+    });
+    return response.data;
+  },
+
+  getJiraStatuses: async (workspaceId: string): Promise<RemoteStatus[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/integrations/jira/statuses`);
+    return response.data;
+  },
+
+  getJiraFields: async (workspaceId: string): Promise<RemoteField[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/integrations/jira/fields`);
+    return response.data;
+  },
+
+  getJiraProjects: async (workspaceId: string): Promise<RemoteProject[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/integrations/jira/projects`);
+    return response.data;
+  },
+
+  // Linear Integration
+  getLinearIntegration: async (workspaceId: string): Promise<LinearIntegration | null> => {
+    try {
+      const response = await api.get(`/workspaces/${workspaceId}/integrations/linear`);
+      return response.data;
+    } catch {
+      return null;
+    }
+  },
+
+  createLinearIntegration: async (workspaceId: string, data: {
+    api_key: string;
+  }): Promise<LinearIntegration> => {
+    const response = await api.post(`/workspaces/${workspaceId}/integrations/linear`, data);
+    return response.data;
+  },
+
+  testLinearConnection: async (workspaceId: string, data?: {
+    api_key: string;
+  }): Promise<ConnectionTestResult> => {
+    const response = await api.post(`/workspaces/${workspaceId}/integrations/linear/test`, data);
+    return response.data;
+  },
+
+  updateLinearIntegration: async (workspaceId: string, data: {
+    team_mappings?: Record<string, { linear_team_id: string; labels_filter?: string[] }>;
+    status_mappings?: StatusMapping[];
+    field_mappings?: FieldMapping[];
+    sync_enabled?: boolean;
+  }): Promise<LinearIntegration> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/integrations/linear`, data);
+    return response.data;
+  },
+
+  deleteLinearIntegration: async (workspaceId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/integrations/linear`);
+  },
+
+  syncLinear: async (workspaceId: string, teamId?: string): Promise<SyncResult> => {
+    const response = await api.post(`/workspaces/${workspaceId}/integrations/linear/sync`, null, {
+      params: teamId ? { team_id: teamId } : undefined,
+    });
+    return response.data;
+  },
+
+  getLinearStates: async (workspaceId: string): Promise<RemoteStatus[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/integrations/linear/states`);
+    return response.data;
+  },
+
+  getLinearFields: async (workspaceId: string): Promise<RemoteField[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/integrations/linear/fields`);
+    return response.data;
+  },
+
+  getLinearTeams: async (workspaceId: string): Promise<RemoteTeam[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/integrations/linear/teams`);
     return response.data;
   },
 };
