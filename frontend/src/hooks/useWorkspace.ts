@@ -139,7 +139,9 @@ export function useWorkspace() {
 
     // Computed
     hasWorkspaces: (workspaces?.length || 0) > 0,
-    isOwner: currentWorkspace?.owner_id === localStorage.getItem("developer_id"),
+    isOwner: typeof window !== "undefined"
+      ? currentWorkspace?.owner_id === localStorage.getItem("developer_id")
+      : false,
   };
 }
 

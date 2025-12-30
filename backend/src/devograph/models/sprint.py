@@ -1,0 +1,427 @@
+"""Sprint and sprint-related models."""
+
+from datetime import date, datetime
+from typing import TYPE_CHECKING
+from uuid import uuid4
+
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from devograph.core.database import Base
+
+if TYPE_CHECKING:
+    from devograph.models.developer import Developer
+    from devograph.models.team import Team
+    from devograph.models.workspace import Workspace
+
+
+class Sprint(Base):
+    """Sprint model - represents a time-boxed iteration for a team."""
+
+    __tablename__ = "sprints"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    team_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("teams.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Sprint info
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    goal: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Sprint status lifecycle
+    status: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="planning"
+    )  # "planning" | "active" | "review" | "retrospective" | "completed"
+
+    # Sprint dates
+    start_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    end_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    # Capacity and commitment
+    capacity_hours: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    velocity_commitment: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Settings (JSONB for flexibility)
+    settings: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+
+    # Created by
+    created_by_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    # Relationships
+    team: Mapped["Team"] = relationship(
+        "Team",
+        lazy="selectin",
+    )
+    workspace: Mapped["Workspace"] = relationship(
+        "Workspace",
+        lazy="selectin",
+    )
+    created_by: Mapped["Developer | None"] = relationship(
+        "Developer",
+        lazy="selectin",
+    )
+    tasks: Mapped[list["SprintTask"]] = relationship(
+        "SprintTask",
+        back_populates="sprint",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        foreign_keys="SprintTask.sprint_id",
+    )
+    metrics: Mapped[list["SprintMetrics"]] = relationship(
+        "SprintMetrics",
+        back_populates="sprint",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    retrospective: Mapped["SprintRetrospective | None"] = relationship(
+        "SprintRetrospective",
+        back_populates="sprint",
+        uselist=False,
+        lazy="selectin",
+    )
+    planning_sessions: Mapped[list["SprintPlanningSession"]] = relationship(
+        "SprintPlanningSession",
+        back_populates="sprint",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+
+class SprintTask(Base):
+    """Sprint task model - represents a task/issue within a sprint."""
+
+    __tablename__ = "sprint_tasks"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    sprint_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("sprints.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Task source reference
+    source_type: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="manual"
+    )  # "github_issue" | "jira" | "linear" | "manual"
+    source_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    # Task data (cached from source)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    story_points: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    priority: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="medium"
+    )  # "critical" | "high" | "medium" | "low"
+    labels: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
+
+    # Assignment
+    assignee_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    assignment_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    assignment_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    # Status tracking
+    status: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="backlog"
+    )  # "backlog" | "todo" | "in_progress" | "review" | "done"
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Carry-over tracking
+    carried_over_from_sprint_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("sprints.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    # Relationships
+    sprint: Mapped["Sprint"] = relationship(
+        "Sprint",
+        back_populates="tasks",
+        foreign_keys=[sprint_id],
+        lazy="selectin",
+    )
+    assignee: Mapped["Developer | None"] = relationship(
+        "Developer",
+        lazy="selectin",
+    )
+    carried_over_from: Mapped["Sprint | None"] = relationship(
+        "Sprint",
+        foreign_keys=[carried_over_from_sprint_id],
+        lazy="selectin",
+    )
+
+    __table_args__ = (
+        UniqueConstraint("sprint_id", "source_type", "source_id", name="uq_sprint_task_source"),
+    )
+
+
+class SprintMetrics(Base):
+    """Sprint metrics model - daily snapshot of sprint progress."""
+
+    __tablename__ = "sprint_metrics"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    sprint_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("sprints.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    snapshot_date: Mapped[date] = mapped_column(Date, nullable=False)
+
+    # Point metrics
+    total_points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    completed_points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    remaining_points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # Task count metrics
+    total_tasks: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    completed_tasks: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    in_progress_tasks: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    blocked_tasks: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # Burndown values
+    ideal_burndown: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    actual_burndown: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+
+    # Timestamp
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    # Relationships
+    sprint: Mapped["Sprint"] = relationship(
+        "Sprint",
+        back_populates="metrics",
+        lazy="selectin",
+    )
+
+    __table_args__ = (
+        UniqueConstraint("sprint_id", "snapshot_date", name="uq_sprint_metrics_date"),
+    )
+
+
+class TeamVelocity(Base):
+    """Team velocity model - historical velocity tracking per sprint."""
+
+    __tablename__ = "team_velocity"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    team_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("teams.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    sprint_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("sprints.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Velocity metrics
+    committed_points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    completed_points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    carry_over_points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # Derived metrics
+    completion_rate: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    focus_factor: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
+
+    # Timestamp
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    # Relationships
+    team: Mapped["Team"] = relationship("Team", lazy="selectin")
+    sprint: Mapped["Sprint"] = relationship("Sprint", lazy="selectin")
+
+    __table_args__ = (
+        UniqueConstraint("team_id", "sprint_id", name="uq_team_velocity_sprint"),
+    )
+
+
+class SprintPlanningSession(Base):
+    """Sprint planning session model - for real-time collaboration tracking."""
+
+    __tablename__ = "sprint_planning_sessions"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    sprint_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("sprints.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Session status
+    status: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="active"
+    )  # "active" | "paused" | "completed"
+
+    # Session timing
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Participants and decisions (JSONB for flexibility)
+    participants: Mapped[list] = mapped_column(
+        JSONB, default=list, nullable=False
+    )  # [{developer_id, joined_at, role}]
+    decisions_log: Mapped[list] = mapped_column(
+        JSONB, default=list, nullable=False
+    )  # [{action, by, at, details}]
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    # Relationships
+    sprint: Mapped["Sprint"] = relationship(
+        "Sprint",
+        back_populates="planning_sessions",
+        lazy="selectin",
+    )
+
+
+class SprintRetrospective(Base):
+    """Sprint retrospective model - captures team reflections."""
+
+    __tablename__ = "sprint_retrospectives"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    sprint_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("sprints.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+
+    # Retrospective content
+    went_well: Mapped[list] = mapped_column(
+        JSONB, default=list, nullable=False
+    )  # [{id, content, author_id, votes}]
+    to_improve: Mapped[list] = mapped_column(
+        JSONB, default=list, nullable=False
+    )  # [{id, content, author_id, votes}]
+    action_items: Mapped[list] = mapped_column(
+        JSONB, default=list, nullable=False
+    )  # [{id, item, assignee_id, status, due_date}]
+
+    # Team mood
+    team_mood_score: Mapped[float | None] = mapped_column(Float, nullable=True)  # 1-5 scale
+
+    # Additional notes
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    # Relationships
+    sprint: Mapped["Sprint"] = relationship(
+        "Sprint",
+        back_populates="retrospective",
+        lazy="selectin",
+    )
