@@ -1263,3 +1263,340 @@ export const repositoriesApi = {
     return response.data;
   },
 };
+
+// ============================================================================
+// Organization & Team Management Types & API
+// ============================================================================
+
+export interface Workspace {
+  id: string;
+  name: string;
+  slug: string;
+  type: "internal" | "github_linked";
+  description: string | null;
+  avatar_url: string | null;
+  github_org_id: string | null;
+  owner_id: string;
+  member_count: number;
+  team_count: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkspaceListItem {
+  id: string;
+  name: string;
+  slug: string;
+  type: string;
+  avatar_url: string | null;
+  owner_id: string;
+  member_count: number;
+  team_count: number;
+  is_active: boolean;
+}
+
+export interface WorkspaceMember {
+  id: string;
+  workspace_id: string;
+  developer_id: string;
+  developer_name: string | null;
+  developer_email: string | null;
+  developer_avatar_url: string | null;
+  role: "owner" | "admin" | "member" | "viewer";
+  status: "pending" | "active" | "suspended" | "removed";
+  is_billable: boolean;
+  invited_at: string | null;
+  joined_at: string | null;
+  created_at: string;
+}
+
+export interface WorkspaceBillingStatus {
+  workspace_id: string;
+  has_subscription: boolean;
+  current_plan: string | null;
+  status: string | null;
+  total_seats: number;
+  used_seats: number;
+  available_seats: number;
+  price_per_seat_cents: number;
+  next_billing_date: string | null;
+}
+
+export interface Team {
+  id: string;
+  workspace_id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  type: "manual" | "repo_based";
+  source_repository_ids: string[] | null;
+  auto_sync_enabled: boolean;
+  member_count: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeamListItem {
+  id: string;
+  workspace_id: string;
+  name: string;
+  slug: string;
+  type: string;
+  member_count: number;
+  is_active: boolean;
+}
+
+export interface TeamMember {
+  id: string;
+  team_id: string;
+  developer_id: string;
+  developer_name: string | null;
+  developer_email: string | null;
+  developer_avatar_url: string | null;
+  role: "lead" | "member";
+  source: "manual" | "repo_contributor";
+  joined_at: string;
+  created_at: string;
+}
+
+export interface TeamSyncResult {
+  team_id: string;
+  added_members: number;
+  removed_members: number;
+  unchanged_members: number;
+}
+
+export interface TeamProfile {
+  team_id: string;
+  team_name: string;
+  member_count: number;
+  languages: { name: string; average_proficiency: number; developer_count: number; total_commits: number }[];
+  frameworks: { name: string; category: string; developer_count: number }[];
+  domains: { name: string; average_confidence: number; developer_count: number }[];
+  tools: string[];
+  velocity: { merged_prs: number; total_additions: number; total_deletions: number; total_commits: number; period_days: number } | null;
+  commit_distribution: Record<string, { commits: number; percentage: number }> | null;
+}
+
+export interface TeamBusFactor {
+  team_id: string;
+  bus_factor_skills: Record<string, number>;
+  critical_skills: string[];
+}
+
+export interface TeamSkillCoverage {
+  team_id: string;
+  coverage_percentage: number;
+  covered_skills: string[];
+  missing_skills: string[];
+}
+
+// Workspace API
+export const workspaceApi = {
+  list: async (): Promise<WorkspaceListItem[]> => {
+    const response = await api.get("/workspaces");
+    return response.data;
+  },
+
+  get: async (workspaceId: string): Promise<Workspace> => {
+    const response = await api.get(`/workspaces/${workspaceId}`);
+    return response.data;
+  },
+
+  create: async (data: {
+    name: string;
+    type?: string;
+    github_org_id?: string;
+    description?: string;
+  }): Promise<Workspace> => {
+    const response = await api.post("/workspaces", data);
+    return response.data;
+  },
+
+  update: async (workspaceId: string, data: {
+    name?: string;
+    description?: string;
+    avatar_url?: string;
+    settings?: Record<string, unknown>;
+  }): Promise<Workspace> => {
+    const response = await api.patch(`/workspaces/${workspaceId}`, data);
+    return response.data;
+  },
+
+  delete: async (workspaceId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}`);
+  },
+
+  // Members
+  getMembers: async (workspaceId: string, includePending = false): Promise<WorkspaceMember[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/members`, {
+      params: { include_pending: includePending },
+    });
+    return response.data;
+  },
+
+  addMember: async (workspaceId: string, developerId: string, role = "member"): Promise<WorkspaceMember> => {
+    const response = await api.post(`/workspaces/${workspaceId}/members`, {
+      developer_id: developerId,
+      role,
+    });
+    return response.data;
+  },
+
+  inviteMember: async (workspaceId: string, email: string, role = "member"): Promise<WorkspaceMember> => {
+    const response = await api.post(`/workspaces/${workspaceId}/members/invite`, {
+      email,
+      role,
+    });
+    return response.data;
+  },
+
+  updateMemberRole: async (workspaceId: string, developerId: string, role: string): Promise<WorkspaceMember> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/members/${developerId}`, { role });
+    return response.data;
+  },
+
+  removeMember: async (workspaceId: string, developerId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/members/${developerId}`);
+  },
+
+  // GitHub Integration
+  linkGitHub: async (workspaceId: string, githubOrgId: string): Promise<Workspace> => {
+    const response = await api.post(`/workspaces/${workspaceId}/link-github`, {
+      github_org_id: githubOrgId,
+    });
+    return response.data;
+  },
+
+  syncGitHub: async (workspaceId: string): Promise<{ message: string }> => {
+    const response = await api.post(`/workspaces/${workspaceId}/sync-github`);
+    return response.data;
+  },
+
+  // Billing
+  getBillingStatus: async (workspaceId: string): Promise<WorkspaceBillingStatus> => {
+    const response = await api.get(`/workspaces/${workspaceId}/billing`);
+    return response.data;
+  },
+
+  getSeatUsage: async (workspaceId: string): Promise<{
+    total_members: number;
+    billable_seats: number;
+    base_seats: number;
+    additional_seats: number;
+    seats_available: number;
+  }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/billing/seats`);
+    return response.data;
+  },
+};
+
+// Team API (nested under workspace)
+export const teamApi = {
+  list: async (workspaceId: string, includeInactive = false): Promise<TeamListItem[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/teams`, {
+      params: { include_inactive: includeInactive },
+    });
+    return response.data;
+  },
+
+  get: async (workspaceId: string, teamId: string): Promise<Team> => {
+    const response = await api.get(`/workspaces/${workspaceId}/teams/${teamId}`);
+    return response.data;
+  },
+
+  create: async (workspaceId: string, data: {
+    name: string;
+    description?: string;
+    type?: string;
+    source_repository_ids?: string[];
+  }): Promise<Team> => {
+    const response = await api.post(`/workspaces/${workspaceId}/teams`, data);
+    return response.data;
+  },
+
+  update: async (workspaceId: string, teamId: string, data: {
+    name?: string;
+    description?: string;
+    auto_sync_enabled?: boolean;
+    settings?: Record<string, unknown>;
+  }): Promise<Team> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/teams/${teamId}`, data);
+    return response.data;
+  },
+
+  delete: async (workspaceId: string, teamId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/teams/${teamId}`);
+  },
+
+  // Members
+  getMembers: async (workspaceId: string, teamId: string): Promise<TeamMember[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/teams/${teamId}/members`);
+    return response.data;
+  },
+
+  addMember: async (workspaceId: string, teamId: string, developerId: string, role = "member"): Promise<TeamMember> => {
+    const response = await api.post(`/workspaces/${workspaceId}/teams/${teamId}/members`, {
+      developer_id: developerId,
+      role,
+    });
+    return response.data;
+  },
+
+  updateMemberRole: async (workspaceId: string, teamId: string, developerId: string, role: string): Promise<TeamMember> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/teams/${teamId}/members/${developerId}`, { role });
+    return response.data;
+  },
+
+  removeMember: async (workspaceId: string, teamId: string, developerId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/teams/${teamId}/members/${developerId}`);
+  },
+
+  // Team Generation
+  createFromRepository: async (workspaceId: string, data: {
+    repository_id: string;
+    team_name?: string;
+    include_contributors_since_days?: number;
+  }): Promise<Team> => {
+    const response = await api.post(`/workspaces/${workspaceId}/teams/from-repository`, data);
+    return response.data;
+  },
+
+  sync: async (workspaceId: string, teamId: string): Promise<TeamSyncResult> => {
+    const response = await api.post(`/workspaces/${workspaceId}/teams/${teamId}/sync`);
+    return response.data;
+  },
+
+  // Analytics
+  getProfile: async (workspaceId: string, teamId: string): Promise<TeamProfile> => {
+    const response = await api.get(`/workspaces/${workspaceId}/teams/${teamId}/profile`);
+    return response.data;
+  },
+
+  getVelocity: async (workspaceId: string, teamId: string, periodDays = 30): Promise<{
+    merged_prs: number;
+    total_additions: number;
+    total_deletions: number;
+    total_commits: number;
+    period_days: number;
+  }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/teams/${teamId}/velocity`, {
+      params: { period_days: periodDays },
+    });
+    return response.data;
+  },
+
+  getBusFactor: async (workspaceId: string, teamId: string): Promise<TeamBusFactor> => {
+    const response = await api.get(`/workspaces/${workspaceId}/teams/${teamId}/bus-factor`);
+    return response.data;
+  },
+
+  getSkillCoverage: async (workspaceId: string, teamId: string, requiredSkills?: string[]): Promise<TeamSkillCoverage> => {
+    const response = await api.get(`/workspaces/${workspaceId}/teams/${teamId}/skill-coverage`, {
+      params: requiredSkills ? { required_skills: requiredSkills.join(",") } : {},
+    });
+    return response.data;
+  },
+};

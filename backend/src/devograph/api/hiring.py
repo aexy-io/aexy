@@ -1,8 +1,18 @@
 """Hiring intelligence API endpoints."""
 
+import re
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
+
+
+def is_valid_uuid(value: str) -> bool:
+    """Check if a string is a valid UUID."""
+    uuid_pattern = re.compile(
+        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+        re.IGNORECASE
+    )
+    return bool(uuid_pattern.match(value))
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -223,6 +233,10 @@ async def list_hiring_requirements(
     Returns:
         List of hiring requirements.
     """
+    # Return empty list for invalid UUIDs (e.g., "demo-org")
+    if not is_valid_uuid(organization_id):
+        return []
+
     llm_gateway = get_llm_gateway()
     service = HiringIntelligenceService(db, llm_gateway)
 

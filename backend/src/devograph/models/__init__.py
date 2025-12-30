@@ -35,6 +35,15 @@ from devograph.models.repository import (
     DeveloperRepository,
     DeveloperOrganization,
 )
+from devograph.models.workspace import (
+    Workspace,
+    WorkspaceMember,
+    WorkspaceSubscription,
+)
+from devograph.models.team import (
+    Team,
+    TeamMember,
+)
 
 __all__ = [
     # Plan
@@ -76,4 +85,11 @@ __all__ = [
     "Repository",
     "DeveloperRepository",
     "DeveloperOrganization",
+    # Workspace
+    "Workspace",
+    "WorkspaceMember",
+    "WorkspaceSubscription",
+    # Team
+    "Team",
+    "TeamMember",
 ]
