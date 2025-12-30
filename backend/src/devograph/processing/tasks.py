@@ -462,18 +462,19 @@ async def _batch_report_usage() -> dict[str, Any]:
     """Async implementation of batch usage reporting."""
     from datetime import datetime, timezone
 
-    from sqlalchemy import select, func
+    from sqlalchemy import select
 
     from devograph.core.database import async_session_maker
-    from devograph.models.billing import UsageRecord
+    from devograph.models.billing import CustomerBilling, UsageRecord
     from devograph.services.usage_service import UsageService
 
     async with async_session_maker() as db:
-        # Find developers with unreported usage
+        # Find customers with unreported usage and get their developer_ids
         result = await db.execute(
-            select(UsageRecord.developer_id)
+            select(CustomerBilling.developer_id)
+            .join(UsageRecord, UsageRecord.customer_id == CustomerBilling.id)
             .where(UsageRecord.reported_to_stripe == False)
-            .group_by(UsageRecord.developer_id)
+            .group_by(CustomerBilling.developer_id)
         )
         developer_ids = [row[0] for row in result.fetchall()]
 

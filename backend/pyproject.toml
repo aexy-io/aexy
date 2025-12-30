@@ -14,7 +14,7 @@ dependencies = [
     "sqlalchemy>=2.0.0",
     "asyncpg>=0.29.0",
     "alembic>=1.13.0",
-    "pydantic>=2.5.0",
+    "pydantic[email]>=2.5.0",
     "pydantic-settings>=2.1.0",
     "httpx>=0.26.0",
     "python-jose[cryptography]>=3.3.0",
@@ -25,6 +25,7 @@ dependencies = [
     # Caching and job queue
     "redis>=5.0.0",
     "celery>=5.3.0",
+    "flower>=2.0.0",
     # Scheduling
     "apscheduler>=3.10.0",
     # Payments
