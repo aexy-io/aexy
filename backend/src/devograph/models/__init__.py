@@ -56,6 +56,16 @@ from devograph.models.sprint import (
     WorkspaceTaskStatus,
     WorkspaceCustomField,
 )
+from devograph.models.learning_activity import (
+    LearningActivityLog,
+    LearningTimeSession,
+)
+from devograph.models.gamification import (
+    DeveloperGamification,
+    Badge,
+    DeveloperBadge,
+    PREDEFINED_BADGES,
+)
 
 __all__ = [
     # Plan
@@ -116,4 +126,12 @@ __all__ = [
     # Task Configuration
     "WorkspaceTaskStatus",
     "WorkspaceCustomField",
+    # Learning Activity
+    "LearningActivityLog",
+    "LearningTimeSession",
+    # Gamification
+    "DeveloperGamification",
+    "Badge",
+    "DeveloperBadge",
+    "PREDEFINED_BADGES",
 ]

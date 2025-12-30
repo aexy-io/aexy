@@ -462,6 +462,108 @@ export interface StretchAssignment {
   challenge_level: string;
 }
 
+// Learning Activity types
+export type ActivityType = "course" | "task" | "reading" | "project" | "pairing" | "video";
+export type ActivitySource = "youtube" | "coursera" | "udemy" | "pluralsight" | "internal" | "manual";
+export type ActivityStatus = "not_started" | "in_progress" | "completed" | "skipped";
+
+export interface TimeSession {
+  id: string;
+  activity_log_id: string;
+  developer_id: string;
+  started_at: string;
+  ended_at: string | null;
+  duration_minutes: number;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface LearningActivityLog {
+  id: string;
+  developer_id: string;
+  learning_path_id: string | null;
+  milestone_id: string | null;
+  activity_type: ActivityType;
+  title: string;
+  description: string | null;
+  source: ActivitySource;
+  external_id: string | null;
+  external_url: string | null;
+  thumbnail_url: string | null;
+  status: ActivityStatus;
+  progress_percentage: number;
+  estimated_duration_minutes: number | null;
+  actual_time_spent_minutes: number;
+  started_at: string | null;
+  completed_at: string | null;
+  points_earned: number;
+  notes: string | null;
+  rating: number | null;
+  tags: string[];
+  skill_tags: string[];
+  extra_data: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LearningActivityLogWithSessions extends LearningActivityLog {
+  time_sessions: TimeSession[];
+}
+
+export interface ActivityStats {
+  total_activities: number;
+  completed_activities: number;
+  in_progress_activities: number;
+  total_time_spent_minutes: number;
+  total_points_earned: number;
+  average_rating: number | null;
+  activities_by_type: Record<string, number>;
+  activities_by_source: Record<string, number>;
+  completion_rate: number;
+}
+
+export interface DailyActivitySummary {
+  date: string;
+  activities_count: number;
+  time_spent_minutes: number;
+  points_earned: number;
+}
+
+export interface ActivityHistory {
+  activities: LearningActivityLog[];
+  total: number;
+  page: number;
+  page_size: number;
+  has_more: boolean;
+}
+
+export interface CreateActivityData {
+  activity_type: ActivityType;
+  title: string;
+  description?: string;
+  source: ActivitySource;
+  external_id?: string;
+  external_url?: string;
+  thumbnail_url?: string;
+  estimated_duration_minutes?: number;
+  learning_path_id?: string;
+  milestone_id?: string;
+  tags?: string[];
+  skill_tags?: string[];
+  extra_data?: Record<string, unknown>;
+}
+
+export interface UpdateActivityData {
+  title?: string;
+  description?: string;
+  status?: ActivityStatus;
+  progress_percentage?: number;
+  notes?: string;
+  rating?: number;
+  tags?: string[];
+  skill_tags?: string[];
+}
+
 export interface TeamSkillGapDetail {
   skill: string;
   current_coverage: number;
@@ -640,6 +742,220 @@ export const learningApi = {
 
   resumePath: async (pathId: string) => {
     const response = await api.post(`/learning/paths/${pathId}/resume`);
+    return response.data;
+  },
+};
+
+// Learning Activity API
+// External Course types
+export interface ExternalCourse {
+  provider: string;
+  external_id: string;
+  title: string;
+  description: string | null;
+  url: string;
+  thumbnail_url: string | null;
+  instructor: string | null;
+  duration_minutes: number | null;
+  rating: number | null;
+  review_count: number | null;
+  price: number | null;
+  is_free: boolean;
+  skill_tags: string[];
+  difficulty: string | null;
+}
+
+export interface CourseSearchResponse {
+  courses: ExternalCourse[];
+  total_results: number;
+  providers_searched: string[];
+}
+
+export interface CourseImportRequest {
+  course: ExternalCourse;
+  learning_path_id?: string;
+  milestone_id?: string;
+}
+
+// Course API
+export const courseApi = {
+  searchCourses: async (
+    skill: string,
+    providers: string = "youtube",
+    maxResults: number = 10
+  ): Promise<CourseSearchResponse> => {
+    const response = await api.get("/learning/courses/search", {
+      params: { skill, providers, max_results: maxResults },
+    });
+    return response.data;
+  },
+
+  importCourse: async (
+    developerId: string,
+    course: ExternalCourse,
+    learningPathId?: string,
+    milestoneId?: string
+  ): Promise<{ message: string; activity_id: string; title: string }> => {
+    const response = await api.post(
+      "/learning/courses/import",
+      {
+        course,
+        learning_path_id: learningPathId,
+        milestone_id: milestoneId,
+      },
+      { params: { developer_id: developerId } }
+    );
+    return response.data;
+  },
+
+  getRecommendedCourses: async (
+    pathId: string
+  ): Promise<{ path_id: string; recommendations: Record<string, ExternalCourse[]> }> => {
+    const response = await api.get("/learning/courses/recommended", {
+      params: { path_id: pathId },
+    });
+    return response.data;
+  },
+};
+
+export const learningActivityApi = {
+  // Activity CRUD
+  createActivity: async (developerId: string, data: CreateActivityData): Promise<LearningActivityLog> => {
+    const response = await api.post("/learning/activities", data, {
+      params: { developer_id: developerId },
+    });
+    return response.data;
+  },
+
+  listActivities: async (
+    developerId: string,
+    options?: {
+      activity_type?: ActivityType;
+      source?: ActivitySource;
+      status?: ActivityStatus;
+      learning_path_id?: string;
+      milestone_id?: string;
+      page?: number;
+      page_size?: number;
+    }
+  ): Promise<ActivityHistory> => {
+    const response = await api.get("/learning/activities", {
+      params: { developer_id: developerId, ...options },
+    });
+    return response.data;
+  },
+
+  getActivity: async (activityId: string, developerId: string): Promise<LearningActivityLogWithSessions> => {
+    const response = await api.get(`/learning/activities/${activityId}`, {
+      params: { developer_id: developerId },
+    });
+    return response.data;
+  },
+
+  updateActivity: async (
+    activityId: string,
+    developerId: string,
+    data: UpdateActivityData
+  ): Promise<LearningActivityLog> => {
+    const response = await api.patch(`/learning/activities/${activityId}`, data, {
+      params: { developer_id: developerId },
+    });
+    return response.data;
+  },
+
+  deleteActivity: async (activityId: string, developerId: string): Promise<void> => {
+    await api.delete(`/learning/activities/${activityId}`, {
+      params: { developer_id: developerId },
+    });
+  },
+
+  // Activity actions
+  startActivity: async (activityId: string, developerId: string): Promise<LearningActivityLog> => {
+    const response = await api.post(`/learning/activities/${activityId}/start`, null, {
+      params: { developer_id: developerId },
+    });
+    return response.data;
+  },
+
+  updateProgress: async (
+    activityId: string,
+    developerId: string,
+    progress_percentage: number,
+    notes?: string
+  ): Promise<LearningActivityLog> => {
+    const response = await api.post(
+      `/learning/activities/${activityId}/progress`,
+      { progress_percentage, notes },
+      { params: { developer_id: developerId } }
+    );
+    return response.data;
+  },
+
+  completeActivity: async (
+    activityId: string,
+    developerId: string,
+    data?: { rating?: number; notes?: string }
+  ): Promise<LearningActivityLog> => {
+    const response = await api.post(`/learning/activities/${activityId}/complete`, data || {}, {
+      params: { developer_id: developerId },
+    });
+    return response.data;
+  },
+
+  // Time sessions
+  startTimeSession: async (
+    activityId: string,
+    developerId: string,
+    notes?: string
+  ): Promise<TimeSession> => {
+    const response = await api.post(
+      `/learning/activities/${activityId}/sessions/start`,
+      { notes },
+      { params: { developer_id: developerId } }
+    );
+    return response.data;
+  },
+
+  endTimeSession: async (
+    activityId: string,
+    developerId: string,
+    notes?: string
+  ): Promise<TimeSession> => {
+    const response = await api.post(
+      `/learning/activities/${activityId}/sessions/end`,
+      { notes },
+      { params: { developer_id: developerId } }
+    );
+    return response.data;
+  },
+
+  // Statistics
+  getStats: async (developerId: string): Promise<ActivityStats> => {
+    const response = await api.get("/learning/activities/stats", {
+      params: { developer_id: developerId },
+    });
+    return response.data;
+  },
+
+  getDailySummaries: async (developerId: string, days?: number): Promise<DailyActivitySummary[]> => {
+    const response = await api.get("/learning/activities/daily-summaries", {
+      params: { developer_id: developerId, days: days || 30 },
+    });
+    return response.data;
+  },
+
+  // Path/milestone specific
+  getActivitiesForPath: async (pathId: string, developerId: string): Promise<LearningActivityLog[]> => {
+    const response = await api.get(`/learning/activities/by-path/${pathId}`, {
+      params: { developer_id: developerId },
+    });
+    return response.data;
+  },
+
+  getActivitiesForMilestone: async (milestoneId: string, developerId: string): Promise<LearningActivityLog[]> => {
+    const response = await api.get(`/learning/activities/by-milestone/${milestoneId}`, {
+      params: { developer_id: developerId },
+    });
     return response.data;
   },
 };
@@ -2243,6 +2559,126 @@ export interface SyncResult {
   error_count: number;
   errors: string[];
 }
+
+// ============================================================================
+// Gamification Types & API
+// ============================================================================
+
+export type BadgeCategory = "achievement" | "streak" | "skill" | "milestone";
+export type BadgeRarity = "common" | "rare" | "epic" | "legendary";
+
+export interface Badge {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  icon: string;
+  category: BadgeCategory;
+  rarity: BadgeRarity;
+  points_value: number;
+  unlock_conditions: Record<string, unknown>;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface EarnedBadge {
+  id: string;
+  badge: Badge;
+  earned_at: string;
+  context: Record<string, unknown> | null;
+}
+
+export interface GamificationProfile {
+  id: string;
+  developer_id: string;
+  total_points: number;
+  level: number;
+  level_progress_points: number;
+  current_streak_days: number;
+  longest_streak_days: number;
+  last_activity_date: string | null;
+  activities_completed: number;
+  paths_completed: number;
+  milestones_completed: number;
+  total_learning_minutes: number;
+  created_at: string;
+  updated_at: string;
+  earned_badges: EarnedBadge[];
+  recent_badges: EarnedBadge[];
+}
+
+export interface LevelProgress {
+  current_level: number;
+  current_level_name: string;
+  points_in_level: number;
+  points_for_next_level: number;
+  progress_percentage: number;
+  next_level: number | null;
+}
+
+export interface StreakInfo {
+  current_streak: number;
+  longest_streak: number;
+  last_activity_date: string | null;
+  is_active_today: boolean;
+  streak_at_risk: boolean;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  developer_id: string;
+  developer_name: string | null;
+  developer_avatar: string | null;
+  points: number;
+  level: number;
+  streak_days: number;
+}
+
+export interface Leaderboard {
+  scope: string;
+  period: string;
+  entries: LeaderboardEntry[];
+  user_rank: number | null;
+  total_participants: number;
+}
+
+// Gamification API
+export const gamificationApi = {
+  getProfile: async (): Promise<GamificationProfile> => {
+    const response = await api.get("/gamification/profile");
+    return response.data;
+  },
+
+  getAllBadges: async (): Promise<Badge[]> => {
+    const response = await api.get("/gamification/badges");
+    return response.data;
+  },
+
+  getEarnedBadges: async (): Promise<EarnedBadge[]> => {
+    const response = await api.get("/gamification/badges/earned");
+    return response.data;
+  },
+
+  getStreak: async (): Promise<StreakInfo> => {
+    const response = await api.get("/gamification/streak");
+    return response.data;
+  },
+
+  getLevelProgress: async (): Promise<LevelProgress> => {
+    const response = await api.get("/gamification/level-progress");
+    return response.data;
+  },
+
+  checkBadges: async (): Promise<Badge[]> => {
+    const response = await api.post("/gamification/badges/check");
+    return response.data;
+  },
+
+  seedBadges: async (): Promise<{ message: string; badges_created: number }> => {
+    const response = await api.post("/gamification/badges/seed");
+    return response.data;
+  },
+};
 
 export const integrationsApi = {
   // Jira Integration

@@ -15,6 +15,8 @@ if TYPE_CHECKING:
     from devograph.models.analytics import CustomReport, ExportJob, PredictiveInsight
     from devograph.models.billing import CustomerBilling
     from devograph.models.career import LearningPath
+    from devograph.models.gamification import DeveloperGamification
+    from devograph.models.learning_activity import LearningActivityLog
     from devograph.models.plan import Plan
     from devograph.models.repository import DeveloperOrganization, DeveloperRepository
 
@@ -96,6 +98,17 @@ class Developer(Base):
     learning_paths: Mapped[list["LearningPath"]] = relationship(
         "LearningPath",
         back_populates="developer",
+    )
+    activity_logs: Mapped[list["LearningActivityLog"]] = relationship(
+        "LearningActivityLog",
+        back_populates="developer",
+        cascade="all, delete-orphan",
+    )
+    gamification: Mapped["DeveloperGamification | None"] = relationship(
+        "DeveloperGamification",
+        back_populates="developer",
+        uselist=False,
+        cascade="all, delete-orphan",
     )
     custom_reports: Mapped[list["CustomReport"]] = relationship(
         "CustomReport",

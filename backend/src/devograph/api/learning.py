@@ -556,3 +556,148 @@ async def abandon_learning_path(
         )
 
     return {"status": "abandoned", "path_id": path_id}
+
+
+# Course Search Endpoints
+from devograph.schemas.external_course import (
+    CourseSearchResponse,
+    CourseImportRequest,
+)
+from devograph.services.course_provider_service import CourseProviderService
+from devograph.services.learning_activity_service import LearningActivityService
+from devograph.schemas.learning_activity import ActivityLogCreate, ActivityType, ActivitySource
+
+
+@router.get("/courses/search", response_model=CourseSearchResponse)
+async def search_courses(
+    skill: str,
+    providers: str = "youtube",
+    max_results: int = 10,
+):
+    """Search for external courses by skill.
+
+    Args:
+        skill: Skill or topic to search for.
+        providers: Comma-separated list of providers (e.g., "youtube,coursera").
+        max_results: Maximum number of results per provider.
+
+    Returns:
+        List of matching courses.
+    """
+    provider_list = [p.strip() for p in providers.split(",")]
+
+    service = CourseProviderService()
+    courses = await service.search_courses(
+        skill_name=skill,
+        providers=provider_list,
+        max_results=max_results,
+    )
+
+    return CourseSearchResponse(
+        courses=courses,
+        total_results=len(courses),
+        providers_searched=provider_list,
+    )
+
+
+@router.post("/courses/import", status_code=status.HTTP_201_CREATED)
+async def import_course_as_activity(
+    data: CourseImportRequest,
+    developer_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Import an external course as a learning activity.
+
+    Args:
+        data: Course import request with course details.
+        developer_id: Developer UUID.
+        db: Database session.
+
+    Returns:
+        Created activity.
+    """
+    course = data.course
+
+    # Map provider to activity source
+    source_map = {
+        "youtube": ActivitySource.YOUTUBE,
+        "coursera": ActivitySource.COURSERA,
+        "udemy": ActivitySource.UDEMY,
+        "pluralsight": ActivitySource.PLURALSIGHT,
+    }
+    activity_source = source_map.get(course.provider, ActivitySource.MANUAL)
+
+    # Determine activity type based on provider
+    activity_type = ActivityType.VIDEO if course.provider == "youtube" else ActivityType.COURSE
+
+    activity_data = ActivityLogCreate(
+        activity_type=activity_type,
+        title=course.title,
+        description=course.description,
+        source=activity_source,
+        external_id=course.external_id,
+        external_url=course.url,
+        thumbnail_url=course.thumbnail_url,
+        estimated_duration_minutes=course.duration_minutes,
+        learning_path_id=data.learning_path_id,
+        milestone_id=data.milestone_id,
+        tags=[],
+        skill_tags=course.skill_tags,
+        extra_data={
+            "provider": course.provider,
+            "instructor": course.instructor,
+            "is_free": course.is_free,
+            "difficulty": course.difficulty,
+        },
+    )
+
+    service = LearningActivityService(db)
+    activity = await service.create_activity(developer_id, activity_data)
+
+    return {
+        "message": "Course imported as activity",
+        "activity_id": str(activity.id),
+        "title": activity.title,
+    }
+
+
+@router.get("/courses/recommended")
+async def get_recommended_courses(
+    path_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get recommended courses based on learning path skill gaps.
+
+    Args:
+        path_id: Learning path UUID.
+        db: Database session.
+
+    Returns:
+        List of recommended courses for each skill gap.
+    """
+    llm_gateway = get_llm_gateway()
+    path_service = LearningPathService(db, llm_gateway)
+
+    path = await path_service.get_learning_path(path_id)
+    if not path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Learning path not found",
+        )
+
+    # Get courses for each skill gap
+    course_service = CourseProviderService()
+    recommendations = {}
+
+    for skill_name in path.skill_gaps.keys():
+        courses = await course_service.search_courses(
+            skill_name=skill_name,
+            providers=["youtube"],
+            max_results=3,
+        )
+        recommendations[skill_name] = [c.model_dump() for c in courses]
+
+    return {
+        "path_id": path_id,
+        "recommendations": recommendations,
+    }
