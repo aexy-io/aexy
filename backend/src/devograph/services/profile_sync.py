@@ -110,7 +110,7 @@ class ProfileSyncService:
     ) -> dict[str, Any]:
         """Build skill fingerprint from activity."""
         languages = self._aggregate_languages(commits)
-        domains = self._aggregate_domains(pull_requests)
+        domains = self._aggregate_domains(commits, pull_requests)
         frameworks = self._detect_frameworks(commits, pull_requests)
 
         return {
@@ -163,7 +163,9 @@ class ProfileSyncService:
         for lang, commit_count in language_commits.items():
             lines = language_lines.get(lang, 0)
 
-            # Calculate proficiency score
+            # Calculate proficiency score (0-100 scale)
+            # Weighted: 60% based on commit ratio, 40% based on lines ratio
+            # Plus bonus for absolute commit count (max +10)
             commit_ratio = commit_count / total_commits
             lines_ratio = lines / total_lines if total_lines > 0 else 0
             score = (commit_ratio * 0.6 + lines_ratio * 0.4) * 100
@@ -196,13 +198,78 @@ class ProfileSyncService:
         skills.sort(key=lambda x: x["proficiency_score"], reverse=True)
         return skills
 
-    def _aggregate_domains(self, pull_requests: list[PullRequest]) -> list[dict[str, Any]]:
-        """Aggregate domain expertise from PRs."""
-        if not pull_requests:
-            return []
-
+    def _aggregate_domains(
+        self,
+        commits: list[Commit],
+        pull_requests: list[PullRequest],
+    ) -> list[dict[str, Any]]:
+        """Aggregate domain expertise from commits and PRs."""
         domain_counts: Counter[str] = Counter()
 
+        # Domain indicators from file types
+        file_type_domains = {
+            # Frontend
+            "tsx": "Frontend", "jsx": "Frontend", "vue": "Frontend",
+            "svelte": "Frontend", "css": "Frontend", "scss": "Frontend",
+            "html": "Frontend",
+            # Backend
+            "py": "Backend", "go": "Backend", "java": "Backend",
+            "rb": "Backend", "php": "Backend", "cs": "Backend",
+            # API
+            "graphql": "API Development", "proto": "API Development",
+            # DevOps
+            "dockerfile": "DevOps", "tf": "DevOps", "yaml": "DevOps",
+            "yml": "DevOps", "sh": "DevOps",
+            # Database
+            "sql": "Database", "prisma": "Database",
+            # Testing
+            "test": "Testing", "spec": "Testing",
+            # Mobile
+            "swift": "Mobile", "kt": "Mobile",
+            # Data
+            "ipynb": "Data Science", "csv": "Data Science",
+        }
+
+        # Check file types from commits
+        for commit in commits:
+            file_types = commit.file_types or []
+            for ft in file_types:
+                ft_lower = ft.lower()
+                if ft_lower in file_type_domains:
+                    domain_counts[file_type_domains[ft_lower]] += 1
+
+        # Domain keywords in commit messages
+        domain_keywords = {
+            "api": "API Development",
+            "endpoint": "API Development",
+            "rest": "API Development",
+            "graphql": "API Development",
+            "frontend": "Frontend",
+            "ui": "Frontend",
+            "component": "Frontend",
+            "backend": "Backend",
+            "server": "Backend",
+            "database": "Database",
+            "migration": "Database",
+            "schema": "Database",
+            "test": "Testing",
+            "spec": "Testing",
+            "deploy": "DevOps",
+            "ci": "DevOps",
+            "docker": "DevOps",
+            "kubernetes": "DevOps",
+            "auth": "Security",
+            "security": "Security",
+            "encrypt": "Security",
+        }
+
+        for commit in commits:
+            message_lower = (commit.message or "").lower()
+            for keyword, domain in domain_keywords.items():
+                if keyword in message_lower:
+                    domain_counts[domain] += 1
+
+        # Also check PR detected skills
         for pr in pull_requests:
             skills = pr.detected_skills or []
             for skill in skills:
@@ -214,6 +281,7 @@ class ProfileSyncService:
 
         domains = []
         for domain, count in domain_counts.most_common(5):
+            # Confidence score (0-100 scale) based on indicator count
             confidence = min(100, (count / total) * 100 + count * 5)
             domains.append({
                 "name": domain,
@@ -227,9 +295,114 @@ class ProfileSyncService:
         commits: list[Commit],
         pull_requests: list[PullRequest],
     ) -> list[dict[str, Any]]:
-        """Detect frameworks from activity."""
-        # Placeholder - would need file content analysis
-        return []
+        """Detect frameworks from activity based on file types and patterns."""
+        framework_indicators: Counter[str] = Counter()
+
+        # Framework to category mapping
+        framework_categories = {
+            "React": "web",
+            "TypeScript": "language",
+            "Vue.js": "web",
+            "Svelte": "web",
+            "Astro": "web",
+            "Angular": "web",
+            "Next.js": "web",
+            "Nuxt.js": "web",
+            "Express.js": "web",
+            "FastAPI": "web",
+            "Django": "web",
+            "Flask": "web",
+            "Spring": "web",
+            "Ruby on Rails": "web",
+            "Laravel": "web",
+            "NestJS": "web",
+            "Prisma": "data",
+            "GraphQL": "api",
+            "gRPC/Protobuf": "api",
+            "Docker": "devops",
+            "Kubernetes": "devops",
+            "Terraform": "devops",
+            "YAML Config": "config",
+            "Tailwind CSS": "web",
+            "Jest": "testing",
+            "pytest": "testing",
+            "Cypress": "testing",
+        }
+
+        # File type to framework mapping
+        file_type_frameworks = {
+            "tsx": ["React", "TypeScript"],
+            "jsx": ["React"],
+            "vue": ["Vue.js"],
+            "svelte": ["Svelte"],
+            "astro": ["Astro"],
+            "prisma": ["Prisma"],
+            "graphql": ["GraphQL"],
+            "proto": ["gRPC/Protobuf"],
+            "dockerfile": ["Docker"],
+            "tf": ["Terraform"],
+            "yaml": ["YAML Config"],
+            "yml": ["YAML Config"],
+        }
+
+        # Check file types from commits
+        for commit in commits:
+            file_types = commit.file_types or []
+            for ft in file_types:
+                ft_lower = ft.lower()
+                if ft_lower in file_type_frameworks:
+                    for fw in file_type_frameworks[ft_lower]:
+                        framework_indicators[fw] += 1
+
+        # Check commit messages for framework mentions
+        framework_keywords = {
+            "react": "React",
+            "vue": "Vue.js",
+            "angular": "Angular",
+            "next": "Next.js",
+            "nuxt": "Nuxt.js",
+            "express": "Express.js",
+            "fastapi": "FastAPI",
+            "django": "Django",
+            "flask": "Flask",
+            "spring": "Spring",
+            "rails": "Ruby on Rails",
+            "laravel": "Laravel",
+            "nestjs": "NestJS",
+            "graphql": "GraphQL",
+            "prisma": "Prisma",
+            "docker": "Docker",
+            "kubernetes": "Kubernetes",
+            "terraform": "Terraform",
+            "tailwind": "Tailwind CSS",
+            "jest": "Jest",
+            "pytest": "pytest",
+            "cypress": "Cypress",
+        }
+
+        for commit in commits:
+            message_lower = (commit.message or "").lower()
+            for keyword, framework in framework_keywords.items():
+                if keyword in message_lower:
+                    framework_indicators[framework] += 1
+
+        # Build framework list
+        total = sum(framework_indicators.values())
+        if total == 0:
+            return []
+
+        frameworks = []
+        for fw, count in framework_indicators.most_common(10):
+            # Proficiency score (0-100 scale) based on indicator count
+            proficiency = min(100, (count / total) * 100 + count * 2)
+            frameworks.append({
+                "name": fw,
+                "category": framework_categories.get(fw, "other"),
+                "proficiency_score": round(proficiency, 1),
+                "usage_count": count,
+            })
+
+        return frameworks
 
     def _analyze_work_patterns(
         self,

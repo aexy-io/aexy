@@ -144,10 +144,13 @@ class SyncService:
                 connection = result.scalar_one_or_none()
                 github_username = connection.github_username if connection else None
 
+                # Get repo language for tagging commits
+                repo_language = repo.language if hasattr(repo, 'language') else None
+
                 async with GitHubService(access_token=access_token) as gh:
                     # Sync commits
                     commits_synced = await self._sync_commits_with_session(
-                        db, gh, owner, repo_name, developer_id, repository_id, github_username
+                        db, gh, owner, repo_name, developer_id, repository_id, github_username, repo_language
                     )
 
                     # Sync PRs
@@ -183,6 +186,16 @@ class SyncService:
                     f"{commits_synced} commits, {prs_synced} PRs, {reviews_synced} reviews"
                 )
 
+                # Trigger profile sync to update skill fingerprint
+                try:
+                    from devograph.services.profile_sync import ProfileSyncService
+                    profile_sync = ProfileSyncService()
+                    await profile_sync.sync_developer_profile(developer_id, db)
+                    await db.commit()
+                    logger.info(f"Profile sync complete for developer {developer_id}")
+                except Exception as profile_error:
+                    logger.warning(f"Profile sync failed: {profile_error}")
+
             except Exception as e:
                 logger.error(f"Sync failed for repository {repository_id}: {e}")
 
@@ -212,6 +225,7 @@ class SyncService:
         developer_id: str,
         repository_id: str,
         github_username: str | None,
+        repo_language: str | None = None,
     ) -> int:
         """Sync commits from repository."""
         synced = 0
@@ -239,8 +253,32 @@ class SyncService:
                     try:
                         details = await gh.get_commit_details(owner, repo, commit_data["sha"])
                         stats = details.get("stats", {})
+                        files = details.get("files", [])
                     except GitHubAPIError:
                         stats = {}
+                        files = []
+
+                    # Extract file types from filenames
+                    file_types = set()
+                    detected_languages = set()
+                    if repo_language:
+                        detected_languages.add(repo_language)
+
+                    for file in files:
+                        filename = file.get("filename", "")
+                        if "." in filename:
+                            ext = filename.rsplit(".", 1)[-1].lower()
+                            file_types.add(ext)
+                            # Map common extensions to languages
+                            ext_to_lang = {
+                                "py": "Python", "js": "JavaScript", "ts": "TypeScript",
+                                "tsx": "TypeScript", "jsx": "JavaScript", "java": "Java",
+                                "go": "Go", "rs": "Rust", "rb": "Ruby", "php": "PHP",
+                                "cs": "C#", "cpp": "C++", "c": "C", "swift": "Swift",
+                                "kt": "Kotlin", "scala": "Scala", "vue": "Vue",
+                            }
+                            if ext in ext_to_lang:
+                                detected_languages.add(ext_to_lang[ext])
 
                     commit = Commit(
                         id=str(uuid4()),
@@ -250,7 +288,9 @@ class SyncService:
                         message=commit_data["commit"]["message"][:500] if commit_data["commit"]["message"] else "",
                         additions=stats.get("additions", 0),
                         deletions=stats.get("deletions", 0),
-                        files_changed=len(details.get("files", [])) if "files" in details else 0,
+                        files_changed=len(files),
+                        languages=list(detected_languages) if detected_languages else None,
+                        file_types=list(file_types) if file_types else None,
                         committed_at=datetime.fromisoformat(
                             commit_data["commit"]["committer"]["date"].replace("Z", "+00:00")
                         ),
@@ -315,10 +355,10 @@ class SyncService:
                         state=pr_data["state"],
                         additions=pr_data.get("additions", 0),
                         deletions=pr_data.get("deletions", 0),
-                        changed_files=pr_data.get("changed_files", 0),
-                        commits=pr_data.get("commits", 0),
-                        comments=pr_data.get("comments", 0) + pr_data.get("review_comments", 0),
-                        created_at=datetime.fromisoformat(
+                        files_changed=pr_data.get("changed_files", 0),
+                        commits_count=pr_data.get("commits", 0),
+                        comments_count=pr_data.get("comments", 0) + pr_data.get("review_comments", 0),
+                        created_at_github=datetime.fromisoformat(
                             pr_data["created_at"].replace("Z", "+00:00")
                         ),
                         merged_at=datetime.fromisoformat(

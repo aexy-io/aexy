@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -195,12 +195,9 @@ export default function RepositorySettingsPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [installationStatus, setInstallationStatus] = useState<InstallationStatus | null>(null);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async (isPolling = false) => {
     try {
       const instStatus = await repositoriesApi.getInstallationStatus();
       setInstallationStatus(instStatus);
@@ -216,9 +213,37 @@ export default function RepositorySettingsPage() {
     } catch (error) {
       console.error("Failed to fetch data:", error);
     } finally {
-      setLoading(false);
+      if (!isPolling) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Auto-poll when repos are syncing
+  useEffect(() => {
+    const hasSyncingRepos = repositories.some(r => r.sync_status === "syncing");
+
+    if (hasSyncingRepos && !pollingRef.current) {
+      pollingRef.current = setInterval(() => {
+        fetchData(true);
+      }, 3000); // Poll every 3 seconds
+    } else if (!hasSyncingRepos && pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [repositories, fetchData]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
