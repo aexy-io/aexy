@@ -144,7 +144,7 @@ class Settings(BaseSettings):
     # JWT
     secret_key: str = "dev-secret-key-change-in-production"
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
+    access_token_expire_minutes: int = 10080  # 7 days for development
 
     # GitHub API
     github_api_base_url: str = "https://api.github.com"

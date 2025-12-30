@@ -406,10 +406,10 @@ async def _sync_pull_requests(
                     state=pr_data["state"],
                     additions=pr_data.get("additions", 0),
                     deletions=pr_data.get("deletions", 0),
-                    changed_files=pr_data.get("changed_files", 0),
-                    commits=pr_data.get("commits", 0),
-                    comments=pr_data.get("comments", 0) + pr_data.get("review_comments", 0),
-                    created_at=pr_created,
+                    files_changed=pr_data.get("changed_files", 0),
+                    commits_count=pr_data.get("commits", 0),
+                    comments_count=pr_data.get("comments", 0) + pr_data.get("review_comments", 0),
+                    created_at_github=pr_created,
                     merged_at=datetime.fromisoformat(
                         pr_data["merged_at"].replace("Z", "+00:00")
                     ) if pr_data.get("merged_at") else None,

@@ -12,6 +12,7 @@ import { InsightsCard } from "@/components/InsightsCard";
 import { GrowthTrajectoryCard } from "@/components/GrowthTrajectoryCard";
 import { TaskMatcherCard } from "@/components/TaskMatcherCard";
 import { PeerBenchmarkCard } from "@/components/PeerBenchmarkCard";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 export default function DashboardPage() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
@@ -222,9 +223,11 @@ export default function DashboardPage() {
                   <div key={lang.name}>
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-white">{lang.name}</span>
-                      <span className="text-slate-400">
-                        {lang.proficiency_score}%
-                      </span>
+                      <Tooltip content={`Score: ${lang.proficiency_score}/100 based on commits & lines of code`}>
+                        <span className="text-slate-400 cursor-help">
+                          {lang.proficiency_score}
+                        </span>
+                      </Tooltip>
                     </div>
                     <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
                       <div
@@ -261,12 +264,17 @@ export default function DashboardPage() {
               {skillFingerprint?.domains?.length ? (
                 <div className="flex flex-wrap gap-2">
                   {skillFingerprint.domains.map((domain) => (
-                    <span
+                    <Tooltip
                       key={domain.name}
-                      className="bg-slate-700 text-slate-300 px-3 py-1 rounded-full text-sm"
+                      content={`Score: ${domain.confidence_score}/100 based on file types & commits`}
                     >
-                      {domain.name.replace("_", " ")}
-                    </span>
+                      <span className="bg-slate-700 text-slate-300 px-3 py-1 rounded-full text-sm cursor-help">
+                        {domain.name.replace("_", " ")}{" "}
+                        <span className="text-slate-500">
+                          {domain.confidence_score}
+                        </span>
+                      </span>
+                    </Tooltip>
                   ))}
                 </div>
               ) : (
@@ -282,12 +290,17 @@ export default function DashboardPage() {
               {skillFingerprint?.frameworks?.length ? (
                 <div className="flex flex-wrap gap-2">
                   {skillFingerprint.frameworks.map((fw) => (
-                    <span
+                    <Tooltip
                       key={fw.name}
-                      className="bg-primary-900/50 text-primary-300 px-3 py-1 rounded-full text-sm"
+                      content={`Score: ${fw.proficiency_score}/100 | ${fw.category} | ${fw.usage_count} uses`}
                     >
-                      {fw.name}
-                    </span>
+                      <span className="bg-primary-900/50 text-primary-300 px-3 py-1 rounded-full text-sm cursor-help">
+                        {fw.name}{" "}
+                        <span className="text-primary-400/60">
+                          {fw.proficiency_score}
+                        </span>
+                      </span>
+                    </Tooltip>
                   ))}
                 </div>
               ) : (

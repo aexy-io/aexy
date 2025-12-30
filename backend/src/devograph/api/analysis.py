@@ -175,15 +175,34 @@ async def refresh_developer_analysis(
 
     This will:
     1. Fetch the developer's recent activity
-    2. Run LLM analysis on commits, PRs, and reviews
+    2. Analyze commits, PRs, and reviews
     3. Update the developer's skill fingerprint
     """
-    # TODO: Implement full refresh logic
-    return {
-        "developer_id": developer_id,
-        "status": "queued",
-        "message": "Analysis refresh has been queued",
-    }
+    from devograph.services.profile_sync import ProfileSyncService
+
+    try:
+        sync_service = ProfileSyncService()
+        developer = await sync_service.sync_developer_profile(developer_id, db)
+        await db.commit()
+
+        return {
+            "developer_id": developer_id,
+            "status": "completed",
+            "message": "Analysis refresh completed",
+            "skill_fingerprint": developer.skill_fingerprint,
+            "work_patterns": developer.work_patterns,
+        }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except Exception as e:
+        logger.error(f"Failed to refresh analysis: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Analysis refresh failed: {str(e)}",
+        )
 
 
 @router.get("/developers/{developer_id}/insights", response_model=DeveloperInsights | None)
