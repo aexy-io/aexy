@@ -15,6 +15,8 @@ if TYPE_CHECKING:
     from devograph.models.developer import Developer
     from devograph.models.team import Team
     from devograph.models.workspace import Workspace
+    from devograph.models.activity import Commit, PullRequest
+    from devograph.models.epic import Epic
 
 
 def slugify(text: str) -> str:
@@ -298,6 +300,25 @@ class SprintTask(Base):
         JSONB, default=dict, nullable=False
     )  # {field_slug: value}
 
+    # Epic reference (for grouping tasks across sprints)
+    epic_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("epics.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # External sync tracking
+    last_synced_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )  # Last sync with external source (Jira/Linear/GitHub)
+    external_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )  # Last update time from external source
+    sync_status: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="synced"
+    )  # "synced" | "pending" | "conflict"
+
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -339,6 +360,17 @@ class SprintTask(Base):
     )
     custom_status: Mapped["WorkspaceTaskStatus | None"] = relationship(
         "WorkspaceTaskStatus",
+        lazy="selectin",
+    )
+    epic: Mapped["Epic | None"] = relationship(
+        "Epic",
+        back_populates="tasks",
+        lazy="selectin",
+    )
+    github_links: Mapped[list["TaskGitHubLink"]] = relationship(
+        "TaskGitHubLink",
+        back_populates="task",
+        cascade="all, delete-orphan",
         lazy="selectin",
     )
 
@@ -559,4 +591,85 @@ class SprintRetrospective(Base):
         "Sprint",
         back_populates="retrospective",
         lazy="selectin",
+    )
+
+
+class TaskGitHubLink(Base):
+    """Links between sprint tasks and GitHub activity (commits, PRs).
+
+    This junction table enables tracking which commits and PRs are related
+    to a task, either through automatic reference parsing or manual linking.
+    """
+
+    __tablename__ = "task_github_links"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    task_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("sprint_tasks.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Link type and references
+    link_type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # "commit" | "pull_request"
+
+    commit_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("commits.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    pull_request_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pull_requests.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+
+    # Reference parsing metadata
+    reference_text: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )  # The matched text, e.g., "Fixes #123"
+    reference_pattern: Mapped[str | None] = mapped_column(
+        String(50), nullable=True
+    )  # Pattern type: "fixes", "closes", "refs", etc.
+
+    # Linking method
+    is_auto_linked: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True
+    )  # True if auto-detected, False if manually linked
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    # Relationships
+    task: Mapped["SprintTask"] = relationship(
+        "SprintTask",
+        back_populates="github_links",
+        lazy="selectin",
+    )
+    commit: Mapped["Commit | None"] = relationship(
+        "Commit",
+        lazy="selectin",
+    )
+    pull_request: Mapped["PullRequest | None"] = relationship(
+        "PullRequest",
+        lazy="selectin",
+    )
+
+    __table_args__ = (
+        # Prevent duplicate links
+        UniqueConstraint("task_id", "commit_id", name="uq_task_commit_link"),
+        UniqueConstraint("task_id", "pull_request_id", name="uq_task_pr_link"),
     )

@@ -10,6 +10,7 @@ import {
   Clock,
   GitBranch,
   GraduationCap,
+  Layers,
   LogOut,
   Play,
   Plus,
@@ -194,6 +195,13 @@ export default function SprintsPage() {
               >
                 <Calendar className="h-4 w-4" />
                 Sprint Planning
+              </Link>
+              <Link
+                href="/epics"
+                className="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm font-medium transition flex items-center gap-2"
+              >
+                <Layers className="h-4 w-4" />
+                Epics
               </Link>
               <Link
                 href="/learning"

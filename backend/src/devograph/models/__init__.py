@@ -55,7 +55,9 @@ from devograph.models.sprint import (
     SprintRetrospective,
     WorkspaceTaskStatus,
     WorkspaceCustomField,
+    TaskGitHubLink,
 )
+from devograph.models.epic import Epic
 from devograph.models.learning_activity import (
     LearningActivityLog,
     LearningTimeSession,
@@ -126,6 +128,9 @@ __all__ = [
     # Task Configuration
     "WorkspaceTaskStatus",
     "WorkspaceCustomField",
+    "TaskGitHubLink",
+    # Epic
+    "Epic",
     # Learning Activity
     "LearningActivityLog",
     "LearningTimeSession",

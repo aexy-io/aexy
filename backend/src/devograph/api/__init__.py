@@ -34,6 +34,9 @@ from devograph.api.retrospectives import router as retrospectives_router
 from devograph.api.task_config import router as task_config_router
 # External Integrations
 from devograph.api.integrations import router as integrations_router
+from devograph.api.integrations import webhook_router as integration_webhooks_router
+# Epics
+from devograph.api.epics import router as epics_router
 
 api_router = APIRouter()
 
@@ -73,3 +76,6 @@ api_router.include_router(retrospectives_router, tags=["retrospectives"])
 api_router.include_router(task_config_router, tags=["task-config"])
 # External Integrations
 api_router.include_router(integrations_router, tags=["integrations"])
+api_router.include_router(integration_webhooks_router, tags=["integration-webhooks"])
+# Epics
+api_router.include_router(epics_router, tags=["epics"])

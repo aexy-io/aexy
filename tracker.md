@@ -203,6 +203,65 @@ This document tracks the implementation progress of Devograph across all four ph
 
 ---
 
+## Sprint Planning Enhancements
+
+### Milestone: Organization & Team Management
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Workspace model | [x] | `models/workspace.py` - Multi-tenant workspace support |
+| Team model | [x] | `models/workspace.py` - Teams within workspaces |
+| Workspace invitations | [x] | `services/workspace_service.py` - Email invites with tokens |
+| Permission system | [x] | Role-based: owner, admin, member, viewer |
+| Workspace API | [x] | `api/workspaces.py` - Full CRUD + member management |
+| Teams API | [x] | `api/workspace_teams.py` - Team CRUD + member assignment |
+
+### Milestone: Sprint Lifecycle
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Sprint model | [x] | `models/sprint.py` - planning, active, review, retrospective, completed |
+| SprintTask model | [x] | `models/sprint.py` - Tasks with story points, priority, status |
+| Sprint service | [x] | `services/sprint_service.py` - Sprint CRUD, lifecycle transitions |
+| Sprint task service | [x] | `services/sprint_task_service.py` - Task CRUD, assignment, carry-over |
+| Sprint analytics | [x] | `services/sprint_analytics_service.py` - Burndown, velocity, metrics |
+| Sprint planning service | [x] | `services/sprint_planning_service.py` - AI-powered assignment suggestions |
+| Sprints API | [x] | `api/sprints.py` - Sprint CRUD, lifecycle endpoints |
+| Sprint Tasks API | [x] | `api/sprint_tasks.py` - Task CRUD, assignment, import |
+| Sprint Analytics API | [x] | `api/sprint_analytics.py` - Burndown, velocity, metrics endpoints |
+| Retrospectives API | [x] | `api/retrospectives.py` - Retro items, action items |
+
+### Milestone: Custom Task Configuration
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Custom task statuses | [x] | `models/task_config.py` - Workspace-level status definitions |
+| Custom fields | [x] | `models/task_config.py` - Text, number, select, date, URL fields |
+| Task config service | [x] | `services/task_config_service.py` - Status/field CRUD, reordering |
+| Task config API | [x] | `api/task_config.py` - Status and custom field management |
+
+### Milestone: Task Sync & Epic Integration
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Task reference parser | [x] | `services/task_reference_parser.py` - Parse #123, PROJ-123, Fixes #N |
+| GitHub task sync | [x] | `services/github_task_sync_service.py` - Link commits/PRs to tasks |
+| PR status → task status | [x] | opened→in_progress, ready→review, merged→done |
+| TaskGitHubLink model | [x] | `models/sprint.py` - Junction table for task-activity links |
+| Jira webhook handler | [x] | `services/jira_integration_service.py` - handle_webhook() complete |
+| Linear webhook handler | [x] | `services/linear_integration_service.py` - handle_webhook() complete |
+| Jira sync_issues | [x] | Creates/updates SprintTasks from Jira issues |
+| Linear sync_issues | [x] | Creates/updates SprintTasks from Linear issues |
+| Jira push_task_update | [x] | Pushes status changes to Jira via transitions API |
+| Linear push_task_update | [x] | Pushes status changes to Linear via GraphQL |
+| External sync service | [x] | `services/external_task_sync_service.py` - Outbound sync coordination |
+| Webhook endpoints | [x] | `api/integrations.py` - POST /webhooks/jira, /webhooks/linear |
+| Epic model | [x] | `models/epic.py` - Workspace-level epics with cached metrics |
+| Epic service | [x] | `services/epic_service.py` - CRUD, task management, progress |
+| Epic API | [x] | `api/epics.py` - Epic CRUD, tasks, timeline, progress, burndown |
+
+---
+
 ## Technical Infrastructure
 
 ### Core Services
@@ -448,3 +507,10 @@ devograph/
 | Dec 2024 | devograph-cli: Python Click CLI with profile, team, match, insights, report commands | — |
 | Dec 2024 | devograph-vscode: VS Code extension with profile view, insights view, team view | — |
 | Dec 2024 | **Phase 4 Complete**: Advanced Analytics, Custom Reports, Slack Integration, CLI Tool, VS Code Extension | — |
+| Dec 2024 | Sprint Planning Enhancements: Organization & Team Management (workspaces, teams, invitations) | — |
+| Dec 2024 | Sprint Planning: Full sprint lifecycle (create, tasks, analytics, retrospectives) | — |
+| Dec 2024 | Custom Task Configuration: workspace-level statuses and custom fields | — |
+| Dec 2024 | Jira/Linear Integration: bidirectional sync with external task trackers | — |
+| Dec 2024 | GitHub Task Sync: auto-link commits/PRs to tasks, status updates from PR lifecycle | — |
+| Dec 2024 | Epic Integration: workspace-level epics with progress rollup across sprints | — |
+| Dec 2024 | Learning Module Improvements: workspace-scoped paths, team skills, recommendations | — |

@@ -1767,9 +1767,17 @@ export interface SprintTask {
   assignment_reason: string | null;
   assignment_confidence: number | null;
   status: TaskStatus;
+  status_id: string | null;
+  custom_fields: Record<string, unknown>;
   started_at: string | null;
   completed_at: string | null;
   carried_over_from_sprint_id: string | null;
+  // Epic reference
+  epic_id: string | null;
+  // External sync tracking
+  last_synced_at: string | null;
+  external_updated_at: string | null;
+  sync_status: "synced" | "pending" | "conflict";
   created_at: string;
   updated_at: string;
 }
@@ -2803,6 +2811,242 @@ export const integrationsApi = {
 
   getLinearTeams: async (workspaceId: string): Promise<RemoteTeam[]> => {
     const response = await api.get(`/workspaces/${workspaceId}/integrations/linear/teams`);
+    return response.data;
+  },
+};
+
+// ============================================================================
+// Epic Types & API
+// ============================================================================
+
+export type EpicStatus = "open" | "in_progress" | "done" | "cancelled";
+export type EpicPriority = "critical" | "high" | "medium" | "low";
+export type EpicSourceType = "jira" | "linear" | "manual";
+
+export interface Epic {
+  id: string;
+  workspace_id: string;
+  key: string;
+  title: string;
+  description: string | null;
+  status: EpicStatus;
+  color: string;
+  owner_id: string | null;
+  owner_name: string | null;
+  owner_avatar_url: string | null;
+  start_date: string | null;
+  target_date: string | null;
+  completed_date: string | null;
+  priority: EpicPriority;
+  labels: string[];
+  total_tasks: number;
+  completed_tasks: number;
+  total_story_points: number;
+  completed_story_points: number;
+  progress_percentage: number;
+  source_type: EpicSourceType;
+  source_id: string | null;
+  source_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EpicListItem {
+  id: string;
+  workspace_id: string;
+  key: string;
+  title: string;
+  status: EpicStatus;
+  color: string;
+  owner_id: string | null;
+  owner_name: string | null;
+  priority: EpicPriority;
+  target_date: string | null;
+  total_tasks: number;
+  completed_tasks: number;
+  progress_percentage: number;
+}
+
+export interface EpicDetail extends Epic {
+  tasks_by_status: Record<string, number>;
+  tasks_by_team: Record<string, number>;
+  recent_completions: number;
+}
+
+export interface EpicTimelineSprintItem {
+  sprint_id: string;
+  sprint_name: string;
+  team_id: string;
+  team_name: string;
+  status: string;
+  start_date: string;
+  end_date: string;
+  task_count: number;
+  completed_count: number;
+  story_points: number;
+  completed_points: number;
+}
+
+export interface EpicTimeline {
+  epic_id: string;
+  epic_title: string;
+  sprints: EpicTimelineSprintItem[];
+  total_sprints: number;
+  completed_sprints: number;
+  current_sprints: number;
+  planned_sprints: number;
+}
+
+export interface EpicProgress {
+  epic_id: string;
+  total_tasks: number;
+  completed_tasks: number;
+  in_progress_tasks: number;
+  blocked_tasks: number;
+  total_story_points: number;
+  completed_story_points: number;
+  remaining_story_points: number;
+  task_completion_percentage: number;
+  points_completion_percentage: number;
+  tasks_completed_this_week: number;
+  points_completed_this_week: number;
+  estimated_completion_date: string | null;
+}
+
+export interface EpicBurndownDataPoint {
+  date: string;
+  remaining_points: number;
+  remaining_tasks: number;
+  scope_total: number;
+}
+
+export interface EpicBurndown {
+  epic_id: string;
+  data_points: EpicBurndownDataPoint[];
+  start_date: string;
+  target_date: string | null;
+  ideal_burndown: number[];
+}
+
+export const epicApi = {
+  // List epics
+  list: async (
+    workspaceId: string,
+    options?: {
+      status?: EpicStatus;
+      owner_id?: string;
+      priority?: EpicPriority;
+      include_archived?: boolean;
+      search?: string;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<EpicListItem[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/epics`, {
+      params: options,
+    });
+    return response.data;
+  },
+
+  // Create epic
+  create: async (
+    workspaceId: string,
+    data: {
+      title: string;
+      description?: string;
+      status?: EpicStatus;
+      color?: string;
+      owner_id?: string;
+      start_date?: string;
+      target_date?: string;
+      priority?: EpicPriority;
+      labels?: string[];
+      source_type?: EpicSourceType;
+      source_id?: string;
+      source_url?: string;
+    }
+  ): Promise<Epic> => {
+    const response = await api.post(`/workspaces/${workspaceId}/epics`, data);
+    return response.data;
+  },
+
+  // Get epic
+  get: async (workspaceId: string, epicId: string): Promise<Epic> => {
+    const response = await api.get(`/workspaces/${workspaceId}/epics/${epicId}`);
+    return response.data;
+  },
+
+  // Get epic detail
+  getDetail: async (workspaceId: string, epicId: string): Promise<EpicDetail> => {
+    const response = await api.get(`/workspaces/${workspaceId}/epics/${epicId}/detail`);
+    return response.data;
+  },
+
+  // Update epic
+  update: async (
+    workspaceId: string,
+    epicId: string,
+    data: {
+      title?: string;
+      description?: string;
+      status?: EpicStatus;
+      color?: string;
+      owner_id?: string;
+      start_date?: string;
+      target_date?: string;
+      priority?: EpicPriority;
+      labels?: string[];
+    }
+  ): Promise<Epic> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/epics/${epicId}`, data);
+    return response.data;
+  },
+
+  // Delete epic
+  delete: async (workspaceId: string, epicId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/epics/${epicId}`);
+  },
+
+  // Archive/unarchive
+  archive: async (workspaceId: string, epicId: string): Promise<Epic> => {
+    const response = await api.post(`/workspaces/${workspaceId}/epics/${epicId}/archive`);
+    return response.data;
+  },
+
+  unarchive: async (workspaceId: string, epicId: string): Promise<Epic> => {
+    const response = await api.post(`/workspaces/${workspaceId}/epics/${epicId}/unarchive`);
+    return response.data;
+  },
+
+  // Task management
+  addTasks: async (
+    workspaceId: string,
+    epicId: string,
+    taskIds: string[]
+  ): Promise<{ added_count: number; already_in_epic: number; task_ids: string[] }> => {
+    const response = await api.post(`/workspaces/${workspaceId}/epics/${epicId}/tasks`, {
+      task_ids: taskIds,
+    });
+    return response.data;
+  },
+
+  removeTask: async (workspaceId: string, epicId: string, taskId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/epics/${epicId}/tasks/${taskId}`);
+  },
+
+  // Analytics
+  getTimeline: async (workspaceId: string, epicId: string): Promise<EpicTimeline> => {
+    const response = await api.get(`/workspaces/${workspaceId}/epics/${epicId}/timeline`);
+    return response.data;
+  },
+
+  getProgress: async (workspaceId: string, epicId: string): Promise<EpicProgress> => {
+    const response = await api.get(`/workspaces/${workspaceId}/epics/${epicId}/progress`);
+    return response.data;
+  },
+
+  getBurndown: async (workspaceId: string, epicId: string): Promise<EpicBurndown> => {
+    const response = await api.get(`/workspaces/${workspaceId}/epics/${epicId}/burndown`);
     return response.data;
   },
 };

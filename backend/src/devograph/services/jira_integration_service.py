@@ -1,15 +1,17 @@
 """Jira Integration Service for managing Jira connections and syncing issues."""
 
+import logging
 import secrets
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from devograph.models.integrations import JiraIntegration
+from devograph.models.sprint import Sprint, SprintTask
 from devograph.schemas.integrations import (
     ConnectionTestResponse,
     RemoteProject,
@@ -17,6 +19,8 @@ from devograph.schemas.integrations import (
     RemoteField,
     SyncResult,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class JiraIntegrationService:
@@ -341,12 +345,18 @@ class JiraIntegrationService:
 
         return []
 
-    async def sync_issues(self, workspace_id: str, team_id: str | None = None) -> SyncResult:
+    async def sync_issues(
+        self,
+        workspace_id: str,
+        team_id: str | None = None,
+        sprint_id: str | None = None,
+    ) -> SyncResult:
         """Sync issues from Jira to sprint tasks.
 
         Args:
             workspace_id: The workspace to sync for
             team_id: Optional team ID to sync only specific team's issues
+            sprint_id: Optional sprint ID to sync into (uses active sprint if not provided)
 
         Returns:
             SyncResult with counts of synced/created/updated issues
@@ -392,6 +402,14 @@ class JiraIntegrationService:
                     if not project_key:
                         continue
 
+                    # Find active sprint for this team
+                    target_sprint_id = sprint_id
+                    if not target_sprint_id:
+                        target_sprint_id = await self._get_active_sprint_id(mapped_team_id)
+                        if not target_sprint_id:
+                            errors.append(f"No active sprint found for team {mapped_team_id}")
+                            continue
+
                     # Build JQL query
                     jql = f"project = {project_key}"
                     if jql_filter:
@@ -403,7 +421,7 @@ class JiraIntegrationService:
                         params={
                             "jql": jql,
                             "maxResults": 100,
-                            "fields": "summary,description,status,priority,labels,customfield_*",
+                            "fields": "summary,description,status,priority,labels,updated,created",
                         },
                         auth=auth,
                         timeout=30.0,
@@ -417,9 +435,18 @@ class JiraIntegrationService:
                     issues = response.json().get("issues", [])
 
                     for issue in issues:
-                        # TODO: Create/update SprintTask for each issue
-                        # This requires the sprint_task_service and proper task mapping
-                        synced_count += 1
+                        try:
+                            result = await self._sync_issue_to_task(
+                                issue, target_sprint_id, integration
+                            )
+                            if result == "created":
+                                created_count += 1
+                            elif result == "updated":
+                                updated_count += 1
+                            synced_count += 1
+                        except Exception as e:
+                            errors.append(f"Failed to sync issue {issue.get('key')}: {str(e)}")
+                            error_count += 1
 
             # Update last sync time
             integration.last_sync_at = datetime.now(timezone.utc)
@@ -427,7 +454,7 @@ class JiraIntegrationService:
 
             return SyncResult(
                 success=True,
-                message=f"Synced {synced_count} issues",
+                message=f"Synced {synced_count} issues ({created_count} created, {updated_count} updated)",
                 synced_count=synced_count,
                 created_count=created_count,
                 updated_count=updated_count,
@@ -443,26 +470,300 @@ class JiraIntegrationService:
                 errors=[str(e)],
             )
 
-    async def handle_webhook(self, payload: dict) -> bool:
+    async def _get_active_sprint_id(self, team_id: str) -> str | None:
+        """Get the active sprint for a team."""
+        stmt = select(Sprint).where(
+            and_(
+                Sprint.team_id == team_id,
+                Sprint.status.in_(["planning", "active"]),
+            )
+        ).order_by(Sprint.start_date.desc()).limit(1)
+        result = await self.db.execute(stmt)
+        sprint = result.scalar_one_or_none()
+        return sprint.id if sprint else None
+
+    async def _sync_issue_to_task(
+        self,
+        issue: dict,
+        sprint_id: str,
+        integration: JiraIntegration,
+    ) -> str:
+        """Sync a single Jira issue to a SprintTask.
+
+        Returns:
+            "created" or "updated"
+        """
+        issue_id = issue.get("id")
+        issue_key = issue.get("key")
+        fields = issue.get("fields", {})
+
+        # Check if task already exists
+        stmt = select(SprintTask).where(
+            and_(
+                SprintTask.sprint_id == sprint_id,
+                SprintTask.source_type == "jira",
+                SprintTask.source_id == issue_key,
+            )
+        )
+        result = await self.db.execute(stmt)
+        existing_task = result.scalar_one_or_none()
+
+        # Extract data from issue
+        title = fields.get("summary", "Untitled")
+        description = self._extract_description(fields.get("description"))
+        status_name = fields.get("status", {}).get("name", "")
+        priority_name = fields.get("priority", {}).get("name", "Medium")
+        labels = [label.get("name", "") for label in fields.get("labels", [])]
+        source_url = f"{integration.site_url}/browse/{issue_key}"
+
+        # Map status
+        mapped_status = self.map_status(status_name, integration)
+
+        # Map priority
+        priority_map = {
+            "Highest": "critical",
+            "High": "high",
+            "Medium": "medium",
+            "Low": "low",
+            "Lowest": "low",
+        }
+        priority = priority_map.get(priority_name, "medium")
+
+        # Parse updated timestamp
+        updated_str = fields.get("updated")
+        external_updated_at = None
+        if updated_str:
+            try:
+                external_updated_at = datetime.fromisoformat(updated_str.replace("Z", "+00:00"))
+            except ValueError:
+                pass
+
+        if existing_task:
+            # Update existing task
+            existing_task.title = title
+            existing_task.description = description
+            existing_task.status = mapped_status
+            existing_task.priority = priority
+            existing_task.labels = labels
+            existing_task.external_updated_at = external_updated_at
+            existing_task.last_synced_at = datetime.now(timezone.utc)
+            existing_task.sync_status = "synced"
+            await self.db.flush()
+            logger.info(f"Updated task from Jira issue {issue_key}")
+            return "updated"
+        else:
+            # Create new task
+            task = SprintTask(
+                id=str(uuid4()),
+                sprint_id=sprint_id,
+                source_type="jira",
+                source_id=issue_key,
+                source_url=source_url,
+                title=title,
+                description=description,
+                priority=priority,
+                labels=labels,
+                status=mapped_status,
+                external_updated_at=external_updated_at,
+                last_synced_at=datetime.now(timezone.utc),
+                sync_status="synced",
+            )
+            self.db.add(task)
+            await self.db.flush()
+            logger.info(f"Created task from Jira issue {issue_key}")
+            return "created"
+
+    def _extract_description(self, description: Any) -> str | None:
+        """Extract text from Jira ADF description format."""
+        if not description:
+            return None
+
+        if isinstance(description, str):
+            return description
+
+        # Handle Atlassian Document Format (ADF)
+        if isinstance(description, dict):
+            content = description.get("content", [])
+            text_parts = []
+            for block in content:
+                if block.get("type") == "paragraph":
+                    for item in block.get("content", []):
+                        if item.get("type") == "text":
+                            text_parts.append(item.get("text", ""))
+            return "\n".join(text_parts) if text_parts else None
+
+        return None
+
+    async def handle_webhook(
+        self,
+        workspace_id: str,
+        payload: dict,
+    ) -> dict[str, Any]:
         """Handle incoming Jira webhook.
 
         Args:
+            workspace_id: Workspace ID for context
             payload: Webhook payload from Jira
 
         Returns:
-            True if handled successfully
+            Dict with processing result
         """
         event_type = payload.get("webhookEvent", "")
+        result = {"event": event_type, "processed": False}
+
+        integration = await self.get_integration(workspace_id)
+        if not integration:
+            result["error"] = "Integration not found"
+            return result
 
         # Handle different event types
         if event_type in ["jira:issue_created", "jira:issue_updated"]:
             issue = payload.get("issue", {})
-            # TODO: Map Jira issue to SprintTask and create/update
-            return True
+            if not issue:
+                result["error"] = "No issue data in payload"
+                return result
+
+            issue_key = issue.get("key")
+            project_key = issue.get("fields", {}).get("project", {}).get("key")
+
+            # Find team for this project
+            team_id = None
+            for tid, config in integration.project_mappings.items():
+                if config.get("project_key") == project_key:
+                    team_id = tid
+                    break
+
+            if not team_id:
+                result["error"] = f"No team mapping for project {project_key}"
+                return result
+
+            # Find active sprint
+            sprint_id = await self._get_active_sprint_id(team_id)
+            if not sprint_id:
+                result["error"] = f"No active sprint for team {team_id}"
+                return result
+
+            # Sync the issue
+            try:
+                action = await self._sync_issue_to_task(issue, sprint_id, integration)
+                result["processed"] = True
+                result["action"] = action
+                result["issue_key"] = issue_key
+                logger.info(f"Webhook processed: {action} task for {issue_key}")
+            except Exception as e:
+                result["error"] = str(e)
+                logger.error(f"Webhook error for {issue_key}: {e}")
+
         elif event_type == "jira:issue_deleted":
             issue = payload.get("issue", {})
-            # TODO: Handle issue deletion
-            return True
+            issue_key = issue.get("key")
+
+            if issue_key:
+                # Find and mark task as cancelled
+                stmt = select(SprintTask).where(
+                    and_(
+                        SprintTask.source_type == "jira",
+                        SprintTask.source_id == issue_key,
+                    )
+                )
+                task_result = await self.db.execute(stmt)
+                task = task_result.scalar_one_or_none()
+
+                if task:
+                    task.status = "done"  # Or could add "cancelled" status
+                    task.sync_status = "synced"
+                    await self.db.flush()
+                    result["processed"] = True
+                    result["action"] = "deleted"
+                    result["issue_key"] = issue_key
+                    logger.info(f"Marked task as done for deleted issue {issue_key}")
+
+        return result
+
+    async def push_task_update(
+        self,
+        task: SprintTask,
+    ) -> bool:
+        """Push task updates back to Jira (bidirectional sync).
+
+        Args:
+            task: The SprintTask to sync to Jira
+
+        Returns:
+            True if successful
+        """
+        if task.source_type != "jira":
+            return False
+
+        # Get integration for the task's workspace
+        stmt = select(Sprint).where(Sprint.id == task.sprint_id)
+        result = await self.db.execute(stmt)
+        sprint = result.scalar_one_or_none()
+        if not sprint:
+            return False
+
+        integration = await self.get_integration(sprint.workspace_id)
+        if not integration:
+            return False
+
+        # Check if bidirectional sync is enabled
+        if integration.sync_direction != "bidirectional":
+            return False
+
+        # Reverse map status
+        jira_status = None
+        for jira_s, workspace_s in integration.status_mappings.items():
+            if workspace_s == task.status:
+                jira_status = jira_s
+                break
+
+        if not jira_status:
+            logger.warning(f"No Jira status mapping for {task.status}")
+            return False
+
+        try:
+            async with httpx.AsyncClient() as client:
+                auth = httpx.BasicAuth(integration.user_email, integration.api_token)
+
+                # Get available transitions for the issue
+                transitions_response = await client.get(
+                    f"{integration.site_url}/rest/api/3/issue/{task.source_id}/transitions",
+                    auth=auth,
+                    timeout=10.0,
+                )
+
+                if transitions_response.status_code != 200:
+                    logger.error(f"Failed to get transitions: {transitions_response.status_code}")
+                    return False
+
+                transitions = transitions_response.json().get("transitions", [])
+                target_transition = None
+
+                for t in transitions:
+                    if t.get("to", {}).get("name") == jira_status:
+                        target_transition = t.get("id")
+                        break
+
+                if target_transition:
+                    # Execute transition
+                    transition_response = await client.post(
+                        f"{integration.site_url}/rest/api/3/issue/{task.source_id}/transitions",
+                        auth=auth,
+                        json={"transition": {"id": target_transition}},
+                        timeout=10.0,
+                    )
+
+                    if transition_response.status_code in (200, 204):
+                        task.last_synced_at = datetime.now(timezone.utc)
+                        task.sync_status = "synced"
+                        await self.db.flush()
+                        logger.info(f"Pushed status update to Jira for {task.source_id}")
+                        return True
+                    else:
+                        logger.error(f"Failed to transition: {transition_response.status_code}")
+
+        except Exception as e:
+            logger.error(f"Failed to push update to Jira: {e}")
 
         return False
 

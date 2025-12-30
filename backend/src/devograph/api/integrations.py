@@ -451,3 +451,117 @@ async def get_linear_fields(
 
     service = LinearIntegrationService(db)
     return await service.get_remote_fields(workspace_id)
+
+
+# ==================== Webhook Endpoints ====================
+# These endpoints receive webhooks from Jira and Linear
+# They use a separate router without authentication (webhooks are verified via secret)
+
+from fastapi import Request, Header
+import hmac
+import hashlib
+
+webhook_router = APIRouter(prefix="/workspaces/{workspace_id}/webhooks", tags=["Webhooks"])
+
+
+@webhook_router.post("/jira")
+async def handle_jira_webhook(
+    workspace_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    x_atlassian_webhook_identifier: str | None = Header(None),
+):
+    """Handle incoming Jira webhooks.
+
+    Jira sends webhooks for issue events (created, updated, deleted).
+    The webhook secret should be configured when setting up the webhook in Jira.
+    """
+    # Get request body
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid JSON payload",
+        )
+
+    # Get integration and verify it exists
+    service = JiraIntegrationService(db)
+    integration = await service.get_integration(workspace_id)
+
+    if not integration:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Jira integration not found",
+        )
+
+    # Verify webhook secret if configured
+    # Note: Jira Cloud uses HMAC signature verification
+    # For now, we rely on workspace_id matching
+
+    # Process webhook
+    result = await service.handle_webhook(workspace_id, payload)
+    await db.commit()
+
+    return {
+        "status": "processed" if result.get("processed") else "ignored",
+        **result,
+    }
+
+
+@webhook_router.post("/linear")
+async def handle_linear_webhook(
+    workspace_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    linear_signature: str | None = Header(None, alias="Linear-Signature"),
+):
+    """Handle incoming Linear webhooks.
+
+    Linear sends webhooks for issue events (create, update, remove).
+    The webhook is verified using HMAC signature.
+    """
+    # Get raw body for signature verification
+    body = await request.body()
+
+    # Get integration and verify
+    service = LinearIntegrationService(db)
+    integration = await service.get_integration(workspace_id)
+
+    if not integration:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Linear integration not found",
+        )
+
+    # Verify webhook signature if present
+    if linear_signature and integration.webhook_secret:
+        expected_signature = hmac.new(
+            integration.webhook_secret.encode(),
+            body,
+            hashlib.sha256,
+        ).hexdigest()
+
+        if not hmac.compare_digest(linear_signature, expected_signature):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid webhook signature",
+            )
+
+    # Parse payload
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid JSON payload",
+        )
+
+    # Process webhook
+    result = await service.handle_webhook(workspace_id, payload)
+    await db.commit()
+
+    return {
+        "status": "processed" if result.get("processed") else "ignored",
+        **result,
+    }

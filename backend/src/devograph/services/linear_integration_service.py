@@ -1,15 +1,17 @@
 """Linear Integration Service for managing Linear connections and syncing issues."""
 
+import logging
 import secrets
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from devograph.models.integrations import LinearIntegration
+from devograph.models.sprint import Sprint, SprintTask
 from devograph.schemas.integrations import (
     ConnectionTestResponse,
     RemoteTeam,
@@ -17,6 +19,8 @@ from devograph.schemas.integrations import (
     RemoteField,
     SyncResult,
 )
+
+logger = logging.getLogger(__name__)
 
 
 # Linear GraphQL API URL
@@ -389,12 +393,18 @@ class LinearIntegrationService:
             RemoteField(id="labels", name="Labels", field_type="multiselect"),
         ]
 
-    async def sync_issues(self, workspace_id: str, team_id: str | None = None) -> SyncResult:
+    async def sync_issues(
+        self,
+        workspace_id: str,
+        team_id: str | None = None,
+        sprint_id: str | None = None,
+    ) -> SyncResult:
         """Sync issues from Linear to sprint tasks.
 
         Args:
             workspace_id: The workspace to sync for
             team_id: Optional team ID to sync only specific team's issues
+            sprint_id: Optional sprint ID to sync into (uses active sprint if not provided)
 
         Returns:
             SyncResult with counts of synced/created/updated issues
@@ -438,6 +448,14 @@ class LinearIntegrationService:
                     if not linear_team_id:
                         continue
 
+                    # Find active sprint for this team
+                    target_sprint_id = sprint_id
+                    if not target_sprint_id:
+                        target_sprint_id = await self._get_active_sprint_id(mapped_team_id)
+                        if not target_sprint_id:
+                            errors.append(f"No active sprint found for team {mapped_team_id}")
+                            continue
+
                     # Build GraphQL query for issues
                     query = """
                         query($teamId: String!, $first: Int!) {
@@ -462,6 +480,7 @@ class LinearIntegrationService:
                                         }
                                     }
                                     url
+                                    updatedAt
                                 }
                             }
                         }
@@ -507,8 +526,18 @@ class LinearIntegrationService:
                         ]
 
                     for issue in issues:
-                        # TODO: Create/update SprintTask for each issue
-                        synced_count += 1
+                        try:
+                            result = await self._sync_issue_to_task(
+                                issue, target_sprint_id, integration
+                            )
+                            if result == "created":
+                                created_count += 1
+                            elif result == "updated":
+                                updated_count += 1
+                            synced_count += 1
+                        except Exception as e:
+                            errors.append(f"Failed to sync issue {issue.get('identifier')}: {str(e)}")
+                            error_count += 1
 
             # Update last sync time
             integration.last_sync_at = datetime.now(timezone.utc)
@@ -516,7 +545,7 @@ class LinearIntegrationService:
 
             return SyncResult(
                 success=True,
-                message=f"Synced {synced_count} issues",
+                message=f"Synced {synced_count} issues ({created_count} created, {updated_count} updated)",
                 synced_count=synced_count,
                 created_count=created_count,
                 updated_count=updated_count,
@@ -532,28 +561,369 @@ class LinearIntegrationService:
                 errors=[str(e)],
             )
 
-    async def handle_webhook(self, payload: dict) -> bool:
+    async def _get_active_sprint_id(self, team_id: str) -> str | None:
+        """Get the active sprint for a team."""
+        stmt = select(Sprint).where(
+            and_(
+                Sprint.team_id == team_id,
+                Sprint.status.in_(["planning", "active"]),
+            )
+        ).order_by(Sprint.start_date.desc()).limit(1)
+        result = await self.db.execute(stmt)
+        sprint = result.scalar_one_or_none()
+        return sprint.id if sprint else None
+
+    async def _sync_issue_to_task(
+        self,
+        issue: dict,
+        sprint_id: str,
+        integration: LinearIntegration,
+    ) -> str:
+        """Sync a single Linear issue to a SprintTask.
+
+        Returns:
+            "created" or "updated"
+        """
+        issue_id = issue.get("id")
+        identifier = issue.get("identifier")  # e.g., "TEAM-123"
+
+        # Check if task already exists
+        stmt = select(SprintTask).where(
+            and_(
+                SprintTask.sprint_id == sprint_id,
+                SprintTask.source_type == "linear",
+                SprintTask.source_id == identifier,
+            )
+        )
+        result = await self.db.execute(stmt)
+        existing_task = result.scalar_one_or_none()
+
+        # Extract data from issue
+        title = issue.get("title", "Untitled")
+        description = issue.get("description")
+        state = issue.get("state", {})
+        state_id = state.get("id", "")
+        state_type = state.get("type", "")
+        priority_num = issue.get("priority", 0)
+        story_points = issue.get("estimate")
+        labels = [l["name"] for l in issue.get("labels", {}).get("nodes", [])]
+        source_url = issue.get("url")
+
+        # Map status using state_id
+        mapped_status = self.map_status(state_id, integration)
+        if mapped_status == "backlog":
+            # Try mapping by state type
+            type_map = {
+                "backlog": "backlog",
+                "unstarted": "todo",
+                "started": "in_progress",
+                "completed": "done",
+                "canceled": "done",
+            }
+            mapped_status = type_map.get(state_type, "backlog")
+
+        # Map priority (Linear uses 0-4 scale, 0 = no priority, 1 = urgent, 4 = low)
+        priority_map = {
+            0: "medium",
+            1: "critical",
+            2: "high",
+            3: "medium",
+            4: "low",
+        }
+        priority = priority_map.get(priority_num, "medium")
+
+        # Parse updated timestamp
+        updated_str = issue.get("updatedAt")
+        external_updated_at = None
+        if updated_str:
+            try:
+                external_updated_at = datetime.fromisoformat(updated_str.replace("Z", "+00:00"))
+            except ValueError:
+                pass
+
+        if existing_task:
+            # Update existing task
+            existing_task.title = title
+            existing_task.description = description
+            existing_task.status = mapped_status
+            existing_task.priority = priority
+            existing_task.story_points = story_points
+            existing_task.labels = labels
+            existing_task.external_updated_at = external_updated_at
+            existing_task.last_synced_at = datetime.now(timezone.utc)
+            existing_task.sync_status = "synced"
+            await self.db.flush()
+            logger.info(f"Updated task from Linear issue {identifier}")
+            return "updated"
+        else:
+            # Create new task
+            task = SprintTask(
+                id=str(uuid4()),
+                sprint_id=sprint_id,
+                source_type="linear",
+                source_id=identifier,
+                source_url=source_url,
+                title=title,
+                description=description,
+                priority=priority,
+                story_points=story_points,
+                labels=labels,
+                status=mapped_status,
+                external_updated_at=external_updated_at,
+                last_synced_at=datetime.now(timezone.utc),
+                sync_status="synced",
+            )
+            self.db.add(task)
+            await self.db.flush()
+            logger.info(f"Created task from Linear issue {identifier}")
+            return "created"
+
+    async def handle_webhook(
+        self,
+        workspace_id: str,
+        payload: dict,
+    ) -> dict[str, Any]:
         """Handle incoming Linear webhook.
 
         Args:
+            workspace_id: Workspace ID for context
             payload: Webhook payload from Linear
 
         Returns:
-            True if handled successfully
+            Dict with processing result
         """
         action = payload.get("action", "")
         data_type = payload.get("type", "")
+        result = {"event": f"{data_type}:{action}", "processed": False}
+
+        integration = await self.get_integration(workspace_id)
+        if not integration:
+            result["error"] = "Integration not found"
+            return result
 
         if data_type == "Issue":
-            if action == "create":
-                # TODO: Create new SprintTask
-                return True
-            elif action == "update":
-                # TODO: Update existing SprintTask
-                return True
+            issue_data = payload.get("data", {})
+            if not issue_data:
+                result["error"] = "No issue data in payload"
+                return result
+
+            identifier = issue_data.get("identifier")
+            team_data = issue_data.get("team", {})
+            linear_team_id = team_data.get("id")
+
+            # Find workspace team for this Linear team
+            workspace_team_id = None
+            for tid, config in integration.team_mappings.items():
+                if config.get("linear_team_id") == linear_team_id:
+                    workspace_team_id = tid
+                    break
+
+            if not workspace_team_id:
+                result["error"] = f"No team mapping for Linear team {linear_team_id}"
+                return result
+
+            if action in ("create", "update"):
+                # Find active sprint
+                sprint_id = await self._get_active_sprint_id(workspace_team_id)
+                if not sprint_id:
+                    result["error"] = f"No active sprint for team {workspace_team_id}"
+                    return result
+
+                # Build issue dict matching the sync format
+                issue = {
+                    "id": issue_data.get("id"),
+                    "identifier": identifier,
+                    "title": issue_data.get("title"),
+                    "description": issue_data.get("description"),
+                    "state": issue_data.get("state", {}),
+                    "priority": issue_data.get("priority", 0),
+                    "estimate": issue_data.get("estimate"),
+                    "labels": {"nodes": issue_data.get("labels", [])},
+                    "url": issue_data.get("url"),
+                    "updatedAt": issue_data.get("updatedAt"),
+                }
+
+                try:
+                    sync_action = await self._sync_issue_to_task(issue, sprint_id, integration)
+                    result["processed"] = True
+                    result["action"] = sync_action
+                    result["issue_identifier"] = identifier
+                    logger.info(f"Webhook processed: {sync_action} task for {identifier}")
+                except Exception as e:
+                    result["error"] = str(e)
+                    logger.error(f"Webhook error for {identifier}: {e}")
+
             elif action == "remove":
-                # TODO: Handle issue deletion
-                return True
+                # Find and mark task as cancelled
+                stmt = select(SprintTask).where(
+                    and_(
+                        SprintTask.source_type == "linear",
+                        SprintTask.source_id == identifier,
+                    )
+                )
+                task_result = await self.db.execute(stmt)
+                task = task_result.scalar_one_or_none()
+
+                if task:
+                    task.status = "done"
+                    task.sync_status = "synced"
+                    await self.db.flush()
+                    result["processed"] = True
+                    result["action"] = "deleted"
+                    result["issue_identifier"] = identifier
+                    logger.info(f"Marked task as done for deleted issue {identifier}")
+
+        return result
+
+    async def push_task_update(
+        self,
+        task: SprintTask,
+    ) -> bool:
+        """Push task updates back to Linear (bidirectional sync).
+
+        Args:
+            task: The SprintTask to sync to Linear
+
+        Returns:
+            True if successful
+        """
+        if task.source_type != "linear":
+            return False
+
+        # Get integration for the task's workspace
+        stmt = select(Sprint).where(Sprint.id == task.sprint_id)
+        result = await self.db.execute(stmt)
+        sprint = result.scalar_one_or_none()
+        if not sprint:
+            return False
+
+        integration = await self.get_integration(sprint.workspace_id)
+        if not integration:
+            return False
+
+        # Linear doesn't have a sync_direction field, so we check team config
+        # For now, always allow push if integration exists
+        # Find the target state ID by reverse mapping
+        target_state_id = None
+        for state_id, workspace_status in integration.status_mappings.items():
+            if workspace_status == task.status:
+                target_state_id = state_id
+                break
+
+        if not target_state_id:
+            # Try to map by default state types
+            status_to_type = {
+                "backlog": "backlog",
+                "todo": "unstarted",
+                "in_progress": "started",
+                "review": "started",
+                "done": "completed",
+            }
+            target_type = status_to_type.get(task.status)
+
+            if target_type:
+                # We'd need to fetch states to find the right one
+                # For now, skip if no direct mapping exists
+                logger.warning(f"No Linear state mapping for {task.status}")
+                return False
+
+        try:
+            async with httpx.AsyncClient() as client:
+                # Update issue state using GraphQL mutation
+                mutation = """
+                    mutation($issueId: String!, $stateId: String!) {
+                        issueUpdate(id: $issueId, input: { stateId: $stateId }) {
+                            success
+                            issue {
+                                id
+                                identifier
+                                state {
+                                    name
+                                }
+                            }
+                        }
+                    }
+                """
+
+                # We need to get the Linear issue ID from identifier
+                # First fetch the issue
+                query = """
+                    query($identifier: String!) {
+                        issue(id: $identifier) {
+                            id
+                        }
+                    }
+                """
+
+                # Actually, Linear uses identifier differently
+                # We need to search by identifier
+                search_query = """
+                    query($filter: IssueFilter!) {
+                        issues(filter: $filter, first: 1) {
+                            nodes {
+                                id
+                            }
+                        }
+                    }
+                """
+
+                response = await client.post(
+                    LINEAR_API_URL,
+                    json={
+                        "query": search_query,
+                        "variables": {
+                            "filter": {"identifier": {"eq": task.source_id}},
+                        },
+                    },
+                    headers={
+                        "Authorization": integration.api_key,
+                        "Content-Type": "application/json",
+                    },
+                    timeout=10.0,
+                )
+
+                if response.status_code != 200:
+                    logger.error(f"Failed to find Linear issue: {response.status_code}")
+                    return False
+
+                data = response.json()
+                issues = data.get("data", {}).get("issues", {}).get("nodes", [])
+                if not issues:
+                    logger.error(f"Linear issue {task.source_id} not found")
+                    return False
+
+                linear_issue_id = issues[0]["id"]
+
+                # Now update the issue
+                update_response = await client.post(
+                    LINEAR_API_URL,
+                    json={
+                        "query": mutation,
+                        "variables": {
+                            "issueId": linear_issue_id,
+                            "stateId": target_state_id,
+                        },
+                    },
+                    headers={
+                        "Authorization": integration.api_key,
+                        "Content-Type": "application/json",
+                    },
+                    timeout=10.0,
+                )
+
+                if update_response.status_code == 200:
+                    update_data = update_response.json()
+                    if update_data.get("data", {}).get("issueUpdate", {}).get("success"):
+                        task.last_synced_at = datetime.now(timezone.utc)
+                        task.sync_status = "synced"
+                        await self.db.flush()
+                        logger.info(f"Pushed status update to Linear for {task.source_id}")
+                        return True
+
+                logger.error(f"Failed to update Linear issue: {update_response.text}")
+
+        except Exception as e:
+            logger.error(f"Failed to push update to Linear: {e}")
 
         return False
 

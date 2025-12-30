@@ -12,6 +12,7 @@ from devograph.services.webhook_handler import (
 )
 from devograph.services.ingestion_service import IngestionService
 from devograph.services.profile_sync import ProfileSyncService
+from devograph.services.github_task_sync_service import GitHubTaskSyncService
 
 router = APIRouter()
 settings = get_settings()
@@ -82,6 +83,47 @@ async def handle_github_webhook(
     # Process event
     ingestion_service = IngestionService()
     result = await handler.handle_event(event, db, ingestion_service)
+
+    # Process task sync for commits and PRs
+    task_sync_service = GitHubTaskSyncService(db)
+
+    if event.event_type == "push" and event.commits:
+        # Process each commit for task references
+        task_links_created = 0
+        for commit_data in event.commits:
+            sha = commit_data.get("id", commit_data.get("sha", ""))
+            if sha:
+                from devograph.models.activity import Commit
+                from sqlalchemy import select
+                stmt = select(Commit).where(Commit.sha == sha)
+                commit_result = await db.execute(stmt)
+                commit = commit_result.scalar_one_or_none()
+                if commit:
+                    links = await task_sync_service.process_commit(
+                        commit=commit,
+                        repository=event.repository,
+                    )
+                    task_links_created += len(links)
+        if task_links_created > 0:
+            result["task_links_created"] = task_links_created
+
+    elif event.event_type == "pull_request" and event.pull_request:
+        # Process PR for task references and status updates
+        github_id = event.pull_request.get("id")
+        if github_id:
+            from devograph.models.activity import PullRequest
+            from sqlalchemy import select
+            stmt = select(PullRequest).where(PullRequest.github_id == github_id)
+            pr_result = await db.execute(stmt)
+            pr = pr_result.scalar_one_or_none()
+            if pr:
+                links = await task_sync_service.process_pull_request(
+                    pull_request=pr,
+                    repository=event.repository,
+                    action=event.action,
+                )
+                if links:
+                    result["task_links_created"] = len(links)
 
     # Trigger profile sync for affected developer(s)
     if event.sender:
