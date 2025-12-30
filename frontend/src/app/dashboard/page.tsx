@@ -27,7 +27,7 @@ export default function DashboardPage() {
     try {
       const data = await analysisApi.getDeveloperInsights(user.id);
       setInsights(data);
-      if (data.soft_skills) {
+      if (data?.soft_skills) {
         setSoftSkills(data.soft_skills);
       }
     } catch (error) {

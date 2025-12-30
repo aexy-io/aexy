@@ -186,11 +186,11 @@ async def refresh_developer_analysis(
     }
 
 
-@router.get("/developers/{developer_id}/insights", response_model=DeveloperInsights)
+@router.get("/developers/{developer_id}/insights", response_model=DeveloperInsights | None)
 async def get_developer_insights(
     developer_id: str,
     db: AsyncSession = Depends(get_db),
-) -> DeveloperInsights:
+) -> DeveloperInsights | None:
     """Get LLM-generated insights for a developer.
 
     Returns a comprehensive analysis including:
@@ -198,14 +198,76 @@ async def get_developer_insights(
     - Strengths and growth areas
     - Recommended task types
     - Soft skills profile
+
+    Returns null if no analysis has been performed yet.
     """
-    # TODO: Fetch from database and generate insights
+    from uuid import UUID
+
+    try:
+        dev_uuid = UUID(developer_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid developer ID format",
+        )
+
+    # Fetch developer with skill data
+    result = await db.execute(select(Developer).where(Developer.id == dev_uuid))
+    developer = result.scalar_one_or_none()
+
+    if not developer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Developer not found",
+        )
+
+    # Check if developer has any skill data
+    skill_fingerprint = developer.skill_fingerprint
+    if not skill_fingerprint:
+        return None  # No analysis performed yet
+
+    # Extract strengths from top languages/frameworks
+    strengths = []
+    growth_areas = []
+    recommended_tasks = []
+
+    languages = skill_fingerprint.get("languages", [])
+    frameworks = skill_fingerprint.get("frameworks", [])
+    domains = skill_fingerprint.get("domains", [])
+
+    # Top languages as strengths
+    for lang in sorted(languages, key=lambda x: x.get("proficiency_score", 0), reverse=True)[:3]:
+        if lang.get("proficiency_score", 0) > 50:
+            strengths.append(lang.get("name", ""))
+
+    # Top frameworks as strengths
+    for fw in sorted(frameworks, key=lambda x: x.get("proficiency_score", 0), reverse=True)[:2]:
+        if fw.get("proficiency_score", 0) > 50:
+            strengths.append(fw.get("name", ""))
+
+    # Domains with high confidence as strengths
+    for domain in domains:
+        if domain.get("confidence_score", 0) > 0.6:
+            strengths.append(domain.get("name", "").replace("_", " ").title())
+
+    # Generate skill summary
+    if strengths:
+        skill_summary = f"Proficient in {', '.join(strengths[:3])}."
+    else:
+        skill_summary = "Profile analysis in progress. Enable repositories and sync data to generate insights."
+
+    # Remove duplicates and empty strings
+    strengths = list(filter(None, dict.fromkeys(strengths)))
+
+    if not strengths:
+        return None  # No meaningful data yet
+
     return DeveloperInsights(
         developer_id=developer_id,
-        skill_summary="Developer profile analysis pending",
-        strengths=["Python", "FastAPI", "API Design"],
-        growth_areas=["Frontend", "DevOps"],
-        recommended_tasks=["Backend API development", "Database optimization"],
+        skill_summary=skill_summary,
+        strengths=strengths[:5],
+        growth_areas=growth_areas,
+        recommended_tasks=recommended_tasks,
         soft_skills=None,
     )
 
@@ -344,24 +406,42 @@ async def get_peer_benchmark(
     )
 
 
-@router.get("/developers/{developer_id}/soft-skills", response_model=SoftSkillsProfile)
+@router.get("/developers/{developer_id}/soft-skills", response_model=SoftSkillsProfile | None)
 async def get_soft_skills_profile(
     developer_id: str,
     db: AsyncSession = Depends(get_db),
-) -> SoftSkillsProfile:
+) -> SoftSkillsProfile | None:
     """Get soft skills profile for a developer.
 
     Analyzes PR descriptions, code reviews, and comments
     to assess communication, mentorship, collaboration, and leadership.
+
+    Returns null if no soft skills analysis has been performed yet.
     """
-    # TODO: Fetch from database or compute
-    return SoftSkillsProfile(
-        communication_score=0.75,
-        mentorship_score=0.65,
-        collaboration_score=0.80,
-        leadership_score=0.55,
-        samples_analyzed=0,
-    )
+    from uuid import UUID
+
+    try:
+        dev_uuid = UUID(developer_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid developer ID format",
+        )
+
+    # Fetch developer
+    result = await db.execute(select(Developer).where(Developer.id == dev_uuid))
+    developer = result.scalar_one_or_none()
+
+    if not developer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Developer not found",
+        )
+
+    # Check if developer has soft skills data in their profile
+    # This would be populated by the analysis pipeline
+    # For now, return None to indicate no analysis performed
+    return None
 
 
 @router.get("/tasks/{task_id}/signals", response_model=TaskSignals)
