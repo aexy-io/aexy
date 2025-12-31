@@ -13,8 +13,12 @@ import {
   Info,
   Calendar,
   CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 import { AppHeader } from "@/components/layout/AppHeader";
+import { useWorkspace } from "@/hooks/useWorkspace";
+import { useGoals } from "@/hooks/useReviews";
+import { GoalType, GoalPriority } from "@/lib/api";
 
 const goalTypes = [
   { value: "performance", label: "Performance", description: "Delivery & quality targets", color: "cyan" },
@@ -40,12 +44,18 @@ interface KeyResult {
 
 export default function NewGoalPage() {
   const { user, isLoading: authLoading, isAuthenticated, logout } = useAuth();
+  const { currentWorkspaceId, currentWorkspaceLoading } = useWorkspace();
   const router = useRouter();
+
+  const developerId = user?.developer?.id;
+  const { createGoal } = useGoals(developerId, {
+    workspace_id: currentWorkspaceId || undefined,
+  });
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [goalType, setGoalType] = useState("performance");
-  const [priority, setPriority] = useState("medium");
+  const [goalType, setGoalType] = useState<GoalType>("performance");
+  const [priority, setPriority] = useState<GoalPriority>("medium");
   const [timeBound, setTimeBound] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
 
@@ -62,6 +72,10 @@ export default function NewGoalPage() {
 
   // Tracking keywords for auto-linking
   const [trackingKeywords, setTrackingKeywords] = useState("");
+
+  // Form state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const addKeyResult = () => {
     setKeyResults([
@@ -84,28 +98,67 @@ export default function NewGoalPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement API call to create goal
-    console.log("Creating goal:", {
-      title,
-      description,
-      goalType,
-      priority,
-      timeBound,
-      isPrivate,
-      specific,
-      measurable,
-      achievable,
-      relevant,
-      keyResults,
-      trackingKeywords: trackingKeywords.split(",").map(k => k.trim()).filter(Boolean),
-    });
-    router.push("/reviews/goals");
+    setError(null);
+
+    if (!currentWorkspaceId) {
+      setError("No workspace selected. Please select a workspace first.");
+      return;
+    }
+
+    if (!developerId) {
+      setError("Unable to create goal. User not properly authenticated.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Filter out empty key results and format them properly
+      const validKeyResults = keyResults
+        .filter(kr => kr.description.trim() && kr.target)
+        .map(kr => ({
+          description: kr.description,
+          target: parseFloat(kr.target) || 0,
+          unit: kr.unit || "units",
+        }));
+
+      await createGoal(currentWorkspaceId, {
+        title,
+        description: description || undefined,
+        specific: specific || undefined,
+        measurable: measurable || undefined,
+        achievable: achievable || undefined,
+        relevant: relevant || undefined,
+        time_bound: timeBound || undefined,
+        goal_type: goalType,
+        priority: priority,
+        is_private: isPrivate,
+        key_results: validKeyResults.length > 0 ? validKeyResults : undefined,
+        tracking_keywords: trackingKeywords
+          .split(",")
+          .map(k => k.trim())
+          .filter(Boolean),
+      });
+
+      router.push("/reviews/goals");
+    } catch (err) {
+      console.error("Failed to create goal:", err);
+      setError(err instanceof Error ? err.message : "Failed to create goal. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  if (authLoading) {
+  if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
+            <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+          </div>
+          <p className="text-slate-400 text-sm">Loading...</p>
+        </div>
       </div>
     );
   }
@@ -115,7 +168,7 @@ export default function NewGoalPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-slate-950">
       <AppHeader user={user} logout={logout} />
 
       <main className="max-w-4xl mx-auto px-4 py-8">
@@ -146,6 +199,14 @@ export default function NewGoalPage() {
             Define specific, measurable objectives with key results
           </p>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center gap-3">
+            <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0" />
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Basic Info */}
@@ -420,10 +481,20 @@ export default function NewGoalPage() {
             </Link>
             <button
               type="submit"
-              className="flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition font-medium"
+              disabled={isSubmitting || !title.trim() || !timeBound}
+              className="flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <CheckCircle className="h-4 w-4" />
-              Create Goal
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white"></div>
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4" />
+                  Create Goal
+                </>
+              )}
             </button>
           </div>
         </form>

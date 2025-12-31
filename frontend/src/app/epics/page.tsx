@@ -448,12 +448,17 @@ export default function EpicsPage() {
             {/* Epic Grid */}
             {epicsLoading ? (
               <div className="flex justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>
+                <div className="relative">
+                  <div className="w-10 h-10 border-4 border-primary-500/20 rounded-full"></div>
+                  <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+                </div>
               </div>
             ) : epics.length === 0 ? (
-              <div className="bg-slate-800 rounded-xl p-12 text-center border border-slate-700">
-                <Layers className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-                <h3 className="text-xl font-medium text-white mb-2">
+              <div className="bg-slate-900/50 rounded-xl p-12 text-center border border-slate-800">
+                <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                  <Layers className="h-10 w-10 text-slate-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-2">
                   No Epics Yet
                 </h3>
                 <p className="text-slate-400 mb-6 max-w-md mx-auto">
@@ -461,7 +466,7 @@ export default function EpicsPage() {
                 </p>
                 <button
                   onClick={() => setShowCreateModal(true)}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition font-medium"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition font-medium shadow-lg shadow-primary-500/20"
                 >
                   <Plus className="h-4 w-4" />
                   Create Epic

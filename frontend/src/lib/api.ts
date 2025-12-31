@@ -3306,3 +3306,553 @@ export const billingApi = {
     return response.data;
   },
 };
+
+// ============ Reviews & Goals API Types ============
+
+export type ReviewCycleType = "annual" | "semi_annual" | "quarterly" | "custom";
+export type ReviewCycleStatus = "draft" | "active" | "self_review" | "peer_review" | "manager_review" | "completed";
+export type ReviewStatus = "pending" | "self_review_submitted" | "peer_review_in_progress" | "manager_review_in_progress" | "completed" | "acknowledged";
+export type GoalType = "performance" | "skill_development" | "project" | "leadership" | "team_contribution";
+export type GoalPriority = "critical" | "high" | "medium" | "low";
+export type GoalStatus = "draft" | "active" | "in_progress" | "completed" | "cancelled";
+export type PeerRequestStatus = "pending" | "accepted" | "declined" | "completed";
+
+export interface ReviewCycleSettings {
+  enable_self_review: boolean;
+  enable_peer_review: boolean;
+  enable_manager_review: boolean;
+  anonymous_peer_reviews: boolean;
+  min_peer_reviewers: number;
+  max_peer_reviewers: number;
+  peer_selection_mode: "employee_choice" | "manager_assigned" | "both";
+  include_github_metrics: boolean;
+  review_questions: string[];
+  rating_scale: number;
+}
+
+export interface ReviewCycle {
+  id: string;
+  workspace_id: string;
+  name: string;
+  cycle_type: ReviewCycleType;
+  period_start: string;
+  period_end: string;
+  self_review_deadline: string | null;
+  peer_review_deadline: string | null;
+  manager_review_deadline: string | null;
+  settings: ReviewCycleSettings | null;
+  status: ReviewCycleStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReviewCycleDetail extends ReviewCycle {
+  total_reviews: number;
+  completed_reviews: number;
+  pending_self_reviews: number;
+  pending_peer_reviews: number;
+  pending_manager_reviews: number;
+}
+
+export interface IndividualReview {
+  id: string;
+  review_cycle_id: string;
+  developer_id: string;
+  developer_name: string | null;
+  developer_email: string | null;
+  developer_avatar_url: string | null;
+  manager_id: string | null;
+  manager_name: string | null;
+  manager_source: "team_lead" | "assigned";
+  status: ReviewStatus;
+  overall_rating: number | null;
+  ratings_breakdown: Record<string, number> | null;
+  completed_at: string | null;
+  acknowledged_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReviewSubmission {
+  id: string;
+  individual_review_id: string;
+  submission_type: "self" | "peer" | "manager";
+  reviewer_id: string | null;
+  reviewer_name: string | null;
+  is_anonymous: boolean;
+  responses: ReviewResponses;
+  linked_goals: string[];
+  linked_contributions: string[];
+  status: "draft" | "submitted";
+  submitted_at: string | null;
+  created_at: string;
+}
+
+export interface ReviewResponses {
+  achievements: Achievement[];
+  areas_for_growth: GrowthArea[];
+  question_responses: Record<string, string>;
+  strengths: string[];
+  growth_areas: string[];
+}
+
+export interface Achievement {
+  title: string;
+  context: string;
+  observation: string;
+  impact: string;
+  next_steps: string;
+  linked_goal_id: string | null;
+  linked_contributions: string[];
+}
+
+export interface GrowthArea {
+  area: string;
+  context: string;
+  observation: string;
+  impact: string;
+  next_steps: string;
+  suggested_goal: string | null;
+}
+
+export interface IndividualReviewDetail extends IndividualReview {
+  contribution_summary: Record<string, unknown> | null;
+  ai_summary: string | null;
+  self_review: ReviewSubmission | null;
+  peer_reviews: ReviewSubmission[];
+  manager_review: ReviewSubmission | null;
+  goals: WorkGoal[];
+}
+
+export interface ReviewRequest {
+  id: string;
+  individual_review_id: string;
+  requester_id: string;
+  requester_name: string | null;
+  reviewer_id: string;
+  reviewer_name: string | null;
+  reviewer_email: string | null;
+  reviewer_avatar_url: string | null;
+  message: string | null;
+  request_source: "employee" | "manager";
+  assigned_by_id: string | null;
+  status: PeerRequestStatus;
+  submission_id: string | null;
+  created_at: string;
+  responded_at: string | null;
+}
+
+export interface KeyResult {
+  id: string;
+  description: string;
+  target: number;
+  current: number;
+  unit: string;
+}
+
+export interface WorkGoal {
+  id: string;
+  developer_id: string;
+  workspace_id: string;
+  title: string;
+  description: string | null;
+  specific: string | null;
+  measurable: string | null;
+  achievable: string | null;
+  relevant: string | null;
+  time_bound: string | null;
+  goal_type: GoalType;
+  priority: GoalPriority;
+  is_private: boolean;
+  progress_percentage: number;
+  status: GoalStatus;
+  key_results: KeyResult[];
+  linked_activity: Record<string, unknown> | null;
+  tracking_keywords: string[];
+  review_cycle_id: string | null;
+  learning_milestone_id: string | null;
+  suggested_from_path: boolean;
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+}
+
+export interface WorkGoalDetail extends WorkGoal {
+  linked_commits: Array<{ sha: string; title: string; additions: number; deletions: number }>;
+  linked_pull_requests: Array<{ id: string; title: string; additions: number; deletions: number; url: string }>;
+}
+
+export interface ContributionMetrics {
+  commits: { total: number; by_repo: Record<string, number>; by_month: Record<string, number> };
+  pull_requests: { total: number; merged: number; by_repo: Record<string, number> };
+  code_reviews: { total: number; approved: number; changes_requested: number };
+  lines: { added: number; removed: number };
+  languages: Record<string, number>;
+  skills_demonstrated: string[];
+}
+
+export interface ContributionHighlight {
+  type: "commit" | "pull_request" | "code_review";
+  id: string;
+  title: string;
+  impact: string;
+  additions: number;
+  deletions: number;
+  url: string | null;
+}
+
+export interface ContributionSummary {
+  id: string;
+  developer_id: string;
+  period_start: string;
+  period_end: string;
+  period_type: string;
+  metrics: ContributionMetrics;
+  highlights: ContributionHighlight[];
+  ai_insights: string | null;
+  created_at: string;
+}
+
+export interface GoalSuggestion {
+  title: string;
+  goal_type: GoalType;
+  suggested_measurable: string;
+  suggested_keywords: string[];
+  learning_milestone_id: string | null;
+  skill_name: string | null;
+  source: string;
+  confidence: number;
+}
+
+// ============ Reviews API ============
+
+export const reviewsApi = {
+  // Review Cycles
+  createCycle: async (
+    workspaceId: string,
+    data: {
+      name: string;
+      cycle_type: ReviewCycleType;
+      period_start: string;
+      period_end: string;
+      self_review_deadline?: string;
+      peer_review_deadline?: string;
+      manager_review_deadline?: string;
+      settings?: Partial<ReviewCycleSettings>;
+    }
+  ): Promise<ReviewCycle> => {
+    const response = await api.post(`/reviews/workspaces/${workspaceId}/cycles`, data);
+    return response.data;
+  },
+
+  listCycles: async (workspaceId: string, status?: string): Promise<ReviewCycle[]> => {
+    const response = await api.get(`/reviews/workspaces/${workspaceId}/cycles`, {
+      params: status ? { status } : {},
+    });
+    return response.data;
+  },
+
+  getCycle: async (cycleId: string): Promise<ReviewCycleDetail> => {
+    const response = await api.get(`/reviews/cycles/${cycleId}`);
+    return response.data;
+  },
+
+  updateCycle: async (
+    cycleId: string,
+    data: Partial<{
+      name: string;
+      cycle_type: ReviewCycleType;
+      period_start: string;
+      period_end: string;
+      self_review_deadline: string;
+      peer_review_deadline: string;
+      manager_review_deadline: string;
+      settings: Partial<ReviewCycleSettings>;
+      status: ReviewCycleStatus;
+    }>
+  ): Promise<ReviewCycle> => {
+    const response = await api.put(`/reviews/cycles/${cycleId}`, data);
+    return response.data;
+  },
+
+  activateCycle: async (cycleId: string): Promise<ReviewCycle> => {
+    const response = await api.post(`/reviews/cycles/${cycleId}/activate`);
+    return response.data;
+  },
+
+  advanceCyclePhase: async (cycleId: string): Promise<{ status: string }> => {
+    const response = await api.post(`/reviews/cycles/${cycleId}/advance-phase`);
+    return response.data;
+  },
+
+  // Individual Reviews
+  getMyReviews: async (developerId: string, status?: string): Promise<IndividualReview[]> => {
+    const response = await api.get("/reviews/my-reviews", {
+      params: { developer_id: developerId, ...(status ? { status } : {}) },
+    });
+    return response.data;
+  },
+
+  getManagerReviews: async (managerId: string): Promise<IndividualReview[]> => {
+    const response = await api.get("/reviews/manager-reviews", {
+      params: { manager_id: managerId },
+    });
+    return response.data;
+  },
+
+  getReview: async (reviewId: string): Promise<IndividualReviewDetail> => {
+    const response = await api.get(`/reviews/${reviewId}`);
+    return response.data;
+  },
+
+  getReviewContributions: async (reviewId: string): Promise<Record<string, unknown>> => {
+    const response = await api.get(`/reviews/${reviewId}/contributions`);
+    return response.data;
+  },
+
+  submitSelfReview: async (
+    reviewId: string,
+    data: {
+      responses: ReviewResponses;
+      linked_goals?: string[];
+      linked_contributions?: string[];
+    }
+  ): Promise<ReviewSubmission> => {
+    const response = await api.post(`/reviews/${reviewId}/self-review`, data);
+    return response.data;
+  },
+
+  submitManagerReview: async (
+    reviewId: string,
+    data: {
+      responses: ReviewResponses;
+      overall_rating: number;
+      ratings_breakdown?: Record<string, number>;
+      linked_goals?: string[];
+      linked_contributions?: string[];
+    }
+  ): Promise<ReviewSubmission> => {
+    const response = await api.post(`/reviews/${reviewId}/manager-review`, data);
+    return response.data;
+  },
+
+  finalizeReview: async (
+    reviewId: string,
+    data: { overall_rating: number; ratings_breakdown?: Record<string, number> }
+  ): Promise<IndividualReview> => {
+    const response = await api.post(`/reviews/${reviewId}/finalize`, data);
+    return response.data;
+  },
+
+  acknowledgeReview: async (reviewId: string): Promise<IndividualReview> => {
+    const response = await api.post(`/reviews/${reviewId}/acknowledge`);
+    return response.data;
+  },
+
+  // Peer Reviews
+  requestPeerReview: async (
+    reviewId: string,
+    requesterId: string,
+    data: { reviewer_id: string; message?: string }
+  ): Promise<ReviewRequest> => {
+    const response = await api.post(`/reviews/${reviewId}/peer-requests`, data, {
+      params: { requester_id: requesterId },
+    });
+    return response.data;
+  },
+
+  assignPeerReviewers: async (
+    reviewId: string,
+    managerId: string,
+    data: { reviewer_ids: string[]; message?: string }
+  ): Promise<ReviewRequest[]> => {
+    const response = await api.post(`/reviews/${reviewId}/assign-peer-reviewers`, data, {
+      params: { manager_id: managerId },
+    });
+    return response.data;
+  },
+
+  getPendingPeerRequests: async (reviewerId: string): Promise<ReviewRequest[]> => {
+    const response = await api.get("/reviews/peer-requests/pending", {
+      params: { reviewer_id: reviewerId },
+    });
+    return response.data;
+  },
+
+  respondToPeerRequest: async (
+    requestId: string,
+    data: { accept: boolean; decline_reason?: string }
+  ): Promise<ReviewRequest> => {
+    const response = await api.post(`/reviews/peer-requests/${requestId}/respond`, data);
+    return response.data;
+  },
+
+  submitPeerReview: async (
+    requestId: string,
+    reviewerId: string,
+    data: {
+      responses: ReviewResponses;
+      is_anonymous?: boolean;
+      linked_goals?: string[];
+      linked_contributions?: string[];
+    }
+  ): Promise<ReviewSubmission> => {
+    const response = await api.post(`/reviews/peer-requests/${requestId}/submit`, data, {
+      params: { reviewer_id: reviewerId },
+    });
+    return response.data;
+  },
+
+  // Goals
+  createGoal: async (
+    developerId: string,
+    workspaceId: string,
+    data: {
+      title: string;
+      description?: string;
+      specific?: string;
+      measurable?: string;
+      achievable?: string;
+      relevant?: string;
+      time_bound?: string;
+      goal_type: GoalType;
+      priority: GoalPriority;
+      is_private?: boolean;
+      key_results?: Array<{ description: string; target: number; unit: string }>;
+      tracking_keywords?: string[];
+      review_cycle_id?: string;
+      learning_milestone_id?: string;
+    }
+  ): Promise<WorkGoal> => {
+    const response = await api.post("/reviews/goals", data, {
+      params: { developer_id: developerId, workspace_id: workspaceId },
+    });
+    return response.data;
+  },
+
+  listGoals: async (
+    developerId: string,
+    params?: {
+      workspace_id?: string;
+      status?: string;
+      goal_type?: string;
+      review_cycle_id?: string;
+    }
+  ): Promise<WorkGoal[]> => {
+    const response = await api.get("/reviews/goals", {
+      params: { developer_id: developerId, ...params },
+    });
+    return response.data;
+  },
+
+  getGoal: async (goalId: string): Promise<WorkGoalDetail> => {
+    const response = await api.get(`/reviews/goals/${goalId}`);
+    return response.data;
+  },
+
+  updateGoal: async (
+    goalId: string,
+    data: Partial<{
+      title: string;
+      description: string | null;
+      specific: string | null;
+      measurable: string | null;
+      achievable: string | null;
+      relevant: string | null;
+      time_bound: string | null;
+      goal_type: GoalType;
+      priority: GoalPriority;
+      is_private: boolean;
+      status: GoalStatus;
+      key_results: KeyResult[];
+      tracking_keywords: string[];
+    }>
+  ): Promise<WorkGoal> => {
+    const response = await api.put(`/reviews/goals/${goalId}`, data);
+    return response.data;
+  },
+
+  updateGoalProgress: async (
+    goalId: string,
+    data: {
+      progress_percentage: number;
+      key_result_updates?: Array<{ id: string; current: number }>;
+    }
+  ): Promise<WorkGoal> => {
+    const response = await api.put(`/reviews/goals/${goalId}/progress`, data);
+    return response.data;
+  },
+
+  autoLinkContributions: async (
+    goalId: string
+  ): Promise<{ linked_commits: number; linked_pull_requests: number; commits: string[]; pull_requests: string[] }> => {
+    const response = await api.post(`/reviews/goals/${goalId}/auto-link`);
+    return response.data;
+  },
+
+  getLinkedContributions: async (
+    goalId: string
+  ): Promise<{
+    goal_id: string;
+    commits: Array<{ sha: string; title: string; additions: number; deletions: number }>;
+    pull_requests: Array<{ id: string; title: string; additions: number; deletions: number; url: string }>;
+    total_additions: number;
+    total_deletions: number;
+  }> => {
+    const response = await api.get(`/reviews/goals/${goalId}/linked-contributions`);
+    return response.data;
+  },
+
+  completeGoal: async (goalId: string, finalNotes?: string): Promise<WorkGoal> => {
+    const response = await api.post(`/reviews/goals/${goalId}/complete`, { final_notes: finalNotes });
+    return response.data;
+  },
+
+  getGoalSuggestions: async (developerId: string): Promise<GoalSuggestion[]> => {
+    const response = await api.get("/reviews/goals/suggestions", {
+      params: { developer_id: developerId },
+    });
+    return response.data;
+  },
+
+  // Contributions
+  getContributionSummary: async (
+    developerId: string,
+    params?: {
+      period_start?: string;
+      period_end?: string;
+      period_type?: string;
+    }
+  ): Promise<ContributionSummary> => {
+    const response = await api.get("/reviews/contributions/summary", {
+      params: { developer_id: developerId, ...params },
+    });
+    return response.data;
+  },
+
+  generateContributionSummary: async (
+    developerId: string,
+    data: {
+      period_start?: string;
+      period_end?: string;
+      period_type?: "annual" | "semi_annual" | "quarterly" | "monthly" | "custom";
+    }
+  ): Promise<ContributionSummary> => {
+    const response = await api.post("/reviews/contributions/generate", data, {
+      params: { developer_id: developerId },
+    });
+    return response.data;
+  },
+
+  getContributionHighlights: async (
+    developerId: string,
+    periodStart: string,
+    periodEnd: string,
+    limit?: number
+  ): Promise<ContributionHighlight[]> => {
+    const response = await api.get("/reviews/contributions/highlights", {
+      params: { developer_id: developerId, period_start: periodStart, period_end: periodEnd, limit },
+    });
+    return response.data;
+  },
+};

@@ -159,8 +159,14 @@ export default function HiringPage() {
 
   if (isLoading || loading || workspacesLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
+            <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+          </div>
+          <p className="text-slate-400 text-sm">Loading hiring intelligence...</p>
+        </div>
       </div>
     );
   }
@@ -172,16 +178,18 @@ export default function HiringPage() {
   // Show workspace required message if no workspace
   if (!hasWorkspaces) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="text-center max-w-md">
-          <Building2 className="h-16 w-16 text-slate-600 mx-auto mb-4" />
+          <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Building2 className="h-10 w-10 text-slate-600" />
+          </div>
           <h2 className="text-2xl font-bold text-white mb-2">Workspace Required</h2>
           <p className="text-slate-400 mb-6">
             Create a workspace first to start using Hiring Intelligence.
           </p>
           <Link
             href="/settings/organization"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition font-medium"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition font-medium shadow-lg shadow-primary-500/20"
           >
             <Building2 className="h-5 w-5" />
             Create Workspace
@@ -227,22 +235,24 @@ export default function HiringPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-slate-950">
       <AppHeader user={user} logout={logout} />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-              <Users className="h-8 w-8 text-primary-500" />
-              Hiring Intelligence
-            </h1>
-            {currentWorkspace && (
-              <p className="text-slate-400 mt-1 flex items-center gap-2">
-                <Building2 className="h-4 w-4" />
-                {currentWorkspace.name}
-              </p>
-            )}
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-orange-500/20 to-red-500/20 rounded-xl">
+              <Users className="h-7 w-7 text-orange-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Hiring Intelligence</h1>
+              {currentWorkspace && (
+                <p className="text-slate-400 text-sm flex items-center gap-2">
+                  <Building2 className="h-3.5 w-3.5" />
+                  {currentWorkspace.name}
+                </p>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-4">
             {/* Project Selector */}
@@ -301,7 +311,7 @@ export default function HiringPage() {
           {/* Left Column: Analysis */}
           <div className="space-y-6">
             {/* Skill Gaps */}
-            <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+            <div className="bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden">
               <button
                 onClick={() => toggleSection("gaps")}
                 className="w-full p-4 flex items-center justify-between text-left"
@@ -350,7 +360,7 @@ export default function HiringPage() {
             </div>
 
             {/* Bus Factor Risks */}
-            <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+            <div className="bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden">
               <button
                 onClick={() => toggleSection("busFactors")}
                 className="w-full p-4 flex items-center justify-between text-left"
@@ -406,8 +416,8 @@ export default function HiringPage() {
           {/* Right Column: Hiring Requirements */}
           <div className="space-y-6">
             {/* Hiring Requirements */}
-            <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-              <div className="p-4 flex items-center justify-between border-b border-slate-700">
+            <div className="bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden">
+              <div className="p-4 flex items-center justify-between border-b border-slate-800">
                 <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                   <FileText className="h-5 w-5 text-primary-400" />
                   Hiring Requirements

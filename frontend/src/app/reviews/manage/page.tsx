@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -35,157 +35,39 @@ import {
   Lightbulb,
 } from "lucide-react";
 import { AppHeader } from "@/components/layout/AppHeader";
-import { useWorkspace } from "@/hooks/useWorkspace";
+import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
+import { useManagerReviews, useReviewCycles } from "@/hooks/useReviews";
+import { IndividualReview, WorkspaceMember } from "@/lib/api";
 
-// Mock data for demonstration
-const mockTeamMembers = [
-  {
-    id: "1",
-    name: "Sarah Chen",
-    avatar: null,
-    role: "Senior Engineer",
-    reviewStatus: "self_review_submitted",
-    goalsCount: 3,
-    completedGoals: 1,
-    pendingFeedback: 2,
-    lastActivity: "2 hours ago",
-  },
-  {
-    id: "2",
-    name: "Marcus Johnson",
-    avatar: null,
-    role: "Full Stack Developer",
-    reviewStatus: "pending",
-    goalsCount: 2,
-    completedGoals: 0,
-    pendingFeedback: 0,
-    lastActivity: "1 day ago",
-  },
-  {
-    id: "3",
-    name: "Emily Zhang",
-    avatar: null,
-    role: "Backend Engineer",
-    reviewStatus: "peer_review_in_progress",
-    goalsCount: 4,
-    completedGoals: 2,
-    pendingFeedback: 3,
-    lastActivity: "5 hours ago",
-  },
-  {
-    id: "4",
-    name: "David Kim",
-    avatar: null,
-    role: "DevOps Engineer",
-    reviewStatus: "completed",
-    goalsCount: 2,
-    completedGoals: 2,
-    pendingFeedback: 0,
-    lastActivity: "3 days ago",
-  },
-];
+// Types for suggestions (to be replaced with real API data when available)
+interface GitHubSuggestion {
+  id: string;
+  memberId: string;
+  memberName: string;
+  type: string;
+  source: string;
+  title: string;
+  description: string;
+  suggestedGoal: string;
+  keywords: string[];
+  commits: number;
+  prs: number;
+  confidence: number;
+  discarded: boolean;
+}
 
-const mockActionables = [
-  {
-    id: "1",
-    type: "overdue_review",
-    title: "Self-review overdue",
-    description: "Marcus Johnson hasn't submitted self-review",
-    member: "Marcus Johnson",
-    memberId: "2",
-    dueDate: "2 days ago",
-    priority: "high",
-  },
-  {
-    id: "2",
-    type: "pending_feedback",
-    title: "Peer feedback pending",
-    description: "3 team members waiting for peer reviews",
-    count: 3,
-    priority: "medium",
-  },
-  {
-    id: "3",
-    type: "goal_at_risk",
-    title: "Goal at risk",
-    description: "API Performance goal - Sarah Chen (30% complete, 5 days left)",
-    member: "Sarah Chen",
-    memberId: "1",
-    priority: "high",
-  },
-  {
-    id: "4",
-    type: "manager_review_needed",
-    title: "Manager review needed",
-    description: "Emily Zhang ready for manager review",
-    member: "Emily Zhang",
-    memberId: "3",
-    priority: "medium",
-  },
-];
-
-const mockGitHubSuggestions = [
-  {
-    id: "1",
-    memberId: "1",
-    memberName: "Sarah Chen",
-    type: "commit_pattern",
-    source: "GitHub Commits",
-    title: "Performance optimization expertise",
-    description: "15 commits related to API optimization and caching improvements over the past month",
-    suggestedGoal: "Lead performance optimization initiative for Q1",
-    keywords: ["performance", "optimization", "caching", "api"],
-    commits: 15,
-    prs: 3,
-    confidence: 92,
-    discarded: false,
-  },
-  {
-    id: "2",
-    memberId: "3",
-    memberName: "Emily Zhang",
-    type: "pr_review",
-    source: "Pull Requests",
-    title: "Database migration leadership",
-    description: "Authored 4 PRs for database schema migrations with comprehensive documentation",
-    suggestedGoal: "Own database architecture decisions and documentation",
-    keywords: ["database", "migration", "schema", "postgresql"],
-    commits: 28,
-    prs: 4,
-    confidence: 87,
-    discarded: false,
-  },
-  {
-    id: "3",
-    memberId: "2",
-    memberName: "Marcus Johnson",
-    type: "code_review",
-    source: "Code Reviews",
-    title: "Frontend mentorship activity",
-    description: "Reviewed 12 PRs from junior developers with detailed feedback",
-    suggestedGoal: "Formalize frontend mentorship program",
-    keywords: ["react", "frontend", "mentorship", "review"],
-    commits: 8,
-    prs: 2,
-    confidence: 78,
-    discarded: false,
-  },
-  {
-    id: "4",
-    memberId: "4",
-    memberName: "David Kim",
-    type: "project_management",
-    source: "Linear/Jira",
-    title: "CI/CD pipeline improvements",
-    description: "Completed 8 tasks related to deployment automation and monitoring",
-    suggestedGoal: "Reduce deployment time by 50% through automation",
-    keywords: ["ci/cd", "deployment", "automation", "devops"],
-    commits: 22,
-    prs: 5,
-    confidence: 95,
-    discarded: false,
-  },
-];
+// Types for actionables
+interface Actionable {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  member?: string;
+  memberId?: string;
+  dueDate?: string;
+  count?: number;
+  priority: string;
+}
 
 const reviewStatusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
   pending: { label: "Pending", color: "text-slate-400", bgColor: "bg-slate-500/20" },
@@ -198,13 +80,76 @@ const reviewStatusConfig: Record<string, { label: string; color: string; bgColor
 
 export default function ReviewsManagePage() {
   const { user, isLoading: authLoading, isAuthenticated, logout } = useAuth();
-  const { currentWorkspaceId, hasWorkspaces } = useWorkspace();
+  const { currentWorkspaceId, currentWorkspaceLoading, hasWorkspaces } = useWorkspace();
+
+  // Fetch real data
+  const { members, isLoading: membersLoading } = useWorkspaceMembers(currentWorkspaceId);
+  const managerId = user?.developer?.id;
+  const { reviews, isLoading: reviewsLoading } = useManagerReviews(managerId);
+  const { cycles, isLoading: cyclesLoading } = useReviewCycles(currentWorkspaceId);
 
   const [activeTab, setActiveTab] = useState<"overview" | "actionables" | "suggestions">("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [suggestions, setSuggestions] = useState(mockGitHubSuggestions);
+  const [suggestions, setSuggestions] = useState<GitHubSuggestion[]>([]);
   const [expandedSuggestion, setExpandedSuggestion] = useState<string | null>(null);
+
+  // Build team member data from workspace members and reviews
+  const teamMembers = useMemo(() => {
+    return members.map(member => {
+      const memberReview = reviews.find(r => r.developer_id === member.developer_id);
+      return {
+        id: member.developer_id || member.id,
+        name: member.developer?.name || member.email?.split("@")[0] || "Unknown",
+        avatar: member.developer?.avatar_url,
+        role: member.role || "Team Member",
+        reviewStatus: memberReview?.status || "pending",
+        goalsCount: 0, // Would need separate API call
+        completedGoals: 0,
+        pendingFeedback: 0,
+        lastActivity: member.developer?.last_activity_at
+          ? new Date(member.developer.last_activity_at).toLocaleDateString()
+          : "Unknown",
+      };
+    });
+  }, [members, reviews]);
+
+  // Build actionables from reviews data
+  const actionables = useMemo(() => {
+    const items: Actionable[] = [];
+
+    // Find reviews that need manager attention
+    reviews.forEach(review => {
+      const member = members.find(m => m.developer_id === review.developer_id);
+      const memberName = member?.developer?.name || "Team member";
+
+      if (review.status === "peer_review_in_progress" || review.status === "manager_review_in_progress") {
+        items.push({
+          id: `review-${review.id}`,
+          type: "manager_review_needed",
+          title: "Manager review needed",
+          description: `${memberName} is ready for manager review`,
+          member: memberName,
+          memberId: review.developer_id,
+          priority: "medium",
+        });
+      }
+
+      if (review.status === "pending") {
+        items.push({
+          id: `pending-${review.id}`,
+          type: "overdue_review",
+          title: "Self-review pending",
+          description: `${memberName} hasn't submitted self-review yet`,
+          member: memberName,
+          memberId: review.developer_id,
+          priority: "high",
+        });
+      }
+    });
+
+    return items;
+  }, [reviews, members]);
 
   const handleDiscardSuggestion = (id: string) => {
     setSuggestions(suggestions.map(s =>
@@ -221,10 +166,18 @@ export default function ReviewsManagePage() {
   const activeSuggestions = suggestions.filter(s => !s.discarded);
   const discardedSuggestions = suggestions.filter(s => s.discarded);
 
-  if (authLoading) {
+  const isLoading = authLoading || currentWorkspaceLoading || membersLoading || reviewsLoading;
+
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
+            <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+          </div>
+          <p className="text-slate-400 text-sm">Loading management data...</p>
+        </div>
       </div>
     );
   }
@@ -233,7 +186,7 @@ export default function ReviewsManagePage() {
     redirect("/");
   }
 
-  const filteredMembers = mockTeamMembers.filter(member => {
+  const filteredMembers = teamMembers.filter(member => {
     const matchesSearch = member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          member.role.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || member.reviewStatus === statusFilter;
@@ -241,7 +194,7 @@ export default function ReviewsManagePage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-slate-950">
       <AppHeader user={user} logout={logout} />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
@@ -287,7 +240,7 @@ export default function ReviewsManagePage() {
               </div>
               <span className="text-slate-400 text-sm">Team Members</span>
             </div>
-            <p className="text-2xl font-bold text-white">{mockTeamMembers.length}</p>
+            <p className="text-2xl font-bold text-white">{teamMembers.length}</p>
           </div>
           <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
             <div className="flex items-center gap-3 mb-2">
@@ -297,7 +250,7 @@ export default function ReviewsManagePage() {
               <span className="text-slate-400 text-sm">Completed</span>
             </div>
             <p className="text-2xl font-bold text-white">
-              {mockTeamMembers.filter(m => m.reviewStatus === "completed").length}
+              {teamMembers.filter(m => m.reviewStatus === "completed").length}
             </p>
           </div>
           <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
@@ -308,7 +261,7 @@ export default function ReviewsManagePage() {
               <span className="text-slate-400 text-sm">In Progress</span>
             </div>
             <p className="text-2xl font-bold text-white">
-              {mockTeamMembers.filter(m => ["self_review_submitted", "peer_review_in_progress", "manager_review_in_progress"].includes(m.reviewStatus)).length}
+              {teamMembers.filter(m => ["self_review_submitted", "peer_review_in_progress", "manager_review_in_progress"].includes(m.reviewStatus)).length}
             </p>
           </div>
           <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
@@ -318,7 +271,7 @@ export default function ReviewsManagePage() {
               </div>
               <span className="text-slate-400 text-sm">Action Needed</span>
             </div>
-            <p className="text-2xl font-bold text-white">{mockActionables.length}</p>
+            <p className="text-2xl font-bold text-white">{actionables.length}</p>
           </div>
           <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
             <div className="flex items-center gap-3 mb-2">
@@ -335,7 +288,7 @@ export default function ReviewsManagePage() {
         <div className="flex gap-2 mb-6 bg-slate-800 p-1 rounded-lg w-fit">
           {[
             { key: "overview", label: "Team Overview", icon: Users },
-            { key: "actionables", label: "Actionables", icon: AlertCircle, count: mockActionables.length },
+            { key: "actionables", label: "Actionables", icon: AlertCircle, count: actionables.length },
             { key: "suggestions", label: "GitHub Suggestions", icon: Lightbulb, count: activeSuggestions.length },
           ].map((tab) => (
             <button
@@ -453,19 +406,21 @@ export default function ReviewsManagePage() {
 
         {activeTab === "actionables" && (
           <div className="space-y-4">
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-6">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="h-5 w-5 text-amber-400" />
-                <div>
-                  <h3 className="text-amber-400 font-medium">Action Required</h3>
-                  <p className="text-amber-400/70 text-sm">
-                    {mockActionables.length} items need your attention to keep the review cycle on track
-                  </p>
+            {actionables.length > 0 ? (
+              <>
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-6">
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="h-5 w-5 text-amber-400" />
+                    <div>
+                      <h3 className="text-amber-400 font-medium">Action Required</h3>
+                      <p className="text-amber-400/70 text-sm">
+                        {actionables.length} items need your attention to keep the review cycle on track
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            {mockActionables.map((action) => (
+                {actionables.map((action) => (
               <div
                 key={action.id}
                 className={`bg-slate-800 rounded-xl border p-5 ${
@@ -519,6 +474,18 @@ export default function ReviewsManagePage() {
                 </div>
               </div>
             ))}
+              </>
+            ) : (
+              <div className="bg-slate-800 rounded-xl border border-slate-700 p-12 text-center">
+                <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="w-8 h-8 text-emerald-400" />
+                </div>
+                <h3 className="text-lg font-medium text-white mb-2">All caught up!</h3>
+                <p className="text-slate-400 text-sm">
+                  No pending actions at the moment. Check back later or view team overview.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -537,15 +504,30 @@ export default function ReviewsManagePage() {
               </div>
             </div>
 
-            {/* Active Suggestions */}
-            <div>
-              <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-                <Lightbulb className="h-5 w-5 text-amber-400" />
-                Active Suggestions ({activeSuggestions.length})
-              </h3>
+            {activeSuggestions.length === 0 && discardedSuggestions.length === 0 ? (
+              <div className="bg-slate-800 rounded-xl border border-slate-700 p-12 text-center">
+                <div className="w-16 h-16 bg-purple-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Lightbulb className="w-8 h-8 text-purple-400" />
+                </div>
+                <h3 className="text-lg font-medium text-white mb-2">No suggestions yet</h3>
+                <p className="text-slate-400 text-sm max-w-md mx-auto">
+                  Goal suggestions will appear here as we analyze GitHub activity and project management data from your team.
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Active Suggestions */}
+                <div>
+                  <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+                    <Lightbulb className="h-5 w-5 text-amber-400" />
+                    Active Suggestions ({activeSuggestions.length})
+                  </h3>
 
-              <div className="space-y-4">
-                {activeSuggestions.map((suggestion) => (
+                  {activeSuggestions.length === 0 ? (
+                    <p className="text-slate-400 text-sm">No active suggestions</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {activeSuggestions.map((suggestion) => (
                   <div
                     key={suggestion.id}
                     className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden"
@@ -654,43 +636,11 @@ export default function ReviewsManagePage() {
                       </div>
                     )}
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Discarded Suggestions */}
-            {discardedSuggestions.length > 0 && (
-              <div>
-                <h3 className="text-slate-400 font-medium mb-4 flex items-center gap-2">
-                  <X className="h-4 w-4" />
-                  Discarded ({discardedSuggestions.length})
-                </h3>
-
-                <div className="space-y-2">
-                  {discardedSuggestions.map((suggestion) => (
-                    <div
-                      key={suggestion.id}
-                      className="bg-slate-800/50 rounded-lg border border-slate-700/50 p-4 flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center text-slate-500 text-xs font-bold">
-                          {suggestion.memberName.split(" ").map(n => n[0]).join("")}
-                        </div>
-                        <div>
-                          <p className="text-slate-400 text-sm">{suggestion.title}</p>
-                          <p className="text-slate-500 text-xs">{suggestion.memberName}</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleRestoreSuggestion(suggestion.id)}
-                        className="text-slate-500 hover:text-white text-sm transition"
-                      >
-                        Restore
-                      </button>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
-              </div>
+              </>
             )}
           </div>
         )}

@@ -292,8 +292,14 @@ export default function LearningPage() {
 
   if (isLoading || loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
+            <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+          </div>
+          <p className="text-slate-400 text-sm">Loading learning paths...</p>
+        </div>
       </div>
     );
   }
@@ -331,18 +337,27 @@ export default function LearningPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-slate-950">
       <AppHeader user={user} logout={logout} />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-            <GraduationCap className="h-8 w-8 text-primary-500" />
-            {viewMode === "my_learning" ? "My Learning Path" : `Project Learning: ${teamOverview?.team_name || "..."}`}
-          </h1>
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl">
+              <GraduationCap className="h-7 w-7 text-green-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">
+                {viewMode === "my_learning" ? "My Learning Path" : `Project Learning`}
+              </h1>
+              <p className="text-slate-400 text-sm">
+                {viewMode === "my_learning" ? "Track your growth and skill development" : teamOverview?.team_name || "Loading..."}
+              </p>
+            </div>
+          </div>
           <div className="flex items-center gap-4">
             {/* View Mode Selector */}
-            <div className="flex items-center gap-2 bg-slate-800 rounded-lg p-1 border border-slate-700">
+            <div className="flex items-center gap-2 bg-slate-900/50 rounded-xl p-1 border border-slate-800">
               <button
                 onClick={() => handleSelectTeam(null)}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
