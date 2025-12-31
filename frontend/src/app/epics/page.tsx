@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import {
   ArrowRight,
@@ -10,17 +9,14 @@ import {
   CheckCircle,
   ChevronRight,
   Flag,
-  GitBranch,
-  GraduationCap,
   Layers,
-  LogOut,
   Plus,
   Search,
-  Settings,
   Target,
   Users,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { AppHeader } from "@/components/layout/AppHeader";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useEpics } from "@/hooks/useEpics";
 import { EpicListItem, EpicStatus, EpicPriority } from "@/lib/api";
@@ -319,73 +315,7 @@ export default function EpicsPage() {
 
   return (
     <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <GitBranch className="h-8 w-8 text-primary-500" />
-              <span className="text-2xl font-bold text-white">Devograph</span>
-            </Link>
-            <nav className="hidden md:flex items-center gap-1 ml-6">
-              <Link
-                href="/dashboard"
-                className="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm font-medium transition"
-              >
-                Dashboard
-              </Link>
-              <Link
-                href="/sprints"
-                className="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm font-medium flex items-center gap-2 transition"
-              >
-                <Calendar className="h-4 w-4" />
-                Sprints
-              </Link>
-              <Link
-                href="/epics"
-                className="px-3 py-2 text-white bg-slate-700 rounded-lg text-sm font-medium flex items-center gap-2"
-              >
-                <Layers className="h-4 w-4" />
-                Epics
-              </Link>
-              <Link
-                href="/learning"
-                className="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm font-medium transition flex items-center gap-2"
-              >
-                <GraduationCap className="h-4 w-4" />
-                Learning
-              </Link>
-              <Link
-                href="/settings/repositories"
-                className="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm font-medium transition flex items-center gap-2"
-              >
-                <Settings className="h-4 w-4" />
-                Settings
-              </Link>
-            </nav>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              {user?.avatar_url && (
-                <Image
-                  src={user.avatar_url}
-                  alt={user.name || "User"}
-                  width={32}
-                  height={32}
-                  className="rounded-full"
-                />
-              )}
-              <span className="text-white">{user?.name || user?.email}</span>
-            </div>
-            <button
-              onClick={logout}
-              className="text-slate-400 hover:text-white transition"
-            >
-              <LogOut className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-      </header>
+      <AppHeader user={user} logout={logout} />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Page Header */}

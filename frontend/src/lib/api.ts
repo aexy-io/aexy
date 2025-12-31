@@ -744,7 +744,55 @@ export const learningApi = {
     const response = await api.post(`/learning/paths/${pathId}/resume`);
     return response.data;
   },
+
+  // Team Learning
+  getTeamOverview: async (teamId: string): Promise<TeamLearningOverview> => {
+    const response = await api.get(`/learning/teams/${teamId}/overview`);
+    return response.data;
+  },
+
+  getTeamRecommendations: async (teamId: string): Promise<TeamLearningRecommendations> => {
+    const response = await api.get(`/learning/teams/${teamId}/recommendations`);
+    return response.data;
+  },
 };
+
+// Team Learning Types
+export interface TeamMemberLearningStatus {
+  developer_id: string;
+  developer_name: string | null;
+  developer_avatar_url: string | null;
+  has_active_path: boolean;
+  active_path_id: string | null;
+  active_path_target_role: string | null;
+  progress_percentage: number;
+  trajectory_status: string | null;
+  skills_in_progress: string[];
+}
+
+export interface TeamLearningOverview {
+  team_id: string;
+  team_name: string;
+  total_members: number;
+  members_with_paths: number;
+  average_progress: number;
+  members: TeamMemberLearningStatus[];
+}
+
+export interface TeamSkillRecommendation {
+  skill: string;
+  priority: string;
+  coverage_percentage: number;
+  average_proficiency: number;
+  members_lacking: number;
+  reason: string;
+}
+
+export interface TeamLearningRecommendations {
+  team_id: string;
+  team_name: string;
+  recommended_skills: TeamSkillRecommendation[];
+}
 
 // Learning Activity API
 // External Course types
@@ -962,24 +1010,31 @@ export const learningActivityApi = {
 
 // Hiring API
 export const hiringApi = {
-  analyzeTeamGaps: async (developerIds: string[], targetSkills?: string[]): Promise<TeamGapAnalysis> => {
+  analyzeTeamGaps: async (
+    developerIds?: string[],
+    targetSkills?: string[],
+    teamId?: string
+  ): Promise<TeamGapAnalysis> => {
     const response = await api.post("/hiring/team-gaps", {
       developer_ids: developerIds,
       target_skills: targetSkills,
+      team_id: teamId,
     });
     return response.data;
   },
 
-  getBusFactorRisks: async (developerIds: string[]): Promise<BusFactorRisk[]> => {
+  getBusFactorRisks: async (developerIds?: string[], teamId?: string): Promise<BusFactorRisk[]> => {
     const response = await api.post("/hiring/bus-factor", {
       developer_ids: developerIds,
+      team_id: teamId,
     });
     return response.data;
   },
 
-  listRequirements: async (organizationId: string, status?: string): Promise<HiringRequirement[]> => {
+  listRequirements: async (organizationId: string, status?: string, teamId?: string): Promise<HiringRequirement[]> => {
     const params: Record<string, string> = { organization_id: organizationId };
     if (status) params.status_filter = status;
+    if (teamId) params.team_id = teamId;
     const response = await api.get("/hiring/requirements", { params });
     return response.data;
   },
@@ -2488,7 +2543,6 @@ export const sprintApi = {
 // Task Configuration Types & API
 // ============================================================================
 
-export type StatusCategory = "todo" | "in_progress" | "done";
 export type CustomFieldType = "text" | "number" | "select" | "multiselect" | "date" | "url";
 
 export interface TaskStatusConfig {

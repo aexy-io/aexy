@@ -43,7 +43,8 @@ router = APIRouter(prefix="/hiring")
 class TeamGapRequest(BaseModel):
     """Request for team gap analysis."""
 
-    developer_ids: list[str]
+    developer_ids: list[str] | None = None
+    team_id: str | None = None  # Optional team filter - fetches team members if provided
     target_skills: list[str] | None = None
 
 
@@ -86,15 +87,38 @@ async def analyze_team_gaps(
     """Analyze team skill gaps.
 
     Args:
-        request: Team gap request with developer IDs.
+        request: Team gap request with developer IDs or team_id.
         db: Database session.
 
     Returns:
         Team gap analysis result.
     """
+    from devograph.models.team import TeamMember
+
+    developer_ids = request.developer_ids or []
+    team_id_provided = request.team_id and is_valid_uuid(request.team_id)
+
+    # If team_id provided, fetch team members
+    if team_id_provided:
+        team_members_result = await db.execute(
+            select(TeamMember.developer_id).where(TeamMember.team_id == request.team_id)
+        )
+        developer_ids = [str(m) for m in team_members_result.scalars().all()]
+
+    if not developer_ids:
+        if team_id_provided:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No team members found for the specified team",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Either developer_ids or team_id must be provided",
+        )
+
     # Fetch developers
     result = await db.execute(
-        select(Developer).where(Developer.id.in_(request.developer_ids))
+        select(Developer).where(Developer.id.in_(developer_ids))
     )
     developers = list(result.scalars().all())
 
@@ -147,14 +171,37 @@ async def get_bus_factor_risks(
     """Get bus factor risks for a team.
 
     Args:
-        request: Team gap request with developer IDs.
+        request: Team gap request with developer IDs or team_id.
         db: Database session.
 
     Returns:
         List of bus factor risks.
     """
+    from devograph.models.team import TeamMember
+
+    developer_ids = request.developer_ids or []
+    team_id_provided = request.team_id and is_valid_uuid(request.team_id)
+
+    # If team_id provided, fetch team members
+    if team_id_provided:
+        team_members_result = await db.execute(
+            select(TeamMember.developer_id).where(TeamMember.team_id == request.team_id)
+        )
+        developer_ids = [str(m) for m in team_members_result.scalars().all()]
+
+    if not developer_ids:
+        if team_id_provided:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No team members found for the specified team",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Either developer_ids or team_id must be provided",
+        )
+
     result = await db.execute(
-        select(Developer).where(Developer.id.in_(request.developer_ids))
+        select(Developer).where(Developer.id.in_(developer_ids))
     )
     developers = list(result.scalars().all())
 
@@ -221,6 +268,7 @@ async def extract_roadmap_skills(
 async def list_hiring_requirements(
     organization_id: str,
     status_filter: str | None = None,
+    team_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """List hiring requirements for an organization.
@@ -228,6 +276,7 @@ async def list_hiring_requirements(
     Args:
         organization_id: Organization UUID.
         status_filter: Optional status filter.
+        team_id: Optional team filter.
         db: Database session.
 
     Returns:
@@ -243,6 +292,7 @@ async def list_hiring_requirements(
     requirements = await service.get_organization_requirements(
         organization_id,
         status=status_filter,
+        team_id=team_id,
     )
 
     return [
@@ -287,12 +337,24 @@ async def create_hiring_requirement(
     llm_gateway = get_llm_gateway()
     service = HiringIntelligenceService(db, llm_gateway)
 
-    # Fetch organization developers for gap analysis
+    # Fetch developers for gap analysis
     from devograph.models.workspace import WorkspaceMember
+    from devograph.models.team import TeamMember
     team_developers = []
 
-    if is_valid_uuid(data.organization_id):
-        # Get developers from the organization/workspace
+    # If team_id is provided, get team members only
+    if data.team_id and is_valid_uuid(data.team_id):
+        result = await db.execute(
+            select(Developer).join(
+                TeamMember,
+                TeamMember.developer_id == Developer.id
+            ).where(
+                TeamMember.team_id == data.team_id
+            )
+        )
+        team_developers = list(result.scalars().all())
+    elif is_valid_uuid(data.organization_id):
+        # Get all developers from the organization/workspace
         result = await db.execute(
             select(Developer).join(
                 WorkspaceMember,

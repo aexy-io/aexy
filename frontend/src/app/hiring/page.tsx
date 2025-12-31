@@ -5,39 +5,39 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import {
   Building2,
-  GitBranch,
   Users,
   AlertTriangle,
   FileText,
   ClipboardCheck,
   Plus,
   RefreshCw,
-  Calendar,
-  GraduationCap,
-  LogOut,
   ChevronDown,
   ChevronUp,
   Target,
   TrendingUp,
 } from "lucide-react";
+import { AppHeader } from "@/components/layout/AppHeader";
 import {
   hiringApi,
   developerApi,
+  teamApi,
   TeamGapAnalysis,
   BusFactorRisk,
   HiringRequirement,
   GeneratedJD,
   InterviewRubric,
   Developer,
+  TeamListItem,
 } from "@/lib/api";
 
 export default function HiringPage() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
   const { currentWorkspaceId, currentWorkspace, workspacesLoading, hasWorkspaces } = useWorkspace();
   const [developers, setDevelopers] = useState<Developer[]>([]);
+  const [teams, setTeams] = useState<TeamListItem[]>([]);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [gapAnalysis, setGapAnalysis] = useState<TeamGapAnalysis | null>(null);
   const [requirements, setRequirements] = useState<HiringRequirement[]>([]);
   const [selectedRequirement, setSelectedRequirement] = useState<HiringRequirement | null>(null);
@@ -61,16 +61,22 @@ export default function HiringPage() {
       const devs = await developerApi.list();
       setDevelopers(devs);
 
-      // Fetch requirements if we have a workspace
+      // Fetch teams and requirements if we have a workspace
       if (currentWorkspaceId) {
         try {
-          const reqs = await hiringApi.listRequirements(currentWorkspaceId);
+          const [teamsList, reqs] = await Promise.all([
+            teamApi.list(currentWorkspaceId),
+            hiringApi.listRequirements(currentWorkspaceId, undefined, selectedTeamId || undefined),
+          ]);
+          setTeams(teamsList);
           setRequirements(reqs);
         } catch (error) {
           console.error("Failed to fetch requirements:", error);
+          setTeams([]);
           setRequirements([]);
         }
       } else {
+        setTeams([]);
         setRequirements([]);
       }
     } catch (error) {
@@ -78,18 +84,19 @@ export default function HiringPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentWorkspaceId]);
+  }, [currentWorkspaceId, selectedTeamId]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   const handleAnalyzeTeam = async () => {
-    if (developers.length === 0) return;
+    // If team is selected, use team_id, otherwise use all developers
+    if (!selectedTeamId && developers.length === 0) return;
     setAnalyzing(true);
     try {
-      const developerIds = developers.map((d) => d.id);
-      const analysis = await hiringApi.analyzeTeamGaps(developerIds);
+      const developerIds = selectedTeamId ? undefined : developers.map((d) => d.id);
+      const analysis = await hiringApi.analyzeTeamGaps(developerIds, undefined, selectedTeamId || undefined);
       setGapAnalysis(analysis);
     } catch (error) {
       console.error("Failed to analyze team:", error);
@@ -98,12 +105,19 @@ export default function HiringPage() {
     }
   };
 
+  const handleTeamChange = (teamId: string) => {
+    setSelectedTeamId(teamId === "all" ? null : teamId);
+    // Clear previous analysis when team changes
+    setGapAnalysis(null);
+  };
+
   const handleCreateRequirement = async () => {
     if (!newReqTitle || !currentWorkspaceId) return;
     try {
       const newReq = await hiringApi.createRequirement({
         organization_id: currentWorkspaceId,
         role_title: newReqTitle,
+        team_id: selectedTeamId || undefined,
       });
       setRequirements([...requirements, newReq]);
       setShowNewReqForm(false);
@@ -214,63 +228,7 @@ export default function HiringPage() {
 
   return (
     <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <GitBranch className="h-8 w-8 text-primary-500" />
-              <span className="text-2xl font-bold text-white">Devograph</span>
-            </div>
-            <nav className="hidden md:flex items-center gap-1 ml-6">
-              <Link
-                href="/dashboard"
-                className="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm font-medium transition"
-              >
-                Dashboard
-              </Link>
-              <Link
-                href="/sprints"
-                className="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm font-medium transition flex items-center gap-2"
-              >
-                <Calendar className="h-4 w-4" />
-                Sprint Planning
-              </Link>
-              <Link
-                href="/learning"
-                className="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm font-medium transition flex items-center gap-2"
-              >
-                <GraduationCap className="h-4 w-4" />
-                Learning
-              </Link>
-              <Link
-                href="/hiring"
-                className="px-3 py-2 text-white bg-slate-700 rounded-lg text-sm font-medium flex items-center gap-2"
-              >
-                <Users className="h-4 w-4" />
-                Hiring
-              </Link>
-            </nav>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              {user?.avatar_url && (
-                <Image
-                  src={user.avatar_url}
-                  alt={user.name || "User"}
-                  width={32}
-                  height={32}
-                  className="rounded-full"
-                />
-              )}
-              <span className="text-white">{user?.name || user?.email}</span>
-            </div>
-            <button onClick={logout} className="text-slate-400 hover:text-white transition">
-              <LogOut className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-      </header>
+      <AppHeader user={user} logout={logout} />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
@@ -286,24 +244,58 @@ export default function HiringPage() {
               </p>
             )}
           </div>
-          <button
-            onClick={handleAnalyzeTeam}
-            disabled={analyzing || developers.length === 0}
-            className="bg-primary-600 hover:bg-primary-700 disabled:bg-slate-600 text-white px-4 py-2 rounded-lg font-medium transition flex items-center gap-2"
-          >
-            {analyzing ? (
-              <>
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                Analyzing...
-              </>
-            ) : (
-              <>
-                <TrendingUp className="h-4 w-4" />
-                Analyze Team
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-4">
+            {/* Team Selector */}
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-slate-400" />
+              <select
+                value={selectedTeamId || "all"}
+                onChange={(e) => handleTeamChange(e.target.value)}
+                className="bg-slate-700 text-white rounded-lg px-3 py-2 border border-slate-600 focus:border-primary-500 focus:outline-none text-sm min-w-[160px]"
+              >
+                <option value="all">All Teams</option>
+                {teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={handleAnalyzeTeam}
+              disabled={analyzing || (!selectedTeamId && developers.length === 0)}
+              className="bg-primary-600 hover:bg-primary-700 disabled:bg-slate-600 text-white px-4 py-2 rounded-lg font-medium transition flex items-center gap-2"
+            >
+              {analyzing ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <TrendingUp className="h-4 w-4" />
+                  Analyze {selectedTeamId ? "Team" : "All"}
+                </>
+              )}
+            </button>
+          </div>
         </div>
+
+        {/* Team Filter Indicator */}
+        {selectedTeamId && (
+          <div className="mb-6 p-3 bg-slate-800/50 border border-slate-700 rounded-lg flex items-center gap-2">
+            <Users className="h-4 w-4 text-primary-400" />
+            <span className="text-slate-300 text-sm">
+              Viewing: <span className="text-white font-medium">{teams.find(t => t.id === selectedTeamId)?.name || "Selected Team"}</span>
+            </span>
+            <button
+              onClick={() => handleTeamChange("all")}
+              className="ml-auto text-xs text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-slate-700 transition"
+            >
+              Clear filter
+            </button>
+          </div>
+        )}
 
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Left Column: Analysis */}

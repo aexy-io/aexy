@@ -6,7 +6,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  GitBranch,
   GraduationCap,
   Target,
   TrendingUp,
@@ -20,17 +19,22 @@ import {
   BookOpen,
   Users,
   Calendar,
-  LogOut,
 } from "lucide-react";
+import { AppHeader } from "@/components/layout/AppHeader";
 import {
   learningApi,
   careerApi,
+  teamApi,
   LearningPath,
   CareerRole,
   LearningMilestone,
   LearningActivity,
   CreateActivityData,
+  TeamListItem,
+  TeamLearningOverview,
+  TeamLearningRecommendations,
 } from "@/lib/api";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import { useLearningActivities, useActivityStats, useDailySummaries } from "@/hooks/useLearningActivities";
 import { ActivityList } from "@/components/learning/ActivityList";
 import { CourseSearch } from "@/components/learning/CourseSearch";
@@ -43,6 +47,7 @@ import { LearningCalendar, StreakCalendar } from "@/components/learning/Learning
 
 export default function LearningPage() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
+  const { currentWorkspaceId } = useWorkspace();
   const [paths, setPaths] = useState<LearningPath[]>([]);
   const [roles, setRoles] = useState<CareerRole[]>([]);
   const [selectedPath, setSelectedPath] = useState<LearningPath | null>(null);
@@ -54,6 +59,14 @@ export default function LearningPage() {
   const [showNewPathForm, setShowNewPathForm] = useState(false);
   const [activeTab, setActiveTab] = useState<"path" | "activities">("path");
   const [activeSessionActivityId, setActiveSessionActivityId] = useState<string | null>(null);
+
+  // Team learning state
+  const [viewMode, setViewMode] = useState<"my_learning" | "team">("my_learning");
+  const [teams, setTeams] = useState<TeamListItem[]>([]);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [teamOverview, setTeamOverview] = useState<TeamLearningOverview | null>(null);
+  const [teamRecommendations, setTeamRecommendations] = useState<TeamLearningRecommendations | null>(null);
+  const [loadingTeam, setLoadingTeam] = useState(false);
 
   // Activity tracking hooks
   const {
@@ -146,6 +159,65 @@ export default function LearningPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Fetch teams when workspace changes
+  useEffect(() => {
+    const fetchTeams = async () => {
+      if (!currentWorkspaceId) {
+        setTeams([]);
+        return;
+      }
+      try {
+        const teamsList = await teamApi.list(currentWorkspaceId);
+        setTeams(teamsList);
+      } catch (error) {
+        console.error("Failed to fetch teams:", error);
+        setTeams([]);
+      }
+    };
+    fetchTeams();
+  }, [currentWorkspaceId]);
+
+  // Fetch team learning data when team is selected
+  const handleSelectTeam = async (teamId: string | null) => {
+    setSelectedTeamId(teamId);
+    if (!teamId) {
+      setTeamOverview(null);
+      setTeamRecommendations(null);
+      setViewMode("my_learning");
+      return;
+    }
+
+    setLoadingTeam(true);
+    setViewMode("team");
+    try {
+      const [overview, recommendations] = await Promise.all([
+        learningApi.getTeamOverview(teamId),
+        learningApi.getTeamRecommendations(teamId),
+      ]);
+      setTeamOverview(overview);
+      setTeamRecommendations(recommendations);
+    } catch (error) {
+      console.error("Failed to fetch team learning data:", error);
+      setTeamOverview(null);
+      setTeamRecommendations(null);
+    } finally {
+      setLoadingTeam(false);
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "critical":
+        return "bg-red-900/50 text-red-400 border-red-700";
+      case "high":
+        return "bg-orange-900/50 text-orange-400 border-orange-700";
+      case "medium":
+        return "bg-yellow-900/50 text-yellow-400 border-yellow-700";
+      default:
+        return "bg-slate-700 text-slate-300 border-slate-600";
+    }
+  };
 
   const handleSelectPath = async (path: LearningPath) => {
     setSelectedPath(path);
@@ -260,78 +332,244 @@ export default function LearningPage() {
 
   return (
     <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <GitBranch className="h-8 w-8 text-primary-500" />
-              <span className="text-2xl font-bold text-white">Devograph</span>
-            </div>
-            <nav className="hidden md:flex items-center gap-1 ml-6">
-              <Link
-                href="/dashboard"
-                className="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm font-medium transition"
-              >
-                Dashboard
-              </Link>
-              <Link
-                href="/sprints"
-                className="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm font-medium transition flex items-center gap-2"
-              >
-                <Calendar className="h-4 w-4" />
-                Sprint Planning
-              </Link>
-              <Link
-                href="/learning"
-                className="px-3 py-2 text-white bg-slate-700 rounded-lg text-sm font-medium flex items-center gap-2"
-              >
-                <GraduationCap className="h-4 w-4" />
-                Learning
-              </Link>
-              <Link
-                href="/hiring"
-                className="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm font-medium transition flex items-center gap-2"
-              >
-                <Users className="h-4 w-4" />
-                Hiring
-              </Link>
-            </nav>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              {user?.avatar_url && (
-                <Image
-                  src={user.avatar_url}
-                  alt={user.name || "User"}
-                  width={32}
-                  height={32}
-                  className="rounded-full"
-                />
-              )}
-              <span className="text-white">{user?.name || user?.email}</span>
-            </div>
-            <button onClick={logout} className="text-slate-400 hover:text-white transition">
-              <LogOut className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-      </header>
+      <AppHeader user={user} logout={logout} />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-white flex items-center gap-3">
             <GraduationCap className="h-8 w-8 text-primary-500" />
-            My Learning Path
+            {viewMode === "my_learning" ? "My Learning Path" : `Team Learning: ${teamOverview?.team_name || "..."}`}
           </h1>
-          <button
-            onClick={() => setShowNewPathForm(!showNewPathForm)}
-            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium transition"
-          >
-            Create New Path
-          </button>
+          <div className="flex items-center gap-4">
+            {/* View Mode Selector */}
+            <div className="flex items-center gap-2 bg-slate-800 rounded-lg p-1 border border-slate-700">
+              <button
+                onClick={() => handleSelectTeam(null)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
+                  viewMode === "my_learning"
+                    ? "bg-primary-600 text-white"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                My Learning
+              </button>
+              {teams.length > 0 && (
+                <select
+                  value={selectedTeamId || ""}
+                  onChange={(e) => handleSelectTeam(e.target.value || null)}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium bg-transparent border-0 focus:outline-none cursor-pointer ${
+                    viewMode === "team"
+                      ? "bg-primary-600 text-white"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <option value="" className="bg-slate-800 text-slate-400">Select Team</option>
+                  {teams.map((team) => (
+                    <option key={team.id} value={team.id} className="bg-slate-800 text-white">
+                      {team.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+            {viewMode === "my_learning" && (
+              <button
+                onClick={() => setShowNewPathForm(!showNewPathForm)}
+                className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium transition"
+              >
+                Create New Path
+              </button>
+            )}
+          </div>
         </div>
 
+        {/* Team Learning View */}
+        {viewMode === "team" && (
+          <>
+            {loadingTeam ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+              </div>
+            ) : teamOverview ? (
+              <div className="space-y-8">
+                {/* Team Stats Overview */}
+                <div className="grid md:grid-cols-4 gap-4">
+                  <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                    <div className="text-slate-400 text-sm mb-1">Total Members</div>
+                    <div className="text-2xl font-bold text-white">{teamOverview.total_members}</div>
+                  </div>
+                  <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                    <div className="text-slate-400 text-sm mb-1">With Learning Paths</div>
+                    <div className="text-2xl font-bold text-white">{teamOverview.members_with_paths}</div>
+                  </div>
+                  <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                    <div className="text-slate-400 text-sm mb-1">Average Progress</div>
+                    <div className="text-2xl font-bold text-white">{teamOverview.average_progress}%</div>
+                  </div>
+                  <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                    <div className="text-slate-400 text-sm mb-1">Learning Rate</div>
+                    <div className="text-2xl font-bold text-white">
+                      {teamOverview.total_members > 0
+                        ? Math.round((teamOverview.members_with_paths / teamOverview.total_members) * 100)
+                        : 0}%
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid lg:grid-cols-2 gap-8">
+                  {/* Team Members Learning Status */}
+                  <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                    <div className="p-4 border-b border-slate-700">
+                      <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <Users className="h-5 w-5 text-primary-400" />
+                        Team Members Progress
+                      </h2>
+                    </div>
+                    <div className="divide-y divide-slate-700 max-h-[500px] overflow-y-auto">
+                      {teamOverview.members.length === 0 ? (
+                        <div className="p-4 text-slate-400 text-center">No team members found</div>
+                      ) : (
+                        teamOverview.members.map((member) => (
+                          <div key={member.developer_id} className="p-4 hover:bg-slate-700/50 transition">
+                            <div className="flex items-center gap-3 mb-2">
+                              {member.developer_avatar_url ? (
+                                <Image
+                                  src={member.developer_avatar_url}
+                                  alt={member.developer_name || "Member"}
+                                  width={36}
+                                  height={36}
+                                  className="rounded-full"
+                                />
+                              ) : (
+                                <div className="w-9 h-9 rounded-full bg-slate-600 flex items-center justify-center">
+                                  <Users className="h-4 w-4 text-slate-400" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="text-white font-medium truncate">
+                                  {member.developer_name || "Unknown"}
+                                </div>
+                                {member.has_active_path ? (
+                                  <div className="text-sm text-slate-400 truncate">
+                                    {member.active_path_target_role || "Learning in progress"}
+                                  </div>
+                                ) : (
+                                  <div className="text-sm text-slate-500">No active learning path</div>
+                                )}
+                              </div>
+                              {member.has_active_path && (
+                                <span
+                                  className={`text-xs px-2 py-1 rounded ${
+                                    member.trajectory_status === "ahead"
+                                      ? "bg-green-900/50 text-green-400"
+                                      : member.trajectory_status === "on_track"
+                                      ? "bg-blue-900/50 text-blue-400"
+                                      : member.trajectory_status === "behind"
+                                      ? "bg-yellow-900/50 text-yellow-400"
+                                      : "bg-slate-600 text-slate-300"
+                                  }`}
+                                >
+                                  {member.trajectory_status?.replace("_", " ") || "N/A"}
+                                </span>
+                              )}
+                            </div>
+                            {member.has_active_path && (
+                              <>
+                                <div className="flex items-center gap-2 text-sm mb-2">
+                                  <div className="flex-1 h-2 bg-slate-600 rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full bg-primary-500 rounded-full transition-all"
+                                      style={{ width: `${member.progress_percentage}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-slate-400">{member.progress_percentage}%</span>
+                                </div>
+                                {member.skills_in_progress.length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {member.skills_in_progress.slice(0, 3).map((skill) => (
+                                      <span
+                                        key={skill}
+                                        className="text-xs px-2 py-0.5 bg-slate-700 text-slate-300 rounded"
+                                      >
+                                        {skill}
+                                      </span>
+                                    ))}
+                                    {member.skills_in_progress.length > 3 && (
+                                      <span className="text-xs text-slate-500">
+                                        +{member.skills_in_progress.length - 3} more
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Skill Recommendations */}
+                  <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                    <div className="p-4 border-b border-slate-700">
+                      <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <Target className="h-5 w-5 text-primary-400" />
+                        Recommended Skills to Develop
+                      </h2>
+                      <p className="text-sm text-slate-400 mt-1">
+                        Based on team&apos;s current skill gaps
+                      </p>
+                    </div>
+                    <div className="divide-y divide-slate-700 max-h-[500px] overflow-y-auto">
+                      {!teamRecommendations || teamRecommendations.recommended_skills.length === 0 ? (
+                        <div className="p-4 text-slate-400 text-center">
+                          No skill recommendations available
+                        </div>
+                      ) : (
+                        teamRecommendations.recommended_skills.map((rec) => (
+                          <div key={rec.skill} className="p-4 hover:bg-slate-700/50 transition">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-white font-medium">{rec.skill}</span>
+                              <span
+                                className={`text-xs px-2 py-1 rounded border ${getPriorityColor(rec.priority)}`}
+                              >
+                                {rec.priority}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-sm mb-2">
+                              <div className="text-slate-400">
+                                Coverage: <span className="text-white">{rec.coverage_percentage}%</span>
+                              </div>
+                              <div className="text-slate-400">
+                                Proficiency: <span className="text-white">{rec.average_proficiency}%</span>
+                              </div>
+                            </div>
+                            <p className="text-xs text-slate-500">{rec.reason}</p>
+                            <div className="mt-2 text-xs text-slate-400">
+                              {rec.members_lacking} member{rec.members_lacking !== 1 ? "s" : ""} could benefit
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-slate-800 rounded-xl p-12 border border-slate-700 text-center">
+                <Users className="h-16 w-16 text-slate-600 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-white mb-2">No Team Data</h3>
+                <p className="text-slate-400">
+                  Unable to load team learning data. Please try again.
+                </p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Personal Learning View */}
+        {viewMode === "my_learning" && (
+          <>
         {/* Gamification Section */}
         {profile && levelProgress && streak && (
           <div className="grid lg:grid-cols-4 gap-6 mb-8">
@@ -807,6 +1045,8 @@ export default function LearningPage() {
             )}
           </div>
         </div>
+          </>
+        )}
       </main>
     </div>
   );
