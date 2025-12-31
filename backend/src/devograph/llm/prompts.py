@@ -301,109 +301,135 @@ Respond with JSON:
   "recommendations": ["specific advice"]
 }}"""
 
-JOB_DESCRIPTION_SYSTEM_PROMPT = """You are an expert technical recruiter and job description writer.
-Generate compelling, accurate job descriptions based on team skill gaps and role requirements.
-Focus on must-have skills derived from actual team needs.
+JOB_DESCRIPTION_SYSTEM_PROMPT = """You are an expert technical recruiter and job description writer with extensive experience in the software industry.
+Generate compelling, comprehensive, and professional job descriptions that attract top talent.
+Base requirements on the role title and level, industry best practices, and any team context provided.
+Always produce detailed, actionable job descriptions with specific technical requirements.
 Respond ONLY with valid JSON."""
 
-JOB_DESCRIPTION_PROMPT = """Generate a job description based on team skill gaps.
+JOB_DESCRIPTION_PROMPT = """Generate a comprehensive job description for the following role.
 
-Team Gap Analysis:
-- Team size: {team_size}
-- Critical missing skills: {critical_skills}
-- Bus factor risks: {bus_factor_risks}
-
-Role Context:
+Role Information:
 - Title: {role_title}
 - Level: {level}
-- Priority: {priority}
+- Hiring Priority: {priority}
 
-Roadmap Requirements (what the team needs to build):
+Team Context (if available):
+- Team size: {team_size}
+- Critical skill gaps identified: {critical_skills}
+- Bus factor risks: {bus_factor_risks}
+
+Roadmap/Project Context:
 {roadmap_context}
 
-Target Role Template (if any):
+Role Template Reference (if any):
 {role_template}
 
-Generate a comprehensive job description.
+IMPORTANT: Generate a detailed, professional job description suitable for posting on job boards.
+Even if team context is limited, use your expertise to create comprehensive requirements based on:
+1. The role title and level
+2. Industry standards for similar positions
+3. Common technical stacks and skills for this type of role
+4. Best practices for the role level (Junior/Mid/Senior/Staff/Principal)
+
+For a {level} {role_title}, include:
+- 5-8 must-have technical skills with proficiency levels
+- 3-5 nice-to-have skills
+- 6-8 specific responsibilities
+- 5-7 qualifications
+- Team culture and work style expectations
 
 Respond with JSON:
 {{
-  "role_title": "Finalized title",
-  "level": "Junior|Mid|Senior|Staff|Principal",
-  "summary": "2-3 sentence role summary",
+  "role_title": "Finalized professional title",
+  "level": "{level}",
+  "summary": "Compelling 2-3 sentence role summary that excites candidates",
   "must_have_skills": [
     {{
-      "skill": "skill name",
+      "skill": "specific technology or skill",
       "level": 60-100,
-      "reasoning": "why this is critical"
+      "reasoning": "why this is essential for the role"
     }}
   ],
   "nice_to_have_skills": [
     {{
-      "skill": "skill name",
+      "skill": "specific technology or skill",
       "level": 40-70,
-      "reasoning": "why this would help"
+      "reasoning": "how this adds value"
     }}
   ],
-  "responsibilities": ["key responsibilities"],
-  "qualifications": ["required qualifications"],
-  "cultural_indicators": ["team culture aspects"],
-  "full_text": "Complete formatted job description as markdown"
+  "responsibilities": ["specific, actionable responsibilities"],
+  "qualifications": ["years of experience, education, certifications"],
+  "cultural_indicators": ["team culture and work environment aspects"],
+  "full_text": "Complete, professionally formatted job description in markdown with sections: About the Role, What You'll Do, What We're Looking For, Nice to Have, Why Join Us"
 }}"""
 
-INTERVIEW_RUBRIC_SYSTEM_PROMPT = """You are an expert technical interviewer.
-Generate comprehensive interview rubrics that assess both technical skills and cultural fit.
-Include specific questions with evaluation criteria and red flags.
+INTERVIEW_RUBRIC_SYSTEM_PROMPT = """You are an expert technical interviewer with experience at top tech companies.
+Generate comprehensive, structured interview rubrics that effectively assess both technical depth and cultural fit.
+Create questions that reveal true competency levels and thinking patterns.
+Include specific evaluation criteria, red flags, and indicators of exceptional candidates.
 Respond ONLY with valid JSON."""
 
-INTERVIEW_RUBRIC_PROMPT = """Generate an interview rubric for assessing candidates.
+INTERVIEW_RUBRIC_PROMPT = """Generate a comprehensive interview rubric for evaluating candidates.
 
-Role: {role_title}
-Level: {level}
-Required Skills: {required_skills}
-Nice-to-have Skills: {nice_to_have_skills}
+Role Details:
+- Position: {role_title}
+- Level: {level}
+- Required Skills: {required_skills}
+- Nice-to-have Skills: {nice_to_have_skills}
 
 Team Context:
-- Team tech stack: {tech_stack}
-- Team domains: {team_domains}
-- Work style indicators: {work_style}
+- Tech Stack: {tech_stack}
+- Domain Focus: {team_domains}
+- Work Style: {work_style}
 
-For each required skill, generate:
-1. Technical questions (2-3 per skill)
-2. Evaluation criteria (what to look for)
-3. Red flags
-4. Bonus indicators
+Generate a thorough interview rubric including:
 
-Also include:
-- System design prompt relevant to team's architecture
-- Behavioral questions for soft skills
-- Culture fit assessment criteria
+TECHNICAL ASSESSMENT:
+- Create 6-10 technical questions covering the required skills
+- Include a mix of difficulty levels (easy, medium, hard)
+- Questions should assess both knowledge and practical application
+- Include coding/problem-solving questions appropriate for the level
+
+BEHAVIORAL ASSESSMENT:
+- Create 4-6 behavioral questions using the STAR method
+- Cover: collaboration, conflict resolution, leadership (for senior roles), growth mindset
+- Include questions about past technical decisions and trade-offs
+
+SYSTEM DESIGN (for Mid+ levels):
+- Create a relevant system design prompt
+- Should match the role's domain and complexity expectations
+
+For each question include:
+- Specific evaluation criteria (what separates good from great)
+- Red flags that indicate the candidate may not be a fit
+- Bonus indicators that suggest exceptional capability
 
 Respond with JSON:
 {{
-  "role_title": "role",
+  "role_title": "{role_title}",
   "technical_questions": [
     {{
-      "question": "the question",
-      "skill_assessed": "skill name",
+      "question": "detailed technical question",
+      "skill_assessed": "specific skill being tested",
       "difficulty": "easy|medium|hard",
-      "evaluation_criteria": ["what good answers include"],
-      "red_flags": ["warning signs"],
-      "bonus_indicators": ["exceptional responses"]
+      "evaluation_criteria": ["specific things to look for in answers", "expected depth of knowledge"],
+      "red_flags": ["warning signs in responses", "concerning patterns"],
+      "bonus_indicators": ["signs of exceptional skill", "advanced understanding"]
     }}
   ],
   "behavioral_questions": [
     {{
-      "question": "behavioral question",
-      "skill_assessed": "communication|collaboration|leadership|mentorship",
+      "question": "Tell me about a time when... (STAR format)",
+      "skill_assessed": "communication|collaboration|leadership|mentorship|problem_solving",
       "difficulty": "medium",
-      "evaluation_criteria": ["what to look for"],
-      "red_flags": ["concerns"],
-      "bonus_indicators": ["exceptional traits"]
+      "evaluation_criteria": ["clear situation description", "specific actions taken", "measurable results"],
+      "red_flags": ["vague answers", "blaming others", "no concrete examples"],
+      "bonus_indicators": ["self-awareness", "growth from experience", "team impact"]
     }}
   ],
-  "system_design_prompt": "A system design prompt relevant to the role",
-  "culture_fit_criteria": ["what makes someone a good cultural fit"]
+  "system_design_prompt": "Design a [relevant system] that handles [specific requirements]. Consider scalability, reliability, and maintainability. Walk through your high-level architecture, data model, and key technical decisions.",
+  "culture_fit_criteria": ["specific traits that indicate good cultural fit", "values alignment indicators"]
 }}"""
 
 STRETCH_ASSIGNMENT_PROMPT = """Identify stretch assignments for a developer based on their learning path.
