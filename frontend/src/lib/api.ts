@@ -1694,6 +1694,43 @@ export interface WorkspaceBillingStatus {
   next_billing_date: string | null;
 }
 
+// Billing/Subscription types
+export interface PlanFeatures {
+  id: string;
+  name: string;
+  tier: "free" | "pro" | "enterprise";
+  description: string | null;
+  price_monthly_cents: number;
+  max_repos: number;
+  max_commits_per_repo: number;
+  max_prs_per_repo: number;
+  sync_history_days: number;
+  llm_requests_per_day: number;
+  llm_provider_access: string[];
+  enable_real_time_sync: boolean;
+  enable_advanced_analytics: boolean;
+  enable_exports: boolean;
+  enable_webhooks: boolean;
+  enable_team_features: boolean;
+}
+
+export interface SubscriptionStatus {
+  has_subscription: boolean;
+  subscription: {
+    id: string;
+    status: string;
+    plan_id: string | null;
+    current_period_start: string | null;
+    current_period_end: string | null;
+  } | null;
+  plan: PlanFeatures | null;
+  customer: {
+    id: string;
+    stripe_customer_id: string | null;
+    email: string | null;
+  } | null;
+}
+
 export interface Team {
   id: string;
   workspace_id: string;
@@ -3235,6 +3272,35 @@ export const epicApi = {
 
   getBurndown: async (workspaceId: string, epicId: string): Promise<EpicBurndown> => {
     const response = await api.get(`/workspaces/${workspaceId}/epics/${epicId}/burndown`);
+    return response.data;
+  },
+};
+
+// Billing API
+export const billingApi = {
+  getSubscriptionStatus: async (): Promise<SubscriptionStatus> => {
+    const response = await api.get("/billing/status");
+    return response.data;
+  },
+
+  getPlans: async (): Promise<PlanFeatures[]> => {
+    const response = await api.get("/billing/plans");
+    return response.data;
+  },
+
+  createCheckoutSession: async (data: {
+    plan_tier: string;
+    success_url: string;
+    cancel_url: string;
+  }): Promise<{ checkout_url: string }> => {
+    const response = await api.post("/billing/checkout", data);
+    return response.data;
+  },
+
+  createPortalSession: async (data: {
+    return_url: string;
+  }): Promise<{ portal_url: string }> => {
+    const response = await api.post("/billing/portal", data);
     return response.data;
   },
 };

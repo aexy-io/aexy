@@ -23,6 +23,8 @@ class PlanResponse(BaseModel):
     enable_real_time_sync: bool
     enable_advanced_analytics: bool
     enable_exports: bool
+    enable_webhooks: bool = False
+    enable_team_features: bool = False
 
     class Config:
         from_attributes = True

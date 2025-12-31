@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronRight,
+  Crown,
   FolderGit2,
   MoreVertical,
   Plus,
@@ -21,10 +22,12 @@ import {
   GitBranch,
 } from "lucide-react";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
-import { useTeams, useTeamMembers } from "@/hooks/useTeams";
+import { useTeams, useTeam, useTeamMembers } from "@/hooks/useTeams";
 import { useAuth } from "@/hooks/useAuth";
+import { useSubscription } from "@/hooks/useSubscription";
 import { TeamListItem, TeamMember, WorkspaceMember, repositoriesApi, Repository } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
+import { PremiumGate, ProBadge, UpgradeModal } from "@/components/PremiumGate";
 
 const TEAM_ROLE_OPTIONS = [
   { value: "lead", label: "Project Lead", description: "Can manage project members" },
@@ -58,14 +61,22 @@ interface TeamCardProps {
   workspaceId: string;
   isAdmin: boolean;
   onDelete: (teamId: string) => void;
+  canUseTeamFeatures: boolean;
 }
 
-function TeamCard({ team, workspaceId, isAdmin, onDelete }: TeamCardProps) {
+function TeamCard({ team, workspaceId, isAdmin, onDelete, canUseTeamFeatures }: TeamCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const { members, isLoading: membersLoading, addMember, removeMember } = useTeamMembers(
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ added: number; removed: number } | null>(null);
+
+  const { members, isLoading: membersLoading, addMember, removeMember, updateMemberRole, isUpdatingRole } = useTeamMembers(
     expanded ? workspaceId : null,
     expanded ? team.id : null
+  );
+  const { syncTeam, isSyncing } = useTeam(
+    team.type === "repo_based" ? workspaceId : null,
+    team.type === "repo_based" ? team.id : null
   );
   const { members: workspaceMembers } = useWorkspaceMembers(expanded ? workspaceId : null);
 
@@ -84,6 +95,34 @@ function TeamCard({ team, workspaceId, isAdmin, onDelete }: TeamCardProps) {
       } catch (error) {
         console.error("Failed to remove member:", error);
       }
+    }
+  };
+
+  const handleSync = async () => {
+    if (!canUseTeamFeatures) {
+      setShowUpgradeModal(true);
+      setShowMenu(false);
+      return;
+    }
+    try {
+      const result = await syncTeam();
+      setSyncResult({ added: result.added_members, removed: result.removed_members });
+      setTimeout(() => setSyncResult(null), 5000);
+      setShowMenu(false);
+    } catch (error) {
+      console.error("Failed to sync team:", error);
+    }
+  };
+
+  const handleRoleChange = async (developerId: string, newRole: string) => {
+    if (!canUseTeamFeatures) {
+      setShowUpgradeModal(true);
+      return;
+    }
+    try {
+      await updateMemberRole({ developerId, role: newRole });
+    } catch (error) {
+      console.error("Failed to update role:", error);
     }
   };
 
@@ -114,7 +153,14 @@ function TeamCard({ team, workspaceId, isAdmin, onDelete }: TeamCardProps) {
                 {team.type === "repo_based" ? "Repo-based" : "Manual"}
               </span>
             </div>
-            <p className="text-slate-400 text-sm">{team.member_count} members</p>
+            <p className="text-slate-400 text-sm">
+              {team.member_count} members
+              {syncResult && (
+                <span className="ml-2 text-green-400 text-xs">
+                  (+{syncResult.added} added, -{syncResult.removed} removed)
+                </span>
+              )}
+            </p>
           </div>
         </button>
         {isAdmin && (
@@ -142,14 +188,13 @@ function TeamCard({ team, workspaceId, isAdmin, onDelete }: TeamCardProps) {
                   </Link>
                   {team.type === "repo_based" && (
                     <button
-                      onClick={() => {
-                        // TODO: Implement sync
-                        setShowMenu(false);
-                      }}
-                      className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-600 flex items-center gap-2"
+                      onClick={handleSync}
+                      disabled={isSyncing}
+                      className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-600 flex items-center gap-2 disabled:opacity-50"
                     >
-                      <RefreshCw className="h-4 w-4" />
-                      Sync Members
+                      <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
+                      <span className="flex-1">Sync Members</span>
+                      {!canUseTeamFeatures && <ProBadge />}
                     </button>
                   )}
                   <button
@@ -197,23 +242,51 @@ function TeamCard({ team, workspaceId, isAdmin, onDelete }: TeamCardProps) {
                         <span className="text-white text-sm">
                           {member.developer_name || member.developer_email || "Unknown"}
                         </span>
-                        <span className={`ml-2 px-1.5 py-0.5 rounded text-xs ${getRoleBadgeColor(member.role)}`}>
-                          {member.role}
-                        </span>
                         {member.source === "repo_contributor" && (
                           <span className="ml-1 text-xs text-slate-500">(auto)</span>
                         )}
                       </div>
                     </div>
-                    {isAdmin && member.source === "manual" && (
-                      <button
-                        onClick={() => handleRemoveMember(member.developer_id)}
-                        className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded transition"
-                        title="Remove from team"
-                      >
-                        <UserMinus className="h-4 w-4" />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {isAdmin ? (
+                        <div className="relative flex items-center">
+                          <select
+                            value={member.role}
+                            onChange={(e) => handleRoleChange(member.developer_id, e.target.value)}
+                            disabled={isUpdatingRole}
+                            className={`px-2 py-1 text-xs rounded border-0 focus:outline-none focus:ring-1 focus:ring-primary-500 ${
+                              canUseTeamFeatures
+                                ? "bg-slate-700 text-white cursor-pointer"
+                                : "bg-slate-700/50 text-slate-400 cursor-not-allowed"
+                            }`}
+                          >
+                            {TEAM_ROLE_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                          {!canUseTeamFeatures && (
+                            <span title="Pro feature">
+                              <Crown className="ml-1 h-3 w-3 text-amber-500" />
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className={`px-1.5 py-0.5 rounded text-xs ${getRoleBadgeColor(member.role)}`}>
+                          {member.role}
+                        </span>
+                      )}
+                      {isAdmin && member.source === "manual" && (
+                        <button
+                          onClick={() => handleRemoveMember(member.developer_id)}
+                          className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded transition"
+                          title="Remove from project"
+                        >
+                          <UserMinus className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
                 {members.length === 0 && (
@@ -223,8 +296,8 @@ function TeamCard({ team, workspaceId, isAdmin, onDelete }: TeamCardProps) {
                 )}
               </div>
 
-              {/* Add Member (for manual teams) */}
-              {isAdmin && team.type === "manual" && availableMembers.length > 0 && (
+              {/* Add Member */}
+              {isAdmin && availableMembers.length > 0 && (
                 <div className="p-3 border-t border-slate-700">
                   <div className="flex items-center gap-2">
                     <select
@@ -250,6 +323,11 @@ function TeamCard({ team, workspaceId, isAdmin, onDelete }: TeamCardProps) {
             </>
           )}
         </div>
+      )}
+
+      {/* Premium Upgrade Modal */}
+      {showUpgradeModal && (
+        <UpgradeModal feature="team_features" onClose={() => setShowUpgradeModal(false)} />
       )}
     </div>
   );
@@ -435,6 +513,7 @@ function CreateTeamModal({ onClose, onCreate, onCreateFromRepo, isCreating, repo
 
 export default function TeamsSettingsPage() {
   const { user } = useAuth();
+  const { canUseTeamFeatures } = useSubscription();
   const {
     currentWorkspace,
     currentWorkspaceId,
@@ -562,6 +641,7 @@ export default function TeamsSettingsPage() {
                     workspaceId={currentWorkspaceId!}
                     isAdmin={isAdmin}
                     onDelete={handleDelete}
+                    canUseTeamFeatures={canUseTeamFeatures}
                   />
                 ))}
               </div>
