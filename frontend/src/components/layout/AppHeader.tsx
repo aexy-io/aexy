@@ -27,7 +27,7 @@ interface AppHeaderProps {
   } | null | undefined;
   logout: () => void;
 }
-
+ 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/sprints", label: "Planning", icon: Calendar },

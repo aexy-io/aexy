@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from devograph.models.career import LearningPath
     from devograph.models.gamification import DeveloperGamification
     from devograph.models.learning_activity import LearningActivityLog
+    from devograph.models.notification import Notification, NotificationPreference
     from devograph.models.plan import Plan
     from devograph.models.repository import DeveloperOrganization, DeveloperRepository
     from devograph.models.review import ContributionSummary, IndividualReview, WorkGoal
@@ -150,6 +151,16 @@ class Developer(Base):
     contribution_summaries: Mapped[list["ContributionSummary"]] = relationship(
         "ContributionSummary",
         back_populates="developer",
+    )
+    notifications: Mapped[list["Notification"]] = relationship(
+        "Notification",
+        back_populates="recipient",
+        cascade="all, delete-orphan",
+    )
+    notification_preferences: Mapped[list["NotificationPreference"]] = relationship(
+        "NotificationPreference",
+        back_populates="developer",
+        cascade="all, delete-orphan",
     )
 
 

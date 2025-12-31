@@ -39,6 +39,8 @@ from devograph.api.integrations import webhook_router as integration_webhooks_ro
 from devograph.api.epics import router as epics_router
 # Reviews & Goals
 from devograph.api.reviews import router as reviews_router
+# Notifications
+from devograph.api.notifications import router as notifications_router
 
 api_router = APIRouter()
 
@@ -83,3 +85,5 @@ api_router.include_router(integration_webhooks_router, tags=["integration-webhoo
 api_router.include_router(epics_router, tags=["epics"])
 # Reviews & Goals
 api_router.include_router(reviews_router, tags=["reviews"])
+# Notifications
+api_router.include_router(notifications_router, tags=["notifications"])
