@@ -199,6 +199,8 @@ class SprintTaskCreate(BaseModel):
     labels: list[str] = Field(default_factory=list)
     assignee_id: str | None = None
     status: TaskStatus = "backlog"
+    epic_id: str | None = None
+    parent_task_id: str | None = None
 
 
 class SprintTaskUpdate(BaseModel):
@@ -208,7 +210,9 @@ class SprintTaskUpdate(BaseModel):
     description: str | None = None
     story_points: int | None = Field(None, ge=0)
     priority: TaskPriority | None = None
+    status: TaskStatus | None = None
     labels: list[str] | None = None
+    epic_id: str | None = None
 
 
 class SprintTaskStatusUpdate(BaseModel):
@@ -257,11 +261,26 @@ class SprintTaskResponse(BaseModel):
     status: TaskStatus
     status_id: str | None = None  # Custom status reference
     custom_fields: dict = Field(default_factory=dict)  # Custom field values
+    epic_id: str | None = None
+    parent_task_id: str | None = None
+    subtasks_count: int = 0
     started_at: datetime | None = None
     completed_at: datetime | None = None
     carried_over_from_sprint_id: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class SubtaskResponse(BaseModel):
+    """Schema for subtask summary in parent task."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    title: str
+    status: TaskStatus
+    assignee_id: str | None = None
+    assignee_name: str | None = None
 
 
 # Import Schemas
@@ -446,3 +465,42 @@ class CarryOverResponse(BaseModel):
 
     carried_count: int
     tasks: list[SprintTaskResponse]
+
+
+# Task Activity Schemas
+TaskActivityAction = Literal[
+    "created", "updated", "status_changed", "assigned", "unassigned",
+    "comment", "priority_changed", "points_changed", "epic_changed"
+]
+
+
+class TaskActivityCreate(BaseModel):
+    """Schema for creating a task activity (comment)."""
+
+    comment: str = Field(..., min_length=1, max_length=5000)
+
+
+class TaskActivityResponse(BaseModel):
+    """Schema for task activity response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    task_id: str
+    action: TaskActivityAction
+    actor_id: str | None = None
+    actor_name: str | None = None
+    actor_avatar_url: str | None = None
+    field_name: str | None = None
+    old_value: str | None = None
+    new_value: str | None = None
+    comment: str | None = None
+    metadata: dict = Field(default_factory=dict)
+    created_at: datetime
+
+
+class TaskActivityListResponse(BaseModel):
+    """Schema for task activity list."""
+
+    activities: list[TaskActivityResponse]
+    total: int

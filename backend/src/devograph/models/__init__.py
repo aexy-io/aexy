@@ -56,6 +56,7 @@ from devograph.models.sprint import (
     WorkspaceTaskStatus,
     WorkspaceCustomField,
     TaskGitHubLink,
+    TaskActivity,
 )
 from devograph.models.epic import Epic
 from devograph.models.learning_activity import (
@@ -129,6 +130,7 @@ __all__ = [
     "WorkspaceTaskStatus",
     "WorkspaceCustomField",
     "TaskGitHubLink",
+    "TaskActivity",
     # Epic
     "Epic",
     # Learning Activity

@@ -3,11 +3,11 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.sprint import Sprint, SprintTask
+from devograph.models.sprint import Sprint, SprintTask, TaskActivity
 from devograph.services.task_sources.base import TaskItem, TaskSourceConfig, TaskStatus
 from devograph.services.task_sources.github_issues import GitHubIssuesSource
 from devograph.services.task_sources.jira import JiraSource
@@ -34,6 +34,8 @@ class SprintTaskService:
         labels: list[str] | None = None,
         assignee_id: str | None = None,
         status: str = "backlog",
+        epic_id: str | None = None,
+        parent_task_id: str | None = None,
     ) -> SprintTask:
         """Add a task to a sprint.
 
@@ -49,6 +51,8 @@ class SprintTaskService:
             labels: List of labels.
             assignee_id: Developer ID to assign.
             status: Initial task status.
+            epic_id: Optional epic ID.
+            parent_task_id: Optional parent task ID for subtasks.
 
         Returns:
             Created SprintTask.
@@ -70,6 +74,8 @@ class SprintTaskService:
             labels=labels or [],
             assignee_id=assignee_id,
             status=status,
+            epic_id=epic_id,
+            parent_task_id=parent_task_id,
         )
         self.db.add(task)
         await self.db.flush()
@@ -124,7 +130,9 @@ class SprintTaskService:
         description: str | None = None,
         story_points: int | None = None,
         priority: str | None = None,
+        status: str | None = None,
         labels: list[str] | None = None,
+        epic_id: str | None = ...,  # Use sentinel to distinguish from None
     ) -> SprintTask | None:
         """Update task details."""
         task = await self.get_task(task_id)
@@ -139,8 +147,18 @@ class SprintTaskService:
             task.story_points = story_points
         if priority is not None:
             task.priority = priority
+        if status is not None:
+            old_status = task.status
+            task.status = status
+            # Track status change timestamps
+            if status == "in_progress" and old_status != "in_progress" and not task.started_at:
+                task.started_at = datetime.now(timezone.utc)
+            elif status == "done" and old_status != "done":
+                task.completed_at = datetime.now(timezone.utc)
         if labels is not None:
             task.labels = labels
+        if epic_id is not ...:  # Only update if explicitly passed (including None)
+            task.epic_id = epic_id
 
         await self.db.flush()
         await self.db.refresh(task)
@@ -259,6 +277,109 @@ class SprintTaskService:
         await self.db.flush()
         await self.db.refresh(task)
         return task
+
+    # Activity Logging
+    async def log_activity(
+        self,
+        task_id: str,
+        action: str,
+        actor_id: str | None = None,
+        field_name: str | None = None,
+        old_value: str | None = None,
+        new_value: str | None = None,
+        comment: str | None = None,
+        metadata: dict | None = None,
+    ) -> TaskActivity:
+        """Log an activity for a task.
+
+        Args:
+            task_id: Task ID.
+            action: Activity action type.
+            actor_id: ID of the user who performed the action.
+            field_name: Name of the field that changed.
+            old_value: Previous value (as string).
+            new_value: New value (as string).
+            comment: Optional comment text.
+            metadata: Optional additional metadata.
+
+        Returns:
+            Created TaskActivity.
+        """
+        activity = TaskActivity(
+            id=str(uuid4()),
+            task_id=task_id,
+            action=action,
+            actor_id=actor_id,
+            field_name=field_name,
+            old_value=old_value,
+            new_value=new_value,
+            comment=comment,
+            metadata=metadata or {},
+        )
+        self.db.add(activity)
+        await self.db.flush()
+        await self.db.refresh(activity)
+        return activity
+
+    async def get_task_activities(
+        self,
+        task_id: str,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[TaskActivity], int]:
+        """Get activities for a task.
+
+        Args:
+            task_id: Task ID.
+            limit: Maximum number of activities to return.
+            offset: Number of activities to skip.
+
+        Returns:
+            Tuple of (list of activities, total count).
+        """
+        # Get total count
+        count_stmt = select(func.count(TaskActivity.id)).where(
+            TaskActivity.task_id == task_id
+        )
+        count_result = await self.db.execute(count_stmt)
+        total = count_result.scalar_one()
+
+        # Get activities
+        stmt = (
+            select(TaskActivity)
+            .where(TaskActivity.task_id == task_id)
+            .options(selectinload(TaskActivity.actor))
+            .order_by(TaskActivity.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        result = await self.db.execute(stmt)
+        activities = list(result.scalars().all())
+
+        return activities, total
+
+    async def add_comment(
+        self,
+        task_id: str,
+        comment: str,
+        actor_id: str | None = None,
+    ) -> TaskActivity:
+        """Add a comment to a task.
+
+        Args:
+            task_id: Task ID.
+            comment: Comment text.
+            actor_id: ID of the user adding the comment.
+
+        Returns:
+            Created TaskActivity.
+        """
+        return await self.log_activity(
+            task_id=task_id,
+            action="comment",
+            actor_id=actor_id,
+            comment=comment,
+        )
 
     # Import from sources
     async def import_github_issues(

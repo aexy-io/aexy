@@ -15,6 +15,9 @@ from devograph.schemas.sprint import (
     SprintTaskResponse,
     TaskImportRequest,
     TaskImportResponse,
+    TaskActivityCreate,
+    TaskActivityResponse,
+    TaskActivityListResponse,
 )
 from devograph.services.sprint_service import SprintService
 from devograph.services.sprint_task_service import SprintTaskService
@@ -26,6 +29,7 @@ router = APIRouter(prefix="/sprints/{sprint_id}/tasks", tags=["Sprint Tasks"])
 def task_to_response(task) -> SprintTaskResponse:
     """Convert SprintTask model to response schema."""
     assignee = task.assignee
+    subtasks_count = len(task.subtasks) if task.subtasks else 0
     return SprintTaskResponse(
         id=str(task.id),
         sprint_id=str(task.sprint_id),
@@ -45,6 +49,9 @@ def task_to_response(task) -> SprintTaskResponse:
         status=task.status,
         status_id=str(task.status_id) if task.status_id else None,
         custom_fields=task.custom_fields or {},
+        epic_id=str(task.epic_id) if task.epic_id else None,
+        parent_task_id=str(task.parent_task_id) if task.parent_task_id else None,
+        subtasks_count=subtasks_count,
         started_at=task.started_at,
         completed_at=task.completed_at,
         carried_over_from_sprint_id=str(task.carried_over_from_sprint_id) if task.carried_over_from_sprint_id else None,
@@ -126,6 +133,8 @@ async def create_task(
         labels=data.labels,
         assignee_id=data.assignee_id,
         status=data.status,
+        epic_id=data.epic_id,
+        parent_task_id=data.parent_task_id,
     )
 
     await db.commit()
@@ -345,14 +354,22 @@ async def update_task(
     await get_sprint_and_check_permission(sprint_id, current_user, db, "member")
 
     task_service = SprintTaskService(db)
-    task = await task_service.update_task(
-        task_id=task_id,
-        title=data.title,
-        description=data.description,
-        story_points=data.story_points,
-        priority=data.priority,
-        labels=data.labels,
-    )
+
+    # Build kwargs, handling epic_id specially to allow setting to None
+    update_kwargs = {
+        "task_id": task_id,
+        "title": data.title,
+        "description": data.description,
+        "story_points": data.story_points,
+        "priority": data.priority,
+        "status": data.status,
+        "labels": data.labels,
+    }
+    # Only pass epic_id if it was explicitly provided in the request
+    if data.epic_id is not None or "epic_id" in data.model_fields_set:
+        update_kwargs["epic_id"] = data.epic_id
+
+    task = await task_service.update_task(**update_kwargs)
 
     if not task or task.sprint_id != sprint_id:
         raise HTTPException(
@@ -386,6 +403,29 @@ async def delete_task(
 
     await task_service.remove_task(task_id)
     await db.commit()
+
+
+# Subtasks
+@router.get("/{task_id}/subtasks", response_model=list[SprintTaskResponse])
+async def get_subtasks(
+    sprint_id: str,
+    task_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get all subtasks for a task."""
+    await get_sprint_and_check_permission(sprint_id, current_user, db, "viewer")
+
+    task_service = SprintTaskService(db)
+    task = await task_service.get_task(task_id)
+
+    if not task or task.sprint_id != sprint_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    return [task_to_response(t) for t in task.subtasks]
 
 
 # Status updates
@@ -488,3 +528,89 @@ async def sync_task(
 
     await db.commit()
     return task_to_response(task)
+
+
+# Activity Log
+def activity_to_response(activity) -> TaskActivityResponse:
+    """Convert TaskActivity model to response schema."""
+    actor = activity.actor
+    return TaskActivityResponse(
+        id=str(activity.id),
+        task_id=str(activity.task_id),
+        action=activity.action,
+        actor_id=str(activity.actor_id) if activity.actor_id else None,
+        actor_name=actor.name if actor else None,
+        actor_avatar_url=actor.avatar_url if actor else None,
+        field_name=activity.field_name,
+        old_value=activity.old_value,
+        new_value=activity.new_value,
+        comment=activity.comment,
+        metadata=activity.activity_metadata or {},
+        created_at=activity.created_at,
+    )
+
+
+@router.get("/{task_id}/activities", response_model=TaskActivityListResponse)
+async def get_task_activities(
+    sprint_id: str,
+    task_id: str,
+    limit: int = 50,
+    offset: int = 0,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the activity log for a task."""
+    await get_sprint_and_check_permission(sprint_id, current_user, db, "viewer")
+
+    task_service = SprintTaskService(db)
+
+    # Verify task exists and belongs to sprint
+    task = await task_service.get_task(task_id)
+    if not task or task.sprint_id != sprint_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    activities, total = await task_service.get_task_activities(
+        task_id=task_id,
+        limit=limit,
+        offset=offset,
+    )
+
+    return TaskActivityListResponse(
+        activities=[activity_to_response(a) for a in activities],
+        total=total,
+    )
+
+
+@router.post("/{task_id}/comments", response_model=TaskActivityResponse, status_code=status.HTTP_201_CREATED)
+async def add_comment(
+    sprint_id: str,
+    task_id: str,
+    data: TaskActivityCreate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Add a comment to a task."""
+    await get_sprint_and_check_permission(sprint_id, current_user, db, "member")
+
+    task_service = SprintTaskService(db)
+
+    # Verify task exists and belongs to sprint
+    task = await task_service.get_task(task_id)
+    if not task or task.sprint_id != sprint_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    activity = await task_service.add_comment(
+        task_id=task_id,
+        comment=data.comment,
+        actor_id=str(current_user.id),
+    )
+
+    await db.commit()
+    await db.refresh(activity)
+    return activity_to_response(activity)
