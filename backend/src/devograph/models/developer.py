@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from devograph.models.learning_activity import LearningActivityLog
     from devograph.models.plan import Plan
     from devograph.models.repository import DeveloperOrganization, DeveloperRepository
+    from devograph.models.review import ContributionSummary, IndividualReview, WorkGoal
 
 
 class Developer(Base):
@@ -136,6 +137,19 @@ class Developer(Base):
         "CustomerBilling",
         back_populates="developer",
         uselist=False,
+    )
+    reviews_received: Mapped[list["IndividualReview"]] = relationship(
+        "IndividualReview",
+        back_populates="developer",
+        foreign_keys="IndividualReview.developer_id",
+    )
+    work_goals: Mapped[list["WorkGoal"]] = relationship(
+        "WorkGoal",
+        back_populates="developer",
+    )
+    contribution_summaries: Mapped[list["ContributionSummary"]] = relationship(
+        "ContributionSummary",
+        back_populates="developer",
     )
 
 

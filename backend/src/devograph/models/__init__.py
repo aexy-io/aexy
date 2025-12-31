@@ -69,6 +69,14 @@ from devograph.models.gamification import (
     DeveloperBadge,
     PREDEFINED_BADGES,
 )
+from devograph.models.review import (
+    ReviewCycle,
+    IndividualReview,
+    ReviewSubmission,
+    ReviewRequest,
+    WorkGoal,
+    ContributionSummary,
+)
 
 __all__ = [
     # Plan
@@ -141,4 +149,11 @@ __all__ = [
     "Badge",
     "DeveloperBadge",
     "PREDEFINED_BADGES",
+    # Reviews
+    "ReviewCycle",
+    "IndividualReview",
+    "ReviewSubmission",
+    "ReviewRequest",
+    "WorkGoal",
+    "ContributionSummary",
 ]

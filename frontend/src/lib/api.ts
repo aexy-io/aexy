@@ -3278,8 +3278,10 @@ export const epicApi = {
 
 // Billing API
 export const billingApi = {
-  getSubscriptionStatus: async (): Promise<SubscriptionStatus> => {
-    const response = await api.get("/billing/status");
+  getSubscriptionStatus: async (workspaceId?: string): Promise<SubscriptionStatus> => {
+    const response = await api.get("/billing/status", {
+      params: workspaceId ? { workspace_id: workspaceId } : {},
+    });
     return response.data;
   },
 
