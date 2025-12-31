@@ -11,7 +11,7 @@ import logging
 from datetime import date, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, and_, or_, case
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -286,7 +286,7 @@ class EpicService:
         stmt = select(
             func.count(SprintTask.id).label("total_tasks"),
             func.sum(
-                func.case(
+                case(
                     (SprintTask.status == "done", 1),
                     else_=0
                 )
@@ -294,7 +294,7 @@ class EpicService:
             func.coalesce(func.sum(SprintTask.story_points), 0).label("total_points"),
             func.coalesce(
                 func.sum(
-                    func.case(
+                    case(
                         (SprintTask.status == "done", SprintTask.story_points),
                         else_=0
                     )
@@ -469,7 +469,7 @@ class EpicService:
                 Sprint.end_date,
                 func.count(SprintTask.id).label("task_count"),
                 func.sum(
-                    func.case(
+                    case(
                         (SprintTask.status == "done", 1),
                         else_=0
                     )
@@ -477,7 +477,7 @@ class EpicService:
                 func.coalesce(func.sum(SprintTask.story_points), 0).label("story_points"),
                 func.coalesce(
                     func.sum(
-                        func.case(
+                        case(
                             (SprintTask.status == "done", SprintTask.story_points),
                             else_=0
                         )

@@ -76,12 +76,12 @@ function getDaysRemaining(endDate: string | null) {
 
 interface SprintCardProps {
   sprint: SprintListItem;
-  teamId: string;
+  projectId: string;
   onDelete: (sprintId: string) => void;
   isActive?: boolean;
 }
 
-function SprintCard({ sprint, teamId, onDelete, isActive }: SprintCardProps) {
+function SprintCard({ sprint, projectId, onDelete, isActive }: SprintCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const statusConfig = STATUS_CONFIG[sprint.status];
   const daysRemaining = getDaysRemaining(sprint.end_date);
@@ -106,7 +106,7 @@ function SprintCard({ sprint, teamId, onDelete, isActive }: SprintCardProps) {
               </span>
             </div>
             <Link
-              href={`/sprints/${teamId}/${sprint.id}`}
+              href={`/sprints/${projectId}/${sprint.id}`}
               className="text-lg font-semibold text-white hover:text-primary-400 transition"
             >
               {sprint.name}
@@ -130,7 +130,7 @@ function SprintCard({ sprint, teamId, onDelete, isActive }: SprintCardProps) {
                 <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
                 <div className="absolute right-0 top-full mt-1 w-40 bg-slate-700 rounded-lg shadow-xl z-20 py-1">
                   <Link
-                    href={`/sprints/${teamId}/${sprint.id}`}
+                    href={`/sprints/${projectId}/${sprint.id}`}
                     className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-600 flex items-center gap-2"
                   >
                     <ChevronRight className="h-4 w-4" />
@@ -333,8 +333,8 @@ function CreateSprintModal({ onClose, onCreate, isCreating }: CreateSprintModalP
   );
 }
 
-export default function SprintsPage({ params }: { params: { teamId: string } }) {
-  const { teamId } = params;
+export default function SprintsPage({ params }: { params: { projectId: string } }) {
+  const { projectId } = params;
 
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { currentWorkspaceId, currentWorkspaceLoading } = useWorkspace();
@@ -345,9 +345,9 @@ export default function SprintsPage({ params }: { params: { teamId: string } }) 
     createSprint,
     deleteSprint,
     isCreating,
-  } = useSprints(currentWorkspaceId, teamId);
+  } = useSprints(currentWorkspaceId, projectId);
 
-  const { sprint: activeSprint } = useActiveSprint(currentWorkspaceId, teamId);
+  const { sprint: activeSprint } = useActiveSprint(currentWorkspaceId, projectId);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -452,7 +452,7 @@ export default function SprintsPage({ params }: { params: { teamId: string } }) 
                     <SprintCard
                       key={sprint.id}
                       sprint={sprint}
-                      teamId={teamId}
+                      projectId={projectId}
                       onDelete={handleDelete}
                       isActive={activeSprint?.id === sprint.id}
                     />
@@ -473,7 +473,7 @@ export default function SprintsPage({ params }: { params: { teamId: string } }) 
                     <SprintCard
                       key={sprint.id}
                       sprint={sprint}
-                      teamId={teamId}
+                      projectId={projectId}
                       onDelete={handleDelete}
                     />
                   ))}
@@ -493,7 +493,7 @@ export default function SprintsPage({ params }: { params: { teamId: string } }) 
                     <SprintCard
                       key={sprint.id}
                       sprint={sprint}
-                      teamId={teamId}
+                      projectId={projectId}
                       onDelete={handleDelete}
                     />
                   ))}
@@ -513,7 +513,7 @@ export default function SprintsPage({ params }: { params: { teamId: string } }) 
                     <SprintCard
                       key={sprint.id}
                       sprint={sprint}
-                      teamId={teamId}
+                      projectId={projectId}
                       onDelete={handleDelete}
                     />
                   ))}

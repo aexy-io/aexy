@@ -267,14 +267,14 @@ function ActionItemsColumn({ items, onAdd, onUpdateStatus, onDelete }: ActionIte
 export default function RetrospectivePage({
   params,
 }: {
-  params: { teamId: string; sprintId: string };
+  params: { projectId: string; sprintId: string };
 }) {
-  const { teamId, sprintId } = params;
+  const { projectId, sprintId } = params;
 
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { currentWorkspaceId, currentWorkspaceLoading } = useWorkspace();
 
-  const { sprint, isLoading: sprintLoading } = useSprint(currentWorkspaceId, teamId, sprintId);
+  const { sprint, isLoading: sprintLoading } = useSprint(currentWorkspaceId, projectId, sprintId);
   const {
     retrospective,
     isLoading: retroLoading,
@@ -394,7 +394,7 @@ export default function RetrospectivePage({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link
-                href={`/sprints/${teamId}/${sprintId}`}
+                href={`/sprints/${projectId}/${sprintId}`}
                 className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
               >
                 <ArrowLeft className="h-5 w-5" />

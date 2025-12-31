@@ -998,9 +998,9 @@ function TaskDetailModal({ task, sprintId, onClose, onUpdate, onDelete, isUpdati
 export default function SprintBoardPage({
   params,
 }: {
-  params: { teamId: string; sprintId: string };
+  params: { projectId: string; sprintId: string };
 }) {
-  const { teamId, sprintId } = params;
+  const { projectId, sprintId } = params;
 
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { currentWorkspaceId, currentWorkspaceLoading } = useWorkspace();
@@ -1013,7 +1013,7 @@ export default function SprintBoardPage({
     startRetrospective,
     completeSprint,
     isStarting,
-  } = useSprint(currentWorkspaceId, teamId, sprintId);
+  } = useSprint(currentWorkspaceId, projectId, sprintId);
 
   const {
     tasks,
@@ -1027,7 +1027,7 @@ export default function SprintBoardPage({
     isUpdatingTask,
   } = useSprintTasks(sprintId);
 
-  const { stats, refetch: refetchStats } = useSprintStats(currentWorkspaceId, teamId, sprintId);
+  const { stats, refetch: refetchStats } = useSprintStats(currentWorkspaceId, projectId, sprintId);
 
   const {
     suggestAssignments,
@@ -1219,7 +1219,7 @@ export default function SprintBoardPage({
         <div className="text-center">
           <AlertCircle className="h-16 w-16 text-slate-600 mx-auto mb-4" />
           <h2 className="text-xl font-medium text-white mb-2">Sprint Not Found</h2>
-          <Link href={`/sprints/${teamId}`} className="text-primary-400 hover:underline">
+          <Link href={`/sprints/${projectId}`} className="text-primary-400 hover:underline">
             Back to sprints
           </Link>
         </div>
@@ -1239,7 +1239,7 @@ export default function SprintBoardPage({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link
-                href={`/sprints/${teamId}`}
+                href={`/sprints/${projectId}`}
                 className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
               >
                 <ArrowLeft className="h-5 w-5" />
@@ -1296,7 +1296,7 @@ export default function SprintBoardPage({
               </button>
 
               <Link
-                href={`/sprints/${teamId}/${sprintId}/analytics`}
+                href={`/sprints/${projectId}/${sprintId}/analytics`}
                 className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition text-sm"
               >
                 <BarChart3 className="h-4 w-4" />

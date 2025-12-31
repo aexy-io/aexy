@@ -96,17 +96,17 @@ function StatCard({ title, value, subtitle, icon, trend, trendValue, color = "de
 export default function SprintAnalyticsPage({
   params,
 }: {
-  params: { teamId: string; sprintId: string };
+  params: { projectId: string; sprintId: string };
 }) {
-  const { teamId, sprintId } = params;
+  const { projectId, sprintId } = params;
 
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { currentWorkspaceId, currentWorkspaceLoading } = useWorkspace();
 
-  const { sprint, isLoading: sprintLoading } = useSprint(currentWorkspaceId, teamId, sprintId);
-  const { stats } = useSprintStats(currentWorkspaceId, teamId, sprintId);
+  const { sprint, isLoading: sprintLoading } = useSprint(currentWorkspaceId, projectId, sprintId);
+  const { stats } = useSprintStats(currentWorkspaceId, projectId, sprintId);
   const { burndown, isLoading: burndownLoading } = useSprintBurndown(sprintId);
-  const { velocity, isLoading: velocityLoading } = useTeamVelocity(teamId, 6);
+  const { velocity, isLoading: velocityLoading } = useTeamVelocity(projectId, 6);
   const { capacity, prediction, isLoadingCapacity, isLoadingPrediction } = useSprintAI(sprintId);
 
   // Prepare burndown chart data
@@ -162,7 +162,7 @@ export default function SprintAnalyticsPage({
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
             <Link
-              href={`/sprints/${teamId}/${sprintId}`}
+              href={`/sprints/${projectId}/${sprintId}`}
               className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
             >
               <ArrowLeft className="h-5 w-5" />
