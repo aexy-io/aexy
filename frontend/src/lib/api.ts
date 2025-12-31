@@ -3856,3 +3856,158 @@ export const reviewsApi = {
     return response.data;
   },
 };
+
+// ============ Notification Types ============
+
+export type NotificationEventType =
+  | "peer_review_requested"
+  | "peer_review_received"
+  | "review_cycle_phase_changed"
+  | "manager_review_completed"
+  | "review_acknowledged"
+  | "deadline_reminder_1_day"
+  | "deadline_reminder_day_of"
+  | "goal_auto_linked"
+  | "goal_at_risk"
+  | "goal_completed"
+  | "workspace_invite"
+  | "team_added";
+
+export interface Notification {
+  id: string;
+  recipient_id: string;
+  event_type: NotificationEventType;
+  title: string;
+  body: string;
+  context: {
+    review_id?: string;
+    goal_id?: string;
+    cycle_id?: string;
+    request_id?: string;
+    requester_name?: string;
+    requester_avatar?: string;
+    action_url?: string;
+    workspace_id?: string;
+    workspace_name?: string;
+    extra?: Record<string, unknown>;
+  };
+  is_read: boolean;
+  read_at: string | null;
+  in_app_delivered: boolean;
+  email_sent: boolean;
+  email_sent_at: string | null;
+  created_at: string;
+}
+
+export interface NotificationListResponse {
+  notifications: Notification[];
+  total: number;
+  page: number;
+  per_page: number;
+  has_next: boolean;
+  unread_count: number;
+}
+
+export interface NotificationPreference {
+  id: string;
+  developer_id: string;
+  event_type: string;
+  in_app_enabled: boolean;
+  email_enabled: boolean;
+  slack_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NotificationPreferencesResponse {
+  preferences: Record<string, NotificationPreference>;
+  available_event_types: string[];
+}
+
+// ============ Notification API ============
+
+export const notificationsApi = {
+  // List notifications
+  list: async (
+    developerId: string,
+    params?: {
+      page?: number;
+      per_page?: number;
+      unread_only?: boolean;
+    }
+  ): Promise<NotificationListResponse> => {
+    const response = await api.get("/notifications", {
+      params: { developer_id: developerId, ...params },
+    });
+    return response.data;
+  },
+
+  // Get unread count
+  getUnreadCount: async (developerId: string): Promise<{ count: number }> => {
+    const response = await api.get("/notifications/count", {
+      params: { developer_id: developerId },
+    });
+    return response.data;
+  },
+
+  // Poll for new notifications
+  poll: async (
+    developerId: string,
+    since: string
+  ): Promise<{
+    notifications: Notification[];
+    latest_timestamp: string | null;
+  }> => {
+    const response = await api.get("/notifications/poll", {
+      params: { developer_id: developerId, since },
+    });
+    return response.data;
+  },
+
+  // Mark as read
+  markAsRead: async (notificationId: string, developerId: string): Promise<Notification> => {
+    const response = await api.post(`/notifications/${notificationId}/read`, null, {
+      params: { developer_id: developerId },
+    });
+    return response.data;
+  },
+
+  // Mark all as read
+  markAllAsRead: async (developerId: string): Promise<{ marked_read: number }> => {
+    const response = await api.post("/notifications/read-all", null, {
+      params: { developer_id: developerId },
+    });
+    return response.data;
+  },
+
+  // Delete notification
+  delete: async (notificationId: string, developerId: string): Promise<void> => {
+    await api.delete(`/notifications/${notificationId}`, {
+      params: { developer_id: developerId },
+    });
+  },
+
+  // Get preferences
+  getPreferences: async (developerId: string): Promise<NotificationPreferencesResponse> => {
+    const response = await api.get("/notifications/preferences", {
+      params: { developer_id: developerId },
+    });
+    return response.data;
+  },
+
+  // Update preference
+  updatePreference: async (
+    developerId: string,
+    eventType: string,
+    data: {
+      in_app_enabled?: boolean;
+      email_enabled?: boolean;
+      slack_enabled?: boolean;
+    }
+  ): Promise<NotificationPreference> => {
+    const response = await api.put(`/notifications/preferences/${eventType}`, data, {
+      params: { developer_id: developerId },
+    });
+    return response.data;
+  },
+};

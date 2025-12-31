@@ -44,6 +44,14 @@ class NotificationEventType(str, Enum):
     WORKSPACE_INVITE = "workspace_invite"
     TEAM_ADDED = "team_added"
 
+    # On-call related
+    ONCALL_SHIFT_STARTING = "oncall_shift_starting"  # Reminder before shift
+    ONCALL_SHIFT_STARTED = "oncall_shift_started"
+    ONCALL_SHIFT_ENDING = "oncall_shift_ending"  # Reminder before shift ends
+    ONCALL_SWAP_REQUESTED = "oncall_swap_requested"
+    ONCALL_SWAP_ACCEPTED = "oncall_swap_accepted"
+    ONCALL_SWAP_DECLINED = "oncall_swap_declined"
+
 
 class Notification(Base):
     """In-app notification for a user.
@@ -222,4 +230,11 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     NotificationEventType.GOAL_COMPLETED: {"in_app": True, "email": False, "slack": False},
     NotificationEventType.WORKSPACE_INVITE: {"in_app": True, "email": True, "slack": False},
     NotificationEventType.TEAM_ADDED: {"in_app": True, "email": False, "slack": False},
+    # On-call notifications
+    NotificationEventType.ONCALL_SHIFT_STARTING: {"in_app": True, "email": True, "slack": True},
+    NotificationEventType.ONCALL_SHIFT_STARTED: {"in_app": True, "email": False, "slack": True},
+    NotificationEventType.ONCALL_SHIFT_ENDING: {"in_app": True, "email": False, "slack": False},
+    NotificationEventType.ONCALL_SWAP_REQUESTED: {"in_app": True, "email": True, "slack": True},
+    NotificationEventType.ONCALL_SWAP_ACCEPTED: {"in_app": True, "email": True, "slack": False},
+    NotificationEventType.ONCALL_SWAP_DECLINED: {"in_app": True, "email": True, "slack": False},
 }
