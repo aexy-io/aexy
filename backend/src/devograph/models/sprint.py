@@ -329,6 +329,14 @@ class SprintTask(Base):
         nullable=True,
     )
 
+    # Subtask support
+    parent_task_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("sprint_tasks.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -372,6 +380,26 @@ class SprintTask(Base):
         back_populates="task",
         cascade="all, delete-orphan",
         lazy="selectin",
+    )
+    parent_task: Mapped["SprintTask | None"] = relationship(
+        "SprintTask",
+        remote_side="SprintTask.id",
+        foreign_keys=[parent_task_id],
+        back_populates="subtasks",
+        lazy="selectin",
+    )
+    subtasks: Mapped[list["SprintTask"]] = relationship(
+        "SprintTask",
+        foreign_keys="SprintTask.parent_task_id",
+        back_populates="parent_task",
+        lazy="selectin",
+    )
+    activities: Mapped[list["TaskActivity"]] = relationship(
+        "TaskActivity",
+        back_populates="task",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="TaskActivity.created_at.desc()",
     )
 
     __table_args__ = (
@@ -672,4 +700,66 @@ class TaskGitHubLink(Base):
         # Prevent duplicate links
         UniqueConstraint("task_id", "commit_id", name="uq_task_commit_link"),
         UniqueConstraint("task_id", "pull_request_id", name="uq_task_pr_link"),
+    )
+
+
+class TaskActivity(Base):
+    """Task activity log - tracks all changes and actions on a task."""
+
+    __tablename__ = "task_activities"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    task_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("sprint_tasks.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Activity type
+    action: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # "created" | "updated" | "status_changed" | "assigned" | "unassigned" | "comment" | "priority_changed" | "points_changed"
+
+    # Who performed the action
+    actor_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # Field that changed (for updates)
+    field_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    # Change details
+    old_value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    new_value: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # For comments
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Metadata (for any extra info)
+    activity_metadata: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+
+    # Timestamp
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    # Relationships
+    task: Mapped["SprintTask"] = relationship(
+        "SprintTask",
+        back_populates="activities",
+        lazy="selectin",
+    )
+    actor: Mapped["Developer | None"] = relationship(
+        "Developer",
+        lazy="selectin",
     )

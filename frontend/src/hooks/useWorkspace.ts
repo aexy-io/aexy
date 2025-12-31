@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
-import { workspaceApi, WorkspaceListItem, Workspace } from "@/lib/api";
+import { workspaceApi, WorkspaceListItem, Workspace, CustomTaskStatus, StatusCategory } from "@/lib/api";
 
 const CURRENT_WORKSPACE_KEY = "current_workspace_id";
 
@@ -227,5 +227,89 @@ export function useWorkspaceBilling(workspaceId: string | null) {
     isLoading: isLoading || seatUsageLoading,
     error,
     refetch,
+  };
+}
+
+// Hook for custom task statuses
+export function useCustomTaskStatuses(workspaceId: string | null) {
+  const queryClient = useQueryClient();
+
+  const {
+    data: statuses,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery<CustomTaskStatus[]>({
+    queryKey: ["customTaskStatuses", workspaceId],
+    queryFn: () => workspaceApi.getTaskStatuses(workspaceId!),
+    enabled: !!workspaceId,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: {
+      name: string;
+      category?: StatusCategory;
+      color?: string;
+      icon?: string;
+      is_default?: boolean;
+    }) => workspaceApi.createTaskStatus(workspaceId!, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customTaskStatuses", workspaceId] });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ statusId, data }: {
+      statusId: string;
+      data: {
+        name?: string;
+        category?: StatusCategory;
+        color?: string;
+        icon?: string;
+        is_default?: boolean;
+      };
+    }) => workspaceApi.updateTaskStatus(workspaceId!, statusId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customTaskStatuses", workspaceId] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (statusId: string) => workspaceApi.deleteTaskStatus(workspaceId!, statusId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customTaskStatuses", workspaceId] });
+    },
+  });
+
+  const reorderMutation = useMutation({
+    mutationFn: (statusIds: string[]) => workspaceApi.reorderTaskStatuses(workspaceId!, statusIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customTaskStatuses", workspaceId] });
+    },
+  });
+
+  // Group statuses by category for kanban display
+  const statusesByCategory = statuses?.reduce((acc, status) => {
+    if (!acc[status.category]) {
+      acc[status.category] = [];
+    }
+    acc[status.category].push(status);
+    return acc;
+  }, {} as Record<StatusCategory, CustomTaskStatus[]>) || {};
+
+  return {
+    statuses: statuses || [],
+    statusesByCategory,
+    isLoading,
+    error,
+    refetch,
+    createStatus: createMutation.mutateAsync,
+    updateStatus: updateMutation.mutateAsync,
+    deleteStatus: deleteMutation.mutateAsync,
+    reorderStatuses: reorderMutation.mutateAsync,
+    isCreating: createMutation.isPending,
+    isUpdating: updateMutation.isPending,
+    isDeleting: deleteMutation.isPending,
+    isReordering: reorderMutation.isPending,
   };
 }

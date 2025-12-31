@@ -15,6 +15,8 @@ import {
   SprintRetrospective,
   TaskStatus,
   TaskSourceType,
+  TaskActivity,
+  TaskActivityList,
 } from "@/lib/api";
 
 // List sprints for a team
@@ -299,6 +301,39 @@ export function useSprintTasks(sprintId: string | null) {
     isUnassigning: unassignTaskMutation.isPending,
     isBulkAssigning: bulkAssignMutation.isPending,
     isImporting: importTasksMutation.isPending,
+  };
+}
+
+// Task Activities
+export function useTaskActivities(sprintId: string | null, taskId: string | null) {
+  const queryClient = useQueryClient();
+
+  const {
+    data: activityData,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery<TaskActivityList>({
+    queryKey: ["taskActivities", sprintId, taskId],
+    queryFn: () => sprintApi.getTaskActivities(sprintId!, taskId!),
+    enabled: !!sprintId && !!taskId,
+  });
+
+  const addCommentMutation = useMutation({
+    mutationFn: (comment: string) => sprintApi.addTaskComment(sprintId!, taskId!, comment),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["taskActivities", sprintId, taskId] });
+    },
+  });
+
+  return {
+    activities: activityData?.activities || [],
+    total: activityData?.total || 0,
+    isLoading,
+    error,
+    refetch,
+    addComment: addCommentMutation.mutateAsync,
+    isAddingComment: addCommentMutation.isPending,
   };
 }
 

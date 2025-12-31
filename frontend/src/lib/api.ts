@@ -1774,6 +1774,9 @@ export interface SprintTask {
   carried_over_from_sprint_id: string | null;
   // Epic reference
   epic_id: string | null;
+  // Subtask support
+  parent_task_id: string | null;
+  subtasks_count: number;
   // External sync tracking
   last_synced_at: string | null;
   external_updated_at: string | null;
@@ -1858,6 +1861,70 @@ export interface SprintRetrospective {
   action_items: { id: string; item: string; assignee_id: string | null; status: string; due_date: string | null }[];
   team_mood_score: number | null;
   notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type TaskActivityAction =
+  | "created"
+  | "updated"
+  | "status_changed"
+  | "assigned"
+  | "unassigned"
+  | "comment"
+  | "priority_changed"
+  | "points_changed"
+  | "epic_changed";
+
+export interface TaskActivity {
+  id: string;
+  task_id: string;
+  action: TaskActivityAction;
+  actor_id: string | null;
+  actor_name: string | null;
+  actor_avatar_url: string | null;
+  field_name: string | null;
+  old_value: string | null;
+  new_value: string | null;
+  comment: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface TaskActivityList {
+  activities: TaskActivity[];
+  total: number;
+}
+
+// Custom Status Types
+export type StatusCategory = "todo" | "in_progress" | "done";
+
+export interface CustomTaskStatus {
+  id: string;
+  workspace_id: string;
+  name: string;
+  slug: string;
+  category: StatusCategory;
+  color: string;
+  icon: string | null;
+  position: number;
+  is_default: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomField {
+  id: string;
+  workspace_id: string;
+  name: string;
+  slug: string;
+  field_type: "text" | "number" | "select" | "multiselect" | "date" | "url";
+  options: { value: string; label: string; color?: string }[] | null;
+  is_required: boolean;
+  default_value: string | null;
+  position: number;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -1958,6 +2025,51 @@ export const workspaceApi = {
     seats_available: number;
   }> => {
     const response = await api.get(`/workspaces/${workspaceId}/billing/seats`);
+    return response.data;
+  },
+
+  // Custom Task Statuses
+  getTaskStatuses: async (workspaceId: string): Promise<CustomTaskStatus[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/task-statuses`);
+    return response.data;
+  },
+
+  createTaskStatus: async (workspaceId: string, data: {
+    name: string;
+    category?: StatusCategory;
+    color?: string;
+    icon?: string;
+    is_default?: boolean;
+  }): Promise<CustomTaskStatus> => {
+    const response = await api.post(`/workspaces/${workspaceId}/task-statuses`, data);
+    return response.data;
+  },
+
+  updateTaskStatus: async (workspaceId: string, statusId: string, data: {
+    name?: string;
+    category?: StatusCategory;
+    color?: string;
+    icon?: string;
+    is_default?: boolean;
+  }): Promise<CustomTaskStatus> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/task-statuses/${statusId}`, data);
+    return response.data;
+  },
+
+  deleteTaskStatus: async (workspaceId: string, statusId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/task-statuses/${statusId}`);
+  },
+
+  reorderTaskStatuses: async (workspaceId: string, statusIds: string[]): Promise<CustomTaskStatus[]> => {
+    const response = await api.post(`/workspaces/${workspaceId}/task-statuses/reorder`, {
+      status_ids: statusIds,
+    });
+    return response.data;
+  },
+
+  // Custom Fields
+  getCustomFields: async (workspaceId: string): Promise<CustomField[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/custom-fields`);
     return response.data;
   },
 };
@@ -2168,6 +2280,8 @@ export const sprintApi = {
     labels?: string[];
     assignee_id?: string;
     status?: TaskStatus;
+    epic_id?: string;
+    parent_task_id?: string;
   }): Promise<SprintTask> => {
     const response = await api.post(`/sprints/${sprintId}/tasks`, data);
     return response.data;
@@ -2178,7 +2292,9 @@ export const sprintApi = {
     description?: string;
     story_points?: number;
     priority?: TaskPriority;
+    status?: TaskStatus;
     labels?: string[];
+    epic_id?: string | null;
   }): Promise<SprintTask> => {
     const response = await api.patch(`/sprints/${sprintId}/tasks/${taskId}`, data);
     return response.data;
@@ -2191,6 +2307,24 @@ export const sprintApi = {
 
   removeTask: async (sprintId: string, taskId: string): Promise<void> => {
     await api.delete(`/sprints/${sprintId}/tasks/${taskId}`);
+  },
+
+  getSubtasks: async (sprintId: string, taskId: string): Promise<SprintTask[]> => {
+    const response = await api.get(`/sprints/${sprintId}/tasks/${taskId}/subtasks`);
+    return response.data;
+  },
+
+  // Activity Log
+  getTaskActivities: async (sprintId: string, taskId: string, limit = 50, offset = 0): Promise<TaskActivityList> => {
+    const response = await api.get(`/sprints/${sprintId}/tasks/${taskId}/activities`, {
+      params: { limit, offset },
+    });
+    return response.data;
+  },
+
+  addTaskComment: async (sprintId: string, taskId: string, comment: string): Promise<TaskActivity> => {
+    const response = await api.post(`/sprints/${sprintId}/tasks/${taskId}/comments`, { comment });
+    return response.data;
   },
 
   assignTask: async (sprintId: string, taskId: string, developerId: string, reason?: string, confidence?: number): Promise<SprintTask> => {
