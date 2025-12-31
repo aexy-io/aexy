@@ -25,6 +25,12 @@ from devograph.models.review import (
 from devograph.models.team import Team, TeamMember
 from devograph.models.workspace import Workspace
 from devograph.services.contribution_service import ContributionService
+from devograph.services.notification_service import (
+    notify_peer_review_requested,
+    notify_peer_review_received,
+    notify_manager_review_completed,
+    notify_review_cycle_phase_changed,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -241,9 +247,30 @@ class ReviewService:
 
         current_idx = phase_order.index(cycle.status)
         if current_idx < len(phase_order) - 1:
-            cycle.status = phase_order[current_idx + 1]
+            new_status = phase_order[current_idx + 1]
+            cycle.status = new_status
             cycle.updated_at = datetime.utcnow()
             await self.db.flush()
+
+            # Notify all developers in the cycle about the phase change
+            try:
+                # Get all developers in this cycle
+                review_stmt = select(IndividualReview.developer_id).where(
+                    IndividualReview.review_cycle_id == cycle_id
+                )
+                result = await self.db.execute(review_stmt)
+                developer_ids = [row[0] for row in result.fetchall()]
+
+                if developer_ids:
+                    await notify_review_cycle_phase_changed(
+                        db=self.db,
+                        recipient_ids=developer_ids,
+                        cycle_id=cycle_id,
+                        cycle_name=cycle.name,
+                        new_phase=new_status,
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to send cycle phase change notifications: {e}")
 
         return cycle.status
 
@@ -468,6 +495,16 @@ class ReviewService:
             request.updated_at = datetime.utcnow()
             await self.db.flush()
 
+        # Notify the reviewee that they received peer feedback
+        try:
+            await notify_peer_review_received(
+                db=self.db,
+                developer_id=review.developer_id,
+                review_id=review_id,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to send peer review received notification: {e}")
+
         return submission
 
     async def submit_manager_review(
@@ -558,6 +595,16 @@ class ReviewService:
 
         await self.db.flush()
 
+        # Notify the developer that their review is complete
+        try:
+            await notify_manager_review_completed(
+                db=self.db,
+                developer_id=review.developer_id,
+                review_id=review_id,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to send manager review completed notification: {e}")
+
         return review
 
     async def acknowledge_review(self, review_id: str) -> IndividualReview | None:
@@ -615,6 +662,21 @@ class ReviewService:
         self.db.add(request)
         await self.db.flush()
 
+        # Send notification to reviewer
+        try:
+            requester = await self.db.get(Developer, requester_id)
+            if requester:
+                await notify_peer_review_requested(
+                    db=self.db,
+                    reviewer_id=reviewer_id,
+                    requester_name=requester.name or requester.email,
+                    requester_avatar=requester.avatar_url,
+                    review_id=review_id,
+                    request_id=request.id,
+                )
+        except Exception as e:
+            logger.warning(f"Failed to send peer review request notification: {e}")
+
         return request
 
     async def assign_peer_reviewers(
@@ -639,6 +701,11 @@ class ReviewService:
         if not review:
             raise ValueError("Review not found")
 
+        # Get developer info for notifications
+        developer = await self.db.get(Developer, review.developer_id)
+        requester_name = developer.name or developer.email if developer else "A team member"
+        requester_avatar = developer.avatar_url if developer else None
+
         requests = []
         for reviewer_id in reviewer_ids:
             request = ReviewRequest(
@@ -656,6 +723,20 @@ class ReviewService:
             requests.append(request)
 
         await self.db.flush()
+
+        # Send notifications to all reviewers
+        for request in requests:
+            try:
+                await notify_peer_review_requested(
+                    db=self.db,
+                    reviewer_id=request.reviewer_id,
+                    requester_name=requester_name,
+                    requester_avatar=requester_avatar,
+                    review_id=review_id,
+                    request_id=request.id,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to send peer review request notification: {e}")
 
         return requests
 
