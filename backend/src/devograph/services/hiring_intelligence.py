@@ -473,43 +473,110 @@ class HiringIntelligenceService:
         role_title: str,
         level: str,
     ) -> GeneratedJDResult:
-        """Generate a default JD without LLM."""
+        """Generate a comprehensive default JD without LLM."""
         critical_skills = [g.skill for g in gap_analysis.skill_gaps if g.gap_severity == "critical"]
         moderate_skills = [g.skill for g in gap_analysis.skill_gaps if g.gap_severity == "moderate"]
 
-        must_have = [{"skill": s, "level": 70, "reasoning": "Critical team gap"} for s in critical_skills[:5]]
-        nice_to_have = [{"skill": s, "level": 50, "reasoning": "Would strengthen team"} for s in moderate_skills[:5]]
+        # Default skills based on common role patterns
+        default_skills_map = {
+            "sde": ["Python", "JavaScript", "SQL", "Git", "REST APIs"],
+            "frontend": ["React", "TypeScript", "CSS", "HTML", "JavaScript"],
+            "backend": ["Python", "Node.js", "PostgreSQL", "REST APIs", "Docker"],
+            "fullstack": ["React", "Node.js", "TypeScript", "PostgreSQL", "Docker"],
+            "devops": ["Docker", "Kubernetes", "AWS", "CI/CD", "Terraform"],
+            "data": ["Python", "SQL", "Pandas", "Data Modeling", "ETL"],
+            "ml": ["Python", "TensorFlow", "PyTorch", "ML Algorithms", "Data Analysis"],
+        }
 
-        return GeneratedJDResult(
-            role_title=role_title,
-            level=level,
-            summary=f"We are looking for a {level} {role_title} to join our team.",
-            must_have_skills=must_have,
-            nice_to_have_skills=nice_to_have,
-            responsibilities=[
-                "Design and implement features",
-                "Collaborate with team members",
-                "Participate in code reviews",
-            ],
-            qualifications=[
-                f"Experience as a {level} engineer",
-                "Strong problem-solving skills",
-            ],
-            cultural_indicators=[
-                "Collaborative mindset",
-                "Continuous learner",
-            ],
-            full_text=f"""# {role_title}
+        # Determine role category from title
+        role_lower = role_title.lower()
+        default_skills = default_skills_map.get("sde", [])  # Default to SDE
+        for key in default_skills_map:
+            if key in role_lower:
+                default_skills = default_skills_map[key]
+                break
+
+        # Combine team gaps with defaults
+        must_have_skills = critical_skills[:3] if critical_skills else default_skills[:5]
+        nice_to_have_skills = moderate_skills[:3] if moderate_skills else ["Cloud Platforms", "System Design", "Agile Methodologies"]
+
+        must_have = [{"skill": s, "level": 70, "reasoning": "Essential for the role"} for s in must_have_skills]
+        nice_to_have = [{"skill": s, "level": 50, "reasoning": "Would enhance contribution"} for s in nice_to_have_skills]
+
+        # Level-specific experience requirements
+        experience_map = {
+            "Junior": "0-2 years",
+            "Mid": "2-4 years",
+            "Senior": "4-7 years",
+            "Staff": "7-10 years",
+            "Principal": "10+ years",
+        }
+        experience = experience_map.get(level, "3+ years")
+
+        responsibilities = [
+            f"Design, develop, and maintain high-quality software solutions",
+            f"Collaborate with cross-functional teams to define and implement features",
+            f"Write clean, testable, and well-documented code",
+            f"Participate in code reviews and provide constructive feedback",
+            f"Troubleshoot, debug, and resolve technical issues",
+            f"Contribute to architectural decisions and technical planning",
+        ]
+
+        if level in ["Senior", "Staff", "Principal"]:
+            responsibilities.extend([
+                "Mentor junior engineers and foster team growth",
+                "Lead technical initiatives and drive best practices",
+                "Contribute to system architecture and design decisions",
+            ])
+
+        qualifications = [
+            f"{experience} of professional software development experience",
+            f"Strong proficiency in {', '.join(must_have_skills[:3])}",
+            "Solid understanding of software engineering principles",
+            "Experience with version control systems (Git)",
+            "Strong problem-solving and analytical skills",
+            "Excellent communication and collaboration abilities",
+        ]
+
+        if level in ["Senior", "Staff", "Principal"]:
+            qualifications.append("Track record of technical leadership and mentorship")
+
+        full_text = f"""# {level} {role_title}
 
 ## About the Role
-We are looking for a {level} {role_title} to join our team.
+We are seeking a talented {level} {role_title} to join our engineering team. In this role, you will play a key part in building and scaling our platform, working alongside a collaborative team of engineers who are passionate about delivering exceptional software.
 
-## Requirements
-- Experience with: {', '.join(critical_skills[:3]) or 'various technologies'}
+## What You'll Do
+{chr(10).join(f"- {r}" for r in responsibilities)}
+
+## What We're Looking For
+{chr(10).join(f"- {q}" for q in qualifications)}
 
 ## Nice to Have
-- Experience with: {', '.join(moderate_skills[:3]) or 'additional technologies'}
-""",
+{chr(10).join(f"- Experience with {s}" for s in nice_to_have_skills)}
+
+## Why Join Us
+- Work on challenging technical problems at scale
+- Collaborative and inclusive engineering culture
+- Opportunities for growth and professional development
+- Competitive compensation and benefits
+"""
+
+        return GeneratedJDResult(
+            role_title=f"{level} {role_title}",
+            level=level,
+            summary=f"We are seeking a talented {level} {role_title} to join our engineering team and help build scalable, high-quality software solutions.",
+            must_have_skills=must_have,
+            nice_to_have_skills=nice_to_have,
+            responsibilities=responsibilities,
+            qualifications=qualifications,
+            cultural_indicators=[
+                "Collaborative and team-oriented",
+                "Growth mindset and continuous learner",
+                "Strong ownership and accountability",
+                "Open to feedback and iteration",
+            ],
+            full_text=full_text,
         )
 
     async def generate_interview_rubric(
@@ -603,47 +670,213 @@ We are looking for a {level} {role_title} to join our team.
         self,
         jd: GeneratedJDResult,
     ) -> InterviewRubricResult:
-        """Generate a default interview rubric."""
+        """Generate a comprehensive default interview rubric."""
         technical_questions = []
-        for skill_data in jd.must_have_skills[:3]:
+
+        # Generate questions for each must-have skill
+        for skill_data in jd.must_have_skills[:5]:
             skill = skill_data.get("skill", "General")
             technical_questions.append(InterviewQuestion(
-                question=f"Describe your experience with {skill}.",
+                question=f"Can you describe a project where you used {skill}? What challenges did you face and how did you overcome them?",
                 skill_assessed=skill,
                 difficulty="medium",
                 evaluation_criteria=[
-                    "Clear understanding of fundamentals",
-                    "Real-world experience",
+                    f"Demonstrates practical experience with {skill}",
+                    "Explains technical decisions clearly",
+                    "Shows problem-solving approach",
+                    "Discusses trade-offs considered",
                 ],
-                red_flags=["Cannot provide concrete examples"],
-                bonus_indicators=["Advanced patterns or optimizations"],
+                red_flags=[
+                    "Cannot provide specific examples",
+                    "Lacks depth in technical explanation",
+                    "Unable to discuss trade-offs",
+                ],
+                bonus_indicators=[
+                    "Mentions performance optimizations",
+                    "Discusses scalability considerations",
+                    "Shows awareness of best practices",
+                ],
             ))
+
+        # Add problem-solving questions
+        technical_questions.append(InterviewQuestion(
+            question="Walk me through how you would debug a performance issue in a production system.",
+            skill_assessed="debugging",
+            difficulty="hard",
+            evaluation_criteria=[
+                "Systematic debugging approach",
+                "Uses appropriate tools and metrics",
+                "Considers multiple potential causes",
+                "Prioritizes based on impact",
+            ],
+            red_flags=[
+                "Random trial-and-error approach",
+                "Doesn't consider monitoring/logging",
+                "Cannot articulate a systematic process",
+            ],
+            bonus_indicators=[
+                "Mentions profiling tools",
+                "Discusses preventive measures",
+                "Has experience with production debugging",
+            ],
+        ))
+
+        # Add architecture/design question
+        technical_questions.append(InterviewQuestion(
+            question="How do you decide when to refactor code versus working around existing implementations?",
+            skill_assessed="software design",
+            difficulty="medium",
+            evaluation_criteria=[
+                "Considers time/effort trade-offs",
+                "Thinks about long-term maintainability",
+                "Evaluates risk appropriately",
+                "Makes data-driven decisions",
+            ],
+            red_flags=[
+                "Always rewrites without considering cost",
+                "Never refactors, only patches",
+                "Doesn't consider team impact",
+            ],
+            bonus_indicators=[
+                "Discusses technical debt strategically",
+                "Mentions incremental refactoring",
+                "Considers business priorities",
+            ],
+        ))
 
         behavioral_questions = [
             InterviewQuestion(
-                question="Tell me about a challenging project you worked on.",
-                skill_assessed="communication",
+                question="Tell me about a time when you had to work with incomplete or ambiguous requirements. How did you handle it?",
+                skill_assessed="problem_solving",
                 difficulty="medium",
-                evaluation_criteria=["Clear explanation", "Problem-solving approach"],
-                red_flags=["Blames others", "Cannot articulate learning"],
-                bonus_indicators=["Shows growth mindset"],
+                evaluation_criteria=[
+                    "Proactively seeks clarification",
+                    "Makes reasonable assumptions when needed",
+                    "Documents decisions and rationale",
+                    "Communicates effectively with stakeholders",
+                ],
+                red_flags=[
+                    "Waits passively for complete requirements",
+                    "Makes assumptions without validation",
+                    "Blames others for ambiguity",
+                ],
+                bonus_indicators=[
+                    "Creates prototypes to validate assumptions",
+                    "Establishes feedback loops",
+                    "Turns ambiguity into a learning opportunity",
+                ],
             ),
             InterviewQuestion(
-                question="How do you approach code reviews?",
+                question="Describe a situation where you disagreed with a technical decision. How did you handle it?",
                 skill_assessed="collaboration",
                 difficulty="medium",
-                evaluation_criteria=["Constructive feedback approach"],
-                red_flags=["Defensive attitude"],
-                bonus_indicators=["Mentorship focus"],
+                evaluation_criteria=[
+                    "Expresses disagreement constructively",
+                    "Backs up opinions with data/evidence",
+                    "Commits to decisions once made",
+                    "Focuses on the problem, not personalities",
+                ],
+                red_flags=[
+                    "Passive-aggressive behavior",
+                    "Unable to commit after decision",
+                    "Makes it personal",
+                ],
+                bonus_indicators=[
+                    "Changed their mind based on new information",
+                    "Found a compromise or third option",
+                    "Built stronger relationships through the process",
+                ],
+            ),
+            InterviewQuestion(
+                question="How do you approach learning new technologies or skills?",
+                skill_assessed="growth_mindset",
+                difficulty="easy",
+                evaluation_criteria=[
+                    "Has a structured learning approach",
+                    "Balances depth and breadth",
+                    "Applies learning to practical projects",
+                    "Shares knowledge with others",
+                ],
+                red_flags=[
+                    "Only learns when required by job",
+                    "Cannot name recent learning",
+                    "Dismissive of new technologies",
+                ],
+                bonus_indicators=[
+                    "Contributes to open source",
+                    "Teaches or mentors others",
+                    "Builds side projects",
+                ],
+            ),
+            InterviewQuestion(
+                question="Tell me about a time you received critical feedback. How did you respond?",
+                skill_assessed="communication",
+                difficulty="medium",
+                evaluation_criteria=[
+                    "Receives feedback openly",
+                    "Asks clarifying questions",
+                    "Takes action on feedback",
+                    "Shows self-awareness",
+                ],
+                red_flags=[
+                    "Becomes defensive",
+                    "Dismisses feedback",
+                    "Cannot recall receiving feedback",
+                ],
+                bonus_indicators=[
+                    "Sought out feedback proactively",
+                    "Made significant improvements",
+                    "Now helps others grow",
+                ],
             ),
         ]
+
+        # Add leadership question for senior roles
+        if jd.level in ["Senior", "Staff", "Principal"]:
+            behavioral_questions.append(InterviewQuestion(
+                question="Tell me about a time you mentored or helped develop another engineer. What was your approach?",
+                skill_assessed="leadership",
+                difficulty="medium",
+                evaluation_criteria=[
+                    "Takes active interest in others' growth",
+                    "Adapts mentoring style to individual",
+                    "Provides both support and challenge",
+                    "Celebrates mentee successes",
+                ],
+                red_flags=[
+                    "Has never mentored anyone",
+                    "Focuses only on technical not personal development",
+                    "Takes credit for mentee's work",
+                ],
+                bonus_indicators=[
+                    "Mentee went on to mentor others",
+                    "Created sustainable learning resources",
+                    "Influenced team culture positively",
+                ],
+            ))
+
+        # Generate system design prompt based on role
+        role_lower = jd.role_title.lower()
+        if "frontend" in role_lower:
+            system_design_prompt = "Design a frontend architecture for a real-time collaborative document editor (like Google Docs). Consider state management, real-time sync, offline support, and performance optimization. Walk through your component structure, data flow, and key technical decisions."
+        elif "backend" in role_lower:
+            system_design_prompt = "Design a scalable URL shortening service that handles millions of requests per day. Consider the database schema, caching strategy, analytics tracking, and API design. Walk through your architecture and key technical decisions."
+        elif "data" in role_lower:
+            system_design_prompt = "Design a data pipeline that ingests, processes, and analyzes user activity events at scale. Consider data storage, processing frameworks, data quality, and serving for analytics. Walk through your architecture and key technical decisions."
+        else:
+            system_design_prompt = "Design a notification system that can deliver messages across multiple channels (email, push, SMS, in-app) with user preferences and rate limiting. Consider scalability, reliability, and extensibility. Walk through your architecture and key technical decisions."
 
         return InterviewRubricResult(
             role_title=jd.role_title,
             technical_questions=technical_questions,
             behavioral_questions=behavioral_questions,
-            system_design_prompt=f"Design a system relevant to {jd.role_title}.",
-            culture_fit_criteria=jd.cultural_indicators,
+            system_design_prompt=system_design_prompt,
+            culture_fit_criteria=jd.cultural_indicators or [
+                "Collaborative and team-oriented",
+                "Takes ownership and accountability",
+                "Open to feedback and continuous improvement",
+                "Communicates proactively and clearly",
+            ],
         )
 
     def create_candidate_scorecard(
@@ -790,6 +1023,36 @@ We are looking for a {level} {role_title} to join our team.
             priority=priority,
         )
 
+        # Generate interview rubric
+        rubric = await self.generate_interview_rubric(jd, gap_analysis)
+        rubric_dict = {
+            "role_title": rubric.role_title,
+            "technical_questions": [
+                {
+                    "question": q.question,
+                    "skill_assessed": q.skill_assessed,
+                    "difficulty": q.difficulty,
+                    "evaluation_criteria": q.evaluation_criteria,
+                    "red_flags": q.red_flags,
+                    "bonus_indicators": q.bonus_indicators,
+                }
+                for q in rubric.technical_questions
+            ],
+            "behavioral_questions": [
+                {
+                    "question": q.question,
+                    "skill_assessed": q.skill_assessed,
+                    "difficulty": q.difficulty,
+                    "evaluation_criteria": q.evaluation_criteria,
+                    "red_flags": q.red_flags,
+                    "bonus_indicators": q.bonus_indicators,
+                }
+                for q in rubric.behavioral_questions
+            ],
+            "system_design_prompt": rubric.system_design_prompt,
+            "culture_fit_criteria": rubric.culture_fit_criteria,
+        }
+
         # Create requirement
         requirement = HiringRequirement(
             id=str(uuid4()),
@@ -808,7 +1071,7 @@ We are looking for a {level} {role_title} to join our team.
             },
             roadmap_items=roadmap_items or [],
             job_description=jd.full_text,
-            interview_rubric={},
+            interview_rubric=rubric_dict,
             status="draft",
             generated_by_model=self.llm_gateway.model_name if self.llm_gateway else "manual",
         )
