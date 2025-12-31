@@ -3,7 +3,21 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { redirect } from "next/navigation";
-import { Code, TrendingUp, Clock } from "lucide-react";
+import Link from "next/link";
+import {
+  Code,
+  TrendingUp,
+  Clock,
+  Sparkles,
+  Target,
+  GitPullRequest,
+  Activity,
+  ChevronRight,
+  Zap,
+  Users,
+  Calendar,
+  BarChart3,
+} from "lucide-react";
 import Image from "next/image";
 import { analysisApi, DeveloperInsights, SoftSkillsProfile } from "@/lib/api";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -73,8 +87,14 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
+            <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+          </div>
+          <p className="text-slate-400 text-sm">Loading your profile...</p>
+        </div>
       </div>
     );
   }
@@ -86,231 +106,397 @@ export default function DashboardPage() {
   const skillFingerprint = user?.skill_fingerprint;
   const workPatterns = user?.work_patterns;
 
+  // Calculate quick stats
+  const totalLanguages = skillFingerprint?.languages?.length || 0;
+  const totalFrameworks = skillFingerprint?.frameworks?.length || 0;
+  const topLanguage = skillFingerprint?.languages?.[0]?.name || "N/A";
+  const avgPRSize = workPatterns?.average_pr_size || 0;
+
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-slate-950">
       <AppHeader user={user} logout={logout} />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-white mb-8">
-          Developer Profile
-        </h1>
-
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Profile Card */}
-          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-            <div className="flex items-center gap-4 mb-6">
+        {/* Welcome Section */}
+        <div className="mb-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center gap-4">
               {user?.avatar_url && (
-                <Image
-                  src={user.avatar_url}
-                  alt={user.name || "User"}
-                  width={64}
-                  height={64}
-                  className="rounded-full"
-                />
+                <div className="relative">
+                  <Image
+                    src={user.avatar_url}
+                    alt={user.name || "User"}
+                    width={56}
+                    height={56}
+                    className="rounded-full ring-2 ring-slate-700"
+                  />
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-slate-950"></div>
+                </div>
               )}
               <div>
-                <h2 className="text-xl font-semibold text-white">
-                  {user?.name}
-                </h2>
-                <p className="text-slate-400">{user?.email}</p>
-                {user?.github_connection && (
-                  <p className="text-primary-400 text-sm">
-                    @{user.github_connection.github_username}
-                  </p>
-                )}
+                <h1 className="text-2xl font-bold text-white">
+                  Welcome back, {user?.name?.split(" ")[0] || "Developer"}
+                </h1>
+                <p className="text-slate-400 text-sm">
+                  {user?.github_connection ? (
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                      Connected as @{user.github_connection.github_username}
+                    </span>
+                  ) : (
+                    "Connect your GitHub to get started"
+                  )}
+                </p>
               </div>
             </div>
-
-            {workPatterns && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-400">Complexity Preference</span>
-                  <span className="text-white capitalize">
-                    {workPatterns.preferred_complexity}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-400">Collaboration Style</span>
-                  <span className="text-white capitalize">
-                    {workPatterns.collaboration_style}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-400">Avg PR Size</span>
-                  <span className="text-white">
-                    {workPatterns.average_pr_size} lines
-                  </span>
-                </div>
-              </div>
-            )}
+            <div className="flex gap-3">
+              <Link
+                href="/learning"
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-sm font-medium transition flex items-center gap-2"
+              >
+                <Target className="w-4 h-4" />
+                Learning Path
+              </Link>
+              <Link
+                href="/sprints"
+                className="px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg text-sm font-medium transition flex items-center gap-2"
+              >
+                <Calendar className="w-4 h-4" />
+                Sprint Planning
+              </Link>
+            </div>
           </div>
+        </div>
 
-          {/* Languages */}
-          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-            <div className="flex items-center gap-2 mb-4">
-              <Code className="h-5 w-5 text-primary-400" />
-              <h3 className="text-lg font-semibold text-white">Languages</h3>
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-blue-500/10 rounded-lg">
+                <Code className="w-5 h-5 text-blue-400" />
+              </div>
+              <span className="text-slate-400 text-sm">Languages</span>
             </div>
-            {skillFingerprint?.languages?.length ? (
-              <div className="space-y-4">
-                {skillFingerprint.languages.slice(0, 5).map((lang) => (
-                  <div key={lang.name}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-white">{lang.name}</span>
-                      <Tooltip content={`Score: ${lang.proficiency_score}/100 based on commits & lines of code`}>
-                        <span className="text-slate-400 cursor-help">
-                          {lang.proficiency_score}
+            <p className="text-2xl font-bold text-white">{totalLanguages}</p>
+            <p className="text-xs text-slate-500 mt-1">Top: {topLanguage}</p>
+          </div>
+          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-purple-500/10 rounded-lg">
+                <Zap className="w-5 h-5 text-purple-400" />
+              </div>
+              <span className="text-slate-400 text-sm">Frameworks</span>
+            </div>
+            <p className="text-2xl font-bold text-white">{totalFrameworks}</p>
+            <p className="text-xs text-slate-500 mt-1">Active technologies</p>
+          </div>
+          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-green-500/10 rounded-lg">
+                <GitPullRequest className="w-5 h-5 text-green-400" />
+              </div>
+              <span className="text-slate-400 text-sm">Avg PR Size</span>
+            </div>
+            <p className="text-2xl font-bold text-white">{avgPRSize.toFixed(0)}</p>
+            <p className="text-xs text-slate-500 mt-1">lines per PR</p>
+          </div>
+          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-orange-500/10 rounded-lg">
+                <Activity className="w-5 h-5 text-orange-400" />
+              </div>
+              <span className="text-slate-400 text-sm">Work Style</span>
+            </div>
+            <p className="text-lg font-bold text-white capitalize">
+              {workPatterns?.collaboration_style || "N/A"}
+            </p>
+            <p className="text-xs text-slate-500 mt-1">Collaboration type</p>
+          </div>
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="grid lg:grid-cols-3 gap-6 mb-10">
+          {/* Languages Card */}
+          <div className="lg:col-span-2 bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary-500/10 rounded-lg">
+                  <Code className="h-5 w-5 text-primary-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-white">Language Proficiency</h3>
+              </div>
+              <Link href="/profile" className="text-primary-400 hover:text-primary-300 text-sm flex items-center gap-1 transition">
+                View all <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+            <div className="p-6">
+              {skillFingerprint?.languages?.length ? (
+                <div className="grid md:grid-cols-2 gap-6">
+                  {skillFingerprint.languages.slice(0, 6).map((lang, index) => (
+                    <div key={lang.name} className="group">
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-500 text-xs font-mono">#{index + 1}</span>
+                          <span className="text-white font-medium">{lang.name}</span>
+                        </div>
+                        <Tooltip content={`Score: ${lang.proficiency_score}/100 based on commits & lines of code`}>
+                          <span className="text-slate-400 text-sm cursor-help tabular-nums">
+                            {lang.proficiency_score}%
+                          </span>
+                        </Tooltip>
+                      </div>
+                      <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-primary-600 to-primary-400 rounded-full transition-all duration-500 group-hover:from-primary-500 group-hover:to-primary-300"
+                          style={{ width: `${lang.proficiency_score}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between items-center text-xs text-slate-500 mt-1.5">
+                        <span>{lang.commits_count.toLocaleString()} commits</span>
+                        <span className={`flex items-center gap-1 ${getTrendColor(lang.trend)}`}>
+                          {lang.trend === "growing" && <TrendingUp className="w-3 h-3" />}
+                          {lang.trend}
                         </span>
-                      </Tooltip>
+                      </div>
                     </div>
-                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary-500 rounded-full transition-all"
-                        style={{ width: `${lang.proficiency_score}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between text-xs text-slate-500 mt-1">
-                      <span>{lang.commits_count} commits</span>
-                      <span className={getTrendColor(lang.trend)}>
-                        {lang.trend}
-                      </span>
-                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Code className="w-8 h-8 text-slate-600" />
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-slate-400 text-sm">
-                No language data yet. Connect your GitHub to analyze your
-                contributions.
-              </p>
-            )}
+                  <p className="text-slate-400 text-sm">
+                    No language data yet. Connect your GitHub to analyze your contributions.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Domains & Frameworks */}
-          <div className="space-y-8">
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-              <div className="flex items-center gap-2 mb-4">
-                <TrendingUp className="h-5 w-5 text-primary-400" />
-                <h3 className="text-lg font-semibold text-white">
-                  Domain Expertise
-                </h3>
+          {/* Work Patterns Card */}
+          <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-500/10 rounded-lg">
+                  <BarChart3 className="h-5 w-5 text-emerald-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-white">Work Patterns</h3>
               </div>
+            </div>
+            <div className="p-6">
+              {workPatterns ? (
+                <div className="space-y-5">
+                  <div className="p-3 bg-slate-800/50 rounded-lg">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-slate-400 text-sm">Complexity Preference</span>
+                    </div>
+                    <p className="text-white font-medium capitalize">
+                      {workPatterns.preferred_complexity || "Balanced"}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-slate-800/50 rounded-lg">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-slate-400 text-sm">Peak Hours</span>
+                    </div>
+                    <p className="text-white font-medium">
+                      {workPatterns.peak_productivity_hours?.length > 0
+                        ? workPatterns.peak_productivity_hours.slice(0, 3).map(h => `${h}:00`).join(", ")
+                        : "Not analyzed"}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-slate-800/50 rounded-lg">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-slate-400 text-sm">Review Turnaround</span>
+                    </div>
+                    <p className="text-white font-medium">
+                      {workPatterns.average_review_turnaround_hours
+                        ? `${workPatterns.average_review_turnaround_hours.toFixed(1)} hours`
+                        : "N/A"}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-slate-800/50 rounded-lg">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-slate-400 text-sm">PR Efficiency</span>
+                    </div>
+                    <p className="text-white font-medium">
+                      {workPatterns.average_pr_size > 200 ? "Large PRs" :
+                       workPatterns.average_pr_size > 50 ? "Medium PRs" : "Small PRs"}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <BarChart3 className="w-8 h-8 text-slate-600" />
+                  </div>
+                  <p className="text-slate-400 text-sm">
+                    Work patterns will appear after more activity is analyzed.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Skills Section */}
+        <div className="grid lg:grid-cols-2 gap-6 mb-10">
+          {/* Domain Expertise */}
+          <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-500/10 rounded-lg">
+                  <TrendingUp className="h-5 w-5 text-amber-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-white">Domain Expertise</h3>
+              </div>
+            </div>
+            <div className="p-6">
               {skillFingerprint?.domains?.length ? (
                 <div className="flex flex-wrap gap-2">
                   {skillFingerprint.domains.map((domain) => (
                     <Tooltip
                       key={domain.name}
-                      content={`Score: ${domain.confidence_score}/100 based on file types & commits`}
+                      content={`Confidence: ${domain.confidence_score}% based on file types & commits`}
                     >
-                      <span className="bg-slate-700 text-slate-300 px-3 py-1 rounded-full text-sm cursor-help">
-                        {domain.name.replace("_", " ")}{" "}
-                        <span className="text-slate-500">
-                          {domain.confidence_score}
+                      <span className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg text-sm cursor-help transition">
+                        {domain.name.replace("_", " ")}
+                        <span className="text-xs text-slate-500 bg-slate-900 px-2 py-0.5 rounded-full">
+                          {domain.confidence_score}%
                         </span>
                       </span>
                     </Tooltip>
                   ))}
                 </div>
               ) : (
-                <p className="text-slate-400 text-sm">No domains detected.</p>
+                <div className="text-center py-6">
+                  <p className="text-slate-400 text-sm">No domains detected yet.</p>
+                </div>
               )}
             </div>
+          </div>
 
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-              <div className="flex items-center gap-2 mb-4">
-                <Clock className="h-5 w-5 text-primary-400" />
-                <h3 className="text-lg font-semibold text-white">Frameworks</h3>
+          {/* Frameworks */}
+          <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-cyan-500/10 rounded-lg">
+                  <Clock className="h-5 w-5 text-cyan-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-white">Frameworks & Tools</h3>
               </div>
+            </div>
+            <div className="p-6">
               {skillFingerprint?.frameworks?.length ? (
                 <div className="flex flex-wrap gap-2">
                   {skillFingerprint.frameworks.map((fw) => (
                     <Tooltip
                       key={fw.name}
-                      content={`Score: ${fw.proficiency_score}/100 | ${fw.category} | ${fw.usage_count} uses`}
+                      content={`${fw.proficiency_score}% proficiency | ${fw.category} | ${fw.usage_count} uses`}
                     >
-                      <span className="bg-primary-900/50 text-primary-300 px-3 py-1 rounded-full text-sm cursor-help">
-                        {fw.name}{" "}
-                        <span className="text-primary-400/60">
-                          {fw.proficiency_score}
+                      <span className="inline-flex items-center gap-2 bg-primary-900/30 hover:bg-primary-900/50 text-primary-300 px-4 py-2 rounded-lg text-sm cursor-help transition">
+                        {fw.name}
+                        <span className="text-xs text-primary-400/60 bg-primary-900/50 px-2 py-0.5 rounded-full">
+                          {fw.proficiency_score}%
                         </span>
                       </span>
                     </Tooltip>
                   ))}
                 </div>
               ) : (
-                <p className="text-slate-400 text-sm">
-                  No frameworks detected.
-                </p>
+                <div className="text-center py-6">
+                  <p className="text-slate-400 text-sm">No frameworks detected yet.</p>
+                </div>
               )}
             </div>
           </div>
         </div>
 
         {/* AI Insights Section */}
-        <h2 className="text-2xl font-bold text-white mt-12 mb-6">
-          AI-Powered Insights
-        </h2>
-        <div className="grid lg:grid-cols-2 gap-8 mb-8">
-          <InsightsCard
-            insights={insights}
-            isLoading={insightsLoading}
-            onRefresh={handleRefreshInsights}
-            isRefreshing={isRefreshing}
-          />
-          <SoftSkillsCard
-            softSkills={softSkills}
-            isLoading={softSkillsLoading}
-          />
-        </div>
-        <div className="grid lg:grid-cols-2 gap-8">
-          <GrowthTrajectoryCard growth={user?.growth_trajectory || null} />
-          {user?.id && <PeerBenchmarkCard developerId={user.id} />}
+        <div className="mb-10">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-gradient-to-br from-primary-500/20 to-purple-500/20 rounded-lg">
+              <Sparkles className="h-5 w-5 text-primary-400" />
+            </div>
+            <h2 className="text-xl font-bold text-white">AI-Powered Insights</h2>
+          </div>
+          <div className="grid lg:grid-cols-2 gap-6 mb-6">
+            <InsightsCard
+              insights={insights}
+              isLoading={insightsLoading}
+              onRefresh={handleRefreshInsights}
+              isRefreshing={isRefreshing}
+            />
+            <SoftSkillsCard
+              softSkills={softSkills}
+              isLoading={softSkillsLoading}
+            />
+          </div>
+          <div className="grid lg:grid-cols-2 gap-6">
+            <GrowthTrajectoryCard growth={user?.growth_trajectory || null} />
+            {user?.id && <PeerBenchmarkCard developerId={user.id} />}
+          </div>
         </div>
 
         {/* Task Matching Section */}
-        <h2 className="text-2xl font-bold text-white mt-12 mb-6">
-          Task Matching
-        </h2>
-        <div className="grid lg:grid-cols-2 gap-8">
-          <TaskMatcherCard />
-          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-            <h3 className="text-lg font-semibold text-white mb-4">
-              How Task Matching Works
-            </h3>
-            <div className="space-y-4 text-sm text-slate-300">
-              <p>
-                Our AI analyzes task descriptions to extract required skills,
-                complexity, and domain expertise needed.
-              </p>
-              <ul className="space-y-2">
-                <li className="flex items-start gap-2">
-                  <span className="text-primary-400 mt-1">1.</span>
-                  <span>
-                    <strong className="text-white">Signal Extraction</strong> -
-                    AI identifies programming languages, frameworks, and
-                    expertise required.
-                  </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-primary-400 mt-1">2.</span>
-                  <span>
-                    <strong className="text-white">Skill Matching</strong> -
-                    Compares task requirements against developer profiles.
-                  </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-primary-400 mt-1">3.</span>
-                  <span>
-                    <strong className="text-white">Growth Opportunity</strong> -
-                    Considers tasks that help developers grow while ensuring
-                    capability.
-                  </span>
-                </li>
-              </ul>
-              <p className="text-slate-400">
-                Connect your Jira, Linear, or GitHub Issues for automatic task
-                imports.
-              </p>
+        <div>
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-lg">
+              <Target className="h-5 w-5 text-green-400" />
+            </div>
+            <h2 className="text-xl font-bold text-white">Task Matching</h2>
+          </div>
+          <div className="grid lg:grid-cols-2 gap-6">
+            <TaskMatcherCard />
+            <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-slate-800 rounded-lg">
+                    <Users className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white">How Task Matching Works</h3>
+                </div>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 bg-primary-500/10 rounded-full flex items-center justify-center text-primary-400 font-semibold text-sm">
+                    1
+                  </div>
+                  <div>
+                    <h4 className="text-white font-medium mb-1">Signal Extraction</h4>
+                    <p className="text-slate-400 text-sm">
+                      AI identifies programming languages, frameworks, and expertise required.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 bg-primary-500/10 rounded-full flex items-center justify-center text-primary-400 font-semibold text-sm">
+                    2
+                  </div>
+                  <div>
+                    <h4 className="text-white font-medium mb-1">Skill Matching</h4>
+                    <p className="text-slate-400 text-sm">
+                      Compares task requirements against developer profiles.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 bg-primary-500/10 rounded-full flex items-center justify-center text-primary-400 font-semibold text-sm">
+                    3
+                  </div>
+                  <div>
+                    <h4 className="text-white font-medium mb-1">Growth Opportunity</h4>
+                    <p className="text-slate-400 text-sm">
+                      Considers tasks that help developers grow while ensuring capability.
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                  <p className="text-slate-400 text-sm">
+                    Connect your <span className="text-white">Jira</span>, <span className="text-white">Linear</span>, or <span className="text-white">GitHub Issues</span> for automatic task imports.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
