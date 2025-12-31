@@ -70,8 +70,15 @@ async def get_plans(
 async def get_subscription_status(
     db: Annotated[AsyncSession, Depends(get_db)],
     developer_id: Annotated[str, Depends(get_current_developer_id)],
+    workspace_id: str | None = None,
 ) -> SubscriptionStatusResponse:
-    """Get current subscription status, usage summary, and estimates."""
+    """Get current subscription status, usage summary, and estimates.
+
+    If workspace_id is provided, returns the workspace's plan.
+    Otherwise returns the developer's individual plan.
+    """
+    from devograph.models.workspace import Workspace, WorkspaceMember
+
     stripe_service = StripeService(db)
     usage_service = UsageService(db)
 
@@ -84,9 +91,29 @@ async def get_subscription_status(
     subscription = await stripe_service.get_active_subscription(developer_id)
     customer = await stripe_service.get_customer_billing(developer_id)
 
-    # Get plan
+    # Get plan - prefer workspace plan if workspace_id provided
     plan = None
-    if developer and developer.plan_id:
+
+    if workspace_id:
+        # Check if developer is a member of this workspace
+        member_stmt = select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == workspace_id,
+            WorkspaceMember.developer_id == developer_id,
+            WorkspaceMember.status == "active",
+        )
+        member_result = await db.execute(member_stmt)
+        if member_result.scalar_one_or_none():
+            # Get workspace plan
+            ws_stmt = select(Workspace).where(Workspace.id == workspace_id)
+            ws_result = await db.execute(ws_stmt)
+            workspace = ws_result.scalar_one_or_none()
+            if workspace and workspace.plan_id:
+                plan_stmt = select(Plan).where(Plan.id == workspace.plan_id)
+                plan_result = await db.execute(plan_stmt)
+                plan = plan_result.scalar_one_or_none()
+
+    # Fallback to developer's individual plan
+    if not plan and developer and developer.plan_id:
         stmt = select(Plan).where(Plan.id == developer.plan_id)
         result = await db.execute(stmt)
         plan = result.scalar_one_or_none()
@@ -96,7 +123,7 @@ async def get_subscription_status(
     usage_estimate = await usage_service.estimate_monthly_cost(developer_id)
 
     return SubscriptionStatusResponse(
-        has_subscription=subscription is not None,
+        has_subscription=subscription is not None or plan is not None,
         subscription=SubscriptionResponse.model_validate(subscription) if subscription else None,
         plan=PlanResponse.model_validate(plan) if plan else None,
         customer=CustomerBillingResponse.model_validate(customer) if customer else None,

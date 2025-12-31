@@ -513,13 +513,13 @@ function CreateTeamModal({ onClose, onCreate, onCreateFromRepo, isCreating, repo
 
 export default function TeamsSettingsPage() {
   const { user } = useAuth();
-  const { canUseTeamFeatures } = useSubscription();
   const {
     currentWorkspace,
     currentWorkspaceId,
     currentWorkspaceLoading,
     hasWorkspaces,
   } = useWorkspace();
+  const { canUseTeamFeatures } = useSubscription(currentWorkspaceId);
 
   const { members: workspaceMembers } = useWorkspaceMembers(currentWorkspaceId);
 

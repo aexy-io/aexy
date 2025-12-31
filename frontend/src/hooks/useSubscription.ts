@@ -3,15 +3,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { billingApi, SubscriptionStatus, PlanFeatures } from "@/lib/api";
 
-export function useSubscription() {
+export function useSubscription(workspaceId?: string | null) {
   const {
     data: subscriptionStatus,
     isLoading,
     error,
     refetch,
   } = useQuery<SubscriptionStatus>({
-    queryKey: ["subscriptionStatus"],
-    queryFn: billingApi.getSubscriptionStatus,
+    queryKey: ["subscriptionStatus", workspaceId],
+    queryFn: () => billingApi.getSubscriptionStatus(workspaceId || undefined),
     retry: 1,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     enabled: typeof window !== "undefined" && !!localStorage.getItem("token"),

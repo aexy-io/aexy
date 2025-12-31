@@ -12,7 +12,9 @@ from devograph.core.database import Base
 
 if TYPE_CHECKING:
     from devograph.models.developer import Developer
+    from devograph.models.plan import Plan
     from devograph.models.repository import Organization
+    from devograph.models.review import ReviewCycle, WorkGoal
     from devograph.models.team import Team
 
 
@@ -50,6 +52,14 @@ class Workspace(Base):
         index=True,
     )
 
+    # Subscription plan
+    plan_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("plans.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # Settings (JSONB for flexibility)
     settings: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
@@ -80,6 +90,11 @@ class Workspace(Base):
         foreign_keys=[github_org_id],
         lazy="selectin",
     )
+    plan: Mapped["Plan | None"] = relationship(
+        "Plan",
+        foreign_keys=[plan_id],
+        lazy="selectin",
+    )
     members: Mapped[list["WorkspaceMember"]] = relationship(
         "WorkspaceMember",
         back_populates="workspace",
@@ -97,6 +112,16 @@ class Workspace(Base):
         back_populates="workspace",
         uselist=False,
         lazy="selectin",
+    )
+    review_cycles: Mapped[list["ReviewCycle"]] = relationship(
+        "ReviewCycle",
+        back_populates="workspace",
+        cascade="all, delete-orphan",
+    )
+    work_goals: Mapped[list["WorkGoal"]] = relationship(
+        "WorkGoal",
+        back_populates="workspace",
+        cascade="all, delete-orphan",
     )
 
 
