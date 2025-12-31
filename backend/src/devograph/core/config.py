@@ -207,6 +207,32 @@ class Settings(BaseSettings):
         description="Celery result backend URL",
     )
 
+    # AWS SES (for email notifications)
+    aws_access_key_id: str = Field(
+        default="",
+        description="AWS access key ID for SES",
+    )
+    aws_secret_access_key: str = Field(
+        default="",
+        description="AWS secret access key for SES",
+    )
+    aws_ses_region: str = Field(
+        default="us-east-1",
+        description="AWS region for SES",
+    )
+    ses_sender_email: str = Field(
+        default="noreply@gitraki.com",
+        description="Email address to send notifications from",
+    )
+    ses_sender_name: str = Field(
+        default="Gitraki",
+        description="Display name for notification emails",
+    )
+    email_notifications_enabled: bool = Field(
+        default=True,
+        description="Enable/disable email notifications",
+    )
+
     # LLM Configuration
     llm: LLMSettings = Field(default_factory=LLMSettings)
 

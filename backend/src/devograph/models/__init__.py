@@ -77,6 +77,13 @@ from devograph.models.review import (
     WorkGoal,
     ContributionSummary,
 )
+from devograph.models.notification import (
+    Notification,
+    NotificationPreference,
+    EmailNotificationLog,
+    NotificationEventType,
+    DEFAULT_NOTIFICATION_PREFERENCES,
+)
 
 __all__ = [
     # Plan
@@ -156,4 +163,10 @@ __all__ = [
     "ReviewRequest",
     "WorkGoal",
     "ContributionSummary",
+    # Notifications
+    "Notification",
+    "NotificationPreference",
+    "EmailNotificationLog",
+    "NotificationEventType",
+    "DEFAULT_NOTIFICATION_PREFERENCES",
 ]
