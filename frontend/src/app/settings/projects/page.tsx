@@ -27,8 +27,8 @@ import { TeamListItem, TeamMember, WorkspaceMember, repositoriesApi, Repository 
 import { useQuery } from "@tanstack/react-query";
 
 const TEAM_ROLE_OPTIONS = [
-  { value: "lead", label: "Team Lead", description: "Can manage team members" },
-  { value: "member", label: "Member", description: "Regular team member" },
+  { value: "lead", label: "Project Lead", description: "Can manage project members" },
+  { value: "member", label: "Member", description: "Regular project member" },
 ];
 
 function getRoleBadgeColor(role: string) {
@@ -78,7 +78,7 @@ function TeamCard({ team, workspaceId, isAdmin, onDelete }: TeamCardProps) {
   };
 
   const handleRemoveMember = async (developerId: string) => {
-    if (confirm("Remove this member from the team?")) {
+    if (confirm("Remove this member from the project?")) {
       try {
         await removeMember(developerId);
       } catch (error) {
@@ -160,7 +160,7 @@ function TeamCard({ team, workspaceId, isAdmin, onDelete }: TeamCardProps) {
                     className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-600 flex items-center gap-2"
                   >
                     <Trash2 className="h-4 w-4" />
-                    Delete Team
+                    Delete Project
                   </button>
                 </div>
               </>
@@ -218,7 +218,7 @@ function TeamCard({ team, workspaceId, isAdmin, onDelete }: TeamCardProps) {
                 ))}
                 {members.length === 0 && (
                   <div className="p-4 text-center text-slate-400 text-sm">
-                    No members in this team yet
+                    No members in this project yet
                   </div>
                 )}
               </div>
@@ -305,12 +305,12 @@ function CreateTeamModal({ onClose, onCreate, onCreateFromRepo, isCreating, repo
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-slate-800 rounded-xl w-full max-w-md p-6">
-        <h3 className="text-xl font-semibold text-white mb-4">Create Team</h3>
+        <h3 className="text-xl font-semibold text-white mb-4">Create Project</h3>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             {/* Mode Selection */}
             <div>
-              <label className="block text-sm text-slate-400 mb-2">Team Type</label>
+              <label className="block text-sm text-slate-400 mb-2">Project Type</label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
@@ -344,12 +344,12 @@ function CreateTeamModal({ onClose, onCreate, onCreateFromRepo, isCreating, repo
             {mode === "manual" ? (
               <>
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">Team Name</label>
+                  <label className="block text-sm text-slate-400 mb-1">Project Name</label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Frontend Team"
+                    placeholder="Frontend Project"
                     className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500"
                   />
                 </div>
@@ -385,12 +385,12 @@ function CreateTeamModal({ onClose, onCreate, onCreateFromRepo, isCreating, repo
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">Team Name (optional)</label>
+                  <label className="block text-sm text-slate-400 mb-1">Project Name (optional)</label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Defaults to repository name"
+                    placeholder="Defaults to: repo name + Project"
                     className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500"
                   />
                 </div>
@@ -422,7 +422,7 @@ function CreateTeamModal({ onClose, onCreate, onCreateFromRepo, isCreating, repo
               ) : (
                 <>
                   <Plus className="h-4 w-4" />
-                  Create Team
+                  Create Project
                 </>
               )}
             </button>
@@ -466,7 +466,7 @@ export default function TeamsSettingsPage() {
   const isAdmin = currentMember?.role === "owner" || currentMember?.role === "admin";
 
   const handleDelete = async (teamId: string) => {
-    if (confirm("Are you sure you want to delete this team?")) {
+    if (confirm("Are you sure you want to delete this project?")) {
       try {
         await deleteTeam(teamId);
       } catch (error) {
@@ -482,7 +482,7 @@ export default function TeamsSettingsPage() {
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-white">Loading teams...</p>
+          <p className="text-white">Loading projects...</p>
         </div>
       </div>
     );
@@ -505,9 +505,9 @@ export default function TeamsSettingsPage() {
                 <Settings className="h-5 w-5 text-slate-300" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-white">Team Settings</h1>
+                <h1 className="text-xl font-semibold text-white">Project Settings</h1>
                 <p className="text-slate-400 text-sm">
-                  Manage teams within your workspace
+                  Manage projects within your workspace
                 </p>
               </div>
             </div>
@@ -521,7 +521,7 @@ export default function TeamsSettingsPage() {
             <Users className="h-16 w-16 text-slate-600 mx-auto mb-4" />
             <h3 className="text-xl font-medium text-white mb-2">No Workspace</h3>
             <p className="text-slate-400 mb-6">
-              Create a workspace first to start managing teams.
+              Create a workspace first to start managing projects.
             </p>
             <Link
               href="/settings/organization"
@@ -537,9 +537,9 @@ export default function TeamsSettingsPage() {
               <div>
                 <h2 className="text-lg font-medium text-white flex items-center gap-2">
                   <Users className="h-5 w-5 text-slate-400" />
-                  Teams in {currentWorkspace?.name}
+                  Projects in {currentWorkspace?.name}
                 </h2>
-                <p className="text-slate-400 text-sm">{teams.length} teams</p>
+                <p className="text-slate-400 text-sm">{teams.length} projects</p>
               </div>
               {isAdmin && (
                 <button
@@ -547,7 +547,7 @@ export default function TeamsSettingsPage() {
                   className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition text-sm"
                 >
                   <Plus className="h-4 w-4" />
-                  Create Team
+                  Create Project
                 </button>
               )}
             </div>
@@ -568,9 +568,9 @@ export default function TeamsSettingsPage() {
             ) : (
               <div className="bg-slate-800 rounded-xl p-12 text-center">
                 <Users className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-                <h3 className="text-xl font-medium text-white mb-2">No Teams Yet</h3>
+                <h3 className="text-xl font-medium text-white mb-2">No Projects Yet</h3>
                 <p className="text-slate-400 mb-6">
-                  Create your first team to organize your developers.
+                  Create your first project to organize your developers.
                 </p>
                 {isAdmin && (
                   <button
@@ -578,7 +578,7 @@ export default function TeamsSettingsPage() {
                     className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition font-medium"
                   >
                     <Plus className="h-4 w-4" />
-                    Create Team
+                    Create Project
                   </button>
                 )}
               </div>

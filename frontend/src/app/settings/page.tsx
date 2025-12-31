@@ -82,10 +82,10 @@ export default function SettingsPage() {
           />
 
           <SettingsSection
-            href="/settings/teams"
+            href="/settings/projects"
             icon={<Users className="h-5 w-5 text-green-400" />}
-            title="Teams"
-            description="Manage teams, members, and permissions"
+            title="Projects"
+            description="Manage projects, members, and permissions"
           />
 
           <SettingsSection

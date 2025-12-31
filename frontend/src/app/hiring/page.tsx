@@ -245,7 +245,7 @@ export default function HiringPage() {
             )}
           </div>
           <div className="flex items-center gap-4">
-            {/* Team Selector */}
+            {/* Project Selector */}
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-slate-400" />
               <select
@@ -253,7 +253,7 @@ export default function HiringPage() {
                 onChange={(e) => handleTeamChange(e.target.value)}
                 className="bg-slate-700 text-white rounded-lg px-3 py-2 border border-slate-600 focus:border-primary-500 focus:outline-none text-sm min-w-[160px]"
               >
-                <option value="all">All Teams</option>
+                <option value="all">All Projects</option>
                 {teams.map((team) => (
                   <option key={team.id} value={team.id}>
                     {team.name}
@@ -274,19 +274,19 @@ export default function HiringPage() {
               ) : (
                 <>
                   <TrendingUp className="h-4 w-4" />
-                  Analyze {selectedTeamId ? "Team" : "All"}
+                  Analyze {selectedTeamId ? "Project" : "All"}
                 </>
               )}
             </button>
           </div>
         </div>
 
-        {/* Team Filter Indicator */}
+        {/* Project Filter Indicator */}
         {selectedTeamId && (
           <div className="mb-6 p-3 bg-slate-800/50 border border-slate-700 rounded-lg flex items-center gap-2">
             <Users className="h-4 w-4 text-primary-400" />
             <span className="text-slate-300 text-sm">
-              Viewing: <span className="text-white font-medium">{teams.find(t => t.id === selectedTeamId)?.name || "Selected Team"}</span>
+              Viewing: <span className="text-white font-medium">{teams.find(t => t.id === selectedTeamId)?.name || "Selected Project"}</span>
             </span>
             <button
               onClick={() => handleTeamChange("all")}
@@ -308,7 +308,7 @@ export default function HiringPage() {
               >
                 <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                   <Target className="h-5 w-5 text-primary-400" />
-                  Team Skill Gaps
+                  Project Skill Gaps
                 </h2>
                 {expandedSections.gaps ? (
                   <ChevronUp className="h-5 w-5 text-slate-400" />
@@ -320,7 +320,7 @@ export default function HiringPage() {
                 <div className="px-4 pb-4">
                   {!gapAnalysis ? (
                     <p className="text-slate-400 text-center py-4">
-                      Click &quot;Analyze Team&quot; to identify skill gaps
+                      Click &quot;Analyze Project&quot; to identify skill gaps
                     </p>
                   ) : gapAnalysis.skill_gaps.length === 0 ? (
                     <p className="text-green-400 text-center py-4">

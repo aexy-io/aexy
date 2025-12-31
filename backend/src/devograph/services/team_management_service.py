@@ -277,14 +277,14 @@ class TeamManagementService:
         if not repo:
             raise ValueError("Repository not found")
 
-        name = team_name or f"{repo.name} Team"
+        name = team_name or f"{repo.name} Project"
 
         # Create the team
         team = await self.create_team(
             workspace_id=workspace_id,
             name=name,
             type="repo_based",
-            description=f"Auto-generated team from {repo.full_name} contributors",
+            description=f"Auto-generated project from {repo.full_name} contributors",
             source_repository_ids=[repository_id],
         )
 

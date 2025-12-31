@@ -338,7 +338,7 @@ export default function LearningPage() {
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-white flex items-center gap-3">
             <GraduationCap className="h-8 w-8 text-primary-500" />
-            {viewMode === "my_learning" ? "My Learning Path" : `Team Learning: ${teamOverview?.team_name || "..."}`}
+            {viewMode === "my_learning" ? "My Learning Path" : `Project Learning: ${teamOverview?.team_name || "..."}`}
           </h1>
           <div className="flex items-center gap-4">
             {/* View Mode Selector */}
@@ -363,7 +363,7 @@ export default function LearningPage() {
                       : "text-slate-400 hover:text-white"
                   }`}
                 >
-                  <option value="" className="bg-slate-800 text-slate-400">Select Team</option>
+                  <option value="" className="bg-slate-800 text-slate-400">Select Project</option>
                   {teams.map((team) => (
                     <option key={team.id} value={team.id} className="bg-slate-800 text-white">
                       {team.name}
@@ -383,7 +383,7 @@ export default function LearningPage() {
           </div>
         </div>
 
-        {/* Team Learning View */}
+        {/* Project Learning View */}
         {viewMode === "team" && (
           <>
             {loadingTeam ? (
@@ -558,9 +558,9 @@ export default function LearningPage() {
             ) : (
               <div className="bg-slate-800 rounded-xl p-12 border border-slate-700 text-center">
                 <Users className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">No Team Data</h3>
+                <h3 className="text-xl font-semibold text-white mb-2">No Project Data</h3>
                 <p className="text-slate-400">
-                  Unable to load team learning data. Please try again.
+                  Unable to load project learning data. Please try again.
                 </p>
               </div>
             )}

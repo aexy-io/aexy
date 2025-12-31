@@ -22,9 +22,9 @@ import { useSprints, useActiveSprint } from "@/hooks/useSprints";
 import { redirect } from "next/navigation";
 import { TeamListItem, SprintListItem } from "@/lib/api";
 
-function TeamSprintCard({ team, workspaceId }: { team: TeamListItem; workspaceId: string }) {
-  const { sprints, isLoading } = useSprints(workspaceId, team.id);
-  const { sprint: activeSprint } = useActiveSprint(workspaceId, team.id);
+function ProjectSprintCard({ project, workspaceId }: { project: TeamListItem; workspaceId: string }) {
+  const { sprints, isLoading } = useSprints(workspaceId, project.id);
+  const { sprint: activeSprint } = useActiveSprint(workspaceId, project.id);
 
   const planningSprints = sprints.filter((s) => s.status === "planning");
   const completedCount = sprints.filter((s) => s.status === "completed").length;
@@ -38,12 +38,12 @@ function TeamSprintCard({ team, workspaceId }: { team: TeamListItem; workspaceId
               <Users className="h-5 w-5 text-slate-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">{team.name}</h3>
-              <p className="text-slate-400 text-sm">{team.member_count} members</p>
+              <h3 className="text-lg font-semibold text-white">{project.name}</h3>
+              <p className="text-slate-400 text-sm">{project.member_count} members</p>
             </div>
           </div>
           <Link
-            href={`/sprints/${team.id}`}
+            href={`/sprints/${project.id}`}
             className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
           >
             <ArrowRight className="h-5 w-5" />
@@ -59,7 +59,7 @@ function TeamSprintCard({ team, workspaceId }: { team: TeamListItem; workspaceId
             {/* Active Sprint */}
             {activeSprint ? (
               <Link
-                href={`/sprints/${team.id}/${activeSprint.id}`}
+                href={`/sprints/${project.id}/${activeSprint.id}`}
                 className="block bg-green-900/20 border border-green-800/50 rounded-lg p-4 mb-3 hover:bg-green-900/30 transition"
               >
                 <div className="flex items-center gap-2 mb-2">
@@ -91,7 +91,7 @@ function TeamSprintCard({ team, workspaceId }: { team: TeamListItem; workspaceId
               </Link>
             ) : planningSprints.length > 0 ? (
               <Link
-                href={`/sprints/${team.id}/${planningSprints[0].id}`}
+                href={`/sprints/${project.id}/${planningSprints[0].id}`}
                 className="block bg-blue-900/20 border border-blue-800/50 rounded-lg p-4 mb-3 hover:bg-blue-900/30 transition"
               >
                 <div className="flex items-center gap-2 mb-2">
@@ -115,7 +115,7 @@ function TeamSprintCard({ team, workspaceId }: { team: TeamListItem; workspaceId
               <div className="bg-slate-700/30 rounded-lg p-4 mb-3 text-center">
                 <p className="text-slate-400 text-sm mb-2">No active sprint</p>
                 <Link
-                  href={`/sprints/${team.id}`}
+                  href={`/sprints/${project.id}`}
                   className="text-primary-400 text-sm hover:underline"
                 >
                   Create a sprint
@@ -134,7 +134,7 @@ function TeamSprintCard({ team, workspaceId }: { team: TeamListItem; workspaceId
 
       <div className="border-t border-slate-700 px-5 py-3 bg-slate-800/50">
         <Link
-          href={`/sprints/${team.id}`}
+          href={`/sprints/${project.id}`}
           className="flex items-center justify-between text-sm text-slate-400 hover:text-white transition"
         >
           <span>View all sprints</span>
@@ -177,16 +177,16 @@ export default function SprintsPage() {
           <div>
             <h1 className="text-3xl font-bold text-white">Sprint Planning</h1>
             <p className="text-slate-400 mt-1">
-              Manage sprints across your teams
+              Manage sprints across your projects
             </p>
           </div>
           {hasWorkspaces && (
             <Link
-              href="/settings/teams"
+              href="/settings/projects"
               className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition text-sm"
             >
               <Settings className="h-4 w-4" />
-              Manage Teams
+              Manage Projects
             </Link>
           )}
         </div>
@@ -198,7 +198,7 @@ export default function SprintsPage() {
               No Workspace Yet
             </h3>
             <p className="text-slate-400 mb-6 max-w-md mx-auto">
-              Create a workspace and add teams to start planning sprints.
+              Create a workspace and add projects to start planning sprints.
             </p>
             <Link
               href="/settings/organization"
@@ -216,25 +216,25 @@ export default function SprintsPage() {
           <div className="bg-slate-800 rounded-xl p-12 text-center border border-slate-700">
             <Users className="h-16 w-16 text-slate-600 mx-auto mb-4" />
             <h3 className="text-xl font-medium text-white mb-2">
-              No Teams Yet
+              No Projects Yet
             </h3>
             <p className="text-slate-400 mb-6 max-w-md mx-auto">
-              Create teams in your workspace to start planning sprints.
+              Create projects in your workspace to start planning sprints.
             </p>
             <Link
-              href="/settings/teams"
+              href="/settings/projects"
               className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition font-medium"
             >
               <Plus className="h-4 w-4" />
-              Create Team
+              Create Project
             </Link>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {teams.map((team) => (
-              <TeamSprintCard
-                key={team.id}
-                team={team}
+            {teams.map((project) => (
+              <ProjectSprintCard
+                key={project.id}
+                project={project}
                 workspaceId={currentWorkspaceId!}
               />
             ))}
