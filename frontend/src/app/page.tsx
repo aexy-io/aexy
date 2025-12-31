@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   GitBranch,
   Users,
@@ -20,7 +22,29 @@ import Link from "next/link";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 export default function Home() {
+  const router = useRouter();
+  const [isChecking, setIsChecking] = useState(true);
   const loginUrl = `${API_BASE_URL}/auth/github/login`;
+
+  useEffect(() => {
+    // Check if user is already logged in
+    const token = localStorage.getItem("token");
+    if (token) {
+      // Redirect to dashboard if token exists
+      router.replace("/dashboard");
+    } else {
+      setIsChecking(false);
+    }
+  }, [router]);
+
+  // Show loading while checking auth
+  if (isChecking) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-slate-950">

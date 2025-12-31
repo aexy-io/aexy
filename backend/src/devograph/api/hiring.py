@@ -287,9 +287,26 @@ async def create_hiring_requirement(
     llm_gateway = get_llm_gateway()
     service = HiringIntelligenceService(db, llm_gateway)
 
+    # Fetch organization developers for gap analysis
+    from devograph.models.workspace import WorkspaceMember
+    team_developers = []
+
+    if is_valid_uuid(data.organization_id):
+        # Get developers from the organization/workspace
+        result = await db.execute(
+            select(Developer).join(
+                WorkspaceMember,
+                WorkspaceMember.developer_id == Developer.id
+            ).where(
+                WorkspaceMember.workspace_id == data.organization_id
+            )
+        )
+        team_developers = list(result.scalars().all())
+
     requirement = await service.create_hiring_requirement(
         organization_id=data.organization_id,
         role_title=data.role_title,
+        team_developers=team_developers if team_developers else None,
         team_id=data.team_id,
         target_role_id=data.target_role_id,
         priority=data.priority.value,
