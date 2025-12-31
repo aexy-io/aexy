@@ -1096,8 +1096,18 @@ We are seeking a talented {level} {role_title} to join our engineering team. In 
         self,
         organization_id: str,
         status: str | None = None,
+        team_id: str | None = None,
     ) -> list[HiringRequirement]:
-        """Get hiring requirements for an organization."""
+        """Get hiring requirements for an organization.
+
+        Args:
+            organization_id: Organization UUID.
+            status: Optional status filter.
+            team_id: Optional team filter.
+
+        Returns:
+            List of hiring requirements.
+        """
         if not self.db:
             return []
 
@@ -1107,6 +1117,9 @@ We are seeking a talented {level} {role_title} to join our engineering team. In 
 
         if status:
             query = query.where(HiringRequirement.status == status)
+
+        if team_id:
+            query = query.where(HiringRequirement.team_id == team_id)
 
         query = query.order_by(HiringRequirement.created_at.desc())
 

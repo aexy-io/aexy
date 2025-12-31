@@ -701,3 +701,300 @@ async def get_recommended_courses(
         "path_id": path_id,
         "recommendations": recommendations,
     }
+
+
+# ============================================================================
+# Team Learning Endpoints
+# ============================================================================
+from sqlalchemy import select
+from pydantic import BaseModel
+from devograph.models.team import TeamMember, Team
+from devograph.models.developer import Developer
+from devograph.models.career import LearningPath
+
+
+class TeamMemberLearningStatus(BaseModel):
+    """Learning status for a team member."""
+    developer_id: str
+    developer_name: str | None
+    developer_avatar_url: str | None
+    has_active_path: bool
+    active_path_id: str | None
+    active_path_target_role: str | None
+    progress_percentage: float
+    trajectory_status: str | None
+    skills_in_progress: list[str]
+
+
+class TeamLearningOverview(BaseModel):
+    """Overview of learning for a team."""
+    team_id: str
+    team_name: str
+    total_members: int
+    members_with_paths: int
+    average_progress: float
+    members: list[TeamMemberLearningStatus]
+
+
+class TeamSkillRecommendation(BaseModel):
+    """Skill recommendation for a team."""
+    skill: str
+    priority: str  # "critical", "high", "medium", "low"
+    coverage_percentage: float
+    average_proficiency: float
+    members_lacking: int
+    reason: str
+
+
+class TeamLearningRecommendations(BaseModel):
+    """Learning recommendations for a team."""
+    team_id: str
+    team_name: str
+    recommended_skills: list[TeamSkillRecommendation]
+
+
+@router.get("/teams/{team_id}/overview", response_model=TeamLearningOverview)
+async def get_team_learning_overview(
+    team_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get learning status for all team members.
+
+    Args:
+        team_id: Team UUID.
+        db: Database session.
+
+    Returns:
+        Team learning overview with member statuses.
+    """
+    if not is_valid_uuid(team_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid team ID",
+        )
+
+    # Get team
+    team_result = await db.execute(select(Team).where(Team.id == team_id))
+    team = team_result.scalar_one_or_none()
+    if not team:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Team not found",
+        )
+
+    # Get team members with developer info
+    members_result = await db.execute(
+        select(TeamMember, Developer)
+        .join(Developer, TeamMember.developer_id == Developer.id)
+        .where(TeamMember.team_id == team_id)
+    )
+    team_members = list(members_result.all())
+
+    if not team_members:
+        return TeamLearningOverview(
+            team_id=team_id,
+            team_name=team.name,
+            total_members=0,
+            members_with_paths=0,
+            average_progress=0.0,
+            members=[],
+        )
+
+    # Get learning paths for all team members
+    developer_ids = [str(tm.developer_id) for tm, _ in team_members]
+    paths_result = await db.execute(
+        select(LearningPath)
+        .where(LearningPath.developer_id.in_(developer_ids))
+        .where(LearningPath.status.in_(["active", "paused"]))
+    )
+    paths = list(paths_result.scalars().all())
+
+    # Create a map of developer_id -> active path
+    developer_paths: dict[str, LearningPath] = {}
+    for path in paths:
+        dev_id = str(path.developer_id)
+        # Prefer active paths over paused
+        if dev_id not in developer_paths or path.status == "active":
+            developer_paths[dev_id] = path
+
+    # Build member statuses
+    member_statuses: list[TeamMemberLearningStatus] = []
+    total_progress = 0.0
+    members_with_paths = 0
+
+    for team_member, developer in team_members:
+        dev_id = str(developer.id)
+        path = developer_paths.get(dev_id)
+
+        if path:
+            members_with_paths += 1
+            total_progress += path.progress_percentage or 0.0
+
+            # Get skills in progress from milestones or skill_gaps
+            skills_in_progress = []
+            if path.skill_gaps:
+                skills_in_progress = list(path.skill_gaps.keys())[:5]
+
+            member_statuses.append(TeamMemberLearningStatus(
+                developer_id=dev_id,
+                developer_name=developer.name,
+                developer_avatar_url=developer.avatar_url,
+                has_active_path=True,
+                active_path_id=str(path.id),
+                active_path_target_role=path.target_role.name if path.target_role else None,
+                progress_percentage=path.progress_percentage or 0.0,
+                trajectory_status=path.trajectory_status,
+                skills_in_progress=skills_in_progress,
+            ))
+        else:
+            member_statuses.append(TeamMemberLearningStatus(
+                developer_id=dev_id,
+                developer_name=developer.name,
+                developer_avatar_url=developer.avatar_url,
+                has_active_path=False,
+                active_path_id=None,
+                active_path_target_role=None,
+                progress_percentage=0.0,
+                trajectory_status=None,
+                skills_in_progress=[],
+            ))
+
+    average_progress = total_progress / members_with_paths if members_with_paths > 0 else 0.0
+
+    return TeamLearningOverview(
+        team_id=team_id,
+        team_name=team.name,
+        total_members=len(team_members),
+        members_with_paths=members_with_paths,
+        average_progress=round(average_progress, 1),
+        members=member_statuses,
+    )
+
+
+@router.get("/teams/{team_id}/recommendations", response_model=TeamLearningRecommendations)
+async def get_team_learning_recommendations(
+    team_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get recommended skills for team to develop.
+
+    Analyzes team's current skills and identifies gaps that would benefit
+    from learning initiatives.
+
+    Args:
+        team_id: Team UUID.
+        db: Database session.
+
+    Returns:
+        Prioritized skill recommendations for the team.
+    """
+    if not is_valid_uuid(team_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid team ID",
+        )
+
+    # Get team
+    team_result = await db.execute(select(Team).where(Team.id == team_id))
+    team = team_result.scalar_one_or_none()
+    if not team:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Team not found",
+        )
+
+    # Get team members with developer info
+    members_result = await db.execute(
+        select(Developer)
+        .join(TeamMember, TeamMember.developer_id == Developer.id)
+        .where(TeamMember.team_id == team_id)
+    )
+    developers = list(members_result.scalars().all())
+
+    if not developers:
+        return TeamLearningRecommendations(
+            team_id=team_id,
+            team_name=team.name,
+            recommended_skills=[],
+        )
+
+    # Analyze team skills
+    all_skills: dict[str, list[tuple[str, float]]] = {}  # skill -> [(dev_id, score)]
+    team_size = len(developers)
+
+    for dev in developers:
+        fingerprint = dev.skill_fingerprint or {}
+
+        # Languages
+        for lang in fingerprint.get("languages") or []:
+            skill_name = lang.get("name", "")
+            score = lang.get("proficiency_score", 0)
+            if skill_name:
+                if skill_name not in all_skills:
+                    all_skills[skill_name] = []
+                all_skills[skill_name].append((str(dev.id), score))
+
+        # Frameworks
+        for fw in fingerprint.get("frameworks") or []:
+            skill_name = fw.get("name", "")
+            score = fw.get("proficiency_score", 0)
+            if skill_name:
+                if skill_name not in all_skills:
+                    all_skills[skill_name] = []
+                all_skills[skill_name].append((str(dev.id), score))
+
+        # Domains
+        for domain in fingerprint.get("domains") or []:
+            skill_name = domain.get("name", "")
+            score = domain.get("confidence_score", 0)
+            if skill_name:
+                if skill_name not in all_skills:
+                    all_skills[skill_name] = []
+                all_skills[skill_name].append((str(dev.id), score))
+
+    # Identify skill gaps and create recommendations
+    recommendations: list[TeamSkillRecommendation] = []
+
+    for skill_name, dev_scores in all_skills.items():
+        # Filter to meaningful scores (> 30)
+        meaningful_scores = [s for _, s in dev_scores if s > 30]
+        coverage = len(meaningful_scores) / team_size if team_size > 0 else 0
+        avg_proficiency = sum(s for _, s in dev_scores) / len(dev_scores) if dev_scores else 0
+
+        # Identify skills where team has low coverage or proficiency
+        members_lacking = team_size - len(meaningful_scores)
+
+        # Determine priority based on coverage and proficiency
+        if coverage < 0.2 or avg_proficiency < 30:
+            priority = "critical"
+            reason = f"Only {int(coverage * 100)}% of team has this skill"
+        elif coverage < 0.4 or avg_proficiency < 50:
+            priority = "high"
+            reason = f"Low team coverage ({int(coverage * 100)}%) and proficiency ({int(avg_proficiency)}%)"
+        elif coverage < 0.6:
+            priority = "medium"
+            reason = f"Could improve team coverage from {int(coverage * 100)}%"
+        else:
+            continue  # Skip well-covered skills
+
+        recommendations.append(TeamSkillRecommendation(
+            skill=skill_name,
+            priority=priority,
+            coverage_percentage=round(coverage * 100, 1),
+            average_proficiency=round(avg_proficiency, 1),
+            members_lacking=members_lacking,
+            reason=reason,
+        ))
+
+    # Sort by priority
+    priority_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    recommendations.sort(key=lambda x: priority_order.get(x.priority, 3))
+
+    # Limit to top 10 recommendations
+    recommendations = recommendations[:10]
+
+    return TeamLearningRecommendations(
+        team_id=team_id,
+        team_name=team.name,
+        recommended_skills=recommendations,
+    )
