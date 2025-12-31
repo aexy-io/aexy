@@ -42,7 +42,7 @@ function EpicCard({ epic, workspaceId }: { epic: EpicListItem; workspaceId: stri
   return (
     <Link
       href={`/epics/${epic.id}`}
-      className="block bg-slate-800 rounded-xl border border-slate-700 overflow-hidden hover:border-slate-600 transition"
+      className="block bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden hover:border-slate-700 transition group"
     >
       <div className="p-5">
         {/* Header */}
@@ -295,8 +295,14 @@ export default function EpicsPage() {
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
+            <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+          </div>
+          <p className="text-slate-400 text-sm">Loading epics...</p>
+        </div>
       </div>
     );
   }
@@ -314,17 +320,22 @@ export default function EpicsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-slate-950">
       <AppHeader user={user} logout={logout} />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Page Header */}
         <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white">Epics</h1>
-            <p className="text-slate-400 mt-1">
-              Track large initiatives across sprints and teams
-            </p>
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-purple-500/20 to-indigo-500/20 rounded-xl">
+              <Layers className="h-7 w-7 text-purple-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Epics</h1>
+              <p className="text-slate-400 text-sm">
+                Track large initiatives across sprints and teams
+              </p>
+            </div>
           </div>
           {hasWorkspaces && (
             <button
@@ -338,9 +349,11 @@ export default function EpicsPage() {
         </div>
 
         {!hasWorkspaces ? (
-          <div className="bg-slate-800 rounded-xl p-12 text-center border border-slate-700">
-            <Layers className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-white mb-2">
+          <div className="bg-slate-900/50 rounded-xl p-12 text-center border border-slate-800">
+            <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <Layers className="h-10 w-10 text-slate-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">
               No Workspace Yet
             </h3>
             <p className="text-slate-400 mb-6 max-w-md mx-auto">
@@ -348,7 +361,7 @@ export default function EpicsPage() {
             </p>
             <Link
               href="/settings/organization"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition font-medium"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition font-medium shadow-lg shadow-primary-500/20"
             >
               <Plus className="h-4 w-4" />
               Create Workspace
@@ -394,20 +407,40 @@ export default function EpicsPage() {
 
             {/* Epic Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <div className="bg-slate-800 rounded-lg border border-slate-700 p-4">
-                <div className="text-slate-400 text-sm mb-1">Open</div>
+              <div className="bg-slate-900/50 rounded-xl border border-slate-800 p-4 hover:border-slate-700 transition">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 bg-slate-700/50 rounded-lg">
+                    <Target className="h-4 w-4 text-slate-400" />
+                  </div>
+                  <span className="text-slate-400 text-sm">Open</span>
+                </div>
                 <div className="text-2xl font-bold text-white">{epicsByStatus.open.length}</div>
               </div>
-              <div className="bg-slate-800 rounded-lg border border-slate-700 p-4">
-                <div className="text-blue-400 text-sm mb-1">In Progress</div>
+              <div className="bg-slate-900/50 rounded-xl border border-slate-800 p-4 hover:border-slate-700 transition">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 bg-blue-500/10 rounded-lg">
+                    <ArrowRight className="h-4 w-4 text-blue-400" />
+                  </div>
+                  <span className="text-blue-400 text-sm">In Progress</span>
+                </div>
                 <div className="text-2xl font-bold text-white">{epicsByStatus.in_progress.length}</div>
               </div>
-              <div className="bg-slate-800 rounded-lg border border-slate-700 p-4">
-                <div className="text-green-400 text-sm mb-1">Done</div>
+              <div className="bg-slate-900/50 rounded-xl border border-slate-800 p-4 hover:border-slate-700 transition">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 bg-green-500/10 rounded-lg">
+                    <CheckCircle className="h-4 w-4 text-green-400" />
+                  </div>
+                  <span className="text-green-400 text-sm">Done</span>
+                </div>
                 <div className="text-2xl font-bold text-white">{epicsByStatus.done.length}</div>
               </div>
-              <div className="bg-slate-800 rounded-lg border border-slate-700 p-4">
-                <div className="text-slate-400 text-sm mb-1">Total Epics</div>
+              <div className="bg-slate-900/50 rounded-xl border border-slate-800 p-4 hover:border-slate-700 transition">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 bg-purple-500/10 rounded-lg">
+                    <Layers className="h-4 w-4 text-purple-400" />
+                  </div>
+                  <span className="text-slate-400 text-sm">Total Epics</span>
+                </div>
                 <div className="text-2xl font-bold text-white">{epics.length}</div>
               </div>
             </div>

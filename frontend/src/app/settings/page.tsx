@@ -9,6 +9,7 @@ import {
   Users,
   ListChecks,
   Link2,
+  CreditCard,
   ChevronRight,
 } from "lucide-react";
 
@@ -100,6 +101,13 @@ export default function SettingsPage() {
             icon={<Link2 className="h-5 w-5 text-orange-400" />}
             title="Integrations"
             description="Connect Jira, Linear, and other external tools"
+          />
+
+          <SettingsSection
+            href="/settings/billing"
+            icon={<CreditCard className="h-5 w-5 text-emerald-400" />}
+            title="Billing & Subscription"
+            description="Manage your subscription, billing, and payment methods"
           />
         </div>
       </main>

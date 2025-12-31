@@ -28,6 +28,7 @@ import {
   Cpu,
   Activity,
   MousePointerClick,
+  ClipboardCheck,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -364,6 +365,73 @@ export default function Home() {
                   <p className="text-white/50 text-sm">
                     Personalized growth with gamified progress and achievement badges.
                   </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Performance Reviews - Medium card */}
+            <div className="col-span-12 md:col-span-6 group">
+              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-cyan-500/10 via-teal-500/5 to-transparent border border-white/10 p-8 hover:border-cyan-500/30 transition-all duration-500">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/20 rounded-full blur-3xl group-hover:bg-cyan-500/30 transition-all duration-500" />
+                <div className="relative">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-2xl shadow-lg shadow-cyan-500/25">
+                      <ClipboardCheck className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-full border border-emerald-500/20">
+                      NEW
+                    </span>
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-3">360° Performance Reviews</h3>
+                  <p className="text-white/50 mb-6">
+                    SMART goals with auto-linked GitHub contributions. Anonymous peer feedback with COIN framework.
+                  </p>
+                  {/* Review features */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-white/60 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-cyan-400" />
+                      Auto-generated contribution summaries
+                    </div>
+                    <div className="flex items-center gap-2 text-white/60 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-cyan-400" />
+                      Anonymous 360° feedback
+                    </div>
+                    <div className="flex items-center gap-2 text-white/60 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-cyan-400" />
+                      SMART goal tracking with OKRs
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Review Summary - Small card */}
+            <div className="col-span-12 md:col-span-6 group">
+              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-transparent border border-white/10 p-8 hover:border-violet-500/30 transition-all duration-500">
+                <div className="absolute bottom-0 left-0 w-40 h-40 bg-violet-500/20 rounded-full blur-3xl group-hover:bg-violet-500/30 transition-all duration-500" />
+                <div className="relative">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-500 rounded-2xl shadow-lg shadow-violet-500/25">
+                      <Sparkles className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs font-semibold rounded-full border border-blue-500/20">
+                      AI-POWERED
+                    </span>
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-3">AI Review Intelligence</h3>
+                  <p className="text-white/50 mb-4">
+                    LLM-powered insights that synthesize your GitHub activity into compelling review narratives.
+                  </p>
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Bot className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="text-white/60 text-sm italic">
+                        &ldquo;Led 3 major feature implementations with 98% test coverage. Strong collaboration...&rdquo;
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

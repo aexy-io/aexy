@@ -58,6 +58,11 @@ class Plan(Base):
     price_monthly_cents: Mapped[int] = mapped_column(Integer, default=0)
     price_yearly_cents: Mapped[int] = mapped_column(Integer, default=0)
 
+    # Stripe integration
+    stripe_product_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    stripe_price_id: Mapped[str | None] = mapped_column(String(255), nullable=True)  # Monthly price
+    stripe_yearly_price_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
     # Status
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 

@@ -13,6 +13,7 @@ import {
   Settings,
   Target,
   Users,
+  ClipboardCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -30,12 +31,12 @@ function ProjectSprintCard({ project, workspaceId }: { project: TeamListItem; wo
   const completedCount = sprints.filter((s) => s.status === "completed").length;
 
   return (
-    <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+    <div className="bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden hover:border-slate-700 transition group">
       <div className="p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center">
-              <Users className="h-5 w-5 text-slate-400" />
+            <div className="w-10 h-10 bg-primary-500/10 rounded-lg flex items-center justify-center">
+              <Users className="h-5 w-5 text-primary-400" />
             </div>
             <div>
               <h3 className="text-lg font-semibold text-white">{project.name}</h3>
@@ -44,7 +45,7 @@ function ProjectSprintCard({ project, workspaceId }: { project: TeamListItem; wo
           </div>
           <Link
             href={`/sprints/${project.id}`}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+            className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition group-hover:text-slate-400"
           >
             <ArrowRight className="h-5 w-5" />
           </Link>
@@ -132,7 +133,7 @@ function ProjectSprintCard({ project, workspaceId }: { project: TeamListItem; wo
         )}
       </div>
 
-      <div className="border-t border-slate-700 px-5 py-3 bg-slate-800/50">
+      <div className="border-t border-slate-800 px-5 py-3 bg-slate-900/30">
         <Link
           href={`/sprints/${project.id}`}
           className="flex items-center justify-between text-sm text-slate-400 hover:text-white transition"
@@ -158,8 +159,14 @@ export default function SprintsPage() {
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
+            <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+          </div>
+          <p className="text-slate-400 text-sm">Loading sprints...</p>
+        </div>
       </div>
     );
   }
@@ -169,32 +176,50 @@ export default function SprintsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-slate-950">
       <AppHeader user={user} logout={logout} />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white">Sprint Planning</h1>
-            <p className="text-slate-400 mt-1">
-              Manage sprints across your projects
-            </p>
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-primary-500/20 to-blue-500/20 rounded-xl">
+              <Calendar className="h-7 w-7 text-primary-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Sprint Planning</h1>
+              <p className="text-slate-400 text-sm">
+                Manage sprints across your projects
+              </p>
+            </div>
           </div>
-          {hasWorkspaces && (
-            <Link
-              href="/settings/projects"
-              className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition text-sm"
-            >
-              <Settings className="h-4 w-4" />
-              Manage Projects
-            </Link>
-          )}
+          <div className="flex items-center gap-3">
+            {hasWorkspaces && (
+              <>
+                <Link
+                  href="/reviews"
+                  className="flex items-center gap-2 px-4 py-2 bg-teal-600/20 hover:bg-teal-600/30 text-teal-400 border border-teal-600/30 rounded-lg transition text-sm"
+                >
+                  <ClipboardCheck className="h-4 w-4" />
+                  Team Reviews
+                </Link>
+                <Link
+                  href="/settings/projects"
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition text-sm"
+                >
+                  <Settings className="h-4 w-4" />
+                  Manage Projects
+                </Link>
+              </>
+            )}
+          </div>
         </div>
 
         {!hasWorkspaces ? (
-          <div className="bg-slate-800 rounded-xl p-12 text-center border border-slate-700">
-            <Users className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-white mb-2">
+          <div className="bg-slate-900/50 rounded-xl p-12 text-center border border-slate-800">
+            <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <Users className="h-10 w-10 text-slate-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">
               No Workspace Yet
             </h3>
             <p className="text-slate-400 mb-6 max-w-md mx-auto">
@@ -202,7 +227,7 @@ export default function SprintsPage() {
             </p>
             <Link
               href="/settings/organization"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition font-medium"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition font-medium shadow-lg shadow-primary-500/20"
             >
               <Plus className="h-4 w-4" />
               Create Workspace
@@ -210,12 +235,17 @@ export default function SprintsPage() {
           </div>
         ) : teamsLoading ? (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>
+            <div className="relative">
+              <div className="w-10 h-10 border-4 border-primary-500/20 rounded-full"></div>
+              <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+            </div>
           </div>
         ) : teams.length === 0 ? (
-          <div className="bg-slate-800 rounded-xl p-12 text-center border border-slate-700">
-            <Users className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-white mb-2">
+          <div className="bg-slate-900/50 rounded-xl p-12 text-center border border-slate-800">
+            <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <Users className="h-10 w-10 text-slate-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">
               No Projects Yet
             </h3>
             <p className="text-slate-400 mb-6 max-w-md mx-auto">
@@ -223,7 +253,7 @@ export default function SprintsPage() {
             </p>
             <Link
               href="/settings/projects"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition font-medium"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition font-medium shadow-lg shadow-primary-500/20"
             >
               <Plus className="h-4 w-4" />
               Create Project
