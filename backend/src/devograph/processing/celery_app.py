@@ -13,6 +13,7 @@ celery_app = Celery(
     include=[
         "devograph.processing.tasks",
         "devograph.processing.sync_tasks",
+        "devograph.processing.oncall_tasks",
     ],
 )
 
@@ -81,6 +82,15 @@ celery_app.conf.update(
         "report-usage-to-stripe": {
             "task": "devograph.processing.tasks.batch_report_usage_task",
             "schedule": 3600,  # Hourly usage reporting to Stripe
+        },
+        # On-call scheduling
+        "check-oncall-upcoming-shifts": {
+            "task": "devograph.processing.oncall_tasks.check_upcoming_shifts",
+            "schedule": 300,  # Every 5 minutes
+        },
+        "check-oncall-ending-shifts": {
+            "task": "devograph.processing.oncall_tasks.check_ending_shifts",
+            "schedule": 300,  # Every 5 minutes
         },
     },
 )

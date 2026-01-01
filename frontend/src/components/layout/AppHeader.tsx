@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { NotificationBell } from "@/components/notifications";
+import { OnCallIndicator } from "@/components/oncall/OnCallIndicator";
 
 interface AppHeaderProps {
   user: {
@@ -161,6 +162,9 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
               </div>
             )}
           </div>
+
+          {/* On-Call Indicator */}
+          <OnCallIndicator userId={user?.id} />
 
           {/* Upgrade Button (for free users) */}
           <Link

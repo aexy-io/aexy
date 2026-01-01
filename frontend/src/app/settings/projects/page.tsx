@@ -10,6 +10,7 @@ import {
   Crown,
   FolderGit2,
   MoreVertical,
+  Phone,
   Plus,
   RefreshCw,
   Settings,
@@ -25,6 +26,7 @@ import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useTeams, useTeam, useTeamMembers } from "@/hooks/useTeams";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useCurrentOnCall, useOnCallConfig } from "@/hooks/useOnCall";
 import { TeamListItem, TeamMember, WorkspaceMember, repositoriesApi, Repository } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { PremiumGate, ProBadge, UpgradeModal } from "@/components/PremiumGate";
@@ -80,6 +82,13 @@ function TeamCard({ team, workspaceId, isAdmin, onDelete, canUseTeamFeatures }: 
   );
   const { members: workspaceMembers } = useWorkspaceMembers(expanded ? workspaceId : null);
 
+  // On-call hooks - always fetch to show status in collapsed view
+  const { config: onCallConfig } = useOnCallConfig(workspaceId, team.id);
+  const { isActive: isOnCallActive, currentSchedule } = useCurrentOnCall(
+    onCallConfig?.is_enabled ? workspaceId : null,
+    onCallConfig?.is_enabled ? team.id : null
+  );
+
   const handleAddMember = async (developerId: string) => {
     try {
       await addMember({ developerId, role: "member" });
@@ -132,37 +141,55 @@ function TeamCard({ team, workspaceId, isAdmin, onDelete, canUseTeamFeatures }: 
   );
 
   return (
-    <div className="bg-slate-800 rounded-xl overflow-hidden">
-      <div className="p-4 flex items-center justify-between">
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-3 flex-1 text-left"
-        >
-          {expanded ? (
-            <ChevronDown className="h-5 w-5 text-slate-400 flex-shrink-0" />
-          ) : (
-            <ChevronRight className="h-5 w-5 text-slate-400 flex-shrink-0" />
-          )}
-          <div className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Users className="h-5 w-5 text-slate-400" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-white font-medium">{team.name}</span>
-              <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeBadgeColor(team.type)}`}>
-                {team.type === "repo_based" ? "Repo-based" : "Manual"}
-              </span>
-            </div>
-            <p className="text-slate-400 text-sm">
-              {team.member_count} members
-              {syncResult && (
-                <span className="ml-2 text-green-400 text-xs">
-                  (+{syncResult.added} added, -{syncResult.removed} removed)
-                </span>
+    <div className="bg-slate-800 rounded-xl">
+      <div className="p-4">
+        <div className="flex items-start gap-3">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="flex items-start gap-3 flex-1 text-left"
+          >
+            <div className="pt-1">
+              {expanded ? (
+                <ChevronDown className="h-5 w-5 text-slate-400" />
+              ) : (
+                <ChevronRight className="h-5 w-5 text-slate-400" />
               )}
-            </p>
-          </div>
-        </button>
+            </div>
+            <div className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Users className="h-5 w-5 text-slate-400" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-white font-medium">{team.name}</span>
+                <span className={`px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${getTypeBadgeColor(team.type)}`}>
+                  {team.type === "repo_based" ? "Repo-based" : "Manual"}
+                </span>
+                {onCallConfig?.is_enabled && (
+                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-900/30 text-green-400 flex items-center gap-1 whitespace-nowrap">
+                    <Phone className="h-3 w-3" />
+                    On-Call
+                  </span>
+                )}
+              </div>
+              <div className="text-sm text-slate-400 mt-1">
+                {team.member_count} members
+                {syncResult && (
+                  <span className="ml-2 text-green-400 text-xs">
+                    (+{syncResult.added} added, -{syncResult.removed} removed)
+                  </span>
+                )}
+              </div>
+              {onCallConfig?.is_enabled && isOnCallActive && currentSchedule && (
+                <div className="flex items-center gap-1.5 mt-1.5 text-sm">
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-green-400 font-medium">
+                    {currentSchedule.developer?.name || currentSchedule.developer?.email || "Unknown"}
+                  </span>
+                  <span className="text-slate-500">on-call</span>
+                </div>
+              )}
+            </div>
+          </button>
         {isAdmin && (
           <div className="relative">
             <button
@@ -185,6 +212,17 @@ function TeamCard({ team, workspaceId, isAdmin, onDelete, canUseTeamFeatures }: 
                   >
                     <Target className="h-4 w-4" />
                     Sprint Planning
+                  </Link>
+                  <Link
+                    href={`/settings/projects/${team.id}/oncall`}
+                    className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-600 flex items-center gap-2"
+                    onClick={() => setShowMenu(false)}
+                  >
+                    <Phone className="h-4 w-4" />
+                    <span className="flex-1">On-Call Settings</span>
+                    {onCallConfig?.is_enabled && (
+                      <span className="w-2 h-2 rounded-full bg-green-500" />
+                    )}
                   </Link>
                   {team.type === "repo_based" && (
                     <button
@@ -212,6 +250,7 @@ function TeamCard({ team, workspaceId, isAdmin, onDelete, canUseTeamFeatures }: 
             )}
           </div>
         )}
+        </div>
       </div>
 
       {expanded && (
