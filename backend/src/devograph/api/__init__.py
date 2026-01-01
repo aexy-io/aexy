@@ -41,6 +41,9 @@ from devograph.api.epics import router as epics_router
 from devograph.api.reviews import router as reviews_router
 # Notifications
 from devograph.api.notifications import router as notifications_router
+# On-Call Scheduling
+from devograph.api.oncall import router as oncall_router
+from devograph.api.google_calendar import router as google_calendar_router
 
 api_router = APIRouter()
 
@@ -87,3 +90,6 @@ api_router.include_router(epics_router, tags=["epics"])
 api_router.include_router(reviews_router, tags=["reviews"])
 # Notifications
 api_router.include_router(notifications_router, tags=["notifications"])
+# On-Call Scheduling
+api_router.include_router(oncall_router, tags=["oncall"])
+api_router.include_router(google_calendar_router, tags=["google-calendar"])

@@ -4011,3 +4011,281 @@ export const notificationsApi = {
     return response.data;
   },
 };
+
+// ============ On-Call Types ============
+
+export interface DeveloperBrief {
+  id: string;
+  name: string | null;
+  email: string | null;
+  avatar_url: string | null;
+}
+
+export interface OnCallConfig {
+  id: string;
+  team_id: string;
+  is_enabled: boolean;
+  timezone: string;
+  default_shift_duration_hours: number;
+  google_calendar_enabled: boolean;
+  google_calendar_id: string | null;
+  slack_channel_id: string | null;
+  notify_before_shift_minutes: number;
+  notify_on_shift_change: boolean;
+  created_at: string;
+  updated_at: string;
+  current_oncall: OnCallSchedule | null;
+}
+
+export interface OnCallSchedule {
+  id: string;
+  config_id: string;
+  developer_id: string;
+  developer: DeveloperBrief | null;
+  start_time: string;
+  end_time: string;
+  is_override: boolean;
+  original_developer_id: string | null;
+  original_developer: DeveloperBrief | null;
+  override_reason: string | null;
+  google_event_id: string | null;
+  created_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OnCallScheduleListResponse {
+  schedules: OnCallSchedule[];
+  total: number;
+  start_date: string;
+  end_date: string;
+}
+
+export interface CurrentOnCallResponse {
+  is_active: boolean;
+  schedule: OnCallSchedule | null;
+  next_schedule: OnCallSchedule | null;
+}
+
+export interface SwapRequest {
+  id: string;
+  schedule_id: string;
+  schedule: OnCallSchedule | null;
+  requester_id: string;
+  requester: DeveloperBrief | null;
+  target_id: string;
+  target: DeveloperBrief | null;
+  status: "pending" | "accepted" | "declined" | "cancelled";
+  message: string | null;
+  responded_at: string | null;
+  response_message: string | null;
+  created_at: string;
+}
+
+export interface GoogleCalendarStatus {
+  is_connected: boolean;
+  calendar_email: string | null;
+  last_sync_at: string | null;
+  last_error: string | null;
+}
+
+export interface GoogleCalendarInfo {
+  id: string;
+  summary: string;
+  description: string | null;
+  primary: boolean;
+  access_role: string | null;
+}
+
+// ============ On-Call API ============
+
+export const oncallApi = {
+  // Config
+  getConfig: async (workspaceId: string, teamId: string): Promise<OnCallConfig | null> => {
+    const response = await api.get(`/workspaces/${workspaceId}/teams/${teamId}/oncall`);
+    return response.data;
+  },
+
+  enableOnCall: async (
+    workspaceId: string,
+    teamId: string,
+    config: {
+      timezone?: string;
+      default_shift_duration_hours?: number;
+      slack_channel_id?: string | null;
+      notify_before_shift_minutes?: number;
+      notify_on_shift_change?: boolean;
+    }
+  ): Promise<OnCallConfig> => {
+    const response = await api.post(`/workspaces/${workspaceId}/teams/${teamId}/oncall/enable`, config);
+    return response.data;
+  },
+
+  disableOnCall: async (workspaceId: string, teamId: string): Promise<void> => {
+    await api.post(`/workspaces/${workspaceId}/teams/${teamId}/oncall/disable`);
+  },
+
+  updateConfig: async (
+    workspaceId: string,
+    teamId: string,
+    config: Partial<{
+      timezone: string;
+      default_shift_duration_hours: number;
+      google_calendar_enabled: boolean;
+      google_calendar_id: string;
+      slack_channel_id: string;
+      notify_before_shift_minutes: number;
+      notify_on_shift_change: boolean;
+    }>
+  ): Promise<OnCallConfig> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/teams/${teamId}/oncall/config`, config);
+    return response.data;
+  },
+
+  // Schedules
+  getSchedules: async (
+    workspaceId: string,
+    teamId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<OnCallScheduleListResponse> => {
+    const response = await api.get(`/workspaces/${workspaceId}/teams/${teamId}/oncall/schedules`, {
+      params: { start_date: startDate, end_date: endDate },
+    });
+    return response.data;
+  },
+
+  createSchedule: async (
+    workspaceId: string,
+    teamId: string,
+    schedule: { developer_id: string; start_time: string; end_time: string }
+  ): Promise<OnCallSchedule> => {
+    const response = await api.post(`/workspaces/${workspaceId}/teams/${teamId}/oncall/schedules`, schedule);
+    return response.data;
+  },
+
+  createBulkSchedules: async (
+    workspaceId: string,
+    teamId: string,
+    schedules: Array<{ developer_id: string; start_time: string; end_time: string }>
+  ): Promise<OnCallSchedule[]> => {
+    const response = await api.post(`/workspaces/${workspaceId}/teams/${teamId}/oncall/schedules/bulk`, {
+      schedules,
+    });
+    return response.data;
+  },
+
+  updateSchedule: async (
+    workspaceId: string,
+    teamId: string,
+    scheduleId: string,
+    updates: Partial<{ developer_id: string; start_time: string; end_time: string }>
+  ): Promise<OnCallSchedule> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/teams/${teamId}/oncall/schedules/${scheduleId}`,
+      updates
+    );
+    return response.data;
+  },
+
+  deleteSchedule: async (workspaceId: string, teamId: string, scheduleId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/teams/${teamId}/oncall/schedules/${scheduleId}`);
+  },
+
+  // Current on-call
+  getCurrentOnCall: async (workspaceId: string, teamId: string): Promise<CurrentOnCallResponse> => {
+    const response = await api.get(`/workspaces/${workspaceId}/teams/${teamId}/oncall/current`);
+    return response.data;
+  },
+
+  // Swaps
+  requestSwap: async (
+    workspaceId: string,
+    teamId: string,
+    scheduleId: string,
+    targetId: string,
+    message?: string
+  ): Promise<SwapRequest> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/teams/${teamId}/oncall/schedules/${scheduleId}/swap-request`,
+      { target_id: targetId, message }
+    );
+    return response.data;
+  },
+
+  getSwapRequests: async (workspaceId: string, teamId: string): Promise<SwapRequest[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/teams/${teamId}/oncall/swap-requests`);
+    return response.data;
+  },
+
+  acceptSwap: async (workspaceId: string, teamId: string, swapId: string): Promise<SwapRequest> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/teams/${teamId}/oncall/swap-requests/${swapId}/accept`
+    );
+    return response.data;
+  },
+
+  declineSwap: async (
+    workspaceId: string,
+    teamId: string,
+    swapId: string,
+    responseMessage?: string
+  ): Promise<SwapRequest> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/teams/${teamId}/oncall/swap-requests/${swapId}/decline`,
+      { response_message: responseMessage }
+    );
+    return response.data;
+  },
+
+  // Override
+  createOverride: async (
+    workspaceId: string,
+    teamId: string,
+    scheduleId: string,
+    newDeveloperId: string,
+    reason?: string
+  ): Promise<OnCallSchedule> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/teams/${teamId}/oncall/schedules/${scheduleId}/override`,
+      { new_developer_id: newDeveloperId, reason }
+    );
+    return response.data;
+  },
+};
+
+// ============ Google Calendar API ============
+
+export const googleCalendarApi = {
+  getConnectUrl: async (workspaceId: string): Promise<{ auth_url: string }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/integrations/google-calendar/connect`);
+    return response.data;
+  },
+
+  getStatus: async (workspaceId: string): Promise<GoogleCalendarStatus> => {
+    const response = await api.get(`/workspaces/${workspaceId}/integrations/google-calendar/status`);
+    return response.data;
+  },
+
+  listCalendars: async (workspaceId: string): Promise<{ calendars: GoogleCalendarInfo[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/integrations/google-calendar/calendars`);
+    return response.data;
+  },
+
+  selectCalendar: async (workspaceId: string, teamId: string, calendarId: string): Promise<void> => {
+    await api.post(`/workspaces/${workspaceId}/integrations/google-calendar/select-calendar/${teamId}`, {
+      calendar_id: calendarId,
+    });
+  },
+
+  disconnect: async (workspaceId: string): Promise<void> => {
+    await api.post(`/workspaces/${workspaceId}/integrations/google-calendar/disconnect`);
+  },
+
+  sync: async (workspaceId: string, teamId: string): Promise<{ status: string; synced_count: number }> => {
+    const response = await api.post(`/workspaces/${workspaceId}/integrations/google-calendar/sync`, null, {
+      params: { team_id: teamId },
+    });
+    return response.data;
+  },
+};

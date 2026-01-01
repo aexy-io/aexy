@@ -233,6 +233,20 @@ class Settings(BaseSettings):
         description="Enable/disable email notifications",
     )
 
+    # Google Calendar Integration (OAuth)
+    google_client_id: str = Field(
+        default="",
+        description="Google OAuth Client ID for Calendar integration",
+    )
+    google_client_secret: str = Field(
+        default="",
+        description="Google OAuth Client Secret for Calendar integration",
+    )
+    google_redirect_uri: str = Field(
+        default="http://localhost:8000/api/v1/integrations/google-calendar/callback",
+        description="Google OAuth redirect URI",
+    )
+
     # LLM Configuration
     llm: LLMSettings = Field(default_factory=LLMSettings)
 
