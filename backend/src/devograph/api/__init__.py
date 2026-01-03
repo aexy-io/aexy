@@ -54,6 +54,8 @@ from devograph.api.tracking import router as tracking_router
 from devograph.api.ticket_forms import router as ticket_forms_router
 from devograph.api.tickets import router as tickets_router
 from devograph.api.public_forms import router as public_forms_router
+from devograph.api.escalation import router as escalation_router
+from devograph.api.escalation import escalation_ticket_router
 
 api_router = APIRouter()
 
@@ -113,3 +115,5 @@ api_router.include_router(tracking_router, tags=["tracking"])
 api_router.include_router(ticket_forms_router, tags=["ticket-forms"])
 api_router.include_router(tickets_router, tags=["tickets"])
 api_router.include_router(public_forms_router, tags=["public-forms"])
+api_router.include_router(escalation_router, tags=["escalation"])
+api_router.include_router(escalation_ticket_router, tags=["escalation"])

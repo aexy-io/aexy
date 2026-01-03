@@ -10,7 +10,10 @@ TicketFormAuthMode = Literal["anonymous", "email_verification"]
 TicketFormTemplateType = Literal["bug_report", "feature_request", "support"]
 TicketStatus = Literal["new", "acknowledged", "in_progress", "waiting_on_submitter", "resolved", "closed"]
 TicketPriority = Literal["low", "medium", "high", "urgent"]
+TicketSeverity = Literal["critical", "high", "medium", "low"]
 TicketFieldType = Literal["text", "textarea", "email", "select", "multiselect", "checkbox", "file", "date"]
+EscalationLevel = Literal["level_1", "level_2", "level_3", "level_4"]
+NotificationChannel = Literal["email", "slack", "in_app"]
 
 
 # ==================== Form Field Schemas ====================
@@ -142,6 +145,9 @@ class TicketFormCreate(BaseModel):
     destinations: list[FormDestinationConfig] | None = None
     auto_create_task: bool = False
     default_team_id: str | None = None
+    auto_assign_oncall: bool = False
+    default_severity: TicketSeverity | None = None
+    default_priority: TicketPriority | None = None
     conditional_rules: list[ConditionalRule] | None = None
 
 
@@ -158,6 +164,9 @@ class TicketFormUpdate(BaseModel):
     destinations: list[FormDestinationConfig] | None = None
     auto_create_task: bool | None = None
     default_team_id: str | None = None
+    auto_assign_oncall: bool | None = None
+    default_severity: TicketSeverity | None = None
+    default_priority: TicketPriority | None = None
     conditional_rules: list[ConditionalRule] | None = None
 
 
@@ -181,6 +190,9 @@ class TicketFormResponse(BaseModel):
     destinations: list[dict]
     auto_create_task: bool
     default_team_id: str | None = None
+    auto_assign_oncall: bool = False
+    default_severity: TicketSeverity | None = None
+    default_priority: TicketPriority | None = None
     conditional_rules: list[dict]
     submission_count: int
     created_by_id: str | None = None
@@ -278,6 +290,7 @@ class TicketUpdate(BaseModel):
     """Schema for updating a ticket."""
     status: TicketStatus | None = None
     priority: TicketPriority | None = None
+    severity: TicketSeverity | None = None
     assignee_id: str | None = None
     team_id: str | None = None
 
@@ -303,6 +316,7 @@ class TicketResponse(BaseModel):
     attachments: list[dict]
     status: TicketStatus
     priority: TicketPriority | None = None
+    severity: TicketSeverity | None = None
     assignee_id: str | None = None
     team_id: str | None = None
     external_issues: list[dict]
@@ -331,6 +345,7 @@ class TicketListResponse(BaseModel):
     submitter_name: str | None = None
     status: TicketStatus
     priority: TicketPriority | None = None
+    severity: TicketSeverity | None = None
     assignee_id: str | None = None
     sla_breached: bool
     created_at: datetime
@@ -344,6 +359,7 @@ class TicketFilters(BaseModel):
     form_id: str | None = None
     status: list[TicketStatus] | None = None
     priority: list[TicketPriority] | None = None
+    severity: list[TicketSeverity] | None = None
     assignee_id: str | None = None
     team_id: str | None = None
     submitter_email: str | None = None
@@ -511,3 +527,85 @@ class FormTemplate(BaseModel):
     name: str
     description: str
     fields: list[TicketFormFieldCreate]
+
+
+# ==================== Escalation Matrix Schemas ====================
+
+class EscalationRuleCreate(BaseModel):
+    """Individual escalation rule."""
+    level: EscalationLevel
+    delay_minutes: int = Field(..., ge=0)  # 0 = immediate
+    notify_users: list[str] | None = None  # User IDs
+    notify_teams: list[str] | None = None  # Team IDs
+    notify_oncall: bool = False
+    channels: list[NotificationChannel] = ["email", "in_app"]
+
+
+class EscalationMatrixCreate(BaseModel):
+    """Schema for creating an escalation matrix."""
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str | None = None
+    severity_levels: list[TicketSeverity] = Field(..., min_length=1)
+    rules: list[EscalationRuleCreate] = Field(..., min_length=1)
+    form_ids: list[str] | None = None
+    team_ids: list[str] | None = None
+    priority_order: int = 100
+
+
+class EscalationMatrixUpdate(BaseModel):
+    """Schema for updating an escalation matrix."""
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
+    severity_levels: list[TicketSeverity] | None = None
+    rules: list[EscalationRuleCreate] | None = None
+    form_ids: list[str] | None = None
+    team_ids: list[str] | None = None
+    priority_order: int | None = None
+    is_active: bool | None = None
+
+
+class EscalationMatrixResponse(BaseModel):
+    """Schema for escalation matrix response."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    workspace_id: str
+    name: str
+    description: str | None = None
+    severity_levels: list[str]
+    rules: list[dict]
+    form_ids: list[str] | None = None
+    team_ids: list[str] | None = None
+    priority_order: int
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class TicketEscalationResponse(BaseModel):
+    """Schema for ticket escalation history."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    ticket_id: str
+    escalation_matrix_id: str | None = None
+    level: str
+    triggered_at: datetime
+    notified_users: list[str]
+    notified_channels: list[str]
+    acknowledged_at: datetime | None = None
+    acknowledged_by_id: str | None = None
+
+
+# ==================== Ticket Stats (for tracking dashboard) ====================
+
+class TicketStats(BaseModel):
+    """Statistics for tickets."""
+    total_tickets: int = 0
+    open_tickets: int = 0
+    sla_breached: int = 0
+    assigned_to_me: int = 0
+    unassigned: int = 0
+    by_severity: dict[str, int] = {}
+    by_priority: dict[str, int] = {}
+    by_status: dict[str, int] = {}

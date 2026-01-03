@@ -5334,7 +5334,46 @@ export type TicketFormAuthMode = "anonymous" | "email_verification";
 export type TicketFormTemplateType = "bug_report" | "feature_request" | "support";
 export type TicketStatus = "new" | "acknowledged" | "in_progress" | "waiting_on_submitter" | "resolved" | "closed";
 export type TicketPriority = "low" | "medium" | "high" | "urgent";
+export type TicketSeverity = "critical" | "high" | "medium" | "low";
+export type EscalationLevel = "level_1" | "level_2" | "level_3" | "level_4";
+export type NotificationChannel = "email" | "slack" | "in_app";
 export type TicketFieldType = "text" | "textarea" | "email" | "select" | "multiselect" | "checkbox" | "file" | "date";
+
+export interface EscalationRule {
+  level: EscalationLevel;
+  delay_minutes: number;
+  notify_users?: string[];
+  notify_teams?: string[];
+  notify_oncall?: boolean;
+  channels: NotificationChannel[];
+}
+
+export interface EscalationMatrix {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description?: string;
+  severity_levels: TicketSeverity[];
+  rules: EscalationRule[];
+  form_ids?: string[];
+  team_ids?: string[];
+  priority_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TicketEscalation {
+  id: string;
+  ticket_id: string;
+  escalation_matrix_id: string;
+  level: EscalationLevel;
+  triggered_at: string;
+  notified_users: string[];
+  notified_channels: NotificationChannel[];
+  acknowledged_at?: string;
+  acknowledged_by_id?: string;
+}
 
 export interface FieldOption {
   value: string;
@@ -5416,6 +5455,9 @@ export interface TicketForm {
   destinations: FormDestinationConfig[];
   auto_create_task: boolean;
   default_team_id?: string;
+  auto_assign_oncall: boolean;
+  default_severity?: TicketSeverity;
+  default_priority?: TicketPriority;
   conditional_rules: ConditionalRule[];
   submission_count: number;
   created_by_id?: string;
@@ -5465,6 +5507,7 @@ export interface Ticket {
   attachments: TicketAttachment[];
   status: TicketStatus;
   priority?: TicketPriority;
+  severity?: TicketSeverity;
   assignee_id?: string;
   team_id?: string;
   external_issues: ExternalIssue[];
@@ -5489,6 +5532,7 @@ export interface TicketListItem {
   submitter_name?: string;
   status: TicketStatus;
   priority?: TicketPriority;
+  severity?: TicketSeverity;
   assignee_id?: string;
   sla_breached: boolean;
   created_at: string;
@@ -5831,6 +5875,81 @@ export const publicFormsApi = {
     token: string
   ): Promise<{ verified: boolean; ticket_number: number }> => {
     const response = await api.post(`/forms/${publicToken}/verify-email`, { token });
+    return response.data;
+  },
+};
+
+export const escalationApi = {
+  // List escalation matrices
+  list: async (workspaceId: string, activeOnly = true): Promise<EscalationMatrix[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/escalation-matrices`, {
+      params: { active_only: activeOnly },
+    });
+    return response.data;
+  },
+
+  // Get escalation matrix
+  get: async (workspaceId: string, matrixId: string): Promise<EscalationMatrix> => {
+    const response = await api.get(`/workspaces/${workspaceId}/escalation-matrices/${matrixId}`);
+    return response.data;
+  },
+
+  // Create escalation matrix
+  create: async (
+    workspaceId: string,
+    data: {
+      name: string;
+      description?: string;
+      severity_levels: TicketSeverity[];
+      rules: Omit<EscalationRule, "level"> & { level: EscalationLevel }[];
+      form_ids?: string[];
+      team_ids?: string[];
+      priority_order?: number;
+    }
+  ): Promise<EscalationMatrix> => {
+    const response = await api.post(`/workspaces/${workspaceId}/escalation-matrices`, data);
+    return response.data;
+  },
+
+  // Update escalation matrix
+  update: async (
+    workspaceId: string,
+    matrixId: string,
+    data: Partial<{
+      name: string;
+      description: string;
+      severity_levels: TicketSeverity[];
+      rules: EscalationRule[];
+      form_ids: string[];
+      team_ids: string[];
+      priority_order: number;
+      is_active: boolean;
+    }>
+  ): Promise<EscalationMatrix> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/escalation-matrices/${matrixId}`, data);
+    return response.data;
+  },
+
+  // Delete escalation matrix
+  delete: async (workspaceId: string, matrixId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/escalation-matrices/${matrixId}`);
+  },
+
+  // List ticket escalations
+  listForTicket: async (workspaceId: string, ticketId: string): Promise<TicketEscalation[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/tickets/${ticketId}/escalations`);
+    return response.data;
+  },
+
+  // Acknowledge escalation
+  acknowledge: async (
+    workspaceId: string,
+    ticketId: string,
+    escalationId: string
+  ): Promise<TicketEscalation> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/tickets/${ticketId}/escalations/${escalationId}/acknowledge`
+    );
     return response.data;
   },
 };

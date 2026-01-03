@@ -12,6 +12,7 @@ import {
   CreditCard,
   ChevronRight,
   Ticket,
+  AlertTriangle,
 } from "lucide-react";
 
 interface SettingsSectionProps {
@@ -102,6 +103,13 @@ export default function SettingsPage() {
             icon={<Ticket className="h-5 w-5 text-pink-400" />}
             title="Ticket Forms"
             description="Create and manage public forms for collecting tickets"
+          />
+
+          <SettingsSection
+            href="/settings/escalation"
+            icon={<AlertTriangle className="h-5 w-5 text-orange-400" />}
+            title="Escalation Matrix"
+            description="Configure automatic escalation rules based on ticket severity"
           />
 
           <SettingsSection

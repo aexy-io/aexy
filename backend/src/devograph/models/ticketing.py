@@ -50,6 +50,14 @@ class TicketPriority(str, Enum):
     URGENT = "urgent"
 
 
+class TicketSeverity(str, Enum):
+    """Ticket severity/impact levels."""
+    CRITICAL = "critical"  # System down, major impact
+    HIGH = "high"          # Significant impact, workaround available
+    MEDIUM = "medium"      # Moderate impact
+    LOW = "low"            # Minor impact
+
+
 class TicketFieldType(str, Enum):
     """Form field types."""
     TEXT = "text"
@@ -133,6 +141,13 @@ class TicketForm(Base):
         ForeignKey("teams.id", ondelete="SET NULL"),
         nullable=True,
     )
+
+    # Auto-assign to on-call
+    auto_assign_oncall: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Default severity/priority for new tickets
+    default_severity: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    default_priority: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # Conditional logic rules
     conditional_rules: Mapped[list] = mapped_column(
@@ -320,6 +335,12 @@ class Ticket(Base):
     )
 
     priority: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        index=True,
+    )
+
+    severity: Mapped[str | None] = mapped_column(
         String(50),
         nullable=True,
         index=True,
@@ -606,3 +627,123 @@ class SLAPolicy(Base):
     __table_args__ = (
         UniqueConstraint("workspace_id", "name", name="uq_sla_policy_name"),
     )
+
+
+class EscalationLevel(str, Enum):
+    """Escalation notification levels."""
+    LEVEL_1 = "level_1"  # Initial notification
+    LEVEL_2 = "level_2"  # First escalation
+    LEVEL_3 = "level_3"  # Second escalation
+    LEVEL_4 = "level_4"  # Critical escalation
+
+
+class EscalationMatrix(Base):
+    """Escalation rules for ticket notifications based on severity."""
+
+    __tablename__ = "escalation_matrices"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Conditions for when this escalation applies
+    severity_levels: Mapped[list] = mapped_column(
+        JSONB,
+        default=list,
+        nullable=False,
+    )  # ["critical", "high"]
+
+    # Escalation rules
+    rules: Mapped[list] = mapped_column(
+        JSONB,
+        default=list,
+        nullable=False,
+    )  # [{level, delay_minutes, notify_users: [id], notify_teams: [id], notify_oncall: bool, channels: ["email", "slack"]}]
+
+    # Optional: Only apply to specific forms/teams
+    form_ids: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    team_ids: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+
+    priority_order: Mapped[int] = mapped_column(Integer, default=100, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    # Relationships
+    workspace: Mapped["Workspace"] = relationship("Workspace", lazy="selectin")
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "name", name="uq_escalation_matrix_name"),
+    )
+
+
+class TicketEscalation(Base):
+    """Tracks escalation history for a ticket."""
+
+    __tablename__ = "ticket_escalations"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    ticket_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("tickets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    escalation_matrix_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("escalation_matrices.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    level: Mapped[str] = mapped_column(String(50), nullable=False)
+    triggered_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    # Who was notified
+    notified_users: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
+    notified_channels: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
+
+    # Whether escalation was acknowledged
+    acknowledged_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    acknowledged_by_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # Relationships
+    ticket: Mapped["Ticket"] = relationship("Ticket", lazy="selectin")
+    escalation_matrix: Mapped["EscalationMatrix"] = relationship("EscalationMatrix", lazy="selectin")
+    acknowledged_by: Mapped["Developer"] = relationship("Developer", lazy="selectin")

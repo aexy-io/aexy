@@ -7,6 +7,10 @@ import {
   Clock,
   AlertTriangle,
   ChevronRight,
+  Ticket,
+  Zap,
+  UserCheck,
+  XCircle,
 } from "lucide-react";
 import { IndividualTrackingDashboard } from "@/components/tracking";
 import {
@@ -17,12 +21,17 @@ import {
   useResolveBlocker,
 } from "@/hooks/useTracking";
 import { useAuth } from "@/hooks/useAuth";
+import { useWorkspace } from "@/hooks/useWorkspace";
+import { useTicketStats } from "@/hooks/useTicketing";
 import { AppHeader } from "@/components/layout/AppHeader";
 
 export default function TrackingPage() {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { currentWorkspace } = useWorkspace();
+  const workspaceId = currentWorkspace?.id || null;
   const { data: dashboard, isLoading } = useTrackingDashboard();
+  const { stats: ticketStats } = useTicketStats(workspaceId);
   const submitStandup = useSubmitStandup();
   const logTime = useLogTime();
   const reportBlocker = useReportBlocker();
@@ -99,6 +108,63 @@ export default function TrackingPage() {
             );
           })}
         </div>
+
+        {/* Ticket Metrics */}
+        {ticketStats && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Ticket className="h-5 w-5 text-pink-400" />
+                Ticket Overview
+              </h2>
+              <button
+                onClick={() => router.push("/tickets")}
+                className="text-sm text-purple-400 hover:text-purple-300 flex items-center gap-1"
+              >
+                View all tickets
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-lg bg-blue-900/20">
+                    <Ticket className="h-4 w-4 text-blue-400" />
+                  </div>
+                  <span className="text-sm text-slate-400">Open</span>
+                </div>
+                <p className="text-2xl font-bold text-white">{ticketStats.open_tickets}</p>
+              </div>
+              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-lg bg-purple-900/20">
+                    <UserCheck className="h-4 w-4 text-purple-400" />
+                  </div>
+                  <span className="text-sm text-slate-400">Assigned to Me</span>
+                </div>
+                <p className="text-2xl font-bold text-white">{ticketStats.assigned_to_me || 0}</p>
+              </div>
+              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-lg bg-orange-900/20">
+                    <Zap className="h-4 w-4 text-orange-400" />
+                  </div>
+                  <span className="text-sm text-slate-400">Unassigned</span>
+                </div>
+                <p className="text-2xl font-bold text-white">{ticketStats.unassigned || 0}</p>
+              </div>
+              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-lg bg-red-900/20">
+                    <XCircle className="h-4 w-4 text-red-400" />
+                  </div>
+                  <span className="text-sm text-slate-400">SLA Breached</span>
+                </div>
+                <p className="text-2xl font-bold text-white">{ticketStats.sla_breached}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Main Dashboard */}
         <IndividualTrackingDashboard

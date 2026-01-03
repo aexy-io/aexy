@@ -41,7 +41,6 @@ export default function DocsLayout({
     try {
       await createWorkspace({
         name: "My Workspace",
-        slug: `workspace-${Date.now()}`,
       });
     } catch (error) {
       console.error("Failed to create workspace:", error);

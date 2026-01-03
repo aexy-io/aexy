@@ -33,7 +33,23 @@ import {
   TicketFieldType,
   TicketFormAuthMode,
   FieldOption,
+  TicketPriority,
+  TicketSeverity,
 } from "@/lib/api";
+
+const PRIORITY_OPTIONS: { value: TicketPriority; label: string }[] = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+  { value: "urgent", label: "Urgent" },
+];
+
+const SEVERITY_OPTIONS: { value: TicketSeverity; label: string }[] = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+  { value: "critical", label: "Critical" },
+];
 
 const FIELD_TYPE_CONFIG: Record<TicketFieldType, { icon: React.ReactNode; label: string; description: string }> = {
   text: { icon: <Type className="h-4 w-4" />, label: "Short Text", description: "Single line text input" },
@@ -320,6 +336,9 @@ export default function FormBuilderPage() {
     auth_mode: "anonymous" as TicketFormAuthMode,
     require_email: false,
     success_message: "",
+    auto_assign_oncall: false,
+    default_priority: undefined as TicketPriority | undefined,
+    default_severity: undefined as TicketSeverity | undefined,
   });
   const [settingsHasChanges, setSettingsHasChanges] = useState(false);
 
@@ -333,6 +352,9 @@ export default function FormBuilderPage() {
         auth_mode: form.auth_mode,
         require_email: form.require_email,
         success_message: form.success_message || "",
+        auto_assign_oncall: form.auto_assign_oncall || false,
+        default_priority: form.default_priority,
+        default_severity: form.default_severity,
       });
     }
   });
@@ -590,6 +612,60 @@ export default function FormBuilderPage() {
               <label htmlFor="require_email" className="text-white">
                 Require email address (even in anonymous mode)
               </label>
+            </div>
+
+            {/* Ticket Defaults Section */}
+            <div className="pt-4 border-t border-slate-700">
+              <h3 className="text-white font-medium mb-4">Ticket Defaults</h3>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm text-slate-400 mb-1">Default Priority</label>
+                  <select
+                    value={formSettings.default_priority || ""}
+                    onChange={(e) => handleSettingsChange("default_priority", e.target.value || undefined)}
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="">No default</option>
+                    {PRIORITY_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-slate-400 mb-1">Default Severity</label>
+                  <select
+                    value={formSettings.default_severity || ""}
+                    onChange={(e) => handleSettingsChange("default_severity", e.target.value || undefined)}
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="">No default</option>
+                    {SEVERITY_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 p-4 bg-slate-700 rounded-lg">
+                <input
+                  type="checkbox"
+                  id="auto_assign_oncall"
+                  checked={formSettings.auto_assign_oncall}
+                  onChange={(e) => handleSettingsChange("auto_assign_oncall", e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-purple-500 focus:ring-purple-500"
+                />
+                <label htmlFor="auto_assign_oncall" className="text-white">
+                  Auto-assign to on-call person
+                </label>
+                <span className="text-slate-400 text-sm ml-2">
+                  Tickets will be automatically assigned to whoever is currently on-call
+                </span>
+              </div>
             </div>
 
             <div>

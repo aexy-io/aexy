@@ -16,6 +16,7 @@ import {
   TicketFormTemplateType,
   TicketStatus,
   TicketPriority,
+  TicketSeverity,
   FormTheme,
   FormDestinationConfig,
   ConditionalRule,
@@ -304,6 +305,7 @@ export function useTicket(workspaceId: string | null, ticketId: string | null) {
     mutationFn: (data: Partial<{
       status: TicketStatus;
       priority: TicketPriority;
+      severity: TicketSeverity;
       assignee_id: string;
       team_id: string;
     }>) => ticketsApi.update(workspaceId!, ticketId!, data),

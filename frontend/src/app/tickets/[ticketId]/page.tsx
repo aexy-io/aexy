@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   Clock,
   User,
+  Users,
   Mail,
   Calendar,
   AlertTriangle,
@@ -15,12 +16,15 @@ import {
   Lock,
   ExternalLink,
   Link2,
+  Zap,
+  UserCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useWorkspace } from "@/hooks/useWorkspace";
+import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useTicket, useTicketResponses } from "@/hooks/useTicketing";
+import { useTeams } from "@/hooks/useTeams";
 import { AppHeader } from "@/components/layout/AppHeader";
-import { TicketStatus, TicketPriority } from "@/lib/api";
+import { TicketStatus, TicketPriority, TicketSeverity } from "@/lib/api";
 
 const STATUS_OPTIONS: { value: TicketStatus; label: string; color: string }[] = [
   { value: "new", label: "New", color: "text-blue-400" },
@@ -38,6 +42,13 @@ const PRIORITY_OPTIONS: { value: TicketPriority; label: string; color: string }[
   { value: "urgent", label: "Urgent", color: "text-red-400" },
 ];
 
+const SEVERITY_OPTIONS: { value: TicketSeverity; label: string; color: string; description: string }[] = [
+  { value: "low", label: "Low", color: "text-slate-400", description: "Minor impact" },
+  { value: "medium", label: "Medium", color: "text-blue-400", description: "Moderate impact" },
+  { value: "high", label: "High", color: "text-orange-400", description: "Significant impact" },
+  { value: "critical", label: "Critical", color: "text-red-400", description: "System down" },
+];
+
 export default function TicketDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -47,8 +58,10 @@ export default function TicketDetailPage() {
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
 
-  const { ticket, isLoading, updateTicket, isUpdating } = useTicket(workspaceId, ticketId);
+  const { ticket, isLoading, updateTicket, assignTicket, isUpdating, isAssigning } = useTicket(workspaceId, ticketId);
   const { responses, addResponse, isAddingResponse } = useTicketResponses(workspaceId, ticketId);
+  const { members } = useWorkspaceMembers(workspaceId);
+  const { teams } = useTeams(workspaceId);
 
   const [newResponse, setNewResponse] = useState("");
   const [isInternal, setIsInternal] = useState(false);
@@ -295,7 +308,7 @@ export default function TicketDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Status & Priority */}
+            {/* Status & Priority & Severity */}
             <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
               <h3 className="text-sm font-medium text-slate-400 mb-3">Status</h3>
               <select
@@ -325,6 +338,75 @@ export default function TicketDetailPage() {
                   </option>
                 ))}
               </select>
+
+              <h3 className="text-sm font-medium text-slate-400 mb-3 mt-4 flex items-center gap-2">
+                <Zap className="h-4 w-4" />
+                Severity
+              </h3>
+              <select
+                value={ticket.severity || ""}
+                onChange={(e) => updateTicket({ severity: e.target.value as TicketSeverity })}
+                disabled={isUpdating}
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">No severity</option>
+                {SEVERITY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label} - {opt.description}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Assignment */}
+            <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+              <h3 className="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2">
+                <UserCircle className="h-4 w-4" />
+                Assignee
+              </h3>
+              <select
+                value={ticket.assignee_id || ""}
+                onChange={(e) => assignTicket({ assignee_id: e.target.value || undefined })}
+                disabled={isAssigning}
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">Unassigned</option>
+                {members.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.name || member.email}
+                  </option>
+                ))}
+              </select>
+              {ticket.assignee_name && (
+                <div className="mt-2 flex items-center gap-2 text-sm text-slate-400">
+                  <User className="h-4 w-4" />
+                  Currently: {ticket.assignee_name}
+                </div>
+              )}
+
+              <h3 className="text-sm font-medium text-slate-400 mb-3 mt-4 flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Team
+              </h3>
+              <select
+                value={ticket.team_id || ""}
+                onChange={(e) => assignTicket({ team_id: e.target.value || undefined })}
+                disabled={isAssigning}
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">No team</option>
+                {teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
+              {ticket.team_name && (
+                <div className="mt-2 flex items-center gap-2 text-sm text-slate-400">
+                  <Users className="h-4 w-4" />
+                  Currently: {ticket.team_name}
+                </div>
+              )}
             </div>
 
             {/* SLA Info */}

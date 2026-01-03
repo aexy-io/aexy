@@ -27,6 +27,8 @@ import { useState, useRef, useEffect } from "react";
 import { NotificationBell } from "@/components/notifications";
 import { OnCallIndicator } from "@/components/oncall/OnCallIndicator";
 import { useTrackingDashboard } from "@/hooks/useTracking";
+import { useWorkspace } from "@/hooks/useWorkspace";
+import { useTicketStats } from "@/hooks/useTicketing";
 
 interface AppHeaderProps {
   user: {
@@ -61,6 +63,10 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
 
   // Fetch tracking dashboard data
   const { data: trackingData } = useTrackingDashboard();
+
+  // Fetch ticket stats
+  const { currentWorkspace } = useWorkspace();
+  const { stats: ticketStats } = useTicketStats(currentWorkspace?.id || null);
 
   const isActive = (href: string) => {
     if (href === "/dashboard") {
@@ -306,6 +312,41 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
                       {formatTime(timeLoggedToday)}
                     </span>
                   </div>
+
+                  {/* Ticket Stats */}
+                  {ticketStats && (
+                    <>
+                      <div className="pt-3 mt-3 border-t border-slate-700/50">
+                        <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Tickets</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Ticket className="h-4 w-4 text-pink-400" />
+                          <span className="text-sm text-slate-300">My Tickets</span>
+                        </div>
+                        <span className={`text-xs px-2 py-0.5 rounded ${
+                          (ticketStats.assigned_to_me || 0) > 0
+                            ? "text-pink-400 bg-pink-900/30"
+                            : "text-slate-400 bg-slate-800"
+                        }`}>
+                          {ticketStats.assigned_to_me || 0}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className={`h-4 w-4 ${ticketStats.sla_breached > 0 ? "text-red-400" : "text-slate-500"}`} />
+                          <span className="text-sm text-slate-300">SLA Breached</span>
+                        </div>
+                        <span className={`text-xs px-2 py-0.5 rounded ${
+                          ticketStats.sla_breached > 0
+                            ? "text-red-400 bg-red-900/30"
+                            : "text-slate-400 bg-slate-800"
+                        }`}>
+                          {ticketStats.sla_breached}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="border-t border-slate-700/50 p-2">

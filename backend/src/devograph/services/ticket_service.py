@@ -15,6 +15,8 @@ from devograph.models.ticketing import (
     TicketStatus,
     TicketPriority,
     SLAPolicy,
+    EscalationMatrix,
+    TicketEscalation,
 )
 from devograph.schemas.ticketing import (
     TicketCreate,
@@ -22,6 +24,8 @@ from devograph.schemas.ticketing import (
     TicketFilters,
     TicketCommentCreate,
     PublicTicketSubmission,
+    EscalationMatrixCreate,
+    EscalationMatrixUpdate,
 )
 
 
@@ -580,3 +584,208 @@ class TicketService:
             "by_status": by_status,
             "sla_breached": breached,
         }
+
+    # ==================== Escalation Matrix ====================
+
+    async def create_escalation_matrix(
+        self,
+        workspace_id: str,
+        data: EscalationMatrixCreate,
+    ) -> EscalationMatrix:
+        """Create an escalation matrix.
+
+        Args:
+            workspace_id: Workspace ID.
+            data: Escalation matrix data.
+
+        Returns:
+            Created EscalationMatrix.
+        """
+        matrix = EscalationMatrix(
+            id=str(uuid4()),
+            workspace_id=workspace_id,
+            name=data.name,
+            description=data.description,
+            severity_levels=data.severity_levels,
+            rules=[rule.model_dump() for rule in data.rules],
+            form_ids=data.form_ids,
+            team_ids=data.team_ids,
+            priority_order=data.priority_order or 0,
+            is_active=True,
+        )
+        self.db.add(matrix)
+        await self.db.flush()
+        await self.db.refresh(matrix)
+        return matrix
+
+    async def get_escalation_matrix(self, matrix_id: str) -> EscalationMatrix | None:
+        """Get an escalation matrix by ID."""
+        stmt = select(EscalationMatrix).where(EscalationMatrix.id == matrix_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def list_escalation_matrices(
+        self,
+        workspace_id: str,
+        active_only: bool = True,
+    ) -> list[EscalationMatrix]:
+        """List escalation matrices for a workspace.
+
+        Args:
+            workspace_id: Workspace ID.
+            active_only: Only return active matrices.
+
+        Returns:
+            List of EscalationMatrices.
+        """
+        stmt = (
+            select(EscalationMatrix)
+            .where(EscalationMatrix.workspace_id == workspace_id)
+            .order_by(EscalationMatrix.priority_order)
+        )
+        if active_only:
+            stmt = stmt.where(EscalationMatrix.is_active == True)
+
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def update_escalation_matrix(
+        self,
+        matrix_id: str,
+        data: EscalationMatrixUpdate,
+    ) -> EscalationMatrix | None:
+        """Update an escalation matrix.
+
+        Args:
+            matrix_id: Matrix ID.
+            data: Update data.
+
+        Returns:
+            Updated EscalationMatrix.
+        """
+        matrix = await self.get_escalation_matrix(matrix_id)
+        if not matrix:
+            return None
+
+        update_data = data.model_dump(exclude_unset=True)
+
+        # Handle rules specially since they need to be converted
+        if "rules" in update_data:
+            update_data["rules"] = [
+                rule.model_dump() if hasattr(rule, "model_dump") else rule
+                for rule in update_data["rules"]
+            ]
+
+        for field, value in update_data.items():
+            setattr(matrix, field, value)
+
+        await self.db.flush()
+        await self.db.refresh(matrix)
+        return matrix
+
+    async def delete_escalation_matrix(self, matrix_id: str) -> bool:
+        """Delete an escalation matrix."""
+        matrix = await self.get_escalation_matrix(matrix_id)
+        if not matrix:
+            return False
+
+        await self.db.delete(matrix)
+        await self.db.flush()
+        return True
+
+    async def trigger_escalation(
+        self,
+        ticket: Ticket,
+        level: str,
+    ) -> TicketEscalation | None:
+        """Trigger an escalation for a ticket.
+
+        Args:
+            ticket: The ticket to escalate.
+            level: Escalation level (level_1, level_2, etc).
+
+        Returns:
+            Created TicketEscalation or None.
+        """
+        # Find matching escalation matrix
+        matrices = await self.list_escalation_matrices(ticket.workspace_id)
+
+        for matrix in matrices:
+            # Check severity match
+            if ticket.severity and ticket.severity not in matrix.severity_levels:
+                continue
+
+            # Check form match
+            if matrix.form_ids and ticket.form_id not in matrix.form_ids:
+                continue
+
+            # Check team match
+            if matrix.team_ids and ticket.team_id not in matrix.team_ids:
+                continue
+
+            # Find matching rule for level
+            for rule in matrix.rules:
+                if rule.get("level") == level:
+                    escalation = TicketEscalation(
+                        id=str(uuid4()),
+                        ticket_id=ticket.id,
+                        escalation_matrix_id=matrix.id,
+                        level=level,
+                        triggered_at=datetime.now(timezone.utc),
+                        notified_users=rule.get("notify_users", []),
+                        notified_channels=rule.get("channels", []),
+                    )
+                    self.db.add(escalation)
+                    await self.db.flush()
+                    await self.db.refresh(escalation)
+                    return escalation
+
+        return None
+
+    async def list_ticket_escalations(
+        self,
+        ticket_id: str,
+    ) -> list[TicketEscalation]:
+        """List escalations for a ticket.
+
+        Args:
+            ticket_id: Ticket ID.
+
+        Returns:
+            List of TicketEscalations.
+        """
+        stmt = (
+            select(TicketEscalation)
+            .where(TicketEscalation.ticket_id == ticket_id)
+            .order_by(TicketEscalation.triggered_at.desc())
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def acknowledge_escalation(
+        self,
+        escalation_id: str,
+        acknowledged_by_id: str,
+    ) -> TicketEscalation | None:
+        """Acknowledge an escalation.
+
+        Args:
+            escalation_id: Escalation ID.
+            acknowledged_by_id: Developer ID acknowledging.
+
+        Returns:
+            Updated TicketEscalation.
+        """
+        stmt = select(TicketEscalation).where(TicketEscalation.id == escalation_id)
+        result = await self.db.execute(stmt)
+        escalation = result.scalar_one_or_none()
+
+        if not escalation:
+            return None
+
+        escalation.acknowledged_at = datetime.now(timezone.utc)
+        escalation.acknowledged_by_id = acknowledged_by_id
+
+        await self.db.flush()
+        await self.db.refresh(escalation)
+        return escalation

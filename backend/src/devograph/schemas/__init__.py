@@ -102,7 +102,10 @@ from devograph.schemas.ticketing import (
     TicketFormTemplateType,
     TicketStatus,
     TicketPriority,
+    TicketSeverity,
     TicketFieldType,
+    EscalationLevel,
+    NotificationChannel,
     # Form schemas
     FieldOptionCreate,
     ValidationRules,
@@ -141,6 +144,13 @@ from devograph.schemas.ticketing import (
     SLAPolicyCreate,
     SLAPolicyUpdate,
     SLAPolicyResponse,
+    # Escalation schemas
+    EscalationRuleCreate,
+    EscalationMatrixCreate,
+    EscalationMatrixUpdate,
+    EscalationMatrixResponse,
+    TicketEscalationResponse,
+    TicketStats,
     # Analytics schemas
     TicketMetricsResponse,
     AnalyticsOverview,

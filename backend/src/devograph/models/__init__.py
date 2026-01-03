@@ -128,11 +128,15 @@ from devograph.models.ticketing import (
     TicketResponse,
     TicketMetrics,
     SLAPolicy,
+    EscalationMatrix,
+    TicketEscalation,
     TicketFormAuthMode,
     TicketFormTemplateType,
     TicketStatus,
     TicketPriority,
+    TicketSeverity,
     TicketFieldType,
+    EscalationLevel,
 )
 
 __all__ = [
@@ -260,9 +264,13 @@ __all__ = [
     "TicketResponse",
     "TicketMetrics",
     "SLAPolicy",
+    "EscalationMatrix",
+    "TicketEscalation",
     "TicketFormAuthMode",
     "TicketFormTemplateType",
     "TicketStatus",
     "TicketPriority",
+    "TicketSeverity",
     "TicketFieldType",
+    "EscalationLevel",
 ]
