@@ -1040,4 +1040,446 @@ Respond with JSON:
   "outdated_content": ["content that appears outdated"],
   "strengths": ["what the documentation does well"],
   "overall_assessment": "summary of documentation quality"
+}}"""
+
+
+# ============================================================================
+# Phase 6: Assessment & Hiring Platform Prompts
+# ============================================================================
+
+TOPIC_SUGGESTION_SYSTEM_PROMPT = """You are an expert technical interviewer and assessment designer.
+Based on the job role, skills, and experience level, suggest relevant assessment topics.
+Focus on practical, job-relevant topics that differentiate candidate abilities.
+Respond ONLY with valid JSON."""
+
+TOPIC_SUGGESTION_PROMPT = """Suggest assessment topics for evaluating candidates for this role.
+
+Job Designation: {job_designation}
+Required Skills: {skills}
+Experience Level: {experience_level}
+Number of topics to suggest: {count}
+
+For each topic, consider:
+1. Relevance to the job role
+2. Ability to differentiate candidate skill levels
+3. Practical application in real work
+4. Coverage of both theoretical knowledge and practical skills
+
+Respond with JSON:
+{{
+  "topics": [
+    {{
+      "name": "Topic name",
+      "description": "Brief description of what this topic covers",
+      "subtopics": ["subtopic1", "subtopic2", "subtopic3"],
+      "question_types": ["mcq", "code", "subjective"],
+      "difficulty_distribution": {{"easy": 30, "medium": 50, "hard": 20}},
+      "question_count": 5,
+      "duration_minutes": 10,
+      "relevance_to_role": "How this topic is relevant to the job"
+    }}
+  ],
+  "coverage_summary": "How these topics provide comprehensive assessment coverage"
+}}"""
+
+CODE_QUESTION_SYSTEM_PROMPT = """You are an expert at creating coding assessment questions.
+Create practical, well-structured coding problems that test real-world programming skills.
+Include clear problem statements, test cases, and evaluation criteria.
+Respond ONLY with valid JSON."""
+
+CODE_QUESTION_PROMPT = """Generate a coding question for technical assessment.
+
+Topic: {topic}
+Subtopics: {subtopics}
+Difficulty: {difficulty}
+Programming Language(s): {languages}
+Time Limit: {time_limit} minutes
+Experience Level: {experience_level}
+
+Create a coding question that:
+1. Tests practical programming skills
+2. Has clear, unambiguous requirements
+3. Can be completed within the time limit
+4. Has comprehensive test cases
+5. Allows for multiple valid solutions
+
+Respond with JSON:
+{{
+  "question": {{
+    "title": "Question title",
+    "problem_statement": "Detailed problem description in markdown",
+    "input_format": "Description of input format",
+    "output_format": "Description of expected output",
+    "constraints": ["constraint 1", "constraint 2"],
+    "examples": [
+      {{
+        "input": "example input",
+        "output": "expected output",
+        "explanation": "why this is the answer"
+      }}
+    ],
+    "starter_code": {{
+      "python": "def solution(input):\\n    # Your code here\\n    pass",
+      "javascript": "function solution(input) {{\\n  // Your code here\\n}}",
+      "java": "public class Solution {{\\n    public static void main(String[] args) {{\\n        // Your code here\\n    }}\\n}}"
+    }},
+    "test_cases": [
+      {{
+        "input": "test input",
+        "expected_output": "expected output",
+        "is_hidden": false,
+        "points": 10
+      }}
+    ],
+    "total_points": 100,
+    "time_complexity_hint": "O(n)",
+    "space_complexity_hint": "O(1)",
+    "hints": ["hint 1 if stuck", "hint 2 for further help"],
+    "tags": ["arrays", "strings", "algorithms"],
+    "difficulty_justification": "Why this question is at this difficulty level"
+  }}
+}}"""
+
+MCQ_QUESTION_SYSTEM_PROMPT = """You are an expert at creating multiple choice questions for technical assessments.
+Create questions that test conceptual understanding with well-crafted distractors.
+Ensure questions are unambiguous with exactly one correct answer (unless multiple-select).
+Respond ONLY with valid JSON."""
+
+MCQ_QUESTION_PROMPT = """Generate a multiple choice question for technical assessment.
+
+Topic: {topic}
+Subtopics: {subtopics}
+Difficulty: {difficulty}
+Experience Level: {experience_level}
+
+Create an MCQ that:
+1. Tests understanding, not just memorization
+2. Has plausible but clearly wrong distractors
+3. Has one unambiguous correct answer
+4. Avoids "all of the above" or "none of the above"
+5. Tests practical knowledge relevant to real work
+
+Respond with JSON:
+{{
+  "question": {{
+    "question_text": "The question text in markdown",
+    "question_type": "single_choice",
+    "options": [
+      {{
+        "id": "A",
+        "text": "Option text",
+        "is_correct": true,
+        "explanation": "Why this is correct/incorrect"
+      }},
+      {{
+        "id": "B",
+        "text": "Option text",
+        "is_correct": false,
+        "explanation": "Why this is incorrect"
+      }},
+      {{
+        "id": "C",
+        "text": "Option text",
+        "is_correct": false,
+        "explanation": "Why this is incorrect"
+      }},
+      {{
+        "id": "D",
+        "text": "Option text",
+        "is_correct": false,
+        "explanation": "Why this is incorrect"
+      }}
+    ],
+    "correct_answer": "A",
+    "explanation": "Detailed explanation of the correct answer",
+    "points": 10,
+    "time_estimate_seconds": 60,
+    "tags": ["concept", "practical"],
+    "common_misconception": "What misconception this question tests"
+  }}
+}}"""
+
+SUBJECTIVE_QUESTION_SYSTEM_PROMPT = """You are an expert at creating subjective/open-ended assessment questions.
+Create questions that assess deep understanding, critical thinking, and communication skills.
+Include clear evaluation rubrics for consistent grading.
+Respond ONLY with valid JSON."""
+
+SUBJECTIVE_QUESTION_PROMPT = """Generate a subjective question for technical assessment.
+
+Topic: {topic}
+Subtopics: {subtopics}
+Difficulty: {difficulty}
+Experience Level: {experience_level}
+Expected Response Length: {response_length}
+
+Create a subjective question that:
+1. Requires thoughtful, detailed responses
+2. Tests understanding and analysis skills
+3. Has clear evaluation criteria
+4. Allows candidates to demonstrate expertise
+5. Cannot be easily answered by copying from the internet
+
+Respond with JSON:
+{{
+  "question": {{
+    "question_text": "The question in markdown format",
+    "context": "Any context or scenario description",
+    "sub_questions": [
+      {{
+        "id": "a",
+        "text": "Sub-question if applicable",
+        "points": 10
+      }}
+    ],
+    "expected_response_structure": "What a good answer should include",
+    "evaluation_rubric": {{
+      "excellent": {{
+        "points_range": [90, 100],
+        "criteria": ["demonstrates deep understanding", "provides specific examples"]
+      }},
+      "good": {{
+        "points_range": [70, 89],
+        "criteria": ["shows solid understanding", "mostly correct"]
+      }},
+      "satisfactory": {{
+        "points_range": [50, 69],
+        "criteria": ["basic understanding", "some gaps"]
+      }},
+      "needs_improvement": {{
+        "points_range": [0, 49],
+        "criteria": ["significant gaps", "misconceptions"]
+      }}
+    }},
+    "key_points": ["point 1 that should be covered", "point 2"],
+    "total_points": 100,
+    "time_estimate_minutes": 10,
+    "word_limit": 500,
+    "tags": ["analysis", "design", "explanation"]
+  }}
+}}"""
+
+CODE_EVALUATION_SYSTEM_PROMPT = """You are an expert code reviewer evaluating candidate submissions.
+Assess code quality, correctness, efficiency, and best practices.
+Provide constructive feedback that helps candidates improve.
+Respond ONLY with valid JSON."""
+
+CODE_EVALUATION_PROMPT = """Evaluate this code submission for a technical assessment.
+
+Question:
+{question}
+
+Candidate's Submission:
+```{language}
+{code}
+```
+
+Test Case Results:
+{test_results}
+
+Evaluate based on:
+1. Correctness - Does it solve the problem?
+2. Efficiency - Time and space complexity
+3. Code Quality - Readability, structure, naming
+4. Best Practices - Error handling, edge cases
+5. Creativity - Novel or elegant solutions
+
+Respond with JSON:
+{{
+  "overall_score": 0-100,
+  "correctness": {{
+    "score": 0-100,
+    "passed_tests": 8,
+    "total_tests": 10,
+    "feedback": "Feedback on correctness"
+  }},
+  "efficiency": {{
+    "score": 0-100,
+    "time_complexity": "O(n)",
+    "space_complexity": "O(1)",
+    "feedback": "Feedback on efficiency"
+  }},
+  "code_quality": {{
+    "score": 0-100,
+    "strengths": ["readable", "well-structured"],
+    "improvements": ["could use better variable names"],
+    "feedback": "Feedback on code quality"
+  }},
+  "best_practices": {{
+    "score": 0-100,
+    "observed": ["error handling", "input validation"],
+    "missing": ["edge case handling"],
+    "feedback": "Feedback on best practices"
+  }},
+  "detailed_feedback": "Overall feedback for the candidate",
+  "suggestions": ["suggestion 1", "suggestion 2"],
+  "hiring_recommendation": {{
+    "recommendation": "strong_yes|yes|maybe|no|strong_no",
+    "justification": "Why this recommendation"
+  }}
+}}"""
+
+SUBJECTIVE_EVALUATION_SYSTEM_PROMPT = """You are an expert evaluator assessing subjective responses.
+Evaluate based on the rubric provided, focusing on understanding, analysis, and communication.
+Provide detailed, constructive feedback.
+Respond ONLY with valid JSON."""
+
+SUBJECTIVE_EVALUATION_PROMPT = """Evaluate this subjective response for a technical assessment.
+
+Question:
+{question}
+
+Evaluation Rubric:
+{rubric}
+
+Key Points Expected:
+{key_points}
+
+Candidate's Response:
+{response}
+
+Evaluate the response based on:
+1. Coverage of key points
+2. Depth of understanding
+3. Clarity of explanation
+4. Practical relevance
+5. Critical thinking
+
+Respond with JSON:
+{{
+  "overall_score": 0-100,
+  "rubric_level": "excellent|good|satisfactory|needs_improvement",
+  "key_points_coverage": [
+    {{
+      "point": "expected point",
+      "covered": true,
+      "quality": "excellent|good|partial|missing"
+    }}
+  ],
+  "understanding": {{
+    "score": 0-100,
+    "feedback": "Assessment of conceptual understanding"
+  }},
+  "communication": {{
+    "score": 0-100,
+    "feedback": "Assessment of how well ideas were communicated"
+  }},
+  "analysis": {{
+    "score": 0-100,
+    "feedback": "Assessment of analytical thinking"
+  }},
+  "strengths": ["what the candidate did well"],
+  "areas_for_improvement": ["what could be better"],
+  "detailed_feedback": "Comprehensive feedback for the candidate",
+  "hiring_recommendation": {{
+    "recommendation": "strong_yes|yes|maybe|no|strong_no",
+    "justification": "Why this recommendation"
+  }}
+}}"""
+
+OVERALL_CANDIDATE_FEEDBACK_SYSTEM_PROMPT = """You are an expert at synthesizing assessment results into actionable feedback.
+Create comprehensive, constructive feedback that helps candidates understand their performance.
+Be encouraging while honest about areas for improvement.
+Respond ONLY with valid JSON."""
+
+OVERALL_CANDIDATE_FEEDBACK_PROMPT = """Generate comprehensive feedback for this candidate's assessment.
+
+Assessment Title: {assessment_title}
+Job Role: {job_role}
+
+Topic-wise Performance:
+{topic_scores}
+
+Question-wise Results:
+{question_results}
+
+Overall Score: {overall_score}%
+Percentile: {percentile}
+
+Generate feedback that:
+1. Summarizes overall performance
+2. Highlights strengths
+3. Identifies areas for improvement
+4. Provides actionable recommendations
+5. Maintains an encouraging tone
+
+Respond with JSON:
+{{
+  "summary": "Brief overall performance summary",
+  "strengths": [
+    {{
+      "area": "Topic/skill area",
+      "description": "What the candidate did well",
+      "evidence": "Specific examples from assessment"
+    }}
+  ],
+  "areas_for_improvement": [
+    {{
+      "area": "Topic/skill area",
+      "description": "What needs improvement",
+      "resources": ["suggested learning resources"],
+      "priority": "high|medium|low"
+    }}
+  ],
+  "topic_feedback": [
+    {{
+      "topic": "Topic name",
+      "score": 85,
+      "performance_level": "excellent|good|satisfactory|needs_work",
+      "feedback": "Specific feedback for this topic"
+    }}
+  ],
+  "recommendations": [
+    {{
+      "recommendation": "Specific actionable recommendation",
+      "reason": "Why this would help",
+      "resources": ["links or course names"]
+    }}
+  ],
+  "overall_assessment": "Comprehensive summary paragraph",
+  "encouragement": "Encouraging closing message"
+}}"""
+
+PROCTORING_BEHAVIOR_ANALYSIS_PROMPT = """Analyze the proctoring events from this assessment attempt.
+
+Proctoring Events:
+{events}
+
+Session Duration: {duration} minutes
+Total Events: {event_count}
+
+Analyze for:
+1. Potential integrity concerns
+2. Patterns of suspicious behavior
+3. Technical issues vs intentional violations
+4. Overall trustworthiness assessment
+
+Respond with JSON:
+{{
+  "trust_score": 0-100,
+  "trust_level": "high|medium|low|very_low",
+  "integrity_assessment": {{
+    "concerns": [
+      {{
+        "type": "tab_switching|face_detection|multiple_faces|fullscreen_exit",
+        "severity": "low|medium|high|critical",
+        "occurrences": 5,
+        "assessment": "Analysis of this concern"
+      }}
+    ],
+    "likely_explanations": ["possible innocent explanations"],
+    "red_flags": ["definite concerns"]
+  }},
+  "patterns_detected": [
+    {{
+      "pattern": "Description of pattern",
+      "interpretation": "What this might indicate"
+    }}
+  ],
+  "technical_issues_detected": ["network issues", "camera problems"],
+  "recommendation": {{
+    "action": "proceed|review|flag_for_review|invalidate",
+    "reason": "Why this recommendation",
+    "additional_verification": ["suggested verification steps"]
+  }},
+  "summary": "Overall assessment of session integrity"
 }}"""""

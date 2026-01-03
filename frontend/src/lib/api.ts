@@ -5953,3 +5953,609 @@ export const escalationApi = {
     return response.data;
   },
 };
+
+// ============================================================================
+// Assessment Platform Types
+// ============================================================================
+
+export type AssessmentStatus = "draft" | "active" | "completed" | "archived";
+export type QuestionType = "code" | "mcq" | "subjective" | "pseudo_code" | "audio_repeat" | "audio_transcribe" | "audio_spoken_answer" | "audio_read_speak";
+export type DifficultyLevel = "easy" | "medium" | "hard";
+export type InvitationStatus = "pending" | "sent" | "started" | "completed" | "expired";
+export type AttemptStatus = "in_progress" | "completed" | "terminated" | "evaluated";
+export type StepStatus = "incomplete" | "complete" | "error";
+
+export interface SkillConfig {
+  id: string;
+  name: string;
+  category?: string;
+  weight?: number;
+}
+
+export interface QuestionTypeConfig {
+  code: number;
+  mcq: number;
+  subjective: number;
+  pseudo_code: number;
+}
+
+export interface TopicConfig {
+  id?: string;
+  topic: string;
+  subtopics: string[];
+  difficulty_level: DifficultyLevel;
+  question_types: QuestionTypeConfig;
+  fullstack_config?: FullStackConfig;
+  estimated_time_minutes: number;
+  max_score: number;
+  additional_requirements?: string;
+}
+
+export interface FullStackConfig {
+  type: "frontend" | "backend" | "fullstack" | "devops";
+  vm_template: string;
+  duration_minutes: number;
+  starter_code?: Record<string, unknown>;
+  problem_statement?: Record<string, unknown>;
+  evaluation_config?: Record<string, unknown>;
+}
+
+export interface ScheduleConfig {
+  start_date: string;
+  end_date: string;
+  time_zone: string;
+  access_window_hours?: number;
+}
+
+export interface ProctoringSettings {
+  enable_webcam: boolean;
+  enable_screen_recording: boolean;
+  enable_face_detection: boolean;
+  enable_tab_tracking: boolean;
+  enable_copy_paste_detection: boolean;
+  enable_fullscreen_enforcement: boolean;
+  allow_calculator: boolean;
+  allow_ide: boolean;
+}
+
+export interface SecuritySettings {
+  shuffle_questions: boolean;
+  shuffle_options: boolean;
+  prevent_copy_paste: boolean;
+  prevent_right_click: boolean;
+  prevent_devtools: boolean;
+  require_fullscreen: boolean;
+  max_violations_allowed: number;
+}
+
+export interface CandidateFieldConfig {
+  required: string[];
+  optional: string[];
+  custom: Array<{ name: string; label: string; type: string; required: boolean }>;
+}
+
+export interface EmailTemplateConfig {
+  subject: string;
+  body: string;
+  include_instructions: boolean;
+  include_deadline: boolean;
+  include_duration: boolean;
+}
+
+export interface WizardStepStatus {
+  step1: StepStatus;
+  step2: StepStatus;
+  step3: StepStatus;
+  step4: StepStatus;
+  step5: StepStatus;
+}
+
+export interface WizardStatusResponse {
+  current_step: number;
+  step_status: WizardStepStatus;
+  is_draft: boolean;
+  last_saved_at: string | null;
+  can_publish: boolean;
+  validation_errors: Record<string, string[]>;
+}
+
+export interface Assessment {
+  id: string;
+  organization_id: string;
+  created_by: string | null;
+  title: string;
+  job_designation: string;
+  department: string | null;
+  experience_min: number;
+  experience_max: number;
+  include_freshers: boolean;
+  skills: SkillConfig[];
+  enable_skill_weights: boolean;
+  description: string | null;
+  schedule: ScheduleConfig | null;
+  proctoring_settings: ProctoringSettings | null;
+  security_settings: SecuritySettings | null;
+  candidate_fields: CandidateFieldConfig | null;
+  email_template: EmailTemplateConfig | null;
+  total_questions: number;
+  total_duration_minutes: number;
+  max_score: number;
+  status: AssessmentStatus;
+  wizard_step: number;
+  wizard_step_status: WizardStepStatus;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AssessmentSummary {
+  id: string;
+  title: string;
+  job_designation: string;
+  status: AssessmentStatus;
+  total_questions: number;
+  total_duration_minutes: number;
+  total_candidates: number;
+  completed_candidates: number;
+  average_score: number | null;
+  created_at: string;
+  published_at: string | null;
+}
+
+export interface AssessmentTopic {
+  id: string;
+  assessment_id: string;
+  topic: string;
+  subtopics: string[];
+  difficulty_level: string;
+  question_types: QuestionTypeConfig;
+  fullstack_config: FullStackConfig | null;
+  estimated_time_minutes: number;
+  max_score: number;
+  additional_requirements: string | null;
+  sequence_order: number;
+  created_at: string;
+}
+
+export interface MCQOption {
+  id: string;
+  text: string;
+  is_correct: boolean;
+  explanation?: string;
+}
+
+export interface TestCase {
+  id: string;
+  input: string;
+  expected_output: string;
+  is_hidden: boolean;
+  weight: number;
+  description?: string;
+}
+
+export interface QuestionExample {
+  input: string;
+  output: string;
+  explanation?: string;
+}
+
+export interface AssessmentQuestion {
+  id: string;
+  assessment_id: string;
+  topic_id: string | null;
+  question_type: QuestionType;
+  difficulty: DifficultyLevel;
+  title: string;
+  problem_statement: string;
+  input_format: string | null;
+  output_format: string | null;
+  examples: QuestionExample[];
+  constraints: string[];
+  hints: string[];
+  test_cases: TestCase[];
+  starter_code: Record<string, string>;
+  allowed_languages: string[];
+  vm_config: Record<string, unknown> | null;
+  options: MCQOption[];
+  allow_multiple: boolean;
+  sample_answer: string | null;
+  key_points: string[];
+  audio_url: string | null;
+  evaluation_rubric: Record<string, unknown>;
+  max_marks: number;
+  estimated_time_minutes: number;
+  tags: string[];
+  sequence_order: number;
+  is_ai_generated: boolean;
+  created_at: string;
+}
+
+export interface AssessmentCandidate {
+  id: string;
+  organization_id: string;
+  email: string;
+  name: string;
+  phone: string | null;
+  resume_url: string | null;
+  linkedin_url: string | null;
+  github_url: string | null;
+  portfolio_url: string | null;
+  source: string | null;
+  custom_fields: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface AssessmentInvitation {
+  id: string;
+  assessment_id: string;
+  candidate_id: string;
+  candidate: AssessmentCandidate;
+  invitation_token: string;
+  status: InvitationStatus;
+  invited_at: string;
+  email_sent_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  deadline: string | null;
+  attempt_count?: number;
+  latest_score?: number | null;
+  latest_trust_score?: number | null;
+}
+
+export interface AssessmentMetrics {
+  total_candidates: number;
+  total_invitations: number;
+  unique_attempts: number;
+  attempt_rate: number;
+  completion_rate: number;
+  average_score: number | null;
+  average_trust_score: number | null;
+}
+
+export interface TopicSuggestionResponse {
+  topics: TopicConfig[];
+  rationale: string | null;
+}
+
+export interface CandidateImportResponse {
+  total: number;
+  imported: number;
+  duplicates: number;
+  errors: Array<{ row: number; email: string; error: string }>;
+}
+
+export interface PrePublishCheckResponse {
+  can_publish: boolean;
+  warnings: string[];
+  errors: string[];
+  issues: string[];  // Step-specific issues with step references for UI display
+  checklist: Record<string, boolean>;
+}
+
+export interface PublishResponse {
+  assessment_id: string;
+  status: AssessmentStatus;
+  published_at: string;
+  total_invitations: number;
+  emails_sent: number;
+  public_link: string | null;
+}
+
+// ============================================================================
+// Assessment Platform API
+// ============================================================================
+
+export const assessmentApi = {
+  // CRUD Operations
+  create: async (data: {
+    title: string;
+    job_designation?: string;
+    organization_id: string;
+  }): Promise<Assessment> => {
+    const response = await api.post("/assessments", data);
+    return response.data;
+  },
+
+  list: async (
+    organizationId: string,
+    options?: {
+      status?: AssessmentStatus;
+      search?: string;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<{ items: AssessmentSummary[]; total: number }> => {
+    const response = await api.get("/assessments", {
+      params: {
+        organization_id: organizationId,
+        ...options,
+      },
+    });
+    return response.data;
+  },
+
+  get: async (assessmentId: string, organizationId?: string): Promise<Assessment> => {
+    const response = await api.get(`/assessments/${assessmentId}`, {
+      params: organizationId ? { organization_id: organizationId } : undefined,
+    });
+    return response.data;
+  },
+
+  update: async (
+    assessmentId: string,
+    data: Partial<Assessment>,
+    organizationId?: string
+  ): Promise<Assessment> => {
+    const response = await api.put(`/assessments/${assessmentId}`, data, {
+      params: organizationId ? { organization_id: organizationId } : undefined,
+    });
+    return response.data;
+  },
+
+  delete: async (assessmentId: string, organizationId: string): Promise<void> => {
+    await api.delete(`/assessments/${assessmentId}`, {
+      params: { organization_id: organizationId },
+    });
+  },
+
+  clone: async (
+    assessmentId: string,
+    organizationId: string,
+    title?: string
+  ): Promise<Assessment> => {
+    const response = await api.post(`/assessments/${assessmentId}/clone`, null, {
+      params: { organization_id: organizationId, title },
+    });
+    return response.data;
+  },
+
+  // Wizard Operations
+  getWizardStatus: async (
+    assessmentId: string,
+    organizationId: string
+  ): Promise<WizardStatusResponse> => {
+    const response = await api.get(`/assessments/${assessmentId}/wizard/status`, {
+      params: { organization_id: organizationId },
+    });
+    return response.data;
+  },
+
+  saveStep1: async (
+    assessmentId: string,
+    organizationId: string,
+    data: {
+      title: string;
+      job_designation: string;
+      department?: string;
+      experience_min: number;
+      experience_max: number;
+      include_freshers: boolean;
+      skills: SkillConfig[];
+      enable_skill_weights: boolean;
+      description?: string;
+    }
+  ): Promise<Assessment> => {
+    const response = await api.put(`/assessments/${assessmentId}/step/1`, data, {
+      params: { organization_id: organizationId },
+    });
+    return response.data;
+  },
+
+  saveStep2: async (
+    assessmentId: string,
+    organizationId: string,
+    data: {
+      topics: TopicConfig[];
+      enable_ai_generation?: boolean;
+    }
+  ): Promise<Assessment> => {
+    const response = await api.put(`/assessments/${assessmentId}/step/2`, data, {
+      params: { organization_id: organizationId },
+    });
+    return response.data;
+  },
+
+  saveStep3: async (
+    assessmentId: string,
+    organizationId: string,
+    data: {
+      schedule: ScheduleConfig;
+      proctoring_settings?: ProctoringSettings;
+      security_settings?: SecuritySettings;
+      candidate_fields?: CandidateFieldConfig;
+      max_attempts?: number;
+      passing_score_percent?: number;
+    }
+  ): Promise<Assessment> => {
+    const response = await api.put(`/assessments/${assessmentId}/step/3`, data, {
+      params: { organization_id: organizationId },
+    });
+    return response.data;
+  },
+
+  saveStep4: async (
+    assessmentId: string,
+    organizationId: string,
+    data: {
+      candidates: Array<{ email: string; name: string; phone?: string; source?: string }>;
+      email_template?: EmailTemplateConfig;
+      send_immediately?: boolean;
+    }
+  ): Promise<Assessment> => {
+    const response = await api.put(`/assessments/${assessmentId}/step/4`, data, {
+      params: { organization_id: organizationId },
+    });
+    return response.data;
+  },
+
+  saveStep5: async (
+    assessmentId: string,
+    organizationId: string,
+    data: { confirmed: boolean }
+  ): Promise<Assessment> => {
+    const response = await api.put(`/assessments/${assessmentId}/step/5`, data, {
+      params: { organization_id: organizationId },
+    });
+    return response.data;
+  },
+
+  // Topics
+  listTopics: async (assessmentId: string): Promise<AssessmentTopic[]> => {
+    const response = await api.get(`/assessments/${assessmentId}/topics`);
+    return response.data;
+  },
+
+  suggestTopics: async (
+    assessmentId: string,
+    data: { skills: string[]; job_designation: string; experience_level?: string; count?: number }
+  ): Promise<TopicSuggestionResponse> => {
+    const response = await api.post(`/assessments/${assessmentId}/topics/suggest`, data);
+    return response.data;
+  },
+
+  // Questions
+  listQuestions: async (assessmentId: string, topicId?: string): Promise<AssessmentQuestion[]> => {
+    const response = await api.get(`/assessments/${assessmentId}/questions`, {
+      params: topicId ? { topic_id: topicId } : undefined,
+    });
+    return response.data;
+  },
+
+  createQuestion: async (
+    assessmentId: string,
+    data: Partial<AssessmentQuestion>
+  ): Promise<AssessmentQuestion> => {
+    const response = await api.post(`/assessments/${assessmentId}/questions`, data);
+    return response.data;
+  },
+
+  updateQuestion: async (
+    assessmentId: string,
+    questionId: string,
+    data: Partial<AssessmentQuestion>
+  ): Promise<AssessmentQuestion> => {
+    const response = await api.put(`/assessments/${assessmentId}/questions/${questionId}`, data);
+    return response.data;
+  },
+
+  deleteQuestion: async (assessmentId: string, questionId: string): Promise<void> => {
+    await api.delete(`/assessments/${assessmentId}/questions/${questionId}`);
+  },
+
+  generateQuestions: async (
+    assessmentId: string,
+    data: {
+      topic_id: string;
+      question_type: QuestionType;
+      difficulty?: DifficultyLevel;
+      count?: number;
+      context?: string;
+    }
+  ): Promise<{ questions: Partial<AssessmentQuestion>[]; generation_metadata?: Record<string, unknown> }> => {
+    const response = await api.post(`/assessments/${assessmentId}/questions/generate`, data);
+    return response.data;
+  },
+
+  // Candidates
+  listCandidates: async (assessmentId: string): Promise<AssessmentInvitation[]> => {
+    const response = await api.get(`/assessments/${assessmentId}/candidates`);
+    return response.data;
+  },
+
+  addCandidate: async (
+    assessmentId: string,
+    organizationId: string,
+    data: {
+      email: string;
+      name: string;
+      phone?: string;
+      resume_url?: string;
+      linkedin_url?: string;
+      github_url?: string;
+      source?: string;
+    }
+  ): Promise<AssessmentInvitation> => {
+    const response = await api.post(`/assessments/${assessmentId}/candidates`, data, {
+      params: { organization_id: organizationId },
+    });
+    return response.data;
+  },
+
+  importCandidates: async (
+    assessmentId: string,
+    organizationId: string,
+    candidates: Array<{
+      email: string;
+      name: string;
+      phone?: string;
+      source?: string;
+    }>
+  ): Promise<CandidateImportResponse> => {
+    const response = await api.post(
+      `/assessments/${assessmentId}/candidates/import`,
+      { candidates },
+      { params: { organization_id: organizationId } }
+    );
+    return response.data;
+  },
+
+  removeCandidate: async (assessmentId: string, candidateId: string): Promise<void> => {
+    await api.delete(`/assessments/${assessmentId}/candidates/${candidateId}`);
+  },
+
+  // Email Template
+  getEmailTemplate: async (assessmentId: string, organizationId?: string): Promise<EmailTemplateConfig> => {
+    const response = await api.get(`/assessments/${assessmentId}/email-template`, {
+      params: organizationId ? { organization_id: organizationId } : undefined,
+    });
+    return response.data;
+  },
+
+  updateEmailTemplate: async (
+    assessmentId: string,
+    data: EmailTemplateConfig,
+    organizationId?: string
+  ): Promise<EmailTemplateConfig> => {
+    const response = await api.put(`/assessments/${assessmentId}/email-template`, data, {
+      params: organizationId ? { organization_id: organizationId } : undefined,
+    });
+    return response.data;
+  },
+
+  // Publishing
+  prePublishCheck: async (
+    assessmentId: string,
+    organizationId: string
+  ): Promise<PrePublishCheckResponse> => {
+    const response = await api.get(`/assessments/${assessmentId}/publish/check`, {
+      params: { organization_id: organizationId },
+    });
+    return response.data;
+  },
+
+  publish: async (
+    assessmentId: string,
+    organizationId: string,
+    options?: { send_invitations?: boolean; schedule_override?: ScheduleConfig }
+  ): Promise<PublishResponse> => {
+    const response = await api.post(
+      `/assessments/${assessmentId}/publish`,
+      options || {},
+      { params: { organization_id: organizationId } }
+    );
+    return response.data;
+  },
+
+  // Metrics
+  getMetrics: async (assessmentId: string): Promise<AssessmentMetrics> => {
+    const response = await api.get(`/assessments/${assessmentId}/metrics`);
+    return response.data;
+  },
+
+  getOrganizationMetrics: async (
+    organizationId: string
+  ): Promise<{ total_candidates: number; total_tests: number; unique_attempts: number; attempt_rate: number }> => {
+    const response = await api.get(`/assessments/organization/${organizationId}/metrics`);
+    return response.data;
+  },
+};

@@ -17,6 +17,10 @@ import {
   ChevronUp,
   Target,
   TrendingUp,
+  LayoutGrid,
+  ArrowRight,
+  CheckCircle,
+  BarChart3,
 } from "lucide-react";
 import { AppHeader } from "@/components/layout/AppHeader";
 import {
@@ -31,6 +35,7 @@ import {
   Developer,
   TeamListItem,
 } from "@/lib/api";
+import { useOrganizationAssessmentMetrics, useAssessments } from "@/hooks/useAssessments";
 
 export default function HiringPage() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
@@ -54,6 +59,10 @@ export default function HiringPage() {
     busFactors: true,
     requirements: true,
   });
+
+  // Assessment data
+  const { metrics: assessmentMetrics } = useOrganizationAssessmentMetrics(currentWorkspaceId);
+  const { assessments } = useAssessments(currentWorkspaceId, { limit: 5 });
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -288,6 +297,122 @@ export default function HiringPage() {
                 </>
               )}
             </button>
+          </div>
+        </div>
+
+        {/* Assessment Platform Section */}
+        <div className="mb-8 bg-gradient-to-r from-primary-900/30 to-blue-900/30 rounded-xl border border-primary-800/50 overflow-hidden">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-primary-500/20 rounded-lg">
+                  <LayoutGrid className="h-6 w-6 text-primary-400" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-white">Technical Assessments</h2>
+                  <p className="text-sm text-slate-400">AI-powered coding tests & evaluations</p>
+                </div>
+              </div>
+              <Link
+                href="/hiring/assessments/new"
+                className="flex items-center gap-2 bg-primary-600 hover:bg-primary-500 text-white px-4 py-2 rounded-lg font-medium transition shadow-lg shadow-primary-500/20"
+              >
+                <Plus className="h-4 w-4" />
+                Create Assessment
+              </Link>
+            </div>
+
+            {/* Assessment Metrics */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-slate-800/60 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <LayoutGrid className="h-4 w-4 text-slate-400" />
+                  <span className="text-xs text-slate-400 uppercase tracking-wide">Tests</span>
+                </div>
+                <p className="text-2xl font-bold text-white">{assessmentMetrics?.total_tests ?? 0}</p>
+              </div>
+              <div className="bg-slate-800/60 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Users className="h-4 w-4 text-slate-400" />
+                  <span className="text-xs text-slate-400 uppercase tracking-wide">Candidates</span>
+                </div>
+                <p className="text-2xl font-bold text-white">{assessmentMetrics?.total_candidates ?? 0}</p>
+              </div>
+              <div className="bg-slate-800/60 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle className="h-4 w-4 text-slate-400" />
+                  <span className="text-xs text-slate-400 uppercase tracking-wide">Attempts</span>
+                </div>
+                <p className="text-2xl font-bold text-green-400">{assessmentMetrics?.unique_attempts ?? 0}</p>
+              </div>
+              <div className="bg-slate-800/60 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <BarChart3 className="h-4 w-4 text-slate-400" />
+                  <span className="text-xs text-slate-400 uppercase tracking-wide">Attempt Rate</span>
+                </div>
+                <p className="text-2xl font-bold text-primary-400">{assessmentMetrics?.attempt_rate ? `${Math.round(assessmentMetrics.attempt_rate)}%` : '0%'}</p>
+              </div>
+            </div>
+
+            {/* Recent Assessments */}
+            {assessments && assessments.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium text-slate-300">Recent Assessments</h3>
+                  <Link
+                    href="/hiring/assessments"
+                    className="flex items-center gap-1 text-xs text-primary-400 hover:text-primary-300 transition"
+                  >
+                    View all
+                    <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+                <div className="grid gap-2">
+                  {assessments.slice(0, 3).map((assessment) => (
+                    <Link
+                      key={assessment.id}
+                      href={`/hiring/assessments/${assessment.id}/report`}
+                      className="flex items-center justify-between p-3 bg-slate-800/40 hover:bg-slate-800/60 rounded-lg transition group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-2 h-2 rounded-full ${
+                          assessment.status === 'published' ? 'bg-green-400' :
+                          assessment.status === 'draft' ? 'bg-yellow-400' : 'bg-slate-400'
+                        }`} />
+                        <div>
+                          <p className="text-sm font-medium text-white group-hover:text-primary-400 transition">
+                            {assessment.title}
+                          </p>
+                          <p className="text-xs text-slate-400">{assessment.job_designation}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="text-xs text-slate-400">Candidates</p>
+                          <p className="text-sm font-medium text-white">{assessment.total_candidates ?? 0}</p>
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-slate-500 group-hover:text-primary-400 transition" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {(!assessments || assessments.length === 0) && (
+              <div className="text-center py-6 bg-slate-800/30 rounded-lg">
+                <BarChart3 className="h-10 w-10 text-slate-600 mx-auto mb-3" />
+                <p className="text-slate-400 text-sm mb-3">No assessments yet</p>
+                <Link
+                  href="/hiring/assessments/new"
+                  className="inline-flex items-center gap-2 text-sm text-primary-400 hover:text-primary-300 transition"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create your first assessment
+                </Link>
+              </div>
+            )}
           </div>
         </div>
 
