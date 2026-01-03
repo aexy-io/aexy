@@ -5,9 +5,12 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, MessageSquare, Plus } from "lucide-react";
 import { StandupForm, StandupTimeline } from "@/components/tracking";
 import { useMyStandups, useSubmitStandup } from "@/hooks/useTracking";
+import { useAuth } from "@/hooks/useAuth";
+import { AppHeader } from "@/components/layout/AppHeader";
 
 export default function StandupsPage() {
   const router = useRouter();
+  const { user, logout } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const { data: standupsData, isLoading } = useMyStandups({ limit: 50 });
   const submitStandup = useSubmitStandup();
@@ -18,7 +21,8 @@ export default function StandupsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-slate-950">
+      <AppHeader user={user} logout={logout} />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">

@@ -84,7 +84,7 @@ export default function DocumentPage() {
         autoSave={true}
         autoSaveDelay={2000}
         userId={user.id}
-        userName={user.name || user.login || "Unknown"}
+        userName={user.name || "Unknown"}
         userEmail={user.email || undefined}
         collaborationEnabled={collaborationEnabled}
       />

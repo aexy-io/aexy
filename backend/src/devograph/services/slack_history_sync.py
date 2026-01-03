@@ -465,8 +465,9 @@ class SlackHistorySyncService:
         integration: SlackIntegration,
         channel_id: str,
         channel_name: str,
-        team_id: str,
+        slack_team_id: str,
         db: AsyncSession,
+        team_id: str | None = None,
         channel_type: str = "team",
         auto_parse_standups: bool = True,
         auto_parse_task_refs: bool = True,
@@ -494,6 +495,7 @@ class SlackHistorySyncService:
             # Create new config
             config = SlackChannelConfig(
                 integration_id=integration.id,
+                slack_team_id=slack_team_id,
                 team_id=team_id,
                 channel_id=channel_id,
                 channel_name=channel_name,

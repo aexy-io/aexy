@@ -5284,14 +5284,15 @@ export const slackSyncApi = {
     data: {
       channel_id: string;
       channel_name: string;
-      team_id: string;
+      slack_team_id: string;  // Slack team ID (e.g., T18A883UL)
+      team_id?: string;  // Internal team UUID (optional)
       channel_type?: string;
       auto_parse_standups?: boolean;
       auto_parse_task_refs?: boolean;
       auto_parse_blockers?: boolean;
     }
   ): Promise<SlackConfiguredChannel> => {
-    const response = await api.post(`/slack/integration/${integrationId}/configure-channel`, null, { params: data });
+    const response = await api.post(`/slack/integration/${integrationId}/configure-channel`, data);
     return response.data;
   },
 
@@ -5310,7 +5311,7 @@ export const slackSyncApi = {
       sprint_id?: string;
     }
   ): Promise<{ task_id: string; status: string; message: string }> => {
-    const response = await api.post(`/slack/integration/${integrationId}/import-history`, null, { params: options });
+    const response = await api.post(`/slack/integration/${integrationId}/import-history`, options || {});
     return response.data;
   },
 
