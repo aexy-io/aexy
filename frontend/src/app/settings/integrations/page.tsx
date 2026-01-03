@@ -1167,7 +1167,7 @@ export default function IntegrationsPage() {
                                 await configureSlackChannel({
                                   channel_id: channel.id,
                                   channel_name: channel.name,
-                                  team_id: slackIntegration.team_id,
+                                  slack_team_id: slackIntegration.team_id,
                                   auto_parse_standups: true,
                                   auto_parse_blockers: true,
                                 });

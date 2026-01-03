@@ -74,7 +74,8 @@ export function useSlackConfiguredChannels(integrationId: string | undefined) {
     mutationFn: (data: {
       channel_id: string;
       channel_name: string;
-      team_id: string;
+      slack_team_id: string;
+      team_id?: string;
       channel_type?: string;
       auto_parse_standups?: boolean;
       auto_parse_task_refs?: boolean;

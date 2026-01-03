@@ -500,20 +500,23 @@ class SlackChannelConfig(Base):
         nullable=False,
         index=True,
     )
-    team_id: Mapped[str] = mapped_column(
+    # Slack team ID (e.g., T18A883UL) - NOT a foreign key
+    slack_team_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    # Internal team reference (optional)
+    team_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False),
-        ForeignKey("teams.id", ondelete="CASCADE"),
-        nullable=False,
+        ForeignKey("teams.id", ondelete="SET NULL"),
+        nullable=True,
         index=True,
     )
-    workspace_id: Mapped[str] = mapped_column(
+    workspace_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False),
-        ForeignKey("workspaces.id", ondelete="CASCADE"),
-        nullable=False,
+        ForeignKey("workspaces.id", ondelete="SET NULL"),
+        nullable=True,
         index=True,
     )
 
-    # Channel info
+    # Channel info (Slack channel ID, e.g., C18AAVCTY)
     channel_id: Mapped[str] = mapped_column(String(50), nullable=False)
     channel_name: Mapped[str] = mapped_column(String(255), nullable=False)
     channel_type: Mapped[str] = mapped_column(

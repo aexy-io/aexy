@@ -130,8 +130,12 @@ export function useDocument(workspaceId: string | null, documentId: string | nul
   // Update document content
   const updateContent = useMutation({
     mutationFn: (data: DocumentUpdate) => documentApi.update(workspaceId!, documentId!, data),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["document", documentId] });
+      // Also update the tree if title or icon changed
+      if (variables.title !== undefined || variables.icon !== undefined) {
+        queryClient.invalidateQueries({ queryKey: ["documents", "tree", workspaceId] });
+      }
     },
   });
 

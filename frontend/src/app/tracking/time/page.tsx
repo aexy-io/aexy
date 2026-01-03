@@ -5,9 +5,12 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Clock, Plus, Calendar, TrendingUp } from "lucide-react";
 import { TimeLogForm, TimeEntryList } from "@/components/tracking";
 import { useMyTimeEntries, useLogTime } from "@/hooks/useTracking";
+import { useAuth } from "@/hooks/useAuth";
+import { AppHeader } from "@/components/layout/AppHeader";
 
 export default function TimeTrackingPage() {
   const router = useRouter();
+  const { user, logout } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [dateRange, setDateRange] = useState<{ start?: string; end?: string }>({});
 
@@ -42,7 +45,8 @@ export default function TimeTrackingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-slate-950">
+      <AppHeader user={user} logout={logout} />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
