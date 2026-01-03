@@ -16,10 +16,16 @@ import {
   Sparkles,
   Grid3X3,
   FileText,
+  CheckCircle,
+  AlertTriangle,
+  Clock,
+  Target,
+  XCircle,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { NotificationBell } from "@/components/notifications";
 import { OnCallIndicator } from "@/components/oncall/OnCallIndicator";
+import { useTrackingDashboard } from "@/hooks/useTracking";
 
 interface AppHeaderProps {
   user: {
@@ -33,6 +39,7 @@ interface AppHeaderProps {
 
 const appItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, color: "from-blue-500 to-blue-600" },
+  { href: "/tracking", label: "Tracking", icon: Target, color: "from-emerald-500 to-emerald-600" },
   { href: "/sprints", label: "Planning", icon: Calendar, color: "from-green-500 to-green-600" },
   { href: "/epics", label: "Epics", icon: Layers, color: "from-purple-500 to-purple-600" },
   { href: "/docs", label: "Docs", icon: FileText, color: "from-indigo-500 to-indigo-600" },
@@ -45,14 +52,27 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
   const pathname = usePathname();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showAppSwitcher, setShowAppSwitcher] = useState(false);
+  const [showTrackingMenu, setShowTrackingMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const appSwitcherRef = useRef<HTMLDivElement>(null);
+  const trackingRef = useRef<HTMLDivElement>(null);
+
+  // Fetch tracking dashboard data
+  const { data: trackingData } = useTrackingDashboard();
 
   const isActive = (href: string) => {
     if (href === "/dashboard") {
       return pathname === "/dashboard";
     }
     return pathname.startsWith(href);
+  };
+
+  // Format minutes to hours/minutes display
+  const formatTime = (minutes: number) => {
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
   };
 
   // Close menus when clicking outside
@@ -64,10 +84,19 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
       if (appSwitcherRef.current && !appSwitcherRef.current.contains(event.target as Node)) {
         setShowAppSwitcher(false);
       }
+      if (trackingRef.current && !trackingRef.current.contains(event.target as Node)) {
+        setShowTrackingMenu(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Calculate tracking stats
+  const standupSubmitted = trackingData?.today_standup?.submitted || false;
+  const activeBlockersCount = trackingData?.active_blockers?.length || 0;
+  const timeLoggedToday = trackingData?.time_logged_today || 0;
+  const activeTasksCount = trackingData?.active_tasks?.length || 0;
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl">
@@ -159,6 +188,132 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
                   >
                     <Settings className="h-4 w-4" />
                     <span className="text-sm">Settings</span>
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Tracking Quick Info */}
+          <div className="relative" ref={trackingRef}>
+            <button
+              onClick={() => setShowTrackingMenu(!showTrackingMenu)}
+              className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200 ${
+                showTrackingMenu
+                  ? "bg-slate-800"
+                  : "hover:bg-slate-800/60"
+              }`}
+            >
+              {/* Standup status indicator */}
+              {standupSubmitted ? (
+                <CheckCircle className="h-4 w-4 text-green-400" />
+              ) : (
+                <XCircle className="h-4 w-4 text-slate-500" />
+              )}
+
+              {/* Blockers count */}
+              {activeBlockersCount > 0 && (
+                <span className="flex items-center gap-1 text-xs text-orange-400">
+                  <AlertTriangle className="h-3 w-3" />
+                  {activeBlockersCount}
+                </span>
+              )}
+
+              {/* Time logged */}
+              <span className="flex items-center gap-1 text-xs text-slate-400">
+                <Clock className="h-3 w-3" />
+                {formatTime(timeLoggedToday)}
+              </span>
+            </button>
+
+            {/* Tracking Dropdown */}
+            {showTrackingMenu && (
+              <div className="absolute right-0 mt-2 w-64 bg-slate-900/95 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-2xl shadow-black/40 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="p-3 border-b border-slate-700/50">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-white">Today&apos;s Status</span>
+                    <Link
+                      href="/tracking"
+                      onClick={() => setShowTrackingMenu(false)}
+                      className="text-xs text-primary-400 hover:text-primary-300"
+                    >
+                      View All →
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="p-3 space-y-3">
+                  {/* Standup Status */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {standupSubmitted ? (
+                        <CheckCircle className="h-4 w-4 text-green-400" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-slate-500" />
+                      )}
+                      <span className="text-sm text-slate-300">Standup</span>
+                    </div>
+                    {standupSubmitted ? (
+                      <span className="text-xs text-green-400 bg-green-900/30 px-2 py-0.5 rounded">
+                        Done
+                      </span>
+                    ) : (
+                      <Link
+                        href="/tracking/standups"
+                        onClick={() => setShowTrackingMenu(false)}
+                        className="text-xs text-primary-400 hover:text-primary-300"
+                      >
+                        Submit →
+                      </Link>
+                    )}
+                  </div>
+
+                  {/* Active Tasks */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Target className="h-4 w-4 text-blue-400" />
+                      <span className="text-sm text-slate-300">Active Tasks</span>
+                    </div>
+                    <span className="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
+                      {activeTasksCount}
+                    </span>
+                  </div>
+
+                  {/* Blockers */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className={`h-4 w-4 ${activeBlockersCount > 0 ? "text-orange-400" : "text-slate-500"}`} />
+                      <span className="text-sm text-slate-300">Blockers</span>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded ${
+                      activeBlockersCount > 0
+                        ? "text-orange-400 bg-orange-900/30"
+                        : "text-slate-400 bg-slate-800"
+                    }`}>
+                      {activeBlockersCount}
+                    </span>
+                  </div>
+
+                  {/* Time Logged */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-slate-400" />
+                      <span className="text-sm text-slate-300">Time Today</span>
+                    </div>
+                    <span className="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
+                      {formatTime(timeLoggedToday)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-700/50 p-2">
+                  <Link
+                    href="/tracking"
+                    onClick={() => setShowTrackingMenu(false)}
+                    className="flex items-center justify-center gap-2 w-full px-3 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition"
+                  >
+                    <Target className="h-4 w-4" />
+                    Open Tracking Dashboard
                   </Link>
                 </div>
               </div>

@@ -7,6 +7,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from devograph.core.database import get_db
@@ -356,14 +357,19 @@ async def get_slack_channels(
     }
 
 
+class ImportHistoryRequest(BaseModel):
+    """Request body for history import."""
+    channel_ids: list[str] | None = None
+    days_back: int = 30
+    team_id: str | None = None
+    sprint_id: str | None = None
+
+
 @router.post("/integration/{integration_id}/import-history")
 async def import_slack_history(
     integration_id: str,
     db: Annotated[AsyncSession, Depends(get_db)],
-    channel_ids: list[str] | None = None,
-    days_back: int = 30,
-    team_id: str | None = None,
-    sprint_id: str | None = None,
+    request: ImportHistoryRequest | None = None,
     service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
 ):
     """Import Slack message history (async task)."""
@@ -373,19 +379,22 @@ async def import_slack_history(
     if not integration or not integration.is_active:
         raise HTTPException(status_code=404, detail="Integration not found or inactive")
 
+    # Use defaults if no request body
+    req = request or ImportHistoryRequest()
+
     # Queue the import task
     task = import_slack_history_task.delay(
         integration_id=integration_id,
-        channel_ids=channel_ids,
-        days_back=days_back,
-        team_id=team_id,
-        sprint_id=sprint_id,
+        channel_ids=req.channel_ids,
+        days_back=req.days_back,
+        team_id=req.team_id,
+        sprint_id=req.sprint_id,
     )
 
     return {
         "task_id": task.id,
         "status": "queued",
-        "message": f"Import started for {days_back} days of history",
+        "message": f"Import started for {req.days_back} days of history",
     }
 
 
@@ -430,17 +439,23 @@ async def auto_map_slack_users(
     return stats
 
 
+class ChannelConfigRequest(BaseModel):
+    """Request body for channel configuration."""
+    channel_id: str
+    channel_name: str
+    slack_team_id: str  # Slack team ID (e.g., T18A883UL)
+    team_id: str | None = None  # Internal team UUID (optional)
+    channel_type: str = "team"
+    auto_parse_standups: bool = True
+    auto_parse_task_refs: bool = True
+    auto_parse_blockers: bool = True
+
+
 @router.post("/integration/{integration_id}/configure-channel")
 async def configure_slack_channel(
     integration_id: str,
-    channel_id: str,
-    channel_name: str,
-    team_id: str,
+    request: ChannelConfigRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
-    channel_type: str = "team",
-    auto_parse_standups: bool = True,
-    auto_parse_task_refs: bool = True,
-    auto_parse_blockers: bool = True,
     service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
 ):
     """Configure a Slack channel for monitoring."""
@@ -453,14 +468,15 @@ async def configure_slack_channel(
     sync_service = SlackHistorySyncService()
     config = await sync_service.setup_channel_monitoring(
         integration=integration,
-        channel_id=channel_id,
-        channel_name=channel_name,
-        team_id=team_id,
+        channel_id=request.channel_id,
+        channel_name=request.channel_name,
+        slack_team_id=request.slack_team_id,
+        team_id=request.team_id,
         db=db,
-        channel_type=channel_type,
-        auto_parse_standups=auto_parse_standups,
-        auto_parse_task_refs=auto_parse_task_refs,
-        auto_parse_blockers=auto_parse_blockers,
+        channel_type=request.channel_type,
+        auto_parse_standups=request.auto_parse_standups,
+        auto_parse_task_refs=request.auto_parse_task_refs,
+        auto_parse_blockers=request.auto_parse_blockers,
     )
 
     return {

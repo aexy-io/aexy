@@ -1,13 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Activity,
   MessageSquare,
   Clock,
   AlertTriangle,
-  Users,
   ChevronRight,
 } from "lucide-react";
 import { IndividualTrackingDashboard } from "@/components/tracking";
@@ -18,9 +16,12 @@ import {
   useReportBlocker,
   useResolveBlocker,
 } from "@/hooks/useTracking";
+import { useAuth } from "@/hooks/useAuth";
+import { AppHeader } from "@/components/layout/AppHeader";
 
 export default function TrackingPage() {
   const router = useRouter();
+  const { user, logout } = useAuth();
   const { data: dashboard, isLoading } = useTrackingDashboard();
   const submitStandup = useSubmitStandup();
   const logTime = useLogTime();
@@ -55,14 +56,16 @@ export default function TrackingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-slate-950">
+      <AppHeader user={user} logout={logout} />
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-                <Activity className="h-8 w-8 text-blue-400" />
+                <Activity className="h-8 w-8 text-emerald-400" />
                 My Tracking
               </h1>
               <p className="text-slate-400 mt-2">
@@ -112,7 +115,7 @@ export default function TrackingPage() {
           isReportingBlocker={reportBlocker.isPending}
           isResolvingBlocker={resolveBlocker.isPending}
         />
-      </div>
+      </main>
     </div>
   );
 }

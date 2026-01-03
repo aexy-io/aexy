@@ -13,6 +13,7 @@ export default function DocsLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const [mounted, setMounted] = useState(false);
   const { user, isLoading, isAuthenticated, logout } = useAuth();
   const {
     currentWorkspaceId,
@@ -25,6 +26,11 @@ export default function DocsLayout({
   const router = useRouter();
   const params = useParams();
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
+
+  // Handle hydration
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleSelectDocument = (documentId: string) => {
     router.push(`/docs/${documentId}`);
@@ -51,7 +57,7 @@ export default function DocsLayout({
     }
   }, [isLoading, isAuthenticated, router]);
 
-  if (isLoading || currentWorkspaceLoading || workspacesLoading) {
+  if (!mounted || isLoading || currentWorkspaceLoading || workspacesLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
