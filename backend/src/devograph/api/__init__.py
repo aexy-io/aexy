@@ -50,6 +50,10 @@ from devograph.api.documents import template_router as templates_router
 from devograph.api.collaboration import router as collaboration_router
 # Tracking
 from devograph.api.tracking import router as tracking_router
+# Ticketing
+from devograph.api.ticket_forms import router as ticket_forms_router
+from devograph.api.tickets import router as tickets_router
+from devograph.api.public_forms import router as public_forms_router
 
 api_router = APIRouter()
 
@@ -105,3 +109,7 @@ api_router.include_router(templates_router, tags=["templates"])
 api_router.include_router(collaboration_router, tags=["collaboration"])
 # Tracking
 api_router.include_router(tracking_router, tags=["tracking"])
+# Ticketing
+api_router.include_router(ticket_forms_router, tags=["ticket-forms"])
+api_router.include_router(tickets_router, tags=["tickets"])
+api_router.include_router(public_forms_router, tags=["public-forms"])

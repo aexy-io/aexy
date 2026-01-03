@@ -121,6 +121,19 @@ from devograph.models.tracking import (
     WorkLogType,
     ChannelType,
 )
+from devograph.models.ticketing import (
+    TicketForm,
+    TicketFormField,
+    Ticket,
+    TicketResponse,
+    TicketMetrics,
+    SLAPolicy,
+    TicketFormAuthMode,
+    TicketFormTemplateType,
+    TicketStatus,
+    TicketPriority,
+    TicketFieldType,
+)
 
 __all__ = [
     # Plan
@@ -240,4 +253,16 @@ __all__ = [
     "BlockerStatus",
     "WorkLogType",
     "ChannelType",
+    # Ticketing
+    "TicketForm",
+    "TicketFormField",
+    "Ticket",
+    "TicketResponse",
+    "TicketMetrics",
+    "SLAPolicy",
+    "TicketFormAuthMode",
+    "TicketFormTemplateType",
+    "TicketStatus",
+    "TicketPriority",
+    "TicketFieldType",
 ]

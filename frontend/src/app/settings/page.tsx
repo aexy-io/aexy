@@ -11,6 +11,7 @@ import {
   Link2,
   CreditCard,
   ChevronRight,
+  Ticket,
 } from "lucide-react";
 
 interface SettingsSectionProps {
@@ -94,6 +95,13 @@ export default function SettingsPage() {
             icon={<ListChecks className="h-5 w-5 text-yellow-400" />}
             title="Task Configuration"
             description="Configure custom statuses and fields for sprint tasks"
+          />
+
+          <SettingsSection
+            href="/settings/ticket-forms"
+            icon={<Ticket className="h-5 w-5 text-pink-400" />}
+            title="Ticket Forms"
+            description="Create and manage public forms for collecting tickets"
           />
 
           <SettingsSection

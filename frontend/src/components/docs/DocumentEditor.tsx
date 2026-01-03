@@ -228,14 +228,14 @@ export function DocumentEditor({
     <div className="flex flex-col h-full bg-slate-950">
       {/* Document Header */}
       <div className="border-b border-slate-800/50 bg-slate-900/30 backdrop-blur-sm sticky top-0 z-10">
-        <div className="px-8 py-6">
+        <div className="px-2 py-2">
           <div className="flex items-start gap-4">
             {/* Icon Picker */}
             <div className="relative">
               <button
                 onClick={() => !readOnly && setShowEmojiPicker(!showEmojiPicker)}
                 disabled={readOnly}
-                className="text-4xl hover:bg-slate-800/50 rounded-lg p-2 transition-colors disabled:cursor-default"
+                className="text-2xl hover:bg-slate-800/50 rounded-lg p-2 transition-colors disabled:cursor-default"
                 title="Change icon"
               >
                 {localIcon}

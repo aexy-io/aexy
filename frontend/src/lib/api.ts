@@ -5327,3 +5327,510 @@ export const slackSyncApi = {
     return response.data;
   },
 };
+
+// ==================== Ticketing Types ====================
+
+export type TicketFormAuthMode = "anonymous" | "email_verification";
+export type TicketFormTemplateType = "bug_report" | "feature_request" | "support";
+export type TicketStatus = "new" | "acknowledged" | "in_progress" | "waiting_on_submitter" | "resolved" | "closed";
+export type TicketPriority = "low" | "medium" | "high" | "urgent";
+export type TicketFieldType = "text" | "textarea" | "email" | "select" | "multiselect" | "checkbox" | "file" | "date";
+
+export interface FieldOption {
+  value: string;
+  label: string;
+}
+
+export interface ValidationRules {
+  min_length?: number;
+  max_length?: number;
+  pattern?: string;
+  allowed_file_types?: string[];
+  max_file_size_mb?: number;
+}
+
+export interface ExternalMappings {
+  github?: string;
+  jira?: string;
+  linear?: string;
+}
+
+export interface TicketFormField {
+  id: string;
+  form_id: string;
+  name: string;
+  field_key: string;
+  field_type: TicketFieldType;
+  placeholder?: string;
+  default_value?: string;
+  help_text?: string;
+  is_required: boolean;
+  validation_rules: ValidationRules;
+  options?: FieldOption[];
+  position: number;
+  is_visible: boolean;
+  external_mappings: ExternalMappings;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FormDestinationConfig {
+  type: "github" | "jira" | "linear";
+  enabled: boolean;
+  repository_id?: string;
+  labels?: string[];
+  project_key?: string;
+  issue_type?: string;
+  team_id?: string;
+}
+
+export interface ConditionalRule {
+  field_id: string;
+  condition: "equals" | "not_equals" | "contains" | "is_empty" | "is_not_empty";
+  value?: string;
+  target_field_id: string;
+  action: "show" | "hide" | "require";
+}
+
+export interface FormTheme {
+  primary_color?: string;
+  logo_url?: string;
+  custom_css?: string;
+  header_text?: string;
+}
+
+export interface TicketForm {
+  id: string;
+  workspace_id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  template_type?: TicketFormTemplateType;
+  public_url_token: string;
+  is_active: boolean;
+  auth_mode: TicketFormAuthMode;
+  require_email: boolean;
+  theme: FormTheme;
+  success_message?: string;
+  redirect_url?: string;
+  destinations: FormDestinationConfig[];
+  auto_create_task: boolean;
+  default_team_id?: string;
+  conditional_rules: ConditionalRule[];
+  submission_count: number;
+  created_by_id?: string;
+  created_at: string;
+  updated_at: string;
+  fields?: TicketFormField[];
+}
+
+export interface TicketFormListItem {
+  id: string;
+  workspace_id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  template_type?: TicketFormTemplateType;
+  public_url_token: string;
+  is_active: boolean;
+  auth_mode: TicketFormAuthMode;
+  submission_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TicketAttachment {
+  filename: string;
+  url: string;
+  size: number;
+  type: string;
+}
+
+export interface ExternalIssue {
+  platform: "github" | "jira" | "linear";
+  issue_id: string;
+  issue_url: string;
+  synced_at: string;
+}
+
+export interface Ticket {
+  id: string;
+  form_id: string;
+  workspace_id: string;
+  ticket_number: number;
+  submitter_email?: string;
+  submitter_name?: string;
+  email_verified: boolean;
+  field_values: Record<string, unknown>;
+  attachments: TicketAttachment[];
+  status: TicketStatus;
+  priority?: TicketPriority;
+  assignee_id?: string;
+  team_id?: string;
+  external_issues: ExternalIssue[];
+  linked_task_id?: string;
+  first_response_at?: string;
+  resolved_at?: string;
+  closed_at?: string;
+  sla_due_at?: string;
+  sla_breached: boolean;
+  created_at: string;
+  updated_at: string;
+  form_name?: string;
+  assignee_name?: string;
+  team_name?: string;
+}
+
+export interface TicketListItem {
+  id: string;
+  form_id: string;
+  ticket_number: number;
+  submitter_email?: string;
+  submitter_name?: string;
+  status: TicketStatus;
+  priority?: TicketPriority;
+  assignee_id?: string;
+  sla_breached: boolean;
+  created_at: string;
+  updated_at: string;
+  form_name?: string;
+  assignee_name?: string;
+}
+
+export interface TicketComment {
+  id: string;
+  ticket_id: string;
+  author_id?: string;
+  author_email?: string;
+  is_internal: boolean;
+  content: string;
+  attachments: TicketAttachment[];
+  old_status?: string;
+  new_status?: string;
+  created_at: string;
+  author_name?: string;
+}
+
+export interface TicketStats {
+  total_tickets: number;
+  open_tickets: number;
+  by_status: Record<string, number>;
+  sla_breached: number;
+}
+
+export interface FormTemplate {
+  name: string;
+  description: string;
+  field_count: number;
+}
+
+// ==================== Ticketing API ====================
+
+export const ticketFormsApi = {
+  // List templates
+  getTemplates: async (workspaceId: string): Promise<Record<string, FormTemplate>> => {
+    const response = await api.get(`/workspaces/${workspaceId}/ticket-forms/templates`);
+    return response.data;
+  },
+
+  // Create from template
+  createFromTemplate: async (
+    workspaceId: string,
+    templateType: TicketFormTemplateType,
+    name?: string
+  ): Promise<TicketForm> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/ticket-forms/from-template/${templateType}`,
+      null,
+      { params: { name } }
+    );
+    return response.data;
+  },
+
+  // List forms
+  list: async (workspaceId: string, isActive?: boolean): Promise<TicketFormListItem[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/ticket-forms`, {
+      params: { is_active: isActive },
+    });
+    return response.data;
+  },
+
+  // Create form
+  create: async (
+    workspaceId: string,
+    data: {
+      name: string;
+      description?: string;
+      template_type?: TicketFormTemplateType;
+      auth_mode?: TicketFormAuthMode;
+      require_email?: boolean;
+      theme?: FormTheme;
+      success_message?: string;
+      redirect_url?: string;
+      destinations?: FormDestinationConfig[];
+      auto_create_task?: boolean;
+      default_team_id?: string;
+      conditional_rules?: ConditionalRule[];
+    }
+  ): Promise<TicketForm> => {
+    const response = await api.post(`/workspaces/${workspaceId}/ticket-forms`, data);
+    return response.data;
+  },
+
+  // Get form
+  get: async (workspaceId: string, formId: string): Promise<TicketForm> => {
+    const response = await api.get(`/workspaces/${workspaceId}/ticket-forms/${formId}`);
+    return response.data;
+  },
+
+  // Update form
+  update: async (
+    workspaceId: string,
+    formId: string,
+    data: Partial<{
+      name: string;
+      description: string;
+      is_active: boolean;
+      auth_mode: TicketFormAuthMode;
+      require_email: boolean;
+      theme: FormTheme;
+      success_message: string;
+      redirect_url: string;
+      destinations: FormDestinationConfig[];
+      auto_create_task: boolean;
+      default_team_id: string;
+      conditional_rules: ConditionalRule[];
+    }>
+  ): Promise<TicketForm> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/ticket-forms/${formId}`, data);
+    return response.data;
+  },
+
+  // Delete form
+  delete: async (workspaceId: string, formId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/ticket-forms/${formId}`);
+  },
+
+  // Duplicate form
+  duplicate: async (workspaceId: string, formId: string, newName: string): Promise<TicketForm> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/ticket-forms/${formId}/duplicate`,
+      null,
+      { params: { new_name: newName } }
+    );
+    return response.data;
+  },
+
+  // List fields
+  listFields: async (workspaceId: string, formId: string): Promise<TicketFormField[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/ticket-forms/${formId}/fields`);
+    return response.data;
+  },
+
+  // Add field
+  addField: async (
+    workspaceId: string,
+    formId: string,
+    data: {
+      name: string;
+      field_key: string;
+      field_type?: TicketFieldType;
+      placeholder?: string;
+      default_value?: string;
+      help_text?: string;
+      is_required?: boolean;
+      validation_rules?: ValidationRules;
+      options?: FieldOption[];
+      position?: number;
+      is_visible?: boolean;
+      external_mappings?: ExternalMappings;
+    }
+  ): Promise<TicketFormField> => {
+    const response = await api.post(`/workspaces/${workspaceId}/ticket-forms/${formId}/fields`, data);
+    return response.data;
+  },
+
+  // Update field
+  updateField: async (
+    workspaceId: string,
+    formId: string,
+    fieldId: string,
+    data: Partial<{
+      name: string;
+      placeholder: string;
+      default_value: string;
+      help_text: string;
+      is_required: boolean;
+      validation_rules: ValidationRules;
+      options: FieldOption[];
+      position: number;
+      is_visible: boolean;
+      external_mappings: ExternalMappings;
+    }>
+  ): Promise<TicketFormField> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/ticket-forms/${formId}/fields/${fieldId}`,
+      data
+    );
+    return response.data;
+  },
+
+  // Delete field
+  deleteField: async (workspaceId: string, formId: string, fieldId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/ticket-forms/${formId}/fields/${fieldId}`);
+  },
+
+  // Reorder fields
+  reorderFields: async (
+    workspaceId: string,
+    formId: string,
+    fieldIds: string[]
+  ): Promise<TicketFormField[]> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/ticket-forms/${formId}/fields/reorder`,
+      { field_ids: fieldIds }
+    );
+    return response.data;
+  },
+};
+
+export const ticketsApi = {
+  // List tickets
+  list: async (
+    workspaceId: string,
+    params?: {
+      form_id?: string;
+      status?: TicketStatus[];
+      priority?: TicketPriority[];
+      assignee_id?: string;
+      team_id?: string;
+      submitter_email?: string;
+      sla_breached?: boolean;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<{ tickets: TicketListItem[]; total: number; limit: number; offset: number }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/tickets`, { params });
+    return response.data;
+  },
+
+  // Get stats
+  getStats: async (workspaceId: string): Promise<TicketStats> => {
+    const response = await api.get(`/workspaces/${workspaceId}/tickets/stats`);
+    return response.data;
+  },
+
+  // Get ticket
+  get: async (workspaceId: string, ticketId: string): Promise<Ticket> => {
+    const response = await api.get(`/workspaces/${workspaceId}/tickets/${ticketId}`);
+    return response.data;
+  },
+
+  // Get ticket by number
+  getByNumber: async (workspaceId: string, ticketNumber: number): Promise<Ticket> => {
+    const response = await api.get(`/workspaces/${workspaceId}/tickets/number/${ticketNumber}`);
+    return response.data;
+  },
+
+  // Update ticket
+  update: async (
+    workspaceId: string,
+    ticketId: string,
+    data: Partial<{
+      status: TicketStatus;
+      priority: TicketPriority;
+      assignee_id: string;
+      team_id: string;
+    }>
+  ): Promise<Ticket> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/tickets/${ticketId}`, data);
+    return response.data;
+  },
+
+  // Assign ticket
+  assign: async (
+    workspaceId: string,
+    ticketId: string,
+    data: { assignee_id?: string; team_id?: string }
+  ): Promise<Ticket> => {
+    const response = await api.post(`/workspaces/${workspaceId}/tickets/${ticketId}/assign`, data);
+    return response.data;
+  },
+
+  // Delete ticket
+  delete: async (workspaceId: string, ticketId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/tickets/${ticketId}`);
+  },
+
+  // List responses
+  listResponses: async (
+    workspaceId: string,
+    ticketId: string,
+    includeInternal?: boolean
+  ): Promise<TicketComment[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/tickets/${ticketId}/responses`, {
+      params: { include_internal: includeInternal },
+    });
+    return response.data;
+  },
+
+  // Add response
+  addResponse: async (
+    workspaceId: string,
+    ticketId: string,
+    data: {
+      content: string;
+      is_internal?: boolean;
+      new_status?: TicketStatus;
+      attachments?: TicketAttachment[];
+    }
+  ): Promise<TicketComment> => {
+    const response = await api.post(`/workspaces/${workspaceId}/tickets/${ticketId}/responses`, data);
+    return response.data;
+  },
+};
+
+export const publicFormsApi = {
+  // Get public form
+  get: async (publicToken: string): Promise<{
+    id: string;
+    name: string;
+    description?: string;
+    auth_mode: TicketFormAuthMode;
+    require_email: boolean;
+    theme: FormTheme;
+    fields: TicketFormField[];
+    conditional_rules: ConditionalRule[];
+  }> => {
+    const response = await api.get(`/forms/${publicToken}`);
+    return response.data;
+  },
+
+  // Submit ticket
+  submit: async (
+    publicToken: string,
+    data: {
+      submitter_email?: string;
+      submitter_name?: string;
+      field_values: Record<string, unknown>;
+    }
+  ): Promise<{
+    ticket_id: string;
+    ticket_number: number;
+    success_message?: string;
+    redirect_url?: string;
+    requires_email_verification: boolean;
+  }> => {
+    const response = await api.post(`/forms/${publicToken}/submit`, data);
+    return response.data;
+  },
+
+  // Verify email
+  verifyEmail: async (
+    publicToken: string,
+    token: string
+  ): Promise<{ verified: boolean; ticket_number: number }> => {
+    const response = await api.post(`/forms/${publicToken}/verify-email`, { token });
+    return response.data;
+  },
+};
