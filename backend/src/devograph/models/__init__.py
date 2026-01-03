@@ -138,6 +138,24 @@ from devograph.models.ticketing import (
     TicketFieldType,
     EscalationLevel,
 )
+from devograph.models.assessment import (
+    Assessment,
+    AssessmentTopic,
+    Question,
+    Candidate,
+    AssessmentInvitation,
+    AssessmentAttempt,
+    QuestionSubmission,
+    SubmissionEvaluation,
+    ProctoringEvent,
+    QuestionBank,
+    AssessmentStatus,
+    QuestionType,
+    DifficultyLevel,
+    InvitationStatus,
+    AttemptStatus,
+    ProctoringEventSeverity,
+)
 
 __all__ = [
     # Plan
@@ -273,4 +291,21 @@ __all__ = [
     "TicketSeverity",
     "TicketFieldType",
     "EscalationLevel",
+    # Assessment
+    "Assessment",
+    "AssessmentTopic",
+    "Question",
+    "Candidate",
+    "AssessmentInvitation",
+    "AssessmentAttempt",
+    "QuestionSubmission",
+    "SubmissionEvaluation",
+    "ProctoringEvent",
+    "QuestionBank",
+    "AssessmentStatus",
+    "QuestionType",
+    "DifficultyLevel",
+    "InvitationStatus",
+    "AttemptStatus",
+    "ProctoringEventSeverity",
 ]
