@@ -15,6 +15,7 @@ import {
   ChevronDown,
   Sparkles,
   Grid3X3,
+  FileText,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { NotificationBell } from "@/components/notifications";
@@ -34,6 +35,7 @@ const appItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, color: "from-blue-500 to-blue-600" },
   { href: "/sprints", label: "Planning", icon: Calendar, color: "from-green-500 to-green-600" },
   { href: "/epics", label: "Epics", icon: Layers, color: "from-purple-500 to-purple-600" },
+  { href: "/docs", label: "Docs", icon: FileText, color: "from-indigo-500 to-indigo-600" },
   { href: "/reviews", label: "Reviews", icon: ClipboardCheck, color: "from-orange-500 to-orange-600" },
   { href: "/learning", label: "Learning", icon: GraduationCap, color: "from-pink-500 to-pink-600" },
   { href: "/hiring", label: "Hiring", icon: Users, color: "from-cyan-500 to-cyan-600" },

@@ -247,6 +247,24 @@ class Settings(BaseSettings):
         description="Google OAuth redirect URI",
     )
 
+    # Slack Integration
+    slack_client_id: str = Field(
+        default="",
+        description="Slack App Client ID",
+    )
+    slack_client_secret: str = Field(
+        default="",
+        description="Slack App Client Secret",
+    )
+    slack_signing_secret: str = Field(
+        default="",
+        description="Slack App Signing Secret for request verification",
+    )
+    slack_redirect_uri: str = Field(
+        default="http://localhost:8000/api/v1/slack/callback",
+        description="Slack OAuth redirect URI",
+    )
+
     # LLM Configuration
     llm: LLMSettings = Field(default_factory=LLMSettings)
 

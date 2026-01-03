@@ -29,6 +29,14 @@ import {
   Activity,
   MousePointerClick,
   ClipboardCheck,
+  Phone,
+  Calendar,
+  FileText,
+  Ticket,
+  Terminal,
+  Wand2,
+  Clock,
+  Bell,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -127,15 +135,15 @@ export default function Home() {
 
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-white/60 text-sm mb-8">
               <Sparkles className="h-4 w-4 text-primary-400" />
-              The Developer Intelligence Platform
+              The Ultimate Developer Productivity Platform
             </div>
 
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-8 leading-[1.1] tracking-tight">
-              GitHub + Jira + Linear
+              One Platform for
               <br />
               <span className="relative">
                 <span className="bg-gradient-to-r from-primary-400 via-purple-400 to-emerald-400 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
-                  Finally Connected
+                  Everything Dev Teams Need
                 </span>
                 <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none">
                   <path d="M2 10C50 4 100 4 150 6C200 8 250 4 298 10" stroke="url(#gradient)" strokeWidth="3" strokeLinecap="round"/>
@@ -151,17 +159,19 @@ export default function Home() {
             </h1>
 
             <p className="text-xl text-white/50 max-w-2xl mx-auto mb-10 leading-relaxed">
-              Auto-sync your GitHub activity with Jira and Linear. AI-powered developer profiles,
-              smart sprint planning, and epic tracking — all from your commits.
+              Sprints, On-Call, Docs, Ticketing, AI Agents — all in one place.
+              Connect GitHub, Jira, Linear, and Google Calendar for seamless team productivity.
             </p>
 
             {/* Integration logos */}
-            <div className="flex items-center justify-center gap-4 mb-10">
+            <div className="flex items-center justify-center gap-3 mb-10 flex-wrap">
               <IntegrationPill name="GitHub" icon={<Github className="h-5 w-5" />} />
-              <div className="w-8 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              <div className="w-6 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent hidden sm:block" />
               <IntegrationPill name="Jira" icon={<JiraIcon />} color="text-blue-400" />
-              <div className="w-8 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              <div className="w-6 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent hidden sm:block" />
               <IntegrationPill name="Linear" icon={<LinearIcon />} color="text-purple-400" />
+              <div className="w-6 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent hidden sm:block" />
+              <IntegrationPill name="Google Calendar" icon={<Calendar className="h-5 w-5" />} color="text-green-400" />
             </div>
 
             <div className="flex flex-col sm:flex-row justify-center gap-4 mb-8">
@@ -230,13 +240,13 @@ export default function Home() {
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500/10 border border-primary-500/20 rounded-full text-primary-400 text-sm mb-6">
               <Cpu className="h-4 w-4" />
-              Powerful Features
+              Complete Productivity Suite
             </div>
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
               Everything Your Team Needs
             </h2>
             <p className="text-white/50 text-lg max-w-2xl mx-auto">
-              From AI-powered profiling to seamless integrations — built for modern engineering teams.
+              Sprint planning, on-call scheduling, documentation, ticketing, and AI agents — all unified in one platform.
             </p>
           </div>
 
@@ -369,6 +379,41 @@ export default function Home() {
               </div>
             </div>
 
+            {/* On-Call Scheduling - Medium card */}
+            <div className="col-span-12 md:col-span-6 group">
+              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-green-500/10 via-emerald-500/5 to-transparent border border-white/10 p-8 hover:border-green-500/30 transition-all duration-500">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-green-500/20 rounded-full blur-3xl group-hover:bg-green-500/30 transition-all duration-500" />
+                <div className="relative">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl shadow-lg shadow-green-500/25">
+                      <Phone className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-full border border-emerald-500/20">
+                      NEW
+                    </span>
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-3">On-Call Scheduling</h3>
+                  <p className="text-white/50 mb-6">
+                    Flexible on-call rotations with Google Calendar sync. Self-service swaps and real-time notifications.
+                  </p>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-white/60 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-green-400" />
+                      Custom schedules per team
+                    </div>
+                    <div className="flex items-center gap-2 text-white/60 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-green-400" />
+                      Google Calendar sync
+                    </div>
+                    <div className="flex items-center gap-2 text-white/60 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-green-400" />
+                      Self-service shift swaps
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Performance Reviews - Medium card */}
             <div className="col-span-12 md:col-span-6 group">
               <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-cyan-500/10 via-teal-500/5 to-transparent border border-white/10 p-8 hover:border-cyan-500/30 transition-all duration-500">
@@ -461,6 +506,125 @@ export default function Home() {
                     ))}
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Coming Soon Section */}
+      <section className="py-24 px-6 relative">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-full text-amber-400 text-sm mb-6">
+              <Rocket className="h-4 w-4" />
+              Coming Soon
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
+              The Roadmap
+            </h2>
+            <p className="text-white/50 text-lg max-w-2xl mx-auto">
+              We&apos;re building the complete developer productivity platform. Here&apos;s what&apos;s next.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Vibe-Kanban */}
+            <div className="group relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500" />
+              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-pink-500/30 transition-all h-full">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-3 bg-gradient-to-br from-pink-500 to-purple-500 rounded-2xl shadow-lg shadow-pink-500/25">
+                    <Terminal className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="px-3 py-1 bg-amber-500/20 text-amber-400 text-xs font-semibold rounded-full border border-amber-500/20">
+                    Q1 2025
+                  </span>
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">Vibe-Kanban</h3>
+                <p className="text-white/50 mb-4">
+                  Execute any task in the UI via AI coding agents. Open pull requests automatically with on-demand dev servers.
+                </p>
+                <ul className="space-y-2">
+                  <li className="flex items-center gap-2 text-white/60 text-sm">
+                    <Bot className="h-4 w-4 text-pink-400" />
+                    AI-powered task execution
+                  </li>
+                  <li className="flex items-center gap-2 text-white/60 text-sm">
+                    <GitPullRequest className="h-4 w-4 text-pink-400" />
+                    Auto-generate PRs
+                  </li>
+                  <li className="flex items-center gap-2 text-white/60 text-sm">
+                    <Code2 className="h-4 w-4 text-pink-400" />
+                    Custom Docker environments
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Smart Docs */}
+            <div className="group relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500" />
+              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-blue-500/30 transition-all h-full">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl shadow-lg shadow-blue-500/25">
+                    <FileText className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="px-3 py-1 bg-amber-500/20 text-amber-400 text-xs font-semibold rounded-full border border-amber-500/20">
+                    Q2 2025
+                  </span>
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">Smart Docs</h3>
+                <p className="text-white/50 mb-4">
+                  A Notion alternative built for developers. Auto-generate and sync documentation from your codebase.
+                </p>
+                <ul className="space-y-2">
+                  <li className="flex items-center gap-2 text-white/60 text-sm">
+                    <Wand2 className="h-4 w-4 text-blue-400" />
+                    AI documentation generation
+                  </li>
+                  <li className="flex items-center gap-2 text-white/60 text-sm">
+                    <RefreshCw className="h-4 w-4 text-blue-400" />
+                    Auto-sync from repos
+                  </li>
+                  <li className="flex items-center gap-2 text-white/60 text-sm">
+                    <Layers className="h-4 w-4 text-blue-400" />
+                    Custom templates
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Ticketing Service */}
+            <div className="group relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-orange-500/20 to-amber-500/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500" />
+              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-orange-500/30 transition-all h-full">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-3 bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl shadow-lg shadow-orange-500/25">
+                    <Ticket className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="px-3 py-1 bg-amber-500/20 text-amber-400 text-xs font-semibold rounded-full border border-amber-500/20">
+                    Q2 2025
+                  </span>
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">Ticketing Service</h3>
+                <p className="text-white/50 mb-4">
+                  Public customizable forms for bug reports and feature requests. Auto-create issues in GitHub, Jira, or Linear.
+                </p>
+                <ul className="space-y-2">
+                  <li className="flex items-center gap-2 text-white/60 text-sm">
+                    <Layout className="h-4 w-4 text-orange-400" />
+                    Custom public forms
+                  </li>
+                  <li className="flex items-center gap-2 text-white/60 text-sm">
+                    <RefreshCw className="h-4 w-4 text-orange-400" />
+                    Multi-platform sync
+                  </li>
+                  <li className="flex items-center gap-2 text-white/60 text-sm">
+                    <BarChart3 className="h-4 w-4 text-orange-400" />
+                    TAT analytics
+                  </li>
+                </ul>
               </div>
             </div>
           </div>
@@ -649,10 +813,10 @@ export default function Home() {
                 </div>
 
                 <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
-                  Ready to Supercharge Your Sprints?
+                  Ready to Transform Your Team&apos;s Productivity?
                 </h2>
                 <p className="text-white/50 text-lg mb-10 max-w-2xl mx-auto">
-                  Join hundreds of engineering teams shipping faster with Devograph.
+                  Join hundreds of engineering teams using Devograph for sprints, on-call, and more.
                 </p>
 
                 <a
@@ -685,7 +849,7 @@ export default function Home() {
                 <span className="text-lg font-bold text-white">Devograph</span>
               </div>
               <p className="text-white/40 text-sm mb-4">
-                The developer intelligence platform that connects GitHub, Jira, and Linear.
+                The ultimate developer productivity platform. Sprints, on-call, docs, ticketing, and AI agents — all in one place.
               </p>
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white/5 border border-white/10 rounded-lg">
@@ -696,6 +860,9 @@ export default function Home() {
                 </div>
                 <div className="p-2 bg-white/5 border border-white/10 rounded-lg">
                   <LinearIcon small />
+                </div>
+                <div className="p-2 bg-white/5 border border-white/10 rounded-lg">
+                  <Calendar className="h-4 w-4 text-white/60" />
                 </div>
               </div>
             </div>

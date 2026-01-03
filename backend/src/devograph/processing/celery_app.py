@@ -14,6 +14,7 @@ celery_app = Celery(
         "devograph.processing.tasks",
         "devograph.processing.sync_tasks",
         "devograph.processing.oncall_tasks",
+        "devograph.processing.tracking_tasks",
     ],
 )
 
@@ -56,6 +57,7 @@ celery_app.conf.update(
         "devograph.processing.sync_tasks.*": {"queue": "sync"},
         "devograph.processing.tasks.analyze_*": {"queue": "analysis"},
         "devograph.processing.tasks.batch_*": {"queue": "batch"},
+        "devograph.processing.tracking_tasks.*": {"queue": "tracking"},
     },
 
     # Retry settings

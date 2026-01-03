@@ -537,3 +537,233 @@ async def _batch_profile_sync() -> dict[str, Any]:
             "developers_queued": queued,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
+
+
+# ============================================================================
+# Document Sync Tasks
+# ============================================================================
+
+
+@shared_task
+def process_document_sync_queue_task() -> dict[str, Any]:
+    """Process pending documents in the sync queue.
+
+    This is the batch sync task for mid-tier plans.
+    Should be scheduled to run daily.
+
+    Returns:
+        Summary of processed documents.
+    """
+    logger.info("Processing document sync queue")
+
+    try:
+        result = run_async(_process_document_sync_queue())
+        return result
+    except Exception as exc:
+        logger.error(f"Document sync queue processing failed: {exc}")
+        raise
+
+
+async def _process_document_sync_queue() -> dict[str, Any]:
+    """Async implementation of document sync queue processing."""
+    from datetime import datetime, timezone
+
+    from devograph.core.database import async_session_maker
+    from devograph.services.document_sync_service import DocumentSyncService
+    from devograph.services.document_generation_service import DocumentGenerationService
+
+    async with async_session_maker() as db:
+        sync_service = DocumentSyncService(db)
+        gen_service = DocumentGenerationService(db)
+
+        # Get pending items
+        pending = await sync_service.get_pending_sync_queue(limit=50)
+
+        if not pending:
+            return {
+                "processed": 0,
+                "succeeded": 0,
+                "failed": 0,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+
+        # Mark as processing
+        queue_ids = [str(item.id) for item in pending]
+        await sync_service.mark_sync_processing(queue_ids)
+        await db.commit()
+
+        succeeded = 0
+        failed = 0
+
+        for item in pending:
+            try:
+                document = item.document
+                if not document:
+                    await sync_service.mark_sync_completed(
+                        str(item.id), success=False, error_message="Document not found"
+                    )
+                    failed += 1
+                    continue
+
+                # Get code links
+                from devograph.models.documentation import DocumentCodeLink
+                from sqlalchemy import select
+
+                stmt = select(DocumentCodeLink).where(
+                    DocumentCodeLink.document_id == str(document.id)
+                )
+                result = await db.execute(stmt)
+                code_links = result.scalars().all()
+
+                if not code_links:
+                    await sync_service.mark_sync_completed(
+                        str(item.id), success=False, error_message="No code links"
+                    )
+                    failed += 1
+                    continue
+
+                # For each code link with pending changes, regenerate
+                for link in code_links:
+                    if link.has_pending_changes:
+                        try:
+                            # Mark link as synced
+                            link.has_pending_changes = False
+                            link.last_synced_at = datetime.now(timezone.utc)
+                        except Exception as e:
+                            logger.warning(f"Failed to regenerate from link: {e}")
+
+                # Update document status
+                document.generation_status = "synced"
+                document.last_generated_at = datetime.now(timezone.utc)
+
+                await sync_service.mark_sync_completed(str(item.id), success=True)
+                succeeded += 1
+
+            except Exception as e:
+                logger.error(f"Failed to process sync item {item.id}: {e}")
+                await sync_service.mark_sync_completed(
+                    str(item.id), success=False, error_message=str(e)
+                )
+                failed += 1
+
+        await db.commit()
+
+        return {
+            "processed": len(pending),
+            "succeeded": succeeded,
+            "failed": failed,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def regenerate_document_task(
+    self, document_id: str, developer_id: str
+) -> dict[str, Any]:
+    """Regenerate a single document from its linked code.
+
+    Args:
+        document_id: Document to regenerate.
+        developer_id: Developer requesting the regeneration.
+
+    Returns:
+        Regeneration result.
+    """
+    logger.info(f"Regenerating document {document_id}")
+
+    try:
+        result = run_async(_regenerate_document(document_id, developer_id))
+        return result
+    except Exception as exc:
+        logger.error(f"Document regeneration failed: {exc}")
+        raise self.retry(exc=exc)
+
+
+async def _regenerate_document(
+    document_id: str, developer_id: str
+) -> dict[str, Any]:
+    """Async implementation of document regeneration."""
+    from datetime import datetime, timezone
+
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    from devograph.core.database import async_session_maker
+    from devograph.models.documentation import Document, DocumentCodeLink, TemplateCategory
+    from devograph.services.document_generation_service import DocumentGenerationService
+    from devograph.services.github_app_service import GitHubAppService
+
+    async with async_session_maker() as db:
+        # Get document with code links
+        stmt = (
+            select(Document)
+            .options(selectinload(Document.code_links))
+            .where(Document.id == document_id)
+        )
+        result = await db.execute(stmt)
+        document = result.scalar_one_or_none()
+
+        if not document:
+            return {"error": "Document not found", "document_id": document_id}
+
+        if not document.code_links:
+            return {"error": "No code links", "document_id": document_id}
+
+        # Get the first code link
+        code_link = document.code_links[0]
+
+        # Get GitHub service and generate
+        github_service = GitHubAppService(db)
+        gen_service = DocumentGenerationService(db)
+
+        try:
+            # Get repository info
+            from devograph.services.repository_service import RepositoryService
+
+            repo_service = RepositoryService(db)
+            repo = await repo_service.get_repository_by_id(str(code_link.repository_id))
+
+            if not repo:
+                return {"error": "Repository not found", "document_id": document_id}
+
+            # Determine template category
+            category = TemplateCategory.FUNCTION_DOCS
+            if code_link.link_type == "directory":
+                category = TemplateCategory.MODULE_DOCS
+
+            # Generate content
+            content = await gen_service.generate_from_repository(
+                github_service=github_service,
+                repository_full_name=repo.full_name,
+                path=code_link.path,
+                template_category=category,
+                branch=code_link.branch or "main",
+                developer_id=developer_id,
+            )
+
+            # Update document
+            document.content = content
+            document.generation_status = "generated"
+            document.last_generated_at = datetime.now(timezone.utc)
+
+            # Update code link
+            code_link.has_pending_changes = False
+            code_link.last_synced_at = datetime.now(timezone.utc)
+
+            await db.commit()
+
+            return {
+                "document_id": document_id,
+                "status": "success",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to regenerate document: {e}")
+            document.generation_status = "failed"
+            await db.commit()
+            return {
+                "document_id": document_id,
+                "status": "failed",
+                "error": str(e),
+            }

@@ -20,12 +20,22 @@ class SlackNotificationType(str, Enum):
 class SlackCommandType(str, Enum):
     """Supported Slack slash commands."""
 
+    # Existing commands
     PROFILE = "profile"
     MATCH = "match"
     TEAM = "team"
     INSIGHTS = "insights"
     REPORT = "report"
     HELP = "help"
+
+    # Tracking commands
+    STANDUP = "standup"
+    UPDATE = "update"
+    BLOCKER = "blocker"
+    TIMELOG = "timelog"
+    LOG = "log"
+    STATUS = "status"
+    MYTASKS = "mytasks"
 
 
 # Slack Integration schemas

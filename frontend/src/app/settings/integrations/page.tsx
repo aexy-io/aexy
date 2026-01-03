@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   AlertCircle,
   ArrowLeft,
@@ -11,13 +12,17 @@ import {
   ChevronDown,
   ExternalLink,
   GitBranch,
+  Hash,
   Key,
   Link2,
   Loader2,
+  MessageSquare,
   MoreVertical,
   RefreshCw,
   Settings,
+  Slack,
   Trash2,
+  Users,
   Zap,
 } from "lucide-react";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
@@ -27,11 +32,12 @@ import {
   useJiraStatuses,
   useLinearStates,
 } from "@/hooks/useIntegrations";
+import { useSlackIntegration, useSlackSync, useSlackChannels, useSlackConfiguredChannels } from "@/hooks/useSlackIntegration";
 import { useTaskStatuses } from "@/hooks/useTaskConfig";
 import { useAuth } from "@/hooks/useAuth";
-import { StatusMapping } from "@/lib/api";
+import { StatusMapping, slackApi } from "@/lib/api";
 
-type TabType = "github" | "jira" | "linear";
+type TabType = "github" | "jira" | "linear" | "slack";
 
 function ConnectionStatusBadge({ connected }: { connected: boolean }) {
   if (connected) {
@@ -585,7 +591,46 @@ export default function IntegrationsPage() {
   const { states: linearRemoteStates } = useLinearStates(currentWorkspaceId, linearConnected);
   const { statuses: workspaceStatuses } = useTaskStatuses(currentWorkspaceId);
 
+  // Slack Integration
+  const {
+    integration: slackIntegration,
+    isLoading: slackLoading,
+    isConnected: slackConnected,
+    getInstallUrl: getSlackInstallUrl,
+    disconnect: disconnectSlack,
+    isDisconnecting: isDisconnectingSlack,
+  } = useSlackIntegration(currentWorkspaceId);
+
+  const {
+    syncChannels: syncSlackChannels,
+    autoMapUsers: autoMapSlackUsers,
+    importHistory: importSlackHistory,
+    isSyncing: isSyncingSlack,
+    isMapping: isMappingSlack,
+    isImporting: isImportingSlack,
+    mappingResult: slackMappingResult,
+  } = useSlackSync(slackIntegration?.id);
+
+  const { data: slackChannelsData, isLoading: isLoadingSlackChannels } = useSlackChannels(slackIntegration?.id);
+  const {
+    data: slackConfiguredData,
+    configureChannel: configureSlackChannel,
+    removeChannel: removeSlackChannel,
+    isConfiguring: isConfiguringSlack,
+  } = useSlackConfiguredChannels(slackIntegration?.id);
+
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabType>("jira");
+  const [showSlackChannelModal, setShowSlackChannelModal] = useState(false);
+  const [selectedSlackChannel, setSelectedSlackChannel] = useState("");
+  const [slackImportDays, setSlackImportDays] = useState(30);
+
+  // Auto-switch to Slack tab when redirected from OAuth
+  useEffect(() => {
+    if (searchParams.get("slack_installed") === "true") {
+      setActiveTab("slack");
+    }
+  }, [searchParams]);
 
   const currentMember = workspaceMembers.find((m) => m.developer_id === user?.id);
   const isAdmin = currentMember?.role === "owner" || currentMember?.role === "admin";
@@ -687,6 +732,18 @@ export default function IntegrationsPage() {
                 </svg>
                 Linear
                 {linearConnected && <CheckCircle className="h-3 w-3 text-green-400" />}
+              </button>
+              <button
+                onClick={() => setActiveTab("slack")}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition flex items-center gap-2 ${
+                  activeTab === "slack"
+                    ? "bg-primary-600 text-white"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <Slack className="h-4 w-4" />
+                Slack
+                {slackConnected && <CheckCircle className="h-3 w-3 text-green-400" />}
               </button>
             </div>
 
@@ -852,6 +909,287 @@ export default function IntegrationsPage() {
                     />
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Slack Tab */}
+            {activeTab === "slack" && (
+              <div className="space-y-6">
+                <div className="bg-slate-800 rounded-xl p-6">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center">
+                      <Slack className="h-6 w-6 text-[#E01E5A]" />
+                    </div>
+                    <div className="flex-1">
+                      <h2 className="text-lg font-medium text-white">Slack</h2>
+                      <p className="text-slate-400 text-sm">
+                        Connect Slack for standups, blockers, and team updates
+                      </p>
+                    </div>
+                    <ConnectionStatusBadge connected={slackConnected} />
+                  </div>
+
+                  {!slackConnected && isAdmin && currentWorkspaceId && user && (
+                    <div className="space-y-4">
+                      <p className="text-slate-400 text-sm">
+                        Connect your Slack workspace to enable slash commands for standups,
+                        task updates, and blocker reporting directly from Slack.
+                      </p>
+                      <a
+                        href={getSlackInstallUrl(user.id) || "#"}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#4A154B] hover:bg-[#611f64] text-white rounded-lg transition font-medium"
+                      >
+                        <Slack className="h-5 w-5" />
+                        Add to Slack
+                      </a>
+                    </div>
+                  )}
+
+                  {slackConnected && slackIntegration && (
+                    <div className="bg-slate-700/50 rounded-lg p-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center">
+                            <Slack className="h-6 w-6 text-[#E01E5A]" />
+                          </div>
+                          <div>
+                            <div className="text-white font-medium">
+                              {slackIntegration.workspace_name || "Slack Workspace"}
+                            </div>
+                            <div className="text-slate-400 text-sm">
+                              Team: {slackIntegration.team_id}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => disconnectSlack()}
+                          disabled={isDisconnectingSlack}
+                          className="px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg transition text-sm flex items-center gap-2"
+                        >
+                          {isDisconnectingSlack ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                          Disconnect
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-3 pt-3 border-t border-slate-600">
+                        <button
+                          onClick={() => syncSlackChannels()}
+                          disabled={isSyncingSlack}
+                          className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition text-sm flex items-center gap-2"
+                        >
+                          {isSyncingSlack ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4" />
+                          )}
+                          Sync Channels
+                        </button>
+                        <button
+                          onClick={() => autoMapSlackUsers()}
+                          disabled={isMappingSlack}
+                          className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition text-sm flex items-center gap-2"
+                        >
+                          {isMappingSlack ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Users className="h-4 w-4" />
+                          )}
+                          Auto-Map Users
+                        </button>
+                      </div>
+
+                      {slackMappingResult && (
+                        <div className="text-green-400 text-sm flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4" />
+                          Mapped {slackMappingResult.mapped_count || 0} users
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {!isAdmin && !slackConnected && (
+                    <p className="text-slate-500 text-sm">
+                      Contact an admin to configure Slack integration.
+                    </p>
+                  )}
+                </div>
+
+                {/* Channel Configuration */}
+                {slackConnected && slackIntegration && isAdmin && (
+                  <div className="bg-slate-800 rounded-xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-white font-medium">Configured Channels</h3>
+                        <p className="text-slate-400 text-sm">
+                          Select channels to monitor for standups and task updates
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setShowSlackChannelModal(true)}
+                        className="px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition text-sm flex items-center gap-2"
+                      >
+                        <Hash className="h-4 w-4" />
+                        Add Channel
+                      </button>
+                    </div>
+
+                    {slackConfiguredData?.channels && slackConfiguredData.channels.length > 0 ? (
+                      <div className="space-y-2">
+                        {slackConfiguredData.channels.map((channel) => (
+                          <div
+                            key={channel.id}
+                            className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg"
+                          >
+                            <div className="flex items-center gap-3">
+                              <Hash className="h-4 w-4 text-slate-400" />
+                              <span className="text-white">{channel.channel_name}</span>
+                              {channel.auto_parse_standups && (
+                                <span className="px-2 py-0.5 bg-green-900/30 text-green-400 rounded text-xs">
+                                  Standups
+                                </span>
+                              )}
+                              {channel.auto_parse_blockers && (
+                                <span className="px-2 py-0.5 bg-orange-900/30 text-orange-400 rounded text-xs">
+                                  Blockers
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => removeSlackChannel(channel.id)}
+                              className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded transition"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-slate-500">
+                        <Hash className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p>No channels configured yet</p>
+                        <p className="text-sm">Add channels to start monitoring</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Import History */}
+                {slackConnected && slackIntegration && isAdmin && (
+                  <div className="bg-slate-800 rounded-xl p-6">
+                    <h3 className="text-white font-medium mb-4">Import History</h3>
+                    <p className="text-slate-400 text-sm mb-4">
+                      Import existing messages from Slack channels to populate standups and activity
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <label className="text-slate-400 text-sm">Days back:</label>
+                        <input
+                          type="number"
+                          value={slackImportDays}
+                          onChange={(e) => setSlackImportDays(parseInt(e.target.value) || 30)}
+                          min={1}
+                          max={90}
+                          className="w-20 px-3 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-primary-500"
+                        />
+                      </div>
+                      <button
+                        onClick={() => importSlackHistory({ days_back: slackImportDays })}
+                        disabled={isImportingSlack}
+                        className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition text-sm flex items-center gap-2"
+                      >
+                        {isImportingSlack ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Importing...
+                          </>
+                        ) : (
+                          <>
+                            <MessageSquare className="h-4 w-4" />
+                            Import Messages
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Add Channel Modal */}
+            {showSlackChannelModal && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-slate-800 rounded-xl p-6 w-full max-w-md">
+                  <h3 className="text-white font-medium mb-4">Add Channel</h3>
+
+                  {isLoadingSlackChannels ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm text-slate-400 mb-1">Select Channel</label>
+                        <select
+                          value={selectedSlackChannel}
+                          onChange={(e) => setSelectedSlackChannel(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                        >
+                          <option value="">Choose a channel...</option>
+                          {slackChannelsData?.channels?.map((channel) => (
+                            <option key={channel.id} value={channel.id}>
+                              #{channel.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
+                        <button
+                          onClick={() => {
+                            setShowSlackChannelModal(false);
+                            setSelectedSlackChannel("");
+                          }}
+                          className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition text-sm"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (selectedSlackChannel && slackChannelsData?.channels) {
+                              const channel = slackChannelsData.channels.find(
+                                (c) => c.id === selectedSlackChannel
+                              );
+                              if (channel && slackIntegration) {
+                                await configureSlackChannel({
+                                  channel_id: channel.id,
+                                  channel_name: channel.name,
+                                  team_id: slackIntegration.team_id,
+                                  auto_parse_standups: true,
+                                  auto_parse_blockers: true,
+                                });
+                                setShowSlackChannelModal(false);
+                                setSelectedSlackChannel("");
+                              }
+                            }
+                          }}
+                          disabled={!selectedSlackChannel || isConfiguringSlack}
+                          className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition text-sm flex items-center gap-2 disabled:opacity-50"
+                        >
+                          {isConfiguringSlack ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Check className="h-4 w-4" />
+                          )}
+                          Add Channel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </>

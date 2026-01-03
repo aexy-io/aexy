@@ -27,6 +27,13 @@ class AnalysisType(str, Enum):
     BURNOUT_RISK = "burnout_risk"
     PERFORMANCE_TRAJECTORY = "performance_trajectory"
     TEAM_HEALTH = "team_health"
+    # Phase 5: Documentation Generation
+    DOC_API = "doc_api"
+    DOC_README = "doc_readme"
+    DOC_FUNCTION = "doc_function"
+    DOC_MODULE = "doc_module"
+    DOC_UPDATE = "doc_update"
+    DOC_IMPROVEMENT = "doc_improvement"
 
 
 class LLMConfig(BaseModel):

@@ -374,3 +374,183 @@ class GitHubAppService:
                 installation.suspended_at = None
 
         await self.db.commit()
+
+    async def get_repository_contents(
+        self,
+        installation_id: int,
+        owner: str,
+        repo: str,
+        path: str = "",
+        ref: str = "main",
+    ) -> list[dict[str, Any]]:
+        """Get contents of a directory in a repository.
+
+        Args:
+            installation_id: GitHub installation ID.
+            owner: Repository owner.
+            repo: Repository name.
+            path: Path within the repository (empty for root).
+            ref: Git ref (branch, tag, or commit SHA).
+
+        Returns:
+            List of content items (files and directories).
+        """
+        token, _ = await self.get_installation_access_token(installation_id)
+
+        url = f"{self.api_base_url}/repos/{owner}/{repo}/contents/{path}"
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                url,
+                params={"ref": ref},
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept": "application/vnd.github+json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                },
+            )
+
+            if response.status_code == 404:
+                return []
+
+            if response.status_code != 200:
+                raise GitHubAppError(
+                    f"Failed to get contents: {response.status_code} - {response.text}"
+                )
+
+            data = response.json()
+
+            # GitHub returns a list for directories, single object for files
+            if isinstance(data, list):
+                return [
+                    {
+                        "name": item["name"],
+                        "path": item["path"],
+                        "type": item["type"],  # "file" or "dir"
+                        "size": item.get("size", 0),
+                        "sha": item["sha"],
+                    }
+                    for item in data
+                ]
+            else:
+                # Single file
+                return [
+                    {
+                        "name": data["name"],
+                        "path": data["path"],
+                        "type": data["type"],
+                        "size": data.get("size", 0),
+                        "sha": data["sha"],
+                    }
+                ]
+
+    async def get_file_content(
+        self,
+        installation_id: int,
+        owner: str,
+        repo: str,
+        path: str,
+        ref: str = "main",
+    ) -> dict[str, Any] | None:
+        """Get content of a specific file.
+
+        Args:
+            installation_id: GitHub installation ID.
+            owner: Repository owner.
+            repo: Repository name.
+            path: Path to the file.
+            ref: Git ref (branch, tag, or commit SHA).
+
+        Returns:
+            File content and metadata, or None if not found.
+        """
+        token, _ = await self.get_installation_access_token(installation_id)
+        import base64
+
+        url = f"{self.api_base_url}/repos/{owner}/{repo}/contents/{path}"
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                url,
+                params={"ref": ref},
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept": "application/vnd.github+json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                },
+            )
+
+            if response.status_code == 404:
+                return None
+
+            if response.status_code != 200:
+                raise GitHubAppError(
+                    f"Failed to get file: {response.status_code} - {response.text}"
+                )
+
+            data = response.json()
+
+            if data.get("type") != "file":
+                return None
+
+            # Decode base64 content
+            content = ""
+            if data.get("content"):
+                try:
+                    content = base64.b64decode(data["content"]).decode("utf-8")
+                except Exception:
+                    content = "[Binary file - cannot display]"
+
+            return {
+                "name": data["name"],
+                "path": data["path"],
+                "sha": data["sha"],
+                "size": data.get("size", 0),
+                "content": content,
+                "encoding": data.get("encoding", "base64"),
+            }
+
+    async def get_repository_branches(
+        self,
+        installation_id: int,
+        owner: str,
+        repo: str,
+    ) -> list[dict[str, Any]]:
+        """Get list of branches for a repository.
+
+        Args:
+            installation_id: GitHub installation ID.
+            owner: Repository owner.
+            repo: Repository name.
+
+        Returns:
+            List of branches with name and protected status.
+        """
+        token, _ = await self.get_installation_access_token(installation_id)
+
+        url = f"{self.api_base_url}/repos/{owner}/{repo}/branches"
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                url,
+                params={"per_page": 100},
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept": "application/vnd.github+json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                },
+            )
+
+            if response.status_code != 200:
+                raise GitHubAppError(
+                    f"Failed to get branches: {response.status_code} - {response.text}"
+                )
+
+            return [
+                {
+                    "name": branch["name"],
+                    "protected": branch.get("protected", False),
+                    "sha": branch["commit"]["sha"],
+                }
+                for branch in response.json()
+            ]

@@ -26,6 +26,8 @@ from devograph.schemas.integrations import (
     SlackOAuthCallback,
     SlackSlashCommand,
 )
+from devograph.services.slack_tracking_service import SlackTrackingService
+from devograph.services.slack_channel_monitor import SlackChannelMonitorService
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +39,13 @@ class SlackIntegrationService:
     SLACK_OAUTH_URL = "https://slack.com/oauth/v2/authorize"
 
     def __init__(self):
-        self.client_id = getattr(settings, "SLACK_CLIENT_ID", None)
-        self.client_secret = getattr(settings, "SLACK_CLIENT_SECRET", None)
-        self.signing_secret = getattr(settings, "SLACK_SIGNING_SECRET", None)
-        self.redirect_uri = getattr(settings, "SLACK_REDIRECT_URI", None)
+        self.client_id = settings.slack_client_id
+        self.client_secret = settings.slack_client_secret
+        self.signing_secret = settings.slack_signing_secret
+        self.redirect_uri = settings.slack_redirect_uri
+        # Initialize tracking services
+        self.tracking_service = SlackTrackingService()
+        self.channel_monitor = SlackChannelMonitorService()
 
     # OAuth Flow
     def get_install_url(self, state: str) -> str:
@@ -381,12 +386,21 @@ class SlackIntegrationService:
 
         # Route to appropriate handler
         handlers = {
+            # Existing commands
             SlackCommandType.PROFILE: self._handle_profile_command,
             SlackCommandType.MATCH: self._handle_match_command,
             SlackCommandType.TEAM: self._handle_team_command,
             SlackCommandType.INSIGHTS: self._handle_insights_command,
             SlackCommandType.REPORT: self._handle_report_command,
             SlackCommandType.HELP: self._handle_help_command,
+            # Tracking commands
+            SlackCommandType.STANDUP: self.tracking_service.handle_standup_command,
+            SlackCommandType.UPDATE: self.tracking_service.handle_update_command,
+            SlackCommandType.BLOCKER: self.tracking_service.handle_blocker_command,
+            SlackCommandType.TIMELOG: self.tracking_service.handle_timelog_command,
+            SlackCommandType.LOG: self.tracking_service.handle_log_command,
+            SlackCommandType.STATUS: self.tracking_service.handle_status_command,
+            SlackCommandType.MYTASKS: self.tracking_service.handle_mytasks_command,
         }
 
         handler = handlers.get(cmd_type, self._handle_help_command)
@@ -567,10 +581,22 @@ class SlackIntegrationService:
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": """• `/devograph profile [@user]` - View developer profile
-• `/devograph match "task"` - Find best developer for a task
+                    "text": """*Profile & Team:*
+• `/devograph profile [@user]` - View developer profile
 • `/devograph team` - Team skill overview
 • `/devograph insights` - Team health summary
+
+*Tracking:*
+• `/devograph standup yesterday: X | today: Y | blockers: Z` - Submit standup
+• `/devograph update TASK-123 [status] "notes"` - Update task status
+• `/devograph blocker "description" [TASK-REF]` - Report a blocker
+• `/devograph timelog TASK-123 2h "notes"` - Log time
+• `/devograph log TASK-123 "notes"` - Add work note
+• `/devograph status` - View your current status
+• `/devograph mytasks` - List your sprint tasks
+
+*Other:*
+• `/devograph match "task"` - Find best developer for a task
 • `/devograph report` - Report information
 • `/devograph help` - Show this help message""",
                 },
@@ -610,9 +636,30 @@ class SlackIntegrationService:
             return await self._handle_app_mention(event_data, integration, db)
         elif event_type == "message":
             # Ignore bot messages to prevent loops
-            if event_data.get("bot_id"):
+            if event_data.get("bot_id") or event_data.get("subtype") == "bot_message":
                 return {"ok": True}
-            return await self._handle_direct_message(event_data, integration, db)
+
+            # Check if this is a channel message (not DM)
+            channel_id = event_data.get("channel", "")
+            channel_type = event_data.get("channel_type", "")
+
+            # Process channel messages through monitor if configured
+            if channel_type in ("channel", "group") or channel_id.startswith("C"):
+                is_monitored = await self.channel_monitor.is_monitored_channel(
+                    channel_id, integration.id, db
+                )
+                if is_monitored:
+                    try:
+                        result = await self.channel_monitor.process_channel_message(
+                            channel_id, event_data, integration, db
+                        )
+                        logger.debug(f"Channel monitor result: {result}")
+                    except Exception as e:
+                        logger.error(f"Error processing channel message: {e}")
+
+            # Handle direct messages
+            if channel_type == "im" or channel_id.startswith("D"):
+                return await self._handle_direct_message(event_data, integration, db)
 
         return {"ok": True}
 

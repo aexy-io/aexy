@@ -1633,6 +1633,31 @@ export const repositoriesApi = {
     const response = await api.post("/repositories/installation/sync");
     return response.data;
   },
+
+  // File Browsing
+  getContents: async (
+    repoId: string,
+    options?: { path?: string; ref?: string }
+  ): Promise<Array<{ name: string; path: string; type: "file" | "dir"; size: number; sha: string }>> => {
+    const response = await api.get(`/repositories/${repoId}/contents`, { params: options });
+    return response.data;
+  },
+
+  getFileContent: async (
+    repoId: string,
+    path: string,
+    ref?: string
+  ): Promise<{ name: string; path: string; sha: string; size: number; content: string; encoding: string }> => {
+    const response = await api.get(`/repositories/${repoId}/file`, { params: { path, ref } });
+    return response.data;
+  },
+
+  getBranches: async (
+    repoId: string
+  ): Promise<Array<{ name: string; protected: boolean; sha: string }>> => {
+    const response = await api.get(`/repositories/${repoId}/branches`);
+    return response.data;
+  },
 };
 
 // ============================================================================
@@ -4286,6 +4311,1018 @@ export const googleCalendarApi = {
     const response = await api.post(`/workspaces/${workspaceId}/integrations/google-calendar/sync`, null, {
       params: { team_id: teamId },
     });
+    return response.data;
+  },
+};
+
+// ============ Document Types ============
+
+export type DocumentStatus = "draft" | "generating" | "generated" | "failed";
+export type DocumentLinkType = "file" | "directory";
+export type DocumentPermission = "view" | "comment" | "edit" | "admin";
+export type TemplateCategory = "api_docs" | "readme" | "function_docs" | "module_docs" | "guides" | "changelog" | "custom";
+
+export interface DocumentTreeItem {
+  id: string;
+  title: string;
+  icon: string | null;
+  parent_id: string | null;
+  position: number;
+  has_children: boolean;
+  children: DocumentTreeItem[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Document {
+  id: string;
+  workspace_id: string;
+  parent_id: string | null;
+  title: string;
+  content: Record<string, unknown>;
+  content_text: string | null;
+  icon: string | null;
+  cover_image: string | null;
+  is_template: boolean;
+  is_published: boolean;
+  published_at: string | null;
+  generation_status: DocumentStatus;
+  last_generated_at: string | null;
+  created_by_id: string | null;
+  created_by_name: string | null;
+  created_by_avatar: string | null;
+  last_edited_by_id: string | null;
+  last_edited_by_name: string | null;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DocumentListItem {
+  id: string;
+  workspace_id: string;
+  parent_id: string | null;
+  title: string;
+  icon: string | null;
+  generation_status: DocumentStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DocumentVersion {
+  id: string;
+  document_id: string;
+  version_number: number;
+  content: Record<string, unknown>;
+  content_diff: Record<string, unknown> | null;
+  created_by_id: string | null;
+  created_by_name: string | null;
+  created_by_avatar: string | null;
+  change_summary: string | null;
+  is_auto_save: boolean;
+  is_auto_generated: boolean;
+  created_at: string;
+}
+
+export interface DocumentTemplate {
+  id: string;
+  workspace_id: string | null;
+  name: string;
+  description: string | null;
+  category: TemplateCategory;
+  icon: string | null;
+  content_template: Record<string, unknown>;
+  prompt_template: string;
+  system_prompt: string | null;
+  variables: string[];
+  is_system: boolean;
+  is_active: boolean;
+  created_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TemplateListItem {
+  id: string;
+  name: string;
+  description: string | null;
+  category: TemplateCategory;
+  icon: string | null;
+  is_system: boolean;
+  variables: string[];
+}
+
+export interface DocumentCodeLink {
+  id: string;
+  document_id: string;
+  repository_id: string;
+  repository_name: string | null;
+  path: string;
+  link_type: DocumentLinkType;
+  branch: string;
+  document_section_id: string | null;
+  last_commit_sha: string | null;
+  last_content_hash: string | null;
+  last_synced_at: string | null;
+  has_pending_changes: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DocumentCollaborator {
+  id: string;
+  document_id: string;
+  developer_id: string;
+  developer_name: string | null;
+  developer_email: string | null;
+  developer_avatar: string | null;
+  permission: DocumentPermission;
+  invited_by_id: string | null;
+  invited_by_name: string | null;
+  invited_at: string;
+}
+
+export interface GitHubSyncConfig {
+  id: string;
+  document_id: string;
+  repository_id: string;
+  repository_name: string | null;
+  file_path: string;
+  branch: string;
+  sync_direction: "export_only" | "import_only" | "bidirectional";
+  auto_export: boolean;
+  auto_import: boolean;
+  last_exported_at: string | null;
+  last_imported_at: string | null;
+  last_export_commit: string | null;
+  last_import_commit: string | null;
+  created_at: string;
+}
+
+export interface DocumentCreate {
+  title?: string;
+  content?: Record<string, unknown>;
+  parent_id?: string;
+  template_id?: string;
+  icon?: string;
+  cover_image?: string;
+}
+
+export interface DocumentUpdate {
+  title?: string;
+  content?: Record<string, unknown>;
+  icon?: string;
+  cover_image?: string;
+  is_auto_save?: boolean;
+}
+
+// ============ Document API ============
+
+export const documentApi = {
+  // Document CRUD
+  create: async (workspaceId: string, data: DocumentCreate): Promise<Document> => {
+    const response = await api.post(`/workspaces/${workspaceId}/documents`, data);
+    return response.data;
+  },
+
+  list: async (
+    workspaceId: string,
+    options?: { parent_id?: string; search?: string; limit?: number; offset?: number }
+  ): Promise<DocumentListItem[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/documents`, { params: options });
+    return response.data;
+  },
+
+  getTree: async (
+    workspaceId: string,
+    options?: { parent_id?: string; include_templates?: boolean }
+  ): Promise<DocumentTreeItem[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/documents/tree`, { params: options });
+    return response.data;
+  },
+
+  get: async (workspaceId: string, documentId: string): Promise<Document> => {
+    const response = await api.get(`/workspaces/${workspaceId}/documents/${documentId}`);
+    return response.data;
+  },
+
+  update: async (workspaceId: string, documentId: string, data: DocumentUpdate): Promise<Document> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/documents/${documentId}`, data);
+    return response.data;
+  },
+
+  delete: async (workspaceId: string, documentId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/documents/${documentId}`);
+  },
+
+  move: async (
+    workspaceId: string,
+    documentId: string,
+    data: { new_parent_id?: string; position: number }
+  ): Promise<Document> => {
+    const response = await api.post(`/workspaces/${workspaceId}/documents/${documentId}/move`, data);
+    return response.data;
+  },
+
+  duplicate: async (
+    workspaceId: string,
+    documentId: string,
+    includeChildren?: boolean
+  ): Promise<Document> => {
+    const response = await api.post(`/workspaces/${workspaceId}/documents/${documentId}/duplicate`, null, {
+      params: { include_children: includeChildren },
+    });
+    return response.data;
+  },
+
+  // Version History
+  getVersions: async (
+    workspaceId: string,
+    documentId: string,
+    options?: { limit?: number; offset?: number }
+  ): Promise<DocumentVersion[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/documents/${documentId}/versions`, {
+      params: options,
+    });
+    return response.data;
+  },
+
+  restoreVersion: async (workspaceId: string, documentId: string, versionId: string): Promise<Document> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/documents/${documentId}/restore/${versionId}`
+    );
+    return response.data;
+  },
+
+  // Code Links
+  createCodeLink: async (
+    workspaceId: string,
+    documentId: string,
+    data: {
+      repository_id: string;
+      path: string;
+      link_type?: DocumentLinkType;
+      branch?: string;
+      section_id?: string;
+    }
+  ): Promise<DocumentCodeLink> => {
+    const response = await api.post(`/workspaces/${workspaceId}/documents/${documentId}/code-links`, data);
+    return response.data;
+  },
+
+  getCodeLinks: async (workspaceId: string, documentId: string): Promise<DocumentCodeLink[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/documents/${documentId}/code-links`);
+    return response.data;
+  },
+
+  deleteCodeLink: async (workspaceId: string, documentId: string, linkId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/documents/${documentId}/code-links/${linkId}`);
+  },
+
+  // Collaborators
+  addCollaborator: async (
+    workspaceId: string,
+    documentId: string,
+    data: { developer_id: string; permission?: DocumentPermission }
+  ): Promise<DocumentCollaborator> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/documents/${documentId}/collaborators`,
+      data
+    );
+    return response.data;
+  },
+
+  updateCollaborator: async (
+    workspaceId: string,
+    documentId: string,
+    developerId: string,
+    permission: DocumentPermission
+  ): Promise<void> => {
+    await api.patch(`/workspaces/${workspaceId}/documents/${documentId}/collaborators/${developerId}`, {
+      permission,
+    });
+  },
+
+  removeCollaborator: async (workspaceId: string, documentId: string, developerId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/documents/${documentId}/collaborators/${developerId}`);
+  },
+
+  // AI Generation
+  generate: async (
+    workspaceId: string,
+    documentId: string,
+    templateCategory?: string
+  ): Promise<{ status: string; document_id: string; content: Record<string, unknown> }> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/documents/${documentId}/generate`,
+      null,
+      { params: { template_category: templateCategory || "function_docs" } }
+    );
+    return response.data;
+  },
+
+  generateFromCode: async (
+    workspaceId: string,
+    code: string,
+    options?: {
+      template_category?: string;
+      file_path?: string;
+      language?: string;
+    }
+  ): Promise<{ status: string; content: Record<string, unknown> }> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/documents/generate-from-code`,
+      null,
+      {
+        params: {
+          code,
+          template_category: options?.template_category || "function_docs",
+          file_path: options?.file_path,
+          language: options?.language,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  suggestImprovements: async (
+    workspaceId: string,
+    documentId: string
+  ): Promise<{
+    status: string;
+    document_id: string;
+    suggestions: {
+      quality_score: number;
+      improvements: Array<{
+        priority: string;
+        section: string;
+        issue: string;
+        suggestion: string;
+      }>;
+      missing_sections: string[];
+      overall_assessment: string;
+    };
+  }> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/documents/${documentId}/suggest-improvements`
+    );
+    return response.data;
+  },
+
+  // GitHub Sync
+  setupGitHubSync: async (
+    workspaceId: string,
+    documentId: string,
+    options: {
+      repository_id: string;
+      file_path: string;
+      branch?: string;
+      sync_direction?: "export_only" | "import_only" | "bidirectional";
+      auto_export?: boolean;
+      auto_import?: boolean;
+    }
+  ): Promise<GitHubSyncConfig> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/documents/${documentId}/github-sync`,
+      null,
+      { params: options }
+    );
+    return response.data;
+  },
+
+  getGitHubSyncConfigs: async (
+    workspaceId: string,
+    documentId: string
+  ): Promise<GitHubSyncConfig[]> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/documents/${documentId}/github-sync`
+    );
+    return response.data;
+  },
+
+  exportToGitHub: async (
+    workspaceId: string,
+    documentId: string,
+    syncId: string,
+    commitMessage?: string
+  ): Promise<{ status: string; commit_sha?: string; file_path?: string; branch?: string; message?: string }> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/documents/${documentId}/github-sync/${syncId}/export`,
+      null,
+      { params: { commit_message: commitMessage } }
+    );
+    return response.data;
+  },
+
+  importFromGitHub: async (
+    workspaceId: string,
+    documentId: string,
+    syncId: string,
+    createVersion?: boolean
+  ): Promise<{ status: string; file_sha?: string; file_path?: string; title?: string; message?: string }> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/documents/${documentId}/github-sync/${syncId}/import`,
+      null,
+      { params: { create_version: createVersion ?? true } }
+    );
+    return response.data;
+  },
+
+  deleteGitHubSync: async (workspaceId: string, documentId: string, syncId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/documents/${documentId}/github-sync/${syncId}`);
+  },
+};
+
+// ============ Template API ============
+
+export const templateApi = {
+  list: async (options?: {
+    workspace_id?: string;
+    category?: TemplateCategory;
+    include_system?: boolean;
+  }): Promise<TemplateListItem[]> => {
+    const response = await api.get("/templates", { params: options });
+    return response.data;
+  },
+
+  get: async (templateId: string): Promise<DocumentTemplate> => {
+    const response = await api.get(`/templates/${templateId}`);
+    return response.data;
+  },
+
+  create: async (
+    workspaceId: string,
+    data: {
+      name: string;
+      category: TemplateCategory;
+      content_template: Record<string, unknown>;
+      prompt_template: string;
+      variables: string[];
+      description?: string;
+      icon?: string;
+      system_prompt?: string;
+    }
+  ): Promise<DocumentTemplate> => {
+    const response = await api.post("/templates", data, { params: { workspace_id: workspaceId } });
+    return response.data;
+  },
+
+  duplicate: async (templateId: string, workspaceId: string): Promise<DocumentTemplate> => {
+    const response = await api.post(`/templates/${templateId}/duplicate`, null, {
+      params: { workspace_id: workspaceId },
+    });
+    return response.data;
+  },
+};
+
+// ============ Tracking Types ============
+
+export type TrackingSource = "slack_command" | "slack_channel" | "web" | "api" | "inferred";
+export type BlockerSeverity = "low" | "medium" | "high" | "critical";
+export type BlockerCategory = "technical" | "dependency" | "resource" | "external" | "process" | "other";
+export type BlockerStatus = "active" | "resolved" | "escalated";
+export type WorkLogType = "progress" | "note" | "question" | "decision" | "update";
+export type ChannelType = "standup" | "team" | "project" | "general";
+
+export interface Standup {
+  id: string;
+  developer_id: string;
+  team_id: string;
+  sprint_id: string | null;
+  workspace_id: string;
+  standup_date: string;
+  yesterday_summary: string;
+  today_plan: string;
+  blockers_summary: string | null;
+  source: TrackingSource;
+  slack_message_ts: string | null;
+  slack_channel_id: string | null;
+  parsed_tasks: Record<string, unknown>[] | null;
+  parsed_blockers: Record<string, unknown>[] | null;
+  sentiment_score: number | null;
+  productivity_signals: Record<string, unknown> | null;
+  submitted_at: string;
+  created_at: string;
+  updated_at: string;
+  developer_name: string | null;
+  developer_avatar: string | null;
+}
+
+export interface StandupCreate {
+  team_id: string;
+  sprint_id?: string;
+  standup_date?: string;
+  yesterday_summary: string;
+  today_plan: string;
+  blockers_summary?: string;
+  source?: TrackingSource;
+}
+
+export interface StandupListResponse {
+  standups: Standup[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface WorkLog {
+  id: string;
+  developer_id: string;
+  task_id: string | null;
+  sprint_id: string | null;
+  workspace_id: string;
+  notes: string;
+  log_type: WorkLogType;
+  source: TrackingSource;
+  slack_message_ts: string | null;
+  slack_channel_id: string | null;
+  external_task_ref: string | null;
+  logged_at: string;
+  created_at: string;
+  developer_name: string | null;
+  task_title: string | null;
+}
+
+export interface WorkLogCreate {
+  task_id?: string;
+  external_task_ref?: string;
+  sprint_id?: string;
+  notes: string;
+  log_type?: WorkLogType;
+  source?: TrackingSource;
+}
+
+export interface WorkLogListResponse {
+  logs: WorkLog[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface TimeEntry {
+  id: string;
+  developer_id: string;
+  task_id: string | null;
+  sprint_id: string | null;
+  workspace_id: string;
+  duration_minutes: number;
+  description: string | null;
+  entry_date: string;
+  started_at: string | null;
+  ended_at: string | null;
+  source: TrackingSource;
+  slack_message_ts: string | null;
+  is_inferred: boolean;
+  confidence_score: number | null;
+  inference_metadata: Record<string, unknown> | null;
+  external_task_ref: string | null;
+  created_at: string;
+  updated_at: string;
+  developer_name: string | null;
+  task_title: string | null;
+}
+
+export interface TimeEntryCreate {
+  task_id?: string;
+  external_task_ref?: string;
+  sprint_id?: string;
+  duration_minutes: number;
+  description?: string;
+  entry_date?: string;
+  started_at?: string;
+  ended_at?: string;
+  source?: TrackingSource;
+}
+
+export interface TimeEntryListResponse {
+  entries: TimeEntry[];
+  total: number;
+  total_minutes: number;
+  page: number;
+  page_size: number;
+}
+
+export interface Blocker {
+  id: string;
+  developer_id: string;
+  task_id: string | null;
+  sprint_id: string | null;
+  team_id: string;
+  workspace_id: string;
+  description: string;
+  severity: BlockerSeverity;
+  category: BlockerCategory;
+  status: BlockerStatus;
+  resolved_at: string | null;
+  resolution_notes: string | null;
+  resolved_by_id: string | null;
+  source: TrackingSource;
+  slack_message_ts: string | null;
+  slack_channel_id: string | null;
+  standup_id: string | null;
+  escalated_to_id: string | null;
+  escalated_at: string | null;
+  escalation_notes: string | null;
+  external_task_ref: string | null;
+  reported_at: string;
+  created_at: string;
+  updated_at: string;
+  developer_name: string | null;
+  resolved_by_name: string | null;
+  escalated_to_name: string | null;
+  task_title: string | null;
+}
+
+export interface BlockerCreate {
+  team_id: string;
+  task_id?: string;
+  external_task_ref?: string;
+  sprint_id?: string;
+  description: string;
+  severity?: BlockerSeverity;
+  category?: BlockerCategory;
+  source?: TrackingSource;
+}
+
+export interface BlockerListResponse {
+  blockers: Blocker[];
+  total: number;
+  active_count: number;
+  resolved_count: number;
+  escalated_count: number;
+  page: number;
+  page_size: number;
+}
+
+export interface TodayStandupStatus {
+  submitted: boolean;
+  standup_id: string | null;
+  submitted_at: string | null;
+}
+
+export interface ActiveTaskSummary {
+  task_id: string;
+  task_title: string;
+  status: string;
+  time_logged_today: number;
+  total_time_logged: number;
+  last_activity: string | null;
+}
+
+export interface WeeklySummary {
+  standups_submitted: number;
+  standups_expected: number;
+  total_time_logged: number;
+  work_logs_count: number;
+  blockers_reported: number;
+  blockers_resolved: number;
+}
+
+export interface IndividualDashboard {
+  developer_id: string;
+  developer_name: string | null;
+  today_standup: TodayStandupStatus;
+  active_tasks: ActiveTaskSummary[];
+  active_blockers: Blocker[];
+  time_logged_today: number;
+  weekly_summary: WeeklySummary;
+  activity_pattern: Record<string, unknown> | null;
+}
+
+export interface TeamMemberStandupStatus {
+  developer_id: string;
+  developer_name: string;
+  developer_avatar: string | null;
+  submitted: boolean;
+  submitted_at: string | null;
+}
+
+export interface TeamDashboard {
+  team_id: string;
+  team_name: string | null;
+  today_date: string;
+  standup_completion: TeamMemberStandupStatus[];
+  participation_rate: number;
+  active_blockers: Blocker[];
+  blockers_by_severity: Record<string, number>;
+  sprint_progress: Record<string, unknown> | null;
+  total_time_logged_today: number;
+  recent_work_logs: WorkLog[];
+}
+
+export interface SlackChannelConfig {
+  id: string;
+  integration_id: string;
+  team_id: string;
+  workspace_id: string;
+  channel_id: string;
+  channel_name: string;
+  channel_type: ChannelType;
+  auto_parse_standups: boolean;
+  auto_parse_task_refs: boolean;
+  auto_parse_blockers: boolean;
+  standup_prompt_time: string | null;
+  standup_format_hint: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SlackChannelConfigCreate {
+  integration_id: string;
+  team_id: string;
+  channel_id: string;
+  channel_name: string;
+  channel_type?: ChannelType;
+  auto_parse_standups?: boolean;
+  auto_parse_task_refs?: boolean;
+  auto_parse_blockers?: boolean;
+  standup_prompt_time?: string;
+  standup_format_hint?: string;
+}
+
+// ============ Tracking API ============
+
+export const trackingApi = {
+  // Standups
+  getMyStandups: async (options?: { limit?: number; sprint_id?: string }): Promise<StandupListResponse> => {
+    const response = await api.get("/tracking/standups/me", { params: options });
+    return response.data;
+  },
+
+  getTeamStandups: async (teamId: string, date?: string): Promise<Standup[]> => {
+    const response = await api.get(`/tracking/standups/team/${teamId}`, { params: { standup_date: date } });
+    return response.data;
+  },
+
+  submitStandup: async (data: StandupCreate): Promise<Standup> => {
+    const response = await api.post("/tracking/standups", data);
+    return response.data;
+  },
+
+  // Work Logs
+  getMyLogs: async (options?: { limit?: number; task_id?: string }): Promise<WorkLogListResponse> => {
+    const response = await api.get("/tracking/logs/me", { params: options });
+    return response.data;
+  },
+
+  getTaskLogs: async (taskId: string): Promise<WorkLog[]> => {
+    const response = await api.get(`/tracking/logs/task/${taskId}`);
+    return response.data;
+  },
+
+  createLog: async (data: WorkLogCreate): Promise<WorkLog> => {
+    const response = await api.post("/tracking/logs", data);
+    return response.data;
+  },
+
+  // Time Entries
+  getMyTimeEntries: async (options?: { start_date?: string; end_date?: string }): Promise<TimeEntryListResponse> => {
+    const response = await api.get("/tracking/time/me", { params: options });
+    return response.data;
+  },
+
+  logTime: async (data: TimeEntryCreate): Promise<TimeEntry> => {
+    const response = await api.post("/tracking/time", data);
+    return response.data;
+  },
+
+  getTaskTime: async (taskId: string): Promise<{ task_id: string; total_minutes: number; entry_count: number; entries: TimeEntry[] }> => {
+    const response = await api.get(`/tracking/time/task/${taskId}`);
+    return response.data;
+  },
+
+  // Blockers
+  getActiveBlockers: async (teamId?: string): Promise<BlockerListResponse> => {
+    const response = await api.get("/tracking/blockers/active", { params: { team_id: teamId } });
+    return response.data;
+  },
+
+  reportBlocker: async (data: BlockerCreate): Promise<Blocker> => {
+    const response = await api.post("/tracking/blockers", data);
+    return response.data;
+  },
+
+  resolveBlocker: async (blockerId: string, notes?: string): Promise<Blocker> => {
+    const response = await api.patch(`/tracking/blockers/${blockerId}/resolve`, { resolution_notes: notes });
+    return response.data;
+  },
+
+  escalateBlocker: async (blockerId: string, escalateToId: string, notes?: string): Promise<Blocker> => {
+    const response = await api.patch(`/tracking/blockers/${blockerId}/escalate`, { escalate_to_id: escalateToId, escalation_notes: notes });
+    return response.data;
+  },
+
+  // Dashboards
+  getMyDashboard: async (): Promise<IndividualDashboard> => {
+    const response = await api.get("/tracking/dashboard/me");
+    return response.data;
+  },
+
+  getTeamDashboard: async (teamId: string): Promise<TeamDashboard> => {
+    const response = await api.get(`/tracking/dashboard/team/${teamId}`);
+    return response.data;
+  },
+
+  // Channel Config
+  getChannelConfigs: async (workspaceId: string): Promise<SlackChannelConfig[]> => {
+    const response = await api.get("/tracking/channels", { params: { workspace_id: workspaceId } });
+    return response.data;
+  },
+
+  createChannelConfig: async (data: SlackChannelConfigCreate): Promise<SlackChannelConfig> => {
+    const response = await api.post("/tracking/channels", data);
+    return response.data;
+  },
+
+  updateChannelConfig: async (configId: string, data: Partial<SlackChannelConfigCreate & { is_active?: boolean }>): Promise<SlackChannelConfig> => {
+    const response = await api.patch(`/tracking/channels/${configId}`, data);
+    return response.data;
+  },
+
+  deleteChannelConfig: async (configId: string): Promise<void> => {
+    await api.delete(`/tracking/channels/${configId}`);
+  },
+};
+
+// ============ Slack Integration API ============
+
+export interface SlackIntegration {
+  id: string;
+  organization_id: string;
+  team_id: string;
+  team_name: string;
+  bot_user_id: string;
+  is_active: boolean;
+  installed_at: string;
+  installed_by_id: string;
+  user_mappings: Record<string, string>;
+}
+
+export const slackApi = {
+  // Get install URL
+  getInstallUrl: (organizationId: string, installerId: string) => {
+    return `${API_BASE_URL}/slack/install?organization_id=${organizationId}&installer_id=${installerId}`;
+  },
+
+  // Get integration by organization
+  getIntegration: async (organizationId: string): Promise<SlackIntegration | null> => {
+    try {
+      const response = await api.get(`/slack/integration/org/${organizationId}`);
+      return response.data;
+    } catch {
+      return null;
+    }
+  },
+
+  // Get integration by ID
+  getIntegrationById: async (integrationId: string): Promise<SlackIntegration | null> => {
+    try {
+      const response = await api.get(`/slack/integration/${integrationId}`);
+      return response.data;
+    } catch {
+      return null;
+    }
+  },
+
+  // Update integration
+  updateIntegration: async (integrationId: string, data: {
+    is_active?: boolean;
+    notification_preferences?: Record<string, boolean>;
+  }): Promise<SlackIntegration> => {
+    const response = await api.put(`/slack/integration/${integrationId}`, data);
+    return response.data;
+  },
+
+  // Disconnect/uninstall
+  disconnect: async (integrationId: string): Promise<void> => {
+    await api.delete(`/slack/integration/${integrationId}`);
+  },
+
+  // Get notification logs
+  getNotificationLogs: async (integrationId: string, limit = 50): Promise<Array<{
+    id: string;
+    channel_id: string;
+    notification_type: string;
+    success: boolean;
+    error_message?: string;
+    sent_at: string;
+  }>> => {
+    const response = await api.get(`/slack/integration/${integrationId}/logs`, { params: { limit } });
+    return response.data;
+  },
+
+  // Map user
+  mapUser: async (integrationId: string, slackUserId: string, developerId: string): Promise<void> => {
+    await api.post(`/slack/integration/${integrationId}/user-mapping`, {
+      slack_user_id: slackUserId,
+      developer_id: developerId,
+    });
+  },
+
+  // Unmap user
+  unmapUser: async (integrationId: string, slackUserId: string): Promise<void> => {
+    await api.delete(`/slack/integration/${integrationId}/user-mapping/${slackUserId}`);
+  },
+};
+
+// ============ Slack Sync API ============
+
+export interface SlackChannel {
+  id: string;
+  name: string;
+  is_private: boolean;
+  num_members: number;
+}
+
+export interface SlackConfiguredChannel {
+  id: string;
+  channel_id: string;
+  channel_name: string;
+  channel_type: string;
+  team_id: string;
+  is_active: boolean;
+  auto_parse_standups: boolean;
+  auto_parse_task_refs: boolean;
+  auto_parse_blockers: boolean;
+}
+
+export interface SlackUserMappingStats {
+  total_slack_users: number;
+  total_developers: number;
+  newly_mapped: number;
+  already_mapped: number;
+  unmapped: number;
+}
+
+export interface SlackImportStats {
+  channels_processed: number;
+  total_messages: number;
+  standups_imported: number;
+  work_logs_imported: number;
+  blockers_imported: number;
+  skipped: number;
+  errors: Array<{ channel: string; error: string }>;
+}
+
+export const slackSyncApi = {
+  // Get available Slack channels
+  getChannels: async (integrationId: string): Promise<{ channels: SlackChannel[] }> => {
+    const response = await api.get(`/slack/integration/${integrationId}/channels`);
+    return response.data;
+  },
+
+  // Get configured channels for monitoring
+  getConfiguredChannels: async (integrationId: string): Promise<{ channels: SlackConfiguredChannel[] }> => {
+    const response = await api.get(`/slack/integration/${integrationId}/configured-channels`);
+    return response.data;
+  },
+
+  // Configure a channel for monitoring
+  configureChannel: async (
+    integrationId: string,
+    data: {
+      channel_id: string;
+      channel_name: string;
+      team_id: string;
+      channel_type?: string;
+      auto_parse_standups?: boolean;
+      auto_parse_task_refs?: boolean;
+      auto_parse_blockers?: boolean;
+    }
+  ): Promise<SlackConfiguredChannel> => {
+    const response = await api.post(`/slack/integration/${integrationId}/configure-channel`, null, { params: data });
+    return response.data;
+  },
+
+  // Remove channel config
+  removeChannelConfig: async (integrationId: string, configId: string): Promise<void> => {
+    await api.delete(`/slack/integration/${integrationId}/configured-channels/${configId}`);
+  },
+
+  // Import Slack history (async task)
+  importHistory: async (
+    integrationId: string,
+    options?: {
+      channel_ids?: string[];
+      days_back?: number;
+      team_id?: string;
+      sprint_id?: string;
+    }
+  ): Promise<{ task_id: string; status: string; message: string }> => {
+    const response = await api.post(`/slack/integration/${integrationId}/import-history`, null, { params: options });
+    return response.data;
+  },
+
+  // Trigger immediate sync
+  syncChannels: async (integrationId: string): Promise<{ task_id: string; status: string; message: string }> => {
+    const response = await api.post(`/slack/integration/${integrationId}/sync`);
+    return response.data;
+  },
+
+  // Auto-map Slack users to developers
+  autoMapUsers: async (integrationId: string): Promise<SlackUserMappingStats> => {
+    const response = await api.post(`/slack/integration/${integrationId}/auto-map-users`);
     return response.data;
   },
 };

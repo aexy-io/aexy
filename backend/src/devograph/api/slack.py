@@ -47,11 +47,18 @@ async def start_oauth_install(
     service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
 ):
     """Start Slack OAuth installation flow."""
+    # Check if Slack is configured
+    if not settings.slack_client_id or not settings.slack_client_secret:
+        raise HTTPException(
+            status_code=500,
+            detail="Slack integration is not configured. Please set SLACK_CLIENT_ID and SLACK_CLIENT_SECRET environment variables.",
+        )
+
     state = secrets.token_urlsafe(32)
     oauth_states[state] = {
         "organization_id": organization_id,
         "installer_id": installer_id,
-        "redirect_url": redirect_url or f"{settings.FRONTEND_URL}/settings/integrations",
+        "redirect_url": redirect_url or f"{settings.frontend_url}/settings/integrations",
     }
 
     install_url = service.get_install_url(state)
@@ -316,3 +323,226 @@ async def get_notification_logs(
     """Get notification logs for an integration."""
     logs = await service.get_notification_logs(integration_id, db, limit)
     return [SlackNotificationLogResponse.model_validate(log) for log in logs]
+
+
+# ==================== Slack Sync Endpoints ====================
+
+
+@router.get("/integration/{integration_id}/channels")
+async def get_slack_channels(
+    integration_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
+):
+    """Get list of Slack channels the bot has access to."""
+    from devograph.services.slack_history_sync import SlackHistorySyncService
+
+    integration = await service.get_integration(integration_id, db)
+    if not integration or not integration.is_active:
+        raise HTTPException(status_code=404, detail="Integration not found or inactive")
+
+    sync_service = SlackHistorySyncService()
+    channels = await sync_service.get_channels(integration)
+    return {
+        "channels": [
+            {
+                "id": ch["id"],
+                "name": ch["name"],
+                "is_private": ch.get("is_private", False),
+                "num_members": ch.get("num_members", 0),
+            }
+            for ch in channels
+        ]
+    }
+
+
+@router.post("/integration/{integration_id}/import-history")
+async def import_slack_history(
+    integration_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    channel_ids: list[str] | None = None,
+    days_back: int = 30,
+    team_id: str | None = None,
+    sprint_id: str | None = None,
+    service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
+):
+    """Import Slack message history (async task)."""
+    from devograph.processing.tracking_tasks import import_slack_history_task
+
+    integration = await service.get_integration(integration_id, db)
+    if not integration or not integration.is_active:
+        raise HTTPException(status_code=404, detail="Integration not found or inactive")
+
+    # Queue the import task
+    task = import_slack_history_task.delay(
+        integration_id=integration_id,
+        channel_ids=channel_ids,
+        days_back=days_back,
+        team_id=team_id,
+        sprint_id=sprint_id,
+    )
+
+    return {
+        "task_id": task.id,
+        "status": "queued",
+        "message": f"Import started for {days_back} days of history",
+    }
+
+
+@router.post("/integration/{integration_id}/sync")
+async def sync_slack_channels(
+    integration_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
+):
+    """Trigger immediate sync of all configured channels."""
+    from devograph.processing.tracking_tasks import sync_all_slack_channels_task
+
+    integration = await service.get_integration(integration_id, db)
+    if not integration or not integration.is_active:
+        raise HTTPException(status_code=404, detail="Integration not found or inactive")
+
+    # Queue the sync task
+    task = sync_all_slack_channels_task.delay(integration_id=integration_id)
+
+    return {
+        "task_id": task.id,
+        "status": "queued",
+        "message": "Sync started for all configured channels",
+    }
+
+
+@router.post("/integration/{integration_id}/auto-map-users")
+async def auto_map_slack_users(
+    integration_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
+):
+    """Auto-map Slack users to developers by email."""
+    from devograph.services.slack_history_sync import SlackHistorySyncService
+
+    integration = await service.get_integration(integration_id, db)
+    if not integration or not integration.is_active:
+        raise HTTPException(status_code=404, detail="Integration not found or inactive")
+
+    sync_service = SlackHistorySyncService()
+    stats = await sync_service.map_slack_users_to_developers(integration, db)
+    return stats
+
+
+@router.post("/integration/{integration_id}/configure-channel")
+async def configure_slack_channel(
+    integration_id: str,
+    channel_id: str,
+    channel_name: str,
+    team_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    channel_type: str = "team",
+    auto_parse_standups: bool = True,
+    auto_parse_task_refs: bool = True,
+    auto_parse_blockers: bool = True,
+    service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
+):
+    """Configure a Slack channel for monitoring."""
+    from devograph.services.slack_history_sync import SlackHistorySyncService
+
+    integration = await service.get_integration(integration_id, db)
+    if not integration or not integration.is_active:
+        raise HTTPException(status_code=404, detail="Integration not found or inactive")
+
+    sync_service = SlackHistorySyncService()
+    config = await sync_service.setup_channel_monitoring(
+        integration=integration,
+        channel_id=channel_id,
+        channel_name=channel_name,
+        team_id=team_id,
+        db=db,
+        channel_type=channel_type,
+        auto_parse_standups=auto_parse_standups,
+        auto_parse_task_refs=auto_parse_task_refs,
+        auto_parse_blockers=auto_parse_blockers,
+    )
+
+    return {
+        "id": config.id,
+        "channel_id": config.channel_id,
+        "channel_name": config.channel_name,
+        "channel_type": config.channel_type,
+        "is_active": config.is_active,
+        "auto_parse_standups": config.auto_parse_standups,
+        "auto_parse_task_refs": config.auto_parse_task_refs,
+        "auto_parse_blockers": config.auto_parse_blockers,
+    }
+
+
+@router.get("/integration/{integration_id}/configured-channels")
+async def get_configured_channels(
+    integration_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
+):
+    """Get list of channels configured for monitoring."""
+    from sqlalchemy import select
+    from devograph.models.tracking import SlackChannelConfig
+
+    integration = await service.get_integration(integration_id, db)
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration not found")
+
+    result = await db.execute(
+        select(SlackChannelConfig).where(
+            SlackChannelConfig.integration_id == integration_id
+        )
+    )
+    configs = result.scalars().all()
+
+    return {
+        "channels": [
+            {
+                "id": config.id,
+                "channel_id": config.channel_id,
+                "channel_name": config.channel_name,
+                "channel_type": config.channel_type,
+                "team_id": config.team_id,
+                "is_active": config.is_active,
+                "auto_parse_standups": config.auto_parse_standups,
+                "auto_parse_task_refs": config.auto_parse_task_refs,
+                "auto_parse_blockers": config.auto_parse_blockers,
+            }
+            for config in configs
+        ]
+    }
+
+
+@router.delete("/integration/{integration_id}/configured-channels/{config_id}")
+async def remove_channel_config(
+    integration_id: str,
+    config_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
+):
+    """Remove a channel from monitoring."""
+    from sqlalchemy import select, and_
+    from devograph.models.tracking import SlackChannelConfig
+
+    integration = await service.get_integration(integration_id, db)
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration not found")
+
+    result = await db.execute(
+        select(SlackChannelConfig).where(
+            and_(
+                SlackChannelConfig.id == config_id,
+                SlackChannelConfig.integration_id == integration_id,
+            )
+        )
+    )
+    config = result.scalar_one_or_none()
+
+    if not config:
+        raise HTTPException(status_code=404, detail="Channel config not found")
+
+    await db.delete(config)
+    await db.commit()
+
+    return {"success": True}

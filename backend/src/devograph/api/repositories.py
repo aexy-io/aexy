@@ -396,3 +396,167 @@ async def get_usage_summary(
         return await limits_service.get_usage_summary(developer_id)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+# === FILE BROWSING ===
+
+
+@router.get("/{repo_id}/contents")
+async def get_repository_contents(
+    repo_id: str,
+    path: str = Query("", description="Path within the repository"),
+    ref: str = Query("main", description="Branch, tag, or commit SHA"),
+    developer_id: str = Depends(get_current_developer_id),
+    db: AsyncSession = Depends(get_db),
+) -> list[dict]:
+    """Browse contents of a repository directory.
+
+    Returns list of files and directories at the specified path.
+    """
+    repo_service = RepositoryService(db)
+    app_service = GitHubAppService(db)
+
+    try:
+        # Get the repository
+        repo = await repo_service.get_repository_by_id(repo_id)
+        if not repo:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Repository not found",
+            )
+
+        # Get installation token for the developer
+        token_result = await app_service.get_installation_token_for_developer(
+            developer_id, repo.owner_login
+        )
+        if not token_result:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No GitHub App installation found. Please install the app first.",
+            )
+
+        token, installation_id = token_result
+
+        # Get contents
+        contents = await app_service.get_repository_contents(
+            installation_id=installation_id,
+            owner=repo.owner_login,
+            repo=repo.name,
+            path=path,
+            ref=ref,
+        )
+
+        return contents
+
+    except GitHubAppError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+
+@router.get("/{repo_id}/file")
+async def get_file_content(
+    repo_id: str,
+    path: str = Query(..., description="Path to the file"),
+    ref: str = Query("main", description="Branch, tag, or commit SHA"),
+    developer_id: str = Depends(get_current_developer_id),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Get content of a specific file.
+
+    Returns file content along with metadata.
+    """
+    repo_service = RepositoryService(db)
+    app_service = GitHubAppService(db)
+
+    try:
+        # Get the repository
+        repo = await repo_service.get_repository_by_id(repo_id)
+        if not repo:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Repository not found",
+            )
+
+        # Get installation token for the developer
+        token_result = await app_service.get_installation_token_for_developer(
+            developer_id, repo.owner_login
+        )
+        if not token_result:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No GitHub App installation found. Please install the app first.",
+            )
+
+        token, installation_id = token_result
+
+        # Get file content
+        file_content = await app_service.get_file_content(
+            installation_id=installation_id,
+            owner=repo.owner_login,
+            repo=repo.name,
+            path=path,
+            ref=ref,
+        )
+
+        if not file_content:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="File not found",
+            )
+
+        return file_content
+
+    except GitHubAppError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+
+@router.get("/{repo_id}/branches")
+async def get_repository_branches(
+    repo_id: str,
+    developer_id: str = Depends(get_current_developer_id),
+    db: AsyncSession = Depends(get_db),
+) -> list[dict]:
+    """Get list of branches for a repository."""
+    repo_service = RepositoryService(db)
+    app_service = GitHubAppService(db)
+
+    try:
+        # Get the repository
+        repo = await repo_service.get_repository_by_id(repo_id)
+        if not repo:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Repository not found",
+            )
+
+        # Get installation token for the developer
+        token_result = await app_service.get_installation_token_for_developer(
+            developer_id, repo.owner_login
+        )
+        if not token_result:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No GitHub App installation found. Please install the app first.",
+            )
+
+        token, installation_id = token_result
+
+        # Get branches
+        branches = await app_service.get_repository_branches(
+            installation_id=installation_id,
+            owner=repo.owner_login,
+            repo=repo.name,
+        )
+
+        return branches
+
+    except GitHubAppError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )

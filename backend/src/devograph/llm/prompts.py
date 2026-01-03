@@ -728,3 +728,316 @@ Respond with JSON:
   "recommendations": ["team improvement recommendations"],
   "suggested_hires": ["skills to hire for"]
 }}"""
+
+
+# ============================================================================
+# Phase 5: Documentation Generation Prompts
+# ============================================================================
+
+DOC_GENERATION_SYSTEM_PROMPT = """You are an expert technical documentation writer.
+Generate clear, comprehensive, and well-structured documentation from source code.
+Use proper formatting, include examples where helpful, and ensure documentation is accurate and up-to-date.
+Always respond with valid JSON that can be converted to TipTap editor format."""
+
+DOC_API_SYSTEM_PROMPT = """You are an expert API documentation writer.
+Generate comprehensive API documentation including endpoints, parameters, response formats, and examples.
+Follow industry best practices for API documentation (similar to Stripe, Twilio docs).
+Always respond with valid JSON in TipTap-compatible format."""
+
+DOC_API_PROMPT = """Generate comprehensive API documentation for the following code.
+
+File path: {file_path}
+Language: {language}
+
+Source code:
+```{language}
+{code}
+```
+
+Additional context:
+{context}
+
+Generate API documentation including:
+1. Overview and purpose
+2. Authentication requirements (if detected)
+3. Base URL patterns
+4. For each endpoint/function:
+   - HTTP method and path
+   - Description
+   - Request parameters (path, query, body)
+   - Response format with examples
+   - Error codes and handling
+5. Code examples in multiple languages if applicable
+
+Respond with JSON in TipTap document format:
+{{
+  "type": "doc",
+  "content": [
+    {{
+      "type": "heading",
+      "attrs": {{"level": 1}},
+      "content": [{{"type": "text", "text": "API title"}}]
+    }},
+    {{
+      "type": "paragraph",
+      "content": [{{"type": "text", "text": "Description"}}]
+    }},
+    {{
+      "type": "heading",
+      "attrs": {{"level": 2}},
+      "content": [{{"type": "text", "text": "Endpoints"}}]
+    }},
+    // ... more content
+  ],
+  "metadata": {{
+    "endpoints_count": 0,
+    "methods": ["GET", "POST"],
+    "has_auth": true
+  }}
+}}"""
+
+DOC_README_SYSTEM_PROMPT = """You are an expert technical writer creating project README files.
+Generate clear, welcoming, and comprehensive README documentation.
+Include all essential sections that help developers get started quickly.
+Always respond with valid JSON in TipTap-compatible format."""
+
+DOC_README_PROMPT = """Generate a comprehensive README for this project/module.
+
+Repository/Module: {name}
+Path: {path}
+
+Source files:
+{files_summary}
+
+Package configuration (if available):
+{package_config}
+
+Dependencies:
+{dependencies}
+
+Generate a README including:
+1. Project title and badges
+2. Brief description and purpose
+3. Features/highlights
+4. Installation instructions
+5. Quick start / Usage examples
+6. Configuration options
+7. API reference (brief)
+8. Contributing guidelines
+9. License information
+
+Respond with JSON in TipTap document format:
+{{
+  "type": "doc",
+  "content": [
+    {{
+      "type": "heading",
+      "attrs": {{"level": 1}},
+      "content": [{{"type": "text", "text": "Project Name"}}]
+    }},
+    {{
+      "type": "paragraph",
+      "content": [{{"type": "text", "text": "Brief description"}}]
+    }},
+    // ... more sections
+  ],
+  "metadata": {{
+    "has_installation": true,
+    "has_examples": true,
+    "languages": ["python", "typescript"]
+  }}
+}}"""
+
+DOC_FUNCTION_SYSTEM_PROMPT = """You are an expert at documenting functions, methods, and classes.
+Generate detailed documentation with clear explanations, parameter descriptions, and usage examples.
+Always respond with valid JSON in TipTap-compatible format."""
+
+DOC_FUNCTION_PROMPT = """Generate detailed documentation for this function/method/class.
+
+File path: {file_path}
+Language: {language}
+
+Code:
+```{language}
+{code}
+```
+
+Context (surrounding code or related functions):
+{context}
+
+Generate documentation including:
+1. Name and signature
+2. Brief description (one line)
+3. Detailed description
+4. Parameters with types and descriptions
+5. Return value description
+6. Exceptions/errors that can be raised
+7. Usage examples (at least 2)
+8. Related functions/methods
+9. Notes or caveats
+
+Respond with JSON in TipTap document format:
+{{
+  "type": "doc",
+  "content": [
+    {{
+      "type": "heading",
+      "attrs": {{"level": 1}},
+      "content": [{{"type": "text", "text": "function_name"}}]
+    }},
+    {{
+      "type": "codeBlock",
+      "attrs": {{"language": "{language}"}},
+      "content": [{{"type": "text", "text": "function signature"}}]
+    }},
+    // ... parameters, examples, etc.
+  ],
+  "metadata": {{
+    "function_name": "name",
+    "parameters_count": 0,
+    "has_return": true,
+    "complexity": "low|medium|high"
+  }}
+}}"""
+
+DOC_MODULE_SYSTEM_PROMPT = """You are an expert at documenting software modules and packages.
+Generate comprehensive module documentation that helps developers understand architecture and usage.
+Always respond with valid JSON in TipTap-compatible format."""
+
+DOC_MODULE_PROMPT = """Generate comprehensive documentation for this module/directory.
+
+Module path: {path}
+Language: {language}
+
+Files in module:
+{files_list}
+
+Key file contents:
+{key_files}
+
+Dependencies/imports:
+{dependencies}
+
+Generate module documentation including:
+1. Module overview and purpose
+2. Architecture overview
+3. Key components and their responsibilities
+4. Public API summary
+5. Usage patterns and examples
+6. Configuration options
+7. Integration with other modules
+8. Best practices
+
+Respond with JSON in TipTap document format:
+{{
+  "type": "doc",
+  "content": [
+    {{
+      "type": "heading",
+      "attrs": {{"level": 1}},
+      "content": [{{"type": "text", "text": "Module Name"}}]
+    }},
+    {{
+      "type": "paragraph",
+      "content": [{{"type": "text", "text": "Overview"}}]
+    }},
+    // ... architecture, components, etc.
+  ],
+  "metadata": {{
+    "files_count": 0,
+    "exports_count": 0,
+    "has_tests": true,
+    "complexity": "low|medium|high"
+  }}
+}}"""
+
+DOC_UPDATE_SYSTEM_PROMPT = """You are an expert at maintaining and updating technical documentation.
+Analyze existing documentation against current code and suggest intelligent updates.
+Preserve existing structure and style while incorporating new information.
+Always respond with valid JSON in TipTap-compatible format."""
+
+DOC_UPDATE_PROMPT = """Update the existing documentation based on code changes.
+
+Existing documentation:
+{existing_doc}
+
+Previous code version:
+```{language}
+{old_code}
+```
+
+Current code version:
+```{language}
+{new_code}
+```
+
+Changes detected:
+{changes_summary}
+
+Update the documentation to:
+1. Reflect all code changes accurately
+2. Preserve existing style and structure
+3. Update examples if function signatures changed
+4. Add documentation for new features
+5. Mark deprecated features if applicable
+6. Update version/changelog if present
+
+Respond with JSON containing:
+{{
+  "updated_doc": {{
+    "type": "doc",
+    "content": [/* TipTap content */]
+  }},
+  "changes_made": [
+    {{
+      "section": "section name",
+      "change_type": "added|updated|removed|deprecated",
+      "description": "what changed"
+    }}
+  ],
+  "suggestions": ["additional improvements to consider"],
+  "confidence": 0.0-1.0
+}}"""
+
+DOC_IMPROVEMENT_SYSTEM_PROMPT = """You are an expert technical documentation reviewer.
+Analyze documentation quality and suggest specific improvements.
+Focus on clarity, completeness, accuracy, and developer experience.
+Always respond with valid JSON."""
+
+DOC_IMPROVEMENT_PROMPT = """Analyze this documentation and suggest improvements.
+
+Documentation:
+{documentation}
+
+Related source code (if available):
+```{language}
+{code}
+```
+
+Documentation category: {category}
+
+Analyze for:
+1. Completeness - missing sections or information
+2. Clarity - confusing or unclear explanations
+3. Accuracy - outdated or incorrect information
+4. Examples - missing or poor code examples
+5. Structure - organization and navigation
+6. SEO/Discoverability - titles, descriptions
+
+Respond with JSON:
+{{
+  "quality_score": 0-100,
+  "improvements": [
+    {{
+      "priority": "critical|high|medium|low",
+      "section": "section name or location",
+      "issue": "what's wrong",
+      "suggestion": "how to fix it",
+      "example": "optional improved text"
+    }}
+  ],
+  "missing_sections": ["sections that should be added"],
+  "outdated_content": ["content that appears outdated"],
+  "strengths": ["what the documentation does well"],
+  "overall_assessment": "summary of documentation quality"
+}}"""""

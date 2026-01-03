@@ -44,6 +44,12 @@ from devograph.api.notifications import router as notifications_router
 # On-Call Scheduling
 from devograph.api.oncall import router as oncall_router
 from devograph.api.google_calendar import router as google_calendar_router
+# Documentation
+from devograph.api.documents import router as documents_router
+from devograph.api.documents import template_router as templates_router
+from devograph.api.collaboration import router as collaboration_router
+# Tracking
+from devograph.api.tracking import router as tracking_router
 
 api_router = APIRouter()
 
@@ -93,3 +99,9 @@ api_router.include_router(notifications_router, tags=["notifications"])
 # On-Call Scheduling
 api_router.include_router(oncall_router, tags=["oncall"])
 api_router.include_router(google_calendar_router, tags=["google-calendar"])
+# Documentation
+api_router.include_router(documents_router, tags=["documents"])
+api_router.include_router(templates_router, tags=["templates"])
+api_router.include_router(collaboration_router, tags=["collaboration"])
+# Tracking
+api_router.include_router(tracking_router, tags=["tracking"])
