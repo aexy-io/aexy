@@ -138,7 +138,9 @@ async def trigger_batch_processing() -> BatchTriggerResponse:
 
 
 @router.get("/llm/usage", response_model=LLMUsageStats)
-async def get_llm_usage_stats() -> LLMUsageStats:
+async def get_llm_usage_stats(
+    db: AsyncSession = Depends(get_db),
+) -> LLMUsageStats:
     """Get LLM API usage statistics.
 
     Returns usage data including:
@@ -147,16 +149,66 @@ async def get_llm_usage_stats() -> LLMUsageStats:
     - Cache hit rate
     - Cost estimate
     """
-    # TODO: Implement actual usage tracking
-    return LLMUsageStats(
-        total_requests=0,
-        total_tokens=0,
-        requests_today=0,
-        tokens_today=0,
-        cache_hit_rate=0.0,
-        average_latency_ms=0.0,
-        cost_estimate_usd=0.0,
-    )
+    from datetime import datetime, timezone
+    from sqlalchemy import func
+    from devograph.models.billing import UsageRecord
+
+    try:
+        # Get today's start timestamp
+        now = datetime.now(timezone.utc)
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        # Total usage stats
+        total_stmt = select(
+            func.count(UsageRecord.id).label("total_requests"),
+            func.sum(UsageRecord.total_tokens).label("total_tokens"),
+            func.sum(UsageRecord.total_cost_cents).label("total_cost"),
+        )
+        total_result = await db.execute(total_stmt)
+        total_row = total_result.one()
+
+        # Today's usage
+        today_stmt = select(
+            func.count(UsageRecord.id).label("requests_today"),
+            func.sum(UsageRecord.total_tokens).label("tokens_today"),
+        ).where(UsageRecord.created_at >= today_start)
+        today_result = await db.execute(today_stmt)
+        today_row = today_result.one()
+
+        # Get cache stats if available
+        cache = get_analysis_cache()
+        cache_hit_rate = 0.0
+        if cache:
+            try:
+                stats = await cache.get_stats()
+                hits = stats.get("hits", 0)
+                misses = stats.get("misses", 0)
+                total_cache_requests = hits + misses
+                if total_cache_requests > 0:
+                    cache_hit_rate = hits / total_cache_requests
+            except Exception:
+                pass
+
+        return LLMUsageStats(
+            total_requests=total_row.total_requests or 0,
+            total_tokens=total_row.total_tokens or 0,
+            requests_today=today_row.requests_today or 0,
+            tokens_today=today_row.tokens_today or 0,
+            cache_hit_rate=cache_hit_rate,
+            average_latency_ms=0.0,  # TODO: Track latency in UsageRecord
+            cost_estimate_usd=(total_row.total_cost or 0) / 100.0,  # Convert cents to USD
+        )
+    except Exception as e:
+        logger.error(f"Failed to get LLM usage stats: {e}")
+        return LLMUsageStats(
+            total_requests=0,
+            total_tokens=0,
+            requests_today=0,
+            tokens_today=0,
+            cache_hit_rate=0.0,
+            average_latency_ms=0.0,
+            cost_estimate_usd=0.0,
+        )
 
 
 @router.post("/cache/clear")
