@@ -5,12 +5,116 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from devograph.cache import get_analysis_cache
 from devograph.core.config import get_settings
+from devograph.core.database import get_db
 from devograph.llm.gateway import get_llm_gateway
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# CELERY MONITORING HELPERS
+# =============================================================================
+
+
+async def get_celery_stats() -> dict[str, Any]:
+    """Get Celery queue and worker statistics.
+
+    Returns:
+        Dict with queue_length, workers_active, and worker_details.
+    """
+    try:
+        from devograph.processing.celery_app import celery_app
+        import redis.asyncio as aioredis
+
+        settings = get_settings()
+        stats = {
+            "queue_length": 0,
+            "workers_active": 0,
+            "worker_details": [],
+            "queues": {},
+        }
+
+        # Get queue lengths from Redis
+        try:
+            redis_client = aioredis.from_url(settings.redis_url)
+
+            # Check multiple queues
+            queues = ["celery", "sync", "analysis", "batch", "tracking"]
+            total_length = 0
+
+            for queue in queues:
+                length = await redis_client.llen(queue)
+                stats["queues"][queue] = length
+                total_length += length
+
+            stats["queue_length"] = total_length
+            await redis_client.close()
+        except Exception as e:
+            logger.warning(f"Failed to get queue lengths from Redis: {e}")
+
+        # Get active workers using Celery inspect
+        try:
+            # Celery inspect is sync, run in executor
+            import asyncio
+
+            def get_workers():
+                inspect = celery_app.control.inspect()
+                active = inspect.active()
+                stats_info = inspect.stats()
+
+                workers = []
+                worker_count = 0
+
+                if active:
+                    for worker_name, tasks in active.items():
+                        worker_count += 1
+                        worker_info = {
+                            "name": worker_name,
+                            "active_tasks": len(tasks),
+                            "tasks": [
+                                {
+                                    "id": t.get("id"),
+                                    "name": t.get("name"),
+                                    "args": str(t.get("args", []))[:100],
+                                }
+                                for t in tasks[:5]  # Limit to 5 tasks
+                            ],
+                        }
+
+                        if stats_info and worker_name in stats_info:
+                            worker_stats = stats_info[worker_name]
+                            worker_info["pool"] = worker_stats.get("pool", {})
+                            worker_info["processed"] = worker_stats.get("total", {})
+
+                        workers.append(worker_info)
+
+                return worker_count, workers
+
+            loop = asyncio.get_event_loop()
+            worker_count, workers = await loop.run_in_executor(None, get_workers)
+
+            stats["workers_active"] = worker_count
+            stats["worker_details"] = workers
+
+        except Exception as e:
+            logger.warning(f"Failed to get worker info from Celery: {e}")
+
+        return stats
+
+    except Exception as e:
+        logger.error(f"Failed to get Celery stats: {e}")
+        return {
+            "queue_length": 0,
+            "workers_active": 0,
+            "worker_details": [],
+            "queues": {},
+            "error": str(e),
+        }
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -66,6 +170,26 @@ class BatchTriggerResponse(BaseModel):
     job_id: str | None = None
 
 
+class WorkerInfo(BaseModel):
+    """Information about a Celery worker."""
+
+    name: str
+    active_tasks: int = 0
+    tasks: list[dict] = []
+    pool: dict = {}
+    processed: dict = {}
+
+
+class QueueStats(BaseModel):
+    """Detailed queue statistics."""
+
+    total_queue_length: int = 0
+    workers_active: int = 0
+    queues: dict[str, int] = {}
+    workers: list[WorkerInfo] = []
+    error: str | None = None
+
+
 # Endpoints
 @router.get("/processing/status", response_model=ProcessingStatus)
 async def get_processing_status() -> ProcessingStatus:
@@ -113,12 +237,15 @@ async def get_processing_status() -> ProcessingStatus:
         except Exception as e:
             logger.warning(f"Failed to get cache status: {e}")
 
+    # Get Celery stats
+    celery_stats = await get_celery_stats()
+
     return ProcessingStatus(
         mode=settings.llm.processing_mode.value,
         llm_provider=llm_status,
         cache=cache_status,
-        queue_length=0,  # TODO: Get from Celery
-        workers_active=0,  # TODO: Get from Celery
+        queue_length=celery_stats.get("queue_length", 0),
+        workers_active=celery_stats.get("workers_active", 0),
     )
 
 
@@ -129,11 +256,47 @@ async def trigger_batch_processing() -> BatchTriggerResponse:
     This will queue analysis jobs for all developers
     who haven't been analyzed recently.
     """
-    # TODO: Implement Celery task triggering
-    return BatchTriggerResponse(
-        status="queued",
-        message="Batch processing has been queued",
-        job_id=None,
+    try:
+        from devograph.processing.tasks import batch_profile_sync_task
+
+        # Trigger the batch sync task
+        result = batch_profile_sync_task.delay()
+
+        return BatchTriggerResponse(
+            status="queued",
+            message="Batch processing has been queued successfully",
+            job_id=result.id,
+        )
+    except Exception as e:
+        logger.error(f"Failed to trigger batch processing: {e}")
+        return BatchTriggerResponse(
+            status="error",
+            message=f"Failed to trigger batch processing: {str(e)}",
+            job_id=None,
+        )
+
+
+@router.get("/processing/queues", response_model=QueueStats)
+async def get_queue_stats() -> QueueStats:
+    """Get detailed queue and worker statistics.
+
+    Returns:
+    - Queue lengths for each queue
+    - Active worker count and details
+    - Current running tasks on each worker
+    """
+    stats = await get_celery_stats()
+
+    workers = [
+        WorkerInfo(**w) for w in stats.get("worker_details", [])
+    ]
+
+    return QueueStats(
+        total_queue_length=stats.get("queue_length", 0),
+        workers_active=stats.get("workers_active", 0),
+        queues=stats.get("queues", {}),
+        workers=workers,
+        error=stats.get("error"),
     )
 
 
