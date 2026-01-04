@@ -52,39 +52,34 @@ class QuestionGenerationService:
             # Use the provider directly for custom prompts
             provider = self.gateway.provider
 
-            # Build messages for the provider
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ]
+            # Call _call_api with system_prompt and user_prompt
+            # Returns tuple of (response_text, total_tokens, input_tokens, output_tokens)
+            result = await provider._call_api(system_prompt, user_prompt)
+            response_text = result[0] if isinstance(result, tuple) else result
 
-            # Call the provider's underlying API
-            if hasattr(provider, 'client'):
-                # Claude provider
-                response = await provider.client.messages.create(
-                    model=provider.model_name,
-                    max_tokens=4096,
-                    messages=messages,
-                )
-                response_text = response.content[0].text
-            elif hasattr(provider, '_call_api'):
-                # Generic provider with _call_api method
-                response_text = await provider._call_api(messages)
-            else:
-                logger.error("Provider does not support custom prompts")
-                return None
-
-            # Parse JSON response
-            # Try to extract JSON from the response
+            # Parse JSON response - try to extract JSON from the response
             try:
                 # Try direct parse first
                 return json.loads(response_text)
             except json.JSONDecodeError:
-                # Try to find JSON in the response
-                start = response_text.find('{')
-                end = response_text.rfind('}') + 1
-                if start >= 0 and end > start:
-                    return json.loads(response_text[start:end])
+                # Try to find JSON in the response (strip markdown code blocks)
+                text = response_text.strip()
+                if text.startswith("```json"):
+                    text = text[7:]
+                elif text.startswith("```"):
+                    text = text[3:]
+                if text.endswith("```"):
+                    text = text[:-3]
+                text = text.strip()
+
+                try:
+                    return json.loads(text)
+                except json.JSONDecodeError:
+                    # Try to find JSON object in the text
+                    start = text.find('{')
+                    end = text.rfind('}') + 1
+                    if start >= 0 and end > start:
+                        return json.loads(text[start:end])
 
                 logger.error(f"Failed to parse JSON from response: {response_text[:200]}")
                 return None

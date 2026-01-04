@@ -1,11 +1,15 @@
 """Assessment management API endpoints."""
 
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from devograph.core.config import get_settings
 from devograph.core.database import get_db
@@ -623,12 +627,88 @@ async def generate_questions(
     developer_id: str = Depends(get_current_developer_id),
     db: AsyncSession = Depends(get_db),
 ) -> GeneratedQuestionResponse:
-    """AI-powered question generation."""
-    # TODO: Implement with LLM gateway
-    # For now, return placeholder
+    """AI-powered question generation.
+
+    Uses the LLM gateway to generate assessment questions based on the topic,
+    question type, difficulty level, and optional context.
+    """
+    from devograph.services.question_generation_service import (
+        QuestionGenerationService,
+        get_sample_questions,
+    )
+    from devograph.models.assessment import AssessmentTopic
+
+    # Get topic information
+    topic_stmt = select(AssessmentTopic).where(AssessmentTopic.id == data.topic_id)
+    topic_result = await db.execute(topic_stmt)
+    topic = topic_result.scalar_one_or_none()
+
+    if not topic:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Topic not found",
+        )
+
+    # Initialize service and generate questions
+    service = QuestionGenerationService(db)
+    generated = await service.generate_questions(
+        topic=topic.topic,
+        question_type=data.question_type,
+        difficulty=data.difficulty,
+        count=data.count,
+        subtopics=topic.subtopics,
+        context=data.context,
+    )
+
+    # If LLM failed, fall back to sample questions
+    if not generated:
+        generated = await get_sample_questions(
+            question_type=data.question_type,
+            topic=topic.topic,
+            count=data.count,
+        )
+
+    # Convert generated data to QuestionCreate schemas
+    questions = []
+    for q_data in generated:
+        try:
+            question = QuestionCreate(
+                topic_id=data.topic_id,
+                question_type=data.question_type,
+                difficulty=data.difficulty,
+                title=q_data.get("title", q_data.get("question_text", "Generated Question")[:100]),
+                problem_statement=q_data.get("problem_statement", q_data.get("question_text", "")),
+                max_marks=q_data.get("max_marks", q_data.get("total_points", q_data.get("points", 10))),
+                estimated_time_minutes=q_data.get("time_limit", q_data.get("time_estimate_minutes", 10)),
+                # Code specific
+                test_cases=q_data.get("test_cases", []),
+                starter_code=q_data.get("starter_code", {}),
+                constraints=q_data.get("constraints", []),
+                examples=q_data.get("examples", []),
+                hints=q_data.get("hints", []),
+                # MCQ specific
+                options=q_data.get("options", []),
+                allow_multiple=q_data.get("allow_multiple", False),
+                # Subjective specific
+                sample_answer=q_data.get("sample_answer"),
+                key_points=q_data.get("key_points", q_data.get("expected_keywords", [])),
+                tags=q_data.get("tags", []),
+            )
+            questions.append(question)
+        except Exception as e:
+            logger.warning(f"Failed to convert generated question: {e}")
+            continue
+
     return GeneratedQuestionResponse(
-        questions=[],
-        generation_metadata={"status": "not_implemented"},
+        questions=questions,
+        generation_metadata={
+            "status": "success" if questions else "fallback",
+            "generated_count": len(questions),
+            "requested_count": data.count,
+            "topic": topic.topic,
+            "question_type": data.question_type.value,
+            "difficulty": data.difficulty.value,
+        },
     )
 
 
@@ -831,13 +911,21 @@ async def publish_assessment(
         invitations = await service.get_candidates(assessment_id)
         emails_sent = len([i for i in invitations if i.email_sent_at]) if data.send_invitations else 0
 
+        # Generate public link
+        settings = get_settings()
+        public_link = None
+        if assessment.public_token:
+            # Use frontend URL from settings or default
+            frontend_url = getattr(settings, "frontend_url", "http://localhost:3000")
+            public_link = f"{frontend_url}/take-assessment/{assessment.public_token}"
+
         return PublishResponse(
             assessment_id=assessment.id,
             status=assessment.status,
             published_at=assessment.published_at,
             total_invitations=len(invitations),
             emails_sent=emails_sent,
-            public_link=None,  # TODO: Generate public link
+            public_link=public_link,
         )
     except ValueError as e:
         raise HTTPException(
@@ -873,3 +961,129 @@ async def get_organization_metrics(
     service = AssessmentService(db)
     metrics = await service.get_organization_metrics(organization_id)
     return metrics
+
+
+# =============================================================================
+# PUBLIC ASSESSMENT ACCESS
+# =============================================================================
+
+
+@router.get("/public/{public_token}", response_model=dict[str, Any])
+async def get_assessment_by_public_token(
+    public_token: str,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Get assessment info by public token (no authentication required).
+
+    This endpoint is used by candidates accessing the assessment via the public link.
+    Returns limited info about the assessment suitable for the taking interface.
+    """
+    from devograph.models.assessment import Assessment
+
+    # Find assessment by public token
+    stmt = select(Assessment).where(Assessment.public_token == public_token)
+    result = await db.execute(stmt)
+    assessment = result.scalar_one_or_none()
+
+    if not assessment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assessment not found or link has expired",
+        )
+
+    # Check if assessment is active
+    if assessment.status != AssessmentStatus.ACTIVE.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This assessment is not currently accepting submissions",
+        )
+
+    # Check schedule if applicable
+    schedule = assessment.schedule or {}
+    if schedule.get("end_date"):
+        from datetime import datetime, timezone
+        end_date = datetime.fromisoformat(schedule["end_date"].replace("Z", "+00:00"))
+        if datetime.now(timezone.utc) > end_date:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This assessment has ended",
+            )
+
+    # Return limited public info
+    return {
+        "id": assessment.id,
+        "title": assessment.title,
+        "job_designation": assessment.job_designation,
+        "department": assessment.department,
+        "description": assessment.description,
+        "total_questions": assessment.total_questions,
+        "total_duration_minutes": assessment.total_duration_minutes,
+        "max_attempts": assessment.max_attempts,
+        "passing_score_percent": assessment.passing_score_percent,
+        "proctoring_settings": assessment.proctoring_settings,
+        "candidate_fields": assessment.candidate_fields,
+        "schedule": {
+            "start_date": schedule.get("start_date"),
+            "end_date": schedule.get("end_date"),
+            "time_zone": schedule.get("time_zone"),
+        },
+    }
+
+
+@router.post("/public/{public_token}/register", response_model=dict[str, Any])
+async def register_for_public_assessment(
+    public_token: str,
+    candidate_data: CandidateCreate,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Register a candidate for a public assessment.
+
+    Creates a candidate and invitation, returns the invitation token for taking the assessment.
+    """
+    from devograph.models.assessment import Assessment
+
+    # Find assessment by public token
+    stmt = select(Assessment).where(Assessment.public_token == public_token)
+    result = await db.execute(stmt)
+    assessment = result.scalar_one_or_none()
+
+    if not assessment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assessment not found or link has expired",
+        )
+
+    # Check if assessment is active
+    if assessment.status != AssessmentStatus.ACTIVE.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This assessment is not currently accepting submissions",
+        )
+
+    # Create candidate and invitation
+    service = AssessmentService(db)
+
+    try:
+        candidate, invitation = await service.add_candidate(
+            assessment.id,
+            assessment.organization_id,
+            candidate_data,
+        )
+
+        return {
+            "status": "registered",
+            "candidate_id": candidate.id,
+            "invitation_token": invitation.invitation_token,
+            "message": "Registration successful. You can now start the assessment.",
+        }
+    except Exception as e:
+        # Check if candidate already exists for this assessment
+        if "already exists" in str(e).lower() or "duplicate" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="You have already registered for this assessment",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
