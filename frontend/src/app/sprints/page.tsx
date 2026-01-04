@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   ArrowRight,
   Calendar,
   CheckCircle,
   ChevronRight,
   Clock,
+  Layers,
   Play,
   Plus,
   Settings,
@@ -22,6 +24,7 @@ import { useTeams } from "@/hooks/useTeams";
 import { useSprints, useActiveSprint } from "@/hooks/useSprints";
 import { redirect } from "next/navigation";
 import { TeamListItem, SprintListItem } from "@/lib/api";
+import { EpicsTab } from "./components/EpicsTab";
 
 function ProjectSprintCard({ project, workspaceId }: { project: TeamListItem; workspaceId: string }) {
   const { sprints, isLoading } = useSprints(workspaceId, project.id);
@@ -146,6 +149,79 @@ function ProjectSprintCard({ project, workspaceId }: { project: TeamListItem; wo
   );
 }
 
+// Sprints content component
+function SprintsContent({ teams, teamsLoading, workspaceId, hasWorkspaces }: {
+  teams: TeamListItem[];
+  teamsLoading: boolean;
+  workspaceId: string | null;
+  hasWorkspaces: boolean;
+}) {
+  if (!hasWorkspaces) {
+    return (
+      <div className="bg-slate-900/50 rounded-xl p-12 text-center border border-slate-800">
+        <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
+          <Users className="h-10 w-10 text-slate-600" />
+        </div>
+        <h3 className="text-xl font-semibold text-white mb-2">No Workspace Yet</h3>
+        <p className="text-slate-400 mb-6 max-w-md mx-auto">
+          Create a workspace and add projects to start planning sprints.
+        </p>
+        <Link
+          href="/settings/organization"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition font-medium shadow-lg shadow-primary-500/20"
+        >
+          <Plus className="h-4 w-4" />
+          Create Workspace
+        </Link>
+      </div>
+    );
+  }
+
+  if (teamsLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="relative">
+          <div className="w-10 h-10 border-4 border-primary-500/20 rounded-full"></div>
+          <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (teams.length === 0) {
+    return (
+      <div className="bg-slate-900/50 rounded-xl p-12 text-center border border-slate-800">
+        <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
+          <Users className="h-10 w-10 text-slate-600" />
+        </div>
+        <h3 className="text-xl font-semibold text-white mb-2">No Projects Yet</h3>
+        <p className="text-slate-400 mb-6 max-w-md mx-auto">
+          Create projects in your workspace to start planning sprints.
+        </p>
+        <Link
+          href="/settings/projects"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition font-medium shadow-lg shadow-primary-500/20"
+        >
+          <Plus className="h-4 w-4" />
+          Create Project
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {teams.map((project) => (
+        <ProjectSprintCard
+          key={project.id}
+          project={project}
+          workspaceId={workspaceId!}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function SprintsPage() {
   const { user, isLoading: authLoading, isAuthenticated, logout } = useAuth();
   const {
@@ -154,8 +230,21 @@ export default function SprintsPage() {
     currentWorkspaceLoading,
     hasWorkspaces,
   } = useWorkspace();
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
+  const activeTab = searchParams.get("tab") || "sprints";
   const { teams, isLoading: teamsLoading } = useTeams(currentWorkspaceId);
+
+  const setActiveTab = (tab: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === "sprints") {
+      params.delete("tab");
+    } else {
+      params.set("tab", tab);
+    }
+    router.push(`/sprints${params.toString() ? `?${params.toString()}` : ""}`);
+  };
 
   if (authLoading || currentWorkspaceLoading) {
     return (
@@ -165,7 +254,7 @@ export default function SprintsPage() {
             <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
             <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
           </div>
-          <p className="text-slate-400 text-sm">Loading sprints...</p>
+          <p className="text-slate-400 text-sm">Loading...</p>
         </div>
       </div>
     );
@@ -180,20 +269,21 @@ export default function SprintsPage() {
       <AppHeader user={user} logout={logout} />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-gradient-to-br from-primary-500/20 to-blue-500/20 rounded-xl">
               <Calendar className="h-7 w-7 text-primary-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">Sprint Planning</h1>
+              <h1 className="text-2xl font-bold text-white">Planning</h1>
               <p className="text-slate-400 text-sm">
-                Manage sprints across your projects
+                Manage sprints and epics across your projects
               </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {hasWorkspaces && (
+            {hasWorkspaces && activeTab === "sprints" && (
               <>
                 <Link
                   href="/reviews"
@@ -214,61 +304,45 @@ export default function SprintsPage() {
           </div>
         </div>
 
-        {!hasWorkspaces ? (
-          <div className="bg-slate-900/50 rounded-xl p-12 text-center border border-slate-800">
-            <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <Users className="h-10 w-10 text-slate-600" />
-            </div>
-            <h3 className="text-xl font-semibold text-white mb-2">
-              No Workspace Yet
-            </h3>
-            <p className="text-slate-400 mb-6 max-w-md mx-auto">
-              Create a workspace and add projects to start planning sprints.
-            </p>
-            <Link
-              href="/settings/organization"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition font-medium shadow-lg shadow-primary-500/20"
-            >
-              <Plus className="h-4 w-4" />
-              Create Workspace
-            </Link>
-          </div>
-        ) : teamsLoading ? (
-          <div className="flex justify-center py-12">
-            <div className="relative">
-              <div className="w-10 h-10 border-4 border-primary-500/20 rounded-full"></div>
-              <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
-            </div>
-          </div>
-        ) : teams.length === 0 ? (
-          <div className="bg-slate-900/50 rounded-xl p-12 text-center border border-slate-800">
-            <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <Users className="h-10 w-10 text-slate-600" />
-            </div>
-            <h3 className="text-xl font-semibold text-white mb-2">
-              No Projects Yet
-            </h3>
-            <p className="text-slate-400 mb-6 max-w-md mx-auto">
-              Create projects in your workspace to start planning sprints.
-            </p>
-            <Link
-              href="/settings/projects"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition font-medium shadow-lg shadow-primary-500/20"
-            >
-              <Plus className="h-4 w-4" />
-              Create Project
-            </Link>
-          </div>
+        {/* Tab Bar */}
+        <div className="flex items-center gap-1 mb-8 border-b border-slate-800">
+          <button
+            onClick={() => setActiveTab("sprints")}
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
+              activeTab === "sprints"
+                ? "text-primary-400 border-primary-500"
+                : "text-slate-400 border-transparent hover:text-white hover:border-slate-600"
+            }`}
+          >
+            <Calendar className="h-4 w-4" />
+            Sprints
+          </button>
+          <button
+            onClick={() => setActiveTab("epics")}
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
+              activeTab === "epics"
+                ? "text-primary-400 border-primary-500"
+                : "text-slate-400 border-transparent hover:text-white hover:border-slate-600"
+            }`}
+          >
+            <Layers className="h-4 w-4" />
+            Epics
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === "sprints" ? (
+          <SprintsContent
+            teams={teams}
+            teamsLoading={teamsLoading}
+            workspaceId={currentWorkspaceId}
+            hasWorkspaces={hasWorkspaces}
+          />
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {teams.map((project) => (
-              <ProjectSprintCard
-                key={project.id}
-                project={project}
-                workspaceId={currentWorkspaceId!}
-              />
-            ))}
-          </div>
+          <EpicsTab
+            workspaceId={currentWorkspaceId}
+            hasWorkspaces={hasWorkspaces}
+          />
         )}
       </main>
     </div>
