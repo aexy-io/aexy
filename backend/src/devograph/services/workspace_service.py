@@ -8,7 +8,8 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.workspace import Workspace, WorkspaceMember, WorkspaceSubscription
+from devograph.models.workspace import Workspace, WorkspaceMember, WorkspaceSubscription, WorkspacePendingInvite
+import secrets
 from devograph.models.developer import Developer
 from devograph.models.repository import Organization, DeveloperOrganization
 from devograph.services.task_config_service import TaskConfigService
@@ -383,3 +384,194 @@ class WorkspaceService:
         """Check if a developer is the workspace owner."""
         member = await self.get_member(workspace_id, developer_id)
         return member is not None and member.role == "owner"
+
+    # Pending Invites
+    async def create_pending_invite(
+        self,
+        workspace_id: str,
+        email: str,
+        role: str = "member",
+        invited_by_id: str | None = None,
+        app_permissions: dict | None = None,
+        expires_days: int = 7,
+    ) -> WorkspacePendingInvite:
+        """Create a pending invite for a non-existing user."""
+        from datetime import timedelta
+
+        # Check if already invited
+        existing = await self.get_pending_invite_by_email(workspace_id, email)
+        if existing and existing.status == "pending":
+            raise ValueError("An invitation has already been sent to this email")
+
+        token = secrets.token_urlsafe(32)
+        expires_at = datetime.now(timezone.utc) + timedelta(days=expires_days)
+
+        invite = WorkspacePendingInvite(
+            id=str(uuid4()),
+            workspace_id=workspace_id,
+            email=email.lower(),
+            role=role,
+            token=token,
+            invited_by_id=invited_by_id,
+            app_permissions=app_permissions,
+            status="pending",
+            expires_at=expires_at,
+        )
+        self.db.add(invite)
+        await self.db.flush()
+        await self.db.refresh(invite)
+        return invite
+
+    async def get_pending_invite_by_email(
+        self, workspace_id: str, email: str
+    ) -> WorkspacePendingInvite | None:
+        """Get a pending invite by email."""
+        stmt = select(WorkspacePendingInvite).where(
+            WorkspacePendingInvite.workspace_id == workspace_id,
+            WorkspacePendingInvite.email == email.lower(),
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_pending_invite_by_token(
+        self, token: str
+    ) -> WorkspacePendingInvite | None:
+        """Get a pending invite by token."""
+        stmt = (
+            select(WorkspacePendingInvite)
+            .where(
+                WorkspacePendingInvite.token == token,
+                WorkspacePendingInvite.status == "pending",
+            )
+            .options(selectinload(WorkspacePendingInvite.workspace))
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_pending_invites(
+        self, workspace_id: str
+    ) -> list[WorkspacePendingInvite]:
+        """Get all pending invites for a workspace."""
+        stmt = (
+            select(WorkspacePendingInvite)
+            .where(
+                WorkspacePendingInvite.workspace_id == workspace_id,
+                WorkspacePendingInvite.status == "pending",
+            )
+            .options(selectinload(WorkspacePendingInvite.invited_by))
+            .order_by(WorkspacePendingInvite.created_at.desc())
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def accept_pending_invite(
+        self, token: str, developer_id: str
+    ) -> WorkspaceMember | None:
+        """Accept a pending invite and create a member."""
+        invite = await self.get_pending_invite_by_token(token)
+        if not invite:
+            return None
+
+        # Check if invite has expired
+        if invite.expires_at and invite.expires_at < datetime.now(timezone.utc):
+            invite.status = "expired"
+            await self.db.flush()
+            return None
+
+        # Create member with the role and permissions from invite
+        member = await self.add_member(
+            workspace_id=invite.workspace_id,
+            developer_id=developer_id,
+            role=invite.role,
+            invited_by_id=invite.invited_by_id,
+            status="active",
+        )
+
+        # Apply app permissions if set
+        if invite.app_permissions:
+            member.app_permissions = invite.app_permissions
+            await self.db.flush()
+            await self.db.refresh(member)
+
+        # Mark invite as accepted
+        invite.status = "accepted"
+        await self.db.flush()
+
+        return member
+
+    async def revoke_pending_invite(self, workspace_id: str, invite_id: str) -> bool:
+        """Revoke a pending invite."""
+        stmt = select(WorkspacePendingInvite).where(
+            WorkspacePendingInvite.id == invite_id,
+            WorkspacePendingInvite.workspace_id == workspace_id,
+            WorkspacePendingInvite.status == "pending",
+        )
+        result = await self.db.execute(stmt)
+        invite = result.scalar_one_or_none()
+        if not invite:
+            return False
+
+        invite.status = "revoked"
+        await self.db.flush()
+        return True
+
+    # App Permissions
+    async def update_member_app_permissions(
+        self,
+        workspace_id: str,
+        developer_id: str,
+        app_permissions: dict,
+    ) -> WorkspaceMember | None:
+        """Update a member's app permissions."""
+        member = await self.get_member(workspace_id, developer_id)
+        if not member:
+            return None
+
+        member.app_permissions = app_permissions
+        await self.db.flush()
+        await self.db.refresh(member)
+        return member
+
+    async def get_workspace_app_settings(self, workspace_id: str) -> dict:
+        """Get workspace-level app settings."""
+        workspace = await self.get_workspace(workspace_id)
+        if not workspace:
+            return {}
+
+        return workspace.settings.get("app_settings", {
+            "hiring": True,
+            "tracking": True,
+            "oncall": True,
+            "sprints": True,
+            "documents": True,
+            "ticketing": True,
+        })
+
+    async def update_workspace_app_settings(
+        self, workspace_id: str, app_settings: dict
+    ) -> Workspace | None:
+        """Update workspace-level app settings."""
+        workspace = await self.get_workspace(workspace_id)
+        if not workspace:
+            return None
+
+        settings = workspace.settings or {}
+        settings["app_settings"] = app_settings
+        workspace.settings = settings
+
+        await self.db.flush()
+        await self.db.refresh(workspace)
+        return workspace
+
+    def get_effective_app_permissions(
+        self, workspace_settings: dict, member_permissions: dict | None
+    ) -> dict:
+        """Get effective app permissions for a member (member overrides workspace)."""
+        # Start with workspace defaults
+        effective = workspace_settings.copy()
+
+        # Override with member-specific permissions
+        if member_permissions:
+            effective.update(member_permissions)
+
+        return effective
