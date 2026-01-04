@@ -1702,9 +1702,39 @@ export interface WorkspaceMember {
   role: "owner" | "admin" | "member" | "viewer";
   status: "pending" | "active" | "suspended" | "removed";
   is_billable: boolean;
+  app_permissions: Record<string, boolean> | null;
   invited_at: string | null;
   joined_at: string | null;
   created_at: string;
+}
+
+export interface WorkspacePendingInvite {
+  id: string;
+  workspace_id: string;
+  email: string;
+  role: "admin" | "member" | "viewer";
+  status: "pending" | "accepted" | "expired" | "revoked";
+  app_permissions: Record<string, boolean> | null;
+  invited_by_name: string | null;
+  expires_at: string | null;
+  created_at: string;
+}
+
+export interface WorkspaceInviteResult {
+  type: "member" | "pending_invite";
+  member: WorkspaceMember | null;
+  pending_invite: WorkspacePendingInvite | null;
+  message: string | null;
+}
+
+export interface WorkspaceAppSettings {
+  hiring: boolean;
+  tracking: boolean;
+  oncall: boolean;
+  sprints: boolean;
+  documents: boolean;
+  ticketing: boolean;
+  [key: string]: boolean;
 }
 
 export interface WorkspaceBillingStatus {
@@ -2098,7 +2128,7 @@ export const workspaceApi = {
     return response.data;
   },
 
-  inviteMember: async (workspaceId: string, email: string, role = "member"): Promise<WorkspaceMember> => {
+  inviteMember: async (workspaceId: string, email: string, role = "member"): Promise<WorkspaceInviteResult> => {
     const response = await api.post(`/workspaces/${workspaceId}/members/invite`, {
       email,
       role,
@@ -2113,6 +2143,46 @@ export const workspaceApi = {
 
   removeMember: async (workspaceId: string, developerId: string): Promise<void> => {
     await api.delete(`/workspaces/${workspaceId}/members/${developerId}`);
+  },
+
+  // Pending Invites
+  getPendingInvites: async (workspaceId: string): Promise<WorkspacePendingInvite[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/invites`);
+    return response.data;
+  },
+
+  revokePendingInvite: async (workspaceId: string, inviteId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/invites/${inviteId}`);
+  },
+
+  // App Settings & Permissions
+  getAppSettings: async (workspaceId: string): Promise<WorkspaceAppSettings> => {
+    const response = await api.get(`/workspaces/${workspaceId}/apps`);
+    return response.data;
+  },
+
+  updateAppSettings: async (workspaceId: string, apps: Record<string, boolean>): Promise<WorkspaceAppSettings> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/apps`, { apps });
+    return response.data;
+  },
+
+  updateMemberAppPermissions: async (
+    workspaceId: string,
+    developerId: string,
+    appPermissions: Record<string, boolean>
+  ): Promise<WorkspaceMember> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/members/${developerId}/apps`, {
+      app_permissions: appPermissions,
+    });
+    return response.data;
+  },
+
+  getMemberEffectivePermissions: async (
+    workspaceId: string,
+    developerId: string
+  ): Promise<WorkspaceAppSettings> => {
+    const response = await api.get(`/workspaces/${workspaceId}/members/${developerId}/apps/effective`);
+    return response.data;
   },
 
   // GitHub Integration

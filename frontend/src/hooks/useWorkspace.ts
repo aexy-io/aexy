@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
-import { workspaceApi, WorkspaceListItem, Workspace, CustomTaskStatus, StatusCategory } from "@/lib/api";
+import { workspaceApi, WorkspaceListItem, Workspace, CustomTaskStatus, StatusCategory, WorkspacePendingInvite, WorkspaceAppSettings } from "@/lib/api";
 
 const CURRENT_WORKSPACE_KEY = "current_workspace_id";
 
@@ -311,5 +311,86 @@ export function useCustomTaskStatuses(workspaceId: string | null) {
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
     isReordering: reorderMutation.isPending,
+  };
+}
+
+// Hook for pending invites
+export function usePendingInvites(workspaceId: string | null) {
+  const queryClient = useQueryClient();
+
+  const {
+    data: pendingInvites,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery<WorkspacePendingInvite[]>({
+    queryKey: ["pendingInvites", workspaceId],
+    queryFn: () => workspaceApi.getPendingInvites(workspaceId!),
+    enabled: !!workspaceId,
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: (inviteId: string) => workspaceApi.revokePendingInvite(workspaceId!, inviteId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pendingInvites", workspaceId] });
+    },
+  });
+
+  return {
+    pendingInvites: pendingInvites || [],
+    isLoading,
+    error,
+    refetch,
+    revokeInvite: revokeMutation.mutateAsync,
+    isRevoking: revokeMutation.isPending,
+  };
+}
+
+// Hook for workspace app settings
+export function useWorkspaceAppSettings(workspaceId: string | null) {
+  const queryClient = useQueryClient();
+
+  const {
+    data: appSettings,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery<WorkspaceAppSettings>({
+    queryKey: ["workspaceAppSettings", workspaceId],
+    queryFn: () => workspaceApi.getAppSettings(workspaceId!),
+    enabled: !!workspaceId,
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (apps: Record<string, boolean>) => workspaceApi.updateAppSettings(workspaceId!, apps),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workspaceAppSettings", workspaceId] });
+    },
+  });
+
+  const updateMemberPermissionsMutation = useMutation({
+    mutationFn: ({ developerId, appPermissions }: { developerId: string; appPermissions: Record<string, boolean> }) =>
+      workspaceApi.updateMemberAppPermissions(workspaceId!, developerId, appPermissions),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspaceId] });
+    },
+  });
+
+  return {
+    appSettings: appSettings || {
+      hiring: true,
+      tracking: true,
+      oncall: true,
+      sprints: true,
+      documents: true,
+      ticketing: true,
+    },
+    isLoading,
+    error,
+    refetch,
+    updateAppSettings: updateMutation.mutateAsync,
+    updateMemberPermissions: updateMemberPermissionsMutation.mutateAsync,
+    isUpdating: updateMutation.isPending,
+    isUpdatingMember: updateMemberPermissionsMutation.isPending,
   };
 }

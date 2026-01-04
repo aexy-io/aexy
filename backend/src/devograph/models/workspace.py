@@ -113,6 +113,12 @@ class Workspace(Base):
         uselist=False,
         lazy="selectin",
     )
+    pending_invites: Mapped[list["WorkspacePendingInvite"]] = relationship(
+        "WorkspacePendingInvite",
+        back_populates="workspace",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
     review_cycles: Mapped[list["ReviewCycle"]] = relationship(
         "ReviewCycle",
         back_populates="workspace",
@@ -175,6 +181,10 @@ class WorkspaceMember(Base):
     billing_start_date: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+    # App permissions for this member (overrides workspace defaults)
+    # Example: {"hiring": true, "tracking": false, "oncall": true}
+    app_permissions: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -272,4 +282,77 @@ class WorkspaceSubscription(Base):
         "Workspace",
         back_populates="subscription",
         lazy="selectin",
+    )
+
+
+class WorkspacePendingInvite(Base):
+    """Pending workspace invitations for users who haven't signed up yet."""
+
+    __tablename__ = "workspace_pending_invites"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    role: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="member"
+    )  # "admin" | "member" | "viewer"
+
+    # Invitation token for accepting
+    token: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+
+    # Who invited them
+    invited_by_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # App permissions to apply when they join
+    app_permissions: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    # Status
+    status: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="pending"
+    )  # "pending" | "accepted" | "expired" | "revoked"
+
+    expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    # Relationships
+    workspace: Mapped["Workspace"] = relationship(
+        "Workspace",
+        back_populates="pending_invites",
+        lazy="selectin",
+    )
+    invited_by: Mapped["Developer | None"] = relationship(
+        "Developer",
+        foreign_keys=[invited_by_id],
+        lazy="selectin",
+    )
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "email", name="uq_workspace_pending_invite"),
     )

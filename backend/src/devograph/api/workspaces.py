@@ -15,6 +15,10 @@ from devograph.schemas.workspace import (
     WorkspaceMemberInvite,
     WorkspaceMemberUpdate,
     WorkspaceMemberResponse,
+    WorkspaceMemberAppPermissions,
+    WorkspacePendingInviteResponse,
+    WorkspaceInviteResult,
+    WorkspaceAppSettingsUpdate,
     WorkspaceBillingStatus,
     GitHubOrgLink,
 )
@@ -56,9 +60,25 @@ def member_to_response(member) -> WorkspaceMemberResponse:
         role=member.role,
         status=member.status,
         is_billable=member.is_billable,
+        app_permissions=member.app_permissions,
         invited_at=member.invited_at,
         joined_at=member.joined_at,
         created_at=member.created_at,
+    )
+
+
+def pending_invite_to_response(invite) -> WorkspacePendingInviteResponse:
+    """Convert WorkspacePendingInvite model to response schema."""
+    return WorkspacePendingInviteResponse(
+        id=str(invite.id),
+        workspace_id=str(invite.workspace_id),
+        email=invite.email,
+        role=invite.role,
+        status=invite.status,
+        app_permissions=invite.app_permissions,
+        invited_by_name=invite.invited_by.name if invite.invited_by else None,
+        expires_at=invite.expires_at,
+        created_at=invite.created_at,
     )
 
 
@@ -261,14 +281,18 @@ async def add_member(
         )
 
 
-@router.post("/{workspace_id}/members/invite", response_model=WorkspaceMemberResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/{workspace_id}/members/invite", response_model=WorkspaceInviteResult, status_code=status.HTTP_201_CREATED)
 async def invite_member(
     workspace_id: str,
     data: WorkspaceMemberInvite,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Invite a member to a workspace by email."""
+    """Invite a member to a workspace by email.
+
+    If the user exists, they are added as a pending member.
+    If the user doesn't exist, a pending invitation is created.
+    """
     service = WorkspaceService(db)
     dev_service = DeveloperService(db)
 
@@ -280,28 +304,50 @@ async def invite_member(
 
     # Find developer by email
     developer = await dev_service.get_by_email(data.email)
-    if not developer:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No user found with that email. They need to sign up first.",
-        )
 
-    try:
-        member = await service.add_member(
-            workspace_id=workspace_id,
-            developer_id=str(developer.id),
-            role=data.role,
-            invited_by_id=str(current_user.id),
-            status="pending",
-        )
-        await db.commit()
-        await db.refresh(member)
-        return member_to_response(member)
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
+    if developer:
+        # User exists - add as pending member
+        try:
+            member = await service.add_member(
+                workspace_id=workspace_id,
+                developer_id=str(developer.id),
+                role=data.role,
+                invited_by_id=str(current_user.id),
+                status="pending",
+            )
+            await db.commit()
+            await db.refresh(member)
+            return WorkspaceInviteResult(
+                type="member",
+                member=member_to_response(member),
+                message=f"Invitation sent to {data.email}",
+            )
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )
+    else:
+        # User doesn't exist - create pending invite
+        try:
+            pending_invite = await service.create_pending_invite(
+                workspace_id=workspace_id,
+                email=data.email,
+                role=data.role,
+                invited_by_id=str(current_user.id),
+            )
+            await db.commit()
+            await db.refresh(pending_invite)
+            return WorkspaceInviteResult(
+                type="pending_invite",
+                pending_invite=pending_invite_to_response(pending_invite),
+                message=f"Invitation created for {data.email}. They will be added when they sign up.",
+            )
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )
 
 
 @router.patch("/{workspace_id}/members/{developer_id}", response_model=WorkspaceMemberResponse)
@@ -510,3 +556,160 @@ async def get_seat_usage(
             else 5 - billable_seats
         ),
     }
+
+
+# Pending Invites
+@router.get("/{workspace_id}/invites", response_model=list[WorkspacePendingInviteResponse])
+async def list_pending_invites(
+    workspace_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """List all pending invites for a workspace."""
+    service = WorkspaceService(db)
+
+    if not await service.check_permission(workspace_id, str(current_user.id), "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin permission required",
+        )
+
+    invites = await service.get_pending_invites(workspace_id)
+    return [pending_invite_to_response(i) for i in invites]
+
+
+@router.delete("/{workspace_id}/invites/{invite_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_pending_invite(
+    workspace_id: str,
+    invite_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Revoke a pending invite."""
+    service = WorkspaceService(db)
+
+    if not await service.check_permission(workspace_id, str(current_user.id), "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin permission required",
+        )
+
+    if not await service.revoke_pending_invite(workspace_id, invite_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invite not found",
+        )
+    await db.commit()
+
+
+# App Settings and Permissions
+@router.get("/{workspace_id}/apps")
+async def get_workspace_app_settings(
+    workspace_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get workspace-level app settings."""
+    service = WorkspaceService(db)
+
+    if not await service.check_permission(workspace_id, str(current_user.id), "viewer"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a member of this workspace",
+        )
+
+    return await service.get_workspace_app_settings(workspace_id)
+
+
+@router.patch("/{workspace_id}/apps")
+async def update_workspace_app_settings(
+    workspace_id: str,
+    data: WorkspaceAppSettingsUpdate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update workspace-level app settings (enable/disable apps for all members)."""
+    service = WorkspaceService(db)
+
+    # Only owner can update workspace app settings
+    if not await service.is_owner(workspace_id, str(current_user.id)):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the workspace owner can update app settings",
+        )
+
+    workspace = await service.update_workspace_app_settings(workspace_id, data.apps)
+    if not workspace:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workspace not found",
+        )
+
+    await db.commit()
+    return workspace.settings.get("app_settings", {})
+
+
+@router.patch("/{workspace_id}/members/{developer_id}/apps", response_model=WorkspaceMemberResponse)
+async def update_member_app_permissions(
+    workspace_id: str,
+    developer_id: str,
+    data: WorkspaceMemberAppPermissions,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a member's app permissions (override workspace defaults)."""
+    service = WorkspaceService(db)
+
+    if not await service.check_permission(workspace_id, str(current_user.id), "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin permission required",
+        )
+
+    member = await service.update_member_app_permissions(
+        workspace_id=workspace_id,
+        developer_id=developer_id,
+        app_permissions=data.app_permissions,
+    )
+
+    if not member:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Member not found",
+        )
+
+    await db.commit()
+    await db.refresh(member)
+    return member_to_response(member)
+
+
+@router.get("/{workspace_id}/members/{developer_id}/apps/effective")
+async def get_member_effective_permissions(
+    workspace_id: str,
+    developer_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a member's effective app permissions (workspace defaults + member overrides)."""
+    service = WorkspaceService(db)
+
+    # Can view own permissions or need admin permission
+    is_self = developer_id == str(current_user.id)
+    if not is_self and not await service.check_permission(workspace_id, str(current_user.id), "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin permission required",
+        )
+
+    workspace_settings = await service.get_workspace_app_settings(workspace_id)
+    member = await service.get_member(workspace_id, developer_id)
+
+    if not member:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Member not found",
+        )
+
+    return service.get_effective_app_permissions(
+        workspace_settings, member.app_permissions
+    )

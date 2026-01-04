@@ -19,10 +19,15 @@ import {
   Link as LinkIcon,
   RefreshCw,
   Check,
+  Clock,
+  X,
+  ToggleLeft,
+  ToggleRight,
+  Layers,
 } from "lucide-react";
-import { useWorkspace, useWorkspaceMembers, useWorkspaceBilling } from "@/hooks/useWorkspace";
+import { useWorkspace, useWorkspaceMembers, useWorkspaceBilling, usePendingInvites, useWorkspaceAppSettings } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
-import { WorkspaceMember, repositoriesApi, Organization } from "@/lib/api";
+import { WorkspaceMember, WorkspacePendingInvite, repositoriesApi, Organization } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 
 const ROLE_OPTIONS = [
@@ -431,6 +436,132 @@ function SeatUsageBar({ used, total }: { used: number; total: number }) {
   );
 }
 
+interface PendingInviteRowProps {
+  invite: WorkspacePendingInvite;
+  onRevoke: (inviteId: string) => void;
+  isRevoking: boolean;
+}
+
+function PendingInviteRow({ invite, onRevoke, isRevoking }: PendingInviteRowProps) {
+  const expiresAt = invite.expires_at ? new Date(invite.expires_at) : null;
+  const isExpired = expiresAt && expiresAt < new Date();
+
+  return (
+    <div className="p-4 flex items-center justify-between hover:bg-slate-700/30 transition">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-yellow-900/30 rounded-full flex items-center justify-center">
+          <Mail className="h-5 w-5 text-yellow-400" />
+        </div>
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-white font-medium">{invite.email}</span>
+            <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-900/30 text-yellow-400">
+              Pending
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-slate-400 text-sm">
+            <Clock className="h-3 w-3" />
+            {isExpired ? (
+              <span className="text-red-400">Expired</span>
+            ) : expiresAt ? (
+              <span>Expires {expiresAt.toLocaleDateString()}</span>
+            ) : (
+              <span>No expiry</span>
+            )}
+            {invite.invited_by_name && (
+              <>
+                <span>•</span>
+                <span>Invited by {invite.invited_by_name}</span>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className={`px-2 py-1 rounded text-xs font-medium ${getRoleBadgeColor(invite.role)}`}>
+          {invite.role}
+        </span>
+        <button
+          onClick={() => onRevoke(invite.id)}
+          disabled={isRevoking}
+          className="p-2 text-red-400 hover:text-red-300 hover:bg-slate-700 rounded-lg transition disabled:opacity-50"
+          title="Revoke invite"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const APP_LABELS: Record<string, { label: string; description: string }> = {
+  hiring: { label: "Hiring", description: "Assessment and candidate management" },
+  tracking: { label: "Time Tracking", description: "Track developer activity and time" },
+  oncall: { label: "On-Call", description: "On-call scheduling and escalations" },
+  sprints: { label: "Sprints", description: "Sprint planning and management" },
+  documents: { label: "Documents", description: "Documentation and collaboration" },
+  ticketing: { label: "Ticketing", description: "Support tickets and forms" },
+};
+
+interface AppSettingsSectionProps {
+  appSettings: Record<string, boolean>;
+  onUpdate: (apps: Record<string, boolean>) => Promise<void>;
+  isUpdating: boolean;
+  isOwner: boolean;
+}
+
+function AppSettingsSection({ appSettings, onUpdate, isUpdating, isOwner }: AppSettingsSectionProps) {
+  const handleToggle = async (appKey: string) => {
+    if (!isOwner) return;
+    const newSettings = { ...appSettings, [appKey]: !appSettings[appKey] };
+    await onUpdate(newSettings);
+  };
+
+  return (
+    <div className="bg-slate-800 rounded-xl overflow-hidden mb-6">
+      <div className="p-4 border-b border-slate-700 flex items-center gap-3">
+        <Layers className="h-5 w-5 text-slate-400" />
+        <div>
+          <h3 className="text-white font-medium">App Settings</h3>
+          <p className="text-slate-400 text-sm">Enable or disable apps for your workspace</p>
+        </div>
+      </div>
+      <div className="p-4 space-y-3">
+        {Object.entries(APP_LABELS).map(([key, { label, description }]) => (
+          <div
+            key={key}
+            className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg"
+          >
+            <div>
+              <div className="text-white font-medium">{label}</div>
+              <div className="text-slate-400 text-sm">{description}</div>
+            </div>
+            <button
+              onClick={() => handleToggle(key)}
+              disabled={isUpdating || !isOwner}
+              className={`p-1 rounded-full transition ${
+                !isOwner ? "opacity-50 cursor-not-allowed" : "hover:bg-slate-600"
+              }`}
+              title={isOwner ? `${appSettings[key] ? "Disable" : "Enable"} ${label}` : "Only owner can change"}
+            >
+              {appSettings[key] ? (
+                <ToggleRight className="h-8 w-8 text-green-400" />
+              ) : (
+                <ToggleLeft className="h-8 w-8 text-slate-500" />
+              )}
+            </button>
+          </div>
+        ))}
+      </div>
+      {!isOwner && (
+        <div className="px-4 pb-4">
+          <p className="text-xs text-slate-500">Only the workspace owner can change app settings.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function OrganizationSettingsPage() {
   const { user } = useAuth();
   const {
@@ -454,6 +585,19 @@ export default function OrganizationSettingsPage() {
     isInviting,
   } = useWorkspaceMembers(currentWorkspaceId);
 
+  const {
+    pendingInvites,
+    isLoading: pendingInvitesLoading,
+    revokeInvite,
+    isRevoking,
+  } = usePendingInvites(currentWorkspaceId);
+
+  const {
+    appSettings,
+    updateAppSettings,
+    isUpdating: isUpdatingAppSettings,
+  } = useWorkspaceAppSettings(currentWorkspaceId);
+
   const { billingStatus, seatUsage } = useWorkspaceBilling(currentWorkspaceId);
 
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -468,6 +612,7 @@ export default function OrganizationSettingsPage() {
 
   const currentMember = members.find((m) => m.developer_id === user?.id);
   const isAdmin = currentMember?.role === "owner" || currentMember?.role === "admin";
+  const isOwner = currentMember?.role === "owner";
 
   const handleInvite = async (email: string, role: string) => {
     await inviteMember({ email, role });
@@ -483,7 +628,13 @@ export default function OrganizationSettingsPage() {
     }
   };
 
-  const isLoading = workspacesLoading || currentWorkspaceLoading || membersLoading;
+  const handleRevokeInvite = async (inviteId: string) => {
+    if (confirm("Are you sure you want to revoke this invitation?")) {
+      await revokeInvite(inviteId);
+    }
+  };
+
+  const isLoading = workspacesLoading || currentWorkspaceLoading || membersLoading || pendingInvitesLoading;
 
   if (isLoading) {
     return (
@@ -698,10 +849,41 @@ export default function OrganizationSettingsPage() {
               </div>
             </div>
 
+            {/* Pending Invites Section */}
+            {pendingInvites.length > 0 && (
+              <div className="bg-slate-800 rounded-xl overflow-hidden mb-6">
+                <div className="p-4 border-b border-slate-700 flex items-center gap-3">
+                  <Mail className="h-5 w-5 text-yellow-400" />
+                  <div>
+                    <h3 className="text-white font-medium">Pending Invitations</h3>
+                    <p className="text-slate-400 text-sm">{pendingInvites.length} pending</p>
+                  </div>
+                </div>
+                <div className="divide-y divide-slate-700/50">
+                  {pendingInvites.map((invite) => (
+                    <PendingInviteRow
+                      key={invite.id}
+                      invite={invite}
+                      onRevoke={handleRevokeInvite}
+                      isRevoking={isRevoking}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* App Settings Section */}
+            <AppSettingsSection
+              appSettings={appSettings}
+              onUpdate={updateAppSettings}
+              isUpdating={isUpdatingAppSettings}
+              isOwner={isOwner}
+            />
+
             {/* Quick Links */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Link
-                href="/settings/teams"
+                href="/settings/projects"
                 className="bg-slate-800 rounded-xl p-4 hover:bg-slate-700/50 transition group"
               >
                 <div className="flex items-center gap-3">
@@ -709,8 +891,8 @@ export default function OrganizationSettingsPage() {
                     <Users className="h-5 w-5 text-slate-300" />
                   </div>
                   <div>
-                    <h4 className="text-white font-medium">Teams</h4>
-                    <p className="text-slate-400 text-sm">Manage teams</p>
+                    <h4 className="text-white font-medium">Projects</h4>
+                    <p className="text-slate-400 text-sm">Manage projects</p>
                   </div>
                   <ChevronDown className="h-5 w-5 text-slate-400 ml-auto -rotate-90" />
                 </div>

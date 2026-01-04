@@ -94,9 +94,64 @@ class WorkspaceMemberResponse(BaseModel):
     role: str
     status: str
     is_billable: bool = True
+    app_permissions: dict | None = None
     invited_at: datetime | None = None
     joined_at: datetime | None = None
     created_at: datetime
+
+
+class WorkspaceMemberAppPermissions(BaseModel):
+    """Schema for updating a member's app permissions."""
+
+    app_permissions: dict  # {"hiring": true, "tracking": false, etc.}
+
+
+# Pending Invite Schemas
+class WorkspacePendingInviteResponse(BaseModel):
+    """Schema for pending invite response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    workspace_id: str
+    email: str
+    role: str
+    status: str
+    app_permissions: dict | None = None
+    invited_by_name: str | None = None
+    expires_at: datetime | None = None
+    created_at: datetime
+
+
+class WorkspaceInviteResult(BaseModel):
+    """Schema for invite result - can be either an existing member or pending invite."""
+
+    type: str  # "member" | "pending_invite"
+    member: WorkspaceMemberResponse | None = None
+    pending_invite: WorkspacePendingInviteResponse | None = None
+    message: str | None = None
+
+
+# App Permissions Schemas
+class WorkspaceAppSettings(BaseModel):
+    """Schema for workspace-level app settings."""
+
+    apps: dict[str, bool] = Field(
+        default_factory=lambda: {
+            "hiring": True,
+            "tracking": True,
+            "oncall": True,
+            "sprints": True,
+            "documents": True,
+            "ticketing": True,
+        }
+    )
+
+
+class WorkspaceAppSettingsUpdate(BaseModel):
+    """Schema for updating workspace app settings."""
+
+    apps: dict[str, bool]  # {"hiring": true, "tracking": false}
 
 
 # Billing Schemas
