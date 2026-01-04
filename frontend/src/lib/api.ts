@@ -4715,6 +4715,38 @@ export const documentApi = {
     return response.data;
   },
 
+  generateFromRepository: async (
+    workspaceId: string,
+    options: {
+      repository_id: string;
+      path?: string;
+      branch?: string;
+      template_category?: string;
+      custom_prompt?: string;
+    }
+  ): Promise<{
+    status: string;
+    content: Record<string, unknown>;
+    repository: string;
+    path: string;
+    branch: string;
+  }> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/documents/generate-from-repository`,
+      null,
+      {
+        params: {
+          repository_id: options.repository_id,
+          path: options.path || "",
+          branch: options.branch || "main",
+          template_category: options.template_category || "module_docs",
+          custom_prompt: options.custom_prompt || undefined,
+        },
+      }
+    );
+    return response.data;
+  },
+
   suggestImprovements: async (
     workspaceId: string,
     documentId: string

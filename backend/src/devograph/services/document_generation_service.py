@@ -168,6 +168,7 @@ class DocumentGenerationService:
         directory_path: str,
         branch: str = "main",
         developer_id: str | None = None,
+        custom_prompt: str | None = None,
     ) -> dict[str, Any]:
         """Generate documentation for a module/directory.
 
@@ -177,6 +178,7 @@ class DocumentGenerationService:
             directory_path: Path to the directory.
             branch: Git branch to use.
             developer_id: Developer ID for usage tracking.
+            custom_prompt: Optional custom instructions for the AI.
 
         Returns:
             Generated module documentation in TipTap format.
@@ -217,14 +219,19 @@ class DocumentGenerationService:
         # Detect primary language
         language = self._detect_primary_language(contents)
 
-        # Format prompt
-        formatted_prompt = DOC_MODULE_PROMPT.format(
+        # Format prompt - include custom instructions if provided
+        base_prompt = DOC_MODULE_PROMPT.format(
             path=directory_path,
             language=language,
             files_list="\n".join(files_list),
             key_files="\n\n".join(key_files_content) if key_files_content else "No key files fetched.",
             dependencies="See package configuration files.",
         )
+
+        if custom_prompt:
+            formatted_prompt = f"{base_prompt}\n\n## Additional Instructions\n{custom_prompt}"
+        else:
+            formatted_prompt = base_prompt
 
         request = AnalysisRequest(
             content=formatted_prompt,

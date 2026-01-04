@@ -19,7 +19,6 @@ class LLMSettings(BaseSettings):
     """LLM provider settings."""
 
     model_config = SettingsConfigDict(
-        env_prefix="LLM_",
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
@@ -30,36 +29,43 @@ class LLMSettings(BaseSettings):
     llm_provider: str = Field(
         default="claude",
         description="LLM provider: claude, ollama, openai",
+        validation_alias="LLM_PROVIDER",
     )
     llm_model: str = Field(
         default="claude-sonnet-4-20250514",
         description="Model identifier",
+        validation_alias="LLM_MODEL",
     )
 
     # Claude/Anthropic settings
     anthropic_api_key: str = Field(
         default="",
         description="Anthropic API key for Claude",
+        validation_alias="ANTHROPIC_API_KEY",
     )
 
     # Ollama settings (for OSS models)
     ollama_base_url: str = Field(
         default="http://localhost:11434",
         description="Ollama server URL",
+        validation_alias="OLLAMA_BASE_URL",
     )
     ollama_model: str = Field(
         default="codellama:13b",
         description="Ollama model name",
+        validation_alias="OLLAMA_MODEL",
     )
 
     # Gemini/Google settings
     gemini_api_key: str = Field(
         default="",
         description="Google Gemini API key",
+        validation_alias="GEMINI_API_KEY",
     )
     gemini_model: str = Field(
         default="gemini-2.0-flash",
         description="Gemini model name",
+        validation_alias="GEMINI_MODEL",
     )
 
     # Processing mode (configurable per billing plan)

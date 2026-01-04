@@ -2,10 +2,24 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, Plus, Sparkles, BookOpen, Code2, FileCode, X, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  FileText,
+  Sparkles,
+  BookOpen,
+  Code2,
+  X,
+  Loader2,
+  FolderGit2,
+  Folder,
+  File,
+  ChevronRight,
+  ArrowLeft,
+  GitBranch,
+} from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useDocuments, useTemplates } from "@/hooks/useDocuments";
-import { documentApi } from "@/lib/api";
+import { documentApi, repositoriesApi, Repository } from "@/lib/api";
 
 // Initial content for API Documentation
 const API_DOC_CONTENT = {
@@ -159,6 +173,39 @@ export default function DocsPage() {
   const [docType, setDocType] = useState("function_docs");
   const [isGenerating, setIsGenerating] = useState(false);
 
+  // State for source mode (paste code vs repository)
+  const [sourceMode, setSourceMode] = useState<"paste" | "repo">("paste");
+  const [repoStep, setRepoStep] = useState<"select" | "browse">("select");
+  const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
+  const [selectedBranch, setSelectedBranch] = useState("main");
+  const [currentPath, setCurrentPath] = useState("");
+  const [customPrompt, setCustomPrompt] = useState("");
+
+  // Fetch repositories when modal is open and in repo mode
+  const { data: repositories, isLoading: loadingRepos } = useQuery({
+    queryKey: ["repositories", "enabled"],
+    queryFn: () => repositoriesApi.listRepositories({ enabled_only: true }),
+    enabled: showGenerateModal && sourceMode === "repo",
+  });
+
+  // Fetch branches when a repo is selected
+  const { data: branches, isLoading: loadingBranches } = useQuery({
+    queryKey: ["branches", selectedRepo?.id],
+    queryFn: () => repositoriesApi.getBranches(selectedRepo!.id),
+    enabled: !!selectedRepo && repoStep === "browse",
+  });
+
+  // Fetch directory contents
+  const { data: contents, isLoading: loadingContents } = useQuery({
+    queryKey: ["contents", selectedRepo?.id, currentPath, selectedBranch],
+    queryFn: () =>
+      repositoriesApi.getContents(selectedRepo!.id, {
+        path: currentPath,
+        ref: selectedBranch,
+      }),
+    enabled: !!selectedRepo && repoStep === "browse",
+  });
+
   const handleCreateBlankDocument = useCallback(async () => {
     if (!currentWorkspaceId) return;
     try {
@@ -240,6 +287,84 @@ export default function DocsPage() {
       setIsGenerating(false);
     }
   }, [createDocument, currentWorkspaceId, codeInput, codeLanguage, docType, router]);
+
+  const handleGenerateFromRepository = useCallback(async () => {
+    if (!currentWorkspaceId || !selectedRepo) return;
+
+    setIsGenerating(true);
+    try {
+      // Generate documentation from repository
+      const response = await documentApi.generateFromRepository(currentWorkspaceId, {
+        repository_id: selectedRepo.id,
+        path: currentPath,
+        branch: selectedBranch,
+        template_category: docType,
+        custom_prompt: customPrompt || undefined,
+      });
+
+      // Create document with generated content
+      const result = await createDocument.mutateAsync({
+        title: `${selectedRepo.name}${currentPath ? `/${currentPath}` : ""} Documentation`,
+        content: response.content,
+        icon: "📁",
+      });
+
+      // Reset modal state
+      setShowGenerateModal(false);
+      setSourceMode("paste");
+      setRepoStep("select");
+      setSelectedRepo(null);
+      setCurrentPath("");
+      setCustomPrompt("");
+      router.push(`/docs/${result.id}`);
+    } catch (error) {
+      console.error("Failed to generate documentation:", error);
+      alert("Failed to generate documentation. Please try again.");
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [createDocument, currentWorkspaceId, selectedRepo, currentPath, selectedBranch, docType, customPrompt, router]);
+
+  const handleSelectRepo = useCallback((repo: Repository) => {
+    setSelectedRepo(repo);
+    setSelectedBranch(repo.sync_status === "synced" ? "main" : "main");
+    setCurrentPath("");
+    setRepoStep("browse");
+  }, []);
+
+  const handleNavigateDir = useCallback((item: { name: string; type: string; path: string }) => {
+    if (item.type === "dir") {
+      setCurrentPath(item.path);
+    }
+  }, []);
+
+  const handleBackToRepos = useCallback(() => {
+    setRepoStep("select");
+    setSelectedRepo(null);
+    setCurrentPath("");
+  }, []);
+
+  const resetModal = useCallback(() => {
+    setShowGenerateModal(false);
+    setSourceMode("paste");
+    setRepoStep("select");
+    setSelectedRepo(null);
+    setCurrentPath("");
+    setCodeInput("");
+    setCustomPrompt("");
+  }, []);
+
+  // Sort contents: directories first, then files
+  const sortedContents = contents
+    ? [...contents].sort((a, b) => {
+        if (a.type === "dir" && b.type !== "dir") return -1;
+        if (a.type !== "dir" && b.type === "dir") return 1;
+        return a.name.localeCompare(b.name);
+      })
+    : [];
+
+  // Breadcrumb path parts
+  const pathParts = currentPath ? currentPath.split("/") : [];
 
   const quickActions = [
     {
@@ -355,105 +480,315 @@ export default function DocsPage() {
       {/* Generate from Code Modal */}
       {showGenerateModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 border-b border-slate-800">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg">
-                  <Sparkles className="h-5 w-5 text-white" />
-                </div>
+                {sourceMode === "repo" && repoStep === "browse" ? (
+                  <button
+                    onClick={handleBackToRepos}
+                    className="p-2 hover:bg-slate-800 rounded-lg transition"
+                  >
+                    <ArrowLeft className="h-5 w-5 text-slate-400" />
+                  </button>
+                ) : (
+                  <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg">
+                    <Sparkles className="h-5 w-5 text-white" />
+                  </div>
+                )}
                 <div>
-                  <h2 className="text-lg font-semibold text-white">Generate from Code</h2>
-                  <p className="text-sm text-slate-400">Paste code to generate documentation</p>
+                  <h2 className="text-lg font-semibold text-white">Generate Documentation</h2>
+                  <p className="text-sm text-slate-400">
+                    {sourceMode === "paste"
+                      ? "Paste code or select from repository"
+                      : repoStep === "select"
+                      ? "Select a repository"
+                      : `${selectedRepo?.full_name}${currentPath ? `/${currentPath}` : ""}`}
+                  </p>
                 </div>
               </div>
               <button
-                onClick={() => setShowGenerateModal(false)}
+                onClick={resetModal}
                 className="p-2 hover:bg-slate-800 rounded-lg transition"
               >
                 <X className="h-5 w-5 text-slate-400" />
               </button>
             </div>
 
-            {/* Modal Body */}
-            <div className="p-4 space-y-4 overflow-y-auto max-h-[60vh]">
-              {/* Options Row */}
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                    Documentation Type
-                  </label>
-                  <select
-                    value={docType}
-                    onChange={(e) => setDocType(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-500"
-                  >
-                    <option value="function_docs">Function Documentation</option>
-                    <option value="api_docs">API Documentation</option>
-                    <option value="readme">README</option>
-                    <option value="module_docs">Module Documentation</option>
-                  </select>
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                    Language
-                  </label>
-                  <select
-                    value={codeLanguage}
-                    onChange={(e) => setCodeLanguage(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-500"
-                  >
-                    <option value="typescript">TypeScript</option>
-                    <option value="javascript">JavaScript</option>
-                    <option value="python">Python</option>
-                    <option value="go">Go</option>
-                    <option value="rust">Rust</option>
-                    <option value="java">Java</option>
-                    <option value="csharp">C#</option>
-                    <option value="cpp">C++</option>
-                  </select>
-                </div>
-              </div>
+            {/* Tabs */}
+            <div className="flex border-b border-slate-800">
+              <button
+                onClick={() => {
+                  setSourceMode("paste");
+                  setRepoStep("select");
+                  setSelectedRepo(null);
+                  setCurrentPath("");
+                }}
+                className={`flex-1 px-4 py-3 text-sm font-medium transition ${
+                  sourceMode === "paste"
+                    ? "text-primary-400 border-b-2 border-primary-500 bg-slate-800/50"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <Code2 className="h-4 w-4 inline-block mr-2" />
+                Paste Code
+              </button>
+              <button
+                onClick={() => setSourceMode("repo")}
+                className={`flex-1 px-4 py-3 text-sm font-medium transition ${
+                  sourceMode === "repo"
+                    ? "text-primary-400 border-b-2 border-primary-500 bg-slate-800/50"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <FolderGit2 className="h-4 w-4 inline-block mr-2" />
+                From Repository
+              </button>
+            </div>
 
-              {/* Code Input */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                  Source Code
-                </label>
-                <textarea
-                  value={codeInput}
-                  onChange={(e) => setCodeInput(e.target.value)}
-                  placeholder="Paste your code here..."
-                  className="w-full h-64 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm font-mono focus:outline-none focus:border-primary-500 resize-none"
-                />
-              </div>
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto">
+              {sourceMode === "paste" ? (
+                /* Paste Code Tab */
+                <div className="p-4 space-y-4">
+                  {/* Options Row */}
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                        Documentation Type
+                      </label>
+                      <select
+                        value={docType}
+                        onChange={(e) => setDocType(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-500"
+                      >
+                        <option value="function_docs">Function Documentation</option>
+                        <option value="api_docs">API Documentation</option>
+                        <option value="readme">README</option>
+                        <option value="module_docs">Module Documentation</option>
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                        Language
+                      </label>
+                      <select
+                        value={codeLanguage}
+                        onChange={(e) => setCodeLanguage(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-500"
+                      >
+                        <option value="typescript">TypeScript</option>
+                        <option value="javascript">JavaScript</option>
+                        <option value="python">Python</option>
+                        <option value="go">Go</option>
+                        <option value="rust">Rust</option>
+                        <option value="java">Java</option>
+                        <option value="csharp">C#</option>
+                        <option value="cpp">C++</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Code Input */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                      Source Code
+                    </label>
+                    <textarea
+                      value={codeInput}
+                      onChange={(e) => setCodeInput(e.target.value)}
+                      placeholder="Paste your code here..."
+                      className="w-full h-64 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm font-mono focus:outline-none focus:border-primary-500 resize-none"
+                    />
+                  </div>
+                </div>
+              ) : repoStep === "select" ? (
+                /* Repository Selection */
+                <div className="p-4">
+                  {loadingRepos ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
+                    </div>
+                  ) : !repositories || repositories.length === 0 ? (
+                    <div className="text-center py-12">
+                      <FolderGit2 className="h-12 w-12 text-slate-600 mx-auto mb-3" />
+                      <p className="text-slate-400">No repositories connected</p>
+                      <p className="text-slate-500 text-sm mt-1">
+                        Connect repositories in Settings to use this feature
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {repositories.map((repo) => (
+                        <button
+                          key={repo.id}
+                          onClick={() => handleSelectRepo(repo)}
+                          className="w-full flex items-center gap-3 p-3 bg-slate-800/50 border border-slate-700/50 rounded-lg hover:bg-slate-800 hover:border-slate-600 transition text-left"
+                        >
+                          <FolderGit2 className="h-5 w-5 text-slate-400 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-white font-medium truncate">
+                              {repo.full_name}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                              {repo.is_private && <span>Private</span>}
+                              {repo.language && (
+                                <span className="px-1.5 py-0.5 bg-slate-700 rounded">
+                                  {repo.language}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-slate-500" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Directory Browser */
+                <div className="flex flex-col h-[400px]">
+                  {/* Breadcrumb & Branch Selector */}
+                  <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800 bg-slate-800/30">
+                    <div className="flex items-center gap-1 text-sm overflow-x-auto">
+                      <button
+                        onClick={() => setCurrentPath("")}
+                        className="text-slate-300 hover:text-white shrink-0"
+                      >
+                        {selectedRepo?.name}
+                      </button>
+                      {pathParts.map((part, i) => (
+                        <span key={i} className="flex items-center gap-1 shrink-0">
+                          <span className="text-slate-600">/</span>
+                          <button
+                            onClick={() =>
+                              setCurrentPath(pathParts.slice(0, i + 1).join("/"))
+                            }
+                            className="text-slate-300 hover:text-white"
+                          >
+                            {part}
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-4">
+                      <GitBranch className="h-4 w-4 text-slate-500" />
+                      <select
+                        value={selectedBranch}
+                        onChange={(e) => setSelectedBranch(e.target.value)}
+                        className="px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white text-xs focus:outline-none"
+                      >
+                        {branches?.map((branch) => (
+                          <option key={branch.name} value={branch.name}>
+                            {branch.name}
+                          </option>
+                        )) || <option value="main">main</option>}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Doc Type Selector */}
+                  <div className="px-4 py-2 border-b border-slate-800 space-y-3">
+                    <select
+                      value={docType}
+                      onChange={(e) => setDocType(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-500"
+                    >
+                      <option value="module_docs">Module Documentation</option>
+                      <option value="api_docs">API Documentation</option>
+                      <option value="readme">README</option>
+                      <option value="function_docs">Function Documentation</option>
+                    </select>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-1">
+                        Custom Instructions (optional)
+                      </label>
+                      <textarea
+                        value={customPrompt}
+                        onChange={(e) => setCustomPrompt(e.target.value)}
+                        placeholder="E.g., Focus on API usage examples, include error handling patterns, write for beginners..."
+                        className="w-full h-16 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-500 resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* File List */}
+                  <div className="flex-1 overflow-y-auto p-2">
+                    {loadingContents ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
+                      </div>
+                    ) : sortedContents.length === 0 ? (
+                      <div className="text-center py-12 text-slate-500">
+                        This directory is empty
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {sortedContents.map((item) => (
+                          <button
+                            key={item.path}
+                            onClick={() => handleNavigateDir(item)}
+                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition text-left ${
+                              item.type === "dir"
+                                ? "text-slate-300 hover:bg-slate-800"
+                                : "text-slate-500 cursor-default"
+                            }`}
+                            disabled={item.type !== "dir"}
+                          >
+                            {item.type === "dir" ? (
+                              <Folder className="h-4 w-4 text-blue-400" />
+                            ) : (
+                              <File className="h-4 w-4 text-slate-500" />
+                            )}
+                            <span className="flex-1 truncate">{item.name}</span>
+                            {item.type === "dir" && (
+                              <ChevronRight className="h-4 w-4 text-slate-600" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-end gap-3 p-4 border-t border-slate-800">
-              <button
-                onClick={() => setShowGenerateModal(false)}
-                className="px-4 py-2 text-slate-300 hover:text-white transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleGenerateFromCode}
-                disabled={isGenerating || !codeInput.trim()}
-                className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4" />
-                    Generate Documentation
-                  </>
+            <div className="flex items-center justify-between gap-3 p-4 border-t border-slate-800">
+              <div className="text-sm text-slate-500">
+                {sourceMode === "repo" && repoStep === "browse" && (
+                  <>Generating docs for: <span className="text-slate-300">{currentPath || "root"}</span></>
                 )}
-              </button>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={resetModal}
+                  className="px-4 py-2 text-slate-300 hover:text-white transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={sourceMode === "paste" ? handleGenerateFromCode : handleGenerateFromRepository}
+                  disabled={
+                    isGenerating ||
+                    (sourceMode === "paste" && !codeInput.trim()) ||
+                    (sourceMode === "repo" && !selectedRepo)
+                  }
+                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      Generate Documentation
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
