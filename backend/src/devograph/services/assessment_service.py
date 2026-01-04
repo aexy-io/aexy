@@ -935,6 +935,10 @@ class AssessmentService:
         assessment.published_at = datetime.utcnow()
         assessment.updated_at = datetime.utcnow()
 
+        # Generate public token if not already set
+        if not assessment.public_token:
+            assessment.public_token = secrets.token_urlsafe(32)
+
         # Mark invitations as sent if sending
         if send_invitations:
             invitations = await self.get_candidates(assessment_id)

@@ -160,6 +160,14 @@ class Assessment(Base):
         nullable=True,
     )
 
+    # Public access token for anonymous assessment taking
+    public_token: Mapped[str | None] = mapped_column(
+        String(64),
+        unique=True,
+        index=True,
+        nullable=True,
+    )
+
     # Wizard State
     wizard_step: Mapped[int] = mapped_column(Integer, default=1)
     wizard_step_status: Mapped[dict] = mapped_column(
