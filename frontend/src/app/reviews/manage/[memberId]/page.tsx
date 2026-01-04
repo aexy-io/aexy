@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { redirect, useParams } from "next/navigation";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import {
   ClipboardCheck,
   Target,
@@ -35,11 +36,29 @@ import {
   BarChart3,
   Edit3,
   Send,
+  Loader2,
 } from "lucide-react";
 import { AppHeader } from "@/components/layout/AppHeader";
+import { reviewsApi, IndividualReviewDetail, WorkGoal, GoalSuggestion } from "@/lib/api";
+import { useWorkspace } from "@/hooks/useWorkspace";
 
-// Mock member data
-const mockMemberData: Record<string, {
+const goalTypeColors: Record<string, { bg: string; text: string }> = {
+  performance: { bg: "bg-cyan-500/20", text: "text-cyan-400" },
+  skill_development: { bg: "bg-purple-500/20", text: "text-purple-400" },
+  project: { bg: "bg-emerald-500/20", text: "text-emerald-400" },
+  leadership: { bg: "bg-amber-500/20", text: "text-amber-400" },
+  team_contribution: { bg: "bg-blue-500/20", text: "text-blue-400" },
+};
+
+const goalStatusColors: Record<string, { bg: string; text: string }> = {
+  in_progress: { bg: "bg-blue-500/20", text: "text-blue-400" },
+  completed: { bg: "bg-emerald-500/20", text: "text-emerald-400" },
+  at_risk: { bg: "bg-red-500/20", text: "text-red-400" },
+  pending: { bg: "bg-slate-500/20", text: "text-slate-400" },
+};
+
+// Transform API data to component format
+interface MemberData {
   id: string;
   name: string;
   role: string;
@@ -79,121 +98,141 @@ const mockMemberData: Record<string, {
     growthAreas: string[];
     peerCount: number;
   };
-}> = {
-  "1": {
-    id: "1",
-    name: "Sarah Chen",
-    role: "Senior Engineer",
-    email: "sarah.chen@company.com",
-    joinedDate: "March 2022",
-    manager: "You",
-    team: "Platform Team",
-    reviewStatus: "self_review_submitted",
-    skills: ["TypeScript", "React", "Node.js", "PostgreSQL", "Redis", "AWS"],
+}
+
+function transformReviewToMemberData(review: IndividualReviewDetail, suggestions: GoalSuggestion[]): MemberData {
+  const contributionSummary = review.contribution_summary as {
+    metrics?: {
+      commits?: { total?: number };
+      pull_requests?: { total?: number };
+      code_reviews?: { total?: number };
+      lines?: { added?: number; removed?: number };
+      skills_demonstrated?: string[];
+    };
+  } | null;
+
+  // Extract strengths and growth areas from reviews
+  const strengths: string[] = [];
+  const growthAreas: string[] = [];
+
+  if (review.self_review?.responses?.strengths) {
+    strengths.push(...(Array.isArray(review.self_review.responses.strengths)
+      ? review.self_review.responses.strengths
+      : [review.self_review.responses.strengths]));
+  }
+  if (review.manager_review?.responses?.strengths) {
+    strengths.push(...(Array.isArray(review.manager_review.responses.strengths)
+      ? review.manager_review.responses.strengths
+      : [review.manager_review.responses.strengths]));
+  }
+  if (review.self_review?.responses?.growth_areas) {
+    growthAreas.push(...(Array.isArray(review.self_review.responses.growth_areas)
+      ? review.self_review.responses.growth_areas
+      : [review.self_review.responses.growth_areas]));
+  }
+
+  return {
+    id: review.id,
+    name: review.employee_name || "Team Member",
+    role: "Team Member",
+    email: review.employee_email || "",
+    joinedDate: new Date(review.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+    manager: review.manager_name || "Manager",
+    team: "Team",
+    reviewStatus: review.status,
+    skills: contributionSummary?.metrics?.skills_demonstrated || [],
     contributions: {
-      commits: 127,
-      prs: 23,
-      reviews: 45,
-      linesAdded: 15420,
-      linesRemoved: 8340,
+      commits: contributionSummary?.metrics?.commits?.total || 0,
+      prs: contributionSummary?.metrics?.pull_requests?.total || 0,
+      reviews: contributionSummary?.metrics?.code_reviews?.total || 0,
+      linesAdded: contributionSummary?.metrics?.lines?.added || 0,
+      linesRemoved: contributionSummary?.metrics?.lines?.removed || 0,
     },
-    goals: [
-      {
-        id: "g1",
-        title: "Improve API response times by 50%",
-        type: "performance",
-        status: "in_progress",
-        progress: 65,
-        dueDate: "2025-01-31",
-        keyResults: [
-          { description: "Reduce p95 latency", target: 400, current: 520, unit: "ms" },
-          { description: "Implement caching layer", target: 100, current: 75, unit: "%" },
-        ],
-      },
-      {
-        id: "g2",
-        title: "Lead frontend architecture modernization",
-        type: "project",
-        status: "in_progress",
-        progress: 40,
-        dueDate: "2025-02-28",
-        keyResults: [
-          { description: "Migrate components", target: 50, current: 20, unit: "components" },
-        ],
-      },
-      {
-        id: "g3",
-        title: "Complete AWS certification",
-        type: "skill_development",
-        status: "completed",
-        progress: 100,
-        dueDate: "2024-12-15",
-        keyResults: [
-          { description: "Pass certification exam", target: 1, current: 1, unit: "exam" },
-        ],
-      },
-    ],
-    suggestions: [
-      {
-        id: "s1",
-        title: "Performance optimization expertise",
-        description: "15 commits related to API optimization and caching improvements",
-        suggestedGoal: "Lead performance optimization initiative for Q1",
-        source: "GitHub Commits",
-        confidence: 92,
-        keywords: ["performance", "optimization", "caching"],
-      },
-    ],
+    goals: (review.goals || []).map((g: WorkGoal) => ({
+      id: g.id,
+      title: g.title,
+      type: g.goal_type,
+      status: g.status,
+      progress: g.progress_percentage,
+      dueDate: g.time_bound || "",
+      keyResults: g.key_results.map(kr => ({
+        description: kr.description,
+        target: kr.target,
+        current: kr.current,
+        unit: kr.unit,
+      })),
+    })),
+    suggestions: suggestions.map(s => ({
+      id: s.id || crypto.randomUUID(),
+      title: s.title,
+      description: s.description,
+      suggestedGoal: s.suggested_goal || s.title,
+      source: s.source,
+      confidence: s.confidence,
+      keywords: s.keywords || [],
+    })),
     feedbackSummary: {
-      strengths: [
-        "Excellent technical problem-solving skills",
-        "Proactive communication with stakeholders",
-        "Strong mentorship of junior developers",
-      ],
-      growthAreas: [
-        "Could improve documentation practices",
-        "Sometimes takes on too much work",
-      ],
-      peerCount: 4,
+      strengths: strengths.slice(0, 5),
+      growthAreas: growthAreas.slice(0, 5),
+      peerCount: review.peer_reviews?.length || 0,
     },
-  },
-};
-
-const goalTypeColors: Record<string, { bg: string; text: string }> = {
-  performance: { bg: "bg-cyan-500/20", text: "text-cyan-400" },
-  skill_development: { bg: "bg-purple-500/20", text: "text-purple-400" },
-  project: { bg: "bg-emerald-500/20", text: "text-emerald-400" },
-  leadership: { bg: "bg-amber-500/20", text: "text-amber-400" },
-  team_contribution: { bg: "bg-blue-500/20", text: "text-blue-400" },
-};
-
-const goalStatusColors: Record<string, { bg: string; text: string }> = {
-  in_progress: { bg: "bg-blue-500/20", text: "text-blue-400" },
-  completed: { bg: "bg-emerald-500/20", text: "text-emerald-400" },
-  at_risk: { bg: "bg-red-500/20", text: "text-red-400" },
-  pending: { bg: "bg-slate-500/20", text: "text-slate-400" },
-};
+  };
+}
 
 export default function MemberDetailPage() {
   const { user, isLoading: authLoading, isAuthenticated, logout } = useAuth();
   const params = useParams();
-  const memberId = params.memberId as string;
+  const reviewId = params.memberId as string;
+  const { currentWorkspace } = useWorkspace();
 
   const [activeTab, setActiveTab] = useState<"overview" | "goals" | "contributions" | "feedback">("overview");
   const [showAddGoalFromSuggestion, setShowAddGoalFromSuggestion] = useState<string | null>(null);
 
-  const member = mockMemberData[memberId] || mockMemberData["1"];
+  // Fetch review details
+  const { data: review, isLoading: reviewLoading, error: reviewError } = useQuery({
+    queryKey: ["review", reviewId],
+    queryFn: () => reviewsApi.getReview(reviewId),
+    enabled: !!reviewId && isAuthenticated,
+  });
 
-  if (authLoading) {
+  // Fetch goal suggestions
+  const { data: suggestions = [] } = useQuery({
+    queryKey: ["goalSuggestions", review?.employee_id],
+    queryFn: () => reviewsApi.getGoalSuggestions(review!.employee_id, currentWorkspace?.id || ""),
+    enabled: !!review?.employee_id && !!currentWorkspace?.id,
+  });
+
+  // Transform data for display
+  const member = review ? transformReviewToMemberData(review, suggestions) : null;
+
+  if (authLoading || reviewLoading) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+        <Loader2 className="h-12 w-12 animate-spin text-primary-500" />
       </div>
     );
   }
 
   if (!isAuthenticated) {
     redirect("/");
+  }
+
+  if (reviewError || !member) {
+    return (
+      <div className="min-h-screen bg-slate-900">
+        <AppHeader user={user} onLogout={logout} />
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="text-center py-16">
+            <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-white mb-2">Review not found</h2>
+            <p className="text-slate-400 mb-4">The review you&apos;re looking for doesn&apos;t exist or you don&apos;t have access.</p>
+            <Link href="/reviews" className="text-primary-400 hover:text-primary-300">
+              Back to Reviews
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const activeGoals = member.goals.filter(g => g.status !== "completed");

@@ -243,7 +243,11 @@ class CourseProviderService:
         skill_name: str,
         max_results: int = 10,
     ) -> list[ExternalCourse]:
-        """Search Coursera for courses (placeholder for future implementation).
+        """Search Coursera for courses.
+
+        Note: Requires COURSERA_API_KEY environment variable.
+        Coursera Partner API requires a business partnership.
+        See: https://www.coursera.org/business/partners
 
         Args:
             skill_name: Skill or topic to search for.
@@ -252,9 +256,16 @@ class CourseProviderService:
         Returns:
             List of external courses from Coursera.
         """
-        # Coursera API requires partnership/authentication
-        # For now, return empty list
-        logger.info("Coursera integration not yet implemented")
+        import os
+
+        api_key = os.getenv("COURSERA_API_KEY")
+        if not api_key:
+            logger.debug("Coursera API key not configured (COURSERA_API_KEY)")
+            return []
+
+        # TODO: Implement Coursera API integration when partnership is established
+        # Coursera API docs: https://build.coursera.org/
+        logger.info(f"Coursera search for '{skill_name}' - API integration pending")
         return []
 
     async def search_udemy(
@@ -262,7 +273,11 @@ class CourseProviderService:
         skill_name: str,
         max_results: int = 10,
     ) -> list[ExternalCourse]:
-        """Search Udemy for courses (placeholder for future implementation).
+        """Search Udemy for courses.
+
+        Note: Requires UDEMY_CLIENT_ID and UDEMY_CLIENT_SECRET environment variables.
+        Udemy Affiliate API requires an affiliate account.
+        See: https://www.udemy.com/developers/affiliate/
 
         Args:
             skill_name: Skill or topic to search for.
@@ -271,17 +286,79 @@ class CourseProviderService:
         Returns:
             List of external courses from Udemy.
         """
-        # Udemy API requires affiliate account
-        # For now, return empty list
-        logger.info("Udemy integration not yet implemented")
-        return []
+        import os
+
+        client_id = os.getenv("UDEMY_CLIENT_ID")
+        client_secret = os.getenv("UDEMY_CLIENT_SECRET")
+
+        if not client_id or not client_secret:
+            logger.debug("Udemy API credentials not configured (UDEMY_CLIENT_ID, UDEMY_CLIENT_SECRET)")
+            return []
+
+        # Udemy Affiliate API implementation
+        try:
+            import base64
+
+            auth = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
+
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    "https://www.udemy.com/api-2.0/courses/",
+                    params={
+                        "search": skill_name,
+                        "page_size": max_results,
+                        "ordering": "relevance",
+                    },
+                    headers={
+                        "Authorization": f"Basic {auth}",
+                        "Accept": "application/json",
+                    },
+                    timeout=10.0,
+                )
+
+                if response.status_code != 200:
+                    logger.warning(f"Udemy API error: {response.status_code}")
+                    return []
+
+                data = response.json()
+                courses = []
+
+                for item in data.get("results", [])[:max_results]:
+                    courses.append(
+                        ExternalCourse(
+                            provider="udemy",
+                            external_id=str(item.get("id", "")),
+                            title=item.get("title", ""),
+                            description=item.get("headline", ""),
+                            url=f"https://www.udemy.com{item.get('url', '')}",
+                            thumbnail_url=item.get("image_240x135", ""),
+                            instructor=item.get("visible_instructors", [{}])[0].get("display_name", ""),
+                            duration_minutes=int(item.get("content_info_short", "0").split()[0] or 0) * 60,
+                            rating=item.get("rating", 0),
+                            review_count=item.get("num_reviews", 0),
+                            price=item.get("price"),
+                            is_free=item.get("is_paid", True) is False,
+                            skill_tags=[skill_name],
+                            difficulty="all",
+                        )
+                    )
+
+                return courses
+
+        except Exception as e:
+            logger.error(f"Udemy search failed: {e}")
+            return []
 
     async def search_pluralsight(
         self,
         skill_name: str,
         max_results: int = 10,
     ) -> list[ExternalCourse]:
-        """Search Pluralsight for courses (placeholder for future implementation).
+        """Search Pluralsight for courses.
+
+        Note: Requires PLURALSIGHT_API_KEY environment variable.
+        Pluralsight API requires enterprise account.
+        See: https://www.pluralsight.com/product/professional-services
 
         Args:
             skill_name: Skill or topic to search for.
@@ -290,7 +367,13 @@ class CourseProviderService:
         Returns:
             List of external courses from Pluralsight.
         """
-        # Pluralsight API requires authentication
-        # For now, return empty list
-        logger.info("Pluralsight integration not yet implemented")
+        import os
+
+        api_key = os.getenv("PLURALSIGHT_API_KEY")
+        if not api_key:
+            logger.debug("Pluralsight API key not configured (PLURALSIGHT_API_KEY)")
+            return []
+
+        # TODO: Implement Pluralsight API integration when enterprise access is available
+        logger.info(f"Pluralsight search for '{skill_name}' - API integration pending")
         return []

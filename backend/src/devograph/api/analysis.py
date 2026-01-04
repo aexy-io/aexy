@@ -294,6 +294,8 @@ async def get_developer_insights(
 @router.post("/match/task", response_model=TaskMatchResult)
 async def match_task_to_developers(
     task: TaskMatchRequest,
+    workspace_id: str | None = None,
+    team_id: str | None = None,
     db: AsyncSession = Depends(get_db),
     matcher: TaskMatcher = Depends(get_task_matcher),
 ) -> TaskMatchResult:
@@ -301,17 +303,55 @@ async def match_task_to_developers(
 
     Analyzes the task description to extract required skills,
     then scores all available developers for the best match.
+
+    Args:
+        task: Task to match
+        workspace_id: Optional workspace to filter developers
+        team_id: Optional team to filter developers
     """
-    # TODO: Fetch developers from database
-    # For now, return empty result
+    from devograph.models.workspace import WorkspaceMember
+
     try:
-        task_signals = await matcher.extract_task_signals(task)
-        return TaskMatchResult(
-            task_signals=task_signals,
-            candidates=[],
-            recommendations=["No developers loaded for matching"],
-            warnings=[],
-        )
+        # Fetch developers based on filters
+        if workspace_id:
+            # Get developers from workspace
+            stmt = (
+                select(Developer)
+                .join(WorkspaceMember, WorkspaceMember.developer_id == Developer.id)
+                .where(WorkspaceMember.workspace_id == workspace_id)
+                .where(Developer.skill_fingerprint.isnot(None))
+            )
+        else:
+            # Get all developers with skill fingerprints
+            stmt = select(Developer).where(Developer.skill_fingerprint.isnot(None))
+
+        result = await db.execute(stmt)
+        developers = result.scalars().all()
+
+        if not developers:
+            task_signals = await matcher.extract_task_signals(task)
+            return TaskMatchResult(
+                task_signals=task_signals,
+                candidates=[],
+                recommendations=[],
+                warnings=["No developers with skill profiles found. Developers need to sync their repositories first."],
+            )
+
+        # Convert to dicts for matcher
+        developer_dicts = [
+            {
+                "id": str(dev.id),
+                "name": dev.name or dev.email,
+                "skill_fingerprint": dev.skill_fingerprint or {},
+                "work_patterns": dev.work_patterns or {},
+                "growth_trajectory": dev.growth_trajectory or {},
+            }
+            for dev in developers
+        ]
+
+        # Run matching
+        return await matcher.match_task(task, developer_dicts)
+
     except Exception as e:
         logger.error(f"Task matching failed: {e}")
         raise HTTPException(
@@ -323,6 +363,7 @@ async def match_task_to_developers(
 @router.post("/match/bulk")
 async def bulk_match_tasks(
     tasks: list[TaskMatchRequest],
+    workspace_id: str | None = None,
     db: AsyncSession = Depends(get_db),
     matcher: TaskMatcher = Depends(get_task_matcher),
 ) -> dict[str, TaskMatchResult]:
@@ -330,9 +371,63 @@ async def bulk_match_tasks(
 
     Useful for sprint planning where you need to assign
     multiple tasks at once.
+
+    Args:
+        tasks: List of tasks to match
+        workspace_id: Optional workspace to filter developers
     """
-    # TODO: Implement with actual developers
-    return {}
+    from devograph.models.workspace import WorkspaceMember
+
+    try:
+        # Fetch developers based on filters
+        if workspace_id:
+            stmt = (
+                select(Developer)
+                .join(WorkspaceMember, WorkspaceMember.developer_id == Developer.id)
+                .where(WorkspaceMember.workspace_id == workspace_id)
+                .where(Developer.skill_fingerprint.isnot(None))
+            )
+        else:
+            stmt = select(Developer).where(Developer.skill_fingerprint.isnot(None))
+
+        result = await db.execute(stmt)
+        developers = result.scalars().all()
+
+        developer_dicts = [
+            {
+                "id": str(dev.id),
+                "name": dev.name or dev.email,
+                "skill_fingerprint": dev.skill_fingerprint or {},
+                "work_patterns": dev.work_patterns or {},
+                "growth_trajectory": dev.growth_trajectory or {},
+            }
+            for dev in developers
+        ]
+
+        # Match each task
+        results = {}
+        for task in tasks:
+            try:
+                match_result = await matcher.match_task(task, developer_dicts)
+                results[task.title] = match_result
+            except Exception as e:
+                logger.warning(f"Failed to match task '{task.title}': {e}")
+                task_signals = await matcher.extract_task_signals(task)
+                results[task.title] = TaskMatchResult(
+                    task_signals=task_signals,
+                    candidates=[],
+                    recommendations=[],
+                    warnings=[f"Matching failed: {str(e)}"],
+                )
+
+        return results
+
+    except Exception as e:
+        logger.error(f"Bulk task matching failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Bulk matching failed: {str(e)}",
+        )
 
 
 @router.get("/developers/{developer_id}/benchmark", response_model=BenchmarkResult)
