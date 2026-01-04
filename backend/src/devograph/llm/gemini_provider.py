@@ -16,6 +16,8 @@ from devograph.llm.base import (
     LanguageAnalysis,
     LLMConfig,
     LLMProvider,
+    LLMRateLimitError,
+    LLMAPIError,
     MatchScore,
     SoftSkillAnalysis,
     TaskSignals,
@@ -178,13 +180,24 @@ class GeminiProvider(LLMProvider):
                 data, response_text, tokens, input_tokens, output_tokens
             )
 
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 429:
+                logger.error(f"Rate limit exceeded: {e}")
+                raise LLMRateLimitError("Gemini API rate limit exceeded. Please try again in a few minutes.")
+            logger.error(f"API error: {e}")
+            raise LLMAPIError(f"Gemini API error: {e}", status_code=e.response.status_code)
+        except LLMRateLimitError:
+            raise
+        except LLMAPIError:
+            raise
         except Exception as e:
+            error_str = str(e)
+            # Check for rate limit in error message
+            if "429" in error_str or "Too Many Requests" in error_str:
+                logger.error(f"Rate limit exceeded: {e}")
+                raise LLMRateLimitError("Gemini API rate limit exceeded. Please try again in a few minutes.")
             logger.error(f"Analysis failed: {e}")
-            return AnalysisResult(
-                raw_response=str(e),
-                provider=self.provider_name,
-                model=self.model_name,
-            )
+            raise LLMAPIError(f"Failed to generate documentation: {error_str}")
 
     def _build_analysis_prompts(
         self,

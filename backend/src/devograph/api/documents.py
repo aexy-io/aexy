@@ -808,6 +808,157 @@ async def generate_from_code(
         )
 
 
+class GitHubServiceAdapter:
+    """Adapter to wrap GitHubAppService with the interface expected by DocumentGenerationService."""
+
+    def __init__(self, app_service: "GitHubAppService", installation_id: int, owner: str, repo: str):
+        self.app_service = app_service
+        self.installation_id = installation_id
+        self.owner = owner
+        self.repo = repo
+
+    def _normalize_path(self, path: str) -> str:
+        """Normalize path - convert '.' or '/' to empty string for root."""
+        if path in (".", "/", "./"):
+            return ""
+        return path.strip("/")
+
+    async def get_directory_contents(
+        self, repository_full_name: str, path: str, branch: str
+    ) -> list[dict]:
+        """Get directory contents."""
+        normalized_path = self._normalize_path(path)
+        return await self.app_service.get_repository_contents(
+            installation_id=self.installation_id,
+            owner=self.owner,
+            repo=self.repo,
+            path=normalized_path,
+            ref=branch,
+        )
+
+    async def get_file_content(
+        self, repository_full_name: str, path: str, branch: str
+    ) -> dict | None:
+        """Get file content."""
+        return await self.app_service.get_file_content(
+            installation_id=self.installation_id,
+            owner=self.owner,
+            repo=self.repo,
+            path=path,
+            ref=branch,
+        )
+
+
+@router.post("/generate-from-repository")
+async def generate_from_repository(
+    workspace_id: str,
+    repository_id: str = Query(..., description="Repository ID"),
+    path: str = Query("", description="Directory path within repository"),
+    branch: str = Query("main", description="Branch name"),
+    template_category: str = Query(default="module_docs"),
+    custom_prompt: str | None = Query(default=None, description="Custom instructions for documentation generation"),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate documentation from a repository directory.
+
+    Analyzes the directory structure and key files to generate comprehensive documentation.
+    Optionally accepts a custom prompt to guide the AI generation.
+    """
+    from devograph.services.github_app_service import GitHubAppService, GitHubAppError
+    from devograph.services.repository_service import RepositoryService
+
+    await check_workspace_permission(workspace_id, current_user, db, "member")
+
+    try:
+        category = TemplateCategory(template_category)
+    except ValueError:
+        category = TemplateCategory.MODULE_DOCS
+
+    repo_service = RepositoryService(db)
+    app_service = GitHubAppService(db)
+
+    try:
+        # Get the repository
+        repo = await repo_service.get_repository_by_id(repository_id)
+        if not repo:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Repository not found",
+            )
+
+        # Get installation token for the developer
+        token_result = await app_service.get_installation_token_for_developer(
+            str(current_user.id), repo.owner_login
+        )
+        if not token_result:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No GitHub App installation found. Please install the app first.",
+            )
+
+        _, installation_id = token_result
+
+        # Create adapter for the document generation service
+        github_adapter = GitHubServiceAdapter(
+            app_service=app_service,
+            installation_id=installation_id,
+            owner=repo.owner_login,
+            repo=repo.name,
+        )
+
+        gen_service = DocumentGenerationService(db)
+
+        # Generate documentation
+        content = await gen_service.generate_module_documentation(
+            github_service=github_adapter,
+            repository_full_name=repo.full_name,
+            directory_path=path or ".",
+            branch=branch,
+            developer_id=str(current_user.id),
+            custom_prompt=custom_prompt,
+        )
+
+        return {
+            "status": "success",
+            "content": content,
+            "repository": repo.full_name,
+            "path": path or ".",
+            "branch": branch,
+        }
+
+    except HTTPException:
+        raise
+    except GitHubAppError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"GitHub API error: {str(e)}",
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except Exception as e:
+        from devograph.llm.base import LLMRateLimitError, LLMAPIError
+
+        # Check for LLM-specific errors
+        if isinstance(e, LLMRateLimitError):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="AI service rate limit exceeded. Please wait a few minutes and try again.",
+            )
+        if isinstance(e, LLMAPIError):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"AI service error: {str(e)}",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate documentation: {str(e)}",
+        )
+
+
 @router.post("/{document_id}/suggest-improvements")
 async def suggest_improvements(
     workspace_id: str,

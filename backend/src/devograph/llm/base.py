@@ -7,6 +7,29 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
+class LLMError(Exception):
+    """Base exception for LLM errors."""
+
+    pass
+
+
+class LLMRateLimitError(LLMError):
+    """Raised when the LLM API rate limit is exceeded."""
+
+    def __init__(self, message: str = "API rate limit exceeded. Please try again later."):
+        self.message = message
+        super().__init__(self.message)
+
+
+class LLMAPIError(LLMError):
+    """Raised when the LLM API returns an error."""
+
+    def __init__(self, message: str, status_code: int | None = None):
+        self.message = message
+        self.status_code = status_code
+        super().__init__(self.message)
+
+
 class AnalysisType(str, Enum):
     """Types of content analysis supported."""
 

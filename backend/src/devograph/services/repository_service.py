@@ -25,6 +25,12 @@ class RepositoryService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    async def get_repository_by_id(self, repository_id: str) -> Repository | None:
+        """Get a repository by its ID."""
+        stmt = select(Repository).where(Repository.id == repository_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def sync_user_repos_and_orgs(
         self,
         developer_id: str,
