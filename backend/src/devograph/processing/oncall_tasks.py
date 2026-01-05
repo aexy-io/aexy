@@ -28,8 +28,8 @@ def check_upcoming_shifts():
     2. Sends ONCALL_SHIFT_STARTING notifications to the developer
     3. Marks the shift as notified to prevent duplicate notifications
     """
-    import asyncio
-    asyncio.run(_check_upcoming_shifts_async())
+    from devograph.processing.tasks import run_async
+    run_async(_check_upcoming_shifts_async())
 
 
 async def _check_upcoming_shifts_async():
@@ -87,8 +87,8 @@ def check_ending_shifts():
     This task runs every 5 minutes and sends ONCALL_SHIFT_ENDING
     notifications 30 minutes before a shift ends.
     """
-    import asyncio
-    asyncio.run(_check_ending_shifts_async())
+    from devograph.processing.tasks import run_async
+    run_async(_check_ending_shifts_async())
 
 
 async def _check_ending_shifts_async():
@@ -156,8 +156,8 @@ def sync_calendar_events(config_id: str):
     Args:
         config_id: The on-call config ID to sync.
     """
-    import asyncio
-    asyncio.run(_sync_calendar_events_async(config_id))
+    from devograph.processing.tasks import run_async
+    run_async(_sync_calendar_events_async(config_id))
 
 
 async def _sync_calendar_events_async(config_id: str):
@@ -182,8 +182,8 @@ def send_swap_notification(swap_id: str, notification_type: str):
         swap_id: The swap request ID.
         notification_type: One of 'requested', 'accepted', 'declined'.
     """
-    import asyncio
-    asyncio.run(_send_swap_notification_async(swap_id, notification_type))
+    from devograph.processing.tasks import run_async
+    run_async(_send_swap_notification_async(swap_id, notification_type))
 
 
 async def _send_swap_notification_async(swap_id: str, notification_type: str):
