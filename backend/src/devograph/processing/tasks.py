@@ -10,14 +10,17 @@ logger = logging.getLogger(__name__)
 
 
 def run_async(coro):
-    """Run an async coroutine in a sync context."""
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+    """Run an async coroutine in a sync context.
 
-    return loop.run_until_complete(coro)
+    Always creates a new event loop to avoid conflicts between
+    concurrent Celery tasks sharing the same worker process.
+    """
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
