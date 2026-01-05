@@ -143,8 +143,8 @@ export function PeerBenchmarkCard({ developerId }: PeerBenchmarkCardProps) {
           <div className="text-xs text-slate-400 font-medium">
             Skill Rankings
           </div>
-          {topComparisons.map((comp) => (
-            <div key={comp.skill}>
+          {topComparisons.map((comp, index) => (
+            <div key={`${comp.skill}-${index}`}>
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-white">{comp.skill}</span>
