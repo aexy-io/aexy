@@ -171,9 +171,10 @@ export default function AssessmentWizardPage() {
 
   const handleStepClick = (step: number) => {
     // Allow navigation to completed steps or current step
+    if (!wizardStatus) return;
     const stepKey = `step${step}` as keyof typeof wizardStatus.step_status;
     if (
-      wizardStatus?.step_status[stepKey] === "complete" ||
+      wizardStatus.step_status[stepKey] === "complete" ||
       step === currentStep ||
       step <= currentStep
     ) {
@@ -297,7 +298,7 @@ export default function AssessmentWizardPage() {
       {/* Progress */}
       <WizardProgress
         currentStep={currentStep}
-        stepStatus={stepStatus}
+        stepStatus={stepStatus as unknown as Record<string, StepStatus>}
         onStepClick={handleStepClick}
       />
 
