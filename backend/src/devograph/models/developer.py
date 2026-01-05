@@ -180,7 +180,7 @@ class GitHubConnection(Base):
         unique=True,
     )
 
-    github_id: Mapped[int] = mapped_column(unique=True, index=True)
+    github_id: Mapped[int] = mapped_column(BigInteger, unique=True, index=True)
     github_username: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     github_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     github_avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)

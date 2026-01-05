@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -69,7 +69,7 @@ class PullRequest(Base):
         index=True,
     )
 
-    github_id: Mapped[int] = mapped_column(unique=True, index=True)
+    github_id: Mapped[int] = mapped_column(BigInteger, unique=True, index=True)
     number: Mapped[int] = mapped_column(Integer)
     repository: Mapped[str] = mapped_column(String(255), index=True)
 
@@ -131,8 +131,8 @@ class CodeReview(Base):
         index=True,
     )
 
-    github_id: Mapped[int] = mapped_column(unique=True, index=True)
-    pull_request_github_id: Mapped[int] = mapped_column(Integer, index=True)
+    github_id: Mapped[int] = mapped_column(BigInteger, unique=True, index=True)
+    pull_request_github_id: Mapped[int] = mapped_column(BigInteger, index=True)
     repository: Mapped[str] = mapped_column(String(255), index=True)
 
     state: Mapped[str] = mapped_column(String(50))  # approved, changes_requested, commented

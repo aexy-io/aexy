@@ -24,19 +24,11 @@ import {
   Play,
   Github,
   GraduationCap,
-  Code2,
   Cpu,
   Activity,
-  MousePointerClick,
   ClipboardCheck,
   Phone,
   Calendar,
-  FileText,
-  Ticket,
-  Terminal,
-  Wand2,
-  Clock,
-  Bell,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -90,15 +82,22 @@ export default function Home() {
             </span>
           </div>
           <nav className="hidden md:flex items-center gap-8">
+            <Link href="#pillars" className="text-white/60 hover:text-white transition text-sm">
+              Platform
+            </Link>
             <Link href="#features" className="text-white/60 hover:text-white transition text-sm">
               Features
             </Link>
             <Link href="#integrations" className="text-white/60 hover:text-white transition text-sm">
               Integrations
             </Link>
-            <Link href="#how-it-works" className="text-white/60 hover:text-white transition text-sm">
-              How it Works
+            <Link href="/pricing" className="text-white/60 hover:text-white transition text-sm">
+              Pricing
             </Link>
+            <a href="https://github.com/devograph/devograph" className="text-white/60 hover:text-white transition text-sm flex items-center gap-1">
+              <Github className="h-4 w-4" />
+              GitHub
+            </a>
           </nav>
           <div className="flex items-center gap-4">
             <a
@@ -111,7 +110,6 @@ export default function Home() {
               href={loginUrl}
               className="group relative bg-white text-black px-5 py-2.5 rounded-full transition text-sm font-semibold flex items-center gap-2 hover:bg-white/90"
             >
-              <Github className="h-4 w-4" />
               Get Started
               <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
             </a>
@@ -123,56 +121,36 @@ export default function Home() {
       <section className="pt-32 pb-24 px-6 relative">
         <div className="max-w-7xl mx-auto relative">
           <div className="max-w-4xl mx-auto text-center">
-            {/* Product Hunt Badge */}
+            {/* Open Source Badge */}
             <a
-              href="#"
-              className="group inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500/20 to-amber-500/20 border border-orange-500/30 rounded-full text-orange-400 text-sm mb-6 hover:border-orange-500/50 transition-all hover:scale-105"
+              href="https://github.com/devograph/devograph"
+              className="group inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 rounded-full text-emerald-400 text-sm mb-6 hover:border-emerald-500/50 transition-all hover:scale-105"
             >
-              <Rocket className="h-4 w-4 animate-bounce" />
-              <span>We&apos;re live on Product Hunt!</span>
+              <Github className="h-4 w-4" />
+              <span>Open Source</span>
+              <span className="text-white/40">·</span>
+              <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+              <span>5,000+ Stars</span>
               <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
             </a>
 
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-white/60 text-sm mb-8">
-              <Sparkles className="h-4 w-4 text-primary-400" />
-              The Ultimate Developer Productivity Platform
-            </div>
-
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-8 leading-[1.1] tracking-tight">
-              One Platform for
+              The open-source
               <br />
               <span className="relative">
                 <span className="bg-gradient-to-r from-primary-400 via-purple-400 to-emerald-400 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
-                  Everything Dev Teams Need
+                  operating system
                 </span>
-                <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none">
-                  <path d="M2 10C50 4 100 4 150 6C200 8 250 4 298 10" stroke="url(#gradient)" strokeWidth="3" strokeLinecap="round"/>
-                  <defs>
-                    <linearGradient id="gradient" x1="0" y1="0" x2="300" y2="0">
-                      <stop stopColor="#22d3ee" />
-                      <stop offset="0.5" stopColor="#a855f7" />
-                      <stop offset="1" stopColor="#10b981" />
-                    </linearGradient>
-                  </defs>
-                </svg>
               </span>
+              <br />
+              for engineering organizations
             </h1>
 
             <p className="text-xl text-white/50 max-w-2xl mx-auto mb-10 leading-relaxed">
-              Sprints, On-Call, Docs, Ticketing, AI Agents — all in one place.
-              Connect GitHub, Jira, Linear, and Google Calendar for seamless team productivity.
+              Understand your team. Optimize operations. Build talent.
+              <br />
+              All in one platform. All transparent.
             </p>
-
-            {/* Integration logos */}
-            <div className="flex items-center justify-center gap-3 mb-10 flex-wrap">
-              <IntegrationPill name="GitHub" icon={<Github className="h-5 w-5" />} />
-              <div className="w-6 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent hidden sm:block" />
-              <IntegrationPill name="Jira" icon={<JiraIcon />} color="text-blue-400" />
-              <div className="w-6 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent hidden sm:block" />
-              <IntegrationPill name="Linear" icon={<LinearIcon />} color="text-purple-400" />
-              <div className="w-6 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent hidden sm:block" />
-              <IntegrationPill name="Google Calendar" icon={<Calendar className="h-5 w-5" />} color="text-green-400" />
-            </div>
 
             <div className="flex flex-col sm:flex-row justify-center gap-4 mb-8">
               <a
@@ -180,8 +158,7 @@ export default function Home() {
                 className="group relative overflow-hidden bg-gradient-to-r from-primary-600 to-primary-500 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(34,211,238,0.3)] flex items-center justify-center gap-2"
               >
                 <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500" />
-                <Github className="h-5 w-5" />
-                Connect GitHub — It&apos;s Free
+                Get Started Free
                 <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
               </a>
               <Link
@@ -189,22 +166,22 @@ export default function Home() {
                 className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-2"
               >
                 <Play className="h-5 w-5 text-primary-400" />
-                Watch Demo
+                Book a Demo
               </Link>
             </div>
 
             <div className="flex items-center justify-center gap-8 text-sm text-white/40">
               <span className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                No credit card
+                No credit card required
               </span>
               <span className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                2 minute setup
+                Self-host free
               </span>
               <span className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                Free forever plan
+                SOC 2 certified
               </span>
             </div>
           </div>
@@ -234,19 +211,221 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Three Pillars Section */}
+      <section id="pillars" className="py-24 px-6 relative">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
+              One platform. Three pillars. Complete visibility.
+            </h2>
+            <p className="text-white/50 text-lg max-w-2xl mx-auto">
+              Everything you need to run a world-class engineering organization.
+              Start with one pillar, expand to all three.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* UNDERSTAND Pillar */}
+            <div className="group relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500" />
+              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-blue-500/30 transition-all h-full">
+                <div className="p-4 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl shadow-lg shadow-blue-500/25 w-fit mb-6">
+                  <Activity className="h-8 w-8 text-white" />
+                </div>
+                <div className="text-blue-400 text-sm font-semibold tracking-wider mb-2">UNDERSTAND</div>
+                <h3 className="text-2xl font-bold text-white mb-3">Intelligence</h3>
+                <p className="text-white/50 mb-6">
+                  Know your engineering organization. See team health, predict risks, and make data-driven decisions.
+                </p>
+                <div className="border-t border-white/10 pt-6 space-y-3">
+                  <div className="flex items-center gap-2 text-white/60 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-blue-400" />
+                    Developer profiles & skills
+                  </div>
+                  <div className="flex items-center gap-2 text-white/60 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-blue-400" />
+                    Team health analytics
+                  </div>
+                  <div className="flex items-center gap-2 text-white/60 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-blue-400" />
+                    Attrition & burnout prediction
+                  </div>
+                  <div className="flex items-center gap-2 text-white/60 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-blue-400" />
+                    Custom dashboards & reports
+                  </div>
+                </div>
+                <Link href="#features" className="inline-flex items-center gap-2 text-blue-400 mt-6 text-sm font-medium group-hover:gap-3 transition-all">
+                  Explore Intelligence <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+
+            {/* OPTIMIZE Pillar */}
+            <div className="group relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500" />
+              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-purple-500/30 transition-all h-full">
+                <div className="p-4 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl shadow-lg shadow-purple-500/25 w-fit mb-6">
+                  <Zap className="h-8 w-8 text-white" />
+                </div>
+                <div className="text-purple-400 text-sm font-semibold tracking-wider mb-2">OPTIMIZE</div>
+                <h3 className="text-2xl font-bold text-white mb-3">Operations</h3>
+                <p className="text-white/50 mb-6">
+                  Run engineering efficiently. Better planning, smarter assignments, less overhead.
+                </p>
+                <div className="border-t border-white/10 pt-6 space-y-3">
+                  <div className="flex items-center gap-2 text-white/60 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-purple-400" />
+                    AI-powered task matching
+                  </div>
+                  <div className="flex items-center gap-2 text-white/60 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-purple-400" />
+                    Sprint planning & velocity
+                  </div>
+                  <div className="flex items-center gap-2 text-white/60 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-purple-400" />
+                    On-call management
+                  </div>
+                  <div className="flex items-center gap-2 text-white/60 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-purple-400" />
+                    Ticketing & escalations
+                  </div>
+                </div>
+                <Link href="#features" className="inline-flex items-center gap-2 text-purple-400 mt-6 text-sm font-medium group-hover:gap-3 transition-all">
+                  Explore Operations <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+
+            {/* BUILD Pillar */}
+            <div className="group relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500" />
+              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-emerald-500/30 transition-all h-full">
+                <div className="p-4 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl shadow-lg shadow-emerald-500/25 w-fit mb-6">
+                  <Rocket className="h-8 w-8 text-white" />
+                </div>
+                <div className="text-emerald-400 text-sm font-semibold tracking-wider mb-2">BUILD</div>
+                <h3 className="text-2xl font-bold text-white mb-3">Talent</h3>
+                <p className="text-white/50 mb-6">
+                  Hire and grow the best engineers. Better assessments, personalized development, retained talent.
+                </p>
+                <div className="border-t border-white/10 pt-6 space-y-3">
+                  <div className="flex items-center gap-2 text-white/60 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                    AI technical assessments
+                  </div>
+                  <div className="flex items-center gap-2 text-white/60 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                    Job description generator
+                  </div>
+                  <div className="flex items-center gap-2 text-white/60 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                    Learning paths & skill gaps
+                  </div>
+                  <div className="flex items-center gap-2 text-white/60 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                    Career growth tracking
+                  </div>
+                </div>
+                <Link href="#features" className="inline-flex items-center gap-2 text-emerald-400 mt-6 text-sm font-medium group-hover:gap-3 transition-all">
+                  Explore Talent <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Why Open Source Section */}
+      <section className="py-24 px-6 relative">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-sm mb-6">
+              <Github className="h-4 w-4" />
+              Open Source
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
+              Why we&apos;re open source
+            </h2>
+            <p className="text-white/50 text-lg max-w-2xl mx-auto">
+              Developer analytics tools have a surveillance problem. We solved it by making everything transparent.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 mb-12">
+            {/* Transparent */}
+            <div className="group relative">
+              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-white/20 transition-all h-full text-center">
+                <div className="p-4 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-2xl w-fit mx-auto mb-6">
+                  <Shield className="h-8 w-8 text-blue-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3">Transparent</h3>
+                <p className="text-white/50 text-sm">
+                  Every algorithm is open-source. Audit the code anytime. Your developers will trust metrics they can verify.
+                </p>
+              </div>
+            </div>
+
+            {/* No Vendor Lock-in */}
+            <div className="group relative">
+              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-white/20 transition-all h-full text-center">
+                <div className="p-4 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl w-fit mx-auto mb-6">
+                  <RefreshCw className="h-8 w-8 text-purple-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3">No Vendor Lock-in</h3>
+                <p className="text-white/50 text-sm">
+                  Export everything. Self-host anytime. No hostage situations. We earn your business by being better, not by trapping you.
+                </p>
+              </div>
+            </div>
+
+            {/* Community Driven */}
+            <div className="group relative">
+              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-white/20 transition-all h-full text-center">
+                <div className="p-4 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-2xl w-fit mx-auto mb-6">
+                  <Users className="h-8 w-8 text-emerald-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3">Community Driven</h3>
+                <p className="text-white/50 text-sm">
+                  500+ contributors. Weekly releases. Features you actually need. Join the community shaping the future of engineering intelligence.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-center gap-4">
+            <a
+              href="https://github.com/devograph/devograph"
+              className="group inline-flex items-center gap-2 bg-white text-black px-6 py-3 rounded-full font-semibold transition-all hover:scale-105"
+            >
+              <Github className="h-5 w-5" />
+              View on GitHub
+              <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+            </a>
+            <Link
+              href="/about"
+              className="group inline-flex items-center gap-2 bg-white/5 text-white px-6 py-3 rounded-full font-semibold transition-all border border-white/10 hover:border-white/20"
+            >
+              Read Our Story
+              <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section - Bento Grid */}
       <section id="features" className="py-24 px-6 relative">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500/10 border border-primary-500/20 rounded-full text-primary-400 text-sm mb-6">
               <Cpu className="h-4 w-4" />
-              Complete Productivity Suite
+              Feature Deep Dive
             </div>
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-              Everything Your Team Needs
+              Everything you need to run engineering
             </h2>
             <p className="text-white/50 text-lg max-w-2xl mx-auto">
-              Sprint planning, on-call scheduling, documentation, ticketing, and AI agents — all unified in one platform.
+              Explore the full capabilities across all three pillars of the Engineering OS.
             </p>
           </div>
 
@@ -512,125 +691,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Coming Soon Section */}
-      <section className="py-24 px-6 relative">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-full text-amber-400 text-sm mb-6">
-              <Rocket className="h-4 w-4" />
-              Coming Soon
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-              The Roadmap
-            </h2>
-            <p className="text-white/50 text-lg max-w-2xl mx-auto">
-              We&apos;re building the complete developer productivity platform. Here&apos;s what&apos;s next.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {/* Vibe-Kanban */}
-            <div className="group relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500" />
-              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-pink-500/30 transition-all h-full">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-3 bg-gradient-to-br from-pink-500 to-purple-500 rounded-2xl shadow-lg shadow-pink-500/25">
-                    <Terminal className="h-6 w-6 text-white" />
-                  </div>
-                  <span className="px-3 py-1 bg-amber-500/20 text-amber-400 text-xs font-semibold rounded-full border border-amber-500/20">
-                    Q1 2025
-                  </span>
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-3">Vibe-Kanban</h3>
-                <p className="text-white/50 mb-4">
-                  Execute any task in the UI via AI coding agents. Open pull requests automatically with on-demand dev servers.
-                </p>
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2 text-white/60 text-sm">
-                    <Bot className="h-4 w-4 text-pink-400" />
-                    AI-powered task execution
-                  </li>
-                  <li className="flex items-center gap-2 text-white/60 text-sm">
-                    <GitPullRequest className="h-4 w-4 text-pink-400" />
-                    Auto-generate PRs
-                  </li>
-                  <li className="flex items-center gap-2 text-white/60 text-sm">
-                    <Code2 className="h-4 w-4 text-pink-400" />
-                    Custom Docker environments
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Smart Docs */}
-            <div className="group relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500" />
-              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-blue-500/30 transition-all h-full">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl shadow-lg shadow-blue-500/25">
-                    <FileText className="h-6 w-6 text-white" />
-                  </div>
-                  <span className="px-3 py-1 bg-amber-500/20 text-amber-400 text-xs font-semibold rounded-full border border-amber-500/20">
-                    Q2 2025
-                  </span>
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-3">Smart Docs</h3>
-                <p className="text-white/50 mb-4">
-                  A Notion alternative built for developers. Auto-generate and sync documentation from your codebase.
-                </p>
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2 text-white/60 text-sm">
-                    <Wand2 className="h-4 w-4 text-blue-400" />
-                    AI documentation generation
-                  </li>
-                  <li className="flex items-center gap-2 text-white/60 text-sm">
-                    <RefreshCw className="h-4 w-4 text-blue-400" />
-                    Auto-sync from repos
-                  </li>
-                  <li className="flex items-center gap-2 text-white/60 text-sm">
-                    <Layers className="h-4 w-4 text-blue-400" />
-                    Custom templates
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Ticketing Service */}
-            <div className="group relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-orange-500/20 to-amber-500/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500" />
-              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-orange-500/30 transition-all h-full">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-3 bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl shadow-lg shadow-orange-500/25">
-                    <Ticket className="h-6 w-6 text-white" />
-                  </div>
-                  <span className="px-3 py-1 bg-amber-500/20 text-amber-400 text-xs font-semibold rounded-full border border-amber-500/20">
-                    Q2 2025
-                  </span>
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-3">Ticketing Service</h3>
-                <p className="text-white/50 mb-4">
-                  Public customizable forms for bug reports and feature requests. Auto-create issues in GitHub, Jira, or Linear.
-                </p>
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2 text-white/60 text-sm">
-                    <Layout className="h-4 w-4 text-orange-400" />
-                    Custom public forms
-                  </li>
-                  <li className="flex items-center gap-2 text-white/60 text-sm">
-                    <RefreshCw className="h-4 w-4 text-orange-400" />
-                    Multi-platform sync
-                  </li>
-                  <li className="flex items-center gap-2 text-white/60 text-sm">
-                    <BarChart3 className="h-4 w-4 text-orange-400" />
-                    TAT analytics
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Integration Section */}
       <section id="integrations" className="py-24 px-6 relative">
         <div className="max-w-7xl mx-auto">
@@ -807,29 +867,32 @@ export default function Home() {
               <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl" />
 
               <div className="relative">
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-full text-white/80 text-sm mb-6">
-                  <Star className="h-4 w-4 text-yellow-500" />
-                  Free for teams up to 5 developers
-                </div>
-
                 <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
-                  Ready to Transform Your Team&apos;s Productivity?
+                  Ready to run your Engineering OS?
                 </h2>
                 <p className="text-white/50 text-lg mb-10 max-w-2xl mx-auto">
-                  Join hundreds of engineering teams using Devograph for sprints, on-call, and more.
+                  Understand your team. Optimize operations. Build talent.
                 </p>
 
-                <a
-                  href={loginUrl}
-                  className="group inline-flex items-center justify-center gap-2 bg-white text-black px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]"
-                >
-                  <Github className="h-5 w-5" />
-                  Start Free with GitHub
-                  <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                </a>
+                <div className="flex flex-col sm:flex-row justify-center gap-4 mb-8">
+                  <a
+                    href={loginUrl}
+                    className="group inline-flex items-center justify-center gap-2 bg-white text-black px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]"
+                  >
+                    Get Started Free
+                    <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                  </a>
+                  <Link
+                    href="#demo"
+                    className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-2"
+                  >
+                    <Play className="h-5 w-5 text-primary-400" />
+                    Book a Demo
+                  </Link>
+                </div>
 
-                <p className="text-white/40 text-sm mt-6">
-                  No credit card required. Setup takes less than 2 minutes.
+                <p className="text-white/40 text-sm">
+                  No credit card required · 14-day free trial
                 </p>
               </div>
             </div>
@@ -849,43 +912,63 @@ export default function Home() {
                 <span className="text-lg font-bold text-white">Devograph</span>
               </div>
               <p className="text-white/40 text-sm mb-4">
-                The ultimate developer productivity platform. Sprints, on-call, docs, ticketing, and AI agents — all in one place.
+                The open-source operating system for engineering organizations.
               </p>
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/5 border border-white/10 rounded-lg">
+                <a href="https://github.com/devograph/devograph" className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition">
                   <Github className="h-4 w-4 text-white/60" />
-                </div>
-                <div className="p-2 bg-white/5 border border-white/10 rounded-lg">
-                  <JiraIcon small />
-                </div>
-                <div className="p-2 bg-white/5 border border-white/10 rounded-lg">
-                  <LinearIcon small />
-                </div>
-                <div className="p-2 bg-white/5 border border-white/10 rounded-lg">
-                  <Calendar className="h-4 w-4 text-white/60" />
-                </div>
+                </a>
+                <a href="#" className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition">
+                  <svg className="h-4 w-4 text-white/60" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                  </svg>
+                </a>
+                <a href="#" className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition">
+                  <svg className="h-4 w-4 text-white/60" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20.317 4.492c-1.53-.69-3.17-1.2-4.885-1.49a.075.075 0 0 0-.079.037c-.21.369-.444.85-.608 1.23a18.566 18.566 0 0 0-5.487 0 12.36 12.36 0 0 0-.617-1.23A.077.077 0 0 0 8.562 3c-1.714.29-3.354.8-4.885 1.491a.07.07 0 0 0-.032.027C.533 9.093-.32 13.555.099 17.961a.08.08 0 0 0 .031.055 20.03 20.03 0 0 0 5.993 2.98.078.078 0 0 0 .084-.026c.462-.62.874-1.275 1.226-1.963.021-.04.001-.088-.041-.104a13.201 13.201 0 0 1-1.872-.878.075.075 0 0 1-.008-.125c.126-.093.252-.19.372-.287a.075.075 0 0 1 .078-.01c3.927 1.764 8.18 1.764 12.061 0a.075.075 0 0 1 .079.009c.12.098.245.195.372.288a.075.075 0 0 1-.006.125c-.598.344-1.22.635-1.873.877a.075.075 0 0 0-.041.105c.36.687.772 1.341 1.225 1.962a.077.077 0 0 0 .084.028 19.963 19.963 0 0 0 6.002-2.981.076.076 0 0 0 .032-.054c.5-5.094-.838-9.52-3.549-13.442a.06.06 0 0 0-.031-.028zM8.02 15.278c-1.182 0-2.157-1.069-2.157-2.38 0-1.312.956-2.38 2.157-2.38 1.21 0 2.176 1.077 2.157 2.38 0 1.312-.956 2.38-2.157 2.38zm7.975 0c-1.183 0-2.157-1.069-2.157-2.38 0-1.312.955-2.38 2.157-2.38 1.21 0 2.176 1.077 2.157 2.38 0 1.312-.946 2.38-2.157 2.38z"/>
+                  </svg>
+                </a>
+                <a href="#" className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition">
+                  <svg className="h-4 w-4 text-white/60" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                  </svg>
+                </a>
               </div>
             </div>
-            {[
-              { title: "Product", links: ["Features", "Integrations", "Pricing", "Changelog"] },
-              { title: "Company", links: ["About", "Blog", "Careers", "Contact"] },
-              { title: "Legal", links: ["Privacy Policy", "Terms of Service", "Security"] },
-            ].map((col, i) => (
-              <div key={i}>
-                <h4 className="text-white font-semibold mb-4">{col.title}</h4>
-                <ul className="space-y-2 text-white/40 text-sm">
-                  {col.links.map(link => (
-                    <li key={link}><Link href="#" className="hover:text-white transition">{link}</Link></li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+            <div>
+              <h4 className="text-white font-semibold mb-4">Product</h4>
+              <ul className="space-y-2 text-white/40 text-sm">
+                <li><Link href="#pillars" className="hover:text-white transition">Platform</Link></li>
+                <li><Link href="#features" className="hover:text-white transition">Features</Link></li>
+                <li><Link href="#integrations" className="hover:text-white transition">Integrations</Link></li>
+                <li><Link href="/pricing" className="hover:text-white transition">Pricing</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Resources</h4>
+              <ul className="space-y-2 text-white/40 text-sm">
+                <li><Link href="/docs" className="hover:text-white transition">Documentation</Link></li>
+                <li><a href="https://github.com/devograph/devograph" className="hover:text-white transition">GitHub</a></li>
+                <li><Link href="#" className="hover:text-white transition">Changelog</Link></li>
+                <li><Link href="#" className="hover:text-white transition">Community</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Company</h4>
+              <ul className="space-y-2 text-white/40 text-sm">
+                <li><Link href="#" className="hover:text-white transition">About</Link></li>
+                <li><Link href="#" className="hover:text-white transition">Blog</Link></li>
+                <li><Link href="#" className="hover:text-white transition">Careers</Link></li>
+                <li><Link href="#" className="hover:text-white transition">Contact</Link></li>
+              </ul>
+            </div>
           </div>
           <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-white/40 text-sm">&copy; 2025 Devograph. All rights reserved.</p>
-            <div className="flex items-center gap-4 text-white/40">
-              <a href="#" className="hover:text-white transition"><Shield className="h-5 w-5" /></a>
-              <a href="https://github.com" className="hover:text-white transition"><Github className="h-5 w-5" /></a>
+            <div className="flex items-center gap-6 text-white/40 text-sm">
+              <Link href="#" className="hover:text-white transition">Privacy Policy</Link>
+              <Link href="#" className="hover:text-white transition">Terms of Service</Link>
+              <Link href="#" className="hover:text-white transition">Security</Link>
             </div>
           </div>
         </div>
@@ -923,17 +1006,8 @@ export default function Home() {
 }
 
 // Components
-function IntegrationPill({ name, icon, color = "text-white" }: { name: string; icon: React.ReactNode; color?: string }) {
-  return (
-    <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 hover:border-white/20 transition-all cursor-default">
-      <span className={color}>{icon}</span>
-      <span className="text-white/80 text-sm font-medium">{name}</span>
-    </div>
-  );
-}
-
-function JiraIcon({ large, small }: { large?: boolean; small?: boolean }) {
-  const size = small ? "h-4 w-4" : large ? "h-8 w-8" : "h-5 w-5";
+function JiraIcon({ large }: { large?: boolean }) {
+  const size = large ? "h-8 w-8" : "h-5 w-5";
   return (
     <svg className={`${size} text-blue-400`} viewBox="0 0 24 24" fill="currentColor">
       <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.736a5.215 5.215 0 0 0 5.215 5.214h2.129v2.058a5.218 5.218 0 0 0 5.215 5.214V6.758a1.001 1.001 0 0 0-1.001-1.001zM23 .262h-11.59a5.215 5.215 0 0 0 5.215 5.215h2.129v2.057A5.215 5.215 0 0 0 24 12.749V1.262A1.001 1.001 0 0 0 23 .262z" />
@@ -941,8 +1015,8 @@ function JiraIcon({ large, small }: { large?: boolean; small?: boolean }) {
   );
 }
 
-function LinearIcon({ large, small }: { large?: boolean; small?: boolean }) {
-  const size = small ? "h-4 w-4" : large ? "h-8 w-8" : "h-5 w-5";
+function LinearIcon({ large }: { large?: boolean }) {
+  const size = large ? "h-8 w-8" : "h-5 w-5";
   return (
     <svg className={`${size} text-purple-400`} viewBox="0 0 24 24" fill="currentColor">
       <path d="M2.654 10.6a.463.463 0 0 1-.127-.636l3.197-4.686a.464.464 0 0 1 .636-.127l14.986 10.228a.463.463 0 0 1 .127.636l-3.197 4.686a.464.464 0 0 1-.636.127L2.654 10.6zm.636 2.8a.463.463 0 0 0-.127.636l3.197 4.686a.464.464 0 0 0 .636.127l8.486-5.794-3.706-2.528-8.486 2.873zm16.056-3.328L10.86 4.278 7.154 6.806l8.486 5.794 3.706-2.528z" />
