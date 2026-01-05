@@ -232,7 +232,9 @@ class HiringIntelligenceService:
             meaningful_scores = [(d_id, d_name, s) for d_id, d_name, s in dev_scores if s > 30]
             expert_scores = [(d_id, d_name, s) for d_id, d_name, s in dev_scores if s >= 70]
 
-            coverage = len(meaningful_scores) / team_size if team_size > 0 else 0
+            # Count unique developers for coverage (a dev may appear multiple times if skill is in multiple categories)
+            unique_devs_with_skill = len(set(d_id for d_id, _, _ in meaningful_scores))
+            coverage = unique_devs_with_skill / team_size if team_size > 0 else 0
             avg_proficiency = (
                 sum(s for _, _, s in dev_scores) / len(dev_scores)
                 if dev_scores else 0
@@ -260,12 +262,17 @@ class HiringIntelligenceService:
                 ))
 
             if severity in ("critical", "moderate"):
+                # Deduplicate developers (keep first occurrence with name preference)
+                seen_devs: dict[str, str] = {}
+                for d_id, d_name, _ in meaningful_scores:
+                    if d_id not in seen_devs:
+                        seen_devs[d_id] = d_name or d_id
                 skill_gaps.append(TeamSkillGapDetail(
                     skill=skill_name,
                     current_coverage=round(coverage, 2),
                     average_proficiency=round(avg_proficiency, 1),
                     gap_severity=severity,
-                    developers_with_skill=[d_name or d_id for d_id, d_name, _ in meaningful_scores],
+                    developers_with_skill=list(seen_devs.values()),
                 ))
 
         # Sort gaps by severity
