@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import {
   ArrowRight,
   Calendar,
@@ -10,12 +11,17 @@ import {
   ChevronRight,
   Clock,
   Layers,
+  LayoutGrid,
+  ListTodo,
+  Map,
   Play,
   Plus,
   Settings,
   Target,
+  TrendingUp,
   Users,
   ClipboardCheck,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -25,127 +31,173 @@ import { useSprints, useActiveSprint } from "@/hooks/useSprints";
 import { redirect } from "next/navigation";
 import { TeamListItem, SprintListItem } from "@/lib/api";
 import { EpicsTab } from "./components/EpicsTab";
+import { cn } from "@/lib/utils";
 
-function ProjectSprintCard({ project, workspaceId }: { project: TeamListItem; workspaceId: string }) {
+function ProjectCard({ project, workspaceId, index }: { project: TeamListItem; workspaceId: string; index: number }) {
   const { sprints, isLoading } = useSprints(workspaceId, project.id);
   const { sprint: activeSprint } = useActiveSprint(workspaceId, project.id);
 
   const planningSprints = sprints.filter((s) => s.status === "planning");
   const completedCount = sprints.filter((s) => s.status === "completed").length;
+  const totalTasks = sprints.reduce((sum, s) => sum + s.tasks_count, 0);
+  const completedTasks = sprints.reduce((sum, s) => sum + s.completed_count, 0);
 
   return (
-    <div className="bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden hover:border-slate-700 transition group">
-      <div className="p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary-500/10 rounded-lg flex items-center justify-center">
-              <Users className="h-5 w-5 text-primary-400" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-white">{project.name}</h3>
-              <p className="text-slate-400 text-sm">{project.member_count} members</p>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: index * 0.05 }}
+      className="group relative"
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 to-purple-500/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      <div className="relative bg-slate-900/80 backdrop-blur-sm rounded-2xl border border-slate-800/80 overflow-hidden hover:border-slate-700/80 transition-all duration-300">
+        {/* Header */}
+        <div className="p-5 pb-4">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-primary-500/20 to-blue-500/20 rounded-xl flex items-center justify-center border border-primary-500/20">
+                <Users className="h-6 w-6 text-primary-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white group-hover:text-primary-400 transition-colors">
+                  {project.name}
+                </h3>
+                <p className="text-slate-500 text-sm">{project.member_count} members</p>
+              </div>
             </div>
           </div>
-          <Link
-            href={`/sprints/${project.id}`}
-            className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition group-hover:text-slate-400"
-          >
-            <ArrowRight className="h-5 w-5" />
-          </Link>
+
+          {isLoading ? (
+            <div className="py-6 flex justify-center">
+              <div className="w-6 h-6 border-2 border-primary-500/30 border-t-primary-500 rounded-full animate-spin" />
+            </div>
+          ) : (
+            <>
+              {/* Active Sprint Card */}
+              {activeSprint ? (
+                <Link
+                  href={`/sprints/${project.id}/board`}
+                  className="block bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-xl p-4 mb-4 hover:from-green-500/15 hover:to-emerald-500/15 transition-all"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                      <span className="text-green-400 text-xs font-medium uppercase tracking-wider">Active Sprint</span>
+                    </div>
+                    <span className="text-xs text-slate-500">
+                      {activeSprint.tasks_count > 0
+                        ? Math.round((activeSprint.completed_count / activeSprint.tasks_count) * 100)
+                        : 0}% complete
+                    </span>
+                  </div>
+                  <h4 className="text-white font-medium mb-3">{activeSprint.name}</h4>
+
+                  {/* Progress bar */}
+                  <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden mb-3">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{
+                        width: `${activeSprint.tasks_count > 0
+                          ? Math.round((activeSprint.completed_count / activeSprint.tasks_count) * 100)
+                          : 0}%`,
+                      }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                      className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">
+                      <CheckCircle className="h-3 w-3 inline mr-1" />
+                      {activeSprint.completed_count}/{activeSprint.tasks_count} tasks
+                    </span>
+                    <span className="text-slate-400">
+                      <Target className="h-3 w-3 inline mr-1" />
+                      {activeSprint.total_points || 0} points
+                    </span>
+                  </div>
+                </Link>
+              ) : planningSprints.length > 0 ? (
+                <Link
+                  href={`/sprints/${project.id}/board`}
+                  className="block bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border border-blue-500/20 rounded-xl p-4 mb-4 hover:from-blue-500/15 hover:to-indigo-500/15 transition-all"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <Target className="h-4 w-4 text-blue-400" />
+                    <span className="text-blue-400 text-xs font-medium uppercase tracking-wider">Planning</span>
+                  </div>
+                  <h4 className="text-white font-medium mb-2">{planningSprints[0].name}</h4>
+                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <Calendar className="h-3 w-3" />
+                    <span>
+                      {planningSprints[0].start_date
+                        ? new Date(planningSprints[0].start_date).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })
+                        : "Not scheduled"}
+                    </span>
+                  </div>
+                </Link>
+              ) : (
+                <div className="bg-slate-800/50 rounded-xl p-4 mb-4 text-center border border-dashed border-slate-700">
+                  <p className="text-slate-500 text-sm mb-2">No active sprint</p>
+                  <Link
+                    href={`/sprints/${project.id}`}
+                    className="text-primary-400 text-sm hover:text-primary-300 font-medium"
+                  >
+                    Create a sprint →
+                  </Link>
+                </div>
+              )}
+
+              {/* Stats row */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="text-center p-2 bg-slate-800/30 rounded-lg">
+                  <div className="text-lg font-semibold text-white">{sprints.length}</div>
+                  <div className="text-[10px] text-slate-500 uppercase tracking-wider">Sprints</div>
+                </div>
+                <div className="text-center p-2 bg-slate-800/30 rounded-lg">
+                  <div className="text-lg font-semibold text-green-400">{completedCount}</div>
+                  <div className="text-[10px] text-slate-500 uppercase tracking-wider">Completed</div>
+                </div>
+                <div className="text-center p-2 bg-slate-800/30 rounded-lg">
+                  <div className="text-lg font-semibold text-amber-400">{totalTasks - completedTasks}</div>
+                  <div className="text-[10px] text-slate-500 uppercase tracking-wider">Open Tasks</div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
-        {isLoading ? (
-          <div className="py-4 flex justify-center">
-            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary-500"></div>
+        {/* Quick Actions Footer */}
+        <div className="border-t border-slate-800/80 px-4 py-3 bg-slate-900/50 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/sprints/${project.id}/board`}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs transition-all"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              Board
+            </Link>
+            <Link
+              href={`/sprints/${project.id}/backlog`}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs transition-all"
+            >
+              <ListTodo className="h-3.5 w-3.5" />
+              Backlog
+            </Link>
           </div>
-        ) : (
-          <>
-            {/* Active Sprint */}
-            {activeSprint ? (
-              <Link
-                href={`/sprints/${project.id}/${activeSprint.id}`}
-                className="block bg-green-900/20 border border-green-800/50 rounded-lg p-4 mb-3 hover:bg-green-900/30 transition"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <Play className="h-4 w-4 text-green-400" />
-                  <span className="text-green-400 text-sm font-medium">Active Sprint</span>
-                </div>
-                <h4 className="text-white font-medium mb-1">{activeSprint.name}</h4>
-                <div className="flex items-center gap-4 text-xs text-slate-400">
-                  <span className="flex items-center gap-1">
-                    <CheckCircle className="h-3 w-3" />
-                    {activeSprint.completed_count}/{activeSprint.tasks_count} tasks
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Target className="h-3 w-3" />
-                    {activeSprint.total_points || 0} points
-                  </span>
-                </div>
-                {/* Progress bar */}
-                <div className="mt-2 h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-green-500 rounded-full"
-                    style={{
-                      width: `${activeSprint.tasks_count > 0
-                        ? Math.round((activeSprint.completed_count / activeSprint.tasks_count) * 100)
-                        : 0}%`,
-                    }}
-                  />
-                </div>
-              </Link>
-            ) : planningSprints.length > 0 ? (
-              <Link
-                href={`/sprints/${project.id}/${planningSprints[0].id}`}
-                className="block bg-blue-900/20 border border-blue-800/50 rounded-lg p-4 mb-3 hover:bg-blue-900/30 transition"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <Target className="h-4 w-4 text-blue-400" />
-                  <span className="text-blue-400 text-sm font-medium">Planning</span>
-                </div>
-                <h4 className="text-white font-medium mb-1">{planningSprints[0].name}</h4>
-                <div className="flex items-center gap-2 text-xs text-slate-400">
-                  <Calendar className="h-3 w-3" />
-                  <span>
-                    {planningSprints[0].start_date
-                      ? new Date(planningSprints[0].start_date).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })
-                      : "Not scheduled"}
-                  </span>
-                </div>
-              </Link>
-            ) : (
-              <div className="bg-slate-700/30 rounded-lg p-4 mb-3 text-center">
-                <p className="text-slate-400 text-sm mb-2">No active sprint</p>
-                <Link
-                  href={`/sprints/${project.id}`}
-                  className="text-primary-400 text-sm hover:underline"
-                >
-                  Create a sprint
-                </Link>
-              </div>
-            )}
-
-            {/* Stats */}
-            <div className="flex items-center justify-between text-sm text-slate-400">
-              <span>{sprints.length} total sprints</span>
-              <span>{completedCount} completed</span>
-            </div>
-          </>
-        )}
+          <Link
+            href={`/sprints/${project.id}/board`}
+            className="flex items-center gap-1 text-slate-500 hover:text-white text-xs transition-colors"
+          >
+            Open
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
       </div>
-
-      <div className="border-t border-slate-800 px-5 py-3 bg-slate-900/30">
-        <Link
-          href={`/sprints/${project.id}`}
-          className="flex items-center justify-between text-sm text-slate-400 hover:text-white transition"
-        >
-          <span>View all sprints</span>
-          <ChevronRight className="h-4 w-4" />
-        </Link>
-      </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -158,9 +210,13 @@ function SprintsContent({ teams, teamsLoading, workspaceId, hasWorkspaces }: {
 }) {
   if (!hasWorkspaces) {
     return (
-      <div className="bg-slate-900/50 rounded-xl p-12 text-center border border-slate-800">
-        <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
-          <Users className="h-10 w-10 text-slate-600" />
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-slate-900/50 rounded-2xl p-12 text-center border border-slate-800"
+      >
+        <div className="w-20 h-20 bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl flex items-center justify-center mx-auto mb-6">
+          <Users className="h-10 w-10 text-slate-500" />
         </div>
         <h3 className="text-xl font-semibold text-white mb-2">No Workspace Yet</h3>
         <p className="text-slate-400 mb-6 max-w-md mx-auto">
@@ -168,12 +224,12 @@ function SprintsContent({ teams, teamsLoading, workspaceId, hasWorkspaces }: {
         </p>
         <Link
           href="/settings/organization"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition font-medium shadow-lg shadow-primary-500/20"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-500 hover:to-blue-500 text-white rounded-xl transition font-medium shadow-lg shadow-primary-500/20"
         >
           <Plus className="h-4 w-4" />
           Create Workspace
         </Link>
-      </div>
+      </motion.div>
     );
   }
 
@@ -181,8 +237,8 @@ function SprintsContent({ teams, teamsLoading, workspaceId, hasWorkspaces }: {
     return (
       <div className="flex justify-center py-12">
         <div className="relative">
-          <div className="w-10 h-10 border-4 border-primary-500/20 rounded-full"></div>
-          <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+          <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
+          <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
         </div>
       </div>
     );
@@ -190,9 +246,13 @@ function SprintsContent({ teams, teamsLoading, workspaceId, hasWorkspaces }: {
 
   if (teams.length === 0) {
     return (
-      <div className="bg-slate-900/50 rounded-xl p-12 text-center border border-slate-800">
-        <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
-          <Users className="h-10 w-10 text-slate-600" />
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-slate-900/50 rounded-2xl p-12 text-center border border-slate-800"
+      >
+        <div className="w-20 h-20 bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl flex items-center justify-center mx-auto mb-6">
+          <Layers className="h-10 w-10 text-slate-500" />
         </div>
         <h3 className="text-xl font-semibold text-white mb-2">No Projects Yet</h3>
         <p className="text-slate-400 mb-6 max-w-md mx-auto">
@@ -200,22 +260,23 @@ function SprintsContent({ teams, teamsLoading, workspaceId, hasWorkspaces }: {
         </p>
         <Link
           href="/settings/projects"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition font-medium shadow-lg shadow-primary-500/20"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-500 hover:to-blue-500 text-white rounded-xl transition font-medium shadow-lg shadow-primary-500/20"
         >
           <Plus className="h-4 w-4" />
           Create Project
         </Link>
-      </div>
+      </motion.div>
     );
   }
 
   return (
     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {teams.map((project) => (
-        <ProjectSprintCard
+      {teams.map((project, index) => (
+        <ProjectCard
           key={project.id}
           project={project}
           workspaceId={workspaceId!}
+          index={index}
         />
       ))}
     </div>
@@ -270,15 +331,19 @@ export default function SprintsPage() {
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between mb-8"
+        >
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-gradient-to-br from-primary-500/20 to-blue-500/20 rounded-xl">
+            <div className="p-3 bg-gradient-to-br from-primary-500/20 to-purple-500/20 rounded-xl border border-primary-500/20">
               <Calendar className="h-7 w-7 text-primary-400" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">Planning</h1>
-              <p className="text-slate-400 text-sm">
-                Manage sprints and epics across your projects
+              <p className="text-slate-500 text-sm">
+                Manage sprints and track progress across your projects
               </p>
             </div>
           </div>
@@ -287,48 +352,55 @@ export default function SprintsPage() {
               <>
                 <Link
                   href="/reviews"
-                  className="flex items-center gap-2 px-4 py-2 bg-teal-600/20 hover:bg-teal-600/30 text-teal-400 border border-teal-600/30 rounded-lg transition text-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/20 rounded-xl transition text-sm"
                 >
                   <ClipboardCheck className="h-4 w-4" />
                   Team Reviews
                 </Link>
                 <Link
                   href="/settings/projects"
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition text-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl transition text-sm"
                 >
                   <Settings className="h-4 w-4" />
-                  Manage Projects
+                  Settings
                 </Link>
               </>
             )}
           </div>
-        </div>
+        </motion.div>
 
         {/* Tab Bar */}
-        <div className="flex items-center gap-1 mb-8 border-b border-slate-800">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="flex items-center gap-2 mb-8 p-1 bg-slate-900/50 rounded-xl border border-slate-800 w-fit"
+        >
           <button
             onClick={() => setActiveTab("sprints")}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
               activeTab === "sprints"
-                ? "text-primary-400 border-primary-500"
-                : "text-slate-400 border-transparent hover:text-white hover:border-slate-600"
-            }`}
+                ? "bg-primary-500 text-white shadow-lg shadow-primary-500/25"
+                : "text-slate-400 hover:text-white hover:bg-slate-800"
+            )}
           >
             <Calendar className="h-4 w-4" />
-            Sprints
+            Projects
           </button>
           <button
             onClick={() => setActiveTab("epics")}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
               activeTab === "epics"
-                ? "text-primary-400 border-primary-500"
-                : "text-slate-400 border-transparent hover:text-white hover:border-slate-600"
-            }`}
+                ? "bg-primary-500 text-white shadow-lg shadow-primary-500/25"
+                : "text-slate-400 hover:text-white hover:bg-slate-800"
+            )}
           >
             <Layers className="h-4 w-4" />
             Epics
           </button>
-        </div>
+        </motion.div>
 
         {/* Tab Content */}
         {activeTab === "sprints" ? (

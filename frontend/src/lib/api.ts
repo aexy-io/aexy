@@ -6661,3 +6661,87 @@ export const assessmentApi = {
     return response.data;
   },
 };
+
+// ============================================================================
+// Jira Integration API
+// ============================================================================
+
+export interface JiraCredentials {
+  site_url: string;
+  user_email: string;
+  api_token: string;
+}
+
+export interface JiraIntegration {
+  id: string;
+  organization_id: string;
+  site_url: string;
+  user_email: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export const jiraApi = {
+  testConnection: async (credentials: JiraCredentials): Promise<{ success: boolean; message?: string }> => {
+    const response = await api.post("/integrations/jira/test", credentials);
+    return response.data;
+  },
+
+  createIntegration: async (credentials: JiraCredentials): Promise<JiraIntegration> => {
+    const response = await api.post("/integrations/jira", credentials);
+    return response.data;
+  },
+
+  getIntegration: async (): Promise<JiraIntegration | null> => {
+    try {
+      const response = await api.get("/integrations/jira");
+      return response.data;
+    } catch {
+      return null;
+    }
+  },
+
+  disconnect: async (integrationId: string): Promise<void> => {
+    await api.delete(`/integrations/jira/${integrationId}`);
+  },
+};
+
+// ============================================================================
+// Linear Integration API
+// ============================================================================
+
+export interface LinearCredentials {
+  api_key: string;
+}
+
+export interface LinearIntegration {
+  id: string;
+  organization_id: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export const linearApi = {
+  testConnection: async (credentials: LinearCredentials): Promise<{ success: boolean; message?: string }> => {
+    const response = await api.post("/integrations/linear/test", credentials);
+    return response.data;
+  },
+
+  createIntegration: async (credentials: LinearCredentials): Promise<LinearIntegration> => {
+    const response = await api.post("/integrations/linear", credentials);
+    return response.data;
+  },
+
+  getIntegration: async (): Promise<LinearIntegration | null> => {
+    try {
+      const response = await api.get("/integrations/linear");
+      return response.data;
+    } catch {
+      return null;
+    }
+  },
+
+  disconnect: async (integrationId: string): Promise<void> => {
+    await api.delete(`/integrations/linear/${integrationId}`);
+  },
+};
