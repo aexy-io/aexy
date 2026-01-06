@@ -194,6 +194,7 @@ class SprintTaskCreate(BaseModel):
     source_id: str | None = None
     source_url: str | None = None
     description: str | None = None
+    description_json: dict | None = None  # TipTap JSON for rich text
     story_points: int | None = Field(None, ge=0)
     priority: TaskPriority = "medium"
     labels: list[str] = Field(default_factory=list)
@@ -201,6 +202,25 @@ class SprintTaskCreate(BaseModel):
     status: TaskStatus = "backlog"
     epic_id: str | None = None
     parent_task_id: str | None = None
+    mentioned_user_ids: list[str] = Field(default_factory=list)  # @mentions
+    mentioned_file_paths: list[str] = Field(default_factory=list)  # #mentions
+
+
+class ProjectTaskCreate(BaseModel):
+    """Schema for creating a project-level task (without sprint)."""
+
+    title: str = Field(..., min_length=1, max_length=500)
+    description: str | None = None
+    description_json: dict | None = None  # TipTap JSON for rich text
+    story_points: int | None = Field(None, ge=0)
+    priority: TaskPriority = "medium"
+    labels: list[str] = Field(default_factory=list)
+    assignee_id: str | None = None
+    status: TaskStatus = "backlog"
+    epic_id: str | None = None
+    sprint_id: str | None = None  # Optional - can assign to sprint later
+    mentioned_user_ids: list[str] = Field(default_factory=list)  # @mentions
+    mentioned_file_paths: list[str] = Field(default_factory=list)  # #mentions
 
 
 class SprintTaskUpdate(BaseModel):
@@ -208,11 +228,15 @@ class SprintTaskUpdate(BaseModel):
 
     title: str | None = Field(None, min_length=1, max_length=500)
     description: str | None = None
+    description_json: dict | None = None  # TipTap JSON for rich text
     story_points: int | None = Field(None, ge=0)
     priority: TaskPriority | None = None
     status: TaskStatus | None = None
     labels: list[str] | None = None
     epic_id: str | None = None
+    sprint_id: str | None = None  # For moving tasks between sprints
+    mentioned_user_ids: list[str] | None = None  # @mentions
+    mentioned_file_paths: list[str] | None = None  # #mentions
 
 
 class SprintTaskStatusUpdate(BaseModel):
@@ -244,12 +268,15 @@ class SprintTaskResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
-    sprint_id: str
+    sprint_id: str | None = None  # Can be null for project-level tasks
+    team_id: str | None = None  # Set for project-level tasks
+    workspace_id: str | None = None
     source_type: TaskSourceType
     source_id: str
     source_url: str | None = None
     title: str
     description: str | None = None
+    description_json: dict | None = None  # TipTap JSON for rich text
     story_points: int | None = None
     priority: TaskPriority
     labels: list[str] = Field(default_factory=list)
@@ -267,6 +294,8 @@ class SprintTaskResponse(BaseModel):
     started_at: datetime | None = None
     completed_at: datetime | None = None
     carried_over_from_sprint_id: str | None = None
+    mentioned_user_ids: list[str] = Field(default_factory=list)
+    mentioned_file_paths: list[str] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

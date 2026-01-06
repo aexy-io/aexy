@@ -240,7 +240,12 @@ class Sprint(Base):
 
 
 class SprintTask(Base):
-    """Sprint task model - represents a task/issue within a sprint."""
+    """Sprint task model - represents a task/issue within a sprint or at project level.
+
+    Tasks can exist either:
+    - Within a sprint (sprint_id is set)
+    - At project level in the backlog (sprint_id is null, team_id is set)
+    """
 
     __tablename__ = "sprint_tasks"
 
@@ -249,10 +254,23 @@ class SprintTask(Base):
         primary_key=True,
         default=lambda: str(uuid4()),
     )
-    sprint_id: Mapped[str] = mapped_column(
+    sprint_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("sprints.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,  # Now optional - tasks can be project-level
+        index=True,
+    )
+    # For project-level tasks (when sprint_id is null)
+    team_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("teams.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    workspace_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
 
@@ -265,12 +283,23 @@ class SprintTask(Base):
 
     # Task data (cached from source)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)  # Plain text fallback
+    description_json: Mapped[dict | None] = mapped_column(
+        JSONB, nullable=True
+    )  # TipTap JSON for rich text editing
     story_points: Mapped[int | None] = mapped_column(Integer, nullable=True)
     priority: Mapped[str] = mapped_column(
         String(50), nullable=False, default="medium"
     )  # "critical" | "high" | "medium" | "low"
     labels: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
+
+    # Mentions tracking - stores IDs of mentioned users/files for notifications
+    mentioned_user_ids: Mapped[list] = mapped_column(
+        JSONB, default=list, nullable=False
+    )  # List of developer IDs mentioned with @
+    mentioned_file_paths: Mapped[list] = mapped_column(
+        JSONB, default=list, nullable=False
+    )  # List of file paths mentioned with #
 
     # Assignment
     assignee_id: Mapped[str | None] = mapped_column(
@@ -351,11 +380,21 @@ class SprintTask(Base):
     )
 
     # Relationships
-    sprint: Mapped["Sprint"] = relationship(
+    sprint: Mapped["Sprint | None"] = relationship(
         "Sprint",
         back_populates="tasks",
         foreign_keys=[sprint_id],
         lazy="selectin",
+    )
+    team: Mapped["Team | None"] = relationship(
+        "Team",
+        lazy="selectin",
+        foreign_keys=[team_id],
+    )
+    workspace: Mapped["Workspace | None"] = relationship(
+        "Workspace",
+        lazy="selectin",
+        foreign_keys=[workspace_id],
     )
     assignee: Mapped["Developer | None"] = relationship(
         "Developer",

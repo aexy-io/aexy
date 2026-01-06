@@ -4,3 +4,5 @@ node_modules
 __pycache__
 .env
 celerybeat-schedule
+backend-rust
+gtm

@@ -37,6 +37,23 @@ class DocumentStatus(str, Enum):
     FAILED = "failed"
 
 
+class DocumentVisibility(str, Enum):
+    """Document visibility levels."""
+
+    PRIVATE = "private"  # Only creator can see (and explicit collaborators)
+    WORKSPACE = "workspace"  # All workspace members can see
+    PUBLIC = "public"  # Anyone with link can view (when is_published=True)
+
+
+class DocumentNotificationType(str, Enum):
+    """Types of document notifications."""
+
+    COMMENT = "comment"
+    MENTION = "mention"
+    SHARE = "share"
+    EDIT = "edit"
+
+
 class DocumentLinkType(str, Enum):
     """Type of code link."""
 
@@ -65,6 +82,163 @@ class TemplateCategory(str, Enum):
     CUSTOM = "custom"
 
 
+class DocumentSpaceRole(str, Enum):
+    """Roles for document space membership."""
+
+    ADMIN = "admin"  # Manage space settings, add/remove members
+    EDITOR = "editor"  # Create/edit documents in space
+    VIEWER = "viewer"  # View documents only
+
+
+class DocumentSpace(Base):
+    """Document spaces for organizing documents within a workspace (like Notion teamspaces)."""
+
+    __tablename__ = "document_spaces"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Space info
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    slug: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    icon: Mapped[str | None] = mapped_column(String(50), nullable=True)  # Emoji or icon name
+    color: Mapped[str | None] = mapped_column(String(20), nullable=True)  # Hex color
+
+    # Space flags
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Settings (JSON for extensibility)
+    settings: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+
+    # Authorship
+    created_by_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    # Relationships
+    workspace: Mapped["Workspace"] = relationship("Workspace", lazy="selectin")
+    created_by: Mapped["Developer | None"] = relationship("Developer", lazy="selectin")
+    members: Mapped[list["DocumentSpaceMember"]] = relationship(
+        "DocumentSpaceMember",
+        back_populates="space",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    documents: Mapped[list["Document"]] = relationship(
+        "Document",
+        back_populates="space",
+        lazy="selectin",
+    )
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "slug", name="uq_document_space_workspace_slug"),
+        Index("ix_document_spaces_workspace_default", "workspace_id", "is_default"),
+    )
+
+
+class DocumentSpaceMember(Base):
+    """Membership and roles for document spaces."""
+
+    __tablename__ = "document_space_members"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    space_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("document_spaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    developer_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Role in the space
+    role: Mapped[str] = mapped_column(
+        String(50), default=DocumentSpaceRole.EDITOR.value, nullable=False
+    )
+
+    # Invitation tracking
+    invited_by_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    invited_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    joined_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    # Relationships
+    space: Mapped["DocumentSpace"] = relationship(
+        "DocumentSpace",
+        back_populates="members",
+        lazy="selectin",
+    )
+    developer: Mapped["Developer"] = relationship(
+        "Developer",
+        foreign_keys=[developer_id],
+        lazy="selectin",
+    )
+    invited_by: Mapped["Developer | None"] = relationship(
+        "Developer",
+        foreign_keys=[invited_by_id],
+        lazy="selectin",
+    )
+
+    __table_args__ = (
+        UniqueConstraint("space_id", "developer_id", name="uq_document_space_member"),
+        Index("ix_document_space_members_role", "space_id", "role"),
+    )
+
+
 class Document(Base):
     """Core document model storing TipTap JSON content."""
 
@@ -87,6 +261,12 @@ class Document(Base):
         nullable=True,
         index=True,
     )
+    space_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("document_spaces.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     # Document content
     title: Mapped[str] = mapped_column(String(500), nullable=False, default="Untitled")
@@ -104,6 +284,11 @@ class Document(Base):
     is_published: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     published_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+
+    # Visibility (private, workspace, public)
+    visibility: Mapped[str] = mapped_column(
+        String(20), default=DocumentVisibility.WORKSPACE.value, nullable=False
     )
 
     # Generation metadata
@@ -150,6 +335,11 @@ class Document(Base):
 
     # Relationships
     workspace: Mapped["Workspace"] = relationship("Workspace", lazy="selectin")
+    space: Mapped["DocumentSpace | None"] = relationship(
+        "DocumentSpace",
+        back_populates="documents",
+        lazy="selectin",
+    )
     parent: Mapped["Document | None"] = relationship(
         "Document",
         remote_side="Document.id",
@@ -200,6 +390,7 @@ class Document(Base):
     __table_args__ = (
         Index("ix_documents_workspace_parent", "workspace_id", "parent_id"),
         Index("ix_documents_workspace_template", "workspace_id", "is_template"),
+        Index("ix_documents_workspace_space", "workspace_id", "space_id"),
     )
 
 
@@ -685,6 +876,109 @@ class DocumentGitHubSync(Base):
 
     __table_args__ = (
         UniqueConstraint("document_id", "repository_id", "file_path", name="uq_document_github_sync"),
+    )
+
+
+class DocumentFavorite(Base):
+    """User's favorited documents for quick access."""
+
+    __tablename__ = "document_favorites"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    document_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    developer_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    # Relationships
+    document: Mapped["Document"] = relationship("Document", lazy="selectin")
+    developer: Mapped["Developer"] = relationship("Developer", lazy="selectin")
+
+    __table_args__ = (
+        UniqueConstraint("document_id", "developer_id", name="uq_document_favorite"),
+        Index("ix_document_favorites_developer", "developer_id"),
+    )
+
+
+class DocumentNotification(Base):
+    """Notifications for document-related activities (comments, mentions, shares)."""
+
+    __tablename__ = "document_notifications"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    document_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    developer_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Notification type and content
+    type: Mapped[str] = mapped_column(
+        String(50), default=DocumentNotificationType.EDIT.value, nullable=False
+    )
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Who triggered the notification
+    created_by_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    read_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    # Relationships
+    document: Mapped["Document"] = relationship("Document", lazy="selectin")
+    developer: Mapped["Developer"] = relationship(
+        "Developer",
+        foreign_keys=[developer_id],
+        lazy="selectin",
+    )
+    created_by: Mapped["Developer | None"] = relationship(
+        "Developer",
+        foreign_keys=[created_by_id],
+        lazy="selectin",
+    )
+
+    __table_args__ = (
+        Index("ix_document_notifications_developer_unread", "developer_id", "is_read"),
     )
 
 

@@ -13,6 +13,7 @@ import secrets
 from devograph.models.developer import Developer
 from devograph.models.repository import Organization, DeveloperOrganization
 from devograph.services.task_config_service import TaskConfigService
+from devograph.services.document_space_service import DocumentSpaceService
 
 
 def generate_slug(name: str) -> str:
@@ -95,6 +96,13 @@ class WorkspaceService:
         # Seed default task statuses for the workspace
         task_config_service = TaskConfigService(self.db)
         await task_config_service.seed_default_statuses(workspace.id)
+
+        # Create default document space for the workspace
+        space_service = DocumentSpaceService(self.db)
+        await space_service.create_default_space(
+            workspace_id=workspace.id,
+            created_by_id=owner_id,
+        )
 
         return workspace
 

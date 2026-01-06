@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,19 +26,21 @@ import {
   useSensors,
   closestCorners,
   DragOverEvent,
+  useDroppable,
 } from "@dnd-kit/core";
 import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useAuth } from "@/hooks/useAuth";
-import { useWorkspace } from "@/hooks/useWorkspace";
+import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useProjectBoard, BoardViewMode, useBoardSelection } from "@/hooks/useProjectBoard";
 import { useEpics } from "@/hooks/useEpics";
 import { SprintTask, TaskStatus, TaskPriority, SprintListItem, EpicListItem } from "@/lib/api";
 import { TaskCardPremium, TaskCardSkeleton } from "@/components/planning/TaskCardPremium";
 import { FilterBar } from "@/components/planning/FilterBar";
 import { CommandPalette } from "@/components/CommandPalette";
+import { TaskDescriptionEditor, TaskDescriptionEditorRef, MentionUser } from "@/components/planning/TaskDescriptionEditor";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Badge, PremiumCard, Skeleton } from "@/components/ui/premium-card";
@@ -70,6 +72,7 @@ interface KanbanColumnProps {
   tasks: (SprintTask & { sprint_name?: string })[];
   onTaskClick: (task: SprintTask) => void;
   onDeleteTask: (taskId: string) => void;
+  onStatusChange?: (taskId: string, status: TaskStatus) => void;
   showSprintBadge?: boolean;
   isOver?: boolean;
   onSelect?: (taskId: string) => void;
@@ -84,6 +87,7 @@ function KanbanColumn({
   tasks,
   onTaskClick,
   onDeleteTask,
+  onStatusChange,
   showSprintBadge,
   isOver,
   onSelect,
@@ -91,12 +95,18 @@ function KanbanColumn({
 }: KanbanColumnProps) {
   const totalPoints = tasks.reduce((sum, t) => sum + (t.story_points || 0), 0);
 
+  // Make the column a droppable target
+  const { setNodeRef, isOver: isDropOver } = useDroppable({
+    id: id,
+  });
+
   return (
     <div
+      ref={setNodeRef}
       className={cn(
         "flex-shrink-0 w-[300px] rounded-xl transition-all duration-200",
         bgColor,
-        isOver && "ring-2 ring-primary-500/50"
+        (isOver || isDropOver) && "ring-2 ring-primary-500/50 bg-primary-900/20"
       )}
     >
       {/* Column header */}
@@ -122,6 +132,7 @@ function KanbanColumn({
                 task={task}
                 onClick={onTaskClick}
                 onDelete={onDeleteTask}
+                onStatusChange={onStatusChange}
                 showSprintBadge={showSprintBadge}
                 onSelect={onSelect}
                 isSelected={isSelected?.(task.id)}
@@ -130,7 +141,7 @@ function KanbanColumn({
           </AnimatePresence>
           {tasks.length === 0 && (
             <div className="text-center py-8 text-slate-500 text-sm">
-              No tasks
+              Drop tasks here
             </div>
           )}
         </div>
@@ -167,12 +178,18 @@ function SprintColumn({
   const completedTasks = tasks.filter((t) => t.status === "done").length;
   const completionRate = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
 
+  // Make the sprint column a droppable target
+  const { setNodeRef, isOver: isDropOver } = useDroppable({
+    id: sprint.id,
+  });
+
   return (
     <div
+      ref={setNodeRef}
       className={cn(
         "flex-shrink-0 rounded-xl bg-slate-800/50 border border-slate-700/50 transition-all duration-200",
         isCollapsed ? "w-[60px]" : "w-[320px]",
-        isOver && "ring-2 ring-primary-500/50"
+        (isOver || isDropOver) && "ring-2 ring-primary-500/50 bg-primary-900/20"
       )}
     >
       {/* Sprint header */}
@@ -265,33 +282,51 @@ const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string }> = 
 interface AddTaskModalProps {
   onClose: () => void;
   onAdd: (data: {
-    sprintId: string;
+    sprintId: string | null;
     task: {
       title: string;
       description?: string;
+      description_json?: Record<string, unknown>;
       story_points?: number;
       priority: TaskPriority;
       status: TaskStatus;
       epic_id?: string;
+      assignee_id?: string;
+      mentioned_user_ids?: string[];
+      mentioned_file_paths?: string[];
     };
   }) => Promise<SprintTask>;
   isAdding: boolean;
   sprints: SprintListItem[];
   epics: EpicListItem[];
   defaultStatus?: TaskStatus;
+  users?: MentionUser[];
 }
 
-function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus = "todo" }: AddTaskModalProps) {
+function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus = "todo", users = [] }: AddTaskModalProps) {
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [descriptionJson, setDescriptionJson] = useState<Record<string, unknown> | null>(null);
+  const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([]);
+  const [mentionedFilePaths, setMentionedFilePaths] = useState<string[]>([]);
   const [storyPoints, setStoryPoints] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [status, setStatus] = useState<TaskStatus>(defaultStatus);
   const [epicId, setEpicId] = useState<string>("");
-  const [sprintId, setSprintId] = useState<string>(
-    sprints.find((s) => s.status === "active")?.id || sprints[0]?.id || ""
-  );
+  const [sprintId, setSprintId] = useState<string>("");
+  const [assigneeId, setAssigneeId] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+  const editorRef = useRef<TaskDescriptionEditorRef>(null);
+
+  // Get default sprint (active or first non-completed)
+  const defaultSprint = sprints.find((s) => s.status === "active") ||
+    sprints.find((s) => s.status !== "completed") ||
+    sprints[0];
+
+  const handleDescriptionChange = useCallback((content: Record<string, unknown>, mentions: { user_ids: string[]; file_paths: string[] }) => {
+    setDescriptionJson(content);
+    setMentionedUserIds(mentions.user_ids);
+    setMentionedFilePaths(mentions.file_paths);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -302,21 +337,25 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
       return;
     }
 
-    if (!sprintId) {
-      setError("Please select a sprint");
-      return;
-    }
+    // Get plain text description from JSON for backwards compatibility
+    const plainDescription = descriptionJson
+      ? extractPlainText(descriptionJson)
+      : undefined;
 
     try {
       await onAdd({
-        sprintId,
+        sprintId: sprintId || null, // null means project backlog (no sprint)
         task: {
           title: title.trim(),
-          description: description.trim() || undefined,
+          description: plainDescription,
+          description_json: descriptionJson || undefined,
           story_points: storyPoints ? parseInt(storyPoints) : undefined,
           priority,
           status,
           epic_id: epicId || undefined,
+          assignee_id: assigneeId || undefined,
+          mentioned_user_ids: mentionedUserIds.length > 0 ? mentionedUserIds : undefined,
+          mentioned_file_paths: mentionedFilePaths.length > 0 ? mentionedFilePaths : undefined,
         },
       });
       onClose();
@@ -325,6 +364,24 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
       setError(errorMessage);
     }
   };
+
+  // Extract plain text from TipTap JSON
+  function extractPlainText(doc: Record<string, unknown>): string {
+    let text = "";
+    const traverse = (node: any) => {
+      if (node?.type === "text" && node.text) {
+        text += node.text;
+      }
+      if (node?.type === "paragraph" || node?.type === "heading") {
+        text += "\n";
+      }
+      if (node?.content && Array.isArray(node.content)) {
+        node.content.forEach(traverse);
+      }
+    };
+    traverse(doc);
+    return text.trim();
+  }
 
   return (
     <motion.div
@@ -365,27 +422,35 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
               />
             </div>
 
-            {/* Description */}
+            {/* Description with rich text and mentions */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Description</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Add more details..."
-                rows={3}
-                className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 resize-none transition"
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                Description
+                <span className="text-xs text-slate-500 font-normal ml-2">
+                  Use @ to mention users
+                </span>
+              </label>
+              <TaskDescriptionEditor
+                ref={editorRef}
+                content={descriptionJson}
+                onChange={handleDescriptionChange}
+                placeholder="Add more details... Use @ to mention team members"
+                users={users}
+                minHeight="80px"
               />
             </div>
 
-            {/* Sprint Selection */}
+            {/* Sprint Selection (Optional) */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Sprint</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                Sprint <span className="text-slate-500 font-normal">(optional)</span>
+              </label>
               <select
                 value={sprintId}
                 onChange={(e) => setSprintId(e.target.value)}
                 className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
               >
-                <option value="">Select a sprint</option>
+                <option value="">Project Backlog (No Sprint)</option>
                 {sprints
                   .filter((s) => s.status !== "completed")
                   .map((sprint) => (
@@ -394,6 +459,9 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
                     </option>
                   ))}
               </select>
+              <p className="text-xs text-slate-500 mt-1">
+                Tasks without a sprint go to project backlog
+              </p>
             </div>
 
             {/* Story Points & Priority */}
@@ -426,20 +494,37 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
               </div>
             </div>
 
-            {/* Status */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Status</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as TaskStatus)}
-                className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
-              >
-                {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-                  <option key={key} value={key}>
-                    {cfg.label}
-                  </option>
-                ))}
-              </select>
+            {/* Status & Assignee */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">Status</label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as TaskStatus)}
+                  className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
+                >
+                  {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                    <option key={key} value={key}>
+                      {cfg.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">Assignee</label>
+                <select
+                  value={assigneeId}
+                  onChange={(e) => setAssigneeId(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
+                >
+                  <option value="">Unassigned</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Epic */}
@@ -478,16 +563,404 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={isAdding || !title.trim() || !sprintId}
-              className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              {isAdding && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isAdding ? "Creating..." : "Create Task"}
-            </button>
+            <div className="relative group">
+              <button
+                type="submit"
+                disabled={isAdding || !title.trim()}
+                className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                {isAdding && <Loader2 className="h-4 w-4 animate-spin" />}
+                {isAdding ? "Creating..." : "Create Task"}
+              </button>
+              {!title.trim() && !isAdding && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-700 text-xs text-slate-300 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  Enter a task title to create
+                </div>
+              )}
+            </div>
           </div>
         </form>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// Edit Task Modal - Trello-like task detail view
+interface EditTaskModalProps {
+  task: SprintTask;
+  onClose: () => void;
+  onUpdate: (data: {
+    taskId: string;
+    sprintId: string | null;
+    updates: {
+      title?: string;
+      description?: string;
+      description_json?: Record<string, unknown>;
+      story_points?: number;
+      priority?: TaskPriority;
+      status?: TaskStatus;
+      labels?: string[];
+      epic_id?: string | null;
+      assignee_id?: string | null;
+      mentioned_user_ids?: string[];
+      mentioned_file_paths?: string[];
+    };
+  }) => Promise<SprintTask>;
+  onDelete: (data: { sprintId: string | null; taskId: string }) => Promise<void>;
+  isUpdating: boolean;
+  sprints: SprintListItem[];
+  epics: EpicListItem[];
+  users: MentionUser[];
+}
+
+function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints, epics, users }: EditTaskModalProps) {
+  const [title, setTitle] = useState(task.title);
+  const [descriptionJson, setDescriptionJson] = useState<Record<string, unknown> | null>(
+    (task as any).description_json || null
+  );
+  const [mentionedUserIds, setMentionedUserIds] = useState<string[]>(
+    (task as any).mentioned_user_ids || []
+  );
+  const [mentionedFilePaths, setMentionedFilePaths] = useState<string[]>(
+    (task as any).mentioned_file_paths || []
+  );
+  const [storyPoints, setStoryPoints] = useState(task.story_points?.toString() || "");
+  const [priority, setPriority] = useState<TaskPriority>(task.priority);
+  const [status, setStatus] = useState<TaskStatus>(task.status);
+  const [epicId, setEpicId] = useState<string>(task.epic_id || "");
+  const [sprintId, setSprintId] = useState<string>(task.sprint_id || "");
+  const [assigneeId, setAssigneeId] = useState<string>(task.assignee_id || "");
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const editorRef = useRef<TaskDescriptionEditorRef>(null);
+
+  const handleDescriptionChange = useCallback((content: Record<string, unknown>, mentions: { user_ids: string[]; file_paths: string[] }) => {
+    setDescriptionJson(content);
+    setMentionedUserIds(mentions.user_ids);
+    setMentionedFilePaths(mentions.file_paths);
+  }, []);
+
+  // Extract plain text from TipTap JSON
+  function extractPlainText(doc: Record<string, unknown>): string {
+    let text = "";
+    const traverse = (node: any) => {
+      if (node?.type === "text" && node.text) {
+        text += node.text;
+      }
+      if (node?.type === "paragraph" || node?.type === "heading") {
+        text += "\n";
+      }
+      if (node?.content && Array.isArray(node.content)) {
+        node.content.forEach(traverse);
+      }
+    };
+    traverse(doc);
+    return text.trim();
+  }
+
+  const hasChanges =
+    title !== task.title ||
+    JSON.stringify(descriptionJson) !== JSON.stringify((task as any).description_json || null) ||
+    storyPoints !== (task.story_points?.toString() || "") ||
+    priority !== task.priority ||
+    status !== task.status ||
+    epicId !== (task.epic_id || "") ||
+    sprintId !== (task.sprint_id || "") ||
+    assigneeId !== (task.assignee_id || "");
+
+  const handleSave = async () => {
+    if (!title.trim()) {
+      setError("Title is required");
+      return;
+    }
+
+    const plainDescription = descriptionJson ? extractPlainText(descriptionJson) : undefined;
+
+    try {
+      await onUpdate({
+        taskId: task.id,
+        sprintId: task.sprint_id || null,
+        updates: {
+          title: title.trim(),
+          description: plainDescription,
+          description_json: descriptionJson || undefined,
+          story_points: storyPoints ? parseInt(storyPoints) : undefined,
+          priority,
+          status,
+          epic_id: epicId || null,
+          assignee_id: assigneeId || null,
+          mentioned_user_ids: mentionedUserIds.length > 0 ? mentionedUserIds : undefined,
+          mentioned_file_paths: mentionedFilePaths.length > 0 ? mentionedFilePaths : undefined,
+        },
+      });
+      onClose();
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to update task";
+      setError(errorMessage);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await onDelete({
+        sprintId: task.sprint_id || null,
+        taskId: task.id,
+      });
+      onClose();
+    } catch (err) {
+      console.error("Failed to delete:", err);
+    }
+  };
+
+  const handleQuickStatusChange = async (newStatus: TaskStatus) => {
+    try {
+      await onUpdate({
+        taskId: task.id,
+        sprintId: task.sprint_id || null,
+        updates: { status: newStatus },
+      });
+      setStatus(newStatus);
+    } catch (err) {
+      console.error("Failed to update status:", err);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center z-50 overflow-y-auto py-10"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-2xl shadow-2xl"
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between p-4 border-b border-slate-700">
+          <div className="flex-1 mr-4">
+            {isEditingTitle ? (
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                onBlur={() => setIsEditingTitle(false)}
+                onKeyDown={(e) => e.key === "Enter" && setIsEditingTitle(false)}
+                autoFocus
+                className="w-full text-xl font-semibold bg-slate-900/50 border border-slate-600 rounded px-2 py-1 text-white focus:outline-none focus:border-primary-500"
+              />
+            ) : (
+              <h2
+                onClick={() => setIsEditingTitle(true)}
+                className="text-xl font-semibold text-white cursor-pointer hover:bg-slate-700/50 rounded px-2 py-1 -mx-2"
+              >
+                {title}
+              </h2>
+            )}
+            <div className="flex items-center gap-2 mt-2 text-sm text-slate-400">
+              {task.sprint_id ? (
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-green-500" />
+                  {sprints.find(s => s.id === task.sprint_id)?.name || "Sprint"}
+                </span>
+              ) : (
+                <span className="text-slate-500">Project Backlog</span>
+              )}
+              <span>•</span>
+              <span>Created {new Date(task.created_at).toLocaleDateString()}</span>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="flex">
+          {/* Main content */}
+          <div className="flex-1 p-4 space-y-4">
+            {/* Quick status buttons */}
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-2 uppercase tracking-wider">Status</label>
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(STATUS_CONFIG) as TaskStatus[]).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => handleQuickStatusChange(s)}
+                    disabled={isUpdating}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-sm font-medium transition-all",
+                      status === s
+                        ? `${STATUS_CONFIG[s].bgColor} ${STATUS_CONFIG[s].color} ring-2 ring-offset-2 ring-offset-slate-800 ring-current`
+                        : "bg-slate-700/50 text-slate-400 hover:bg-slate-700 hover:text-white"
+                    )}
+                  >
+                    {STATUS_CONFIG[s].label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Description with mentions */}
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-2 uppercase tracking-wider">
+                Description
+                <span className="text-slate-500 font-normal ml-2">Use @ to mention</span>
+              </label>
+              <TaskDescriptionEditor
+                ref={editorRef}
+                content={descriptionJson}
+                onChange={handleDescriptionChange}
+                placeholder="Add more details... Use @ to mention team members"
+                users={users}
+                minHeight="100px"
+              />
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                <p className="text-sm text-red-400">{error}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="w-48 border-l border-slate-700 p-4 space-y-4 bg-slate-800/50">
+            {/* Priority */}
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Priority</label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value as TaskPriority)}
+                className="w-full px-2 py-1.5 bg-slate-900/50 border border-slate-700 rounded text-sm text-white focus:outline-none focus:border-primary-500"
+              >
+                {Object.entries(PRIORITY_CONFIG).map(([key, cfg]) => (
+                  <option key={key} value={key}>{cfg.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Story Points */}
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Story Points</label>
+              <input
+                type="number"
+                min="0"
+                max="21"
+                value={storyPoints}
+                onChange={(e) => setStoryPoints(e.target.value)}
+                placeholder="0"
+                className="w-full px-2 py-1.5 bg-slate-900/50 border border-slate-700 rounded text-sm text-white focus:outline-none focus:border-primary-500"
+              />
+            </div>
+
+            {/* Sprint */}
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Sprint</label>
+              <select
+                value={sprintId}
+                onChange={(e) => setSprintId(e.target.value)}
+                className="w-full px-2 py-1.5 bg-slate-900/50 border border-slate-700 rounded text-sm text-white focus:outline-none focus:border-primary-500"
+              >
+                <option value="">No Sprint</option>
+                {sprints.filter(s => s.status !== "completed").map((sprint) => (
+                  <option key={sprint.id} value={sprint.id}>
+                    {sprint.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Epic */}
+            {epics.length > 0 && (
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Epic</label>
+                <select
+                  value={epicId}
+                  onChange={(e) => setEpicId(e.target.value)}
+                  className="w-full px-2 py-1.5 bg-slate-900/50 border border-slate-700 rounded text-sm text-white focus:outline-none focus:border-primary-500"
+                >
+                  <option value="">No Epic</option>
+                  {epics.map((epic) => (
+                    <option key={epic.id} value={epic.id}>{epic.title}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Assignee */}
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Assignee</label>
+              <select
+                value={assigneeId}
+                onChange={(e) => setAssigneeId(e.target.value)}
+                className="w-full px-2 py-1.5 bg-slate-900/50 border border-slate-700 rounded text-sm text-white focus:outline-none focus:border-primary-500"
+              >
+                <option value="">Unassigned</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>{user.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Delete button */}
+            <div className="pt-4 border-t border-slate-700">
+              {showDeleteConfirm ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-red-400">Delete this task?</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleDelete}
+                      className="flex-1 px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs"
+                    >
+                      Delete
+                    </button>
+                    <button
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="flex-1 px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="w-full px-2 py-1.5 text-red-400 hover:bg-red-500/10 rounded text-sm transition"
+                >
+                  Delete Task
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        {hasChanges && (
+          <div className="flex justify-end gap-3 p-4 border-t border-slate-700 bg-slate-800/80">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition"
+            >
+              Discard
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isUpdating}
+              className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg disabled:opacity-50 transition"
+            >
+              {isUpdating && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isUpdating ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );
@@ -520,6 +993,8 @@ export default function ProjectBoardPage({
     moveTask,
     isMovingTask,
     updateTaskStatus,
+    updateTask,
+    isUpdatingTask,
     addTask,
     isAddingTask,
     deleteTask,
@@ -536,6 +1011,18 @@ export default function ProjectBoardPage({
   } = useBoardSelection();
 
   const { epics } = useEpics(currentWorkspaceId);
+  const { members } = useWorkspaceMembers(currentWorkspaceId);
+
+  // Convert members to MentionUser format
+  const mentionUsers: MentionUser[] = useMemo(() => {
+    return (members || [])
+      .filter((m) => m.status === "active") // Only show active members
+      .map((m) => ({
+        id: m.developer_id,
+        name: m.developer_name || m.developer_email?.split("@")[0] || "Unknown",
+        avatar_url: m.developer_avatar_url || undefined,
+      }));
+  }, [members]);
 
   const [selectedTask, setSelectedTask] = useState<SprintTask | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -589,14 +1076,22 @@ export default function ProjectBoardPage({
     const task = filteredTasks.find((t) => t.id === taskId);
     if (!task) return;
 
-    const overId = over.id as string;
+    const dropTargetId = over.id as string;
 
     if (viewMode === "sprint") {
       // Moving between sprints
-      const targetSprintId = overId;
+      // Check if dropped on a sprint column or a task within a sprint
+      let targetSprintId = dropTargetId;
+
+      // If dropped on a task, find which sprint that task belongs to
+      const targetTask = filteredTasks.find((t) => t.id === dropTargetId);
+      if (targetTask) {
+        targetSprintId = targetTask.sprint_id || "";
+      }
+
       const targetSprint = sprints.find((s) => s.id === targetSprintId);
 
-      if (targetSprint && targetSprintId !== task.sprint_id) {
+      if (targetSprint && targetSprintId !== task.sprint_id && task.sprint_id) {
         try {
           await moveTask({
             taskId,
@@ -610,13 +1105,23 @@ export default function ProjectBoardPage({
     } else {
       // Changing status
       const statusKeys: TaskStatus[] = ["backlog", "todo", "in_progress", "review", "done"];
-      const targetStatus = statusKeys.find((s) => overId === s || tasksByStatus[s]?.some((t) => t.id === overId));
+
+      // First check if dropped directly on a status column
+      let targetStatus: TaskStatus | undefined = statusKeys.find((s) => dropTargetId === s);
+
+      // If dropped on a task, find which status that task belongs to
+      if (!targetStatus) {
+        const targetTask = filteredTasks.find((t) => t.id === dropTargetId);
+        if (targetTask) {
+          targetStatus = targetTask.status;
+        }
+      }
 
       if (targetStatus && targetStatus !== task.status) {
         try {
           await updateTaskStatus({
             taskId,
-            sprintId: task.sprint_id,
+            sprintId: task.sprint_id || null, // Works for both sprint and project-level tasks
             status: targetStatus,
           });
         } catch (error) {
@@ -627,8 +1132,23 @@ export default function ProjectBoardPage({
   };
 
   const handleTaskClick = (task: SprintTask) => {
-    // Navigate to task detail or open modal
+    // Open edit modal
     setSelectedTask(task);
+  };
+
+  const handleQuickStatusChange = async (taskId: string, newStatus: TaskStatus) => {
+    const task = filteredTasks.find((t) => t.id === taskId);
+    if (!task || task.status === newStatus) return;
+
+    try {
+      await updateTaskStatus({
+        taskId,
+        sprintId: task.sprint_id || null,
+        status: newStatus,
+      });
+    } catch (error) {
+      console.error("Failed to update status:", error);
+    }
   };
 
   const handleDeleteTask = async (taskId: string) => {
@@ -639,7 +1159,7 @@ export default function ProjectBoardPage({
 
     try {
       await deleteTask({
-        sprintId: task.sprint_id,
+        sprintId: task.sprint_id || null,
         taskId: task.id,
       });
     } catch (error) {
@@ -866,6 +1386,7 @@ export default function ProjectBoardPage({
                     tasks={tasksByStatus[status] || []}
                     onTaskClick={handleTaskClick}
                     onDeleteTask={handleDeleteTask}
+                    onStatusChange={handleQuickStatusChange}
                     showSprintBadge={true}
                     isOver={overId === status}
                     onSelect={toggleTask}
@@ -921,6 +1442,23 @@ export default function ProjectBoardPage({
             isAdding={isAddingTask}
             sprints={sprints}
             epics={epics || []}
+            users={mentionUsers}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Edit Task Modal */}
+      <AnimatePresence>
+        {selectedTask && (
+          <EditTaskModal
+            task={selectedTask}
+            onClose={() => setSelectedTask(null)}
+            onUpdate={updateTask}
+            onDelete={deleteTask}
+            isUpdating={isUpdatingTask}
+            sprints={sprints}
+            epics={epics || []}
+            users={mentionUsers}
           />
         )}
       </AnimatePresence>

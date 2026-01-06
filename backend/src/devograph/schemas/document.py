@@ -10,9 +10,12 @@ from pydantic import BaseModel, ConfigDict, Field
 DocumentStatus = Literal["draft", "generating", "generated", "failed"]
 DocumentLinkType = Literal["file", "directory"]
 DocumentPermission = Literal["view", "comment", "edit", "admin"]
+DocumentVisibility = Literal["private", "workspace", "public"]
+DocumentNotificationType = Literal["comment", "mention", "share", "edit"]
 TemplateCategory = Literal[
     "api_docs", "readme", "function_docs", "module_docs", "guides", "changelog", "custom"
 ]
+DocumentSpaceRole = Literal["admin", "editor", "viewer"]
 
 
 # ==================== Document Schemas ====================
@@ -25,8 +28,10 @@ class DocumentCreate(BaseModel):
     content: dict[str, Any] | None = None
     parent_id: str | None = None
     template_id: str | None = None
+    space_id: str | None = None
     icon: str | None = Field(default=None, max_length=50)
     cover_image: str | None = Field(default=None, max_length=500)
+    visibility: DocumentVisibility = "workspace"
 
 
 class DocumentUpdate(BaseModel):
@@ -36,6 +41,7 @@ class DocumentUpdate(BaseModel):
     content: dict[str, Any] | None = None
     icon: str | None = Field(default=None, max_length=50)
     cover_image: str | None = Field(default=None, max_length=500)
+    visibility: DocumentVisibility | None = None
     is_auto_save: bool = False
 
 
@@ -55,6 +61,7 @@ class DocumentResponse(BaseModel):
     is_template: bool = False
     is_published: bool = False
     published_at: datetime | None = None
+    visibility: DocumentVisibility = "workspace"
     generation_status: DocumentStatus = "draft"
     last_generated_at: datetime | None = None
     created_by_id: str | None = None
@@ -89,7 +96,12 @@ class DocumentTreeItem(BaseModel):
     title: str
     icon: str | None = None
     parent_id: str | None = None
+    space_id: str | None = None
+    space_name: str | None = None
     position: int
+    visibility: DocumentVisibility = "workspace"
+    created_by_id: str | None = None
+    is_favorited: bool = False
     has_children: bool = False
     children: list["DocumentTreeItem"] = Field(default_factory=list)
     created_at: str
@@ -356,3 +368,149 @@ class GitHubSyncResponse(BaseModel):
     commit_sha: str | None = None
     commit_url: str | None = None
     error: str | None = None
+
+
+# ==================== Notification Schemas ====================
+
+
+class DocumentNotificationResponse(BaseModel):
+    """Schema for document notification response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    document_id: str
+    document_title: str | None = None
+    document_icon: str | None = None
+    type: DocumentNotificationType
+    message: str
+    is_read: bool = False
+    created_by_id: str | None = None
+    created_by_name: str | None = None
+    created_by_avatar: str | None = None
+    created_at: datetime
+    read_at: datetime | None = None
+
+
+class DocumentNotificationListResponse(BaseModel):
+    """Schema for notification list with pagination."""
+
+    notifications: list[DocumentNotificationResponse]
+    total: int
+    unread_count: int
+
+
+# ==================== Favorites Schemas ====================
+
+
+class DocumentFavoriteResponse(BaseModel):
+    """Schema for favorite document response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    document_id: str
+    document_title: str | None = None
+    document_icon: str | None = None
+    created_at: datetime
+
+
+# ==================== Ancestors Schemas ====================
+
+
+class DocumentAncestorResponse(BaseModel):
+    """Schema for document ancestor (breadcrumb) response."""
+
+    id: str
+    title: str
+    icon: str | None = None
+
+
+# ==================== Document Space Schemas ====================
+
+
+class DocumentSpaceCreate(BaseModel):
+    """Schema for creating a document space."""
+
+    name: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+    icon: str | None = Field(default=None, max_length=50)
+    color: str | None = Field(default=None, max_length=20)
+
+
+class DocumentSpaceUpdate(BaseModel):
+    """Schema for updating a document space."""
+
+    name: str | None = Field(default=None, max_length=255)
+    description: str | None = None
+    icon: str | None = Field(default=None, max_length=50)
+    color: str | None = Field(default=None, max_length=20)
+    is_archived: bool | None = None
+
+
+class DocumentSpaceResponse(BaseModel):
+    """Schema for document space response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    workspace_id: str
+    name: str
+    slug: str
+    description: str | None = None
+    icon: str | None = None
+    color: str | None = None
+    is_default: bool = False
+    is_archived: bool = False
+    member_count: int = 0
+    document_count: int = 0
+    created_by_id: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class DocumentSpaceListResponse(BaseModel):
+    """Schema for document space list item (lightweight)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    name: str
+    slug: str
+    icon: str | None = None
+    color: str | None = None
+    is_default: bool = False
+    is_archived: bool = False
+    member_count: int = 0
+    document_count: int = 0
+
+
+class DocumentSpaceMemberAdd(BaseModel):
+    """Schema for adding a member to a space."""
+
+    developer_id: str
+    role: DocumentSpaceRole = "editor"
+
+
+class DocumentSpaceMemberUpdate(BaseModel):
+    """Schema for updating a space member's role."""
+
+    role: DocumentSpaceRole
+
+
+class DocumentSpaceMemberResponse(BaseModel):
+    """Schema for space member response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    space_id: str
+    developer_id: str
+    developer_name: str | None = None
+    developer_email: str | None = None
+    developer_avatar: str | None = None
+    role: DocumentSpaceRole
+    invited_by_id: str | None = None
+    invited_by_name: str | None = None
+    joined_at: datetime | None = None
+    created_at: datetime

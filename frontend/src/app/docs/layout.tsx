@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { AppHeader } from "@/components/layout/AppHeader";
-import { DocumentSidebar } from "@/components/docs/DocumentSidebar";
+import { NotionSidebar } from "@/components/docs/sidebar";
+import { SearchModal } from "@/components/docs/SearchModal";
+import { NotificationInbox } from "@/components/docs/NotificationInbox";
 import { useRouter, useParams } from "next/navigation";
 import { Building2, Plus } from "lucide-react";
 
@@ -27,14 +29,49 @@ export default function DocsLayout({
   const params = useParams();
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
 
+  // Modal states
+  const [showSearch, setShowSearch] = useState(false);
+  const [showInbox, setShowInbox] = useState(false);
+
+  // Scroll-aware header state
+  const [showHeader, setShowHeader] = useState(true);
+  const lastScrollY = useRef(0);
+  const contentRef = useRef<HTMLDivElement>(null);
+
   // Handle hydration
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const handleSelectDocument = (documentId: string) => {
-    router.push(`/docs/${documentId}`);
-  };
+  // Handle scroll to show/hide header
+  const handleScroll = useCallback(() => {
+    if (!contentRef.current) return;
+
+    const currentScrollY = contentRef.current.scrollTop;
+    const scrollDelta = currentScrollY - lastScrollY.current;
+
+    // Show header when scrolling up, hide when scrolling down
+    if (scrollDelta > 10 && currentScrollY > 80) {
+      setShowHeader(false);
+    } else if (scrollDelta < -10 || currentScrollY < 80) {
+      setShowHeader(true);
+    }
+
+    lastScrollY.current = currentScrollY;
+  }, []);
+
+  // Global keyboard shortcut for search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setShowSearch((prev) => !prev);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const handleCreateWorkspace = async () => {
     setIsCreatingWorkspace(true);
@@ -71,7 +108,7 @@ export default function DocsLayout({
   }
 
   if (!isAuthenticated) {
-    return null; // Will redirect via useEffect
+    return null;
   }
 
   // Show workspace creation prompt if no workspaces exist
@@ -114,25 +151,52 @@ export default function DocsLayout({
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col">
-      <AppHeader user={user} logout={logout} />
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <div className="w-64 flex-shrink-0">
+    <div className="h-screen bg-slate-950 flex flex-col overflow-hidden">
+      {/* Scroll-aware Header */}
+      <div
+        className={`flex-shrink-0 z-30 transition-all duration-300 ${
+          showHeader ? "h-16 opacity-100" : "h-0 opacity-0 overflow-hidden"
+        }`}
+      >
+        <AppHeader user={user} logout={logout} />
+      </div>
+
+      {/* Main Layout */}
+      <div className="flex flex-1 min-h-0">
+        {/* Notion-style Sidebar */}
+        <div className="w-60 flex-shrink-0 h-full">
           {currentWorkspaceId && (
-            <DocumentSidebar
-              workspaceId={currentWorkspaceId}
+            <NotionSidebar
               selectedDocumentId={params?.documentId as string | undefined}
-              onSelectDocument={handleSelectDocument}
+              onOpenSearch={() => setShowSearch(true)}
+              onOpenInbox={() => setShowInbox(true)}
             />
           )}
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 overflow-hidden">
+        <div
+          ref={contentRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto"
+        >
           {children}
         </div>
       </div>
+
+      {/* Search Modal */}
+      <SearchModal
+        workspaceId={currentWorkspaceId}
+        isOpen={showSearch}
+        onClose={() => setShowSearch(false)}
+      />
+
+      {/* Notification Inbox */}
+      <NotificationInbox
+        workspaceId={currentWorkspaceId}
+        isOpen={showInbox}
+        onClose={() => setShowInbox(false)}
+      />
     </div>
   );
 }
