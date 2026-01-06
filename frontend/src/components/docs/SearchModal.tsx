@@ -108,9 +108,9 @@ export function SearchModal({ workspaceId, isOpen, onClose }: SearchModalProps) 
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]">
+      <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] pointer-events-none">
         <div
-          className="w-full max-w-xl bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden"
+          className="w-full max-w-xl bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden pointer-events-auto"
           onKeyDown={handleKeyDown}
         >
           {/* Search Input */}
