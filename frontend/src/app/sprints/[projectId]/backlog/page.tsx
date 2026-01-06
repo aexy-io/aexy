@@ -250,7 +250,7 @@ function SprintCapacityBar({ sprint, className }: SprintCapacityBarProps) {
 interface AddBacklogItemModalProps {
   onClose: () => void;
   onAdd: (data: {
-    sprintId: string;
+    sprintId: string | null;
     task: {
       title: string;
       description?: string;
@@ -271,10 +271,13 @@ function AddBacklogItemModal({ onClose, onAdd, isAdding, sprints, epics }: AddBa
   const [storyPoints, setStoryPoints] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [epicId, setEpicId] = useState<string>("");
-  const [sprintId, setSprintId] = useState<string>(
-    sprints.find((s) => s.status === "active")?.id || sprints[0]?.id || ""
-  );
+  const [sprintId, setSprintId] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+
+  // Get default sprint (active or first non-completed)
+  const defaultSprint = sprints.find((s) => s.status === "active") ||
+    sprints.find((s) => s.status !== "completed") ||
+    sprints[0];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -285,14 +288,9 @@ function AddBacklogItemModal({ onClose, onAdd, isAdding, sprints, epics }: AddBa
       return;
     }
 
-    if (!sprintId) {
-      setError("Please select a sprint");
-      return;
-    }
-
     try {
       await onAdd({
-        sprintId,
+        sprintId: sprintId || null, // null means project backlog (no sprint)
         task: {
           title: title.trim(),
           description: description.trim() || undefined,
@@ -360,15 +358,17 @@ function AddBacklogItemModal({ onClose, onAdd, isAdding, sprints, epics }: AddBa
               />
             </div>
 
-            {/* Sprint Selection */}
+            {/* Sprint Selection (Optional) */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Sprint</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                Sprint <span className="text-slate-500 font-normal">(optional)</span>
+              </label>
               <select
                 value={sprintId}
                 onChange={(e) => setSprintId(e.target.value)}
                 className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
               >
-                <option value="">Select a sprint</option>
+                <option value="">Project Backlog (No Sprint)</option>
                 {sprints
                   .filter((s) => s.status !== "completed")
                   .map((sprint) => (
@@ -377,6 +377,9 @@ function AddBacklogItemModal({ onClose, onAdd, isAdding, sprints, epics }: AddBa
                     </option>
                   ))}
               </select>
+              <p className="text-xs text-slate-500 mt-1">
+                Tasks without a sprint go to project backlog
+              </p>
             </div>
 
             {/* Story Points & Priority */}
@@ -445,14 +448,21 @@ function AddBacklogItemModal({ onClose, onAdd, isAdding, sprints, epics }: AddBa
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={isAdding || !title.trim() || !sprintId}
-              className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              {isAdding && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isAdding ? "Adding..." : "Add to Backlog"}
-            </button>
+            <div className="relative group">
+              <button
+                type="submit"
+                disabled={isAdding || !title.trim()}
+                className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                {isAdding && <Loader2 className="h-4 w-4 animate-spin" />}
+                {isAdding ? "Adding..." : "Add to Backlog"}
+              </button>
+              {!title.trim() && !isAdding && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-700 text-xs text-slate-300 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  Enter a title to add item
+                </div>
+              )}
+            </div>
           </div>
         </form>
       </motion.div>
@@ -532,6 +542,10 @@ export default function BacklogPage({
   }, [filteredItems, selectedTasks.size]);
 
   const handleMoveToTodo = async (task: BacklogItem) => {
+    if (!task.sprint_id) {
+      console.error("Cannot move task without sprint - feature coming soon");
+      return;
+    }
     setIsMoving(true);
     try {
       await updateTaskStatus({
@@ -549,8 +563,9 @@ export default function BacklogPage({
   const handleBulkMoveToTodo = async () => {
     setIsMoving(true);
     try {
-      const tasks = backlogItems.filter((t) => selectedTasks.has(t.id));
+      const tasks = backlogItems.filter((t) => selectedTasks.has(t.id) && t.sprint_id);
       for (const task of tasks) {
+        if (!task.sprint_id) continue;
         await updateTaskStatus({
           taskId: task.id,
           sprintId: task.sprint_id,
@@ -566,6 +581,10 @@ export default function BacklogPage({
   };
 
   const handleDelete = async (task: BacklogItem) => {
+    if (!task.sprint_id) {
+      console.error("Cannot delete task without sprint - feature coming soon");
+      return;
+    }
     if (!confirm("Are you sure you want to delete this task?")) return;
     try {
       await deleteTask({

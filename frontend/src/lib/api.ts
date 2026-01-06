@@ -1899,12 +1899,15 @@ export interface SprintListItem {
 
 export interface SprintTask {
   id: string;
-  sprint_id: string;
+  sprint_id: string | null;  // Can be null for project-level tasks
+  team_id: string | null;    // Set for project-level tasks
+  workspace_id: string | null;
   source_type: TaskSourceType;
   source_id: string;
   source_url: string | null;
   title: string;
   description: string | null;
+  description_json: Record<string, unknown> | null;  // TipTap JSON for rich text
   story_points: number | null;
   priority: TaskPriority;
   labels: string[];
@@ -1928,6 +1931,9 @@ export interface SprintTask {
   last_synced_at: string | null;
   external_updated_at: string | null;
   sync_status: "synced" | "pending" | "conflict";
+  // Mentions
+  mentioned_user_ids: string[];
+  mentioned_file_paths: string[];
   created_at: string;
   updated_at: string;
 }
@@ -2462,6 +2468,7 @@ export const sprintApi = {
     source_id?: string;
     source_url?: string;
     description?: string;
+    description_json?: Record<string, unknown>;
     story_points?: number;
     priority?: TaskPriority;
     labels?: string[];
@@ -2469,6 +2476,8 @@ export const sprintApi = {
     status?: TaskStatus;
     epic_id?: string;
     parent_task_id?: string;
+    mentioned_user_ids?: string[];
+    mentioned_file_paths?: string[];
   }): Promise<SprintTask> => {
     const response = await api.post(`/sprints/${sprintId}/tasks`, data);
     return response.data;
@@ -2477,11 +2486,15 @@ export const sprintApi = {
   updateTask: async (sprintId: string, taskId: string, data: {
     title?: string;
     description?: string;
+    description_json?: Record<string, unknown>;
     story_points?: number;
     priority?: TaskPriority;
     status?: TaskStatus;
     labels?: string[];
     epic_id?: string | null;
+    sprint_id?: string | null;
+    mentioned_user_ids?: string[];
+    mentioned_file_paths?: string[];
   }): Promise<SprintTask> => {
     const response = await api.patch(`/sprints/${sprintId}/tasks/${taskId}`, data);
     return response.data;
@@ -2668,6 +2681,105 @@ export const sprintApi = {
       { task_ids: taskIds }
     );
     return response.data;
+  },
+};
+
+// ============================================================================
+// Project Tasks API (project-level tasks without sprint)
+// ============================================================================
+
+export const projectTasksApi = {
+  /**
+   * List all tasks for a project/team.
+   * By default, only returns tasks without a sprint (backlog items).
+   */
+  list: async (teamId: string, options?: {
+    statusFilter?: TaskStatus;
+    assigneeId?: string;
+    includeSprintTasks?: boolean;
+  }): Promise<SprintTask[]> => {
+    const response = await api.get(`/teams/${teamId}/tasks`, {
+      params: {
+        ...(options?.statusFilter && { status_filter: options.statusFilter }),
+        ...(options?.assigneeId && { assignee_id: options.assigneeId }),
+        ...(options?.includeSprintTasks !== undefined && { include_sprint_tasks: options.includeSprintTasks }),
+      },
+    });
+    return response.data;
+  },
+
+  /**
+   * Create a new task at the project level (without sprint).
+   */
+  create: async (teamId: string, data: {
+    title: string;
+    description?: string;
+    description_json?: Record<string, unknown>;
+    story_points?: number;
+    priority?: TaskPriority;
+    labels?: string[];
+    assignee_id?: string;
+    status?: TaskStatus;
+    epic_id?: string;
+    sprint_id?: string;  // Optional - can assign to sprint on creation
+    mentioned_user_ids?: string[];
+    mentioned_file_paths?: string[];
+  }): Promise<SprintTask> => {
+    const response = await api.post(`/teams/${teamId}/tasks`, data);
+    return response.data;
+  },
+
+  /**
+   * Get a task by ID.
+   */
+  get: async (teamId: string, taskId: string): Promise<SprintTask> => {
+    const response = await api.get(`/teams/${teamId}/tasks/${taskId}`);
+    return response.data;
+  },
+
+  /**
+   * Update a task.
+   */
+  update: async (teamId: string, taskId: string, data: {
+    title?: string;
+    description?: string;
+    description_json?: Record<string, unknown>;
+    story_points?: number;
+    priority?: TaskPriority;
+    status?: TaskStatus;
+    labels?: string[];
+    epic_id?: string | null;
+    sprint_id?: string | null;
+    mentioned_user_ids?: string[];
+    mentioned_file_paths?: string[];
+  }): Promise<SprintTask> => {
+    const response = await api.patch(`/teams/${teamId}/tasks/${taskId}`, data);
+    return response.data;
+  },
+
+  /**
+   * Update task status.
+   */
+  updateStatus: async (teamId: string, taskId: string, status: TaskStatus): Promise<SprintTask> => {
+    const response = await api.patch(`/teams/${teamId}/tasks/${taskId}/status`, { status });
+    return response.data;
+  },
+
+  /**
+   * Move task to sprint or back to backlog.
+   */
+  moveToSprint: async (teamId: string, taskId: string, sprintId: string | null): Promise<SprintTask> => {
+    const response = await api.patch(`/teams/${teamId}/tasks/${taskId}/move-to-sprint`, null, {
+      params: { sprint_id: sprintId },
+    });
+    return response.data;
+  },
+
+  /**
+   * Delete a task.
+   */
+  delete: async (teamId: string, taskId: string): Promise<void> => {
+    await api.delete(`/teams/${teamId}/tasks/${taskId}`);
   },
 };
 
@@ -4390,18 +4502,90 @@ export const googleCalendarApi = {
 export type DocumentStatus = "draft" | "generating" | "generated" | "failed";
 export type DocumentLinkType = "file" | "directory";
 export type DocumentPermission = "view" | "comment" | "edit" | "admin";
+export type DocumentVisibility = "private" | "workspace" | "public";
+export type DocumentNotificationType = "comment" | "mention" | "share" | "edit";
 export type TemplateCategory = "api_docs" | "readme" | "function_docs" | "module_docs" | "guides" | "changelog" | "custom";
+export type DocumentSpaceRole = "admin" | "editor" | "viewer";
 
 export interface DocumentTreeItem {
   id: string;
   title: string;
   icon: string | null;
   parent_id: string | null;
+  space_id: string | null;
+  space_name: string | null;
   position: number;
+  visibility: DocumentVisibility;
+  created_by_id: string | null;
+  is_favorited: boolean;
   has_children: boolean;
   children: DocumentTreeItem[];
   created_at: string;
   updated_at: string;
+}
+
+// Document Spaces
+export interface DocumentSpace {
+  id: string;
+  workspace_id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  icon: string | null;
+  color: string | null;
+  is_default: boolean;
+  is_archived: boolean;
+  member_count: number;
+  document_count: number;
+  created_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DocumentSpaceListItem {
+  id: string;
+  name: string;
+  slug: string;
+  icon: string | null;
+  color: string | null;
+  is_default: boolean;
+  is_archived: boolean;
+  member_count: number;
+  document_count: number;
+}
+
+export interface DocumentSpaceMember {
+  id: string;
+  space_id: string;
+  developer_id: string;
+  developer_name: string | null;
+  developer_email: string | null;
+  developer_avatar: string | null;
+  role: DocumentSpaceRole;
+  invited_by_id: string | null;
+  invited_by_name: string | null;
+  joined_at: string | null;
+  created_at: string;
+}
+
+export interface DocumentSpaceCreate {
+  name: string;
+  description?: string | null;
+  icon?: string | null;
+  color?: string | null;
+}
+
+export interface DocumentSpaceUpdate {
+  name?: string | null;
+  description?: string | null;
+  icon?: string | null;
+  color?: string | null;
+  is_archived?: boolean | null;
+}
+
+export interface DocumentSpaceMemberAdd {
+  developer_id: string;
+  role?: DocumentSpaceRole;
 }
 
 export interface Document {
@@ -4416,6 +4600,7 @@ export interface Document {
   is_template: boolean;
   is_published: boolean;
   published_at: string | null;
+  visibility: DocumentVisibility;
   generation_status: DocumentStatus;
   last_generated_at: string | null;
   created_by_id: string | null;
@@ -4534,8 +4719,10 @@ export interface DocumentCreate {
   content?: Record<string, unknown>;
   parent_id?: string;
   template_id?: string;
+  space_id?: string;
   icon?: string;
   cover_image?: string;
+  visibility?: DocumentVisibility;
 }
 
 export interface DocumentUpdate {
@@ -4543,7 +4730,37 @@ export interface DocumentUpdate {
   content?: Record<string, unknown>;
   icon?: string;
   cover_image?: string;
+  visibility?: DocumentVisibility;
   is_auto_save?: boolean;
+}
+
+// Notification types
+export interface DocumentNotification {
+  id: string;
+  document_id: string;
+  document_title: string | null;
+  document_icon: string | null;
+  type: DocumentNotificationType;
+  message: string;
+  is_read: boolean;
+  created_by_id: string | null;
+  created_by_name: string | null;
+  created_by_avatar: string | null;
+  created_at: string;
+  read_at: string | null;
+}
+
+export interface DocumentNotificationList {
+  notifications: DocumentNotification[];
+  total: number;
+  unread_count: number;
+}
+
+// Ancestor (breadcrumb) types
+export interface DocumentAncestor {
+  id: string;
+  title: string;
+  icon: string | null;
 }
 
 // ============ Document API ============
@@ -4565,9 +4782,45 @@ export const documentApi = {
 
   getTree: async (
     workspaceId: string,
-    options?: { parent_id?: string; include_templates?: boolean }
+    options?: { parent_id?: string; include_templates?: boolean; visibility?: DocumentVisibility; space_id?: string }
   ): Promise<DocumentTreeItem[]> => {
     const response = await api.get(`/workspaces/${workspaceId}/documents/tree`, { params: options });
+    return response.data;
+  },
+
+  // Favorites
+  getFavorites: async (workspaceId: string): Promise<DocumentTreeItem[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/documents/favorites`);
+    return response.data;
+  },
+
+  toggleFavorite: async (workspaceId: string, documentId: string): Promise<{ is_favorited: boolean }> => {
+    const response = await api.post(`/workspaces/${workspaceId}/documents/${documentId}/favorite`);
+    return response.data;
+  },
+
+  // Ancestors (Breadcrumbs)
+  getAncestors: async (workspaceId: string, documentId: string): Promise<DocumentAncestor[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/documents/${documentId}/ancestors`);
+    return response.data;
+  },
+
+  // Notifications
+  getNotifications: async (
+    workspaceId: string,
+    options?: { unread_only?: boolean; limit?: number; offset?: number }
+  ): Promise<DocumentNotificationList> => {
+    const response = await api.get(`/workspaces/${workspaceId}/documents/notifications`, { params: options });
+    return response.data;
+  },
+
+  markNotificationRead: async (workspaceId: string, notificationId: string): Promise<{ success: boolean }> => {
+    const response = await api.post(`/workspaces/${workspaceId}/documents/notifications/${notificationId}/read`);
+    return response.data;
+  },
+
+  markAllNotificationsRead: async (workspaceId: string): Promise<{ marked_read: number }> => {
+    const response = await api.post(`/workspaces/${workspaceId}/documents/notifications/mark-all-read`);
     return response.data;
   },
 
@@ -4873,6 +5126,78 @@ export const templateApi = {
     const response = await api.post(`/templates/${templateId}/duplicate`, null, {
       params: { workspace_id: workspaceId },
     });
+    return response.data;
+  },
+};
+
+// ============ Document Space API ============
+
+export const spaceApi = {
+  // Space CRUD
+  list: async (
+    workspaceId: string,
+    options?: { include_archived?: boolean }
+  ): Promise<DocumentSpaceListItem[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/spaces`, { params: options });
+    return response.data;
+  },
+
+  create: async (workspaceId: string, data: DocumentSpaceCreate): Promise<DocumentSpace> => {
+    const response = await api.post(`/workspaces/${workspaceId}/spaces`, data);
+    return response.data;
+  },
+
+  get: async (workspaceId: string, spaceId: string): Promise<DocumentSpace> => {
+    const response = await api.get(`/workspaces/${workspaceId}/spaces/${spaceId}`);
+    return response.data;
+  },
+
+  update: async (
+    workspaceId: string,
+    spaceId: string,
+    data: DocumentSpaceUpdate
+  ): Promise<DocumentSpace> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/spaces/${spaceId}`, data);
+    return response.data;
+  },
+
+  delete: async (workspaceId: string, spaceId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/spaces/${spaceId}`);
+  },
+
+  // Members
+  getMembers: async (workspaceId: string, spaceId: string): Promise<DocumentSpaceMember[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/spaces/${spaceId}/members`);
+    return response.data;
+  },
+
+  addMember: async (
+    workspaceId: string,
+    spaceId: string,
+    data: DocumentSpaceMemberAdd
+  ): Promise<DocumentSpaceMember> => {
+    const response = await api.post(`/workspaces/${workspaceId}/spaces/${spaceId}/members`, data);
+    return response.data;
+  },
+
+  updateMemberRole: async (
+    workspaceId: string,
+    spaceId: string,
+    memberId: string,
+    role: DocumentSpaceRole
+  ): Promise<void> => {
+    await api.patch(`/workspaces/${workspaceId}/spaces/${spaceId}/members/${memberId}`, { role });
+  },
+
+  removeMember: async (workspaceId: string, spaceId: string, memberId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/spaces/${spaceId}/members/${memberId}`);
+  },
+
+  addAllWorkspaceMembers: async (
+    workspaceId: string,
+    spaceId: string
+  ): Promise<{ added_count: number }> => {
+    const response = await api.post(`/workspaces/${workspaceId}/spaces/${spaceId}/members/add-all`);
     return response.data;
   },
 };

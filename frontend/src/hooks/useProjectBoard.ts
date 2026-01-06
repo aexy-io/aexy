@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo, useCallback } from "react";
 import {
   sprintApi,
+  projectTasksApi,
   SprintListItem,
   SprintTask,
   TaskStatus,
@@ -52,29 +53,47 @@ export function useProjectBoard(
     enabled: !!workspaceId && !!projectId,
   });
 
-  // Fetch tasks for each sprint
+  // Fetch tasks for each sprint AND project-level tasks (without sprint)
   const {
     data: allTasks,
     isLoading: tasksLoading,
   } = useQuery<TaskWithSprint[]>({
     queryKey: ["projectTasks", workspaceId, projectId, sprints?.map(s => s.id)],
     queryFn: async () => {
-      if (!sprints || sprints.length === 0) return [];
+      const allTasksList: TaskWithSprint[] = [];
+
+      // Fetch project-level tasks (tasks without a sprint)
+      if (projectId) {
+        try {
+          const backlogTasks = await projectTasksApi.list(projectId, { includeSprintTasks: false });
+          allTasksList.push(...backlogTasks.map((task: SprintTask) => ({
+            ...task,
+            sprint_name: undefined,
+            sprint_status: undefined,
+          })));
+        } catch (error) {
+          console.error("Failed to fetch project tasks:", error);
+        }
+      }
 
       // Fetch tasks for all sprints in parallel
-      const taskPromises = sprints.map(async (sprint) => {
-        const tasks = await sprintApi.getTasks(sprint.id);
-        return tasks.map((task: SprintTask) => ({
-          ...task,
-          sprint_name: sprint.name,
-          sprint_status: sprint.status,
-        }));
-      });
+      if (sprints && sprints.length > 0) {
+        const taskPromises = sprints.map(async (sprint) => {
+          const tasks = await sprintApi.getTasks(sprint.id);
+          return tasks.map((task: SprintTask) => ({
+            ...task,
+            sprint_name: sprint.name,
+            sprint_status: sprint.status,
+          }));
+        });
 
-      const taskArrays = await Promise.all(taskPromises);
-      return taskArrays.flat();
+        const taskArrays = await Promise.all(taskPromises);
+        allTasksList.push(...taskArrays.flat());
+      }
+
+      return allTasksList;
     },
-    enabled: !!sprints && sprints.length > 0,
+    enabled: !!projectId,
   });
 
   // Move task to different sprint
@@ -113,10 +132,17 @@ export function useProjectBoard(
     },
   });
 
-  // Update task status
+  // Update task status (works for both sprint tasks and project-level tasks)
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ taskId, sprintId, status }: { taskId: string; sprintId: string; status: TaskStatus }) => {
-      return sprintApi.updateTaskStatus(sprintId, taskId, status);
+    mutationFn: async ({ taskId, sprintId, status }: { taskId: string; sprintId: string | null; status: TaskStatus }) => {
+      if (!sprintId && projectId) {
+        // Project-level task - use project tasks API
+        return projectTasksApi.update(projectId, taskId, { status });
+      }
+      if (sprintId) {
+        return sprintApi.updateTaskStatus(sprintId, taskId, status);
+      }
+      throw new Error("Either sprintId or projectId is required");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projectTasks", workspaceId, projectId] });
@@ -124,23 +150,78 @@ export function useProjectBoard(
     },
   });
 
-  // Add task to a sprint
+  // Update task (full update for editing)
+  const updateTaskMutation = useMutation({
+    mutationFn: async ({ taskId, sprintId, updates }: {
+      taskId: string;
+      sprintId: string | null;
+      updates: {
+        title?: string;
+        description?: string;
+        description_json?: Record<string, unknown>;
+        story_points?: number;
+        priority?: TaskPriority;
+        status?: TaskStatus;
+        labels?: string[];
+        epic_id?: string | null;
+        assignee_id?: string | null;
+      };
+    }) => {
+      if (!sprintId && projectId) {
+        // Project-level task - use project tasks API
+        return projectTasksApi.update(projectId, taskId, updates);
+      }
+      if (sprintId) {
+        return sprintApi.updateTask(sprintId, taskId, updates);
+      }
+      throw new Error("Either sprintId or projectId is required");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projectTasks", workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ["sprintTasks"] });
+    },
+  });
+
+  // Add task to a sprint (or project backlog if no sprint)
   const addTaskMutation = useMutation({
     mutationFn: async ({
       sprintId,
       task,
     }: {
-      sprintId: string;
+      sprintId: string | null;
       task: {
         title: string;
         description?: string;
+        description_json?: Record<string, unknown>;
         story_points?: number;
         priority: TaskPriority;
         status: TaskStatus;
         labels?: string[];
         epic_id?: string;
+        assignee_id?: string;
+        mentioned_user_ids?: string[];
+        mentioned_file_paths?: string[];
       };
     }) => {
+      if (!sprintId) {
+        // Create project-level task (no sprint) using project tasks API
+        if (!projectId) {
+          throw new Error("Project ID is required to create a task.");
+        }
+        return projectTasksApi.create(projectId, {
+          title: task.title,
+          description: task.description,
+          description_json: task.description_json,
+          story_points: task.story_points,
+          priority: task.priority,
+          status: task.status,
+          labels: task.labels,
+          epic_id: task.epic_id,
+          assignee_id: task.assignee_id,
+          mentioned_user_ids: task.mentioned_user_ids,
+          mentioned_file_paths: task.mentioned_file_paths,
+        });
+      }
       return sprintApi.addTask(sprintId, task);
     },
     onSuccess: () => {
@@ -150,10 +231,17 @@ export function useProjectBoard(
     },
   });
 
-  // Delete task from a sprint
+  // Delete task (works for both sprint and project-level tasks)
   const deleteTaskMutation = useMutation({
-    mutationFn: async ({ sprintId, taskId }: { sprintId: string; taskId: string }) => {
-      return sprintApi.removeTask(sprintId, taskId);
+    mutationFn: async ({ sprintId, taskId }: { sprintId: string | null; taskId: string }) => {
+      if (!sprintId && projectId) {
+        // Project-level task - use project tasks API
+        return projectTasksApi.delete(projectId, taskId);
+      }
+      if (sprintId) {
+        return sprintApi.removeTask(sprintId, taskId);
+      }
+      throw new Error("Either sprintId or projectId is required");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projectTasks", workspaceId, projectId] });
@@ -207,7 +295,7 @@ export function useProjectBoard(
 
       // Sprint filter
       if (filters.sprints.length > 0) {
-        if (!filters.sprints.includes(task.sprint_id)) {
+        if (!task.sprint_id || !filters.sprints.includes(task.sprint_id)) {
           return false;
         }
       }
@@ -225,13 +313,16 @@ export function useProjectBoard(
       grouped[sprint.id] = [];
     });
 
-    // Add backlog group for unassigned tasks
+    // Add backlog group for unassigned tasks (tasks without sprint_id)
     grouped["backlog"] = [];
 
     // Group tasks
     filteredTasks.forEach((task) => {
-      if (grouped[task.sprint_id]) {
+      if (task.sprint_id && grouped[task.sprint_id]) {
         grouped[task.sprint_id].push(task);
+      } else if (!task.sprint_id) {
+        // Tasks without sprint go to backlog
+        grouped["backlog"].push(task);
       }
     });
 
@@ -340,6 +431,8 @@ export function useProjectBoard(
     isMovingTask: moveTaskMutation.isPending,
     updateTaskStatus: updateStatusMutation.mutateAsync,
     isUpdatingStatus: updateStatusMutation.isPending,
+    updateTask: updateTaskMutation.mutateAsync,
+    isUpdatingTask: updateTaskMutation.isPending,
     addTask: addTaskMutation.mutateAsync,
     isAddingTask: addTaskMutation.isPending,
     deleteTask: deleteTaskMutation.mutateAsync,

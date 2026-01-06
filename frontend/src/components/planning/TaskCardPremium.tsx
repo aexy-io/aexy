@@ -17,6 +17,11 @@ import {
   MoveRight,
   Copy,
   Edit3,
+  Circle,
+  Clock,
+  PlayCircle,
+  Eye,
+  CheckCircle2,
 } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -46,6 +51,14 @@ const SOURCE_ICONS: Record<string, React.ReactNode> = {
   manual: <FileText className="h-3 w-3" />,
 };
 
+const STATUS_QUICK_ACTIONS: { status: TaskStatus; icon: React.ReactNode; label: string; color: string }[] = [
+  { status: "backlog", icon: <Circle className="h-3 w-3" />, label: "Backlog", color: "text-slate-400 hover:text-slate-300" },
+  { status: "todo", icon: <Clock className="h-3 w-3" />, label: "To Do", color: "text-blue-400 hover:text-blue-300" },
+  { status: "in_progress", icon: <PlayCircle className="h-3 w-3" />, label: "In Progress", color: "text-amber-400 hover:text-amber-300" },
+  { status: "review", icon: <Eye className="h-3 w-3" />, label: "Review", color: "text-purple-400 hover:text-purple-300" },
+  { status: "done", icon: <CheckCircle2 className="h-3 w-3" />, label: "Done", color: "text-green-400 hover:text-green-300" },
+];
+
 interface TaskCardPremiumProps {
   task: SprintTask & { sprint_name?: string };
   isDragging?: boolean;
@@ -55,6 +68,7 @@ interface TaskCardPremiumProps {
   onClick?: (task: SprintTask) => void;
   onSelect?: (taskId: string) => void;
   onMoveSprint?: (taskId: string) => void;
+  onStatusChange?: (taskId: string, status: TaskStatus) => void;
   suggestion?: {
     suggested_developer_name: string | null;
     confidence: number;
@@ -71,9 +85,11 @@ export function TaskCardPremium({
   onClick,
   onSelect,
   onMoveSprint,
+  onStatusChange,
   suggestion,
 }: TaskCardPremiumProps) {
   const [showMenu, setShowMenu] = useState(false);
+  const [showQuickStatus, setShowQuickStatus] = useState(false);
   const priorityConfig = PRIORITY_CONFIG[task.priority];
 
   const {
@@ -370,6 +386,94 @@ export function TaskCardPremium({
           </p>
         </motion.div>
       )}
+
+      {/* Quick Actions Bar - appears on hover */}
+      <div className="absolute -bottom-1 left-0 right-0 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-1/2 pointer-events-none group-hover:pointer-events-auto z-10">
+        <div className="flex items-center gap-0.5 bg-slate-700/95 backdrop-blur-sm rounded-full px-1.5 py-1 shadow-lg border border-slate-600">
+          {/* Quick Edit */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onClick?.(task);
+            }}
+            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-600 rounded-full transition"
+            title="Edit"
+          >
+            <Edit3 className="h-3 w-3" />
+          </button>
+
+          {/* Quick Status Change */}
+          {onStatusChange && (
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowQuickStatus(!showQuickStatus);
+                }}
+                className={cn(
+                  "p-1.5 rounded-full transition",
+                  STATUS_COLORS[task.status],
+                  "bg-opacity-20 hover:bg-opacity-40"
+                )}
+                title="Change Status"
+              >
+                {STATUS_QUICK_ACTIONS.find(s => s.status === task.status)?.icon || <Circle className="h-3 w-3" />}
+              </button>
+
+              {showQuickStatus && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowQuickStatus(false);
+                    }}
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-slate-700/95 backdrop-blur-sm rounded-lg shadow-xl z-20 py-1 border border-slate-600 min-w-[120px]"
+                  >
+                    {STATUS_QUICK_ACTIONS.map(({ status, icon, label, color }) => (
+                      <button
+                        key={status}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onStatusChange(task.id, status);
+                          setShowQuickStatus(false);
+                        }}
+                        className={cn(
+                          "w-full px-3 py-1.5 text-left text-xs flex items-center gap-2 transition",
+                          status === task.status ? "bg-slate-600/50" : "hover:bg-slate-600/50",
+                          color
+                        )}
+                      >
+                        {icon}
+                        {label}
+                        {status === task.status && <CheckCircle className="h-3 w-3 ml-auto" />}
+                      </button>
+                    ))}
+                  </motion.div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Delete */}
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(task.id);
+              }}
+              className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-full transition"
+              title="Delete"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+      </div>
     </motion.div>
   );
 }

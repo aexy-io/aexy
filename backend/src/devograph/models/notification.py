@@ -52,6 +52,9 @@ class NotificationEventType(str, Enum):
     ONCALL_SWAP_ACCEPTED = "oncall_swap_accepted"
     ONCALL_SWAP_DECLINED = "oncall_swap_declined"
 
+    # Task mentions
+    TASK_MENTIONED = "task_mentioned"  # User was mentioned in a task description with @
+
 
 class Notification(Base):
     """In-app notification for a user.
@@ -237,4 +240,6 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     NotificationEventType.ONCALL_SWAP_REQUESTED: {"in_app": True, "email": True, "slack": True},
     NotificationEventType.ONCALL_SWAP_ACCEPTED: {"in_app": True, "email": True, "slack": False},
     NotificationEventType.ONCALL_SWAP_DECLINED: {"in_app": True, "email": True, "slack": False},
+    # Task mentions
+    NotificationEventType.TASK_MENTIONED: {"in_app": True, "email": True, "slack": False},
 }

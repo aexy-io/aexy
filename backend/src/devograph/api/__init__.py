@@ -30,6 +30,7 @@ from devograph.api.sprints import router as sprints_router
 from devograph.api.sprint_tasks import router as sprint_tasks_router
 from devograph.api.sprint_analytics import router as sprint_analytics_router
 from devograph.api.retrospectives import router as retrospectives_router
+from devograph.api.project_tasks import router as project_tasks_router
 # Task Configuration
 from devograph.api.task_config import router as task_config_router
 # External Integrations
@@ -48,6 +49,7 @@ from devograph.api.google_calendar import router as google_calendar_router
 from devograph.api.documents import router as documents_router
 from devograph.api.documents import template_router as templates_router
 from devograph.api.collaboration import router as collaboration_router
+from devograph.api.document_spaces import router as document_spaces_router
 # Tracking
 from devograph.api.tracking import router as tracking_router
 # Ticketing
@@ -94,6 +96,7 @@ api_router.include_router(sprints_router, tags=["sprints"])
 api_router.include_router(sprint_tasks_router, tags=["sprint-tasks"])
 api_router.include_router(sprint_analytics_router, tags=["sprint-analytics"])
 api_router.include_router(retrospectives_router, tags=["retrospectives"])
+api_router.include_router(project_tasks_router, tags=["project-tasks"])
 # Task Configuration
 api_router.include_router(task_config_router, tags=["task-config"])
 # External Integrations
@@ -112,6 +115,7 @@ api_router.include_router(google_calendar_router, tags=["google-calendar"])
 api_router.include_router(documents_router, tags=["documents"])
 api_router.include_router(templates_router, tags=["templates"])
 api_router.include_router(collaboration_router, tags=["collaboration"])
+api_router.include_router(document_spaces_router, tags=["document-spaces"])
 # Tracking
 api_router.include_router(tracking_router, tags=["tracking"])
 # Ticketing

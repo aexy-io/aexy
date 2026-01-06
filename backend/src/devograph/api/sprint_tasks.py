@@ -32,12 +32,15 @@ def task_to_response(task) -> SprintTaskResponse:
     subtasks_count = len(task.subtasks) if task.subtasks else 0
     return SprintTaskResponse(
         id=str(task.id),
-        sprint_id=str(task.sprint_id),
+        sprint_id=str(task.sprint_id) if task.sprint_id else None,
+        team_id=str(task.team_id) if task.team_id else None,
+        workspace_id=str(task.workspace_id) if task.workspace_id else None,
         source_type=task.source_type,
         source_id=task.source_id,
         source_url=task.source_url,
         title=task.title,
         description=task.description,
+        description_json=task.description_json,
         story_points=task.story_points,
         priority=task.priority,
         labels=task.labels or [],
@@ -55,6 +58,8 @@ def task_to_response(task) -> SprintTaskResponse:
         started_at=task.started_at,
         completed_at=task.completed_at,
         carried_over_from_sprint_id=str(task.carried_over_from_sprint_id) if task.carried_over_from_sprint_id else None,
+        mentioned_user_ids=task.mentioned_user_ids or [],
+        mentioned_file_paths=task.mentioned_file_paths or [],
         created_at=task.created_at,
         updated_at=task.updated_at,
     )

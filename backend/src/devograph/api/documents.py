@@ -15,9 +15,12 @@ from devograph.schemas.document import (
     CollaboratorAdd,
     CollaboratorResponse,
     CollaboratorUpdate,
+    DocumentAncestorResponse,
     DocumentCreate,
     DocumentListResponse,
     DocumentMoveRequest,
+    DocumentNotificationListResponse,
+    DocumentNotificationResponse,
     DocumentResponse,
     DocumentTreeItem,
     DocumentUpdate,
@@ -66,6 +69,7 @@ def document_to_response(doc) -> DocumentResponse:
         is_template=doc.is_template,
         is_published=doc.is_published,
         published_at=doc.published_at,
+        visibility=doc.visibility,
         generation_status=doc.generation_status,
         last_generated_at=doc.last_generated_at,
         created_by_id=str(doc.created_by_id) if doc.created_by_id else None,
@@ -114,8 +118,10 @@ async def create_document(
         content=data.content,
         parent_id=data.parent_id,
         template_id=data.template_id,
+        space_id=data.space_id,
         icon=data.icon,
         cover_image=data.cover_image,
+        visibility=data.visibility,
     )
 
     return document_to_response(document)
@@ -173,6 +179,8 @@ async def get_document_tree(
     workspace_id: str,
     parent_id: str | None = None,
     include_templates: bool = False,
+    visibility: str | None = Query(default=None, description="Filter by visibility: private, workspace, public"),
+    space_id: str | None = Query(default=None, description="Filter by document space"),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -182,11 +190,130 @@ async def get_document_tree(
     service = DocumentService(db)
     tree = await service.get_document_tree(
         workspace_id=workspace_id,
+        developer_id=str(current_user.id),
         parent_id=parent_id,
         include_templates=include_templates,
+        visibility=visibility,
+        space_id=space_id,
     )
 
     return tree
+
+
+# ==================== Favorites ====================
+# NOTE: These routes MUST be before /{document_id} routes to avoid path conflicts
+
+
+@router.get("/favorites", response_model=list[DocumentTreeItem])
+async def get_favorites(
+    workspace_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get user's favorited documents."""
+    await check_workspace_permission(workspace_id, current_user, db, "viewer")
+
+    service = DocumentService(db)
+    favorites = await service.get_favorites(
+        workspace_id=workspace_id,
+        developer_id=str(current_user.id),
+    )
+
+    return favorites
+
+
+# ==================== Notifications ====================
+# NOTE: These routes MUST be before /{document_id} routes to avoid path conflicts
+
+
+@router.get("/notifications", response_model=DocumentNotificationListResponse)
+async def get_notifications(
+    workspace_id: str,
+    unread_only: bool = Query(default=False),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get document notifications for the current user."""
+    await check_workspace_permission(workspace_id, current_user, db, "viewer")
+
+    service = DocumentService(db)
+    notifications, total, unread_count = await service.get_notifications(
+        developer_id=str(current_user.id),
+        workspace_id=workspace_id,
+        unread_only=unread_only,
+        limit=limit,
+        offset=offset,
+    )
+
+    return DocumentNotificationListResponse(
+        notifications=[
+            DocumentNotificationResponse(
+                id=str(n.id),
+                document_id=str(n.document_id),
+                document_title=n.document.title if n.document else None,
+                document_icon=n.document.icon if n.document else None,
+                type=n.type,
+                message=n.message,
+                is_read=n.is_read,
+                created_by_id=str(n.created_by_id) if n.created_by_id else None,
+                created_by_name=n.created_by.name if n.created_by else None,
+                created_by_avatar=n.created_by.avatar_url if n.created_by else None,
+                created_at=n.created_at,
+                read_at=n.read_at,
+            )
+            for n in notifications
+        ],
+        total=total,
+        unread_count=unread_count,
+    )
+
+
+@router.post("/notifications/{notification_id}/read")
+async def mark_notification_read(
+    workspace_id: str,
+    notification_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mark a notification as read."""
+    await check_workspace_permission(workspace_id, current_user, db, "viewer")
+
+    service = DocumentService(db)
+    success = await service.mark_notification_read(
+        notification_id=notification_id,
+        developer_id=str(current_user.id),
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notification not found",
+        )
+
+    return {"success": True}
+
+
+@router.post("/notifications/mark-all-read")
+async def mark_all_notifications_read(
+    workspace_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mark all notifications as read."""
+    await check_workspace_permission(workspace_id, current_user, db, "viewer")
+
+    service = DocumentService(db)
+    count = await service.mark_all_notifications_read(
+        developer_id=str(current_user.id),
+        workspace_id=workspace_id,
+    )
+
+    return {"marked_read": count}
+
+
+# ==================== Document CRUD (parameterized routes) ====================
 
 
 @router.get("/{document_id}", response_model=DocumentResponse)
@@ -239,6 +366,7 @@ async def update_document(
         content=data.content,
         icon=data.icon,
         cover_image=data.cover_image,
+        visibility=data.visibility,
         is_auto_save=data.is_auto_save,
     )
 
@@ -1182,6 +1310,61 @@ async def delete_github_sync(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Sync configuration not found",
         )
+
+
+@router.post("/{document_id}/favorite")
+async def toggle_favorite(
+    workspace_id: str,
+    document_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Toggle favorite status for a document."""
+    await check_workspace_permission(workspace_id, current_user, db, "viewer")
+
+    service = DocumentService(db)
+
+    # Verify document exists
+    document = await service.get_document(document_id, workspace_id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+
+    is_favorited = await service.toggle_favorite(
+        document_id=document_id,
+        developer_id=str(current_user.id),
+    )
+
+    return {"is_favorited": is_favorited}
+
+
+# ==================== Ancestors (Breadcrumbs) ====================
+
+
+@router.get("/{document_id}/ancestors", response_model=list[DocumentAncestorResponse])
+async def get_ancestors(
+    workspace_id: str,
+    document_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get ancestors of a document for breadcrumb navigation."""
+    await check_workspace_permission(workspace_id, current_user, db, "viewer")
+
+    service = DocumentService(db)
+
+    # Verify document exists
+    document = await service.get_document(document_id, workspace_id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+
+    ancestors = await service.get_ancestors(document_id)
+    return ancestors
 
 
 # ==================== Templates Router ====================

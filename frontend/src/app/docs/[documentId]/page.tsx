@@ -7,6 +7,7 @@ import { useDocument } from "@/hooks/useDocuments";
 import { useAuth } from "@/hooks/useAuth";
 import { CollaborativeEditor } from "@/components/docs/CollaborativeEditor";
 import { DocumentEditor } from "@/components/docs/DocumentEditor";
+import { DocumentBreadcrumb } from "@/components/docs/DocumentBreadcrumb";
 
 export default function DocumentPage() {
   const params = useParams();
@@ -74,33 +75,47 @@ export default function DocumentPage() {
   // Use CollaborativeEditor when user is authenticated and collaboration is enabled
   if (collaborationEnabled && user) {
     return (
-      <CollaborativeEditor
-        documentId={documentId}
-        content={document.content || { type: "doc", content: [] }}
-        title={document.title}
-        icon={document.icon}
-        onSave={handleSave}
-        isLoading={isUpdating}
-        autoSave={true}
-        autoSaveDelay={2000}
-        userId={user.id}
-        userName={user.name || "Unknown"}
-        userEmail={user.email || undefined}
-        collaborationEnabled={collaborationEnabled}
-      />
+      <div className="flex flex-col h-full">
+        <header className="flex items-center px-3 py-3 border-b border-slate-800/50 bg-slate-950/80 backdrop-blur-sm">
+          <DocumentBreadcrumb workspaceId={currentWorkspaceId} documentId={documentId} />
+        </header>
+        <div className="flex-1 overflow-hidden">
+          <CollaborativeEditor
+            documentId={documentId}
+            content={document.content || { type: "doc", content: [] }}
+            title={document.title}
+            icon={document.icon}
+            onSave={handleSave}
+            isLoading={isUpdating}
+            autoSave={true}
+            autoSaveDelay={2000}
+            userId={user.id}
+            userName={user.name || "Unknown"}
+            userEmail={user.email || undefined}
+            collaborationEnabled={collaborationEnabled}
+          />
+        </div>
+      </div>
     );
   }
 
   // Fallback to regular editor
   return (
-    <DocumentEditor
-      content={document.content || { type: "doc", content: [] }}
-      title={document.title}
-      icon={document.icon}
-      onSave={handleSave}
-      isLoading={isUpdating}
-      autoSave={true}
-      autoSaveDelay={1000}
-    />
+    <div className="flex flex-col h-full">
+      <header className="flex items-center px-6 py-3 border-b border-slate-800/50 bg-slate-950/80 backdrop-blur-sm">
+        <DocumentBreadcrumb workspaceId={currentWorkspaceId} documentId={documentId} />
+      </header>
+      <div className="flex-1 overflow-hidden">
+        <DocumentEditor
+          content={document.content || { type: "doc", content: [] }}
+          title={document.title}
+          icon={document.icon}
+          onSave={handleSave}
+          isLoading={isUpdating}
+          autoSave={true}
+          autoSaveDelay={1000}
+        />
+      </div>
+    </div>
   );
 }
