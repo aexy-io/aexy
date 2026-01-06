@@ -244,8 +244,6 @@ export function CommandPalette({ workspaceId, projectId, onCreateTask }: Command
     setSelectedIndex(0);
   }, [query]);
 
-  if (!isOpen) return null;
-
   const categoryLabels: Record<string, string> = {
     recent: "Recent",
     actions: "Actions",
@@ -257,30 +255,28 @@ export function CommandPalette({ workspaceId, projectId, onCreateTask }: Command
 
   return (
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]"
-        onClick={closePalette}
-      >
-        {/* Backdrop */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        />
+      {isOpen && (
+        <>
+          {/* Backdrop - separate layer for click handling */}
+          <motion.div
+            key="backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm cursor-pointer"
+            onClick={closePalette}
+          />
 
-        {/* Palette */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: -20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: -20 }}
-          transition={{ duration: 0.15, ease: "easeOut" }}
-          className="relative w-full max-w-xl mx-4 bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-2xl shadow-black/50 overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
-        >
+          {/* Palette container */}
+          <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] pointer-events-none">
+            <motion.div
+              key="palette"
+              initial={{ opacity: 0, scale: 0.95, y: -20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -20 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="relative w-full max-w-xl mx-4 bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-2xl shadow-black/50 overflow-hidden pointer-events-auto"
+            >
           {/* Search input */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-700/50">
             <Search className="h-5 w-5 text-slate-400 flex-shrink-0" />
@@ -388,8 +384,10 @@ export function CommandPalette({ workspaceId, projectId, onCreateTask }: Command
               <span>to open</span>
             </div>
           </div>
-        </motion.div>
-      </motion.div>
+            </motion.div>
+          </div>
+        </>
+      )}
     </AnimatePresence>
   );
 }
