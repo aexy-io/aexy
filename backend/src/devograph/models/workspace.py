@@ -12,6 +12,7 @@ from devograph.core.database import Base
 
 if TYPE_CHECKING:
     from devograph.models.developer import Developer
+    from devograph.models.google_integration import GoogleIntegration
     from devograph.models.plan import Plan
     from devograph.models.repository import Organization
     from devograph.models.review import ReviewCycle, WorkGoal
@@ -127,6 +128,12 @@ class Workspace(Base):
     work_goals: Mapped[list["WorkGoal"]] = relationship(
         "WorkGoal",
         back_populates="workspace",
+        cascade="all, delete-orphan",
+    )
+    google_integration: Mapped["GoogleIntegration | None"] = relationship(
+        "GoogleIntegration",
+        back_populates="workspace",
+        uselist=False,
         cascade="all, delete-orphan",
     )
 

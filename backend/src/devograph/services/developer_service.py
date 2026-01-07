@@ -1,10 +1,12 @@
 """Developer profile service."""
 
+from datetime import datetime
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.developer import Developer, GitHubConnection
+from devograph.models.developer import Developer, GitHubConnection, GoogleConnection
 from devograph.schemas.developer import DeveloperCreate, DeveloperUpdate
 
 
@@ -38,7 +40,10 @@ class DeveloperService:
         stmt = (
             select(Developer)
             .where(Developer.id == developer_id)
-            .options(selectinload(Developer.github_connection))
+            .options(
+                selectinload(Developer.github_connection),
+                selectinload(Developer.google_connection),
+            )
         )
         result = await self.db.execute(stmt)
         developer = result.scalar_one_or_none()
@@ -53,7 +58,10 @@ class DeveloperService:
         stmt = (
             select(Developer)
             .where(Developer.email == email)
-            .options(selectinload(Developer.github_connection))
+            .options(
+                selectinload(Developer.github_connection),
+                selectinload(Developer.google_connection),
+            )
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
@@ -64,7 +72,10 @@ class DeveloperService:
             select(Developer)
             .join(GitHubConnection)
             .where(GitHubConnection.github_id == github_id)
-            .options(selectinload(Developer.github_connection))
+            .options(
+                selectinload(Developer.github_connection),
+                selectinload(Developer.google_connection),
+            )
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
@@ -75,7 +86,24 @@ class DeveloperService:
             select(Developer)
             .join(GitHubConnection)
             .where(GitHubConnection.github_username == username)
-            .options(selectinload(Developer.github_connection))
+            .options(
+                selectinload(Developer.github_connection),
+                selectinload(Developer.google_connection),
+            )
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_by_google_id(self, google_id: str) -> Developer | None:
+        """Get developer by Google ID."""
+        stmt = (
+            select(Developer)
+            .join(GoogleConnection)
+            .where(GoogleConnection.google_id == google_id)
+            .options(
+                selectinload(Developer.github_connection),
+                selectinload(Developer.google_connection),
+            )
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
@@ -216,10 +244,141 @@ class DeveloperService:
         """List all developers with pagination."""
         stmt = (
             select(Developer)
-            .options(selectinload(Developer.github_connection))
+            .options(
+                selectinload(Developer.github_connection),
+                selectinload(Developer.google_connection),
+            )
             .offset(skip)
             .limit(limit)
             .order_by(Developer.created_at.desc())
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+
+    async def connect_google(
+        self,
+        developer_id: str,
+        google_id: str,
+        google_email: str,
+        access_token: str,
+        refresh_token: str | None = None,
+        token_expires_at: datetime | None = None,
+        google_name: str | None = None,
+        google_avatar_url: str | None = None,
+        scopes: list[str] | None = None,
+    ) -> GoogleConnection:
+        """Connect a Google account to a developer."""
+        developer = await self.get_by_id(developer_id)
+
+        # Check if Google account is already connected to another developer
+        existing = await self.get_by_google_id(google_id)
+        if existing and existing.id != developer_id:
+            raise DeveloperServiceError(
+                f"Google account {google_email} is already connected to another developer"
+            )
+
+        # Check if developer already has a Google connection
+        if developer.google_connection:
+            # Update existing connection
+            developer.google_connection.access_token = access_token
+            if refresh_token:
+                developer.google_connection.refresh_token = refresh_token
+            if token_expires_at:
+                developer.google_connection.token_expires_at = token_expires_at
+            if scopes:
+                developer.google_connection.scopes = scopes
+            await self.db.flush()
+            await self.db.refresh(developer.google_connection)
+            return developer.google_connection
+
+        connection = GoogleConnection(
+            developer_id=developer.id,
+            google_id=google_id,
+            google_email=google_email,
+            google_name=google_name,
+            google_avatar_url=google_avatar_url,
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_expires_at=token_expires_at,
+            scopes=scopes,
+        )
+        self.db.add(connection)
+        await self.db.flush()
+
+        # Update developer avatar if not set
+        if not developer.avatar_url and google_avatar_url:
+            developer.avatar_url = google_avatar_url
+            await self.db.flush()
+
+        await self.db.refresh(connection)
+        return connection
+
+    async def get_or_create_by_google(
+        self,
+        google_id: str,
+        google_email: str,
+        access_token: str,
+        refresh_token: str | None = None,
+        token_expires_at: datetime | None = None,
+        google_name: str | None = None,
+        google_avatar_url: str | None = None,
+        scopes: list[str] | None = None,
+    ) -> Developer:
+        """Get or create developer from Google OAuth."""
+        # Try to find by Google ID first
+        developer = await self.get_by_google_id(google_id)
+        if developer:
+            # Update access token
+            if developer.google_connection:
+                developer.google_connection.access_token = access_token
+                if refresh_token:
+                    developer.google_connection.refresh_token = refresh_token
+                if token_expires_at:
+                    developer.google_connection.token_expires_at = token_expires_at
+                if scopes:
+                    developer.google_connection.scopes = scopes
+                await self.db.flush()
+            return developer
+
+        # Try to find by email
+        developer = await self.get_by_email(google_email)
+        if developer:
+            # Connect Google to existing developer
+            await self.connect_google(
+                developer_id=developer.id,
+                google_id=google_id,
+                google_email=google_email,
+                access_token=access_token,
+                refresh_token=refresh_token,
+                token_expires_at=token_expires_at,
+                google_name=google_name,
+                google_avatar_url=google_avatar_url,
+                scopes=scopes,
+            )
+            await self.db.refresh(developer)
+            return developer
+
+        # Create new developer
+        developer = Developer(
+            email=google_email,
+            name=google_name,
+            avatar_url=google_avatar_url,
+        )
+        self.db.add(developer)
+        await self.db.flush()
+
+        # Connect Google
+        await self.connect_google(
+            developer_id=developer.id,
+            google_id=google_id,
+            google_email=google_email,
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_expires_at=token_expires_at,
+            google_name=google_name,
+            google_avatar_url=google_avatar_url,
+            scopes=scopes,
+        )
+
+        await self.db.refresh(developer, ["google_connection"])
+        return developer

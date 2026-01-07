@@ -21,7 +21,6 @@ import {
   Rocket,
   Star,
   ChevronRight,
-  Play,
   Github,
   GraduationCap,
   Cpu,
@@ -29,6 +28,10 @@ import {
   ClipboardCheck,
   Phone,
   Calendar,
+  Mail,
+  Building2,
+  UserPlus,
+  Inbox,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -37,7 +40,8 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/a
 export default function Home() {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
-  const loginUrl = `${API_BASE_URL}/auth/github/login`;
+  const githubLoginUrl = `${API_BASE_URL}/auth/github/login`;
+  const googleLoginUrl = `${API_BASE_URL}/auth/google/login`;
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -101,15 +105,17 @@ export default function Home() {
           </nav>
           <div className="flex items-center gap-4">
             <a
-              href={loginUrl}
-              className="text-white/70 hover:text-white transition text-sm font-medium"
+              href={githubLoginUrl}
+              className="text-white/70 hover:text-white transition text-sm font-medium flex items-center gap-1"
             >
+              <Github className="h-4 w-4" />
               Sign In
             </a>
             <a
-              href={loginUrl}
+              href={googleLoginUrl}
               className="group relative bg-white text-black px-5 py-2.5 rounded-full transition text-sm font-semibold flex items-center gap-2 hover:bg-white/90"
             >
+              <GoogleIcon />
               Get Started
               <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
             </a>
@@ -154,20 +160,20 @@ export default function Home() {
 
             <div className="flex flex-col sm:flex-row justify-center gap-4 mb-8">
               <a
-                href={loginUrl}
-                className="group relative overflow-hidden bg-gradient-to-r from-primary-600 to-primary-500 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(34,211,238,0.3)] flex items-center justify-center gap-2"
+                href={googleLoginUrl}
+                className="group relative overflow-hidden bg-white text-black px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] flex items-center justify-center gap-3"
               >
-                <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500" />
-                Get Started Free
+                <GoogleIcon />
+                Continue with Google
                 <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
               </a>
-              <Link
-                href="#demo"
-                className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-2"
+              <a
+                href={githubLoginUrl}
+                className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
               >
-                <Play className="h-5 w-5 text-primary-400" />
-                Book a Demo
-              </Link>
+                <Github className="h-5 w-5" />
+                Continue with GitHub
+              </a>
             </div>
 
             <div className="flex items-center justify-center gap-8 text-sm text-white/40">
@@ -207,24 +213,30 @@ export default function Home() {
                 <span className="text-purple-400 text-sm font-medium">Skills analyzed</span>
               </div>
             </div>
+            <div className="absolute -left-4 bottom-1/4 bg-gradient-to-r from-amber-500/20 to-amber-500/10 backdrop-blur-sm border border-amber-500/20 rounded-xl px-4 py-3 animate-float delay-700">
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-amber-400" />
+                <span className="text-amber-400 text-sm font-medium">12 emails synced</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Three Pillars Section */}
+      {/* Four Pillars Section */}
       <section id="pillars" className="py-24 px-6 relative">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-              One platform. Three pillars. Complete visibility.
+              One platform. Four pillars. Complete visibility.
             </h2>
             <p className="text-white/50 text-lg max-w-2xl mx-auto">
               Everything you need to run a world-class engineering organization.
-              Start with one pillar, expand to all three.
+              Start with one pillar, expand to all four.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* UNDERSTAND Pillar */}
             <div className="group relative">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500" />
@@ -329,6 +341,42 @@ export default function Home() {
                 </div>
                 <Link href="#features" className="inline-flex items-center gap-2 text-emerald-400 mt-6 text-sm font-medium group-hover:gap-3 transition-all">
                   Explore Talent <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+
+            {/* CONNECT Pillar - CRM */}
+            <div className="group relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500" />
+              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-amber-500/30 transition-all h-full">
+                <div className="p-4 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl shadow-lg shadow-amber-500/25 w-fit mb-6">
+                  <UserPlus className="h-8 w-8 text-white" />
+                </div>
+                <div className="text-amber-400 text-sm font-semibold tracking-wider mb-2">CONNECT</div>
+                <h3 className="text-2xl font-bold text-white mb-3">Relationships</h3>
+                <p className="text-white/50 mb-6">
+                  Manage all your business relationships. CRM, email sync, calendar integration, AI enrichment.
+                </p>
+                <div className="border-t border-white/10 pt-6 space-y-3">
+                  <div className="flex items-center gap-2 text-white/60 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-amber-400" />
+                    Gmail & Calendar sync
+                  </div>
+                  <div className="flex items-center gap-2 text-white/60 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-amber-400" />
+                    Contact management
+                  </div>
+                  <div className="flex items-center gap-2 text-white/60 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-amber-400" />
+                    AI contact enrichment
+                  </div>
+                  <div className="flex items-center gap-2 text-white/60 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-amber-400" />
+                    Sales pipeline tracking
+                  </div>
+                </div>
+                <Link href="/crm" className="inline-flex items-center gap-2 text-amber-400 mt-6 text-sm font-medium group-hover:gap-3 transition-all">
+                  Explore CRM <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
             </div>
@@ -660,6 +708,99 @@ export default function Home() {
               </div>
             </div>
 
+            {/* CRM Inbox - Medium card */}
+            <div className="col-span-12 md:col-span-6 group">
+              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent border border-white/10 p-8 hover:border-amber-500/30 transition-all duration-500">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/20 rounded-full blur-3xl group-hover:bg-amber-500/30 transition-all duration-500" />
+                <div className="relative">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl shadow-lg shadow-amber-500/25">
+                      <Inbox className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-full border border-emerald-500/20">
+                      NEW
+                    </span>
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-3">CRM Inbox</h3>
+                  <p className="text-white/50 mb-6">
+                    Gmail sync with automatic contact linking. Reply to emails, track threads, and link to deals.
+                  </p>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-white/60 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-amber-400" />
+                      Auto-sync Gmail messages
+                    </div>
+                    <div className="flex items-center gap-2 text-white/60 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-amber-400" />
+                      Link emails to contacts & deals
+                    </div>
+                    <div className="flex items-center gap-2 text-white/60 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-amber-400" />
+                      Reply directly from CRM
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Management */}
+            <div className="col-span-12 md:col-span-4 group">
+              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-pink-500/10 via-rose-500/5 to-transparent border border-white/10 p-8 hover:border-pink-500/30 transition-all duration-500">
+                <div className="absolute bottom-0 right-0 w-40 h-40 bg-pink-500/20 rounded-full blur-3xl group-hover:bg-pink-500/30 transition-all duration-500" />
+                <div className="relative">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-gradient-to-br from-pink-500 to-rose-500 rounded-2xl shadow-lg shadow-pink-500/25">
+                      <Building2 className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs font-semibold rounded-full border border-blue-500/20">
+                      AI-POWERED
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">Contact Management</h3>
+                  <p className="text-white/50 text-sm">
+                    Companies, people, and deals. AI extracts info from email signatures.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Calendar Sync */}
+            <div className="col-span-12 md:col-span-4 group">
+              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-sky-500/10 via-blue-500/5 to-transparent border border-white/10 p-8 hover:border-sky-500/30 transition-all duration-500">
+                <div className="absolute top-0 left-0 w-40 h-40 bg-sky-500/20 rounded-full blur-3xl group-hover:bg-sky-500/30 transition-all duration-500" />
+                <div className="relative">
+                  <div className="p-3 bg-gradient-to-br from-sky-500 to-blue-500 rounded-2xl shadow-lg shadow-sky-500/25 w-fit mb-4">
+                    <Calendar className="h-6 w-6 text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">Calendar Sync</h3>
+                  <p className="text-white/50 text-sm">
+                    Google Calendar integration. Events link to contacts and deals automatically.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Email Intelligence */}
+            <div className="col-span-12 md:col-span-4 group">
+              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-lime-500/10 via-green-500/5 to-transparent border border-white/10 p-8 hover:border-lime-500/30 transition-all duration-500">
+                <div className="absolute bottom-0 left-0 w-40 h-40 bg-lime-500/20 rounded-full blur-3xl group-hover:bg-lime-500/30 transition-all duration-500" />
+                <div className="relative">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-gradient-to-br from-lime-500 to-green-500 rounded-2xl shadow-lg shadow-lime-500/25">
+                      <Mail className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs font-semibold rounded-full border border-blue-500/20">
+                      AI-POWERED
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">Email Intelligence</h3>
+                  <p className="text-white/50 text-sm">
+                    AI extracts contacts, classifies leads, and enriches records from signatures.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Team Analytics - Wide card */}
             <div className="col-span-12 group">
               <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-500/10 via-violet-500/5 to-purple-500/10 border border-white/10 p-8 hover:border-indigo-500/30 transition-all duration-500">
@@ -707,13 +848,20 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             <IntegrationCard
               icon={<Github className="h-8 w-8" />}
               title="GitHub"
               description="Auto-analyze commits, PRs, and code reviews. Build rich developer profiles."
               features={["Commit analysis", "PR tracking", "Code review insights", "Skill extraction"]}
               gradient="from-slate-500 to-slate-400"
+            />
+            <IntegrationCard
+              icon={<GoogleIcon />}
+              title="Google"
+              description="Gmail and Calendar sync. Auto-link emails to contacts and sync events."
+              features={["Gmail sync", "Calendar sync", "Contact enrichment", "Event tracking"]}
+              gradient="from-red-500 to-amber-400"
             />
             <IntegrationCard
               icon={<JiraIcon large />}
@@ -876,19 +1024,20 @@ export default function Home() {
 
                 <div className="flex flex-col sm:flex-row justify-center gap-4 mb-8">
                   <a
-                    href={loginUrl}
-                    className="group inline-flex items-center justify-center gap-2 bg-white text-black px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]"
+                    href={googleLoginUrl}
+                    className="group inline-flex items-center justify-center gap-3 bg-white text-black px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]"
                   >
-                    Get Started Free
+                    <GoogleIcon />
+                    Continue with Google
                     <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
                   </a>
-                  <Link
-                    href="#demo"
-                    className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-2"
+                  <a
+                    href={githubLoginUrl}
+                    className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
                   >
-                    <Play className="h-5 w-5 text-primary-400" />
-                    Book a Demo
-                  </Link>
+                    <Github className="h-5 w-5" />
+                    Continue with GitHub
+                  </a>
                 </div>
 
                 <p className="text-white/40 text-sm">
@@ -997,6 +1146,9 @@ export default function Home() {
         .delay-500 {
           animation-delay: 500ms;
         }
+        .delay-700 {
+          animation-delay: 700ms;
+        }
         .delay-1000 {
           animation-delay: 1000ms;
         }
@@ -1020,6 +1172,29 @@ function LinearIcon({ large }: { large?: boolean }) {
   return (
     <svg className={`${size} text-purple-400`} viewBox="0 0 24 24" fill="currentColor">
       <path d="M2.654 10.6a.463.463 0 0 1-.127-.636l3.197-4.686a.464.464 0 0 1 .636-.127l14.986 10.228a.463.463 0 0 1 .127.636l-3.197 4.686a.464.464 0 0 1-.636.127L2.654 10.6zm.636 2.8a.463.463 0 0 0-.127.636l3.197 4.686a.464.464 0 0 0 .636.127l8.486-5.794-3.706-2.528-8.486 2.873zm16.056-3.328L10.86 4.278 7.154 6.806l8.486 5.794 3.706-2.528z" />
+    </svg>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24">
+      <path
+        fill="#4285F4"
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+      />
     </svg>
   );
 }
@@ -1088,7 +1263,7 @@ function DashboardPreview() {
         <div className="bg-white/5 rounded-xl p-4 border border-white/5">
           <div className="text-white text-sm font-medium mb-3">Recent Syncs</div>
           <div className="space-y-2">
-            {[{ p: "GitHub", a: "3 commits synced", t: "2m ago" }, { p: "Jira", a: "PROJ-123 updated", t: "5m ago" }, { p: "Linear", a: "Issue closed", t: "12m ago" }].map((s, i) => (
+            {[{ p: "GitHub", a: "3 commits synced", t: "2m ago" }, { p: "Gmail", a: "12 emails synced", t: "3m ago" }, { p: "Jira", a: "PROJ-123 updated", t: "5m ago" }, { p: "Calendar", a: "2 events added", t: "8m ago" }].map((s, i) => (
               <div key={i} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />

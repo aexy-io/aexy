@@ -36,6 +36,7 @@ api.interceptors.response.use(
 // Auth API
 export const authApi = {
   getGitHubLoginUrl: () => `${API_BASE_URL}/auth/github/login`,
+  getGoogleLoginUrl: () => `${API_BASE_URL}/auth/google/login`,
 };
 
 // Developer API
@@ -7068,5 +7069,1083 @@ export const linearApi = {
 
   disconnect: async (integrationId: string): Promise<void> => {
     await api.delete(`/integrations/linear/${integrationId}`);
+  },
+};
+
+// ============================================================================
+// CRM Types
+// ============================================================================
+
+export type CRMObjectType = "company" | "person" | "deal" | "custom";
+
+export type CRMAttributeType =
+  | "text"
+  | "number"
+  | "currency"
+  | "date"
+  | "datetime"
+  | "checkbox"
+  | "select"
+  | "multi_select"
+  | "status"
+  | "email"
+  | "phone"
+  | "url"
+  | "record_reference"
+  | "user_reference"
+  | "rating"
+  | "formula"
+  | "rollup"
+  | "ai_computed";
+
+export interface CRMAttribute {
+  id: string;
+  object_id: string;
+  name: string;
+  slug: string;
+  attribute_type: CRMAttributeType;
+  description: string | null;
+  is_required: boolean;
+  is_unique: boolean;
+  is_searchable: boolean;
+  is_filterable: boolean;
+  is_sortable: boolean;
+  is_system: boolean;
+  config: Record<string, unknown>;
+  default_value: unknown;
+  order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CRMObject {
+  id: string;
+  workspace_id: string;
+  name: string;
+  slug: string;
+  plural_name: string;
+  description: string | null;
+  object_type: CRMObjectType;
+  icon: string | null;
+  color: string | null;
+  is_system: boolean;
+  is_active: boolean;
+  primary_attribute_id: string | null;
+  record_count: number;
+  settings: Record<string, unknown>;
+  attributes: CRMAttribute[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CRMRecord {
+  id: string;
+  workspace_id: string;
+  object_id: string;
+  values: Record<string, unknown>;
+  display_name: string | null;
+  owner_id: string | null;
+  owner?: { id: string; name: string | null; avatar_url: string | null };
+  created_by_id: string | null;
+  created_by?: { id: string; name: string | null; avatar_url: string | null };
+  is_archived: boolean;
+  archived_at: string | null;
+  object?: CRMObject;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CRMNote {
+  id: string;
+  record_id: string;
+  content: string;
+  content_html: string | null;
+  is_pinned: boolean;
+  created_by_id: string | null;
+  created_by?: { id: string; name: string | null; avatar_url: string | null };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CRMActivity {
+  id: string;
+  workspace_id: string;
+  record_id: string;
+  activity_type: string;
+  title: string;
+  description: string | null;
+  metadata: Record<string, unknown>;
+  actor_id: string | null;
+  actor?: { id: string; name: string | null; avatar_url: string | null };
+  created_at: string;
+}
+
+export interface CRMList {
+  id: string;
+  workspace_id: string;
+  object_id: string;
+  name: string;
+  description: string | null;
+  view_type: "table" | "board" | "gallery" | "timeline";
+  is_smart: boolean;
+  filters: Record<string, unknown>[];
+  sorts: Record<string, unknown>[];
+  columns: string[];
+  settings: Record<string, unknown>;
+  is_default: boolean;
+  is_shared: boolean;
+  entry_count: number;
+  created_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CRMListEntry {
+  id: string;
+  list_id: string;
+  record_id: string;
+  record?: CRMRecord;
+  order: number;
+  added_at: string;
+}
+
+export type CRMAutomationTriggerType =
+  | "record_created"
+  | "record_updated"
+  | "record_deleted"
+  | "field_changed"
+  | "stage_changed"
+  | "note_added"
+  | "task_completed"
+  | "email_replied"
+  | "scheduled"
+  | "manual";
+
+export type CRMAutomationActionType =
+  | "update_record"
+  | "create_record"
+  | "delete_record"
+  | "add_to_list"
+  | "remove_from_list"
+  | "send_email"
+  | "send_slack"
+  | "webhook_call"
+  | "assign_owner"
+  | "create_task"
+  | "enroll_in_sequence"
+  | "wait";
+
+export interface CRMAutomation {
+  id: string;
+  workspace_id: string;
+  object_id: string;
+  name: string;
+  description: string | null;
+  trigger_type: CRMAutomationTriggerType;
+  trigger_config: Record<string, unknown>;
+  conditions: Record<string, unknown>[];
+  actions: { type: CRMAutomationActionType; config: Record<string, unknown> }[];
+  is_active: boolean;
+  run_count: number;
+  last_run_at: string | null;
+  runs_this_month: number;
+  run_limit_per_month: number | null;
+  error_handling: "stop" | "continue" | "retry";
+  created_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CRMAutomationRun {
+  id: string;
+  automation_id: string;
+  record_id: string | null;
+  trigger_data: Record<string, unknown>;
+  status: "pending" | "running" | "completed" | "failed" | "cancelled";
+  steps_executed: Record<string, unknown>[];
+  error_message: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface CRMSequence {
+  id: string;
+  workspace_id: string;
+  object_id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  enrollment_count: number;
+  steps?: CRMSequenceStep[];
+  created_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CRMSequenceStep {
+  id: string;
+  sequence_id: string;
+  step_type: string;
+  config: Record<string, unknown>;
+  delay_days: number;
+  delay_hours: number;
+  order: number;
+  created_at: string;
+}
+
+export interface CRMSequenceEnrollment {
+  id: string;
+  sequence_id: string;
+  record_id: string;
+  record?: CRMRecord;
+  current_step: number;
+  status: "active" | "paused" | "completed" | "unenrolled" | "failed";
+  enrolled_at: string;
+  last_step_at: string | null;
+  next_step_at: string | null;
+  completed_at: string | null;
+  enrolled_by_id: string | null;
+}
+
+export interface CRMWebhook {
+  id: string;
+  workspace_id: string;
+  object_id: string | null;
+  name: string;
+  description: string | null;
+  url: string;
+  events: string[];
+  secret: string;
+  headers: Record<string, string>;
+  retry_config: Record<string, unknown>;
+  is_active: boolean;
+  last_triggered_at: string | null;
+  success_count: number;
+  failure_count: number;
+  created_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CRMWebhookDelivery {
+  id: string;
+  webhook_id: string;
+  event_type: string;
+  payload: Record<string, unknown>;
+  status: "pending" | "success" | "failed";
+  response_status: number | null;
+  response_body: string | null;
+  attempt_number: number;
+  next_retry_at: string | null;
+  delivered_at: string | null;
+  created_at: string;
+}
+
+// ============================================================================
+// CRM API
+// ============================================================================
+
+export const crmApi = {
+  // Objects
+  objects: {
+    list: async (workspaceId: string): Promise<CRMObject[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/crm/objects`);
+      return response.data;
+    },
+
+    get: async (workspaceId: string, objectId: string): Promise<CRMObject> => {
+      const response = await api.get(`/workspaces/${workspaceId}/crm/objects/${objectId}`);
+      return response.data;
+    },
+
+    create: async (
+      workspaceId: string,
+      data: { name: string; plural_name: string; object_type?: CRMObjectType; description?: string; icon?: string; color?: string }
+    ): Promise<CRMObject> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/objects`, data);
+      return response.data;
+    },
+
+    update: async (
+      workspaceId: string,
+      objectId: string,
+      data: Partial<{ name: string; plural_name: string; description: string; icon: string; color: string; is_active: boolean }>
+    ): Promise<CRMObject> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/crm/objects/${objectId}`, data);
+      return response.data;
+    },
+
+    delete: async (workspaceId: string, objectId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/crm/objects/${objectId}`);
+    },
+
+    seed: async (workspaceId: string): Promise<CRMObject[]> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/objects/seed`);
+      return response.data;
+    },
+
+    seedFromTemplate: async (
+      workspaceId: string,
+      template: string,
+      useCase?: string,
+      useCaseDetails?: string[]
+    ): Promise<{ objects: CRMObject[]; message: string }> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/objects/seed-template`, {
+        template,
+        use_case: useCase,
+        use_case_details: useCaseDetails,
+      });
+      return response.data;
+    },
+  },
+
+  // Attributes
+  attributes: {
+    list: async (workspaceId: string, objectId: string): Promise<CRMAttribute[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/crm/objects/${objectId}/attributes`);
+      return response.data;
+    },
+
+    create: async (
+      workspaceId: string,
+      objectId: string,
+      data: {
+        name: string;
+        attribute_type: CRMAttributeType;
+        description?: string;
+        is_required?: boolean;
+        config?: Record<string, unknown>;
+        default_value?: unknown;
+      }
+    ): Promise<CRMAttribute> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/objects/${objectId}/attributes`, data);
+      return response.data;
+    },
+
+    update: async (
+      workspaceId: string,
+      attributeId: string,
+      data: Partial<{
+        name: string;
+        description: string;
+        is_required: boolean;
+        is_searchable: boolean;
+        is_filterable: boolean;
+        is_sortable: boolean;
+        config: Record<string, unknown>;
+        default_value: unknown;
+      }>
+    ): Promise<CRMAttribute> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/crm/attributes/${attributeId}`, data);
+      return response.data;
+    },
+
+    delete: async (workspaceId: string, attributeId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/crm/attributes/${attributeId}`);
+    },
+  },
+
+  // Records
+  records: {
+    list: async (
+      workspaceId: string,
+      objectId: string,
+      params?: { filters?: Record<string, unknown>[]; sorts?: Record<string, unknown>[]; skip?: number; limit?: number; include_archived?: boolean }
+    ): Promise<{ records: CRMRecord[]; total: number }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/crm/objects/${objectId}/records`, { params });
+      return response.data;
+    },
+
+    get: async (workspaceId: string, recordId: string): Promise<CRMRecord> => {
+      const response = await api.get(`/workspaces/${workspaceId}/crm/records/${recordId}`);
+      return response.data;
+    },
+
+    create: async (
+      workspaceId: string,
+      objectId: string,
+      data: { values: Record<string, unknown>; owner_id?: string }
+    ): Promise<CRMRecord> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/objects/${objectId}/records`, data);
+      return response.data;
+    },
+
+    update: async (
+      workspaceId: string,
+      recordId: string,
+      data: { values?: Record<string, unknown>; owner_id?: string }
+    ): Promise<CRMRecord> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/crm/records/${recordId}`, data);
+      return response.data;
+    },
+
+    delete: async (workspaceId: string, recordId: string, permanent?: boolean): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/crm/records/${recordId}`, { params: { permanent } });
+    },
+
+    bulkCreate: async (
+      workspaceId: string,
+      objectId: string,
+      records: { values: Record<string, unknown>; owner_id?: string }[]
+    ): Promise<CRMRecord[]> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/objects/${objectId}/records/bulk`, { records });
+      return response.data;
+    },
+
+    bulkUpdate: async (
+      workspaceId: string,
+      recordIds: string[],
+      values: Record<string, unknown>
+    ): Promise<{ updated: number }> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/crm/records/bulk`, { record_ids: recordIds, values });
+      return response.data;
+    },
+
+    bulkDelete: async (workspaceId: string, recordIds: string[], permanent?: boolean): Promise<{ deleted: number }> => {
+      const response = await api.delete(`/workspaces/${workspaceId}/crm/records/bulk`, {
+        data: { record_ids: recordIds },
+        params: { permanent },
+      });
+      return response.data;
+    },
+  },
+
+  // Notes
+  notes: {
+    list: async (workspaceId: string, recordId: string): Promise<CRMNote[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/crm/records/${recordId}/notes`);
+      return response.data;
+    },
+
+    create: async (
+      workspaceId: string,
+      recordId: string,
+      data: { content: string; content_html?: string }
+    ): Promise<CRMNote> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/records/${recordId}/notes`, data);
+      return response.data;
+    },
+
+    update: async (
+      workspaceId: string,
+      noteId: string,
+      data: { content?: string; content_html?: string; is_pinned?: boolean }
+    ): Promise<CRMNote> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/crm/notes/${noteId}`, data);
+      return response.data;
+    },
+
+    delete: async (workspaceId: string, noteId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/crm/notes/${noteId}`);
+    },
+  },
+
+  // Activities
+  activities: {
+    list: async (
+      workspaceId: string,
+      recordId: string,
+      params?: { skip?: number; limit?: number }
+    ): Promise<CRMActivity[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/crm/records/${recordId}/activities`, { params });
+      return response.data;
+    },
+  },
+
+  // Lists
+  lists: {
+    list: async (workspaceId: string, objectId?: string): Promise<CRMList[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/crm/lists`, { params: { object_id: objectId } });
+      return response.data;
+    },
+
+    get: async (workspaceId: string, listId: string): Promise<CRMList> => {
+      const response = await api.get(`/workspaces/${workspaceId}/crm/lists/${listId}`);
+      return response.data;
+    },
+
+    create: async (
+      workspaceId: string,
+      data: {
+        object_id: string;
+        name: string;
+        description?: string;
+        view_type?: "table" | "board" | "gallery" | "timeline";
+        is_smart?: boolean;
+        filters?: Record<string, unknown>[];
+        sorts?: Record<string, unknown>[];
+        columns?: string[];
+      }
+    ): Promise<CRMList> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/lists`, data);
+      return response.data;
+    },
+
+    update: async (
+      workspaceId: string,
+      listId: string,
+      data: Partial<{
+        name: string;
+        description: string;
+        view_type: "table" | "board" | "gallery" | "timeline";
+        filters: Record<string, unknown>[];
+        sorts: Record<string, unknown>[];
+        columns: string[];
+        settings: Record<string, unknown>;
+        is_shared: boolean;
+      }>
+    ): Promise<CRMList> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/crm/lists/${listId}`, data);
+      return response.data;
+    },
+
+    delete: async (workspaceId: string, listId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/crm/lists/${listId}`);
+    },
+
+    getEntries: async (
+      workspaceId: string,
+      listId: string,
+      params?: { skip?: number; limit?: number }
+    ): Promise<{ entries: CRMListEntry[]; total: number }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/crm/lists/${listId}/entries`, { params });
+      return response.data;
+    },
+
+    addEntry: async (workspaceId: string, listId: string, recordId: string): Promise<CRMListEntry> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/lists/${listId}/entries`, { record_id: recordId });
+      return response.data;
+    },
+
+    removeEntry: async (workspaceId: string, listId: string, recordId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/crm/lists/${listId}/entries/${recordId}`);
+    },
+  },
+};
+
+// ============================================================================
+// CRM Automation API
+// ============================================================================
+
+export const crmAutomationApi = {
+  // Automations
+  automations: {
+    list: async (
+      workspaceId: string,
+      params?: { object_id?: string; is_active?: boolean; skip?: number; limit?: number }
+    ): Promise<CRMAutomation[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/crm/automations`, { params });
+      return response.data;
+    },
+
+    get: async (workspaceId: string, automationId: string): Promise<CRMAutomation> => {
+      const response = await api.get(`/workspaces/${workspaceId}/crm/automations/${automationId}`);
+      return response.data;
+    },
+
+    create: async (
+      workspaceId: string,
+      data: {
+        name: string;
+        object_id: string;
+        trigger_type: CRMAutomationTriggerType;
+        description?: string;
+        trigger_config?: Record<string, unknown>;
+        conditions?: Record<string, unknown>[];
+        actions: { type: CRMAutomationActionType; config: Record<string, unknown> }[];
+      }
+    ): Promise<CRMAutomation> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/automations`, data);
+      return response.data;
+    },
+
+    update: async (
+      workspaceId: string,
+      automationId: string,
+      data: Partial<{
+        name: string;
+        description: string;
+        trigger_type: CRMAutomationTriggerType;
+        trigger_config: Record<string, unknown>;
+        conditions: Record<string, unknown>[];
+        actions: { type: CRMAutomationActionType; config: Record<string, unknown> }[];
+        is_active: boolean;
+        run_limit_per_month: number;
+        error_handling: "stop" | "continue" | "retry";
+      }>
+    ): Promise<CRMAutomation> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/crm/automations/${automationId}`, data);
+      return response.data;
+    },
+
+    delete: async (workspaceId: string, automationId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/crm/automations/${automationId}`);
+    },
+
+    toggle: async (workspaceId: string, automationId: string): Promise<CRMAutomation> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/automations/${automationId}/toggle`);
+      return response.data;
+    },
+
+    trigger: async (
+      workspaceId: string,
+      automationId: string,
+      recordId: string
+    ): Promise<{ message: string; automation_id: string; record_id: string }> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/automations/${automationId}/trigger`, null, {
+        params: { record_id: recordId },
+      });
+      return response.data;
+    },
+
+    listRuns: async (
+      workspaceId: string,
+      automationId: string,
+      params?: { skip?: number; limit?: number }
+    ): Promise<CRMAutomationRun[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/crm/automations/${automationId}/runs`, { params });
+      return response.data;
+    },
+  },
+
+  // Sequences
+  sequences: {
+    list: async (
+      workspaceId: string,
+      params?: { object_id?: string; is_active?: boolean; skip?: number; limit?: number }
+    ): Promise<CRMSequence[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/crm/sequences`, { params });
+      return response.data;
+    },
+
+    get: async (workspaceId: string, sequenceId: string): Promise<CRMSequence> => {
+      const response = await api.get(`/workspaces/${workspaceId}/crm/sequences/${sequenceId}`);
+      return response.data;
+    },
+
+    create: async (
+      workspaceId: string,
+      data: { name: string; object_id: string; description?: string }
+    ): Promise<CRMSequence> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/sequences`, data);
+      return response.data;
+    },
+
+    update: async (
+      workspaceId: string,
+      sequenceId: string,
+      data: Partial<{ name: string; description: string; is_active: boolean }>
+    ): Promise<CRMSequence> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/crm/sequences/${sequenceId}`, data);
+      return response.data;
+    },
+
+    delete: async (workspaceId: string, sequenceId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/crm/sequences/${sequenceId}`);
+    },
+
+    toggle: async (workspaceId: string, sequenceId: string): Promise<CRMSequence> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/sequences/${sequenceId}/toggle`);
+      return response.data;
+    },
+
+    // Steps
+    listSteps: async (workspaceId: string, sequenceId: string): Promise<CRMSequenceStep[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/crm/sequences/${sequenceId}/steps`);
+      return response.data;
+    },
+
+    addStep: async (
+      workspaceId: string,
+      sequenceId: string,
+      data: { step_type: string; config: Record<string, unknown>; delay_days?: number; delay_hours?: number; order?: number }
+    ): Promise<CRMSequenceStep> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/sequences/${sequenceId}/steps`, data);
+      return response.data;
+    },
+
+    updateStep: async (
+      workspaceId: string,
+      stepId: string,
+      data: Partial<{ step_type: string; config: Record<string, unknown>; delay_days: number; delay_hours: number }>
+    ): Promise<CRMSequenceStep> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/crm/sequence-steps/${stepId}`, data);
+      return response.data;
+    },
+
+    deleteStep: async (workspaceId: string, stepId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/crm/sequence-steps/${stepId}`);
+    },
+
+    // Enrollments
+    listEnrollments: async (
+      workspaceId: string,
+      sequenceId: string,
+      params?: { status?: string; skip?: number; limit?: number }
+    ): Promise<CRMSequenceEnrollment[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/crm/sequences/${sequenceId}/enrollments`, { params });
+      return response.data;
+    },
+
+    enroll: async (workspaceId: string, sequenceId: string, recordId: string): Promise<CRMSequenceEnrollment> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/sequences/${sequenceId}/enroll`, { record_id: recordId });
+      return response.data;
+    },
+
+    pauseEnrollment: async (workspaceId: string, enrollmentId: string): Promise<CRMSequenceEnrollment> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/enrollments/${enrollmentId}/pause`);
+      return response.data;
+    },
+
+    resumeEnrollment: async (workspaceId: string, enrollmentId: string): Promise<CRMSequenceEnrollment> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/enrollments/${enrollmentId}/resume`);
+      return response.data;
+    },
+
+    unenroll: async (workspaceId: string, enrollmentId: string): Promise<CRMSequenceEnrollment> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/enrollments/${enrollmentId}/unenroll`);
+      return response.data;
+    },
+  },
+
+  // Webhooks
+  webhooks: {
+    list: async (
+      workspaceId: string,
+      params?: { object_id?: string; is_active?: boolean; skip?: number; limit?: number }
+    ): Promise<CRMWebhook[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/crm/webhooks`, { params });
+      return response.data;
+    },
+
+    get: async (workspaceId: string, webhookId: string): Promise<CRMWebhook> => {
+      const response = await api.get(`/workspaces/${workspaceId}/crm/webhooks/${webhookId}`);
+      return response.data;
+    },
+
+    create: async (
+      workspaceId: string,
+      data: {
+        name: string;
+        url: string;
+        events: string[];
+        object_id?: string;
+        description?: string;
+        headers?: Record<string, string>;
+      }
+    ): Promise<CRMWebhook> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/webhooks`, data);
+      return response.data;
+    },
+
+    update: async (
+      workspaceId: string,
+      webhookId: string,
+      data: Partial<{
+        name: string;
+        description: string;
+        url: string;
+        events: string[];
+        headers: Record<string, string>;
+        is_active: boolean;
+      }>
+    ): Promise<CRMWebhook> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/crm/webhooks/${webhookId}`, data);
+      return response.data;
+    },
+
+    delete: async (workspaceId: string, webhookId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/crm/webhooks/${webhookId}`);
+    },
+
+    toggle: async (workspaceId: string, webhookId: string): Promise<CRMWebhook> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/webhooks/${webhookId}/toggle`);
+      return response.data;
+    },
+
+    rotateSecret: async (workspaceId: string, webhookId: string): Promise<CRMWebhook> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/webhooks/${webhookId}/rotate-secret`);
+      return response.data;
+    },
+
+    test: async (workspaceId: string, webhookId: string): Promise<{ message: string; webhook_id: string }> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/webhooks/${webhookId}/test`);
+      return response.data;
+    },
+
+    listDeliveries: async (
+      workspaceId: string,
+      webhookId: string,
+      params?: { skip?: number; limit?: number }
+    ): Promise<CRMWebhookDelivery[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/crm/webhooks/${webhookId}/deliveries`, { params });
+      return response.data;
+    },
+
+    retryDelivery: async (workspaceId: string, deliveryId: string): Promise<{ message: string; delivery_id: string }> => {
+      const response = await api.post(`/workspaces/${workspaceId}/crm/webhook-deliveries/${deliveryId}/retry`);
+      return response.data;
+    },
+  },
+};
+
+// =============================================================================
+// Google Integration API (Gmail & Calendar sync for CRM)
+// =============================================================================
+
+export interface GoogleIntegrationStatus {
+  is_connected: boolean;
+  google_email: string | null;
+  gmail_sync_enabled: boolean;
+  calendar_sync_enabled: boolean;
+  gmail_last_sync_at: string | null;
+  calendar_last_sync_at: string | null;
+  messages_synced: number;
+  events_synced: number;
+  last_error: string | null;
+  granted_scopes: string[];
+}
+
+export interface SyncedEmail {
+  id: string;
+  gmail_id: string;
+  gmail_thread_id: string | null;
+  subject: string | null;
+  from_email: string | null;
+  from_name: string | null;
+  to_emails: { email: string; name: string | null }[];
+  cc_emails: { email: string; name: string | null }[];
+  snippet: string | null;
+  body_text: string | null;
+  body_html: string | null;
+  labels: string[];
+  is_read: boolean;
+  is_starred: boolean;
+  has_attachments: boolean;
+  gmail_date: string | null;
+  linked_records: { record_id: string; link_type: string }[];
+  ai_summary: string | null;
+  created_at: string;
+}
+
+export interface SyncedCalendarEvent {
+  id: string;
+  google_event_id: string;
+  google_calendar_id: string | null;
+  title: string | null;
+  description: string | null;
+  location: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  is_all_day: boolean;
+  timezone: string | null;
+  attendees: { email: string; name: string | null; response_status: string | null }[];
+  organizer_email: string | null;
+  status: string | null;
+  html_link: string | null;
+  conference_data: Record<string, unknown> | null;
+  linked_records: { record_id: string; link_type: string }[];
+  crm_activity_id: string | null;
+  created_at: string;
+}
+
+export interface GoogleCalendar {
+  id: string;
+  name: string;
+  description: string | null;
+  is_primary: boolean;
+  access_role: string | null;
+  color: string | null;
+}
+
+export const googleIntegrationApi = {
+  // Connection
+  getConnectUrl: async (workspaceId: string, redirectUrl?: string): Promise<{ auth_url: string }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/integrations/google/connect`, {
+      params: { redirect_url: redirectUrl },
+    });
+    return response.data;
+  },
+
+  getStatus: async (workspaceId: string): Promise<GoogleIntegrationStatus> => {
+    const response = await api.get(`/workspaces/${workspaceId}/integrations/google/status`);
+    return response.data;
+  },
+
+  updateSettings: async (
+    workspaceId: string,
+    settings: {
+      gmail_sync_enabled?: boolean;
+      calendar_sync_enabled?: boolean;
+      sync_settings?: Record<string, unknown>;
+    }
+  ): Promise<GoogleIntegrationStatus> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/integrations/google/settings`, settings);
+    return response.data;
+  },
+
+  disconnect: async (workspaceId: string): Promise<void> => {
+    await api.post(`/workspaces/${workspaceId}/integrations/google/disconnect`);
+  },
+
+  // Gmail
+  gmail: {
+    sync: async (
+      workspaceId: string,
+      options?: { full_sync?: boolean; max_messages?: number }
+    ): Promise<{ status: string; messages_synced: number; full_sync_completed: boolean; history_id: string | null; error: string | null }> => {
+      const response = await api.post(`/workspaces/${workspaceId}/integrations/google/gmail/sync`, options);
+      return response.data;
+    },
+
+    listEmails: async (
+      workspaceId: string,
+      params?: {
+        page?: number;
+        page_size?: number;
+        search?: string;
+        from_email?: string;
+        thread_id?: string;
+        unread_only?: boolean;
+      }
+    ): Promise<{
+      emails: SyncedEmail[];
+      total: number;
+      page: number;
+      page_size: number;
+      has_more: boolean;
+    }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/integrations/google/gmail/emails`, { params });
+      return response.data;
+    },
+
+    getEmail: async (workspaceId: string, emailId: string): Promise<SyncedEmail> => {
+      const response = await api.get(`/workspaces/${workspaceId}/integrations/google/gmail/emails/${emailId}`);
+      return response.data;
+    },
+
+    sendEmail: async (
+      workspaceId: string,
+      data: { to: string; subject: string; body_html: string; reply_to_message_id?: string }
+    ): Promise<{ message_id: string; thread_id: string | null }> => {
+      const response = await api.post(`/workspaces/${workspaceId}/integrations/google/gmail/send`, data);
+      return response.data;
+    },
+
+    linkEmailToRecord: async (
+      workspaceId: string,
+      emailId: string,
+      data: { record_id: string; link_type?: string }
+    ): Promise<{ status: string; link_id?: string }> => {
+      const response = await api.post(
+        `/workspaces/${workspaceId}/integrations/google/gmail/emails/${emailId}/link`,
+        data
+      );
+      return response.data;
+    },
+  },
+
+  // Calendar
+  calendar: {
+    listCalendars: async (workspaceId: string): Promise<{ calendars: GoogleCalendar[] }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/integrations/google/calendar/calendars`);
+      return response.data;
+    },
+
+    sync: async (
+      workspaceId: string,
+      options?: { calendar_ids?: string[] }
+    ): Promise<{ status: string; events_synced: number; calendars_synced: string[]; error: string | null }> => {
+      const response = await api.post(`/workspaces/${workspaceId}/integrations/google/calendar/sync`, options);
+      return response.data;
+    },
+
+    listEvents: async (
+      workspaceId: string,
+      params?: {
+        page?: number;
+        page_size?: number;
+        start_after?: string;
+        start_before?: string;
+        calendar_id?: string;
+      }
+    ): Promise<{
+      events: SyncedCalendarEvent[];
+      total: number;
+      page: number;
+      page_size: number;
+      has_more: boolean;
+    }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/integrations/google/calendar/events`, { params });
+      return response.data;
+    },
+
+    getEvent: async (workspaceId: string, eventId: string): Promise<SyncedCalendarEvent> => {
+      const response = await api.get(`/workspaces/${workspaceId}/integrations/google/calendar/events/${eventId}`);
+      return response.data;
+    },
+
+    createEvent: async (
+      workspaceId: string,
+      data: {
+        calendar_id: string;
+        title: string;
+        description?: string;
+        location?: string;
+        start_time: string;
+        end_time: string;
+        is_all_day?: boolean;
+        attendee_emails?: string[];
+        record_id?: string;
+      }
+    ): Promise<{ event_id: string; google_event_id: string; html_link: string | null }> => {
+      const response = await api.post(`/workspaces/${workspaceId}/integrations/google/calendar/events`, data);
+      return response.data;
+    },
+
+    linkEventToRecord: async (
+      workspaceId: string,
+      eventId: string,
+      data: { record_id: string; link_type?: string }
+    ): Promise<{ status: string; link_id?: string }> => {
+      const response = await api.post(
+        `/workspaces/${workspaceId}/integrations/google/calendar/events/${eventId}/link`,
+        data
+      );
+      return response.data;
+    },
+  },
+
+  // Contact Enrichment
+  enrichContacts: async (
+    workspaceId: string,
+    options?: {
+      email_ids?: string[];
+      auto_create_contacts?: boolean;
+      enrich_existing?: boolean;
+    }
+  ): Promise<{
+    emails_processed: number;
+    contacts_created: number;
+    contacts_enriched: number;
+    companies_created: number;
+    errors: number;
+  }> => {
+    const response = await api.post(`/workspaces/${workspaceId}/integrations/google/enrich`, options);
+    return response.data;
+  },
+
+  enrichRecord: async (
+    workspaceId: string,
+    recordId: string
+  ): Promise<{
+    enriched: boolean;
+    enrichments: Record<string, unknown>;
+    classification: Record<string, unknown>;
+    emails_analyzed: number;
+  }> => {
+    const response = await api.post(`/workspaces/${workspaceId}/integrations/google/records/${recordId}/enrich`);
+    return response.data;
   },
 };

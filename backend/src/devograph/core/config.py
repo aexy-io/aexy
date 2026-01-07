@@ -239,18 +239,22 @@ class Settings(BaseSettings):
         description="Enable/disable email notifications",
     )
 
-    # Google Calendar Integration (OAuth)
+    # Google OAuth (for authentication and integrations)
     google_client_id: str = Field(
         default="",
-        description="Google OAuth Client ID for Calendar integration",
+        description="Google OAuth Client ID",
     )
     google_client_secret: str = Field(
         default="",
-        description="Google OAuth Client Secret for Calendar integration",
+        description="Google OAuth Client Secret",
+    )
+    google_auth_redirect_uri: str = Field(
+        default="http://localhost:8000/api/v1/auth/google/callback",
+        description="Google OAuth redirect URI for authentication",
     )
     google_redirect_uri: str = Field(
         default="http://localhost:8000/api/v1/integrations/google-calendar/callback",
-        description="Google OAuth redirect URI",
+        description="Google OAuth redirect URI for calendar integration",
     )
 
     # Slack Integration
