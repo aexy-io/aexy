@@ -21,6 +21,7 @@ import {
   Target,
   XCircle,
   Ticket,
+  Building2,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { NotificationBell } from "@/components/notifications";
@@ -48,6 +49,7 @@ const appItems = [
   { href: "/reviews", label: "Reviews", icon: ClipboardCheck, color: "from-orange-500 to-orange-600" },
   { href: "/learning", label: "Learning", icon: GraduationCap, color: "from-rose-500 to-rose-600" },
   { href: "/hiring", label: "Hiring", icon: Users, color: "from-cyan-500 to-cyan-600" },
+  { href: "/crm", label: "CRM", icon: Building2, color: "from-purple-500 to-purple-600" },
 ];
 
 export function AppHeader({ user, logout }: AppHeaderProps) {

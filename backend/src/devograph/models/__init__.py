@@ -1,7 +1,7 @@
 """Database models for Devograph."""
 
 from devograph.models.plan import Plan, PlanTier, DEFAULT_PLANS
-from devograph.models.developer import Developer, GitHubConnection, GitHubInstallation
+from devograph.models.developer import Developer, GitHubConnection, GitHubInstallation, GoogleConnection
 from devograph.models.billing import (
     CustomerBilling,
     Subscription,
@@ -156,6 +156,39 @@ from devograph.models.assessment import (
     AttemptStatus,
     ProctoringEventSeverity,
 )
+from devograph.models.crm import (
+    CRMObject,
+    CRMAttribute,
+    CRMRecord,
+    CRMRecordRelation,
+    CRMNote,
+    CRMList,
+    CRMListEntry,
+    CRMActivity,
+    CRMAutomation,
+    CRMAutomationRun,
+    CRMSequence,
+    CRMSequenceStep,
+    CRMSequenceEnrollment,
+    CRMWebhook,
+    CRMWebhookDelivery,
+    CRMObjectType,
+    CRMAttributeType,
+    CRMListViewType,
+    CRMActivityType,
+    CRMAutomationTriggerType,
+    CRMAutomationActionType,
+    CRMSequenceStepType,
+    CRMSequenceEnrollmentStatus,
+)
+from devograph.models.google_integration import (
+    GoogleIntegration,
+    SyncedEmail,
+    SyncedEmailRecordLink,
+    SyncedCalendarEvent,
+    SyncedCalendarEventRecordLink,
+    EmailSyncCursor,
+)
 
 __all__ = [
     # Plan
@@ -174,6 +207,7 @@ __all__ = [
     "Developer",
     "GitHubConnection",
     "GitHubInstallation",
+    "GoogleConnection",
     # Activity
     "Commit",
     "PullRequest",
@@ -308,4 +342,35 @@ __all__ = [
     "InvitationStatus",
     "AttemptStatus",
     "ProctoringEventSeverity",
+    # CRM
+    "CRMObject",
+    "CRMAttribute",
+    "CRMRecord",
+    "CRMRecordRelation",
+    "CRMNote",
+    "CRMList",
+    "CRMListEntry",
+    "CRMActivity",
+    "CRMAutomation",
+    "CRMAutomationRun",
+    "CRMSequence",
+    "CRMSequenceStep",
+    "CRMSequenceEnrollment",
+    "CRMWebhook",
+    "CRMWebhookDelivery",
+    "CRMObjectType",
+    "CRMAttributeType",
+    "CRMListViewType",
+    "CRMActivityType",
+    "CRMAutomationTriggerType",
+    "CRMAutomationActionType",
+    "CRMSequenceStepType",
+    "CRMSequenceEnrollmentStatus",
+    # Google Integration
+    "GoogleIntegration",
+    "SyncedEmail",
+    "SyncedEmailRecordLink",
+    "SyncedCalendarEvent",
+    "SyncedCalendarEventRecordLink",
+    "EmailSyncCursor",
 ]

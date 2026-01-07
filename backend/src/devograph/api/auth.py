@@ -1,8 +1,10 @@
-"""Authentication endpoints for GitHub OAuth."""
+"""Authentication endpoints for GitHub and Google OAuth."""
 
 import secrets
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlencode
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
 from jose import jwt
@@ -19,6 +21,18 @@ settings = get_settings()
 
 # In-memory state store (use Redis in production)
 oauth_states: dict[str, datetime] = {}
+
+# Google OAuth configuration
+GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
+
+# Google OAuth scopes for authentication (basic profile + email)
+GOOGLE_AUTH_SCOPES = [
+    "openid",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
+]
 
 
 def create_access_token(developer_id: str) -> str:
@@ -145,3 +159,134 @@ async def github_callback(
 
     # Redirect to frontend callback with token
     return RedirectResponse(url=f"{frontend_url}/auth/callback?token={access_token}")
+
+
+# ============================================================================
+# Google OAuth endpoints
+# ============================================================================
+
+
+@router.get("/google/login")
+async def google_login() -> RedirectResponse:
+    """Initiate Google OAuth flow for authentication."""
+    if not settings.google_client_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Google OAuth is not configured",
+        )
+
+    state = secrets.token_urlsafe(32)
+    oauth_states[state] = datetime.now(timezone.utc)
+
+    # Clean old states (older than 10 minutes)
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=10)
+    for old_state in list(oauth_states.keys()):
+        if oauth_states[old_state] < cutoff:
+            del oauth_states[old_state]
+
+    # Build Google OAuth URL
+    params = {
+        "client_id": settings.google_client_id,
+        "redirect_uri": settings.google_auth_redirect_uri,
+        "response_type": "code",
+        "scope": " ".join(GOOGLE_AUTH_SCOPES),
+        "state": state,
+        "access_type": "offline",  # Request refresh token
+        "prompt": "consent",  # Always show consent screen to get refresh token
+    }
+    auth_url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
+
+    return RedirectResponse(url=auth_url)
+
+
+@router.get("/google/callback")
+async def google_callback(
+    code: str,
+    state: str | None = None,
+    error: str | None = None,
+    db: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    """Handle Google OAuth callback."""
+    frontend_url = settings.frontend_url or "http://localhost:3000"
+
+    # Check for errors from Google
+    if error:
+        return RedirectResponse(url=f"{frontend_url}/?error={error}")
+
+    # Verify state
+    if not state or state not in oauth_states:
+        return RedirectResponse(url=f"{frontend_url}/?error=invalid_state")
+    del oauth_states[state]
+
+    try:
+        # Exchange code for tokens
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(
+                GOOGLE_TOKEN_URL,
+                data={
+                    "client_id": settings.google_client_id,
+                    "client_secret": settings.google_client_secret,
+                    "code": code,
+                    "grant_type": "authorization_code",
+                    "redirect_uri": settings.google_auth_redirect_uri,
+                },
+            )
+
+            if token_response.status_code != 200:
+                return RedirectResponse(url=f"{frontend_url}/?error=token_exchange_failed")
+
+            token_data = token_response.json()
+            access_token = token_data.get("access_token")
+            refresh_token = token_data.get("refresh_token")
+            expires_in = token_data.get("expires_in", 3600)
+
+            if not access_token:
+                return RedirectResponse(url=f"{frontend_url}/?error=no_access_token")
+
+            # Calculate token expiry
+            token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+
+            # Get user info from Google
+            userinfo_response = await client.get(
+                GOOGLE_USERINFO_URL,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+
+            if userinfo_response.status_code != 200:
+                return RedirectResponse(url=f"{frontend_url}/?error=userinfo_failed")
+
+            userinfo = userinfo_response.json()
+            google_id = userinfo.get("id")
+            email = userinfo.get("email")
+            name = userinfo.get("name")
+            picture = userinfo.get("picture")
+
+            if not google_id or not email:
+                return RedirectResponse(url=f"{frontend_url}/?error=missing_user_info")
+
+            # Get or create developer
+            dev_service = DeveloperService(db)
+            developer = await dev_service.get_or_create_by_google(
+                google_id=google_id,
+                google_email=email,
+                access_token=access_token,
+                refresh_token=refresh_token,
+                token_expires_at=token_expires_at,
+                google_name=name,
+                google_avatar_url=picture,
+                scopes=GOOGLE_AUTH_SCOPES,
+            )
+
+            # Commit the transaction
+            await db.commit()
+
+            # Create JWT
+            jwt_token = create_access_token(developer.id)
+
+            # Redirect to frontend callback with token
+            return RedirectResponse(url=f"{frontend_url}/auth/callback?token={jwt_token}")
+
+    except httpx.RequestError as e:
+        return RedirectResponse(url=f"{frontend_url}/?error=request_failed")
+    except Exception as e:
+        return RedirectResponse(url=f"{frontend_url}/?error=auth_failed")

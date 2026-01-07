@@ -1,4 +1,4 @@
-"""Developer and GitHub connection models."""
+"""Developer, GitHub connection, and Google connection models."""
 
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -82,6 +82,11 @@ class Developer(Base):
     )
     github_connection: Mapped["GitHubConnection | None"] = relationship(
         "GitHubConnection",
+        back_populates="developer",
+        uselist=False,
+    )
+    google_connection: Mapped["GoogleConnection | None"] = relationship(
+        "GoogleConnection",
         back_populates="developer",
         uselist=False,
     )
@@ -269,4 +274,54 @@ class GitHubInstallation(Base):
     github_connection: Mapped["GitHubConnection"] = relationship(
         "GitHubConnection",
         back_populates="installations",
+    )
+
+
+class GoogleConnection(Base):
+    """Google OAuth connection for a developer (for sign-in/sign-up and integrations)."""
+
+    __tablename__ = "google_connections"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    developer_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="CASCADE"),
+        unique=True,
+    )
+
+    # Google user info
+    google_id: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    google_email: Mapped[str] = mapped_column(String(255), index=True)
+    google_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    google_avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    # OAuth tokens
+    access_token: Mapped[str] = mapped_column(Text)  # Encrypted in production
+    refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    token_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    # Scopes granted by user (e.g., profile, email, gmail.readonly, calendar)
+    scopes: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    # Relationship
+    developer: Mapped["Developer"] = relationship(
+        "Developer",
+        back_populates="google_connection",
     )
