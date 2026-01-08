@@ -31,7 +31,7 @@ def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     app = FastAPI(
         title=settings.app_name,
-        description="GitHub-Based Developer Profiling & Analytics Platform",
+        description="The open-source operating system for engineering organizations",
         version="0.1.0",
         docs_url="/docs",
         redoc_url="/redoc",
