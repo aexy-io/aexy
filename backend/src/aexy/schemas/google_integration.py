@@ -52,11 +52,28 @@ class GmailSyncRequest(BaseModel):
 class GmailSyncResponse(BaseModel):
     """Response from Gmail sync."""
 
-    status: str  # running, completed, error
+    status: str  # pending, running, completed, error
+    job_id: str | None = None  # For async polling
     messages_synced: int = 0
     full_sync_completed: bool = False
     history_id: str | None = None
     error: str | None = None
+
+
+class SyncJobStatusResponse(BaseModel):
+    """Response for sync job status polling."""
+
+    job_id: str
+    job_type: str  # gmail, calendar
+    status: str  # pending, running, completed, failed
+    processed_items: int = 0
+    total_items: int | None = None
+    progress_message: str | None = None
+    result: dict | None = None
+    error: str | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    created_at: datetime
 
 
 class EmailRecipient(BaseModel):
@@ -153,7 +170,8 @@ class CalendarSyncRequest(BaseModel):
 class CalendarSyncResponse(BaseModel):
     """Response from calendar sync."""
 
-    status: str
+    status: str  # pending, running, completed, error
+    job_id: str | None = None  # For async polling
     events_synced: int = 0
     calendars_synced: list[str] = []
     error: str | None = None

@@ -7931,6 +7931,37 @@ export interface GoogleIntegrationStatus {
   granted_scopes: string[];
 }
 
+export interface SyncJobStatus {
+  job_id: string;
+  job_type: "gmail" | "calendar";
+  status: "pending" | "running" | "completed" | "failed";
+  processed_items: number;
+  total_items: number | null;
+  progress_message: string | null;
+  result: Record<string, unknown> | null;
+  error: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface GmailSyncResponse {
+  status: string;
+  job_id: string | null;
+  messages_synced: number;
+  full_sync_completed: boolean;
+  history_id: string | null;
+  error: string | null;
+}
+
+export interface CalendarSyncResponse {
+  status: string;
+  job_id: string | null;
+  events_synced: number;
+  calendars_synced: string[];
+  error: string | null;
+}
+
 export interface SyncedEmail {
   id: string;
   gmail_id: string;
@@ -8019,12 +8050,21 @@ export const googleIntegrationApi = {
     return response.data;
   },
 
+  // Sync job status polling
+  getSyncJobStatus: async (
+    workspaceId: string,
+    jobId: string
+  ): Promise<SyncJobStatus> => {
+    const response = await api.get(`/workspaces/${workspaceId}/integrations/google/sync-jobs/${jobId}`);
+    return response.data;
+  },
+
   // Gmail
   gmail: {
     sync: async (
       workspaceId: string,
       options?: { full_sync?: boolean; max_messages?: number }
-    ): Promise<{ status: string; messages_synced: number; full_sync_completed: boolean; history_id: string | null; error: string | null }> => {
+    ): Promise<GmailSyncResponse> => {
       const response = await api.post(`/workspaces/${workspaceId}/integrations/google/gmail/sync`, options || {});
       return response.data;
     },
@@ -8086,7 +8126,7 @@ export const googleIntegrationApi = {
     sync: async (
       workspaceId: string,
       options?: { calendar_ids?: string[] }
-    ): Promise<{ status: string; events_synced: number; calendars_synced: string[]; error: string | null }> => {
+    ): Promise<CalendarSyncResponse> => {
       const response = await api.post(`/workspaces/${workspaceId}/integrations/google/calendar/sync`, options || {});
       return response.data;
     },

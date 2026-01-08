@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { googleIntegrationApi, developerApi, SyncedCalendarEvent } from "@/lib/api";
+import { googleIntegrationApi, developerApi, SyncedCalendarEvent, SyncJobStatus } from "@/lib/api";
 
 type ViewMode = "month" | "week" | "day";
 
@@ -497,6 +497,7 @@ export default function CalendarPage() {
   const [hasIntegration, setHasIntegration] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsReconnect, setNeedsReconnect] = useState(false);
+  const [syncProgress, setSyncProgress] = useState<string | null>(null);
 
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -566,32 +567,99 @@ export default function CalendarPage() {
     if (!workspaceId) return;
     setIsSyncing(true);
     setSyncError(null);
+    setSyncProgress("Starting sync...");
+
     try {
       const result = await googleIntegrationApi.calendar.sync(workspaceId);
 
-      // Check for errors in response
+      // Check for immediate errors
       if (result.status === "error" || result.error) {
         const errorMessage = result.error || "Calendar sync failed";
         setSyncError(errorMessage);
+        setSyncProgress(null);
         console.error("Calendar sync error:", errorMessage);
 
-        // Check if it's a permissions/scope error
         if (errorMessage.includes("403") || errorMessage.includes("scope") || errorMessage.includes("permission")) {
           setNeedsReconnect(true);
           setSyncError("Calendar permissions are insufficient. Please reconnect with full access.");
         }
+        setIsSyncing(false);
         return;
       }
 
-      // Reload events after successful sync
-      const response = await googleIntegrationApi.calendar.listEvents(workspaceId);
-      setEvents(response.events);
+      // If we have a job_id, poll for progress
+      if (result.job_id) {
+        await pollCalendarSyncJob(result.job_id);
+      } else {
+        // Sync completed synchronously
+        setSyncProgress(null);
+        const response = await googleIntegrationApi.calendar.listEvents(workspaceId);
+        setEvents(response.events);
+        setIsSyncing(false);
+      }
     } catch (err) {
       console.error("Failed to sync events:", err);
       setSyncError("Failed to sync calendar. Please try again.");
-    } finally {
+      setSyncProgress(null);
       setIsSyncing(false);
     }
+  };
+
+  const pollCalendarSyncJob = async (jobId: string) => {
+    const pollInterval = 2000;
+    const maxPolls = 150;
+    let polls = 0;
+
+    const poll = async () => {
+      if (!workspaceId) return;
+
+      try {
+        const jobStatus = await googleIntegrationApi.getSyncJobStatus(workspaceId, jobId);
+
+        if (jobStatus.progress_message) {
+          setSyncProgress(jobStatus.progress_message);
+        } else if (jobStatus.processed_items > 0) {
+          setSyncProgress(`Synced ${jobStatus.processed_items} events...`);
+        }
+
+        if (jobStatus.status === "completed") {
+          setSyncProgress(null);
+          setIsSyncing(false);
+          const response = await googleIntegrationApi.calendar.listEvents(workspaceId);
+          setEvents(response.events);
+          return;
+        }
+
+        if (jobStatus.status === "failed") {
+          const errorMessage = jobStatus.error || "Calendar sync failed";
+          setSyncError(errorMessage);
+          setSyncProgress(null);
+          setIsSyncing(false);
+
+          if (errorMessage.includes("403") || errorMessage.includes("scope") || errorMessage.includes("permission")) {
+            setNeedsReconnect(true);
+            setSyncError("Calendar permissions are insufficient. Please reconnect with full access.");
+          }
+          return;
+        }
+
+        polls++;
+        if (polls < maxPolls) {
+          setTimeout(poll, pollInterval);
+        } else {
+          setSyncError("Sync timed out. Please try again.");
+          setSyncProgress(null);
+          setIsSyncing(false);
+        }
+      } catch (err) {
+        console.error("Failed to poll sync status:", err);
+        setSyncError("Failed to check sync status. Please refresh the page.");
+        setSyncProgress(null);
+        setIsSyncing(false);
+      }
+    };
+
+    poll();
   };
 
   const handleConnect = async () => {
@@ -677,7 +745,7 @@ export default function CalendarPage() {
                 <RefreshCw
                   className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`}
                 />
-                {isSyncing ? "Syncing..." : "Sync"}
+                {isSyncing ? (syncProgress || "Syncing...") : "Sync"}
               </button>
             )}
             <button

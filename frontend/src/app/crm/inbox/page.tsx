@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { googleIntegrationApi, developerApi, SyncedEmail } from "@/lib/api";
+import { googleIntegrationApi, developerApi, SyncedEmail, SyncJobStatus } from "@/lib/api";
 
 function formatDate(dateString: string) {
   const date = new Date(dateString);
@@ -427,6 +427,7 @@ export default function InboxPage() {
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsReconnect, setNeedsReconnect] = useState(false);
+  const [syncProgress, setSyncProgress] = useState<string | null>(null);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -489,32 +490,103 @@ export default function InboxPage() {
     if (!workspaceId) return;
     setIsSyncing(true);
     setSyncError(null);
+    setSyncProgress("Starting sync...");
+
     try {
+      // Start the async sync job
       const result = await googleIntegrationApi.gmail.sync(workspaceId);
 
-      // Check for errors in response
+      // Check for immediate errors
       if (result.status === "error" || result.error) {
         const errorMessage = result.error || "Gmail sync failed";
         setSyncError(errorMessage);
+        setSyncProgress(null);
         console.error("Gmail sync error:", errorMessage);
 
-        // Check if it's a permissions/scope error
         if (errorMessage.includes("403") || errorMessage.includes("scope") || errorMessage.includes("permission")) {
           setNeedsReconnect(true);
           setSyncError("Gmail permissions are insufficient. Please reconnect with full access.");
         }
+        setIsSyncing(false);
         return;
       }
 
-      // Reload emails after successful sync
-      const response = await googleIntegrationApi.gmail.listEmails(workspaceId);
-      setEmails(response.emails);
+      // If we have a job_id, poll for progress
+      if (result.job_id) {
+        await pollSyncJob(result.job_id);
+      } else {
+        // Sync completed synchronously (shouldn't happen but handle it)
+        setSyncProgress(null);
+        const response = await googleIntegrationApi.gmail.listEmails(workspaceId);
+        setEmails(response.emails);
+        setIsSyncing(false);
+      }
     } catch (err) {
       console.error("Failed to sync emails:", err);
       setSyncError("Failed to sync emails. Please try again.");
-    } finally {
+      setSyncProgress(null);
       setIsSyncing(false);
     }
+  };
+
+  const pollSyncJob = async (jobId: string) => {
+    const pollInterval = 2000; // 2 seconds
+    const maxPolls = 150; // 5 minutes max
+    let polls = 0;
+
+    const poll = async () => {
+      if (!workspaceId) return;
+
+      try {
+        const jobStatus = await googleIntegrationApi.getSyncJobStatus(workspaceId, jobId);
+
+        // Update progress message
+        if (jobStatus.progress_message) {
+          setSyncProgress(jobStatus.progress_message);
+        } else if (jobStatus.processed_items > 0) {
+          setSyncProgress(`Synced ${jobStatus.processed_items} emails...`);
+        }
+
+        if (jobStatus.status === "completed") {
+          setSyncProgress(null);
+          setIsSyncing(false);
+          // Reload emails
+          const response = await googleIntegrationApi.gmail.listEmails(workspaceId);
+          setEmails(response.emails);
+          return;
+        }
+
+        if (jobStatus.status === "failed") {
+          const errorMessage = jobStatus.error || "Gmail sync failed";
+          setSyncError(errorMessage);
+          setSyncProgress(null);
+          setIsSyncing(false);
+
+          if (errorMessage.includes("403") || errorMessage.includes("scope") || errorMessage.includes("permission")) {
+            setNeedsReconnect(true);
+            setSyncError("Gmail permissions are insufficient. Please reconnect with full access.");
+          }
+          return;
+        }
+
+        // Still running, poll again
+        polls++;
+        if (polls < maxPolls) {
+          setTimeout(poll, pollInterval);
+        } else {
+          setSyncError("Sync timed out. Please try again.");
+          setSyncProgress(null);
+          setIsSyncing(false);
+        }
+      } catch (err) {
+        console.error("Failed to poll sync status:", err);
+        setSyncError("Failed to check sync status. Please refresh the page.");
+        setSyncProgress(null);
+        setIsSyncing(false);
+      }
+    };
+
+    poll();
   };
 
   const handleConnect = async () => {
@@ -589,7 +661,7 @@ export default function InboxPage() {
                 <RefreshCw
                   className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`}
                 />
-                {isSyncing ? "Syncing..." : "Sync"}
+                {isSyncing ? (syncProgress || "Syncing...") : "Sync"}
               </button>
             )}
             <button

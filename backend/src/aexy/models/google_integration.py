@@ -389,3 +389,55 @@ class EmailSyncCursor(Base):
 
     # Relationships
     integration: Mapped["GoogleIntegration"] = relationship("GoogleIntegration")
+
+
+class GoogleSyncJob(Base):
+    """Tracks async sync job progress for Gmail and Calendar."""
+
+    __tablename__ = "google_sync_jobs"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        index=True,
+    )
+    integration_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("google_integrations.id", ondelete="CASCADE"),
+        index=True,
+    )
+
+    # Job type: gmail, calendar
+    job_type: Mapped[str] = mapped_column(String(50), index=True)
+
+    # Status: pending, running, completed, failed
+    status: Mapped[str] = mapped_column(String(50), default="pending", index=True)
+
+    # Progress tracking
+    total_items: Mapped[int | None] = mapped_column(nullable=True)
+    processed_items: Mapped[int] = mapped_column(default=0)
+    progress_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Celery task tracking
+    celery_task_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Result
+    result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Timestamps
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+    # Relationships
+    workspace: Mapped["Workspace"] = relationship("Workspace")
+    integration: Mapped["GoogleIntegration"] = relationship("GoogleIntegration")
