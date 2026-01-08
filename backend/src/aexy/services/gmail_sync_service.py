@@ -18,9 +18,193 @@ from aexy.models.google_integration import (
     SyncedEmail,
     SyncedEmailRecordLink,
 )
-from aexy.models.crm import CRMRecord
+from aexy.models.crm import CRMRecord, CRMObject, CRMObjectType
 
 logger = logging.getLogger(__name__)
+
+
+async def auto_enrich_contact_from_email(
+    db: AsyncSession,
+    workspace_id: str,
+    from_email: str | None,
+    from_name: str | None,
+    synced_email: "SyncedEmail",
+) -> CRMRecord | None:
+    """Auto-create or find contact from email sender and link the email.
+
+    Also creates company record from email domain if applicable.
+    Returns the contact record if created/found, None otherwise.
+    """
+    if not from_email:
+        return None
+
+    # Skip common personal email domains
+    personal_domains = {"gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com", "aol.com", "protonmail.com"}
+    domain = from_email.split("@")[1].lower() if "@" in from_email else None
+
+    # Skip if it's likely the user's own email
+    try:
+        int_result = await db.execute(
+            select(GoogleIntegration).where(GoogleIntegration.workspace_id == workspace_id)
+        )
+        integration = int_result.scalar_one_or_none()
+        if integration and integration.google_email and from_email.lower() == integration.google_email.lower():
+            return None
+    except Exception:
+        pass
+
+    # Get the Person object type
+    person_obj_result = await db.execute(
+        select(CRMObject).where(
+            CRMObject.workspace_id == workspace_id,
+            CRMObject.slug == "person",
+        )
+    )
+    person_obj = person_obj_result.scalar_one_or_none()
+
+    if not person_obj:
+        # No person object type configured, skip enrichment
+        return None
+
+    # Get the Company object type
+    company_obj_result = await db.execute(
+        select(CRMObject).where(
+            CRMObject.workspace_id == workspace_id,
+            CRMObject.slug == "company",
+        )
+    )
+    company_obj = company_obj_result.scalar_one_or_none()
+
+    # Create company from domain if not a personal email
+    company_record = None
+    if company_obj and domain and domain not in personal_domains:
+        # Check if company with this domain exists
+        company_records_result = await db.execute(
+            select(CRMRecord).where(
+                CRMRecord.workspace_id == workspace_id,
+                CRMRecord.object_id == company_obj.id,
+            )
+        )
+        company_records = company_records_result.scalars().all()
+
+        for record in company_records:
+            if record.values:
+                record_domain = record.values.get("domain", "").lower()
+                record_website = record.values.get("website", "").lower()
+                if domain == record_domain or domain in record_website:
+                    company_record = record
+                    break
+
+        if not company_record:
+            # Create a new company from domain
+            from uuid import uuid4
+
+            company_name = domain.split(".")[0].title()  # Simple name from domain
+            company_record = CRMRecord(
+                id=str(uuid4()),
+                workspace_id=workspace_id,
+                object_id=company_obj.id,
+                display_name=company_name[:500],
+                values={
+                    "name": company_name,
+                    "domain": domain,
+                    "website": f"https://{domain}",
+                },
+                source="email_sync",
+            )
+            db.add(company_record)
+            await db.flush()
+            logger.info(f"Auto-created company {company_name} from email domain")
+
+    # Check if a person record already exists with this email
+    person_records_result = await db.execute(
+        select(CRMRecord).where(
+            CRMRecord.workspace_id == workspace_id,
+            CRMRecord.object_id == person_obj.id,
+        )
+    )
+    person_records = person_records_result.scalars().all()
+
+    # Find person with matching email
+    existing_record = None
+    for record in person_records:
+        if record.values:
+            for key, value in record.values.items():
+                if isinstance(value, str) and value.lower() == from_email.lower():
+                    existing_record = record
+                    break
+        if existing_record:
+            break
+
+    if not existing_record:
+        # Create a new person record
+        from uuid import uuid4
+
+        # Parse the name
+        first_name, last_name = None, None
+        if from_name:
+            name_parts = from_name.strip().split(" ", 1)
+            first_name = name_parts[0] if name_parts else None
+            last_name = name_parts[1] if len(name_parts) > 1 else None
+
+        values = {
+            "email": from_email,
+        }
+        if first_name:
+            values["first_name"] = first_name
+        if last_name:
+            values["last_name"] = last_name
+        if from_name:
+            values["name"] = from_name
+
+        display_name = from_name or from_email
+
+        existing_record = CRMRecord(
+            id=str(uuid4()),
+            workspace_id=workspace_id,
+            object_id=person_obj.id,
+            display_name=display_name[:500],
+            values=values,
+            source="email_sync",
+        )
+        db.add(existing_record)
+        await db.flush()
+        logger.info(f"Auto-created contact {display_name} from email sync")
+
+        # Link person to company if we have one
+        if company_record:
+            from aexy.models.crm import CRMRecordRelation
+
+            relation = CRMRecordRelation(
+                id=str(uuid4()),
+                source_record_id=existing_record.id,
+                target_record_id=company_record.id,
+                relation_type="works_at",
+            )
+            db.add(relation)
+
+    # Link the email to this person record
+    link_result = await db.execute(
+        select(SyncedEmailRecordLink).where(
+            SyncedEmailRecordLink.email_id == synced_email.id,
+            SyncedEmailRecordLink.record_id == existing_record.id,
+        )
+    )
+    existing_link = link_result.scalar_one_or_none()
+
+    if not existing_link:
+        from uuid import uuid4 as uuid4_link
+
+        link = SyncedEmailRecordLink(
+            id=str(uuid4_link()),
+            email_id=synced_email.id,
+            record_id=existing_record.id,
+            link_type="from",
+            confidence=1.0,
+        )
+        db.add(link)
+
+    return existing_record
 settings = get_settings()
 
 # Gmail API URLs
@@ -340,6 +524,19 @@ class GmailSyncService:
 
         self.db.add(synced_email)
         await self.db.flush()
+
+        # Auto-enrich: create contact from email sender if not exists
+        try:
+            await auto_enrich_contact_from_email(
+                db=self.db,
+                workspace_id=integration.workspace_id,
+                from_email=email_data.get("from_email"),
+                from_name=email_data.get("from_name"),
+                synced_email=synced_email,
+            )
+        except Exception as e:
+            # Don't fail sync if enrichment fails
+            logger.warning(f"Failed to auto-enrich contact from email: {e}")
 
         return synced_email
 

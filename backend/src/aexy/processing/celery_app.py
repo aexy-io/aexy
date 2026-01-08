@@ -15,6 +15,7 @@ celery_app = Celery(
         "aexy.processing.sync_tasks",
         "aexy.processing.oncall_tasks",
         "aexy.processing.tracking_tasks",
+        "aexy.processing.google_sync_tasks",
     ],
 )
 
@@ -58,6 +59,7 @@ celery_app.conf.update(
         "aexy.processing.tasks.analyze_*": {"queue": "analysis"},
         "aexy.processing.tasks.batch_*": {"queue": "batch"},
         "aexy.processing.tracking_tasks.*": {"queue": "tracking"},
+        "aexy.processing.google_sync_tasks.*": {"queue": "google_sync"},
     },
 
     # Retry settings
