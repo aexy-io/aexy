@@ -12,10 +12,11 @@ import {
   CheckCircle2,
   AlertCircle,
   X,
+  Mail,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
-type ImportMethod = "csv" | "manual" | "skip";
+type ImportMethod = "csv" | "gmail" | "manual" | "skip";
 
 export default function DataImport() {
   const router = useRouter();
@@ -75,6 +76,14 @@ export default function DataImport() {
       color: "from-green-500 to-emerald-600",
     },
     {
+      id: "gmail" as ImportMethod,
+      icon: Mail,
+      title: "Connect Gmail",
+      description: "Auto-import contacts from your email conversations",
+      color: "from-red-500 to-red-600",
+      badge: "Recommended",
+    },
+    {
       id: "manual" as ImportMethod,
       icon: Database,
       title: "Add manually",
@@ -123,9 +132,10 @@ export default function DataImport() {
         </div>
 
         {/* Import method selection */}
-        <div className="grid sm:grid-cols-3 gap-4 mb-8">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {importMethods.map((method) => {
             const isSelected = selectedMethod === method.id;
+            const badge = "badge" in method ? method.badge : null;
             return (
               <motion.button
                 key={method.id}
@@ -144,6 +154,11 @@ export default function DataImport() {
                     : "bg-slate-800/30 border-slate-700/50 hover:border-slate-600/50"
                 }`}
               >
+                {badge && !isSelected && (
+                  <div className="absolute -top-2 -right-2 px-2 py-0.5 rounded-full bg-red-500/20 border border-red-500/30 text-red-400 text-xs">
+                    {badge}
+                  </div>
+                )}
                 {isSelected && (
                   <div className="absolute top-3 right-3">
                     <CheckCircle2 className="w-5 h-5 text-purple-400" />
@@ -158,6 +173,42 @@ export default function DataImport() {
             );
           })}
         </div>
+
+        {/* Gmail info */}
+        {selectedMethod === "gmail" && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            className="mb-8"
+          >
+            <div className="p-6 rounded-xl bg-red-500/5 border border-red-500/20">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center flex-shrink-0">
+                  <Mail className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-white mb-2">Gmail Integration</h3>
+                  <p className="text-sm text-slate-400 mb-4">
+                    On the next step, you&apos;ll connect your Google account. Once connected, we&apos;ll automatically:
+                  </p>
+                  <ul className="space-y-2">
+                    {[
+                      "Scan your recent emails for contacts",
+                      "Create people and companies from email addresses",
+                      "Extract details from email signatures using AI",
+                      "Keep your CRM updated as you send and receive emails",
+                    ].map((item, i) => (
+                      <li key={i} className="flex items-center gap-2 text-sm text-slate-300">
+                        <CheckCircle2 className="w-4 h-4 text-red-400 flex-shrink-0" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* CSV Upload area */}
         {selectedMethod === "csv" && (

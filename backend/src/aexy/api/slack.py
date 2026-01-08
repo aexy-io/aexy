@@ -66,6 +66,36 @@ async def start_oauth_install(
     return RedirectResponse(url=install_url)
 
 
+@router.get("/connect")
+async def start_developer_oauth(
+    redirect_url: str | None = None,
+    service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
+):
+    """Start Slack OAuth flow for onboarding (developer-level, no organization required).
+
+    This is a simplified flow used during onboarding when the user doesn't have
+    an organization/workspace yet. The Slack connection will be associated with
+    the developer's default workspace once created.
+    """
+    # Check if Slack is configured
+    if not settings.slack_client_id or not settings.slack_client_secret:
+        raise HTTPException(
+            status_code=503,
+            detail="Slack integration is not configured. Please set SLACK_CLIENT_ID and SLACK_CLIENT_SECRET environment variables.",
+        )
+
+    state = secrets.token_urlsafe(32)
+    oauth_states[state] = {
+        "organization_id": None,  # Will be set later when workspace is created
+        "installer_id": None,  # Will be set from callback token
+        "redirect_url": redirect_url or f"{settings.frontend_url}/onboarding/connect?slack=connected",
+        "is_onboarding": True,
+    }
+
+    install_url = service.get_install_url(state)
+    return RedirectResponse(url=install_url)
+
+
 @router.get("/callback")
 async def oauth_callback(
     code: str,

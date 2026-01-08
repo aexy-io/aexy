@@ -279,6 +279,24 @@ class WorkspaceService:
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_members_by_role(
+        self,
+        workspace_id: str,
+        role: str,
+    ) -> list[WorkspaceMember]:
+        """Get all members of a workspace with a specific role."""
+        stmt = (
+            select(WorkspaceMember)
+            .where(
+                WorkspaceMember.workspace_id == workspace_id,
+                WorkspaceMember.role == role,
+                WorkspaceMember.status == "active",
+            )
+            .options(selectinload(WorkspaceMember.developer))
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
     async def get_member_count(self, workspace_id: str) -> int:
         """Get count of active members."""
         stmt = (

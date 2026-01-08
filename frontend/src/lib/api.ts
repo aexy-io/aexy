@@ -60,6 +60,11 @@ export const developerApi = {
     const response = await api.get("/developers/", { params: { skip, limit } });
     return response.data;
   },
+
+  getGoogleStatus: async (): Promise<{ is_connected: boolean; google_email: string | null }> => {
+    const response = await api.get("/developers/me/google-status");
+    return response.data;
+  },
 };
 
 // Types
@@ -2160,6 +2165,17 @@ export const workspaceApi = {
 
   revokePendingInvite: async (workspaceId: string, inviteId: string): Promise<void> => {
     await api.delete(`/workspaces/${workspaceId}/invites/${inviteId}`);
+  },
+
+  // Join Request
+  requestToJoin: async (workspaceId: string): Promise<{
+    status: string;
+    message: string;
+    workspace_id: string;
+    workspace_name: string;
+  }> => {
+    const response = await api.post(`/workspaces/${workspaceId}/join-request`);
+    return response.data;
   },
 
   // App Settings & Permissions

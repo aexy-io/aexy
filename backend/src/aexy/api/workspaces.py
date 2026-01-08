@@ -420,6 +420,125 @@ async def remove_member(
         )
 
 
+# Join Request
+@router.post("/{workspace_id}/join-request")
+async def request_to_join(
+    workspace_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Request to join a workspace.
+
+    The user will be added as a pending member. Workspace admins will be notified
+    and can approve or reject the request.
+    """
+    service = WorkspaceService(db)
+
+    # Check if workspace exists
+    workspace = await service.get_workspace(workspace_id)
+    if not workspace:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workspace not found",
+        )
+
+    # Check if already a member
+    existing_member = await service.get_member(workspace_id, str(current_user.id))
+    if existing_member:
+        if existing_member.status == "active":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="You are already a member of this workspace",
+            )
+        elif existing_member.status == "pending":
+            return {
+                "status": "pending",
+                "message": "Your join request is already pending approval",
+                "workspace_id": workspace_id,
+                "workspace_name": workspace.name,
+            }
+
+    try:
+        # Add as pending member (join request)
+        member = await service.add_member(
+            workspace_id=workspace_id,
+            developer_id=str(current_user.id),
+            role="member",
+            invited_by_id=None,  # Self-request
+            status="pending",
+        )
+        await db.commit()
+
+        # Send notifications and emails to workspace admins
+        from aexy.services.notification_service import NotificationService
+        from aexy.services.email_service import EmailService
+        from aexy.schemas.notification import NotificationEventType, NOTIFICATION_TEMPLATES
+
+        notification_service = NotificationService(db)
+        email_service = EmailService()
+
+        # Get all workspace admins
+        admins = await service.get_members_by_role(workspace_id, "admin")
+
+        requester_name = current_user.name or current_user.github_username or "A user"
+        requester_email = current_user.email or ""
+
+        for admin in admins:
+            # Create in-app notification
+            await notification_service.create_notification(
+                recipient_id=str(admin.developer_id),
+                event_type=NotificationEventType.WORKSPACE_JOIN_REQUEST,
+                title="Workspace Join Request",
+                body=f"{requester_name} ({requester_email}) has requested to join {workspace.name}",
+                context={
+                    "workspace_id": workspace_id,
+                    "workspace_name": workspace.name,
+                    "requester_name": requester_name,
+                    "requester_email": requester_email,
+                    "action_url": f"/settings/workspace/{workspace_id}/members",
+                },
+            )
+
+            # Send email if configured
+            if email_service.is_configured and admin.developer:
+                admin_email = admin.developer.email
+                if admin_email:
+                    template = NOTIFICATION_TEMPLATES.get(NotificationEventType.WORKSPACE_JOIN_REQUEST, {})
+                    subject = template.get("email_subject", "New Join Request").format(
+                        workspace_name=workspace.name,
+                    )
+                    body = template.get("body_template", "").format(
+                        requester_name=requester_name,
+                        requester_email=requester_email,
+                        workspace_name=workspace.name,
+                    )
+                    try:
+                        await email_service.send_templated_email(
+                            db=db,
+                            recipient_email=admin_email,
+                            subject=subject,
+                            body_text=body,
+                        )
+                    except Exception as e:
+                        # Log but don't fail the request
+                        import logging
+                        logging.getLogger(__name__).warning(f"Failed to send email to {admin_email}: {e}")
+
+        await db.commit()
+
+        return {
+            "status": "pending",
+            "message": "Join request sent. Workspace admins will review your request.",
+            "workspace_id": workspace_id,
+            "workspace_name": workspace.name,
+        }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+
 # GitHub integration
 @router.post("/{workspace_id}/link-github", response_model=WorkspaceResponse)
 async def link_github_org(

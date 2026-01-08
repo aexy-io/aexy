@@ -112,7 +112,10 @@ async def sync_installations(
         if not connection:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="GitHub connection not found",
+                detail={
+                    "code": "GITHUB_NOT_CONNECTED",
+                    "message": "You need to connect your GitHub account first. Please sign in with GitHub to sync installations.",
+                },
             )
 
         # Sync installations
