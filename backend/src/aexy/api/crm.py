@@ -925,7 +925,7 @@ async def seed_from_template(
                 description=attr_config.get("description"),
                 is_required=attr_config.get("is_required", False),
                 config=attr_config.get("config"),
-                display_order=i,
+                position=i,
             )
 
         created_objects.append(obj)

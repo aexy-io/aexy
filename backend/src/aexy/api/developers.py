@@ -5,10 +5,20 @@ from jose import JWTError, jwt
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from pydantic import BaseModel
+from sqlalchemy import select
+
 from aexy.core.config import get_settings
 from aexy.core.database import get_db
+from aexy.models.developer import GoogleConnection
 from aexy.schemas.developer import DeveloperResponse, DeveloperUpdate
 from aexy.services.developer_service import DeveloperNotFoundError, DeveloperService
+
+
+class GoogleConnectionStatus(BaseModel):
+    """Response for Google connection status."""
+    is_connected: bool
+    google_email: str | None = None
 
 router = APIRouter()
 settings = get_settings()
@@ -55,6 +65,26 @@ async def get_current_developer(
         ) from e
 
     return DeveloperResponse.model_validate(developer)
+
+
+@router.get("/me/google-status", response_model=GoogleConnectionStatus)
+async def get_google_connection_status(
+    developer_id: str = Depends(get_current_developer_id),
+    db: AsyncSession = Depends(get_db),
+) -> GoogleConnectionStatus:
+    """Check if the current developer has a Google connection."""
+    result = await db.execute(
+        select(GoogleConnection).where(GoogleConnection.developer_id == developer_id)
+    )
+    connection = result.scalar_one_or_none()
+
+    if connection:
+        return GoogleConnectionStatus(
+            is_connected=True,
+            google_email=connection.google_email,
+        )
+
+    return GoogleConnectionStatus(is_connected=False)
 
 
 @router.patch("/me", response_model=DeveloperResponse)

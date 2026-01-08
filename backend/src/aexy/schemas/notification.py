@@ -29,6 +29,11 @@ class NotificationEventType(str, Enum):
     WORKSPACE_INVITE = "workspace_invite"
     TEAM_ADDED = "team_added"
 
+    # Workspace join requests
+    WORKSPACE_JOIN_REQUEST = "workspace_join_request"
+    WORKSPACE_JOIN_APPROVED = "workspace_join_approved"
+    WORKSPACE_JOIN_REJECTED = "workspace_join_rejected"
+
 
 class NotificationContext(BaseModel):
     """Context for notification rendering and navigation."""
@@ -234,5 +239,20 @@ NOTIFICATION_TEMPLATES = {
         "title": "Added to Team",
         "body_template": "You've been added to {team_name} in {workspace_name}",
         "email_subject": "Welcome to {team_name}",
+    },
+    NotificationEventType.WORKSPACE_JOIN_REQUEST: {
+        "title": "Workspace Join Request",
+        "body_template": "{requester_name} ({requester_email}) has requested to join {workspace_name}",
+        "email_subject": "New Join Request for {workspace_name}",
+    },
+    NotificationEventType.WORKSPACE_JOIN_APPROVED: {
+        "title": "Join Request Approved",
+        "body_template": "Your request to join {workspace_name} has been approved. Welcome aboard!",
+        "email_subject": "Welcome to {workspace_name}!",
+    },
+    NotificationEventType.WORKSPACE_JOIN_REJECTED: {
+        "title": "Join Request Declined",
+        "body_template": "Your request to join {workspace_name} was not approved",
+        "email_subject": "Update on Your Join Request for {workspace_name}",
     },
 }

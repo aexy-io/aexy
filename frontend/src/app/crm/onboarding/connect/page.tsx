@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { api } from "@/lib/api";
+import { api, developerApi } from "@/lib/api";
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -66,6 +66,19 @@ export default function ConnectGoogle() {
   }, [searchParams]);
 
   const fetchConnectionStatus = async () => {
+    // First check if Google is connected at developer level (from main onboarding)
+    try {
+      const developerGoogleStatus = await developerApi.getGoogleStatus();
+      if (developerGoogleStatus.is_connected) {
+        setIsConnected(true);
+        setConnectionEmail(developerGoogleStatus.google_email);
+        return; // Already connected at developer level
+      }
+    } catch {
+      // Continue to check workspace level
+    }
+
+    // Then check workspace level
     if (!currentWorkspace?.id) return;
     try {
       const response = await api.get(`/workspaces/${currentWorkspace.id}/integrations/google/status`);
