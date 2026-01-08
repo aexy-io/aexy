@@ -3,9 +3,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.api.developers import get_current_developer_id
-from devograph.core.database import get_db
-from devograph.schemas.analytics import (
+from aexy.api.developers import get_current_developer_id
+from aexy.core.database import get_db
+from aexy.schemas.analytics import (
     SkillHeatmapRequest,
     SkillHeatmapData,
     ActivityHeatmapData,
@@ -17,7 +17,7 @@ from devograph.schemas.analytics import (
     CollaborationGraph,
     DateRange,
 )
-from devograph.services.analytics_dashboard import AnalyticsDashboardService
+from aexy.services.analytics_dashboard import AnalyticsDashboardService
 
 router = APIRouter(prefix="/analytics")
 

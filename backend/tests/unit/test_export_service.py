@@ -14,8 +14,8 @@ import os
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from devograph.services.export_service import ExportService
-from devograph.schemas.analytics import ExportRequest
+from aexy.services.export_service import ExportService
+from aexy.schemas.analytics import ExportRequest
 
 
 class TestExportService:

@@ -10,17 +10,17 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.llm.base import AnalysisType
-from devograph.llm.gateway import LLMGateway
-from devograph.llm.prompts import (
+from aexy.llm.base import AnalysisType
+from aexy.llm.gateway import LLMGateway
+from aexy.llm.prompts import (
     LEARNING_PATH_PROMPT,
     LEARNING_PATH_SYSTEM_PROMPT,
     MILESTONE_EVALUATION_PROMPT,
     STRETCH_ASSIGNMENT_PROMPT,
 )
-from devograph.models.career import CareerRole, LearningMilestone, LearningPath
-from devograph.models.developer import Developer
-from devograph.services.career_progression import CareerProgressionService
+from aexy.models.career import CareerRole, LearningMilestone, LearningPath
+from aexy.models.developer import Developer
+from aexy.services.career_progression import CareerProgressionService
 
 logger = logging.getLogger(__name__)
 
@@ -220,7 +220,7 @@ class LearningPathService:
         )
 
         try:
-            from devograph.llm.base import AnalysisRequest
+            from aexy.llm.base import AnalysisRequest
 
             request = AnalysisRequest(
                 content=prompt,
@@ -621,7 +621,7 @@ class LearningPathService:
         )
 
         try:
-            from devograph.llm.base import AnalysisRequest
+            from aexy.llm.base import AnalysisRequest
 
             request = AnalysisRequest(
                 content=prompt,

@@ -478,7 +478,7 @@ export default function PublicFormPage() {
 
         {/* Footer */}
         <p className="text-center text-gray-400 text-sm mt-6">
-          Powered by Gitraki
+          Powered by Aexy
         </p>
       </div>
     </div>

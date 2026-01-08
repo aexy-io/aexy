@@ -13,9 +13,9 @@ from typing import Any
 from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.models.activity import Commit, PullRequest
-from devograph.models.sprint import SprintTask, TaskGitHubLink, Sprint
-from devograph.services.task_reference_parser import (
+from aexy.models.activity import Commit, PullRequest
+from aexy.models.sprint import SprintTask, TaskGitHubLink, Sprint
+from aexy.services.task_reference_parser import (
     TaskReferenceParser,
     TaskReference,
     TaskReferenceSource,

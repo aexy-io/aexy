@@ -7,11 +7,11 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.sprint import Sprint, SprintTask, TaskActivity
-from devograph.services.task_sources.base import TaskItem, TaskSourceConfig, TaskStatus
-from devograph.services.task_sources.github_issues import GitHubIssuesSource
-from devograph.services.task_sources.jira import JiraSource
-from devograph.services.task_sources.linear import LinearSource
+from aexy.models.sprint import Sprint, SprintTask, TaskActivity
+from aexy.services.task_sources.base import TaskItem, TaskSourceConfig, TaskStatus
+from aexy.services.task_sources.github_issues import GitHubIssuesSource
+from aexy.services.task_sources.jira import JiraSource
+from aexy.services.task_sources.linear import LinearSource
 
 
 class SprintTaskService:

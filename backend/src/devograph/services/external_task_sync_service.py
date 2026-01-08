@@ -1,7 +1,7 @@
 """External Task Sync Service for bidirectional sync with Jira/Linear.
 
-This service handles outbound sync from Gitraki to external task trackers.
-When a SprintTask is updated in Gitraki, this service pushes the changes
+This service handles outbound sync from Aexy to external task trackers.
+When a SprintTask is updated in Aexy, this service pushes the changes
 back to the original source (Jira or Linear).
 """
 
@@ -13,8 +13,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.sprint import SprintTask, Sprint
-from devograph.models.integrations import JiraIntegration, LinearIntegration
+from aexy.models.sprint import SprintTask, Sprint
+from aexy.models.integrations import JiraIntegration, LinearIntegration
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +91,7 @@ class ExternalTaskSyncService:
             return {"synced": False, "reason": "Sync is disabled"}
 
         # Import here to avoid circular imports
-        from devograph.services.jira_integration_service import JiraIntegrationService
+        from aexy.services.jira_integration_service import JiraIntegrationService
 
         jira_service = JiraIntegrationService(self.db)
         success = await jira_service.push_task_update(task)
@@ -132,7 +132,7 @@ class ExternalTaskSyncService:
             return {"synced": False, "reason": "Sync is disabled"}
 
         # Import here to avoid circular imports
-        from devograph.services.linear_integration_service import LinearIntegrationService
+        from aexy.services.linear_integration_service import LinearIntegrationService
 
         linear_service = LinearIntegrationService(self.db)
         success = await linear_service.push_task_update(task)

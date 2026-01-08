@@ -11,14 +11,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.core.config import get_settings
-from devograph.models.google_integration import (
+from aexy.core.config import get_settings
+from aexy.models.google_integration import (
     EmailSyncCursor,
     GoogleIntegration,
     SyncedEmail,
     SyncedEmailRecordLink,
 )
-from devograph.models.crm import CRMRecord
+from aexy.models.crm import CRMRecord
 
 logger = logging.getLogger(__name__)
 settings = get_settings()

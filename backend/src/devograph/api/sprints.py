@@ -3,10 +3,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.database import get_db
-from devograph.api.developers import get_current_developer
-from devograph.models.developer import Developer
-from devograph.schemas.sprint import (
+from aexy.core.database import get_db
+from aexy.api.developers import get_current_developer
+from aexy.models.developer import Developer
+from aexy.schemas.sprint import (
     SprintCreate,
     SprintUpdate,
     SprintResponse,
@@ -16,8 +16,8 @@ from devograph.schemas.sprint import (
     CarryOverResponse,
     SprintTaskResponse,
 )
-from devograph.services.sprint_service import SprintService
-from devograph.services.workspace_service import WorkspaceService
+from aexy.services.sprint_service import SprintService
+from aexy.services.workspace_service import WorkspaceService
 
 router = APIRouter(tags=["Sprints"])
 

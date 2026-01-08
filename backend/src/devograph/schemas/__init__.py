@@ -1,13 +1,13 @@
 """Pydantic schemas for API request/response models."""
 
-from devograph.schemas.developer import (
+from aexy.schemas.developer import (
     DeveloperCreate,
     DeveloperResponse,
     DeveloperUpdate,
     SkillFingerprint,
 )
-from devograph.schemas.auth import GitHubAuthResponse, TokenResponse
-from devograph.schemas.career import (
+from aexy.schemas.auth import GitHubAuthResponse, TokenResponse
+from aexy.schemas.career import (
     CareerRoleCreate,
     CareerRoleResponse,
     CareerRoleUpdate,
@@ -33,7 +33,7 @@ from devograph.schemas.career import (
     OrganizationSettingsResponse,
     OrganizationSettingsUpdate,
 )
-from devograph.schemas.analytics import (
+from aexy.schemas.analytics import (
     # Enums
     WidgetType,
     MetricType,
@@ -79,7 +79,7 @@ from devograph.schemas.analytics import (
     CollaborationRequest,
     TeamHealthRequest,
 )
-from devograph.schemas.integrations import (
+from aexy.schemas.integrations import (
     SlackNotificationType,
     SlackCommandType,
     SlackOAuthCallback,
@@ -96,7 +96,7 @@ from devograph.schemas.integrations import (
     SlackUserMappingResponse,
     SlackNotificationLogResponse,
 )
-from devograph.schemas.ticketing import (
+from aexy.schemas.ticketing import (
     # Type literals
     TicketFormAuthMode,
     TicketFormTemplateType,
@@ -160,7 +160,7 @@ from devograph.schemas.ticketing import (
     FileUploadResponse,
     FormTemplate,
 )
-from devograph.schemas.review import (
+from aexy.schemas.review import (
     # Enums
     ReviewCycleType,
     ReviewCycleStatus,

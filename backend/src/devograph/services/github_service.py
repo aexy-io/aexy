@@ -4,8 +4,8 @@ from typing import Any
 
 import httpx
 
-from devograph.core.config import get_settings
-from devograph.schemas.auth import GitHubAuthResponse, GitHubUserInfo
+from aexy.core.config import get_settings
+from aexy.schemas.auth import GitHubAuthResponse, GitHubUserInfo
 
 
 class GitHubServiceError(Exception):

@@ -1,17 +1,17 @@
-# Devograph CLI Usage Guide
+# Aexy CLI Usage Guide
 
 ## Installation
 
 ### From PyPI
 
 ```bash
-pip install devograph-cli
+pip install aexy-cli
 ```
 
 ### From Source
 
 ```bash
-cd devograph-cli
+cd aexy-cli
 pip install -e .
 ```
 
@@ -20,8 +20,8 @@ pip install -e .
 ### Authentication
 
 ```bash
-# Get your API token from the Devograph web dashboard
-devograph login <your-api-token>
+# Get your API token from the Aexy web dashboard
+aexy login <your-api-token>
 ```
 
 Token is stored securely in system keychain.
@@ -30,13 +30,13 @@ Token is stored securely in system keychain.
 
 ```bash
 # Default: http://localhost:8000/api
-export DEVOGRAPH_API_URL=https://api.devograph.io/api
+export DEVOGRAPH_API_URL=https://api.aexy.io/api
 ```
 
 ### Check Status
 
 ```bash
-devograph status
+aexy status
 ```
 
 ## Commands
@@ -45,89 +45,89 @@ devograph status
 
 ```bash
 # Show developer profile
-devograph profile show @username
+aexy profile show @username
 
 # Show full profile with analysis
-devograph profile show @username --full
+aexy profile show @username --full
 
 # List all developers
-devograph profile list
-devograph profile list --limit 50
+aexy profile list
+aexy profile list --limit 50
 
 # Export profile
-devograph profile export @username --format pdf
-devograph profile export @username --format csv --output profile.csv
+aexy profile export @username --format pdf
+aexy profile export @username --format csv --output profile.csv
 ```
 
 ### Team Commands
 
 ```bash
 # List all teams
-devograph team list
+aexy team list
 
 # Show team skill distribution
-devograph team skills
-devograph team skills "Backend Team"
+aexy team skills
+aexy team skills "Backend Team"
 
 # Identify skill gaps
-devograph team gaps
-devograph team gaps "Backend Team" --target-skills python,kubernetes
+aexy team gaps
+aexy team gaps "Backend Team" --target-skills python,kubernetes
 
 # Show workload distribution
-devograph team workload
-devograph team workload "Backend Team"
+aexy team workload
+aexy team workload "Backend Team"
 ```
 
 ### Task Matching
 
 ```bash
 # Match a task to best developers
-devograph match "Fix authentication bug in OAuth flow"
+aexy match "Fix authentication bug in OAuth flow"
 
 # With required skills
-devograph match "Build Kubernetes operator" -s python -s kubernetes -s go
+aexy match "Build Kubernetes operator" -s python -s kubernetes -s go
 
 # Show top N matches
-devograph match "Implement caching layer" --top 10
+aexy match "Implement caching layer" --top 10
 ```
 
 ### Insights Commands
 
 ```bash
 # View attrition risk for a developer
-devograph insights attrition @username
+aexy insights attrition @username
 
 # View all developers' attrition risk
-devograph insights attrition --all
+aexy insights attrition --all
 
 # View burnout risk
-devograph insights burnout @username
+aexy insights burnout @username
 
 # View performance trajectory
-devograph insights trajectory @username --months 6
+aexy insights trajectory @username --months 6
 
 # View team health analysis
-devograph insights team-health
-devograph insights team-health "Backend Team"
+aexy insights team-health
+aexy insights team-health "Backend Team"
 ```
 
 ### Report Commands
 
 ```bash
 # List available reports
-devograph report list
+aexy report list
 
 # Generate a report
-devograph report generate weekly
-devograph report generate monthly --format pdf
-devograph report generate team --format xlsx --output team-report.xlsx
+aexy report generate weekly
+aexy report generate monthly --format pdf
+aexy report generate team --format xlsx --output team-report.xlsx
 
 # Check export status
-devograph report status <job-id>
+aexy report status <job-id>
 
 # Export raw data
-devograph report export developers --format csv --output developers.csv
-devograph report export skills --format json --output skills.json
+aexy report export developers --format csv --output developers.csv
+aexy report export skills --format json --output skills.json
 ```
 
 ## Output Examples
@@ -224,10 +224,10 @@ Recommendations:
 
 ```bash
 # Export all developer profiles to JSON
-devograph report export developers --format json --output /tmp/devs.json
+aexy report export developers --format json --output /tmp/devs.json
 
 # Get attrition risks in machine-readable format
-devograph insights attrition --all --format json 2>/dev/null | jq '.[] | select(.risk_score > 0.5)'
+aexy insights attrition --all --format json 2>/dev/null | jq '.[] | select(.risk_score > 0.5)'
 ```
 
 ### Aliases
@@ -235,21 +235,21 @@ devograph insights attrition --all --format json 2>/dev/null | jq '.[] | select(
 Add to your shell config:
 
 ```bash
-alias gp='devograph profile'
-alias gt='devograph team'
-alias gm='devograph match'
-alias gi='devograph insights'
+alias gp='aexy profile'
+alias gt='aexy team'
+alias gm='aexy match'
+alias gi='aexy insights'
 ```
 
 ### Shell Completion
 
 ```bash
 # Bash
-eval "$(_DEVOGRAPH_COMPLETE=bash_source devograph)"
+eval "$(_DEVOGRAPH_COMPLETE=bash_source aexy)"
 
 # Zsh
-eval "$(_DEVOGRAPH_COMPLETE=zsh_source devograph)"
+eval "$(_DEVOGRAPH_COMPLETE=zsh_source aexy)"
 
 # Fish
-_DEVOGRAPH_COMPLETE=fish_source devograph | source
+_DEVOGRAPH_COMPLETE=fish_source aexy | source
 ```

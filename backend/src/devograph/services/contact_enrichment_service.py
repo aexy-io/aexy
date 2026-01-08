@@ -11,15 +11,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.llm.gateway import get_llm_gateway
-from devograph.models.crm import (
+from aexy.llm.gateway import get_llm_gateway
+from aexy.models.crm import (
     CRMObject,
     CRMObjectType,
     CRMRecord,
     CRMActivity,
     CRMActivityType,
 )
-from devograph.models.google_integration import SyncedEmail
+from aexy.models.google_integration import SyncedEmail
 
 logger = logging.getLogger(__name__)
 
@@ -554,7 +554,7 @@ class ContactEnrichmentService:
             return {"enriched": False, "reason": "No email address on record"}
 
         # Find linked emails
-        from devograph.models.google_integration import SyncedEmail, SyncedEmailRecordLink
+        from aexy.models.google_integration import SyncedEmail, SyncedEmailRecordLink
 
         links_result = await self.db.execute(
             select(SyncedEmailRecordLink)

@@ -8,11 +8,11 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstr
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from devograph.core.database import Base
+from aexy.core.database import Base
 
 if TYPE_CHECKING:
-    from devograph.models.developer import Developer
-    from devograph.models.workspace import Workspace
+    from aexy.models.developer import Developer
+    from aexy.models.workspace import Workspace
 
 
 class Team(Base):

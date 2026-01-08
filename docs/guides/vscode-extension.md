@@ -4,18 +4,18 @@
 
 ### From Marketplace
 
-Search for "Devograph" in VS Code Extensions marketplace.
+Search for "Aexy" in VS Code Extensions marketplace.
 
 ### From VSIX
 
 ```bash
-code --install-extension devograph-vscode-0.1.0.vsix
+code --install-extension aexy-vscode-0.1.0.vsix
 ```
 
 ### From Source
 
 ```bash
-cd devograph-vscode
+cd aexy-vscode
 npm install
 npm run compile
 # Press F5 in VS Code to launch Extension Development Host
@@ -23,27 +23,27 @@ npm run compile
 
 ## Configuration
 
-Open VS Code Settings (`Cmd/Ctrl + ,`) and search for "Devograph":
+Open VS Code Settings (`Cmd/Ctrl + ,`) and search for "Aexy":
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| `devograph.apiUrl` | Devograph API URL | `http://localhost:8000/api` |
-| `devograph.apiToken` | API authentication token | - |
-| `devograph.autoRefresh` | Auto-refresh data | `true` |
-| `devograph.refreshInterval` | Refresh interval (seconds) | `300` |
+| `aexy.apiUrl` | Aexy API URL | `http://localhost:8000/api` |
+| `aexy.apiToken` | API authentication token | - |
+| `aexy.autoRefresh` | Auto-refresh data | `true` |
+| `aexy.refreshInterval` | Refresh interval (seconds) | `300` |
 
 ### Setting API Token
 
-1. Get your token from Devograph web dashboard (Settings > API)
+1. Get your token from Aexy web dashboard (Settings > API)
 2. Open VS Code Settings
-3. Search for "Devograph API Token"
+3. Search for "Aexy API Token"
 4. Enter your token
 
 Or in `settings.json`:
 ```json
 {
-  "devograph.apiUrl": "https://api.devograph.io/api",
-  "devograph.apiToken": "your-api-token"
+  "aexy.apiUrl": "https://api.aexy.io/api",
+  "aexy.apiToken": "your-api-token"
 }
 ```
 
@@ -51,7 +51,7 @@ Or in `settings.json`:
 
 ### Sidebar Views
 
-The Devograph icon in the Activity Bar opens three views:
+The Aexy icon in the Activity Bar opens three views:
 
 #### 1. Developer Profile View
 - Shows current developer's profile
@@ -70,26 +70,26 @@ The Devograph icon in the Activity Bar opens three views:
 
 ### Commands
 
-Open Command Palette (`Cmd/Ctrl + Shift + P`) and type "Devograph":
+Open Command Palette (`Cmd/Ctrl + Shift + P`) and type "Aexy":
 
 | Command | Description |
 |---------|-------------|
-| `Devograph: Show Developer Profile` | View a developer's profile |
-| `Devograph: Match Task to Developer` | Find best developer for a task |
-| `Devograph: Show Team Skills` | Refresh team skill view |
-| `Devograph: Show Predictive Insights` | Load insights data |
-| `Devograph: Refresh Data` | Refresh all views |
-| `Devograph: Configure API Settings` | Open settings |
+| `Aexy: Show Developer Profile` | View a developer's profile |
+| `Aexy: Match Task to Developer` | Find best developer for a task |
+| `Aexy: Show Team Skills` | Refresh team skill view |
+| `Aexy: Show Predictive Insights` | Load insights data |
+| `Aexy: Refresh Data` | Refresh all views |
+| `Aexy: Configure API Settings` | Open settings |
 
 ### Show Developer Profile
 
-1. Run `Devograph: Show Developer Profile` command
+1. Run `Aexy: Show Developer Profile` command
 2. Enter GitHub username
 3. Profile appears in sidebar
 
 ### Match Task to Developer
 
-1. Run `Devograph: Match Task to Developer` command
+1. Run `Aexy: Match Task to Developer` command
 2. Enter task description (e.g., "Fix OAuth bug in login flow")
 3. Optionally enter required skills (comma-separated)
 4. Select from matched developers
@@ -103,15 +103,15 @@ Add custom shortcuts in `keybindings.json`:
 [
   {
     "key": "ctrl+shift+g p",
-    "command": "devograph.showProfile"
+    "command": "aexy.showProfile"
   },
   {
     "key": "ctrl+shift+g m",
-    "command": "devograph.matchTask"
+    "command": "aexy.matchTask"
   },
   {
     "key": "ctrl+shift+g r",
-    "command": "devograph.refresh"
+    "command": "aexy.refresh"
   }
 ]
 ```
@@ -126,7 +126,7 @@ When connected, you'll see:
 
 ### Extension Not Loading
 
-1. Check Output panel (`View > Output > Devograph`)
+1. Check Output panel (`View > Output > Aexy`)
 2. Verify API URL is correct
 3. Check API token is set
 
@@ -138,14 +138,14 @@ When connected, you'll see:
 
 ### Refresh Not Working
 
-1. Check `devograph.autoRefresh` setting
-2. Manually trigger with `Devograph: Refresh Data`
+1. Check `aexy.autoRefresh` setting
+2. Manually trigger with `Aexy: Refresh Data`
 3. Check API rate limits
 
 ### Performance Issues
 
-1. Increase `devograph.refreshInterval`
-2. Disable `devograph.autoRefresh` if not needed
+1. Increase `aexy.refreshInterval`
+2. Disable `aexy.autoRefresh` if not needed
 3. Check API server performance
 
 ## Development
@@ -153,7 +153,7 @@ When connected, you'll see:
 ### Building
 
 ```bash
-cd devograph-vscode
+cd aexy-vscode
 npm install
 npm run compile
 ```
@@ -168,7 +168,7 @@ npm test
 
 ```bash
 npm run package
-# Creates devograph-vscode-x.x.x.vsix
+# Creates aexy-vscode-x.x.x.vsix
 ```
 
 ### Publishing

@@ -7,9 +7,9 @@ from typing import Any
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.llm.base import AnalysisRequest, AnalysisType
-from devograph.llm.gateway import LLMGateway
-from devograph.llm.prompts import (
+from aexy.llm.base import AnalysisRequest, AnalysisType
+from aexy.llm.gateway import LLMGateway
+from aexy.llm.prompts import (
     ATTRITION_RISK_SYSTEM_PROMPT,
     ATTRITION_RISK_PROMPT,
     BURNOUT_RISK_SYSTEM_PROMPT,
@@ -19,10 +19,10 @@ from devograph.llm.prompts import (
     TEAM_HEALTH_SYSTEM_PROMPT,
     TEAM_HEALTH_PROMPT,
 )
-from devograph.models.activity import Commit, PullRequest, CodeReview
-from devograph.models.analytics import PredictiveInsight
-from devograph.models.developer import Developer
-from devograph.schemas.analytics import (
+from aexy.models.activity import Commit, PullRequest, CodeReview
+from aexy.models.analytics import PredictiveInsight
+from aexy.models.developer import Developer
+from aexy.schemas.analytics import (
     AttritionRiskAnalysis,
     BurnoutRiskAssessment,
     PerformanceTrajectory,
@@ -465,7 +465,7 @@ class PredictiveAnalyticsService:
         primary_skills = ", ".join([l.get("name", "") for l in languages[:5]])
 
         # Get learning path if exists
-        from devograph.models.career import LearningPath
+        from aexy.models.career import LearningPath
         lp_stmt = (
             select(LearningPath)
             .where(
@@ -650,7 +650,7 @@ class PredictiveAnalyticsService:
         bus_factors = [skill for skill, count in all_skills.items() if count == 1]
 
         # Get workload distribution
-        from devograph.services.analytics_dashboard import AnalyticsDashboardService
+        from aexy.services.analytics_dashboard import AnalyticsDashboardService
         analytics = AnalyticsDashboardService()
         workload = await analytics.get_workload_distribution(developer_ids, db)
 
@@ -860,7 +860,7 @@ class PredictiveAnalyticsService:
         Returns:
             List of insight responses
         """
-        from devograph.schemas.analytics import PredictiveInsightResponse, InsightType
+        from aexy.schemas.analytics import PredictiveInsightResponse, InsightType
 
         stmt = (
             select(PredictiveInsight)

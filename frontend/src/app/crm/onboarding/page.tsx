@@ -62,7 +62,7 @@ export default function CRMOnboardingWelcome() {
           </h1>
 
           <p className="text-lg text-slate-400 mb-8">
-            Devograph CRM helps you manage your contacts, track deals, and automate
+            Aexy CRM helps you manage your contacts, track deals, and automate
             your workflows. Let&apos;s set up your workspace in just a few steps.
           </p>
 

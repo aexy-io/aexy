@@ -4,8 +4,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
-from devograph.llm.base import MatchScore, TaskSignals
-from devograph.models.developer import Developer
+from aexy.llm.base import MatchScore, TaskSignals
+from aexy.models.developer import Developer
 
 logger = logging.getLogger(__name__)
 

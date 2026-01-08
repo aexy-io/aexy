@@ -10,7 +10,7 @@ from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.crm import (
+from aexy.models.crm import (
     CRMAutomation,
     CRMAutomationRun,
     CRMRecord,
@@ -24,7 +24,7 @@ from devograph.models.crm import (
     CRMListEntry,
     CRMSequenceEnrollmentStatus,
 )
-from devograph.services.crm_service import CRMRecordService, CRMActivityService
+from aexy.services.crm_service import CRMRecordService, CRMActivityService
 
 
 class CRMAutomationService:

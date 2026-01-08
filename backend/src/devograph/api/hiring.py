@@ -17,10 +17,10 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.database import get_db
-from devograph.llm.gateway import get_llm_gateway
-from devograph.models.developer import Developer
-from devograph.schemas.career import (
+from aexy.core.database import get_db
+from aexy.llm.gateway import get_llm_gateway
+from aexy.models.developer import Developer
+from aexy.schemas.career import (
     BusFactorRisk,
     CandidateScorecard,
     GeneratedJD,
@@ -35,7 +35,7 @@ from devograph.schemas.career import (
     TeamGapAnalysis,
     TeamSkillGapDetail,
 )
-from devograph.services.hiring_intelligence import HiringIntelligenceService
+from aexy.services.hiring_intelligence import HiringIntelligenceService
 
 router = APIRouter(prefix="/hiring")
 
@@ -93,7 +93,7 @@ async def analyze_team_gaps(
     Returns:
         Team gap analysis result.
     """
-    from devograph.models.team import TeamMember
+    from aexy.models.team import TeamMember
 
     developer_ids = request.developer_ids or []
     team_id_provided = request.team_id and is_valid_uuid(request.team_id)
@@ -177,7 +177,7 @@ async def get_bus_factor_risks(
     Returns:
         List of bus factor risks.
     """
-    from devograph.models.team import TeamMember
+    from aexy.models.team import TeamMember
 
     developer_ids = request.developer_ids or []
     team_id_provided = request.team_id and is_valid_uuid(request.team_id)
@@ -338,8 +338,8 @@ async def create_hiring_requirement(
     service = HiringIntelligenceService(db, llm_gateway)
 
     # Fetch developers for gap analysis
-    from devograph.models.workspace import WorkspaceMember
-    from devograph.models.team import TeamMember
+    from aexy.models.workspace import WorkspaceMember
+    from aexy.models.team import TeamMember
     team_developers = []
 
     # If team_id is provided, get team members only
@@ -469,7 +469,7 @@ async def generate_job_description(
         )
 
     # Create a gap analysis from the stored data
-    from devograph.services.hiring_intelligence import TeamGapAnalysisResult
+    from aexy.services.hiring_intelligence import TeamGapAnalysisResult
     from datetime import datetime
 
     gap_analysis = TeamGapAnalysisResult(
@@ -545,7 +545,7 @@ async def generate_interview_rubric(
         )
 
     # Create a JD result from requirement
-    from devograph.services.hiring_intelligence import GeneratedJDResult
+    from aexy.services.hiring_intelligence import GeneratedJDResult
 
     jd = GeneratedJDResult(
         role_title=requirement.role_title,

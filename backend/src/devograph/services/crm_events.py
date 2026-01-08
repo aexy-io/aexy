@@ -3,7 +3,7 @@
 from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.models.crm import CRMAutomationTriggerType
+from aexy.models.crm import CRMAutomationTriggerType
 
 
 class CRMEventService:
@@ -21,7 +21,7 @@ class CRMEventService:
         created_by_id: str | None = None,
     ):
         """Emit event when a record is created."""
-        from devograph.services.crm_automation_service import (
+        from aexy.services.crm_automation_service import (
             CRMAutomationService,
             CRMWebhookService,
         )
@@ -71,7 +71,7 @@ class CRMEventService:
         updated_by_id: str | None = None,
     ):
         """Emit event when a record is updated."""
-        from devograph.services.crm_automation_service import (
+        from aexy.services.crm_automation_service import (
             CRMAutomationService,
             CRMWebhookService,
         )
@@ -143,7 +143,7 @@ class CRMEventService:
         deleted_by_id: str | None = None,
     ):
         """Emit event when a record is deleted."""
-        from devograph.services.crm_automation_service import (
+        from aexy.services.crm_automation_service import (
             CRMAutomationService,
             CRMWebhookService,
         )
@@ -195,7 +195,7 @@ class CRMEventService:
         changed_by_id: str | None = None,
     ):
         """Emit event when a record's stage changes (e.g., deal pipeline)."""
-        from devograph.services.crm_automation_service import (
+        from aexy.services.crm_automation_service import (
             CRMAutomationService,
             CRMWebhookService,
         )
@@ -247,7 +247,7 @@ class CRMEventService:
         created_by_id: str | None = None,
     ):
         """Emit event when a note is added to a record."""
-        from devograph.services.crm_automation_service import (
+        from aexy.services.crm_automation_service import (
             CRMAutomationService,
             CRMWebhookService,
         )
@@ -298,7 +298,7 @@ class CRMEventService:
         completed_by_id: str | None = None,
     ):
         """Emit event when a task is completed on a record."""
-        from devograph.services.crm_automation_service import (
+        from aexy.services.crm_automation_service import (
             CRMAutomationService,
             CRMWebhookService,
         )
@@ -350,7 +350,7 @@ class CRMEventService:
         replied_at: str,
     ):
         """Emit event when an email reply is received for a record."""
-        from devograph.services.crm_automation_service import (
+        from aexy.services.crm_automation_service import (
             CRMAutomationService,
             CRMWebhookService,
         )

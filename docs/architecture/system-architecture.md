@@ -2,7 +2,7 @@
 
 ## Overview
 
-Devograph is a multi-tier application designed for scalability, maintainability, and extensibility. The architecture follows a microservices-inspired approach while maintaining simplicity for initial deployment.
+Aexy is a multi-tier application designed for scalability, maintainability, and extensibility. The architecture follows a microservices-inspired approach while maintaining simplicity for initial deployment.
 
 ## High-Level Architecture
 

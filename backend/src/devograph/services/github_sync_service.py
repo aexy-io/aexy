@@ -13,8 +13,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.documentation import Document, DocumentGitHubSync, DocumentVersion
-from devograph.services.github_app_service import GitHubAppService
+from aexy.models.documentation import Document, DocumentGitHubSync, DocumentVersion
+from aexy.services.github_app_service import GitHubAppService
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +138,7 @@ class GitHubSyncService:
             }
 
         # Get repository info
-        from devograph.models.repository import Repository
+        from aexy.models.repository import Repository
 
         stmt = select(Repository).where(Repository.id == sync_config.repository_id)
         result = await self.db.execute(stmt)
@@ -242,7 +242,7 @@ class GitHubSyncService:
             raise ValueError("Document not found")
 
         # Get repository info
-        from devograph.models.repository import Repository
+        from aexy.models.repository import Repository
 
         stmt = select(Repository).where(Repository.id == sync_config.repository_id)
         result = await self.db.execute(stmt)
@@ -289,7 +289,7 @@ class GitHubSyncService:
 
         # Create version before overwriting
         if create_version and document.content:
-            from devograph.services.document_service import DocumentService
+            from aexy.services.document_service import DocumentService
 
             doc_service = DocumentService(self.db)
             await doc_service.create_version(

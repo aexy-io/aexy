@@ -1,1 +1,1 @@
-"""Unit tests for Devograph."""
+"""Unit tests for Aexy."""

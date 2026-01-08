@@ -4,10 +4,10 @@ from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.database import get_db
-from devograph.api.developers import get_current_developer
-from devograph.models.developer import Developer
-from devograph.schemas.oncall import (
+from aexy.core.database import get_db
+from aexy.api.developers import get_current_developer
+from aexy.models.developer import Developer
+from aexy.schemas.oncall import (
     OnCallConfigCreate,
     OnCallConfigUpdate,
     OnCallConfigResponse,
@@ -23,15 +23,15 @@ from devograph.schemas.oncall import (
     OverrideCreate,
     DeveloperBrief,
 )
-from devograph.services.oncall_service import (
+from aexy.services.oncall_service import (
     OnCallService,
     OnCallServiceError,
     OnCallNotEnabledError,
     ScheduleConflictError,
     SwapNotAllowedError,
 )
-from devograph.services.workspace_service import WorkspaceService
-from devograph.services.google_calendar_service import GoogleCalendarService
+from aexy.services.workspace_service import WorkspaceService
+from aexy.services.google_calendar_service import GoogleCalendarService
 
 router = APIRouter(
     prefix="/workspaces/{workspace_id}/teams/{team_id}/oncall",

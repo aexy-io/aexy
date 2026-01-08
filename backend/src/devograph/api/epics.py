@@ -3,10 +3,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.database import get_db
-from devograph.api.developers import get_current_developer
-from devograph.models.developer import Developer
-from devograph.schemas.epic import (
+from aexy.core.database import get_db
+from aexy.api.developers import get_current_developer
+from aexy.models.developer import Developer
+from aexy.schemas.epic import (
     EpicCreate,
     EpicUpdate,
     EpicResponse,
@@ -18,8 +18,8 @@ from devograph.schemas.epic import (
     EpicProgressResponse,
     EpicBurndownResponse,
 )
-from devograph.services.epic_service import EpicService
-from devograph.services.workspace_service import WorkspaceService
+from aexy.services.epic_service import EpicService
+from aexy.services.workspace_service import WorkspaceService
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/epics", tags=["Epics"])
 

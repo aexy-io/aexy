@@ -18,4 +18,4 @@ RUN pip install --no-cache-dir -e .
 ENV PYTHONPATH=/app/src
 
 # Default command (can be overridden)
-CMD ["uvicorn", "devograph.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "aexy.main:app", "--host", "0.0.0.0", "--port", "8000"]

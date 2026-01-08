@@ -7,8 +7,8 @@ from typing import Any
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.models.activity import Commit, PullRequest, CodeReview
-from devograph.models.developer import Developer
+from aexy.models.activity import Commit, PullRequest, CodeReview
+from aexy.models.developer import Developer
 
 
 class TeamService:

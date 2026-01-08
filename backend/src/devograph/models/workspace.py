@@ -8,15 +8,15 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, Uni
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from devograph.core.database import Base
+from aexy.core.database import Base
 
 if TYPE_CHECKING:
-    from devograph.models.developer import Developer
-    from devograph.models.google_integration import GoogleIntegration
-    from devograph.models.plan import Plan
-    from devograph.models.repository import Organization
-    from devograph.models.review import ReviewCycle, WorkGoal
-    from devograph.models.team import Team
+    from aexy.models.developer import Developer
+    from aexy.models.google_integration import GoogleIntegration
+    from aexy.models.plan import Plan
+    from aexy.models.repository import Organization
+    from aexy.models.review import ReviewCycle, WorkGoal
+    from aexy.models.team import Team
 
 
 class Workspace(Base):

@@ -1,6 +1,6 @@
-# Devograph Documentation
+# Aexy Documentation
 
-**Devograph** is a GitHub-based developer profiling and analytics platform that uses AI to provide insights into developer skills, team dynamics, and organizational health.
+**Aexy** is a GitHub-based developer profiling and analytics platform that uses AI to provide insights into developer skills, team dynamics, and organizational health.
 
 ## Documentation Index
 

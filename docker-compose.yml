@@ -1,11 +1,11 @@
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: devograph-postgres
+    container_name: aexy-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: devograph
+      POSTGRES_DB: aexy
     ports:
       - "5432:5432"
     volumes:
@@ -18,7 +18,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: devograph-redis
+    container_name: aexy-redis
     ports:
       - "6379:6379"
     volumes:
@@ -33,13 +33,13 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: devograph-backend
+    container_name: aexy-backend
     ports:
       - "8000:8000"
     env_file:
       - ./backend/.env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/devograph
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/aexy
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - LLM_PROVIDER=gemini
@@ -53,15 +53,15 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
-    command: uvicorn devograph.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn aexy.main:app --host 0.0.0.0 --port 8000 --reload
 
   celery-worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: devograph-celery-worker
+    container_name: aexy-celery-worker
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/devograph
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/aexy
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - LLM_PROVIDER=gemini
@@ -75,15 +75,15 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
-    command: celery -A devograph.processing.celery_app worker --loglevel=info -E -Q celery,analysis,sync,batch
+    command: celery -A aexy.processing.celery_app worker --loglevel=info -E -Q celery,analysis,sync,batch
 
   celery-beat:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: devograph-celery-beat
+    container_name: aexy-celery-beat
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/devograph
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/aexy
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - LLM_PROVIDER=gemini
@@ -99,13 +99,13 @@ services:
         condition: service_started
     volumes:
       - ./backend:/app
-    command: celery -A devograph.processing.celery_app beat --loglevel=info
+    command: celery -A aexy.processing.celery_app beat --loglevel=info
 
   flower:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: devograph-flower
+    container_name: aexy-flower
     ports:
       - "5555:5555"
     environment:
@@ -121,7 +121,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: devograph-frontend
+    container_name: aexy-frontend
     ports:
       - "3000:3000"
     env_file:

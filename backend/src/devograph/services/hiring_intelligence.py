@@ -10,18 +10,18 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.llm.base import AnalysisType
-from devograph.llm.gateway import LLMGateway
-from devograph.llm.prompts import (
+from aexy.llm.base import AnalysisType
+from aexy.llm.gateway import LLMGateway
+from aexy.llm.prompts import (
     INTERVIEW_RUBRIC_PROMPT,
     INTERVIEW_RUBRIC_SYSTEM_PROMPT,
     JOB_DESCRIPTION_PROMPT,
     JOB_DESCRIPTION_SYSTEM_PROMPT,
     ROADMAP_SKILL_EXTRACTION_PROMPT,
 )
-from devograph.models.career import HiringRequirement
-from devograph.models.developer import Developer
-from devograph.services.peer_benchmarking import PeerBenchmarkingService
+from aexy.models.career import HiringRequirement
+from aexy.models.developer import Developer
+from aexy.services.peer_benchmarking import PeerBenchmarkingService
 
 logger = logging.getLogger(__name__)
 
@@ -331,7 +331,7 @@ class HiringIntelligenceService:
         )
 
         try:
-            from devograph.llm.base import AnalysisRequest
+            from aexy.llm.base import AnalysisRequest
 
             request = AnalysisRequest(
                 content=prompt,
@@ -442,7 +442,7 @@ class HiringIntelligenceService:
         )
 
         try:
-            from devograph.llm.base import AnalysisRequest
+            from aexy.llm.base import AnalysisRequest
 
             request = AnalysisRequest(
                 content=prompt,
@@ -625,7 +625,7 @@ We are seeking a talented {level} {role_title} to join our engineering team. In 
         )
 
         try:
-            from devograph.llm.base import AnalysisRequest
+            from aexy.llm.base import AnalysisRequest
 
             request = AnalysisRequest(
                 content=prompt,

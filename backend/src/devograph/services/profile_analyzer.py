@@ -5,7 +5,7 @@ import re
 from collections import Counter
 from typing import Any
 
-from devograph.schemas.developer import (
+from aexy.schemas.developer import (
     DomainExpertise,
     FrameworkSkill,
     GrowthTrajectory,
@@ -439,7 +439,7 @@ class LLMEnhancedProfileAnalyzer(ProfileAnalyzer):
 
         # Enhance with LLM analysis
         try:
-            from devograph.services.code_analyzer import CodeAnalyzer
+            from aexy.services.code_analyzer import CodeAnalyzer
 
             code_analyzer = CodeAnalyzer(llm_gateway=self._llm)
 
@@ -603,7 +603,7 @@ class LLMEnhancedProfileAnalyzer(ProfileAnalyzer):
             }
 
         try:
-            from devograph.services.soft_skills_analyzer import SoftSkillsAnalyzer
+            from aexy.services.soft_skills_analyzer import SoftSkillsAnalyzer
 
             analyzer = SoftSkillsAnalyzer(llm_gateway=self._llm)
 

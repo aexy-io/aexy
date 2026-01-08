@@ -9,7 +9,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from devograph_cli.api import DevographClient
+from aexy_cli.api import AexyClient
 
 console = Console()
 
@@ -28,7 +28,7 @@ def list_reports():
 
 async def _list_reports():
     """Async implementation of list reports."""
-    client = DevographClient()
+    client = AexyClient()
 
     with console.status("[bold green]Fetching reports..."):
         reports = await client.list_reports()
@@ -76,7 +76,7 @@ def generate_report(report_type: str, format: str, output: str | None, wait: boo
 
 async def _generate_report(report_type: str, format: str, output: str | None, wait: bool):
     """Async implementation of generate report."""
-    client = DevographClient()
+    client = AexyClient()
 
     console.print(Panel(
         f"[bold]Generating {report_type.title()} Report[/bold]\n"
@@ -101,10 +101,10 @@ async def _generate_report(report_type: str, format: str, output: str | None, wa
     if wait:
         await _wait_for_export(client, job_id, output)
     else:
-        console.print(f"[dim]Use 'devograph report status {job_id}' to check progress[/dim]")
+        console.print(f"[dim]Use 'aexy report status {job_id}' to check progress[/dim]")
 
 
-async def _wait_for_export(client: DevographClient, job_id: str, output: str | None):
+async def _wait_for_export(client: AexyClient, job_id: str, output: str | None):
     """Wait for export job to complete."""
     with Progress(
         SpinnerColumn(),
@@ -134,7 +134,7 @@ async def _wait_for_export(client: DevographClient, job_id: str, output: str | N
                     console.print(f"[green]File ready:[/green] {file_path}")
 
                     if output:
-                        console.print(f"[dim]Download using: devograph report download {job_id} -o {output}[/dim]")
+                        console.print(f"[dim]Download using: aexy report download {job_id} -o {output}[/dim]")
 
                 return
 
@@ -160,7 +160,7 @@ def report_status(job_id: str):
 
 async def _report_status(job_id: str):
     """Async implementation of report status."""
-    client = DevographClient()
+    client = AexyClient()
 
     with console.status("[bold green]Fetching job status..."):
         status = await client.get_export_status(job_id)
@@ -219,7 +219,7 @@ def export_data(data_type: str, format: str, output: str):
 
 async def _export_data(data_type: str, format: str, output: str):
     """Async implementation of export data."""
-    client = DevographClient()
+    client = AexyClient()
 
     console.print(f"[bold]Exporting {data_type} as {format.upper()}...[/bold]")
 

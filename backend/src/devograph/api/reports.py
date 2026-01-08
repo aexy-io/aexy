@@ -5,9 +5,9 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.api.developers import get_current_developer_id
-from devograph.core.database import get_db
-from devograph.schemas.analytics import (
+from aexy.api.developers import get_current_developer_id
+from aexy.core.database import get_db
+from aexy.schemas.analytics import (
     CustomReportCreate,
     CustomReportUpdate,
     CustomReportResponse,
@@ -17,7 +17,7 @@ from devograph.schemas.analytics import (
     ScheduledReportResponse,
     DateRange,
 )
-from devograph.services.report_builder import ReportBuilderService
+from aexy.services.report_builder import ReportBuilderService
 
 router = APIRouter(prefix="/reports")
 

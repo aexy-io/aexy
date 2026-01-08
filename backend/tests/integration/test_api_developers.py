@@ -5,9 +5,9 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from jose import jwt
 
-from devograph.core.config import get_settings
-from devograph.schemas.developer import DeveloperCreate
-from devograph.services.developer_service import DeveloperService
+from aexy.core.config import get_settings
+from aexy.schemas.developer import DeveloperCreate
+from aexy.services.developer_service import DeveloperService
 
 settings = get_settings()
 

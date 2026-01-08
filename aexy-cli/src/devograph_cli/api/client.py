@@ -1,4 +1,4 @@
-"""API client for communicating with Devograph backend."""
+"""API client for communicating with Aexy backend."""
 
 import os
 from typing import Any
@@ -6,12 +6,12 @@ from typing import Any
 import httpx
 import keyring
 
-SERVICE_NAME = "devograph-cli"
+SERVICE_NAME = "aexy-cli"
 DEFAULT_BASE_URL = "http://localhost:8000/api"
 
 
-class DevographClient:
-    """HTTP client for Devograph API."""
+class AexyClient:
+    """HTTP client for Aexy API."""
 
     def __init__(self, base_url: str | None = None, token: str | None = None):
         self.base_url = base_url or os.environ.get("DEVOGRAPH_API_URL", DEFAULT_BASE_URL)

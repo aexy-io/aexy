@@ -4,8 +4,8 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from devograph.models.developer import Developer
-from devograph.services.profile_analyzer import SkillFingerprint
+from aexy.models.developer import Developer
+from aexy.services.profile_analyzer import SkillFingerprint
 
 logger = logging.getLogger(__name__)
 

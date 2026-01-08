@@ -3,16 +3,16 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.database import get_db
-from devograph.schemas.ticketing import (
+from aexy.core.database import get_db
+from aexy.schemas.ticketing import (
     PublicFormResponse,
     PublicTicketSubmission,
     PublicSubmissionResponse,
     EmailVerificationRequest,
     TicketFormFieldResponse,
 )
-from devograph.services.ticket_form_service import TicketFormService
-from devograph.services.ticket_service import TicketService
+from aexy.services.ticket_form_service import TicketFormService
+from aexy.services.ticket_service import TicketService
 
 
 router = APIRouter(

@@ -7,7 +7,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from devograph_cli.api import DevographClient
+from aexy_cli.api import AexyClient
 
 console = Console()
 
@@ -28,7 +28,7 @@ def show_profile(username: str, full: bool):
 
 async def _show_profile(username: str, full: bool):
     """Async implementation of show profile."""
-    client = DevographClient()
+    client = AexyClient()
 
     with console.status(f"[bold green]Fetching profile for @{username}..."):
         developer = await client.get_developer_by_username(username)
@@ -112,7 +112,7 @@ def list_profiles(limit: int):
 
 async def _list_profiles(limit: int):
     """Async implementation of list profiles."""
-    client = DevographClient()
+    client = AexyClient()
 
     with console.status("[bold green]Fetching developers..."):
         developers = await client.list_developers()
@@ -150,7 +150,7 @@ def export_profile(username: str, format: str, output: str | None):
 
 async def _export_profile(username: str, format: str, output: str | None):
     """Async implementation of export profile."""
-    client = DevographClient()
+    client = AexyClient()
 
     with console.status(f"[bold green]Fetching profile for @{username}..."):
         developer = await client.get_developer_by_username(username)

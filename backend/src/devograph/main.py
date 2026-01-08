@@ -5,9 +5,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from devograph.api import api_router
-from devograph.core.config import get_settings
-from devograph.core.database import engine, Base
+from aexy.api import api_router
+from aexy.core.config import get_settings
+from aexy.core.database import engine, Base
 
 settings = get_settings()
 
@@ -16,7 +16,7 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     """Application lifespan - create tables on startup."""
     # Import models to register them with Base
-    from devograph import models  # noqa: F401
+    from aexy import models  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -59,4 +59,4 @@ app = create_app()
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("devograph.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("aexy.main:app", host="0.0.0.0", port=8000, reload=True)

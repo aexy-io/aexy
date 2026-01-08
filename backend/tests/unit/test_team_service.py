@@ -4,9 +4,9 @@ from datetime import datetime, timezone
 
 import pytest
 
-from devograph.models.developer import Developer
-from devograph.models.activity import Commit, PullRequest
-from devograph.services.team_service import TeamService
+from aexy.models.developer import Developer
+from aexy.models.activity import Commit, PullRequest
+from aexy.services.team_service import TeamService
 
 
 class TestTeamAggregation:

@@ -16,8 +16,8 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.config import get_settings
-from devograph.models.oncall import GoogleCalendarToken, OnCallSchedule, OnCallConfig
+from aexy.core.config import get_settings
+from aexy.models.oncall import GoogleCalendarToken, OnCallSchedule, OnCallConfig
 
 logger = logging.getLogger(__name__)
 

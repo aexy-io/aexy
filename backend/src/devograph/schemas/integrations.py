@@ -182,7 +182,7 @@ class SlackEventChallenge(BaseModel):
 
 # User mapping schemas
 class SlackUserMapping(BaseModel):
-    """Mapping between Slack user and Devograph developer."""
+    """Mapping between Slack user and Aexy developer."""
 
     slack_user_id: str
     developer_id: str
@@ -312,7 +312,7 @@ class JiraIntegrationUpdate(BaseModel):
 
     project_mappings: dict[str, ProjectMapping] | None = Field(
         default=None,
-        description="Mapping of gitraki team_id to Jira project"
+        description="Mapping of aexy team_id to Jira project"
     )
     status_mappings: list[StatusMapping] | None = Field(
         default=None,
@@ -366,7 +366,7 @@ class LinearIntegrationUpdate(BaseModel):
 
     team_mappings: dict[str, LinearTeamMapping] | None = Field(
         default=None,
-        description="Mapping of gitraki team_id to Linear team"
+        description="Mapping of aexy team_id to Linear team"
     )
     status_mappings: list[StatusMapping] | None = Field(
         default=None,

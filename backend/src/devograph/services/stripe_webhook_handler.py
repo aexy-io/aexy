@@ -8,15 +8,15 @@ import stripe
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.config import settings
-from devograph.models.billing import (
+from aexy.core.config import settings
+from aexy.models.billing import (
     CustomerBilling,
     Invoice,
     Subscription,
     SubscriptionStatus,
 )
-from devograph.models.developer import Developer
-from devograph.models.plan import Plan
+from aexy.models.developer import Developer
+from aexy.models.plan import Plan
 
 logger = logging.getLogger(__name__)
 

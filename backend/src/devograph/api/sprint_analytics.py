@@ -3,18 +3,18 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.database import get_db
-from devograph.api.developers import get_current_developer
-from devograph.models.developer import Developer
-from devograph.schemas.sprint import (
+from aexy.core.database import get_db
+from aexy.api.developers import get_current_developer
+from aexy.models.developer import Developer
+from aexy.schemas.sprint import (
     BurndownDataResponse,
     VelocityTrendResponse,
     VelocityDataPoint,
     SprintMetricsResponse,
 )
-from devograph.services.sprint_service import SprintService
-from devograph.services.sprint_analytics_service import SprintAnalyticsService
-from devograph.services.workspace_service import WorkspaceService
+from aexy.services.sprint_service import SprintService
+from aexy.services.sprint_analytics_service import SprintAnalyticsService
+from aexy.services.workspace_service import WorkspaceService
 
 router = APIRouter(tags=["Sprint Analytics"])
 
@@ -104,7 +104,7 @@ async def get_team_velocity(
 ):
     """Get velocity trend for a team."""
     # Get team to verify workspace access
-    from devograph.models.team import Team
+    from aexy.models.team import Team
     from sqlalchemy import select
 
     stmt = select(Team).where(Team.id == team_id)
@@ -153,7 +153,7 @@ async def predict_team_velocity(
     db: AsyncSession = Depends(get_db),
 ):
     """Predict next sprint velocity for a team."""
-    from devograph.models.team import Team
+    from aexy.models.team import Team
     from sqlalchemy import select
 
     stmt = select(Team).where(Team.id == team_id)
@@ -186,7 +186,7 @@ async def get_carry_over_analysis(
     db: AsyncSession = Depends(get_db),
 ):
     """Get carry-over analysis for a team."""
-    from devograph.models.team import Team
+    from aexy.models.team import Team
     from sqlalchemy import select
 
     stmt = select(Team).where(Team.id == team_id)
@@ -219,7 +219,7 @@ async def get_chronic_carry_over(
     db: AsyncSession = Depends(get_db),
 ):
     """Identify tasks that frequently get carried over."""
-    from devograph.models.team import Team
+    from aexy.models.team import Team
     from sqlalchemy import select
 
     stmt = select(Team).where(Team.id == team_id)
@@ -252,7 +252,7 @@ async def get_team_health(
     db: AsyncSession = Depends(get_db),
 ):
     """Get team health metrics."""
-    from devograph.models.team import Team
+    from aexy.models.team import Team
     from sqlalchemy import select
 
     stmt = select(Team).where(Team.id == team_id)

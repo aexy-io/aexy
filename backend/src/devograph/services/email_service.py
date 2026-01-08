@@ -9,9 +9,9 @@ from botocore.exceptions import ClientError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.config import settings
-from devograph.models.notification import EmailNotificationLog, Notification
-from devograph.schemas.notification import NOTIFICATION_TEMPLATES, NotificationEventType
+from aexy.core.config import settings
+from aexy.models.notification import EmailNotificationLog, Notification
+from aexy.schemas.notification import NOTIFICATION_TEMPLATES, NotificationEventType
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +72,7 @@ class EmailService:
         template = NOTIFICATION_TEMPLATES.get(event_type, {})
 
         # Get subject
-        subject_template = template.get("email_subject", "Gitraki Notification")
+        subject_template = template.get("email_subject", "Aexy Notification")
         subject = self._render_template(subject_template, context)
 
         # Get body
@@ -126,7 +126,7 @@ class EmailService:
                         border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                 <!-- Header -->
                 <div style="background-color: #0f172a; padding: 20px; text-align: center;">
-                    <h1 style="color: white; margin: 0; font-size: 24px;">Gitraki</h1>
+                    <h1 style="color: white; margin: 0; font-size: 24px;">Aexy</h1>
                 </div>
 
                 <!-- Content -->
@@ -140,7 +140,7 @@ class EmailService:
                 <div style="background-color: #f9fafb; padding: 20px; text-align: center;
                             border-top: 1px solid #e5e7eb;">
                     <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-                        You're receiving this email because you have notifications enabled in Gitraki.
+                        You're receiving this email because you have notifications enabled in Aexy.
                         <br>
                         <a href="{settings.frontend_url}/settings/notifications"
                            style="color: #0891b2;">Manage notification preferences</a>

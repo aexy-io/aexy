@@ -2,7 +2,7 @@
 
 import pytest
 
-from devograph.llm.base import (
+from aexy.llm.base import (
     AnalysisRequest,
     AnalysisResult,
     AnalysisType,

@@ -3,10 +3,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.database import get_db
-from devograph.api.developers import get_current_developer
-from devograph.models.developer import Developer
-from devograph.schemas.team import (
+from aexy.core.database import get_db
+from aexy.api.developers import get_current_developer
+from aexy.models.developer import Developer
+from aexy.schemas.team import (
     TeamCreate,
     TeamUpdate,
     TeamResponse,
@@ -20,9 +20,9 @@ from devograph.schemas.team import (
     TeamBusFactorResponse,
     TeamSkillCoverageResponse,
 )
-from devograph.services.workspace_service import WorkspaceService
-from devograph.services.team_management_service import TeamManagementService
-from devograph.services.team_service import TeamService
+from aexy.services.workspace_service import WorkspaceService
+from aexy.services.team_management_service import TeamManagementService
+from aexy.services.team_service import TeamService
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/teams", tags=["Teams"])
 

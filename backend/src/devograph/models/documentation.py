@@ -20,12 +20,12 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from devograph.core.database import Base
+from aexy.core.database import Base
 
 if TYPE_CHECKING:
-    from devograph.models.developer import Developer
-    from devograph.models.repository import Repository
-    from devograph.models.workspace import Workspace
+    from aexy.models.developer import Developer
+    from aexy.models.repository import Repository
+    from aexy.models.workspace import Workspace
 
 
 class DocumentStatus(str, Enum):

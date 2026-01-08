@@ -3,9 +3,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.api.developers import get_current_developer_id
-from devograph.core.database import get_db
-from devograph.schemas.repository import (
+from aexy.api.developers import get_current_developer_id
+from aexy.core.database import get_db
+from aexy.schemas.repository import (
     EnableRepositoryResponse,
     InstallationResponse,
     InstallationStatusResponse,
@@ -17,9 +17,9 @@ from devograph.schemas.repository import (
     SyncStartResponse,
     WebhookRegisterResponse,
 )
-from devograph.services.github_app_service import GitHubAppService, GitHubAppError
-from devograph.services.repository_service import RepositoryService
-from devograph.services.sync_service import SyncService
+from aexy.services.github_app_service import GitHubAppService, GitHubAppError
+from aexy.services.repository_service import RepositoryService
+from aexy.services.sync_service import SyncService
 
 router = APIRouter(prefix="/repositories")
 
@@ -256,7 +256,7 @@ async def enable_repository(
 ) -> EnableRepositoryResponse:
     """Enable a repository for syncing."""
     # Check plan limits before enabling
-    from devograph.services.limits_service import LimitsService
+    from aexy.services.limits_service import LimitsService
     limits_service = LimitsService(db)
     can_enable, error = await limits_service.can_sync_repo(developer_id)
     if not can_enable:
@@ -390,7 +390,7 @@ async def get_usage_summary(
 
     Returns repository limits, LLM usage, and enabled features.
     """
-    from devograph.services.limits_service import LimitsService
+    from aexy.services.limits_service import LimitsService
     limits_service = LimitsService(db)
     try:
         return await limits_service.get_usage_summary(developer_id)

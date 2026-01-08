@@ -9,17 +9,17 @@ These tasks handle:
 import logging
 from datetime import datetime, timezone
 
-from devograph.processing.celery_app import celery_app
-from devograph.core.database import async_session_maker
-from devograph.services.oncall_service import OnCallService
-from devograph.services.notification_service import NotificationService
-from devograph.services.google_calendar_service import GoogleCalendarService
-from devograph.models.notification import NotificationEventType
+from aexy.processing.celery_app import celery_app
+from aexy.core.database import async_session_maker
+from aexy.services.oncall_service import OnCallService
+from aexy.services.notification_service import NotificationService
+from aexy.services.google_calendar_service import GoogleCalendarService
+from aexy.models.notification import NotificationEventType
 
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(name="devograph.processing.oncall_tasks.check_upcoming_shifts")
+@celery_app.task(name="aexy.processing.oncall_tasks.check_upcoming_shifts")
 def check_upcoming_shifts():
     """Check for shifts starting soon and send notifications.
 
@@ -28,7 +28,7 @@ def check_upcoming_shifts():
     2. Sends ONCALL_SHIFT_STARTING notifications to the developer
     3. Marks the shift as notified to prevent duplicate notifications
     """
-    from devograph.processing.tasks import run_async
+    from aexy.processing.tasks import run_async
     run_async(_check_upcoming_shifts_async())
 
 
@@ -80,14 +80,14 @@ async def _check_upcoming_shifts_async():
             raise
 
 
-@celery_app.task(name="devograph.processing.oncall_tasks.check_ending_shifts")
+@celery_app.task(name="aexy.processing.oncall_tasks.check_ending_shifts")
 def check_ending_shifts():
     """Check for shifts ending soon and send notifications.
 
     This task runs every 5 minutes and sends ONCALL_SHIFT_ENDING
     notifications 30 minutes before a shift ends.
     """
-    from devograph.processing.tasks import run_async
+    from aexy.processing.tasks import run_async
     run_async(_check_ending_shifts_async())
 
 
@@ -149,14 +149,14 @@ async def _check_ending_shifts_async():
             raise
 
 
-@celery_app.task(name="devograph.processing.oncall_tasks.sync_calendar_events")
+@celery_app.task(name="aexy.processing.oncall_tasks.sync_calendar_events")
 def sync_calendar_events(config_id: str):
     """Sync all on-call schedules for a config to Google Calendar.
 
     Args:
         config_id: The on-call config ID to sync.
     """
-    from devograph.processing.tasks import run_async
+    from aexy.processing.tasks import run_async
     run_async(_sync_calendar_events_async(config_id))
 
 
@@ -174,7 +174,7 @@ async def _sync_calendar_events_async(config_id: str):
             raise
 
 
-@celery_app.task(name="devograph.processing.oncall_tasks.send_swap_notification")
+@celery_app.task(name="aexy.processing.oncall_tasks.send_swap_notification")
 def send_swap_notification(swap_id: str, notification_type: str):
     """Send notification for a swap request event.
 
@@ -182,14 +182,14 @@ def send_swap_notification(swap_id: str, notification_type: str):
         swap_id: The swap request ID.
         notification_type: One of 'requested', 'accepted', 'declined'.
     """
-    from devograph.processing.tasks import run_async
+    from aexy.processing.tasks import run_async
     run_async(_send_swap_notification_async(swap_id, notification_type))
 
 
 async def _send_swap_notification_async(swap_id: str, notification_type: str):
     """Async implementation of swap notification."""
     from sqlalchemy import select
-    from devograph.models.oncall import OnCallSwapRequest
+    from aexy.models.oncall import OnCallSwapRequest
 
     async with async_session_maker() as db:
         try:

@@ -8,8 +8,8 @@ import httpx
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.models.integrations import SlackIntegration
-from devograph.models.tracking import (
+from aexy.models.integrations import SlackIntegration
+from aexy.models.tracking import (
     DeveloperStandup,
     WorkLog,
     Blocker,
@@ -19,7 +19,7 @@ from devograph.models.tracking import (
     BlockerSeverity,
     BlockerCategory,
 )
-from devograph.services.slack_message_parser import SlackMessageParser, ParsedMessage
+from aexy.services.slack_message_parser import SlackMessageParser, ParsedMessage
 
 logger = logging.getLogger(__name__)
 
@@ -516,7 +516,7 @@ class SlackHistorySyncService:
         db: AsyncSession,
     ) -> dict:
         """Auto-map Slack users to developers based on email."""
-        from devograph.models.developer import Developer
+        from aexy.models.developer import Developer
 
         # Get all Slack workspace users
         members = []

@@ -6,9 +6,9 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.database import get_db
-from devograph.models.notification import NotificationEventType
-from devograph.schemas.notification import (
+from aexy.core.database import get_db
+from aexy.models.notification import NotificationEventType
+from aexy.schemas.notification import (
     BulkPreferenceUpdate,
     MarkReadRequest,
     NotificationListResponse,
@@ -19,7 +19,7 @@ from devograph.schemas.notification import (
     PollResponse,
     UnreadCountResponse,
 )
-from devograph.services.notification_service import NotificationService
+from aexy.services.notification_service import NotificationService
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 

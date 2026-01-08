@@ -152,7 +152,7 @@ export default function HiringLayout({
                       </svg>
                     </div>
                   </div>
-                  <span className="text-lg font-bold text-white hidden sm:block">Devograph</span>
+                  <span className="text-lg font-bold text-white hidden sm:block">Aexy</span>
                 </Link>
 
                 {/* Center Navigation */}

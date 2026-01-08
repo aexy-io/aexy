@@ -6,8 +6,8 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.llm.gateway import get_llm_gateway
-from devograph.llm.prompts import (
+from aexy.llm.gateway import get_llm_gateway
+from aexy.llm.prompts import (
     TOPIC_SUGGESTION_SYSTEM_PROMPT,
     TOPIC_SUGGESTION_PROMPT,
     CODE_QUESTION_SYSTEM_PROMPT,
@@ -17,8 +17,8 @@ from devograph.llm.prompts import (
     SUBJECTIVE_QUESTION_SYSTEM_PROMPT,
     SUBJECTIVE_QUESTION_PROMPT,
 )
-from devograph.models.assessment import Question, DifficultyLevel, QuestionType
-from devograph.schemas.assessment import TopicSuggestionResponse
+from aexy.models.assessment import Question, DifficultyLevel, QuestionType
+from aexy.schemas.assessment import TopicSuggestionResponse
 
 logger = logging.getLogger(__name__)
 

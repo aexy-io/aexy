@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import httpx
 
-from devograph.services.github_service import (
+from aexy.services.github_service import (
     GitHubAPIError,
     GitHubAuthError,
     GitHubService,
@@ -18,7 +18,7 @@ class TestOAuthURL:
 
     def test_get_oauth_url_includes_client_id(self):
         """Should include client_id in OAuth URL."""
-        with patch("devograph.services.github_service.get_settings") as mock_settings:
+        with patch("aexy.services.github_service.get_settings") as mock_settings:
             mock_settings.return_value.github_client_id = "test_client_id"
             mock_settings.return_value.github_redirect_uri = "http://localhost/callback"
             mock_settings.return_value.github_oauth_url = "https://github.com/login/oauth"
@@ -30,7 +30,7 @@ class TestOAuthURL:
 
     def test_get_oauth_url_includes_state(self):
         """Should include state parameter in OAuth URL."""
-        with patch("devograph.services.github_service.get_settings") as mock_settings:
+        with patch("aexy.services.github_service.get_settings") as mock_settings:
             mock_settings.return_value.github_client_id = "test_client_id"
             mock_settings.return_value.github_redirect_uri = "http://localhost/callback"
             mock_settings.return_value.github_oauth_url = "https://github.com/login/oauth"
@@ -42,7 +42,7 @@ class TestOAuthURL:
 
     def test_get_oauth_url_includes_scopes(self):
         """Should include required scopes in OAuth URL."""
-        with patch("devograph.services.github_service.get_settings") as mock_settings:
+        with patch("aexy.services.github_service.get_settings") as mock_settings:
             mock_settings.return_value.github_client_id = "test_client_id"
             mock_settings.return_value.github_redirect_uri = "http://localhost/callback"
             mock_settings.return_value.github_oauth_url = "https://github.com/login/oauth"
@@ -62,7 +62,7 @@ class TestCodeExchange:
     @pytest.mark.asyncio
     async def test_exchange_code_success(self):
         """Should exchange code for access token."""
-        with patch("devograph.services.github_service.get_settings") as mock_settings:
+        with patch("aexy.services.github_service.get_settings") as mock_settings:
             mock_settings.return_value.github_client_id = "client_id"
             mock_settings.return_value.github_client_secret = "client_secret"
             mock_settings.return_value.github_redirect_uri = "http://localhost/callback"
@@ -92,7 +92,7 @@ class TestCodeExchange:
     @pytest.mark.asyncio
     async def test_exchange_code_error(self):
         """Should raise error on OAuth failure."""
-        with patch("devograph.services.github_service.get_settings") as mock_settings:
+        with patch("aexy.services.github_service.get_settings") as mock_settings:
             mock_settings.return_value.github_client_id = "client_id"
             mock_settings.return_value.github_client_secret = "client_secret"
             mock_settings.return_value.github_redirect_uri = "http://localhost/callback"
@@ -123,7 +123,7 @@ class TestGetUserInfo:
     @pytest.mark.asyncio
     async def test_get_user_info_success(self):
         """Should return user info from GitHub."""
-        with patch("devograph.services.github_service.get_settings") as mock_settings:
+        with patch("aexy.services.github_service.get_settings") as mock_settings:
             mock_settings.return_value.github_api_base_url = "https://api.github.com"
 
             mock_response = MagicMock()
@@ -166,7 +166,7 @@ class TestGetUserEmails:
     @pytest.mark.asyncio
     async def test_get_user_emails_success(self):
         """Should return user emails from GitHub."""
-        with patch("devograph.services.github_service.get_settings") as mock_settings:
+        with patch("aexy.services.github_service.get_settings") as mock_settings:
             mock_settings.return_value.github_api_base_url = "https://api.github.com"
 
             mock_response = MagicMock()

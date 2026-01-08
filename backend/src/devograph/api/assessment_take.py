@@ -8,8 +8,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.database import get_db
-from devograph.models.assessment import (
+from aexy.core.database import get_db
+from aexy.models.assessment import (
     Assessment,
     AssessmentInvitation,
     AssessmentAttempt,
@@ -20,8 +20,8 @@ from devograph.models.assessment import (
     AttemptStatus,
     QuestionType,
 )
-from devograph.services.assessment_evaluation_service import AssessmentEvaluationService
-from devograph.services.proctoring_service import ProctoringService
+from aexy.services.assessment_evaluation_service import AssessmentEvaluationService
+from aexy.services.proctoring_service import ProctoringService
 
 router = APIRouter(prefix="/take", tags=["assessment-take"])
 

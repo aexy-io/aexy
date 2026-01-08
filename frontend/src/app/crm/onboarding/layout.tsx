@@ -17,7 +17,7 @@ export default function CRMOnboardingLayout({
               <Building2 className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold text-white">Devograph CRM</h1>
+              <h1 className="text-lg font-semibold text-white">Aexy CRM</h1>
               <p className="text-xs text-slate-500">Setup your customer relationships</p>
             </div>
           </div>

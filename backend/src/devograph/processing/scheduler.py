@@ -57,7 +57,7 @@ class AnalysisScheduler:
         """Run nightly batch processing."""
         logger.info("Starting nightly batch processing")
 
-        from devograph.processing.tasks import batch_profile_sync_task
+        from aexy.processing.tasks import batch_profile_sync_task
 
         try:
             # Trigger the Celery task
@@ -77,7 +77,7 @@ class AnalysisScheduler:
         """Clean up expired cache entries."""
         logger.debug("Running cache cleanup")
 
-        from devograph.cache import get_analysis_cache
+        from aexy.cache import get_analysis_cache
 
         try:
             cache = get_analysis_cache()
@@ -99,7 +99,7 @@ class AnalysisScheduler:
         Returns:
             Task ID.
         """
-        from devograph.processing.tasks import batch_profile_sync_task
+        from aexy.processing.tasks import batch_profile_sync_task
 
         result = batch_profile_sync_task.delay()
         logger.info(f"Manual batch triggered: {result.id}")

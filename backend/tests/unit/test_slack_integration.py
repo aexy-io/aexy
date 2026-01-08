@@ -16,8 +16,8 @@ import time
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from devograph.services.slack_integration import SlackIntegrationService
-from devograph.schemas.integrations import (
+from aexy.services.slack_integration import SlackIntegrationService
+from aexy.schemas.integrations import (
     SlackMessage,
     SlackSlashCommand,
     SlackInteraction,
@@ -212,7 +212,7 @@ class TestSlackIntegrationService:
     async def test_handle_slash_command_profile(
         self, service, db_session, sample_developer, sample_slack_command
     ):
-        """Test /devograph profile command."""
+        """Test /aexy profile command."""
         sample_slack_command["text"] = f"profile @{sample_developer.github_username}"
 
         payload = SlackSlashCommand(**sample_slack_command)
@@ -227,7 +227,7 @@ class TestSlackIntegrationService:
     async def test_handle_slash_command_match(
         self, service, db_session, sample_developers, sample_slack_command
     ):
-        """Test /devograph match command."""
+        """Test /aexy match command."""
         sample_slack_command["text"] = "match Implement user authentication with OAuth"
 
         payload = SlackSlashCommand(**sample_slack_command)
@@ -241,7 +241,7 @@ class TestSlackIntegrationService:
     async def test_handle_slash_command_team(
         self, service, db_session, sample_team, sample_slack_command
     ):
-        """Test /devograph team command."""
+        """Test /aexy team command."""
         sample_slack_command["text"] = "team"
 
         payload = SlackSlashCommand(**sample_slack_command)
@@ -254,7 +254,7 @@ class TestSlackIntegrationService:
     async def test_handle_slash_command_insights(
         self, service, db_session, sample_developers, sample_slack_command
     ):
-        """Test /devograph insights command."""
+        """Test /aexy insights command."""
         sample_slack_command["text"] = "insights"
 
         payload = SlackSlashCommand(**sample_slack_command)
@@ -267,7 +267,7 @@ class TestSlackIntegrationService:
     async def test_handle_slash_command_help(
         self, service, db_session, sample_slack_command
     ):
-        """Test /devograph help command."""
+        """Test /aexy help command."""
         sample_slack_command["text"] = "help"
 
         payload = SlackSlashCommand(**sample_slack_command)
@@ -440,7 +440,7 @@ class TestSlackIntegrationService:
                 team_id="T12345",
                 channel_id="C12345",
                 report_name="Weekly Team Report",
-                report_url="https://devograph.io/reports/123",
+                report_url="https://aexy.io/reports/123",
                 db=db_session,
             )
 
@@ -604,7 +604,7 @@ class TestSlackIntegrationManagement:
     async def test_get_installation_url(self, service):
         """Test getting OAuth installation URL."""
         url = service.get_installation_url(
-            redirect_uri="https://devograph.io/slack/callback",
+            redirect_uri="https://aexy.io/slack/callback",
             state="random-state-token",
         )
 

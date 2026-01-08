@@ -22,14 +22,14 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from devograph.core.database import Base
+from aexy.core.database import Base
 
 if TYPE_CHECKING:
-    from devograph.models.developer import Developer
-    from devograph.models.integrations import SlackIntegration
-    from devograph.models.sprint import Sprint, SprintTask
-    from devograph.models.team import Team
-    from devograph.models.workspace import Workspace
+    from aexy.models.developer import Developer
+    from aexy.models.integrations import SlackIntegration
+    from aexy.models.sprint import Sprint, SprintTask
+    from aexy.models.team import Team
+    from aexy.models.workspace import Workspace
 
 
 class TrackingSource(str, Enum):

@@ -7,7 +7,7 @@ from uuid import uuid4
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.models.sprint import Sprint, SprintTask, SprintMetrics, TeamVelocity
+from aexy.models.sprint import Sprint, SprintTask, SprintMetrics, TeamVelocity
 
 
 class SprintAnalyticsService:

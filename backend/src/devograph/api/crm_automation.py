@@ -3,15 +3,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.database import get_db
-from devograph.api.developers import get_current_developer
-from devograph.models.developer import Developer
-from devograph.services.crm_automation_service import (
+from aexy.core.database import get_db
+from aexy.api.developers import get_current_developer
+from aexy.models.developer import Developer
+from aexy.services.crm_automation_service import (
     CRMAutomationService,
     CRMSequenceService,
     CRMWebhookService,
 )
-from devograph.schemas.crm import (
+from aexy.schemas.crm import (
     # Automation schemas
     CRMAutomationCreate,
     CRMAutomationUpdate,
@@ -32,7 +32,7 @@ from devograph.schemas.crm import (
     CRMWebhookResponse,
     CRMWebhookDeliveryResponse,
 )
-from devograph.services.workspace_service import WorkspaceService
+from aexy.services.workspace_service import WorkspaceService
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/crm")
 

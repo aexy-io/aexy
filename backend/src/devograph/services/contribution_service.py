@@ -9,10 +9,10 @@ from uuid import uuid4
 from sqlalchemy import select, func, and_, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.llm.gateway import LLMGateway
-from devograph.models.activity import Commit, PullRequest, CodeReview
-from devograph.models.developer import Developer
-from devograph.models.review import ContributionSummary
+from aexy.llm.gateway import LLMGateway
+from aexy.models.activity import Commit, PullRequest, CodeReview
+from aexy.models.developer import Developer
+from aexy.models.review import ContributionSummary
 
 logger = logging.getLogger(__name__)
 

@@ -8,9 +8,9 @@ from typing import Any
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.llm.gateway import get_llm_gateway
-from devograph.llm.prompts import PROCTORING_BEHAVIOR_ANALYSIS_PROMPT
-from devograph.models.assessment import (
+from aexy.llm.gateway import get_llm_gateway
+from aexy.llm.prompts import PROCTORING_BEHAVIOR_ANALYSIS_PROMPT
+from aexy.models.assessment import (
     ProctoringEvent,
     AssessmentAttempt,
     ProctoringEventSeverity,

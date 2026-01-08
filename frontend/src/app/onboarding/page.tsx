@@ -326,7 +326,7 @@ export default function OnboardingPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <GitBranch className="h-8 w-8 text-primary-500" />
-              <span className="text-2xl font-bold text-white">Devograph</span>
+              <span className="text-2xl font-bold text-white">Aexy</span>
             </div>
             <button
               onClick={logout}
@@ -377,7 +377,7 @@ export default function OnboardingPage() {
               Install the GitHub App
             </h1>
             <p className="text-slate-300 text-lg mb-8 max-w-2xl mx-auto">
-              To access your repositories, you need to install the Devograph GitHub App.
+              To access your repositories, you need to install the Aexy GitHub App.
               This allows us to securely read your commit history, pull requests, and code reviews.
             </p>
 
@@ -441,7 +441,7 @@ export default function OnboardingPage() {
         {step === 1 && (
           <div className="text-center">
             <h1 className="text-3xl font-bold text-white mb-4">
-              Welcome to Devograph!
+              Welcome to Aexy!
             </h1>
             <p className="text-slate-300 text-lg mb-8 max-w-2xl mx-auto">
               Let&apos;s set up your account step by step. We&apos;ll connect your GitHub,

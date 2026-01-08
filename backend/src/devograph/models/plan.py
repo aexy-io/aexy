@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from devograph.core.database import Base
+from aexy.core.database import Base
 
 
 class PlanTier(str, Enum):
@@ -99,7 +99,7 @@ DEFAULT_PLANS = [
     {
         "name": "Free",
         "tier": PlanTier.FREE.value,
-        "description": "Perfect for trying out Devograph",
+        "description": "Perfect for trying out Aexy",
         "max_repos": 3,
         "max_commits_per_repo": 500,
         "max_prs_per_repo": 100,
@@ -157,4 +157,4 @@ DEFAULT_PLANS = [
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from devograph.models.developer import Developer
+    from aexy.models.developer import Developer

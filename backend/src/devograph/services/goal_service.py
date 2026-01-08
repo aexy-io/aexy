@@ -9,10 +9,10 @@ from uuid import uuid4
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.models.activity import Commit, PullRequest
-from devograph.models.career import LearningMilestone, LearningPath
-from devograph.models.developer import Developer
-from devograph.models.review import WorkGoal
+from aexy.models.activity import Commit, PullRequest
+from aexy.models.career import LearningMilestone, LearningPath
+from aexy.models.developer import Developer
+from aexy.models.review import WorkGoal
 
 logger = logging.getLogger(__name__)
 

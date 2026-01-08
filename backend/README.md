@@ -1,4 +1,4 @@
-# Devograph Backend
+# Aexy Backend
 
 GitHub-Based Developer Profiling & Analytics Platform - Backend API
 
@@ -12,7 +12,7 @@ pip install -e ".[dev]"
 pytest
 
 # Start development server
-uvicorn devograph.main:app --reload
+uvicorn aexy.main:app --reload
 ```
 
 ## Architecture

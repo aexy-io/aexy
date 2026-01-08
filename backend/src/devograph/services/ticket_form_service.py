@@ -8,7 +8,7 @@ from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.ticketing import (
+from aexy.models.ticketing import (
     TicketForm,
     TicketFormField,
     Ticket,
@@ -17,7 +17,7 @@ from devograph.models.ticketing import (
     TicketFieldType,
     TicketFormTemplateType,
 )
-from devograph.schemas.ticketing import (
+from aexy.schemas.ticketing import (
     TicketFormCreate,
     TicketFormUpdate,
     TicketFormFieldCreate,

@@ -11,9 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
-from devograph.core.config import get_settings
-from devograph.core.database import get_db
-from devograph.schemas.assessment import (
+from aexy.core.config import get_settings
+from aexy.core.database import get_db
+from aexy.schemas.assessment import (
     AssessmentCreate,
     AssessmentUpdate,
     AssessmentResponse,
@@ -47,8 +47,8 @@ from devograph.schemas.assessment import (
     PrePublishCheckResponse,
     AssessmentMetrics,
 )
-from devograph.services.assessment_service import AssessmentService
-from devograph.models.assessment import Assessment
+from aexy.services.assessment_service import AssessmentService
+from aexy.models.assessment import Assessment
 from sqlalchemy import inspect
 
 router = APIRouter(prefix="/assessments")
@@ -82,7 +82,7 @@ async def get_current_developer_id(
 
 def build_assessment_response(assessment: Assessment) -> AssessmentResponse:
     """Build AssessmentResponse with computed fields."""
-    from devograph.schemas.assessment import QuestionTypeConfig, DifficultyLevel
+    from aexy.schemas.assessment import QuestionTypeConfig, DifficultyLevel
 
     # Use inspect to check if relationships are loaded (avoid lazy loading)
     insp = inspect(assessment)
@@ -432,9 +432,9 @@ async def suggest_topics(
     db: AsyncSession = Depends(get_db),
 ) -> TopicSuggestionResponse:
     """AI-powered topic suggestions based on skills."""
-    from devograph.schemas.assessment import TopicConfig, QuestionTypeConfig, DifficultyLevel
-    from devograph.llm.gateway import get_llm_gateway
-    from devograph.llm.prompts import TOPIC_SUGGESTION_SYSTEM_PROMPT, TOPIC_SUGGESTION_PROMPT
+    from aexy.schemas.assessment import TopicConfig, QuestionTypeConfig, DifficultyLevel
+    from aexy.llm.gateway import get_llm_gateway
+    from aexy.llm.prompts import TOPIC_SUGGESTION_SYSTEM_PROMPT, TOPIC_SUGGESTION_PROMPT
     import json
     import logging
 
@@ -632,11 +632,11 @@ async def generate_questions(
     Uses the LLM gateway to generate assessment questions based on the topic,
     question type, difficulty level, and optional context.
     """
-    from devograph.services.question_generation_service import (
+    from aexy.services.question_generation_service import (
         QuestionGenerationService,
         get_sample_questions,
     )
-    from devograph.models.assessment import AssessmentTopic
+    from aexy.models.assessment import AssessmentTopic
 
     # Get topic information
     topic_stmt = select(AssessmentTopic).where(AssessmentTopic.id == data.topic_id)
@@ -978,7 +978,7 @@ async def get_assessment_by_public_token(
     This endpoint is used by candidates accessing the assessment via the public link.
     Returns limited info about the assessment suitable for the taking interface.
     """
-    from devograph.models.assessment import Assessment
+    from aexy.models.assessment import Assessment
 
     # Find assessment by public token
     stmt = select(Assessment).where(Assessment.public_token == public_token)
@@ -1040,7 +1040,7 @@ async def register_for_public_assessment(
 
     Creates a candidate and invitation, returns the invitation token for taking the assessment.
     """
-    from devograph.models.assessment import Assessment
+    from aexy.models.assessment import Assessment
 
     # Find assessment by public token
     stmt = select(Assessment).where(Assessment.public_token == public_token)

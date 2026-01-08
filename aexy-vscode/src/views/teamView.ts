@@ -1,16 +1,16 @@
 import * as vscode from 'vscode';
-import { DevographClient, Developer, SkillHeatmap } from '../api/client';
+import { AexyClient, Developer, SkillHeatmap } from '../api/client';
 
 export class TeamViewProvider implements vscode.TreeDataProvider<TeamItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<TeamItem | undefined | null | void> = new vscode.EventEmitter<TeamItem | undefined | null | void>();
     readonly onDidChangeTreeData: vscode.Event<TeamItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
-    private client: DevographClient;
+    private client: AexyClient;
     private developers: Developer[] = [];
     private skillHeatmap: SkillHeatmap | null = null;
 
     constructor() {
-        this.client = new DevographClient();
+        this.client = new AexyClient();
     }
 
     refresh(): void {

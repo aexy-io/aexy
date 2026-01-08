@@ -8,15 +8,15 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.database import get_db
-from devograph.llm.base import AnalysisResult, MatchScore, TaskSignals
-from devograph.llm.gateway import get_llm_gateway
-from devograph.models.developer import Developer
-from devograph.services.code_analyzer import CodeAnalyzer
-from devograph.services.peer_benchmarking import PeerBenchmarkingService
-from devograph.services.soft_skills_analyzer import SoftSkillsAnalyzer, SoftSkillsProfile
-from devograph.services.task_matcher import TaskMatchRequest, TaskMatcher, TaskMatchResult
-from devograph.services.whatif_analyzer import WhatIfAnalyzer, WhatIfScenario
+from aexy.core.database import get_db
+from aexy.llm.base import AnalysisResult, MatchScore, TaskSignals
+from aexy.llm.gateway import get_llm_gateway
+from aexy.models.developer import Developer
+from aexy.services.code_analyzer import CodeAnalyzer
+from aexy.services.peer_benchmarking import PeerBenchmarkingService
+from aexy.services.soft_skills_analyzer import SoftSkillsAnalyzer, SoftSkillsProfile
+from aexy.services.task_matcher import TaskMatchRequest, TaskMatcher, TaskMatchResult
+from aexy.services.whatif_analyzer import WhatIfAnalyzer, WhatIfScenario
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +178,7 @@ async def refresh_developer_analysis(
     2. Analyze commits, PRs, and reviews
     3. Update the developer's skill fingerprint
     """
-    from devograph.services.profile_sync import ProfileSyncService
+    from aexy.services.profile_sync import ProfileSyncService
 
     try:
         sync_service = ProfileSyncService()
@@ -309,7 +309,7 @@ async def match_task_to_developers(
         workspace_id: Optional workspace to filter developers
         team_id: Optional team to filter developers
     """
-    from devograph.models.workspace import WorkspaceMember
+    from aexy.models.workspace import WorkspaceMember
 
     try:
         # Fetch developers based on filters
@@ -376,7 +376,7 @@ async def bulk_match_tasks(
         tasks: List of tasks to match
         workspace_id: Optional workspace to filter developers
     """
-    from devograph.models.workspace import WorkspaceMember
+    from aexy.models.workspace import WorkspaceMember
 
     try:
         # Fetch developers based on filters

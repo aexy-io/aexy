@@ -3,9 +3,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.api.developers import get_current_developer_id
-from devograph.core.database import get_db
-from devograph.schemas.analytics import (
+from aexy.api.developers import get_current_developer_id
+from aexy.core.database import get_db
+from aexy.schemas.analytics import (
     AttritionRiskAnalysis,
     BurnoutRiskAssessment,
     PerformanceTrajectory,
@@ -13,8 +13,8 @@ from devograph.schemas.analytics import (
     TeamHealthRequest,
     PredictiveInsightResponse,
 )
-from devograph.services.predictive_analytics import PredictiveAnalyticsService
-from devograph.llm.gateway import get_llm_gateway
+from aexy.services.predictive_analytics import PredictiveAnalyticsService
+from aexy.llm.gateway import get_llm_gateway
 
 router = APIRouter(prefix="/predictions")
 

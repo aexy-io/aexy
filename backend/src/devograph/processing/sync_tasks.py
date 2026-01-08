@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from celery import shared_task
 
-from devograph.processing.tasks import run_async
+from aexy.processing.tasks import run_async
 
 logger = logging.getLogger(__name__)
 
@@ -70,12 +70,12 @@ async def _sync_repository(
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
-    from devograph.core.database import async_session_maker
-    from devograph.models.developer import GitHubConnection
-    from devograph.models.repository import DeveloperRepository
-    from devograph.services.github_rate_limiter import get_rate_limiter
-    from devograph.services.github_service import GitHubService
-    from devograph.services.limits_service import LimitsService
+    from aexy.core.database import async_session_maker
+    from aexy.models.developer import GitHubConnection
+    from aexy.models.repository import DeveloperRepository
+    from aexy.services.github_rate_limiter import get_rate_limiter
+    from aexy.services.github_service import GitHubService
+    from aexy.services.limits_service import LimitsService
 
     rate_limiter = get_rate_limiter()
 
@@ -247,8 +247,8 @@ async def _sync_commits(
     """
     from sqlalchemy import select
 
-    from devograph.models.activity import Commit
-    from devograph.services.github_service import GitHubAPIError
+    from aexy.models.activity import Commit
+    from aexy.services.github_service import GitHubAPIError
 
     synced = 0
     last_commit = None
@@ -350,8 +350,8 @@ async def _sync_pull_requests(
     """
     from sqlalchemy import select
 
-    from devograph.models.activity import PullRequest
-    from devograph.services.github_service import GitHubAPIError
+    from aexy.models.activity import PullRequest
+    from aexy.services.github_service import GitHubAPIError
 
     synced = 0
     last_pr = None
@@ -450,8 +450,8 @@ async def _sync_reviews(
     """Sync code reviews with rate limiting."""
     from sqlalchemy import select
 
-    from devograph.models.activity import CodeReview
-    from devograph.services.github_service import GitHubAPIError
+    from aexy.models.activity import CodeReview
+    from aexy.services.github_service import GitHubAPIError
 
     synced = 0
     page = 1
@@ -575,11 +575,11 @@ async def _sync_commits_standalone(
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
-    from devograph.core.database import async_session_maker
-    from devograph.models.developer import GitHubConnection
-    from devograph.models.repository import DeveloperRepository
-    from devograph.services.github_rate_limiter import get_rate_limiter
-    from devograph.services.github_service import GitHubService
+    from aexy.core.database import async_session_maker
+    from aexy.models.developer import GitHubConnection
+    from aexy.models.repository import DeveloperRepository
+    from aexy.services.github_rate_limiter import get_rate_limiter
+    from aexy.services.github_service import GitHubService
 
     rate_limiter = get_rate_limiter()
 

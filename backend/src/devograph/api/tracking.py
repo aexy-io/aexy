@@ -7,12 +7,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.api.developers import get_current_developer
-from devograph.core.database import get_db
-from devograph.models.developer import Developer
-from devograph.models.sprint import Sprint, SprintTask
-from devograph.models.team import Team, TeamMember
-from devograph.models.tracking import (
+from aexy.api.developers import get_current_developer
+from aexy.core.database import get_db
+from aexy.models.developer import Developer
+from aexy.models.sprint import Sprint, SprintTask
+from aexy.models.team import Team, TeamMember
+from aexy.models.tracking import (
     Blocker,
     BlockerStatus,
     DeveloperActivityPattern,
@@ -23,7 +23,7 @@ from devograph.models.tracking import (
     TrackingSource,
     WorkLog,
 )
-from devograph.schemas.tracking import (
+from aexy.schemas.tracking import (
     BlockerCreate,
     BlockerEscalation,
     BlockerListResponse,

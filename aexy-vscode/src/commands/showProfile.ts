@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { DevographClient } from '../api/client';
+import { AexyClient } from '../api/client';
 import { ProfileViewProvider } from '../views/profileView';
 
 export async function showProfile(profileProvider: ProfileViewProvider): Promise<void> {
@@ -48,14 +48,14 @@ export async function showProfileFromGit(): Promise<void> {
 
     try {
         const terminal = vscode.window.createTerminal({
-            name: 'Devograph',
+            name: 'Aexy',
             hideFromUser: true,
         });
 
         // This is a placeholder - in production, you'd want to use a proper
         // git library or shell execution to get the username
         vscode.window.showInformationMessage(
-            'Use "Devograph: Show Developer Profile" command and enter a username'
+            'Use "Aexy: Show Developer Profile" command and enter a username'
         );
     } catch (error) {
         vscode.window.showErrorMessage(`Failed to detect git user: ${error}`);

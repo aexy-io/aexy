@@ -9,8 +9,8 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.models.career import CareerRole
-from devograph.models.developer import Developer
+from aexy.models.career import CareerRole
+from aexy.models.developer import Developer
 
 logger = logging.getLogger(__name__)
 

@@ -21,8 +21,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from devograph.models.workspace import Workspace
-from devograph.models.plan import Plan, PlanTier
+from aexy.models.workspace import Workspace
+from aexy.models.plan import Plan, PlanTier
 
 
 async def get_db_url():

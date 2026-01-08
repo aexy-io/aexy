@@ -7,8 +7,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.llm.gateway import get_llm_gateway
-from devograph.llm.prompts import (
+from aexy.llm.gateway import get_llm_gateway
+from aexy.llm.prompts import (
     CODE_EVALUATION_SYSTEM_PROMPT,
     CODE_EVALUATION_PROMPT,
     SUBJECTIVE_EVALUATION_SYSTEM_PROMPT,
@@ -16,7 +16,7 @@ from devograph.llm.prompts import (
     OVERALL_CANDIDATE_FEEDBACK_SYSTEM_PROMPT,
     OVERALL_CANDIDATE_FEEDBACK_PROMPT,
 )
-from devograph.models.assessment import (
+from aexy.models.assessment import (
     Question,
     QuestionSubmission,
     SubmissionEvaluation,

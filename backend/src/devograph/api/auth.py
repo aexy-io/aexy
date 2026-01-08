@@ -10,11 +10,11 @@ from fastapi.responses import RedirectResponse
 from jose import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.config import get_settings
-from devograph.core.database import get_db
-from devograph.schemas.auth import TokenResponse
-from devograph.services.developer_service import DeveloperService
-from devograph.services.github_service import GitHubAPIError, GitHubAuthError, GitHubService
+from aexy.core.config import get_settings
+from aexy.core.database import get_db
+from aexy.schemas.auth import TokenResponse
+from aexy.services.developer_service import DeveloperService
+from aexy.services.github_service import GitHubAPIError, GitHubAuthError, GitHubService
 
 router = APIRouter()
 settings = get_settings()
@@ -136,11 +136,11 @@ async def github_callback(
     # If this is an installation callback, sync the installation
     if is_installation_callback and installation_id:
         try:
-            from devograph.services.github_app_service import GitHubAppService
+            from aexy.services.github_app_service import GitHubAppService
             app_service = GitHubAppService(db)
 
             # Get the GitHub connection for this developer
-            from devograph.services.repository_service import RepositoryService
+            from aexy.services.repository_service import RepositoryService
             repo_service = RepositoryService(db)
             connection = await repo_service.get_github_connection(developer.id)
 

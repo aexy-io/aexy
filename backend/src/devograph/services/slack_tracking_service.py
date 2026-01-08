@@ -8,11 +8,11 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.models.developer import Developer
-from devograph.models.integrations import SlackIntegration
-from devograph.models.sprint import Sprint, SprintTask
-from devograph.models.team import Team, TeamMember
-from devograph.models.tracking import (
+from aexy.models.developer import Developer
+from aexy.models.integrations import SlackIntegration
+from aexy.models.sprint import Sprint, SprintTask
+from aexy.models.team import Team, TeamMember
+from aexy.models.tracking import (
     Blocker,
     BlockerSeverity,
     BlockerStatus,
@@ -22,7 +22,7 @@ from devograph.models.tracking import (
     WorkLog,
     WorkLogType,
 )
-from devograph.schemas.integrations import SlackCommandResponse, SlackSlashCommand
+from aexy.schemas.integrations import SlackCommandResponse, SlackSlashCommand
 
 logger = logging.getLogger(__name__)
 
@@ -150,18 +150,18 @@ class SlackTrackingService:
         db: AsyncSession,
     ) -> SlackCommandResponse:
         """
-        Handle /devograph standup command.
+        Handle /aexy standup command.
 
         Formats:
-        - /devograph standup yesterday: X | today: Y | blockers: Z
-        - /devograph standup (opens modal for structured input)
+        - /aexy standup yesterday: X | today: Y | blockers: Z
+        - /aexy standup (opens modal for structured input)
         """
         developer = await self.get_developer_from_slack_user(
             command.user_id, integration, db
         )
         if not developer:
             return SlackCommandResponse(
-                text=":warning: Your Slack account is not linked to a Devograph profile. Please ask an admin to set up the mapping.",
+                text=":warning: Your Slack account is not linked to a Aexy profile. Please ask an admin to set up the mapping.",
             )
 
         team = await self.get_developer_team(developer.id, db)
@@ -175,10 +175,10 @@ class SlackTrackingService:
             return SlackCommandResponse(
                 text="""*Submit your standup inline:*
 
-`/devograph standup yesterday: what you did | today: what you'll do | blockers: any blockers`
+`/aexy standup yesterday: what you did | today: what you'll do | blockers: any blockers`
 
 *Example:*
-`/devograph standup yesterday: Fixed auth bug, reviewed PRs | today: Start API refactor | blockers: Waiting for design specs`""",
+`/aexy standup yesterday: Fixed auth bug, reviewed PRs | today: Start API refactor | blockers: Waiting for design specs`""",
             )
 
         # Parse inline standup format
@@ -316,31 +316,31 @@ class SlackTrackingService:
         db: AsyncSession,
     ) -> SlackCommandResponse:
         """
-        Handle /devograph update command.
+        Handle /aexy update command.
 
-        Format: /devograph update TASK-123 [status] [notes]
+        Format: /aexy update TASK-123 [status] [notes]
         Examples:
-        - /devograph update TASK-123 in_progress "Started working"
-        - /devograph update #45 done
+        - /aexy update TASK-123 in_progress "Started working"
+        - /aexy update #45 done
         """
         developer = await self.get_developer_from_slack_user(
             command.user_id, integration, db
         )
         if not developer:
             return SlackCommandResponse(
-                text=":warning: Your Slack account is not linked to a Devograph profile.",
+                text=":warning: Your Slack account is not linked to a Aexy profile.",
             )
 
         if not args:
             return SlackCommandResponse(
                 text="""*Update a task:*
 
-`/devograph update TASK-REF [status] ["notes"]`
+`/aexy update TASK-REF [status] ["notes"]`
 
 *Examples:*
-• `/devograph update #123 in_progress`
-• `/devograph update JIRA-456 done "Completed implementation"`
-• `/devograph update #789 "Added error handling"`
+• `/aexy update #123 in_progress`
+• `/aexy update JIRA-456 done "Completed implementation"`
+• `/aexy update #789 "Added error handling"`
 
 *Statuses:* todo, in_progress, review, done""",
             )
@@ -436,16 +436,16 @@ class SlackTrackingService:
         db: AsyncSession,
     ) -> SlackCommandResponse:
         """
-        Handle /devograph blocker command.
+        Handle /aexy blocker command.
 
-        Format: /devograph blocker "description" [TASK-REF] [--severity=high]
+        Format: /aexy blocker "description" [TASK-REF] [--severity=high]
         """
         developer = await self.get_developer_from_slack_user(
             command.user_id, integration, db
         )
         if not developer:
             return SlackCommandResponse(
-                text=":warning: Your Slack account is not linked to a Devograph profile.",
+                text=":warning: Your Slack account is not linked to a Aexy profile.",
             )
 
         team = await self.get_developer_team(developer.id, db)
@@ -458,12 +458,12 @@ class SlackTrackingService:
             return SlackCommandResponse(
                 text="""*Report a blocker:*
 
-`/devograph blocker "description" [TASK-REF] [--severity=level]`
+`/aexy blocker "description" [TASK-REF] [--severity=level]`
 
 *Examples:*
-• `/devograph blocker "Waiting for API access"`
-• `/devograph blocker "Database connection issues" #123`
-• `/devograph blocker "Need design specs" --severity=high`
+• `/aexy blocker "Waiting for API access"`
+• `/aexy blocker "Database connection issues" #123`
+• `/aexy blocker "Need design specs" --severity=high`
 
 *Severity levels:* low, medium (default), high, critical""",
             )
@@ -562,31 +562,31 @@ class SlackTrackingService:
         db: AsyncSession,
     ) -> SlackCommandResponse:
         """
-        Handle /devograph timelog command.
+        Handle /aexy timelog command.
 
-        Format: /devograph timelog TASK-REF DURATION ["description"]
+        Format: /aexy timelog TASK-REF DURATION ["description"]
         Examples:
-        - /devograph timelog #123 2h "Implemented login"
-        - /devograph timelog JIRA-456 30m
+        - /aexy timelog #123 2h "Implemented login"
+        - /aexy timelog JIRA-456 30m
         """
         developer = await self.get_developer_from_slack_user(
             command.user_id, integration, db
         )
         if not developer:
             return SlackCommandResponse(
-                text=":warning: Your Slack account is not linked to a Devograph profile.",
+                text=":warning: Your Slack account is not linked to a Aexy profile.",
             )
 
         if not args:
             return SlackCommandResponse(
                 text="""*Log time against a task:*
 
-`/devograph timelog TASK-REF DURATION ["description"]`
+`/aexy timelog TASK-REF DURATION ["description"]`
 
 *Examples:*
-• `/devograph timelog #123 2h`
-• `/devograph timelog JIRA-456 1h30m "Fixed bug"`
-• `/devograph timelog #789 45m`
+• `/aexy timelog #123 2h`
+• `/aexy timelog JIRA-456 1h30m "Fixed bug"`
+• `/aexy timelog #789 45m`
 
 *Duration format:* 2h, 30m, 1h30m""",
             )
@@ -686,27 +686,27 @@ class SlackTrackingService:
         db: AsyncSession,
     ) -> SlackCommandResponse:
         """
-        Handle /devograph log command for work notes.
+        Handle /aexy log command for work notes.
 
-        Format: /devograph log TASK-REF "notes"
+        Format: /aexy log TASK-REF "notes"
         """
         developer = await self.get_developer_from_slack_user(
             command.user_id, integration, db
         )
         if not developer:
             return SlackCommandResponse(
-                text=":warning: Your Slack account is not linked to a Devograph profile.",
+                text=":warning: Your Slack account is not linked to a Aexy profile.",
             )
 
         if not args:
             return SlackCommandResponse(
                 text="""*Add a work note to a task:*
 
-`/devograph log TASK-REF "notes"`
+`/aexy log TASK-REF "notes"`
 
 *Examples:*
-• `/devograph log #123 "Discovered edge case with OAuth flow"`
-• `/devograph log JIRA-456 "Need to discuss with team"`""",
+• `/aexy log #123 "Discovered edge case with OAuth flow"`
+• `/aexy log JIRA-456 "Need to discuss with team"`""",
             )
 
         # Extract task reference
@@ -775,7 +775,7 @@ class SlackTrackingService:
         db: AsyncSession,
     ) -> SlackCommandResponse:
         """
-        Handle /devograph status command.
+        Handle /aexy status command.
 
         Shows developer's current status: active tasks, today's logs, blockers.
         """
@@ -784,7 +784,7 @@ class SlackTrackingService:
         )
         if not developer:
             return SlackCommandResponse(
-                text=":warning: Your Slack account is not linked to a Devograph profile.",
+                text=":warning: Your Slack account is not linked to a Aexy profile.",
             )
 
         team = await self.get_developer_team(developer.id, db)
@@ -861,7 +861,7 @@ class SlackTrackingService:
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": ":x: *Standup not submitted yet*\nUse `/devograph standup` to submit",
+                        "text": ":x: *Standup not submitted yet*\nUse `/aexy standup` to submit",
                     },
                 }
             )
@@ -928,7 +928,7 @@ class SlackTrackingService:
         db: AsyncSession,
     ) -> SlackCommandResponse:
         """
-        Handle /devograph mytasks command.
+        Handle /aexy mytasks command.
 
         Lists developer's tasks in current sprint.
         """
@@ -937,7 +937,7 @@ class SlackTrackingService:
         )
         if not developer:
             return SlackCommandResponse(
-                text=":warning: Your Slack account is not linked to a Devograph profile.",
+                text=":warning: Your Slack account is not linked to a Aexy profile.",
             )
 
         team = await self.get_developer_team(developer.id, db)

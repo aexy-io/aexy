@@ -5,7 +5,7 @@ from datetime import datetime
 
 import httpx
 
-from devograph.services.task_sources.base import (
+from aexy.services.task_sources.base import (
     TaskItem,
     TaskPriority,
     TaskSource,

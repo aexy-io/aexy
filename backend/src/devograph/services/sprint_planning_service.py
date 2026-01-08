@@ -8,12 +8,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.sprint import Sprint, SprintTask
-from devograph.models.team import TeamMember
-from devograph.models.developer import Developer
-from devograph.llm.gateway import LLMGateway
-from devograph.services.task_matcher import TaskMatcher, TaskMatchRequest, RankedCandidate
-from devograph.services.whatif_analyzer import WhatIfAnalyzer, WhatIfScenario
+from aexy.models.sprint import Sprint, SprintTask
+from aexy.models.team import TeamMember
+from aexy.models.developer import Developer
+from aexy.llm.gateway import LLMGateway
+from aexy.services.task_matcher import TaskMatcher, TaskMatchRequest, RankedCandidate
+from aexy.services.whatif_analyzer import WhatIfAnalyzer, WhatIfScenario
 
 logger = logging.getLogger(__name__)
 
@@ -475,7 +475,7 @@ class SprintPlanningService:
             )
 
         # Get historical velocity
-        from devograph.services.sprint_analytics_service import SprintAnalyticsService
+        from aexy.services.sprint_analytics_service import SprintAnalyticsService
         analytics = SprintAnalyticsService(self.db)
         velocity_data = await analytics.get_team_velocity(sprint.team_id, num_sprints=5)
 

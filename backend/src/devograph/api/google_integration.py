@@ -12,11 +12,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.api.developers import get_current_developer
-from devograph.core.config import get_settings
-from devograph.core.database import get_db
-from devograph.models.developer import Developer
-from devograph.models.google_integration import (
+from aexy.api.developers import get_current_developer
+from aexy.core.config import get_settings
+from aexy.core.database import get_db
+from aexy.models.developer import Developer
+from aexy.models.google_integration import (
     EmailSyncCursor,
     GoogleIntegration,
     SyncedCalendarEvent,
@@ -24,7 +24,7 @@ from devograph.models.google_integration import (
     SyncedEmail,
     SyncedEmailRecordLink,
 )
-from devograph.schemas.google_integration import (
+from aexy.schemas.google_integration import (
     CalendarInfo,
     CalendarListResponse,
     CalendarSyncRequest,
@@ -50,7 +50,7 @@ from devograph.schemas.google_integration import (
     SyncedEventListResponse,
     SyncedEventResponse,
 )
-from devograph.services.workspace_service import WorkspaceService
+from aexy.services.workspace_service import WorkspaceService
 
 logger = logging.getLogger(__name__)
 
@@ -392,7 +392,7 @@ async def trigger_gmail_sync(
             detail="Gmail sync is not enabled",
         )
 
-    from devograph.services.gmail_sync_service import GmailSyncService, GmailSyncError
+    from aexy.services.gmail_sync_service import GmailSyncService, GmailSyncError
 
     service = GmailSyncService(db)
 
@@ -555,7 +555,7 @@ async def send_email(
 
     integration = await get_integration(workspace_id, db)
 
-    from devograph.services.gmail_sync_service import GmailSyncService, GmailSyncError
+    from aexy.services.gmail_sync_service import GmailSyncService, GmailSyncError
 
     service = GmailSyncService(db)
 
@@ -639,7 +639,7 @@ async def list_calendars(
 
     integration = await get_integration(workspace_id, db)
 
-    from devograph.services.calendar_sync_service import CalendarSyncService, CalendarSyncError
+    from aexy.services.calendar_sync_service import CalendarSyncService, CalendarSyncError
 
     service = CalendarSyncService(db)
 
@@ -682,7 +682,7 @@ async def trigger_calendar_sync(
             detail="Calendar sync is not enabled",
         )
 
-    from devograph.services.calendar_sync_service import CalendarSyncService, CalendarSyncError
+    from aexy.services.calendar_sync_service import CalendarSyncService, CalendarSyncError
 
     service = CalendarSyncService(db)
 
@@ -836,7 +836,7 @@ async def create_event(
 
     integration = await get_integration(workspace_id, db)
 
-    from devograph.services.calendar_sync_service import CalendarSyncService, CalendarSyncError
+    from aexy.services.calendar_sync_service import CalendarSyncService, CalendarSyncError
 
     service = CalendarSyncService(db)
 
@@ -927,7 +927,7 @@ async def enrich_contacts(
     """Process emails to extract and enrich contacts."""
     await verify_workspace_access(workspace_id, current_user, db, "admin")
 
-    from devograph.services.contact_enrichment_service import ContactEnrichmentService
+    from aexy.services.contact_enrichment_service import ContactEnrichmentService
 
     service = ContactEnrichmentService(db)
 
@@ -953,7 +953,7 @@ async def enrich_record(
     """Enrich a specific CRM record with data from linked emails."""
     await verify_workspace_access(workspace_id, current_user, db, "member")
 
-    from devograph.services.contact_enrichment_service import (
+    from aexy.services.contact_enrichment_service import (
         ContactEnrichmentService,
         ContactEnrichmentError,
     )

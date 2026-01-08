@@ -5,11 +5,11 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.api.developers import get_current_developer
-from devograph.core.database import get_db
-from devograph.models.developer import Developer
-from devograph.models.documentation import DocumentPermission
-from devograph.schemas.document import (
+from aexy.api.developers import get_current_developer
+from aexy.core.database import get_db
+from aexy.models.developer import Developer
+from aexy.models.documentation import DocumentPermission
+from aexy.schemas.document import (
     CodeLinkCreate,
     CodeLinkResponse,
     CollaboratorAdd,
@@ -29,10 +29,10 @@ from devograph.schemas.document import (
     TemplateListResponse,
     TemplateResponse,
 )
-from devograph.services.document_service import DocumentService
-from devograph.services.document_generation_service import DocumentGenerationService
-from devograph.services.workspace_service import WorkspaceService
-from devograph.models.documentation import TemplateCategory
+from aexy.services.document_service import DocumentService
+from aexy.services.document_generation_service import DocumentGenerationService
+from aexy.services.workspace_service import WorkspaceService
+from aexy.models.documentation import TemplateCategory
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/documents", tags=["Documents"])
 template_router = APIRouter(prefix="/templates", tags=["Templates"])
@@ -850,7 +850,7 @@ async def generate_documentation(
 
     try:
         # Import GitHub service to fetch code
-        from devograph.services.github_service import GitHubService
+        from aexy.services.github_service import GitHubService
 
         github_service = GitHubService(db)
 
@@ -993,8 +993,8 @@ async def generate_from_repository(
     Analyzes the directory structure and key files to generate comprehensive documentation.
     Optionally accepts a custom prompt to guide the AI generation.
     """
-    from devograph.services.github_app_service import GitHubAppService, GitHubAppError
-    from devograph.services.repository_service import RepositoryService
+    from aexy.services.github_app_service import GitHubAppService, GitHubAppError
+    from aexy.services.repository_service import RepositoryService
 
     await check_workspace_permission(workspace_id, current_user, db, "member")
 
@@ -1068,7 +1068,7 @@ async def generate_from_repository(
             detail=str(e),
         )
     except Exception as e:
-        from devograph.llm.base import LLMRateLimitError, LLMAPIError
+        from aexy.llm.base import LLMRateLimitError, LLMAPIError
 
         # Check for LLM-specific errors
         if isinstance(e, LLMRateLimitError):
@@ -1157,7 +1157,7 @@ async def setup_github_sync(
             detail="Document not found",
         )
 
-    from devograph.services.github_sync_service import GitHubSyncService
+    from aexy.services.github_sync_service import GitHubSyncService
 
     sync_service = GitHubSyncService(db)
     sync_config = await sync_service.setup_sync(
@@ -1193,7 +1193,7 @@ async def get_github_sync_configs(
     """Get all GitHub sync configurations for a document."""
     await check_workspace_permission(workspace_id, current_user, db, "viewer")
 
-    from devograph.services.github_sync_service import GitHubSyncService
+    from aexy.services.github_sync_service import GitHubSyncService
 
     sync_service = GitHubSyncService(db)
     configs = await sync_service.get_sync_configs(document_id)
@@ -1231,7 +1231,7 @@ async def export_to_github(
     """Export document to GitHub as markdown."""
     await check_workspace_permission(workspace_id, current_user, db, "member")
 
-    from devograph.services.github_sync_service import GitHubSyncService
+    from aexy.services.github_sync_service import GitHubSyncService
 
     sync_service = GitHubSyncService(db)
 
@@ -1266,7 +1266,7 @@ async def import_from_github(
     """Import document from GitHub markdown file."""
     await check_workspace_permission(workspace_id, current_user, db, "member")
 
-    from devograph.services.github_sync_service import GitHubSyncService
+    from aexy.services.github_sync_service import GitHubSyncService
 
     sync_service = GitHubSyncService(db)
 
@@ -1300,7 +1300,7 @@ async def delete_github_sync(
     """Delete a GitHub sync configuration."""
     await check_workspace_permission(workspace_id, current_user, db, "member")
 
-    from devograph.services.github_sync_service import GitHubSyncService
+    from aexy.services.github_sync_service import GitHubSyncService
 
     sync_service = GitHubSyncService(db)
     deleted = await sync_service.delete_sync(sync_id)

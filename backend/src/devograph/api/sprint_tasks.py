@@ -3,10 +3,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.database import get_db
-from devograph.api.developers import get_current_developer
-from devograph.models.developer import Developer
-from devograph.schemas.sprint import (
+from aexy.core.database import get_db
+from aexy.api.developers import get_current_developer
+from aexy.models.developer import Developer
+from aexy.schemas.sprint import (
     SprintTaskCreate,
     SprintTaskUpdate,
     SprintTaskStatusUpdate,
@@ -19,9 +19,9 @@ from devograph.schemas.sprint import (
     TaskActivityResponse,
     TaskActivityListResponse,
 )
-from devograph.services.sprint_service import SprintService
-from devograph.services.sprint_task_service import SprintTaskService
-from devograph.services.workspace_service import WorkspaceService
+from aexy.services.sprint_service import SprintService
+from aexy.services.sprint_task_service import SprintTaskService
+from aexy.services.workspace_service import WorkspaceService
 
 router = APIRouter(prefix="/sprints/{sprint_id}/tasks", tags=["Sprint Tasks"])
 
@@ -235,7 +235,7 @@ async def suggest_assignments(
     """Get AI-powered assignment suggestions for unassigned tasks."""
     await get_sprint_and_check_permission(sprint_id, current_user, db, "member")
 
-    from devograph.services.sprint_planning_service import SprintPlanningService
+    from aexy.services.sprint_planning_service import SprintPlanningService
 
     planning_service = SprintPlanningService(db)
     suggestions = await planning_service.suggest_assignments(sprint_id)
@@ -263,7 +263,7 @@ async def optimize_sprint(
     """Optimize task assignments to balance workload."""
     await get_sprint_and_check_permission(sprint_id, current_user, db, "member")
 
-    from devograph.services.sprint_planning_service import SprintPlanningService
+    from aexy.services.sprint_planning_service import SprintPlanningService
 
     planning_service = SprintPlanningService(db)
     result = await planning_service.optimize_sprint(sprint_id)
@@ -286,7 +286,7 @@ async def analyze_capacity(
     """Analyze sprint capacity vs commitment."""
     await get_sprint_and_check_permission(sprint_id, current_user, db, "viewer")
 
-    from devograph.services.sprint_planning_service import SprintPlanningService
+    from aexy.services.sprint_planning_service import SprintPlanningService
 
     planning_service = SprintPlanningService(db)
     result = await planning_service.analyze_capacity(sprint_id)
@@ -310,7 +310,7 @@ async def predict_completion(
     """Predict sprint completion likelihood."""
     await get_sprint_and_check_permission(sprint_id, current_user, db, "viewer")
 
-    from devograph.services.sprint_planning_service import SprintPlanningService
+    from aexy.services.sprint_planning_service import SprintPlanningService
 
     planning_service = SprintPlanningService(db)
     result = await planning_service.predict_completion(sprint_id)

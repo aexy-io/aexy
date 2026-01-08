@@ -2,7 +2,7 @@
 
 import pytest
 
-from devograph.services.profile_analyzer import ProfileAnalyzer
+from aexy.services.profile_analyzer import ProfileAnalyzer
 
 
 class TestLanguageDetection:
@@ -370,7 +370,7 @@ class TestGrowthTrajectory:
     def test_build_growth_trajectory_detects_new_skills(self):
         """Should detect newly acquired skills."""
         analyzer = ProfileAnalyzer()
-        from devograph.schemas.developer import LanguageSkill
+        from aexy.schemas.developer import LanguageSkill
 
         recent = [
             LanguageSkill(name="Python", proficiency_score=80, lines_of_code=5000, commits_count=50),
@@ -387,7 +387,7 @@ class TestGrowthTrajectory:
     def test_build_growth_trajectory_detects_declining_skills(self):
         """Should detect declining skills."""
         analyzer = ProfileAnalyzer()
-        from devograph.schemas.developer import LanguageSkill
+        from aexy.schemas.developer import LanguageSkill
 
         recent = [
             LanguageSkill(name="Python", proficiency_score=80, lines_of_code=5000, commits_count=50),

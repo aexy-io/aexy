@@ -10,14 +10,14 @@ from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.documentation import (
+from aexy.models.documentation import (
     Document,
     DocumentCodeLink,
     DocumentSyncQueue,
 )
-from devograph.models.developer import Developer
-from devograph.models.plan import PlanTier
-from devograph.services.limits_service import LimitsService
+from aexy.models.developer import Developer
+from aexy.models.plan import PlanTier
+from aexy.services.limits_service import LimitsService
 
 logger = logging.getLogger(__name__)
 
@@ -278,16 +278,16 @@ class DocumentSyncService:
         """
         try:
             # Import here to avoid circular imports
-            from devograph.services.document_generation_service import (
+            from aexy.services.document_generation_service import (
                 DocumentGenerationService,
             )
-            from devograph.services.github_app_service import GitHubAppService
+            from aexy.services.github_app_service import GitHubAppService
 
             gen_service = DocumentGenerationService(self.db)
             github_service = GitHubAppService(self.db)
 
             # Get the template category from the document or code link
-            from devograph.models.documentation import TemplateCategory
+            from aexy.models.documentation import TemplateCategory
 
             category = TemplateCategory.FUNCTION_DOCS
 

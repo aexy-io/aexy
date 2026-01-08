@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Tracking | Devograph",
+  title: "Tracking | Aexy",
   description: "Track your daily progress, time, and blockers",
 };
 

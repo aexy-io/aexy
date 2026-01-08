@@ -6,9 +6,9 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.database import get_db
-from devograph.llm.gateway import get_llm_gateway
-from devograph.schemas.review import (
+from aexy.core.database import get_db
+from aexy.llm.gateway import get_llm_gateway
+from aexy.schemas.review import (
     # Review Cycle
     ReviewCycleCreate,
     ReviewCycleUpdate,
@@ -44,9 +44,9 @@ from devograph.schemas.review import (
     ContributionSummaryRequest,
     ContributionHighlight,
 )
-from devograph.services.review_service import ReviewService
-from devograph.services.goal_service import GoalService
-from devograph.services.contribution_service import ContributionService
+from aexy.services.review_service import ReviewService
+from aexy.services.goal_service import GoalService
+from aexy.services.contribution_service import ContributionService
 
 router = APIRouter(prefix="/reviews")
 
@@ -403,7 +403,7 @@ async def submit_peer_review(
     # Get the request to find the review
     service = ReviewService(db)
     request = await service.db.get(
-        __import__("devograph.models.review", fromlist=["ReviewRequest"]).ReviewRequest,
+        __import__("aexy.models.review", fromlist=["ReviewRequest"]).ReviewRequest,
         request_id
     )
     if not request:

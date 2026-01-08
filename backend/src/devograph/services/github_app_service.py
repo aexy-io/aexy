@@ -11,8 +11,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.core.config import settings
-from devograph.models.developer import GitHubConnection, GitHubInstallation
+from aexy.core.config import settings
+from aexy.models.developer import GitHubConnection, GitHubInstallation
 
 
 class GitHubAppError(Exception):

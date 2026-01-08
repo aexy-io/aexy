@@ -1,1 +1,1 @@
-"""Test package for Devograph."""
+"""Test package for Aexy."""

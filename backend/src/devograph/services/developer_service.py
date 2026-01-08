@@ -6,8 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.developer import Developer, GitHubConnection, GoogleConnection
-from devograph.schemas.developer import DeveloperCreate, DeveloperUpdate
+from aexy.models.developer import Developer, GitHubConnection, GoogleConnection
+from aexy.schemas.developer import DeveloperCreate, DeveloperUpdate
 
 
 class DeveloperServiceError(Exception):
