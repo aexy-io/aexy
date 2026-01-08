@@ -84,6 +84,8 @@ class CRMAutomationService:
         workspace_id: str,
         object_id: str | None = None,
         is_active: bool | None = None,
+        skip: int = 0,
+        limit: int = 50,
     ) -> list[CRMAutomation]:
         """List automations in a workspace."""
         stmt = select(CRMAutomation).where(CRMAutomation.workspace_id == workspace_id)
@@ -94,6 +96,7 @@ class CRMAutomationService:
             stmt = stmt.where(CRMAutomation.is_active == is_active)
 
         stmt = stmt.order_by(CRMAutomation.name)
+        stmt = stmt.offset(skip).limit(limit)
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
@@ -738,6 +741,8 @@ class CRMSequenceService:
         workspace_id: str,
         object_id: str | None = None,
         is_active: bool | None = None,
+        skip: int = 0,
+        limit: int = 50,
     ) -> list[CRMSequence]:
         """List sequences in a workspace."""
         stmt = select(CRMSequence).where(CRMSequence.workspace_id == workspace_id)
@@ -749,6 +754,7 @@ class CRMSequenceService:
 
         stmt = stmt.options(selectinload(CRMSequence.steps))
         stmt = stmt.order_by(CRMSequence.name)
+        stmt = stmt.offset(skip).limit(limit)
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
@@ -1106,7 +1112,10 @@ class CRMWebhookService:
     async def list_webhooks(
         self,
         workspace_id: str,
+        object_id: str | None = None,  # Not used - webhooks aren't object-specific
         is_active: bool | None = None,
+        skip: int = 0,
+        limit: int = 50,
     ) -> list[CRMWebhook]:
         """List webhooks in a workspace."""
         stmt = select(CRMWebhook).where(CRMWebhook.workspace_id == workspace_id)
@@ -1115,6 +1124,7 @@ class CRMWebhookService:
             stmt = stmt.where(CRMWebhook.is_active == is_active)
 
         stmt = stmt.order_by(CRMWebhook.name)
+        stmt = stmt.offset(skip).limit(limit)
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
