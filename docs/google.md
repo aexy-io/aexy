@@ -1,10 +1,10 @@
-# How to Connect Google to Devograph
+# How to Connect Google to Aexy
 
 ## 1. Create a Google Cloud Project
 
 1. Go to https://console.cloud.google.com/
 2. Click "Select a project" → "New Project"
-3. Name it "Devograph" and click "Create"
+3. Name it "Aexy" and click "Create"
 4. Select the newly created project
 
 ## 2. Enable Required APIs
@@ -20,7 +20,7 @@
 1. Go to **APIs & Services** → **OAuth consent screen**
 2. Select **External** (or Internal for Workspace)
 3. Fill in the app information:
-   - App name: "Devograph"
+   - App name: "Aexy"
    - User support email: your email
    - Developer contact: your email
 4. Click "Save and Continue"
@@ -54,7 +54,7 @@
 1. Go to **APIs & Services** → **Credentials**
 2. Click "Create Credentials" → "OAuth client ID"
 3. Application type: **Web application**
-4. Name: "Devograph Web Client"
+4. Name: "Aexy Web Client"
 5. Add Authorized redirect URIs:
    ```
    http://localhost:8000/api/v1/workspaces/{workspace_id}/integrations/google/callback
@@ -546,7 +546,7 @@ frontend/src/
 └── lib/
     └── api.ts                      # googleIntegrationApi methods
 
-backend/src/devograph/
+backend/src/aexy/
 ├── models/
 │   └── google_integration.py       # GoogleIntegration, SyncedEmail, SyncedCalendarEvent
 ├── services/

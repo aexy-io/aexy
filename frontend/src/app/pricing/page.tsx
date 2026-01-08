@@ -131,7 +131,7 @@ export default function PricingPage() {
     }
 
     if (tier === "enterprise") {
-      window.location.href = "mailto:sales@devograph.io?subject=Enterprise%20Inquiry";
+      window.location.href = "mailto:sales@aexy.io?subject=Enterprise%20Inquiry";
       return;
     }
 
@@ -160,7 +160,7 @@ export default function PricingPage() {
             <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
               <GitBranch className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-white">Devograph</span>
+            <span className="text-xl font-bold text-white">Aexy</span>
           </Link>
           <div className="flex items-center gap-4">
             {user ? (
@@ -383,7 +383,7 @@ export default function PricingPage() {
             Ready to supercharge your development?
           </h2>
           <p className="text-xl text-slate-400 mb-8">
-            Join thousands of developers who use Devograph to understand and improve
+            Join thousands of developers who use Aexy to understand and improve
             their workflow.
           </p>
           <div className="flex items-center justify-center gap-4">
@@ -395,7 +395,7 @@ export default function PricingPage() {
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
-              href="mailto:sales@devograph.io"
+              href="mailto:sales@aexy.io"
               className="px-8 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition"
             >
               Contact Sales
@@ -411,7 +411,7 @@ export default function PricingPage() {
             <div className="w-6 h-6 bg-gradient-to-br from-primary-500 to-primary-600 rounded flex items-center justify-center">
               <GitBranch className="h-4 w-4 text-white" />
             </div>
-            <span className="text-slate-400">Devograph</span>
+            <span className="text-slate-400">Aexy</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-slate-400">
             <Link href="/privacy" className="hover:text-white transition">
@@ -420,7 +420,7 @@ export default function PricingPage() {
             <Link href="/terms" className="hover:text-white transition">
               Terms
             </Link>
-            <Link href="mailto:support@devograph.io" className="hover:text-white transition">
+            <Link href="mailto:support@aexy.io" className="hover:text-white transition">
               Support
             </Link>
           </div>

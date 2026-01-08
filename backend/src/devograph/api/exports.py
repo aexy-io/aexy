@@ -6,15 +6,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.api.developers import get_current_developer_id
-from devograph.core.database import get_db
-from devograph.schemas.analytics import (
+from aexy.api.developers import get_current_developer_id
+from aexy.core.database import get_db
+from aexy.schemas.analytics import (
     ExportRequest,
     ExportJobResponse,
     ExportFormat,
     ExportStatus,
 )
-from devograph.services.export_service import ExportService
+from aexy.services.export_service import ExportService
 
 router = APIRouter(prefix="/exports")
 
@@ -150,7 +150,7 @@ async def get_available_formats(
     _: str = Depends(get_current_developer_id),
 ) -> dict:
     """Get available export formats and their requirements."""
-    from devograph.services.export_service import REPORTLAB_AVAILABLE, OPENPYXL_AVAILABLE
+    from aexy.services.export_service import REPORTLAB_AVAILABLE, OPENPYXL_AVAILABLE
 
     formats = [
         {

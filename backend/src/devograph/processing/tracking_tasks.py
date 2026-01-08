@@ -42,11 +42,11 @@ async def _send_standup_reminders() -> dict[str, Any]:
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from devograph.core.database import async_session_maker
-    from devograph.models.integrations import SlackIntegration
-    from devograph.models.tracking import SlackChannelConfig, ChannelType
-    from devograph.schemas.integrations import SlackMessage, SlackNotificationType
-    from devograph.services.slack_integration import SlackIntegrationService
+    from aexy.core.database import async_session_maker
+    from aexy.models.integrations import SlackIntegration
+    from aexy.models.tracking import SlackChannelConfig, ChannelType
+    from aexy.schemas.integrations import SlackMessage, SlackNotificationType
+    from aexy.services.slack_integration import SlackIntegrationService
 
     slack_service = SlackIntegrationService()
     sent_count = 0
@@ -85,7 +85,7 @@ async def _send_standup_reminders() -> dict[str, Any]:
                                 "type": "mrkdwn",
                                 "text": ":sunrise: *Good morning!* Time for standup.\n\n"
                                 "Share your update using:\n"
-                                "`/devograph standup yesterday: ... | today: ... | blockers: ...`\n\n"
+                                "`/aexy standup yesterday: ... | today: ... | blockers: ...`\n\n"
                                 "Or just post in this format:\n"
                                 "```Yesterday: what you did\nToday: what you'll do\nBlockers: any blockers```",
                             },
@@ -133,9 +133,9 @@ async def _aggregate_daily_standups(team_id: str | None) -> dict[str, Any]:
     from sqlalchemy import select, func
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from devograph.core.database import async_session_maker
-    from devograph.models.team import Team, TeamMember
-    from devograph.models.tracking import (
+    from aexy.core.database import async_session_maker
+    from aexy.models.team import Team, TeamMember
+    from aexy.models.tracking import (
         DeveloperStandup,
         StandupSummary,
         Blocker,
@@ -240,7 +240,7 @@ async def _aggregate_daily_standups(team_id: str | None) -> dict[str, Any]:
             else:
                 # Create new summary
                 # Get active sprint for the team
-                from devograph.models.sprint import Sprint
+                from aexy.models.sprint import Sprint
                 sprint_result = await db.execute(
                     select(Sprint).where(
                         Sprint.team_id == team.id,
@@ -298,10 +298,10 @@ async def _check_overdue_blockers() -> dict[str, Any]:
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from devograph.core.database import async_session_maker
-    from devograph.models.tracking import Blocker, BlockerStatus, BlockerSeverity
-    from devograph.models.notification import Notification, NotificationEventType
-    from devograph.models.team import TeamMember
+    from aexy.core.database import async_session_maker
+    from aexy.models.tracking import Blocker, BlockerStatus, BlockerSeverity
+    from aexy.models.notification import Notification, NotificationEventType
+    from aexy.models.team import TeamMember
 
     cutoff_critical = datetime.utcnow() - timedelta(hours=4)
     cutoff_high = datetime.utcnow() - timedelta(hours=24)
@@ -389,8 +389,8 @@ async def _analyze_activity_patterns(developer_id: str) -> dict[str, Any]:
     from sqlalchemy import select, func
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from devograph.core.database import async_session_maker
-    from devograph.models.tracking import (
+    from aexy.core.database import async_session_maker
+    from aexy.models.tracking import (
         DeveloperStandup,
         WorkLog,
         TimeEntry,
@@ -398,8 +398,8 @@ async def _analyze_activity_patterns(developer_id: str) -> dict[str, Any]:
         BlockerStatus,
         DeveloperActivityPattern,
     )
-    from devograph.models.team import TeamMember
-    from devograph.models.sprint import Sprint
+    from aexy.models.team import TeamMember
+    from aexy.models.sprint import Sprint
 
     period_end = date.today()
     period_start = period_end - timedelta(days=30)
@@ -413,7 +413,7 @@ async def _analyze_activity_patterns(developer_id: str) -> dict[str, Any]:
         if not member:
             return {"error": "Developer not in any team"}
 
-        from devograph.models.team import Team
+        from aexy.models.team import Team
         team_result = await db.execute(select(Team).where(Team.id == member.team_id))
         team = team_result.scalar_one_or_none()
         if not team:
@@ -573,9 +573,9 @@ async def _aggregate_time_entries(sprint_id: str) -> dict[str, Any]:
     from sqlalchemy import select, func
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from devograph.core.database import async_session_maker
-    from devograph.models.tracking import TimeEntry
-    from devograph.models.sprint import Sprint, SprintTask
+    from aexy.core.database import async_session_maker
+    from aexy.models.tracking import TimeEntry
+    from aexy.models.sprint import Sprint, SprintTask
 
     async with async_session_maker() as db:
         # Get sprint
@@ -651,9 +651,9 @@ async def _generate_sprint_progress_report(sprint_id: str) -> dict[str, Any]:
     from sqlalchemy import select, func
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from devograph.core.database import async_session_maker
-    from devograph.models.sprint import Sprint, SprintTask
-    from devograph.models.tracking import DeveloperStandup, WorkLog, TimeEntry, Blocker, BlockerStatus
+    from aexy.core.database import async_session_maker
+    from aexy.models.sprint import Sprint, SprintTask
+    from aexy.models.tracking import DeveloperStandup, WorkLog, TimeEntry, Blocker, BlockerStatus
 
     today = date.today()
 
@@ -755,9 +755,9 @@ async def _sync_slack_channel(
     """Async implementation of Slack channel sync."""
     from sqlalchemy import select
 
-    from devograph.core.database import async_session_maker
-    from devograph.models.integrations import SlackIntegration
-    from devograph.services.slack_history_sync import SlackHistorySyncService
+    from aexy.core.database import async_session_maker
+    from aexy.models.integrations import SlackIntegration
+    from aexy.services.slack_history_sync import SlackHistorySyncService
 
     sync_service = SlackHistorySyncService()
 
@@ -797,10 +797,10 @@ async def _sync_all_slack_channels(integration_id: str) -> dict[str, Any]:
     """Async implementation of all-channel sync."""
     from sqlalchemy import select
 
-    from devograph.core.database import async_session_maker
-    from devograph.models.integrations import SlackIntegration
-    from devograph.models.tracking import SlackChannelConfig
-    from devograph.services.slack_history_sync import SlackHistorySyncService
+    from aexy.core.database import async_session_maker
+    from aexy.models.integrations import SlackIntegration
+    from aexy.models.tracking import SlackChannelConfig
+    from aexy.services.slack_history_sync import SlackHistorySyncService
 
     sync_service = SlackHistorySyncService()
 
@@ -882,9 +882,9 @@ async def _import_slack_history(
     """Async implementation of full Slack history import."""
     from sqlalchemy import select
 
-    from devograph.core.database import async_session_maker
-    from devograph.models.integrations import SlackIntegration
-    from devograph.services.slack_history_sync import SlackHistorySyncService
+    from aexy.core.database import async_session_maker
+    from aexy.models.integrations import SlackIntegration
+    from aexy.services.slack_history_sync import SlackHistorySyncService
 
     sync_service = SlackHistorySyncService()
 
@@ -923,9 +923,9 @@ async def _map_slack_users(integration_id: str) -> dict[str, Any]:
     """Async implementation of Slack user mapping."""
     from sqlalchemy import select
 
-    from devograph.core.database import async_session_maker
-    from devograph.models.integrations import SlackIntegration
-    from devograph.services.slack_history_sync import SlackHistorySyncService
+    from aexy.core.database import async_session_maker
+    from aexy.models.integrations import SlackIntegration
+    from aexy.services.slack_history_sync import SlackHistorySyncService
 
     sync_service = SlackHistorySyncService()
 

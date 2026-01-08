@@ -8,19 +8,19 @@ from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, Strin
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from devograph.core.database import Base
+from aexy.core.database import Base
 
 if TYPE_CHECKING:
-    from devograph.models.activity import CodeReview, Commit, PullRequest
-    from devograph.models.analytics import CustomReport, ExportJob, PredictiveInsight
-    from devograph.models.billing import CustomerBilling
-    from devograph.models.career import LearningPath
-    from devograph.models.gamification import DeveloperGamification
-    from devograph.models.learning_activity import LearningActivityLog
-    from devograph.models.notification import Notification, NotificationPreference
-    from devograph.models.plan import Plan
-    from devograph.models.repository import DeveloperOrganization, DeveloperRepository
-    from devograph.models.review import ContributionSummary, IndividualReview, WorkGoal
+    from aexy.models.activity import CodeReview, Commit, PullRequest
+    from aexy.models.analytics import CustomReport, ExportJob, PredictiveInsight
+    from aexy.models.billing import CustomerBilling
+    from aexy.models.career import LearningPath
+    from aexy.models.gamification import DeveloperGamification
+    from aexy.models.learning_activity import LearningActivityLog
+    from aexy.models.notification import Notification, NotificationPreference
+    from aexy.models.plan import Plan
+    from aexy.models.repository import DeveloperOrganization, DeveloperRepository
+    from aexy.models.review import ContributionSummary, IndividualReview, WorkGoal
 
 
 class Developer(Base):

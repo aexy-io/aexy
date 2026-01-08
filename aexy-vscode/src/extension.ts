@@ -8,7 +8,7 @@ import { matchTask } from './commands/matchTask';
 let refreshInterval: NodeJS.Timeout | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('Devograph extension is now active');
+    console.log('Aexy extension is now active');
 
     // Initialize view providers
     const profileProvider = new ProfileViewProvider();
@@ -16,32 +16,32 @@ export function activate(context: vscode.ExtensionContext) {
     const teamProvider = new TeamViewProvider();
 
     // Register tree data providers
-    vscode.window.registerTreeDataProvider('devograph.profile', profileProvider);
-    vscode.window.registerTreeDataProvider('devograph.insights', insightsProvider);
-    vscode.window.registerTreeDataProvider('devograph.team', teamProvider);
+    vscode.window.registerTreeDataProvider('aexy.profile', profileProvider);
+    vscode.window.registerTreeDataProvider('aexy.insights', insightsProvider);
+    vscode.window.registerTreeDataProvider('aexy.team', teamProvider);
 
     // Register commands
     context.subscriptions.push(
-        vscode.commands.registerCommand('devograph.showProfile', () => showProfile(profileProvider)),
-        vscode.commands.registerCommand('devograph.matchTask', matchTask),
-        vscode.commands.registerCommand('devograph.teamSkills', async () => {
+        vscode.commands.registerCommand('aexy.showProfile', () => showProfile(profileProvider)),
+        vscode.commands.registerCommand('aexy.matchTask', matchTask),
+        vscode.commands.registerCommand('aexy.teamSkills', async () => {
             await teamProvider.loadData();
             vscode.window.showInformationMessage('Team skills loaded');
         }),
-        vscode.commands.registerCommand('devograph.insights', async () => {
+        vscode.commands.registerCommand('aexy.insights', async () => {
             await insightsProvider.loadTeamHealth();
             vscode.window.showInformationMessage('Insights loaded');
         }),
-        vscode.commands.registerCommand('devograph.refresh', async () => {
+        vscode.commands.registerCommand('aexy.refresh', async () => {
             await Promise.all([
                 teamProvider.loadData(),
                 insightsProvider.loadTeamHealth(),
             ]);
             profileProvider.refresh();
-            vscode.window.showInformationMessage('Devograph data refreshed');
+            vscode.window.showInformationMessage('Aexy data refreshed');
         }),
-        vscode.commands.registerCommand('devograph.configure', () => {
-            vscode.commands.executeCommand('workbench.action.openSettings', 'devograph');
+        vscode.commands.registerCommand('aexy.configure', () => {
+            vscode.commands.executeCommand('workbench.action.openSettings', 'aexy');
         })
     );
 
@@ -54,7 +54,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Watch for configuration changes
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration((e) => {
-            if (e.affectsConfiguration('devograph')) {
+            if (e.affectsConfiguration('aexy')) {
                 // Re-setup auto-refresh
                 if (refreshInterval) {
                     clearInterval(refreshInterval);
@@ -86,7 +86,7 @@ function setupAutoRefresh(
     insightsProvider: InsightsViewProvider,
     profileProvider: ProfileViewProvider
 ): void {
-    const config = vscode.workspace.getConfiguration('devograph');
+    const config = vscode.workspace.getConfiguration('aexy');
     const autoRefresh = config.get<boolean>('autoRefresh', true);
     const intervalSeconds = config.get<number>('refreshInterval', 300);
 

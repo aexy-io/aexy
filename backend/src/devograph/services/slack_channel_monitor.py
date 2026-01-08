@@ -6,11 +6,11 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.models.developer import Developer
-from devograph.models.integrations import SlackIntegration
-from devograph.models.sprint import Sprint, SprintTask
-from devograph.models.team import TeamMember
-from devograph.models.tracking import (
+from aexy.models.developer import Developer
+from aexy.models.integrations import SlackIntegration
+from aexy.models.sprint import Sprint, SprintTask
+from aexy.models.team import TeamMember
+from aexy.models.tracking import (
     Blocker,
     BlockerStatus,
     DeveloperStandup,
@@ -19,7 +19,7 @@ from devograph.models.tracking import (
     WorkLog,
     WorkLogType,
 )
-from devograph.services.slack_message_parser import (
+from aexy.services.slack_message_parser import (
     BlockerMention,
     ParsedMessage,
     SlackMessageParser,
@@ -85,7 +85,7 @@ class SlackChannelMonitorService:
             sprint = result.scalar_one_or_none()
 
             # Get workspace from team
-            from devograph.models.team import Team
+            from aexy.models.team import Team
             team_result = await db.execute(select(Team).where(Team.id == team_id))
             team = team_result.scalar_one_or_none()
             workspace_id = team.workspace_id if team else None
@@ -100,7 +100,7 @@ class SlackChannelMonitorService:
         if not member:
             return None, None, None
 
-        from devograph.models.team import Team
+        from aexy.models.team import Team
         team_result = await db.execute(select(Team).where(Team.id == member.team_id))
         team = team_result.scalar_one_or_none()
         if not team:
@@ -364,7 +364,7 @@ class SlackChannelMonitorService:
         # Resolve task if referenced
         task_id = None
         if mention.task_ref:
-            from devograph.services.slack_message_parser import TaskReference, TaskRefType
+            from aexy.services.slack_message_parser import TaskReference, TaskRefType
             task_ref = TaskReference(
                 ref_type=TaskRefType.GENERIC,
                 ref_string=mention.task_ref,

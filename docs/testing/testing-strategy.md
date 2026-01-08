@@ -2,7 +2,7 @@
 
 ## Overview
 
-Devograph follows a comprehensive testing approach using Test-Driven Development (TDD) principles, focusing on reliability, maintainability, and developer experience.
+Aexy follows a comprehensive testing approach using Test-Driven Development (TDD) principles, focusing on reliability, maintainability, and developer experience.
 
 ## Testing Pyramid
 
@@ -36,7 +36,7 @@ Devograph follows a comprehensive testing approach using Test-Driven Development
 ```python
 # tests/unit/test_profile_analyzer.py
 import pytest
-from devograph.services.profile_analyzer import ProfileAnalyzer
+from aexy.services.profile_analyzer import ProfileAnalyzer
 
 def test_detect_language_from_extension():
     analyzer = ProfileAnalyzer()
@@ -62,7 +62,7 @@ def test_detect_language_from_extension():
 # tests/integration/test_api_developers.py
 import pytest
 from httpx import AsyncClient
-from devograph.main import app
+from aexy.main import app
 
 @pytest.mark.asyncio
 async def test_list_developers(test_client: AsyncClient, test_developer):
@@ -108,7 +108,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 @pytest.fixture
 async def test_db():
     """Create a test database session."""
-    engine = create_async_engine("postgresql+asyncpg://test:test@localhost/devograph_test")
+    engine = create_async_engine("postgresql+asyncpg://test:test@localhost/aexy_test")
     async with AsyncSession(engine) as session:
         yield session
         await session.rollback()
@@ -133,7 +133,7 @@ async def test_developer(test_db):
 @pytest.fixture
 async def test_client():
     """Create a test HTTP client."""
-    from devograph.main import app
+    from aexy.main import app
     async with AsyncClient(app=app, base_url="http://test") as client:
         yield client
 ```
@@ -144,7 +144,7 @@ async def test_client():
 @pytest.fixture
 def mock_llm_gateway(mocker):
     """Mock the LLM gateway for tests."""
-    mock = mocker.patch("devograph.llm.gateway.LLMGateway")
+    mock = mocker.patch("aexy.llm.gateway.LLMGateway")
     mock.return_value.analyze.return_value = {
         "skills": ["Python"],
         "proficiency": 80,
@@ -196,7 +196,7 @@ def mock_claude(mocker):
 ```python
 # tests/factories.py
 import factory
-from devograph.models import Developer
+from aexy.models import Developer
 
 class DeveloperFactory(factory.Factory):
     class Meta:
@@ -243,7 +243,7 @@ SAMPLE_DEVELOPERS = [
 
 ```bash
 # Generate coverage report
-pytest --cov=devograph --cov-report=html --cov-report=term-missing
+pytest --cov=aexy --cov-report=html --cov-report=term-missing
 
 # View HTML report
 open htmlcov/index.html
@@ -342,7 +342,7 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_DB: devograph_test
+          POSTGRES_DB: aexy_test
           POSTGRES_PASSWORD: test
         ports:
           - 5432:5432
@@ -357,7 +357,7 @@ jobs:
         run: pip install -e ".[dev]"
 
       - name: Run tests
-        run: pytest --cov=devograph --cov-fail-under=80
+        run: pytest --cov=aexy --cov-fail-under=80
 
       - name: Upload coverage
         uses: codecov/codecov-action@v3
@@ -371,7 +371,7 @@ jobs:
 # locustfile.py
 from locust import HttpUser, task, between
 
-class DevographUser(HttpUser):
+class AexyUser(HttpUser):
     wait_time = between(1, 5)
 
     @task

@@ -13,8 +13,8 @@ import pytest
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
-from devograph.services.predictive_analytics import PredictiveAnalyticsService
-from devograph.schemas.analytics import (
+from aexy.services.predictive_analytics import PredictiveAnalyticsService
+from aexy.schemas.analytics import (
     AttritionRiskAnalysis,
     BurnoutRiskAssessment,
     PerformanceTrajectory,

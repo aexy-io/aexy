@@ -7,7 +7,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from devograph_cli.api import DevographClient
+from aexy_cli.api import AexyClient
 
 console = Console()
 
@@ -19,14 +19,14 @@ console = Console()
 def match(description: str, skills: tuple, top: int):
     """Find best developers for a task.
 
-    Example: devograph match "Fix authentication bug in OAuth flow" -s python -s oauth
+    Example: aexy match "Fix authentication bug in OAuth flow" -s python -s oauth
     """
     asyncio.run(_match(description, list(skills), top))
 
 
 async def _match(description: str, skills: list[str], top: int):
     """Async implementation of match."""
-    client = DevographClient()
+    client = AexyClient()
 
     console.print(Panel(f"[bold]Task:[/bold] {description}", border_style="blue"))
     if skills:

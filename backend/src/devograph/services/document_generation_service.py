@@ -6,9 +6,9 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.llm.base import AnalysisRequest, AnalysisType
-from devograph.llm.gateway import get_llm_gateway
-from devograph.llm.prompts import (
+from aexy.llm.base import AnalysisRequest, AnalysisType
+from aexy.llm.gateway import get_llm_gateway
+from aexy.llm.prompts import (
     DOC_API_PROMPT,
     DOC_API_SYSTEM_PROMPT,
     DOC_FUNCTION_PROMPT,
@@ -23,14 +23,14 @@ from devograph.llm.prompts import (
     DOC_UPDATE_PROMPT,
     DOC_UPDATE_SYSTEM_PROMPT,
 )
-from devograph.models.documentation import (
+from aexy.models.documentation import (
     Document,
     DocumentCodeLink,
     DocumentGenerationPrompt,
     DocumentTemplate,
     TemplateCategory,
 )
-from devograph.services.github_service import GitHubService
+from aexy.services.github_service import GitHubService
 
 logger = logging.getLogger(__name__)
 

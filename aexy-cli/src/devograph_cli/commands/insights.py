@@ -7,7 +7,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from devograph_cli.api import DevographClient
+from aexy_cli.api import AexyClient
 
 console = Console()
 
@@ -28,7 +28,7 @@ def attrition_risk(username: str | None, show_all: bool):
 
 async def _attrition_risk(username: str | None, show_all: bool):
     """Async implementation of attrition risk."""
-    client = DevographClient()
+    client = AexyClient()
 
     if username:
         with console.status(f"[bold green]Fetching developer @{username}..."):
@@ -154,7 +154,7 @@ def burnout_risk(username: str):
 
 async def _burnout_risk(username: str):
     """Async implementation of burnout risk."""
-    client = DevographClient()
+    client = AexyClient()
 
     with console.status(f"[bold green]Fetching developer @{username}..."):
         developer = await client.get_developer_by_username(username)
@@ -209,7 +209,7 @@ def trajectory(username: str, months: int):
 
 async def _trajectory(username: str, months: int):
     """Async implementation of trajectory."""
-    client = DevographClient()
+    client = AexyClient()
 
     with console.status(f"[bold green]Fetching developer @{username}..."):
         developer = await client.get_developer_by_username(username)
@@ -287,7 +287,7 @@ def team_health(team_name: str | None):
 
 async def _team_health(team_name: str | None):
     """Async implementation of team health."""
-    client = DevographClient()
+    client = AexyClient()
 
     if team_name:
         with console.status(f"[bold green]Fetching team {team_name}..."):

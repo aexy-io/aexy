@@ -63,7 +63,7 @@ class ProcessingQueue:
         Returns:
             Task ID.
         """
-        from devograph.processing.tasks import analyze_commit_task
+        from aexy.processing.tasks import analyze_commit_task
 
         effective_mode = mode or self.default_mode
 
@@ -115,7 +115,7 @@ class ProcessingQueue:
         Returns:
             Task ID.
         """
-        from devograph.processing.tasks import analyze_pr_task
+        from aexy.processing.tasks import analyze_pr_task
 
         effective_mode = mode or self.default_mode
 
@@ -160,7 +160,7 @@ class ProcessingQueue:
         Returns:
             Task ID.
         """
-        from devograph.processing.tasks import analyze_developer_task
+        from aexy.processing.tasks import analyze_developer_task
 
         effective_mode = mode or self.default_mode
 
@@ -205,7 +205,7 @@ class ProcessingQueue:
         Returns:
             List of task IDs.
         """
-        from devograph.processing.tasks import (
+        from aexy.processing.tasks import (
             analyze_commit_task,
             analyze_developer_task,
             analyze_pr_task,
@@ -262,5 +262,5 @@ def get_processing_queue() -> ProcessingQueue:
 
 def get_settings():
     """Import settings lazily to avoid circular imports."""
-    from devograph.core.config import get_settings as _get_settings
+    from aexy.core.config import get_settings as _get_settings
     return _get_settings()

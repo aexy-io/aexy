@@ -3,16 +3,16 @@
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.config import get_settings
-from devograph.core.database import get_db
-from devograph.services.webhook_handler import (
+from aexy.core.config import get_settings
+from aexy.core.database import get_db
+from aexy.services.webhook_handler import (
     WebhookHandler,
     WebhookVerificationError,
     UnsupportedEventError,
 )
-from devograph.services.ingestion_service import IngestionService
-from devograph.services.profile_sync import ProfileSyncService
-from devograph.services.github_task_sync_service import GitHubTaskSyncService
+from aexy.services.ingestion_service import IngestionService
+from aexy.services.profile_sync import ProfileSyncService
+from aexy.services.github_task_sync_service import GitHubTaskSyncService
 
 router = APIRouter()
 settings = get_settings()
@@ -93,7 +93,7 @@ async def handle_github_webhook(
         for commit_data in event.commits:
             sha = commit_data.get("id", commit_data.get("sha", ""))
             if sha:
-                from devograph.models.activity import Commit
+                from aexy.models.activity import Commit
                 from sqlalchemy import select
                 stmt = select(Commit).where(Commit.sha == sha)
                 commit_result = await db.execute(stmt)
@@ -111,7 +111,7 @@ async def handle_github_webhook(
         # Process PR for task references and status updates
         github_id = event.pull_request.get("id")
         if github_id:
-            from devograph.models.activity import PullRequest
+            from aexy.models.activity import PullRequest
             from sqlalchemy import select
             stmt = select(PullRequest).where(PullRequest.github_id == github_id)
             pr_result = await db.execute(stmt)

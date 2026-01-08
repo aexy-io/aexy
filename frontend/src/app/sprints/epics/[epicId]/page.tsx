@@ -126,7 +126,7 @@ export default function EpicDetailPage() {
           <div className="flex items-center gap-4">
             <Link href="/dashboard" className="flex items-center gap-2">
               <GitBranch className="h-8 w-8 text-primary-500" />
-              <span className="text-2xl font-bold text-white">Devograph</span>
+              <span className="text-2xl font-bold text-white">Aexy</span>
             </Link>
             <nav className="hidden md:flex items-center gap-1 ml-6">
               <Link

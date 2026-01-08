@@ -8,7 +8,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from devograph_cli.api import DevographClient
+from aexy_cli.api import AexyClient
 
 console = Console()
 
@@ -27,7 +27,7 @@ def list_teams():
 
 async def _list_teams():
     """Async implementation of list teams."""
-    client = DevographClient()
+    client = AexyClient()
 
     with console.status("[bold green]Fetching teams..."):
         teams = await client.list_teams()
@@ -61,7 +61,7 @@ def team_skills(team_name: str | None):
 
 async def _team_skills(team_name: str | None):
     """Async implementation of team skills."""
-    client = DevographClient()
+    client = AexyClient()
 
     # If no team specified, show aggregate for all developers
     if not team_name:
@@ -132,7 +132,7 @@ def team_gaps(team_name: str | None, target_skills: tuple):
 
 async def _team_gaps(team_name: str | None, target_skills: list[str]):
     """Async implementation of team gaps."""
-    client = DevographClient()
+    client = AexyClient()
 
     if team_name:
         with console.status(f"[bold green]Fetching team {team_name}..."):
@@ -230,7 +230,7 @@ def team_workload(team_name: str | None):
 
 async def _team_workload(team_name: str | None):
     """Async implementation of team workload."""
-    client = DevographClient()
+    client = AexyClient()
 
     if team_name:
         with console.status(f"[bold green]Fetching team {team_name}..."):

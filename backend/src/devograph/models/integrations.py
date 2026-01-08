@@ -7,7 +7,7 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from devograph.core.database import Base
+from aexy.core.database import Base
 
 
 class SlackIntegration(Base):
@@ -184,7 +184,7 @@ class LinearIntegration(Base):
     organization_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     organization_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
-    # Team mappings: {gitraki_team_id: {linear_team_id: str, labels_filter?: list}}
+    # Team mappings: {aexy_team_id: {linear_team_id: str, labels_filter?: list}}
     team_mappings: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
     # Status mappings: {linear_state_id: workspace_status_slug}

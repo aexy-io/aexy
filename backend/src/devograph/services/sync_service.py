@@ -10,12 +10,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.core.config import get_settings
-from devograph.core.database import async_session_maker
-from devograph.models.activity import CodeReview, Commit, PullRequest
-from devograph.models.developer import GitHubConnection
-from devograph.models.repository import DeveloperRepository, Repository
-from devograph.services.github_service import GitHubAPIError, GitHubService
+from aexy.core.config import get_settings
+from aexy.core.database import async_session_maker
+from aexy.models.activity import CodeReview, Commit, PullRequest
+from aexy.models.developer import GitHubConnection
+from aexy.models.repository import DeveloperRepository, Repository
+from aexy.services.github_service import GitHubAPIError, GitHubService
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -85,7 +85,7 @@ class SyncService:
 
         if use_celery:
             # Use Celery task for production workloads
-            from devograph.processing.sync_tasks import sync_repository_task
+            from aexy.processing.sync_tasks import sync_repository_task
 
             result = sync_repository_task.delay(
                 developer_id=developer_id,
@@ -188,7 +188,7 @@ class SyncService:
 
                 # Trigger profile sync to update skill fingerprint
                 try:
-                    from devograph.services.profile_sync import ProfileSyncService
+                    from aexy.services.profile_sync import ProfileSyncService
                     profile_sync = ProfileSyncService()
                     await profile_sync.sync_developer_profile(developer_id, db)
                     await db.commit()
@@ -483,7 +483,7 @@ class SyncService:
 
         # Build webhook URL
         webhook_url = f"{settings.github_redirect_uri.rsplit('/', 2)[0]}/webhooks/github"
-        webhook_secret = settings.github_webhook_secret or "devograph-webhook"
+        webhook_secret = settings.github_webhook_secret or "aexy-webhook"
 
         try:
             async with GitHubService(access_token=connection.access_token) as gh:

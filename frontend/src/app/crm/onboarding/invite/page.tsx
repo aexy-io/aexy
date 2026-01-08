@@ -27,7 +27,7 @@ export default function InviteTeam() {
   ]);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  const inviteLink = "https://devograph.app/invite/crm-abc123";
+  const inviteLink = "https://aexy.app/invite/crm-abc123";
 
   const addMember = () => {
     setTeamMembers([...teamMembers, { email: "", role: "member" }]);

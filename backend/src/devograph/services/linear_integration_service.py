@@ -10,9 +10,9 @@ import httpx
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.models.integrations import LinearIntegration
-from devograph.models.sprint import Sprint, SprintTask
-from devograph.schemas.integrations import (
+from aexy.models.integrations import LinearIntegration
+from aexy.models.sprint import Sprint, SprintTask
+from aexy.schemas.integrations import (
     ConnectionTestResponse,
     RemoteTeam,
     RemoteStatus,

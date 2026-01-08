@@ -15,9 +15,9 @@ def is_valid_uuid(value: str) -> bool:
     )
     return bool(uuid_pattern.match(value))
 
-from devograph.core.database import get_db
-from devograph.llm.gateway import get_llm_gateway
-from devograph.schemas.career import (
+from aexy.core.database import get_db
+from aexy.llm.gateway import get_llm_gateway
+from aexy.schemas.career import (
     LearningActivity,
     LearningMilestoneResponse,
     LearningPathGenerate,
@@ -27,8 +27,8 @@ from devograph.schemas.career import (
     StretchAssignment,
     TrajectoryStatus,
 )
-from devograph.services.developer_service import DeveloperService
-from devograph.services.learning_path import LearningPathService
+from aexy.services.developer_service import DeveloperService
+from aexy.services.learning_path import LearningPathService
 
 router = APIRouter(prefix="/learning")
 
@@ -559,13 +559,13 @@ async def abandon_learning_path(
 
 
 # Course Search Endpoints
-from devograph.schemas.external_course import (
+from aexy.schemas.external_course import (
     CourseSearchResponse,
     CourseImportRequest,
 )
-from devograph.services.course_provider_service import CourseProviderService
-from devograph.services.learning_activity_service import LearningActivityService
-from devograph.schemas.learning_activity import ActivityLogCreate, ActivityType, ActivitySource
+from aexy.services.course_provider_service import CourseProviderService
+from aexy.services.learning_activity_service import LearningActivityService
+from aexy.schemas.learning_activity import ActivityLogCreate, ActivityType, ActivitySource
 
 
 @router.get("/courses/search", response_model=CourseSearchResponse)
@@ -708,9 +708,9 @@ async def get_recommended_courses(
 # ============================================================================
 from sqlalchemy import select
 from pydantic import BaseModel
-from devograph.models.team import TeamMember, Team
-from devograph.models.developer import Developer
-from devograph.models.career import LearningPath
+from aexy.models.team import TeamMember, Team
+from aexy.models.developer import Developer
+from aexy.models.career import LearningPath
 
 
 class TeamMemberLearningStatus(BaseModel):

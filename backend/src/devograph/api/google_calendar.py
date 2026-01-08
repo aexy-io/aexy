@@ -4,24 +4,24 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.database import get_db
-from devograph.core.config import get_settings
-from devograph.api.developers import get_current_developer
-from devograph.models.developer import Developer
-from devograph.schemas.oncall import (
+from aexy.core.database import get_db
+from aexy.core.config import get_settings
+from aexy.api.developers import get_current_developer
+from aexy.models.developer import Developer
+from aexy.schemas.oncall import (
     GoogleCalendarConnectResponse,
     GoogleCalendarStatusResponse,
     GoogleCalendarListResponse,
     GoogleCalendarInfo,
     GoogleCalendarSelectRequest,
 )
-from devograph.services.google_calendar_service import (
+from aexy.services.google_calendar_service import (
     GoogleCalendarService,
     GoogleCalendarError,
     GoogleCalendarAuthError,
 )
-from devograph.services.workspace_service import WorkspaceService
-from devograph.services.oncall_service import OnCallService
+from aexy.services.workspace_service import WorkspaceService
+from aexy.services.oncall_service import OnCallService
 
 router = APIRouter(
     prefix="/workspaces/{workspace_id}/integrations/google-calendar",

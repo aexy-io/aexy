@@ -12,9 +12,9 @@ from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.llm.gateway import LLMGateway
-from devograph.models.developer import Developer
-from devograph.models.review import (
+from aexy.llm.gateway import LLMGateway
+from aexy.models.developer import Developer
+from aexy.models.review import (
     ContributionSummary,
     IndividualReview,
     ReviewCycle,
@@ -22,10 +22,10 @@ from devograph.models.review import (
     ReviewSubmission,
     WorkGoal,
 )
-from devograph.models.team import Team, TeamMember
-from devograph.models.workspace import Workspace
-from devograph.services.contribution_service import ContributionService
-from devograph.services.notification_service import (
+from aexy.models.team import Team, TeamMember
+from aexy.models.workspace import Workspace
+from aexy.services.contribution_service import ContributionService
+from aexy.services.notification_service import (
     notify_peer_review_requested,
     notify_peer_review_received,
     notify_manager_review_completed,

@@ -8,8 +8,8 @@ from sqlalchemy import and_, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.learning_activity import LearningActivityLog, LearningTimeSession
-from devograph.schemas.learning_activity import (
+from aexy.models.learning_activity import LearningActivityLog, LearningTimeSession
+from aexy.schemas.learning_activity import (
     ActivityCompleteRequest,
     ActivityFilter,
     ActivityLogCreate,

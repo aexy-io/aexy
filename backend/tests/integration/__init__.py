@@ -1,1 +1,1 @@
-"""Integration tests for Devograph."""
+"""Integration tests for Aexy."""

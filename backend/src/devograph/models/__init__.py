@@ -1,8 +1,8 @@
-"""Database models for Devograph."""
+"""Database models for Aexy."""
 
-from devograph.models.plan import Plan, PlanTier, DEFAULT_PLANS
-from devograph.models.developer import Developer, GitHubConnection, GitHubInstallation, GoogleConnection
-from devograph.models.billing import (
+from aexy.models.plan import Plan, PlanTier, DEFAULT_PLANS
+from aexy.models.developer import Developer, GitHubConnection, GitHubInstallation, GoogleConnection
+from aexy.models.billing import (
     CustomerBilling,
     Subscription,
     UsageRecord,
@@ -11,42 +11,42 @@ from devograph.models.billing import (
     SubscriptionStatus,
     UsageType,
 )
-from devograph.models.activity import Commit, PullRequest, CodeReview
-from devograph.models.career import (
+from aexy.models.activity import Commit, PullRequest, CodeReview
+from aexy.models.career import (
     CareerRole,
     LearningPath,
     LearningMilestone,
     HiringRequirement,
     OrganizationSettings,
 )
-from devograph.models.analytics import (
+from aexy.models.analytics import (
     CustomReport,
     ScheduledReport,
     ExportJob,
     PredictiveInsight,
 )
-from devograph.models.integrations import (
+from aexy.models.integrations import (
     SlackIntegration,
     SlackNotificationLog,
     JiraIntegration,
     LinearIntegration,
 )
-from devograph.models.repository import (
+from aexy.models.repository import (
     Organization,
     Repository,
     DeveloperRepository,
     DeveloperOrganization,
 )
-from devograph.models.workspace import (
+from aexy.models.workspace import (
     Workspace,
     WorkspaceMember,
     WorkspaceSubscription,
 )
-from devograph.models.team import (
+from aexy.models.team import (
     Team,
     TeamMember,
 )
-from devograph.models.sprint import (
+from aexy.models.sprint import (
     Sprint,
     SprintTask,
     SprintMetrics,
@@ -58,18 +58,18 @@ from devograph.models.sprint import (
     TaskGitHubLink,
     TaskActivity,
 )
-from devograph.models.epic import Epic
-from devograph.models.learning_activity import (
+from aexy.models.epic import Epic
+from aexy.models.learning_activity import (
     LearningActivityLog,
     LearningTimeSession,
 )
-from devograph.models.gamification import (
+from aexy.models.gamification import (
     DeveloperGamification,
     Badge,
     DeveloperBadge,
     PREDEFINED_BADGES,
 )
-from devograph.models.review import (
+from aexy.models.review import (
     ReviewCycle,
     IndividualReview,
     ReviewSubmission,
@@ -77,21 +77,21 @@ from devograph.models.review import (
     WorkGoal,
     ContributionSummary,
 )
-from devograph.models.notification import (
+from aexy.models.notification import (
     Notification,
     NotificationPreference,
     EmailNotificationLog,
     NotificationEventType,
     DEFAULT_NOTIFICATION_PREFERENCES,
 )
-from devograph.models.oncall import (
+from aexy.models.oncall import (
     OnCallConfig,
     OnCallSchedule,
     OnCallSwapRequest,
     GoogleCalendarToken,
     SwapRequestStatus,
 )
-from devograph.models.documentation import (
+from aexy.models.documentation import (
     Document,
     DocumentVersion,
     DocumentTemplate,
@@ -106,7 +106,7 @@ from devograph.models.documentation import (
     TemplateCategory,
     SYSTEM_TEMPLATES,
 )
-from devograph.models.tracking import (
+from aexy.models.tracking import (
     DeveloperStandup,
     WorkLog,
     TimeEntry,
@@ -121,7 +121,7 @@ from devograph.models.tracking import (
     WorkLogType,
     ChannelType,
 )
-from devograph.models.ticketing import (
+from aexy.models.ticketing import (
     TicketForm,
     TicketFormField,
     Ticket,
@@ -138,7 +138,7 @@ from devograph.models.ticketing import (
     TicketFieldType,
     EscalationLevel,
 )
-from devograph.models.assessment import (
+from aexy.models.assessment import (
     Assessment,
     AssessmentTopic,
     Question,
@@ -156,7 +156,7 @@ from devograph.models.assessment import (
     AttemptStatus,
     ProctoringEventSeverity,
 )
-from devograph.models.crm import (
+from aexy.models.crm import (
     CRMObject,
     CRMAttribute,
     CRMRecord,
@@ -181,7 +181,7 @@ from devograph.models.crm import (
     CRMSequenceStepType,
     CRMSequenceEnrollmentStatus,
 )
-from devograph.models.google_integration import (
+from aexy.models.google_integration import (
     GoogleIntegration,
     SyncedEmail,
     SyncedEmailRecordLink,

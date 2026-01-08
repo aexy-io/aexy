@@ -9,7 +9,7 @@ from typing import Any
 
 import redis.asyncio as redis
 
-from devograph.core.config import get_settings
+from aexy.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 settings = get_settings()

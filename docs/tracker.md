@@ -1,4 +1,4 @@
-# Devograph Implementation Tracker
+# Aexy Implementation Tracker
 
 **Project:** GitHub-Based Developer Profiling & Analytics Platform
 **Last Updated:** December 2024
@@ -8,7 +8,7 @@
 
 ## Overview
 
-This document tracks the implementation progress of Devograph across all four phases.
+This document tracks the implementation progress of Aexy across all four phases.
 
 **Legend:**
 - [ ] Not Started
@@ -184,10 +184,10 @@ This document tracks the implementation progress of Devograph across all four ph
 
 | Task | Status | Notes |
 |------|--------|-------|
-| IDE extension | [x] | `devograph-vscode/` - VS Code extension with profile, insights, team views |
+| IDE extension | [x] | `aexy-vscode/` - VS Code extension with profile, insights, team views |
 | Slack bot | [x] | `services/slack_integration.py` + `api/slack.py` - OAuth, commands, notifications |
-| Public API | [x] | REST API complete in `backend/src/devograph/api/` |
-| Manager CLI tool | [x] | `devograph-cli/` - Click-based CLI with profile, team, match, insights, report commands |
+| Public API | [x] | REST API complete in `backend/src/aexy/api/` |
+| Manager CLI tool | [x] | `aexy-cli/` - Click-based CLI with profile, team, match, insights, report commands |
 | Export functionality | [x] | PDF, CSV, JSON, XLSX in `services/export_service.py` |
 
 ### Phase 4 Success Criteria
@@ -375,9 +375,9 @@ This document tracks the implementation progress of Devograph across all four ph
 ## Project Structure
 
 ```
-devograph/
+aexy/
 ├── backend/
-│   ├── src/devograph/
+│   ├── src/aexy/
 │   │   ├── api/           # FastAPI routes (auth, developers, analysis, admin, career, learning, hiring)
 │   │   ├── cache/         # Analysis caching (Redis + in-memory)
 │   │   ├── core/          # Config, database, settings
@@ -419,13 +419,13 @@ devograph/
 │   │   ├── hooks/         # Custom hooks
 │   │   └── lib/           # API client (Phase 4 APIs included)
 │   └── package.json
-├── devograph-cli/           # CLI tool (Phase 4)
-│   ├── src/devograph_cli/
+├── aexy-cli/           # CLI tool (Phase 4)
+│   ├── src/aexy_cli/
 │   │   ├── api/           # API client
 │   │   ├── commands/      # CLI commands (profile, team, match, insights, report)
 │   │   └── main.py        # Click entry point
 │   └── pyproject.toml
-├── devograph-vscode/        # VS Code extension (Phase 4)
+├── aexy-vscode/        # VS Code extension (Phase 4)
 │   ├── src/
 │   │   ├── api/           # API client
 │   │   ├── views/         # Tree view providers
@@ -504,8 +504,8 @@ devograph/
 | Dec 2024 | Frontend Reports page: template-based creation, report listing, scheduling | — |
 | Dec 2024 | SlackIntegrationService: OAuth flow, messaging, slash commands, event handling | — |
 | Dec 2024 | Slack API endpoints: install, callback, commands, events, interactions, notifications | — |
-| Dec 2024 | devograph-cli: Python Click CLI with profile, team, match, insights, report commands | — |
-| Dec 2024 | devograph-vscode: VS Code extension with profile view, insights view, team view | — |
+| Dec 2024 | aexy-cli: Python Click CLI with profile, team, match, insights, report commands | — |
+| Dec 2024 | aexy-vscode: VS Code extension with profile view, insights view, team view | — |
 | Dec 2024 | **Phase 4 Complete**: Advanced Analytics, Custom Reports, Slack Integration, CLI Tool, VS Code Extension | — |
 | Dec 2024 | Sprint Planning Enhancements: Organization & Team Management (workspaces, teams, invitations) | — |
 | Dec 2024 | Sprint Planning: Full sprint lifecycle (create, tasks, analytics, retrospectives) | — |

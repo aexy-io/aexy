@@ -1,16 +1,16 @@
 import * as vscode from 'vscode';
-import { DevographClient, TeamHealth, AttritionRisk } from '../api/client';
+import { AexyClient, TeamHealth, AttritionRisk } from '../api/client';
 
 export class InsightsViewProvider implements vscode.TreeDataProvider<InsightItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<InsightItem | undefined | null | void> = new vscode.EventEmitter<InsightItem | undefined | null | void>();
     readonly onDidChangeTreeData: vscode.Event<InsightItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
-    private client: DevographClient;
+    private client: AexyClient;
     private teamHealth: TeamHealth | null = null;
     private attritionRisks: Map<string, AttritionRisk> = new Map();
 
     constructor() {
-        this.client = new DevographClient();
+        this.client = new AexyClient();
     }
 
     refresh(): void {

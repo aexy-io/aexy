@@ -1,71 +1,71 @@
-"""API routes for Devograph."""
+"""API routes for Aexy."""
 
 from fastapi import APIRouter
 
-from devograph.api.admin import router as admin_router
-from devograph.api.analysis import router as analysis_router
-from devograph.api.auth import router as auth_router
-from devograph.api.career import router as career_router
-from devograph.api.developers import router as developers_router
-from devograph.api.health import router as health_router
-from devograph.api.hiring import router as hiring_router
-from devograph.api.learning import router as learning_router
-from devograph.api.learning_activities import router as learning_activities_router
-from devograph.api.gamification import router as gamification_router
-from devograph.api.teams import router as teams_router
-from devograph.api.webhooks import router as webhooks_router
+from aexy.api.admin import router as admin_router
+from aexy.api.analysis import router as analysis_router
+from aexy.api.auth import router as auth_router
+from aexy.api.career import router as career_router
+from aexy.api.developers import router as developers_router
+from aexy.api.health import router as health_router
+from aexy.api.hiring import router as hiring_router
+from aexy.api.learning import router as learning_router
+from aexy.api.learning_activities import router as learning_activities_router
+from aexy.api.gamification import router as gamification_router
+from aexy.api.teams import router as teams_router
+from aexy.api.webhooks import router as webhooks_router
 # Phase 4: Advanced Analytics
-from devograph.api.analytics import router as analytics_router
-from devograph.api.reports import router as reports_router
-from devograph.api.predictions import router as predictions_router
-from devograph.api.exports import router as exports_router
-from devograph.api.slack import router as slack_router
-from devograph.api.repositories import router as repositories_router
-from devograph.api.billing import router as billing_router
+from aexy.api.analytics import router as analytics_router
+from aexy.api.reports import router as reports_router
+from aexy.api.predictions import router as predictions_router
+from aexy.api.exports import router as exports_router
+from aexy.api.slack import router as slack_router
+from aexy.api.repositories import router as repositories_router
+from aexy.api.billing import router as billing_router
 # Organization & Team Management
-from devograph.api.workspaces import router as workspaces_router
-from devograph.api.workspace_teams import router as workspace_teams_router
+from aexy.api.workspaces import router as workspaces_router
+from aexy.api.workspace_teams import router as workspace_teams_router
 # Sprint Planning
-from devograph.api.sprints import router as sprints_router
-from devograph.api.sprint_tasks import router as sprint_tasks_router
-from devograph.api.sprint_analytics import router as sprint_analytics_router
-from devograph.api.retrospectives import router as retrospectives_router
-from devograph.api.project_tasks import router as project_tasks_router
+from aexy.api.sprints import router as sprints_router
+from aexy.api.sprint_tasks import router as sprint_tasks_router
+from aexy.api.sprint_analytics import router as sprint_analytics_router
+from aexy.api.retrospectives import router as retrospectives_router
+from aexy.api.project_tasks import router as project_tasks_router
 # Task Configuration
-from devograph.api.task_config import router as task_config_router
+from aexy.api.task_config import router as task_config_router
 # External Integrations
-from devograph.api.integrations import router as integrations_router
-from devograph.api.integrations import webhook_router as integration_webhooks_router
+from aexy.api.integrations import router as integrations_router
+from aexy.api.integrations import webhook_router as integration_webhooks_router
 # Epics
-from devograph.api.epics import router as epics_router
+from aexy.api.epics import router as epics_router
 # Reviews & Goals
-from devograph.api.reviews import router as reviews_router
+from aexy.api.reviews import router as reviews_router
 # Notifications
-from devograph.api.notifications import router as notifications_router
+from aexy.api.notifications import router as notifications_router
 # On-Call Scheduling
-from devograph.api.oncall import router as oncall_router
-from devograph.api.google_calendar import router as google_calendar_router
+from aexy.api.oncall import router as oncall_router
+from aexy.api.google_calendar import router as google_calendar_router
 # Documentation
-from devograph.api.documents import router as documents_router
-from devograph.api.documents import template_router as templates_router
-from devograph.api.collaboration import router as collaboration_router
-from devograph.api.document_spaces import router as document_spaces_router
+from aexy.api.documents import router as documents_router
+from aexy.api.documents import template_router as templates_router
+from aexy.api.collaboration import router as collaboration_router
+from aexy.api.document_spaces import router as document_spaces_router
 # Tracking
-from devograph.api.tracking import router as tracking_router
+from aexy.api.tracking import router as tracking_router
 # Ticketing
-from devograph.api.ticket_forms import router as ticket_forms_router
-from devograph.api.tickets import router as tickets_router
-from devograph.api.public_forms import router as public_forms_router
-from devograph.api.escalation import router as escalation_router
-from devograph.api.escalation import escalation_ticket_router
+from aexy.api.ticket_forms import router as ticket_forms_router
+from aexy.api.tickets import router as tickets_router
+from aexy.api.public_forms import router as public_forms_router
+from aexy.api.escalation import router as escalation_router
+from aexy.api.escalation import escalation_ticket_router
 # Assessment Platform
-from devograph.api.assessments import router as assessments_router
-from devograph.api.assessment_take import router as assessment_take_router
+from aexy.api.assessments import router as assessments_router
+from aexy.api.assessment_take import router as assessment_take_router
 # CRM
-from devograph.api.crm import router as crm_router
-from devograph.api.crm_automation import router as crm_automation_router
+from aexy.api.crm import router as crm_router
+from aexy.api.crm_automation import router as crm_automation_router
 # Google Integration (Gmail & Calendar sync for CRM)
-from devograph.api.google_integration import router as google_integration_router
+from aexy.api.google_integration import router as google_integration_router
 
 api_router = APIRouter()
 

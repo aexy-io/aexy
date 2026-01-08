@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "devograph"
+name = "aexy"
 version = "0.1.0"
 description = "GitHub-Based Developer Profiling & Analytics Platform"
 readme = "README.md"
@@ -50,7 +50,7 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
-addopts = "-v --cov=src/devograph --cov-report=term-missing"
+addopts = "-v --cov=src/aexy --cov-report=term-missing"
 
 [tool.ruff]
 line-length = 100
@@ -61,4 +61,4 @@ python_version = "3.11"
 strict = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/devograph"]
+packages = ["src/aexy"]

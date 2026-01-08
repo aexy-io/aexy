@@ -7,7 +7,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.llm.base import (
+from aexy.llm.base import (
     AnalysisRequest,
     AnalysisResult,
     LLMConfig,
@@ -58,7 +58,7 @@ class LLMGateway:
             return
 
         try:
-            from devograph.services.usage_service import UsageService
+            from aexy.services.usage_service import UsageService
 
             usage_service = UsageService(db)
             await usage_service.record_usage(
@@ -283,17 +283,17 @@ def create_provider(config: LLMConfig) -> LLMProvider:
         ValueError: If provider type is not supported.
     """
     if config.provider == "claude":
-        from devograph.llm.claude_provider import ClaudeProvider
+        from aexy.llm.claude_provider import ClaudeProvider
 
         return ClaudeProvider(config)
 
     elif config.provider == "ollama":
-        from devograph.llm.ollama_provider import OllamaProvider
+        from aexy.llm.ollama_provider import OllamaProvider
 
         return OllamaProvider(config)
 
     elif config.provider == "gemini":
-        from devograph.llm.gemini_provider import GeminiProvider
+        from aexy.llm.gemini_provider import GeminiProvider
 
         return GeminiProvider(config)
 
@@ -308,7 +308,7 @@ def get_llm_gateway() -> LLMGateway | None:
     Returns:
         LLM gateway if configured, None otherwise.
     """
-    from devograph.core.config import get_settings
+    from aexy.core.config import get_settings
 
     settings = get_settings()
 

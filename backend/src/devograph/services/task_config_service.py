@@ -6,7 +6,7 @@ from uuid import uuid4
 from sqlalchemy import select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.models.sprint import WorkspaceTaskStatus, WorkspaceCustomField
+from aexy.models.sprint import WorkspaceTaskStatus, WorkspaceCustomField
 
 
 def slugify(text: str) -> str:

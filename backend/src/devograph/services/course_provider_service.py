@@ -6,8 +6,8 @@ from typing import Any
 
 import httpx
 
-from devograph.core.config import get_settings
-from devograph.schemas.external_course import ExternalCourse
+from aexy.core.config import get_settings
+from aexy.schemas.external_course import ExternalCourse
 
 logger = logging.getLogger(__name__)
 settings = get_settings()

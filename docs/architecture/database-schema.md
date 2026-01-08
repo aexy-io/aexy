@@ -2,7 +2,7 @@
 
 ## Overview
 
-Devograph uses PostgreSQL with SQLAlchemy ORM. The schema is organized into logical domains representing different aspects of the system.
+Aexy uses PostgreSQL with SQLAlchemy ORM. The schema is organized into logical domains representing different aspects of the system.
 
 ## Entity Relationship Diagram
 

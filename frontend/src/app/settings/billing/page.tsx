@@ -349,7 +349,7 @@ function BillingContent() {
           <p className="text-slate-400 text-sm">
             Need help with billing?{" "}
             <a
-              href="mailto:billing@devograph.io"
+              href="mailto:billing@aexy.io"
               className="text-primary-400 hover:text-primary-300 transition"
             >
               Contact our billing support

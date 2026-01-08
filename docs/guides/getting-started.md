@@ -1,4 +1,4 @@
-# Getting Started with Devograph
+# Getting Started with Aexy
 
 ## Prerequisites
 
@@ -15,8 +15,8 @@ Before you begin, ensure you have the following installed:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-org/devograph.git
-cd devograph
+git clone https://github.com/your-org/aexy.git
+cd aexy
 ```
 
 ### 2. Set Up Environment Variables
@@ -25,7 +25,7 @@ Create a `.env` file in the root directory:
 
 ```bash
 # Database
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/devograph
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/aexy
 
 # Redis
 REDIS_URL=redis://localhost:6379/0
@@ -64,13 +64,13 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -e ".[dev]"
 
 # Create database
-createdb devograph
+createdb aexy
 
 # Run migrations
 alembic upgrade head
 
 # Start the server
-uvicorn devograph.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn aexy.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### 4. Set Up the Frontend
@@ -96,7 +96,7 @@ npm run dev
 1. Go to https://github.com/settings/apps
 2. Click "New GitHub App"
 3. Fill in the details:
-   - **Name**: Devograph (your-org)
+   - **Name**: Aexy (your-org)
    - **Homepage URL**: http://localhost:3000
    - **Callback URL**: http://localhost:8000/api/auth/github/callback
    - **Webhook URL**: http://localhost:8000/api/webhooks/github (use ngrok for local dev)
@@ -143,13 +143,13 @@ For full functionality, run the Celery worker:
 
 ```bash
 cd backend
-celery -A devograph.processing.celery_app worker --loglevel=info
+celery -A aexy.processing.celery_app worker --loglevel=info
 ```
 
 And the scheduler:
 
 ```bash
-celery -A devograph.processing.celery_app beat --loglevel=info
+celery -A aexy.processing.celery_app beat --loglevel=info
 ```
 
 ## Development Workflow
@@ -225,7 +225,7 @@ docker-compose down
 pg_isready -h localhost -p 5432
 
 # Create database if missing
-createdb devograph
+createdb aexy
 ```
 
 **Redis Connection Failed**

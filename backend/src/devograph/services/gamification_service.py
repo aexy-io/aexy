@@ -7,13 +7,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.gamification import (
+from aexy.models.gamification import (
     Badge,
     DeveloperBadge,
     DeveloperGamification,
     PREDEFINED_BADGES,
 )
-from devograph.schemas.gamification import (
+from aexy.schemas.gamification import (
     BadgeCheckResult,
     BadgeResponse,
     EarnedBadgeResponse,

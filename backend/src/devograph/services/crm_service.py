@@ -9,7 +9,7 @@ from sqlalchemy import select, func, and_, or_, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.crm import (
+from aexy.models.crm import (
     CRMObject,
     CRMAttribute,
     CRMRecord,
@@ -601,7 +601,7 @@ class CRMRecordService:
 
         # Trigger CRM events (automations and webhooks)
         try:
-            from devograph.services.crm_events import CRMEventService
+            from aexy.services.crm_events import CRMEventService
             event_service = CRMEventService(self.db)
             await event_service.emit_record_created(
                 workspace_id=workspace_id,
@@ -777,7 +777,7 @@ class CRMRecordService:
 
             # Trigger CRM events (automations and webhooks)
             try:
-                from devograph.services.crm_events import CRMEventService
+                from aexy.services.crm_events import CRMEventService
                 event_service = CRMEventService(self.db)
                 await event_service.emit_record_updated(
                     workspace_id=record.workspace_id,
@@ -834,7 +834,7 @@ class CRMRecordService:
 
         # Trigger CRM events (automations and webhooks)
         try:
-            from devograph.services.crm_events import CRMEventService
+            from aexy.services.crm_events import CRMEventService
             event_service = CRMEventService(self.db)
             await event_service.emit_record_deleted(
                 workspace_id=workspace_id,

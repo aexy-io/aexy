@@ -8,10 +8,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.cache import get_analysis_cache
-from devograph.core.config import get_settings
-from devograph.core.database import get_db
-from devograph.llm.gateway import get_llm_gateway
+from aexy.cache import get_analysis_cache
+from aexy.core.config import get_settings
+from aexy.core.database import get_db
+from aexy.llm.gateway import get_llm_gateway
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ async def get_celery_stats() -> dict[str, Any]:
         Dict with queue_length, workers_active, and worker_details.
     """
     try:
-        from devograph.processing.celery_app import celery_app
+        from aexy.processing.celery_app import celery_app
         import redis.asyncio as aioredis
 
         settings = get_settings()
@@ -257,7 +257,7 @@ async def trigger_batch_processing() -> BatchTriggerResponse:
     who haven't been analyzed recently.
     """
     try:
-        from devograph.processing.tasks import batch_profile_sync_task
+        from aexy.processing.tasks import batch_profile_sync_task
 
         # Trigger the batch sync task
         result = batch_profile_sync_task.delay()
@@ -314,7 +314,7 @@ async def get_llm_usage_stats(
     """
     from datetime import datetime, timezone
     from sqlalchemy import func
-    from devograph.models.billing import UsageRecord
+    from aexy.models.billing import UsageRecord
 
     try:
         # Get today's start timestamp

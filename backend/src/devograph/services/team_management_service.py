@@ -8,11 +8,11 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.team import Team, TeamMember
-from devograph.models.workspace import WorkspaceMember
-from devograph.models.developer import Developer
-from devograph.models.activity import Commit
-from devograph.models.repository import Repository
+from aexy.models.team import Team, TeamMember
+from aexy.models.workspace import WorkspaceMember
+from aexy.models.developer import Developer
+from aexy.models.activity import Commit
+from aexy.models.repository import Repository
 
 
 def generate_slug(name: str) -> str:

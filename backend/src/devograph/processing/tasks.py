@@ -49,10 +49,10 @@ async def _analyze_commit(developer_id: str, commit_id: str) -> dict[str, Any]:
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from devograph.core.database import async_session_maker
-    from devograph.llm.gateway import get_llm_gateway
-    from devograph.models.activity import Commit
-    from devograph.services.code_analyzer import CodeAnalyzer
+    from aexy.core.database import async_session_maker
+    from aexy.llm.gateway import get_llm_gateway
+    from aexy.models.activity import Commit
+    from aexy.services.code_analyzer import CodeAnalyzer
 
     gateway = get_llm_gateway()
     if not gateway:
@@ -116,11 +116,11 @@ async def _analyze_pr(developer_id: str, pr_id: str) -> dict[str, Any]:
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from devograph.core.database import async_session_maker
-    from devograph.llm.gateway import get_llm_gateway
-    from devograph.models.activity import PullRequest
-    from devograph.services.code_analyzer import CodeAnalyzer
-    from devograph.services.soft_skills_analyzer import SoftSkillsAnalyzer
+    from aexy.core.database import async_session_maker
+    from aexy.llm.gateway import get_llm_gateway
+    from aexy.models.activity import PullRequest
+    from aexy.services.code_analyzer import CodeAnalyzer
+    from aexy.services.soft_skills_analyzer import SoftSkillsAnalyzer
 
     gateway = get_llm_gateway()
     if not gateway:
@@ -196,12 +196,12 @@ async def _analyze_developer(developer_id: str) -> dict[str, Any]:
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from devograph.core.database import async_session_maker
-    from devograph.llm.gateway import get_llm_gateway
-    from devograph.models.activity import CodeReview, Commit, PullRequest
-    from devograph.models.developer import Developer
-    from devograph.services.code_analyzer import CodeAnalyzer
-    from devograph.services.soft_skills_analyzer import SoftSkillsAnalyzer
+    from aexy.core.database import async_session_maker
+    from aexy.llm.gateway import get_llm_gateway
+    from aexy.models.activity import CodeReview, Commit, PullRequest
+    from aexy.models.developer import Developer
+    from aexy.services.code_analyzer import CodeAnalyzer
+    from aexy.services.soft_skills_analyzer import SoftSkillsAnalyzer
 
     gateway = get_llm_gateway()
     if not gateway:
@@ -379,8 +379,8 @@ async def _reset_daily_limits() -> dict[str, Any]:
 
     from sqlalchemy import select
 
-    from devograph.core.database import async_session_maker
-    from devograph.models.developer import Developer
+    from aexy.core.database import async_session_maker
+    from aexy.models.developer import Developer
 
     async with async_session_maker() as db:
         now = datetime.now(timezone.utc)
@@ -435,8 +435,8 @@ def report_usage_to_stripe_task(self, developer_id: str) -> dict[str, Any]:
 
 async def _report_usage_to_stripe(developer_id: str) -> dict[str, Any]:
     """Async implementation of Stripe usage reporting."""
-    from devograph.core.database import async_session_maker
-    from devograph.services.usage_service import UsageService
+    from aexy.core.database import async_session_maker
+    from aexy.services.usage_service import UsageService
 
     async with async_session_maker() as db:
         usage_service = UsageService(db)
@@ -467,9 +467,9 @@ async def _batch_report_usage() -> dict[str, Any]:
 
     from sqlalchemy import select
 
-    from devograph.core.database import async_session_maker
-    from devograph.models.billing import CustomerBilling, UsageRecord
-    from devograph.services.usage_service import UsageService
+    from aexy.core.database import async_session_maker
+    from aexy.models.billing import CustomerBilling, UsageRecord
+    from aexy.services.usage_service import UsageService
 
     async with async_session_maker() as db:
         # Find customers with unreported usage and get their developer_ids
@@ -507,9 +507,9 @@ async def _batch_profile_sync() -> dict[str, Any]:
 
     from sqlalchemy import or_, select
 
-    from devograph.core.database import async_session_maker
-    from devograph.models.developer import Developer
-    from devograph.processing.queue import ProcessingMode, ProcessingQueue
+    from aexy.core.database import async_session_maker
+    from aexy.models.developer import Developer
+    from aexy.processing.queue import ProcessingMode, ProcessingQueue
 
     queue = ProcessingQueue(mode=ProcessingMode.BATCH)
     cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
@@ -571,9 +571,9 @@ async def _process_document_sync_queue() -> dict[str, Any]:
     """Async implementation of document sync queue processing."""
     from datetime import datetime, timezone
 
-    from devograph.core.database import async_session_maker
-    from devograph.services.document_sync_service import DocumentSyncService
-    from devograph.services.document_generation_service import DocumentGenerationService
+    from aexy.core.database import async_session_maker
+    from aexy.services.document_sync_service import DocumentSyncService
+    from aexy.services.document_generation_service import DocumentGenerationService
 
     async with async_session_maker() as db:
         sync_service = DocumentSyncService(db)
@@ -609,7 +609,7 @@ async def _process_document_sync_queue() -> dict[str, Any]:
                     continue
 
                 # Get code links
-                from devograph.models.documentation import DocumentCodeLink
+                from aexy.models.documentation import DocumentCodeLink
                 from sqlalchemy import select
 
                 stmt = select(DocumentCodeLink).where(
@@ -691,10 +691,10 @@ async def _regenerate_document(
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
-    from devograph.core.database import async_session_maker
-    from devograph.models.documentation import Document, DocumentCodeLink, TemplateCategory
-    from devograph.services.document_generation_service import DocumentGenerationService
-    from devograph.services.github_app_service import GitHubAppService
+    from aexy.core.database import async_session_maker
+    from aexy.models.documentation import Document, DocumentCodeLink, TemplateCategory
+    from aexy.services.document_generation_service import DocumentGenerationService
+    from aexy.services.github_app_service import GitHubAppService
 
     async with async_session_maker() as db:
         # Get document with code links
@@ -721,7 +721,7 @@ async def _regenerate_document(
 
         try:
             # Get repository info
-            from devograph.services.repository_service import RepositoryService
+            from aexy.services.repository_service import RepositoryService
 
             repo_service = RepositoryService(db)
             repo = await repo_service.get_repository_by_id(str(code_link.repository_id))

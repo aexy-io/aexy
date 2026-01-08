@@ -11,8 +11,8 @@ These tests verify:
 import pytest
 from datetime import datetime, timedelta
 
-from devograph.services.analytics_dashboard import AnalyticsDashboardService
-from devograph.schemas.analytics import DateRange
+from aexy.services.analytics_dashboard import AnalyticsDashboardService
+from aexy.schemas.analytics import DateRange
 
 
 class TestAnalyticsDashboardService:

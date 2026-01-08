@@ -8,12 +8,12 @@ from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, Stri
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from devograph.core.database import Base
+from aexy.core.database import Base
 
 if TYPE_CHECKING:
-    from devograph.models.developer import Developer
-    from devograph.models.workspace import Workspace
-    from devograph.models.sprint import SprintTask
+    from aexy.models.developer import Developer
+    from aexy.models.workspace import Workspace
+    from aexy.models.sprint import SprintTask
 
 
 class Epic(Base):

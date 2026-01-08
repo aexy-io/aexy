@@ -2,8 +2,8 @@
 
 import pytest
 
-from devograph.cache.analysis_cache import InMemoryCache
-from devograph.llm.base import AnalysisResult, LanguageAnalysis
+from aexy.cache.analysis_cache import InMemoryCache
+from aexy.llm.base import AnalysisResult, LanguageAnalysis
 
 
 class TestInMemoryCache:

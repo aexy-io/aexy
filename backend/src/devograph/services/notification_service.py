@@ -9,15 +9,15 @@ from sqlalchemy import select, func, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.developer import Developer
-from devograph.models.notification import (
+from aexy.models.developer import Developer
+from aexy.models.notification import (
     DEFAULT_NOTIFICATION_PREFERENCES,
     EmailNotificationLog,
     Notification,
     NotificationEventType,
     NotificationPreference,
 )
-from devograph.schemas.notification import (
+from aexy.schemas.notification import (
     NotificationContext,
     NotificationCreate,
     NotificationEventType as SchemaEventType,

@@ -8,15 +8,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.developer import Developer, GitHubConnection, GitHubInstallation
-from devograph.models.repository import (
+from aexy.models.developer import Developer, GitHubConnection, GitHubInstallation
+from aexy.models.repository import (
     DeveloperOrganization,
     DeveloperRepository,
     Organization,
     Repository,
 )
-from devograph.services.github_service import GitHubService
-from devograph.services.github_app_service import GitHubAppService, GitHubAppError
+from aexy.services.github_service import GitHubService
+from aexy.services.github_app_service import GitHubAppService, GitHubAppError
 
 
 class RepositoryService:

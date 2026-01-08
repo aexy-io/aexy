@@ -6,9 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.api.developers import get_current_developer_id
-from devograph.core.database import get_db
-from devograph.services.team_service import TeamService
+from aexy.api.developers import get_current_developer_id
+from aexy.core.database import get_db
+from aexy.services.team_service import TeamService
 
 router = APIRouter()
 

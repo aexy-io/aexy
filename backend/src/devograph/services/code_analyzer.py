@@ -3,7 +3,7 @@
 import logging
 from typing import Any
 
-from devograph.llm.base import (
+from aexy.llm.base import (
     AnalysisRequest,
     AnalysisResult,
     AnalysisType,
@@ -11,8 +11,8 @@ from devograph.llm.base import (
     FrameworkAnalysis,
     LanguageAnalysis,
 )
-from devograph.llm.gateway import LLMGateway
-from devograph.services.github_service import GitHubService
+from aexy.llm.gateway import LLMGateway
+from aexy.services.github_service import GitHubService
 
 logger = logging.getLogger(__name__)
 

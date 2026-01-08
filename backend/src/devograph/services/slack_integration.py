@@ -12,10 +12,10 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.config import settings
-from devograph.models.developer import Developer
-from devograph.models.integrations import SlackIntegration, SlackNotificationLog
-from devograph.schemas.integrations import (
+from aexy.core.config import settings
+from aexy.models.developer import Developer
+from aexy.models.integrations import SlackIntegration, SlackNotificationLog
+from aexy.schemas.integrations import (
     SlackCommandResponse,
     SlackCommandType,
     SlackIntegrationResponse,
@@ -26,8 +26,8 @@ from devograph.schemas.integrations import (
     SlackOAuthCallback,
     SlackSlashCommand,
 )
-from devograph.services.slack_tracking_service import SlackTrackingService
-from devograph.services.slack_channel_monitor import SlackChannelMonitorService
+from aexy.services.slack_tracking_service import SlackTrackingService
+from aexy.services.slack_channel_monitor import SlackChannelMonitorService
 
 logger = logging.getLogger(__name__)
 
@@ -371,7 +371,7 @@ class SlackIntegrationService:
         integration = await self.get_integration_by_team(command.team_id, db)
         if not integration or not integration.is_active:
             return SlackCommandResponse(
-                text="Devograph is not installed in this workspace. Please install it first.",
+                text="Aexy is not installed in this workspace. Please install it first.",
             )
 
         # Parse the command
@@ -413,7 +413,7 @@ class SlackIntegrationService:
         integration: SlackIntegration,
         db: AsyncSession,
     ) -> SlackCommandResponse:
-        """Handle /devograph profile @user command."""
+        """Handle /aexy profile @user command."""
         # Extract user mention or username
         username = args.strip().lstrip("@<>").split("|")[0] if args else None
 
@@ -436,7 +436,7 @@ class SlackIntegrationService:
 
         if not developer:
             return SlackCommandResponse(
-                text=f"Developer not found. Make sure the user exists in Devograph.",
+                text=f"Developer not found. Make sure the user exists in Aexy.",
             )
 
         # Build profile response
@@ -473,10 +473,10 @@ class SlackIntegrationService:
         integration: SlackIntegration,
         db: AsyncSession,
     ) -> SlackCommandResponse:
-        """Handle /devograph match "task description" command."""
+        """Handle /aexy match "task description" command."""
         if not args:
             return SlackCommandResponse(
-                text='Please provide a task description. Example: `/devograph match "Fix authentication bug in OAuth flow"`',
+                text='Please provide a task description. Example: `/aexy match "Fix authentication bug in OAuth flow"`',
             )
 
         # This would integrate with the task matching service
@@ -493,7 +493,7 @@ class SlackIntegrationService:
         integration: SlackIntegration,
         db: AsyncSession,
     ) -> SlackCommandResponse:
-        """Handle /devograph team command."""
+        """Handle /aexy team command."""
         # Get developer count
         result = await db.execute(select(Developer))
         developers = result.scalars().all()
@@ -542,10 +542,10 @@ class SlackIntegrationService:
         integration: SlackIntegration,
         db: AsyncSession,
     ) -> SlackCommandResponse:
-        """Handle /devograph insights command."""
+        """Handle /aexy insights command."""
         return SlackCommandResponse(
             response_type="ephemeral",
-            text=":crystal_ball: *Team Insights*\n\n_Use the Devograph web dashboard for detailed predictive insights including attrition risk, burnout indicators, and performance trajectories._",
+            text=":crystal_ball: *Team Insights*\n\n_Use the Aexy web dashboard for detailed predictive insights including attrition risk, burnout indicators, and performance trajectories._",
         )
 
     async def _handle_report_command(
@@ -555,10 +555,10 @@ class SlackIntegrationService:
         integration: SlackIntegration,
         db: AsyncSession,
     ) -> SlackCommandResponse:
-        """Handle /devograph report command."""
+        """Handle /aexy report command."""
         return SlackCommandResponse(
             response_type="ephemeral",
-            text=":bar_chart: *Reports*\n\n_Use the Devograph web dashboard to create and schedule custom reports. Scheduled reports can be delivered to Slack channels automatically._",
+            text=":bar_chart: *Reports*\n\n_Use the Aexy web dashboard to create and schedule custom reports. Scheduled reports can be delivered to Slack channels automatically._",
         )
 
     async def _handle_help_command(
@@ -568,13 +568,13 @@ class SlackIntegrationService:
         integration: SlackIntegration,
         db: AsyncSession,
     ) -> SlackCommandResponse:
-        """Handle /devograph help command."""
+        """Handle /aexy help command."""
         blocks = [
             {
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": ":wave: *Devograph Commands*",
+                    "text": ":wave: *Aexy Commands*",
                 },
             },
             {
@@ -582,23 +582,23 @@ class SlackIntegrationService:
                 "text": {
                     "type": "mrkdwn",
                     "text": """*Profile & Team:*
-• `/devograph profile [@user]` - View developer profile
-• `/devograph team` - Team skill overview
-• `/devograph insights` - Team health summary
+• `/aexy profile [@user]` - View developer profile
+• `/aexy team` - Team skill overview
+• `/aexy insights` - Team health summary
 
 *Tracking:*
-• `/devograph standup yesterday: X | today: Y | blockers: Z` - Submit standup
-• `/devograph update TASK-123 [status] "notes"` - Update task status
-• `/devograph blocker "description" [TASK-REF]` - Report a blocker
-• `/devograph timelog TASK-123 2h "notes"` - Log time
-• `/devograph log TASK-123 "notes"` - Add work note
-• `/devograph status` - View your current status
-• `/devograph mytasks` - List your sprint tasks
+• `/aexy standup yesterday: X | today: Y | blockers: Z` - Submit standup
+• `/aexy update TASK-123 [status] "notes"` - Update task status
+• `/aexy blocker "description" [TASK-REF]` - Report a blocker
+• `/aexy timelog TASK-123 2h "notes"` - Log time
+• `/aexy log TASK-123 "notes"` - Add work note
+• `/aexy status` - View your current status
+• `/aexy mytasks` - List your sprint tasks
 
 *Other:*
-• `/devograph match "task"` - Find best developer for a task
-• `/devograph report` - Report information
-• `/devograph help` - Show this help message""",
+• `/aexy match "task"` - Find best developer for a task
+• `/aexy report` - Report information
+• `/aexy help` - Show this help message""",
                 },
             },
             {
@@ -606,7 +606,7 @@ class SlackIntegrationService:
                 "elements": [
                     {
                         "type": "mrkdwn",
-                        "text": "For full features, visit the Devograph web dashboard.",
+                        "text": "For full features, visit the Aexy web dashboard.",
                     }
                 ],
             },
@@ -614,7 +614,7 @@ class SlackIntegrationService:
 
         return SlackCommandResponse(
             response_type="ephemeral",
-            text="Devograph Commands",
+            text="Aexy Commands",
             blocks=blocks,
         )
 
@@ -669,12 +669,12 @@ class SlackIntegrationService:
         integration: SlackIntegration,
         db: AsyncSession,
     ) -> dict:
-        """Handle @devograph mentions."""
+        """Handle @aexy mentions."""
         channel = event_data.get("channel")
         thread_ts = event_data.get("thread_ts") or event_data.get("ts")
 
         message = SlackMessage(
-            text="Hi! Use `/devograph help` to see available commands.",
+            text="Hi! Use `/aexy help` to see available commands.",
             thread_ts=thread_ts,
         )
 
@@ -693,7 +693,7 @@ class SlackIntegrationService:
         channel = event_data.get("channel")
 
         message = SlackMessage(
-            text="Hi! I'm Devograph. Use `/devograph help` in any channel to see available commands.",
+            text="Hi! I'm Aexy. Use `/aexy help` in any channel to see available commands.",
         )
 
         await self.send_message(
@@ -740,7 +740,7 @@ class SlackIntegrationService:
         developer_id: str,
         db: AsyncSession,
     ) -> bool:
-        """Map a Slack user to a Devograph developer."""
+        """Map a Slack user to a Aexy developer."""
         result = await db.execute(
             select(SlackIntegration).where(SlackIntegration.id == integration_id)
         )

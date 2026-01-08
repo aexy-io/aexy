@@ -3,8 +3,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.database import get_db
-from devograph.schemas.learning_activity import (
+from aexy.core.database import get_db
+from aexy.schemas.learning_activity import (
     ActivityCompleteRequest,
     ActivityFilter,
     ActivityHistory,
@@ -22,7 +22,7 @@ from devograph.schemas.learning_activity import (
     TimeSessionEnd,
     TimeSessionResponse,
 )
-from devograph.services.learning_activity_service import LearningActivityService
+from aexy.services.learning_activity_service import LearningActivityService
 
 router = APIRouter(prefix="/learning/activities")
 

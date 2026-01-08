@@ -8,9 +8,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.developer import Developer
-from devograph.models.plan import DEFAULT_PLANS, Plan, PlanTier
-from devograph.models.repository import DeveloperRepository
+from aexy.models.developer import Developer
+from aexy.models.plan import DEFAULT_PLANS, Plan, PlanTier
+from aexy.models.repository import DeveloperRepository
 
 
 @dataclass

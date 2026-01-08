@@ -61,11 +61,11 @@ export interface TaskMatch {
     reasoning: string;
 }
 
-export class DevographClient {
+export class AexyClient {
     private client: AxiosInstance;
 
     constructor() {
-        const config = vscode.workspace.getConfiguration('devograph');
+        const config = vscode.workspace.getConfiguration('aexy');
         const baseURL = config.get<string>('apiUrl') || 'http://localhost:8000/api';
         const token = config.get<string>('apiToken') || '';
 

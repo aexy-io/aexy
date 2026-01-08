@@ -10,9 +10,9 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.database import get_db
-from devograph.core.config import settings
-from devograph.schemas.integrations import (
+from aexy.core.database import get_db
+from aexy.core.config import settings
+from aexy.schemas.integrations import (
     SlackCommandResponse,
     SlackIntegrationResponse,
     SlackIntegrationUpdate,
@@ -25,7 +25,7 @@ from devograph.schemas.integrations import (
     SlackUserMappingRequest,
     SlackUserMappingResponse,
 )
-from devograph.services.slack_integration import SlackIntegrationService
+from aexy.services.slack_integration import SlackIntegrationService
 
 logger = logging.getLogger(__name__)
 
@@ -284,7 +284,7 @@ async def create_user_mapping(
     db: Annotated[AsyncSession, Depends(get_db)],
     service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
 ):
-    """Map a Slack user to a Devograph developer."""
+    """Map a Slack user to a Aexy developer."""
     success = await service.map_user(
         integration_id=integration_id,
         slack_user_id=mapping.slack_user_id,
@@ -336,7 +336,7 @@ async def get_slack_channels(
     service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
 ):
     """Get list of Slack channels the bot has access to."""
-    from devograph.services.slack_history_sync import SlackHistorySyncService
+    from aexy.services.slack_history_sync import SlackHistorySyncService
 
     integration = await service.get_integration(integration_id, db)
     if not integration or not integration.is_active:
@@ -373,7 +373,7 @@ async def import_slack_history(
     service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
 ):
     """Import Slack message history (async task)."""
-    from devograph.processing.tracking_tasks import import_slack_history_task
+    from aexy.processing.tracking_tasks import import_slack_history_task
 
     integration = await service.get_integration(integration_id, db)
     if not integration or not integration.is_active:
@@ -405,7 +405,7 @@ async def sync_slack_channels(
     service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
 ):
     """Trigger immediate sync of all configured channels."""
-    from devograph.processing.tracking_tasks import sync_all_slack_channels_task
+    from aexy.processing.tracking_tasks import sync_all_slack_channels_task
 
     integration = await service.get_integration(integration_id, db)
     if not integration or not integration.is_active:
@@ -428,7 +428,7 @@ async def auto_map_slack_users(
     service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
 ):
     """Auto-map Slack users to developers by email."""
-    from devograph.services.slack_history_sync import SlackHistorySyncService
+    from aexy.services.slack_history_sync import SlackHistorySyncService
 
     integration = await service.get_integration(integration_id, db)
     if not integration or not integration.is_active:
@@ -459,7 +459,7 @@ async def configure_slack_channel(
     service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
 ):
     """Configure a Slack channel for monitoring."""
-    from devograph.services.slack_history_sync import SlackHistorySyncService
+    from aexy.services.slack_history_sync import SlackHistorySyncService
 
     integration = await service.get_integration(integration_id, db)
     if not integration or not integration.is_active:
@@ -499,7 +499,7 @@ async def get_configured_channels(
 ):
     """Get list of channels configured for monitoring."""
     from sqlalchemy import select
-    from devograph.models.tracking import SlackChannelConfig
+    from aexy.models.tracking import SlackChannelConfig
 
     integration = await service.get_integration(integration_id, db)
     if not integration:
@@ -539,7 +539,7 @@ async def remove_channel_config(
 ):
     """Remove a channel from monitoring."""
     from sqlalchemy import select, and_
-    from devograph.models.tracking import SlackChannelConfig
+    from aexy.models.tracking import SlackChannelConfig
 
     integration = await service.get_integration(integration_id, db)
     if not integration:

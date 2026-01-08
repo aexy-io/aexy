@@ -475,7 +475,7 @@ export default function RepositorySettingsPage() {
             <FolderGit2 className="h-16 w-16 text-slate-600 mx-auto mb-4" />
             <h3 className="text-xl font-medium text-white mb-2">GitHub App Not Installed</h3>
             <p className="text-slate-400 mb-6">
-              Install the Devograph GitHub App to grant access to your repositories.
+              Install the Aexy GitHub App to grant access to your repositories.
               This allows us to analyze your code contributions.
             </p>
             {installationStatus?.install_url ? (

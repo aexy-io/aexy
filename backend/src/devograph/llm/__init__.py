@@ -1,6 +1,6 @@
 """LLM abstraction layer for switchable AI providers."""
 
-from devograph.llm.base import (
+from aexy.llm.base import (
     AnalysisRequest,
     AnalysisResult,
     AnalysisType,
@@ -10,7 +10,7 @@ from devograph.llm.base import (
     LLMRateLimitError,
     LLMAPIError,
 )
-from devograph.llm.gateway import LLMGateway, get_llm_gateway
+from aexy.llm.gateway import LLMGateway, get_llm_gateway
 
 __all__ = [
     "AnalysisRequest",

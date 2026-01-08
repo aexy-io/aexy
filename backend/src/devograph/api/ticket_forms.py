@@ -3,10 +3,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.database import get_db
-from devograph.api.developers import get_current_developer
-from devograph.models.developer import Developer
-from devograph.schemas.ticketing import (
+from aexy.core.database import get_db
+from aexy.api.developers import get_current_developer
+from aexy.models.developer import Developer
+from aexy.schemas.ticketing import (
     TicketFormCreate,
     TicketFormUpdate,
     TicketFormResponse,
@@ -16,8 +16,8 @@ from devograph.schemas.ticketing import (
     TicketFormFieldResponse,
     FieldReorder,
 )
-from devograph.services.ticket_form_service import TicketFormService
-from devograph.services.workspace_service import WorkspaceService
+from aexy.services.ticket_form_service import TicketFormService
+from aexy.services.workspace_service import WorkspaceService
 
 
 router = APIRouter(

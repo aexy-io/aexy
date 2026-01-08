@@ -2,9 +2,9 @@
 
 import pytest
 
-from devograph.models.developer import Developer, GitHubConnection
-from devograph.schemas.developer import DeveloperCreate, DeveloperUpdate, SkillFingerprint, LanguageSkill
-from devograph.services.developer_service import (
+from aexy.models.developer import Developer, GitHubConnection
+from aexy.schemas.developer import DeveloperCreate, DeveloperUpdate, SkillFingerprint, LanguageSkill
+from aexy.services.developer_service import (
     DeveloperAlreadyExistsError,
     DeveloperNotFoundError,
     DeveloperService,

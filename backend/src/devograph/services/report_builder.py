@@ -6,8 +6,8 @@ from uuid import uuid4
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.models.analytics import CustomReport, ScheduledReport
-from devograph.schemas.analytics import (
+from aexy.models.analytics import CustomReport, ScheduledReport
+from aexy.schemas.analytics import (
     CustomReportCreate,
     CustomReportUpdate,
     CustomReportResponse,
@@ -22,7 +22,7 @@ from devograph.schemas.analytics import (
     DeliveryMethod,
     DateRange,
 )
-from devograph.services.analytics_dashboard import AnalyticsDashboardService
+from aexy.services.analytics_dashboard import AnalyticsDashboardService
 
 
 # Default report templates

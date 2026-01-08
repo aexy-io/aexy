@@ -2,7 +2,7 @@
 
 ## Overview
 
-Devograph uses a modern, production-ready technology stack optimized for developer experience and scalability.
+Aexy uses a modern, production-ready technology stack optimized for developer experience and scalability.
 
 ## Backend
 
@@ -180,7 +180,7 @@ Devograph uses a modern, production-ready technology stack optimized for develop
 
 ```bash
 # Database
-DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/devograph
+DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/aexy
 
 # Redis
 REDIS_URL=redis://localhost:6379/0

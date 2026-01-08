@@ -117,7 +117,7 @@ export default function DataImport() {
             Import your data
           </h1>
           <p className="text-slate-400 max-w-lg mx-auto">
-            Bring your existing contacts and companies into Devograph CRM,
+            Bring your existing contacts and companies into Aexy CRM,
             or start fresh.
           </p>
         </div>

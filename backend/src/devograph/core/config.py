@@ -124,7 +124,7 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:3000"
 
     # Database
-    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/devograph"
+    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/aexy"
     database_echo: bool = False
 
     # GitHub App (for OAuth and installations)
@@ -227,11 +227,11 @@ class Settings(BaseSettings):
         description="AWS region for SES",
     )
     ses_sender_email: str = Field(
-        default="noreply@gitraki.com",
+        default="noreply@aexy.io",
         description="Email address to send notifications from",
     )
     ses_sender_name: str = Field(
-        default="Gitraki",
+        default="Aexy",
         description="Display name for notification emails",
     )
     email_notifications_enabled: bool = Field(

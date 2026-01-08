@@ -3,9 +3,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.database import get_db
-from devograph.models.developer import Developer
-from devograph.schemas.career import (
+from aexy.core.database import get_db
+from aexy.models.developer import Developer
+from aexy.schemas.career import (
     CareerRoleCreate,
     CareerRoleResponse,
     CareerRoleUpdate,
@@ -15,8 +15,8 @@ from devograph.schemas.career import (
     RoleSuggestion,
     SkillGap,
 )
-from devograph.services.career_progression import CareerProgressionService
-from devograph.services.developer_service import DeveloperService
+from aexy.services.career_progression import CareerProgressionService
+from aexy.services.developer_service import DeveloperService
 
 router = APIRouter(prefix="/career")
 

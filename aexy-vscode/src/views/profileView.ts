@@ -1,15 +1,15 @@
 import * as vscode from 'vscode';
-import { DevographClient, Developer } from '../api/client';
+import { AexyClient, Developer } from '../api/client';
 
 export class ProfileViewProvider implements vscode.TreeDataProvider<ProfileItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<ProfileItem | undefined | null | void> = new vscode.EventEmitter<ProfileItem | undefined | null | void>();
     readonly onDidChangeTreeData: vscode.Event<ProfileItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
-    private client: DevographClient;
+    private client: AexyClient;
     private currentDeveloper: Developer | null = null;
 
     constructor() {
-        this.client = new DevographClient();
+        this.client = new AexyClient();
     }
 
     refresh(): void {

@@ -12,8 +12,8 @@ from uuid import uuid4
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.models.analytics import ExportJob
-from devograph.schemas.analytics import (
+from aexy.models.analytics import ExportJob
+from aexy.schemas.analytics import (
     ExportRequest,
     ExportJobResponse,
     ExportFormat,
@@ -50,7 +50,7 @@ except ImportError:
 
 
 # Default export directory
-DEFAULT_EXPORT_DIR = Path(tempfile.gettempdir()) / "devograph_exports"
+DEFAULT_EXPORT_DIR = Path(tempfile.gettempdir()) / "aexy_exports"
 
 
 class ExportService:
@@ -380,7 +380,7 @@ class ExportService:
         elements = []
 
         # Title
-        title = data.get("title", data.get("report_name", "Devograph Export"))
+        title = data.get("title", data.get("report_name", "Aexy Export"))
         elements.append(Paragraph(title, title_style))
         elements.append(Paragraph(
             f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
@@ -560,7 +560,7 @@ class ExportService:
         row_num = 1
 
         # Title
-        title = data.get("title", data.get("report_name", "Devograph Export"))
+        title = data.get("title", data.get("report_name", "Aexy Export"))
         ws.cell(row=row_num, column=1, value=title).font = Font(size=16, bold=True)
         row_num += 1
         ws.cell(row=row_num, column=1, value=f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")

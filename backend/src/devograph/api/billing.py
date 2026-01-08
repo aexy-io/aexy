@@ -7,12 +7,12 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.api.developers import get_current_developer_id
-from devograph.core.database import get_db
-from devograph.models.billing import Subscription, SubscriptionStatus
-from devograph.models.developer import Developer
-from devograph.models.plan import Plan, PlanTier
-from devograph.schemas.billing import (
+from aexy.api.developers import get_current_developer_id
+from aexy.core.database import get_db
+from aexy.models.billing import Subscription, SubscriptionStatus
+from aexy.models.developer import Developer
+from aexy.models.plan import Plan, PlanTier
+from aexy.schemas.billing import (
     BillingHistoryEntry,
     ChangePlanRequest,
     CreateCheckoutSessionRequest,
@@ -29,9 +29,9 @@ from devograph.schemas.billing import (
     UsageSummaryResponse,
     WebhookResponse,
 )
-from devograph.services.stripe_service import StripeService
-from devograph.services.stripe_webhook_handler import StripeWebhookHandler
-from devograph.services.usage_service import UsageService
+from aexy.services.stripe_service import StripeService
+from aexy.services.stripe_webhook_handler import StripeWebhookHandler
+from aexy.services.usage_service import UsageService
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,7 @@ async def get_subscription_status(
     If workspace_id is provided, returns the workspace's plan.
     Otherwise returns the developer's individual plan.
     """
-    from devograph.models.workspace import Workspace, WorkspaceMember
+    from aexy.models.workspace import Workspace, WorkspaceMember
 
     stripe_service = StripeService(db)
     usage_service = UsageService(db)

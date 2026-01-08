@@ -1,8 +1,8 @@
 """Processing infrastructure for LLM analysis jobs."""
 
-from devograph.processing.celery_app import celery_app
-from devograph.processing.queue import ProcessingMode, ProcessingQueue
-from devograph.processing.tasks import (
+from aexy.processing.celery_app import celery_app
+from aexy.processing.queue import ProcessingMode, ProcessingQueue
+from aexy.processing.tasks import (
     analyze_commit_task,
     analyze_developer_task,
     analyze_pr_task,

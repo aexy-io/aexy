@@ -10,7 +10,7 @@ from sqlalchemy import func, select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.assessment import (
+from aexy.models.assessment import (
     Assessment,
     AssessmentTopic,
     Question,
@@ -24,7 +24,7 @@ from devograph.models.assessment import (
     InvitationStatus,
     AttemptStatus,
 )
-from devograph.schemas.assessment import (
+from aexy.schemas.assessment import (
     AssessmentCreate,
     AssessmentUpdate,
     Step1Data,

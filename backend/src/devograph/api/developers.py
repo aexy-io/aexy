@@ -5,10 +5,10 @@ from jose import JWTError, jwt
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.config import get_settings
-from devograph.core.database import get_db
-from devograph.schemas.developer import DeveloperResponse, DeveloperUpdate
-from devograph.services.developer_service import DeveloperNotFoundError, DeveloperService
+from aexy.core.config import get_settings
+from aexy.core.database import get_db
+from aexy.schemas.developer import DeveloperResponse, DeveloperUpdate
+from aexy.services.developer_service import DeveloperNotFoundError, DeveloperService
 
 router = APIRouter()
 settings = get_settings()

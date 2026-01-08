@@ -4,9 +4,9 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from devograph.models.activity import Commit, PullRequest, CodeReview
-from devograph.models.developer import Developer, GitHubConnection
-from devograph.services.profile_sync import ProfileSyncService
+from aexy.models.activity import Commit, PullRequest, CodeReview
+from aexy.models.developer import Developer, GitHubConnection
+from aexy.services.profile_sync import ProfileSyncService
 
 
 class TestProfileSyncBasic:

@@ -7,7 +7,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.sprint import (
+from aexy.models.sprint import (
     Sprint,
     SprintTask,
     SprintMetrics,
@@ -15,7 +15,7 @@ from devograph.models.sprint import (
     SprintPlanningSession,
     SprintRetrospective,
 )
-from devograph.models.team import Team, TeamMember
+from aexy.models.team import Team, TeamMember
 
 
 class SprintService:

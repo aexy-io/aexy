@@ -1,4 +1,4 @@
-# Devograph Testing Tracker
+# Aexy Testing Tracker
 
 **Last Updated:** December 2024
 **Overall Test Coverage Target:** 80%
@@ -7,7 +7,7 @@
 
 ## Testing Overview
 
-This document tracks all testing activities across the Devograph platform, including unit tests, integration tests, end-to-end tests, and manual testing checklists.
+This document tracks all testing activities across the Aexy platform, including unit tests, integration tests, end-to-end tests, and manual testing checklists.
 
 ### Legend
 
@@ -224,9 +224,9 @@ This document tracks all testing activities across the Devograph platform, inclu
 |-----------|--------|-------|
 | `test_complete_oauth` | [ ] | OAuth flow |
 | `test_send_message` | [ ] | Message sending |
-| `test_handle_slash_command_profile` | [ ] | /devograph profile |
-| `test_handle_slash_command_match` | [ ] | /devograph match |
-| `test_handle_slash_command_team` | [ ] | /devograph team |
+| `test_handle_slash_command_profile` | [ ] | /aexy profile |
+| `test_handle_slash_command_match` | [ ] | /aexy match |
+| `test_handle_slash_command_team` | [ ] | /aexy team |
 | `test_verify_request` | [ ] | Signature verification |
 
 **Status:** 0/6 tests - TO BE WRITTEN
@@ -285,12 +285,12 @@ This document tracks all testing activities across the Devograph platform, inclu
 
 | Command | Status | Notes |
 |---------|--------|-------|
-| `devograph login` | [ ] | |
-| `devograph profile show` | [ ] | |
-| `devograph team skills` | [ ] | |
-| `devograph match` | [ ] | |
-| `devograph insights attrition` | [ ] | |
-| `devograph report generate` | [ ] | |
+| `aexy login` | [ ] | |
+| `aexy profile show` | [ ] | |
+| `aexy team skills` | [ ] | |
+| `aexy match` | [ ] | |
+| `aexy insights attrition` | [ ] | |
+| `aexy report generate` | [ ] | |
 
 ---
 
@@ -405,10 +405,10 @@ This document tracks all testing activities across the Devograph platform, inclu
 ### Slack Bot Testing (Manual)
 
 - [ ] OAuth install works
-- [ ] /devograph help responds
-- [ ] /devograph profile works
-- [ ] /devograph team works
-- [ ] /devograph match works
+- [ ] /aexy help responds
+- [ ] /aexy profile works
+- [ ] /aexy team works
+- [ ] /aexy match works
 - [ ] Notifications deliver
 - [ ] Error messages helpful
 
@@ -528,7 +528,7 @@ cd backend
 pytest
 
 # Run with coverage
-pytest --cov=devograph --cov-report=html
+pytest --cov=aexy --cov-report=html
 
 # Run specific test file
 pytest tests/unit/test_profile_analyzer.py
@@ -558,13 +558,13 @@ npm run test:watch
 ### CLI
 
 ```bash
-cd devograph-cli
+cd aexy-cli
 
 # Run tests
 pytest
 
 # Run with coverage
-pytest --cov=devograph_cli
+pytest --cov=aexy_cli
 ```
 
 ---
@@ -588,7 +588,7 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install -e ".[dev]"
-      - run: pytest --cov=devograph
+      - run: pytest --cov=aexy
 
   frontend-tests:
     runs-on: ubuntu-latest

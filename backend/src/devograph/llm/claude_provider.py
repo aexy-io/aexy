@@ -6,7 +6,7 @@ from typing import Any
 
 import httpx
 
-from devograph.llm.base import (
+from aexy.llm.base import (
     AnalysisRequest,
     AnalysisResult,
     AnalysisType,
@@ -20,7 +20,7 @@ from devograph.llm.base import (
     SoftSkillAnalysis,
     TaskSignals,
 )
-from devograph.llm.prompts import (
+from aexy.llm.prompts import (
     CODE_ANALYSIS_PROMPT,
     CODE_ANALYSIS_SYSTEM_PROMPT,
     COMMIT_MESSAGE_ANALYSIS_PROMPT,

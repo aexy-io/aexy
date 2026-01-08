@@ -3,10 +3,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.database import get_db
-from devograph.api.developers import get_current_developer
-from devograph.models.developer import Developer
-from devograph.schemas.integrations import (
+from aexy.core.database import get_db
+from aexy.api.developers import get_current_developer
+from aexy.models.developer import Developer
+from aexy.schemas.integrations import (
     JiraIntegrationCreate,
     JiraIntegrationUpdate,
     JiraIntegrationResponse,
@@ -20,9 +20,9 @@ from devograph.schemas.integrations import (
     RemoteTeam,
     RemoteProject,
 )
-from devograph.services.jira_integration_service import JiraIntegrationService
-from devograph.services.linear_integration_service import LinearIntegrationService
-from devograph.services.workspace_service import WorkspaceService
+from aexy.services.jira_integration_service import JiraIntegrationService
+from aexy.services.linear_integration_service import LinearIntegrationService
+from aexy.services.workspace_service import WorkspaceService
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/integrations", tags=["Integrations"])
 

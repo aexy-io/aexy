@@ -5,17 +5,17 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from devograph.core.database import get_db
-from devograph.api.developers import get_current_developer
-from devograph.models.developer import Developer
-from devograph.models.sprint import Sprint, SprintRetrospective
-from devograph.schemas.sprint import (
+from aexy.core.database import get_db
+from aexy.api.developers import get_current_developer
+from aexy.models.developer import Developer
+from aexy.models.sprint import Sprint, SprintRetrospective
+from aexy.schemas.sprint import (
     SprintRetrospectiveCreate,
     SprintRetrospectiveResponse,
     RetroItem,
     RetroActionItem,
 )
-from devograph.services.workspace_service import WorkspaceService
+from aexy.services.workspace_service import WorkspaceService
 
 router = APIRouter(prefix="/sprints/{sprint_id}/retrospective", tags=["Retrospective"])
 

@@ -8,12 +8,12 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.workspace import Workspace, WorkspaceMember, WorkspaceSubscription, WorkspacePendingInvite
+from aexy.models.workspace import Workspace, WorkspaceMember, WorkspaceSubscription, WorkspacePendingInvite
 import secrets
-from devograph.models.developer import Developer
-from devograph.models.repository import Organization, DeveloperOrganization
-from devograph.services.task_config_service import TaskConfigService
-from devograph.services.document_space_service import DocumentSpaceService
+from aexy.models.developer import Developer
+from aexy.models.repository import Organization, DeveloperOrganization
+from aexy.services.task_config_service import TaskConfigService
+from aexy.services.document_space_service import DocumentSpaceService
 
 
 def generate_slug(name: str) -> str:

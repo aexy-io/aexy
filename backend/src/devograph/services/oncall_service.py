@@ -14,16 +14,16 @@ from sqlalchemy import select, and_, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.oncall import (
+from aexy.models.oncall import (
     OnCallConfig,
     OnCallSchedule,
     OnCallSwapRequest,
     SwapRequestStatus,
 )
-from devograph.models.team import Team, TeamMember
-from devograph.models.developer import Developer
-from devograph.models.notification import NotificationEventType
-from devograph.schemas.oncall import (
+from aexy.models.team import Team, TeamMember
+from aexy.models.developer import Developer
+from aexy.models.notification import NotificationEventType
+from aexy.schemas.oncall import (
     OnCallConfigCreate,
     OnCallConfigUpdate,
     OnCallScheduleCreate,

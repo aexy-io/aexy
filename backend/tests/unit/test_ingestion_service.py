@@ -5,9 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from devograph.services.ingestion_service import IngestionService
-from devograph.models.developer import Developer
-from devograph.models.activity import Commit, PullRequest, CodeReview
+from aexy.services.ingestion_service import IngestionService
+from aexy.models.developer import Developer
+from aexy.models.activity import Commit, PullRequest, CodeReview
 
 
 class TestCommitIngestion:
@@ -282,7 +282,7 @@ class TestPullRequestIngestion:
     async def test_ingest_pr_links_to_developer(self, db_session):
         """Should link PR to developer by GitHub ID."""
         # Create developer with GitHub connection
-        from devograph.models.developer import GitHubConnection
+        from aexy.models.developer import GitHubConnection
 
         developer = Developer(email="test@example.com", name="Test")
         db_session.add(developer)
@@ -400,7 +400,7 @@ class TestDeveloperLookup:
     @pytest.mark.asyncio
     async def test_find_developer_by_github_id(self, db_session):
         """Should find developer by GitHub ID."""
-        from devograph.models.developer import GitHubConnection
+        from aexy.models.developer import GitHubConnection
 
         developer = Developer(email="test@example.com", name="Test")
         db_session.add(developer)

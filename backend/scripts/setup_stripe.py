@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script to set up Stripe products and prices for Devograph.
+Script to set up Stripe products and prices for Aexy.
 
 This script will:
 1. Create products in Stripe for each plan tier
@@ -107,7 +107,7 @@ def create_stripe_products():
         # Create product if not exists
         if not product:
             product = stripe.Product.create(
-                name=f"Devograph {plan['name']}",
+                name=f"Aexy {plan['name']}",
                 description=plan["description"],
                 metadata={
                     "tier": plan["tier"],
@@ -231,7 +231,7 @@ def print_env_vars(stripe_data: dict):
 
 def main():
     print("=" * 60)
-    print("Devograph Stripe Setup")
+    print("Aexy Stripe Setup")
     print("=" * 60)
     print(f"\nUsing Stripe API key: {stripe.api_key[:12]}...")
 

@@ -10,20 +10,20 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.core.database import get_db
-from devograph.api.developers import get_current_developer
-from devograph.models.developer import Developer
-from devograph.models.sprint import SprintTask
-from devograph.models.notification import NotificationEventType
-from devograph.schemas.sprint import (
+from aexy.core.database import get_db
+from aexy.api.developers import get_current_developer
+from aexy.models.developer import Developer
+from aexy.models.sprint import SprintTask
+from aexy.models.notification import NotificationEventType
+from aexy.schemas.sprint import (
     ProjectTaskCreate,
     SprintTaskUpdate,
     SprintTaskStatusUpdate,
     SprintTaskResponse,
     TaskStatus,
 )
-from devograph.services.workspace_service import WorkspaceService
-from devograph.services.notification_service import NotificationService
+from aexy.services.workspace_service import WorkspaceService
+from aexy.services.notification_service import NotificationService
 
 router = APIRouter(prefix="/teams/{team_id}/tasks", tags=["Project Tasks"])
 
@@ -74,7 +74,7 @@ async def get_team_and_check_permission(
     required_role: str = "member",
 ):
     """Get team and check workspace permission."""
-    from devograph.models.team import Team
+    from aexy.models.team import Team
 
     workspace_service = WorkspaceService(db)
 

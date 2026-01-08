@@ -15,9 +15,9 @@ from sqlalchemy import select, func, and_, or_, case
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from devograph.models.epic import Epic
-from devograph.models.sprint import SprintTask, Sprint
-from devograph.models.developer import Developer
+from aexy.models.epic import Epic
+from aexy.models.sprint import SprintTask, Sprint
+from aexy.models.developer import Developer
 
 logger = logging.getLogger(__name__)
 
@@ -496,7 +496,7 @@ class EpicService:
 
         for row in result:
             # Get team name
-            from devograph.models.workspace import Team
+            from aexy.models.workspace import Team
             team = await self.db.get(Team, row.team_id)
 
             sprints.append({

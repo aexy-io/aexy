@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from devograph.llm.base import (
+from aexy.llm.base import (
     AnalysisRequest,
     AnalysisResult,
     AnalysisType,
@@ -14,7 +14,7 @@ from devograph.llm.base import (
     MatchScore,
     TaskSignals,
 )
-from devograph.llm.gateway import LLMGateway
+from aexy.llm.gateway import LLMGateway
 
 
 class MockLLMProvider(LLMProvider):

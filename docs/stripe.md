@@ -1,6 +1,6 @@
 # Stripe Integration Setup
 
-This guide explains how to set up Stripe for billing and subscriptions in Devograph.
+This guide explains how to set up Stripe for billing and subscriptions in Aexy.
 
 ## Prerequisites
 
@@ -43,7 +43,7 @@ The script will:
 
 ```
 ==================================================
-Devograph Stripe Setup
+Aexy Stripe Setup
 ==================================================
 
 Using Stripe API key: sk_test_51...
@@ -80,7 +80,7 @@ Setup complete!
 Check that plans have Stripe IDs:
 
 ```bash
-docker compose exec db psql -U devograph -d devograph -c "SELECT name, tier, stripe_price_id FROM plans;"
+docker compose exec db psql -U aexy -d aexy -c "SELECT name, tier, stripe_price_id FROM plans;"
 ```
 
 Expected output:
@@ -169,7 +169,7 @@ This error usually means:
 Ensure plans are seeded in the database:
 
 ```bash
-docker compose exec db psql -U devograph -d devograph -c "SELECT * FROM plans;"
+docker compose exec db psql -U aexy -d aexy -c "SELECT * FROM plans;"
 ```
 
 If empty, the plans should be auto-created on first app startup. Restart the backend.

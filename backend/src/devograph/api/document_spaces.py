@@ -3,11 +3,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.api.developers import get_current_developer
-from devograph.core.database import get_db
-from devograph.models.developer import Developer
-from devograph.models.documentation import DocumentSpaceRole
-from devograph.schemas.document import (
+from aexy.api.developers import get_current_developer
+from aexy.core.database import get_db
+from aexy.models.developer import Developer
+from aexy.models.documentation import DocumentSpaceRole
+from aexy.schemas.document import (
     DocumentSpaceCreate,
     DocumentSpaceListResponse,
     DocumentSpaceMemberAdd,
@@ -16,8 +16,8 @@ from devograph.schemas.document import (
     DocumentSpaceResponse,
     DocumentSpaceUpdate,
 )
-from devograph.services.document_space_service import DocumentSpaceService
-from devograph.services.workspace_service import WorkspaceService
+from aexy.services.document_space_service import DocumentSpaceService
+from aexy.services.workspace_service import WorkspaceService
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/spaces", tags=["Document Spaces"])
 

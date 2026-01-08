@@ -5,8 +5,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from devograph.llm.base import AnalysisRequest, AnalysisType, SoftSkillAnalysis
-from devograph.llm.gateway import LLMGateway
+from aexy.llm.base import AnalysisRequest, AnalysisType, SoftSkillAnalysis
+from aexy.llm.gateway import LLMGateway
 
 logger = logging.getLogger(__name__)
 

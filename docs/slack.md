@@ -1,10 +1,10 @@
-# How to Connect Slack to Devograph
+# How to Connect Slack to Aexy
 
 ## 1. Create a Slack App
 
 1. Go to https://api.slack.com/apps
 2. Click "Create New App" → "From scratch"
-3. Name it "Devograph" and select your workspace
+3. Name it "Aexy" and select your workspace
 4. Click "Create App"
 
 ## 2. Configure OAuth & Permissions
@@ -44,9 +44,9 @@
 
 1. Go to **Slash Commands** in the sidebar
 2. Click "Create New Command":
-   - Command: `/devograph`
+   - Command: `/aexy`
    - Request URL: `http://localhost:8000/api/v1/slack/commands`
-   - Description: "Devograph tracking commands"
+   - Description: "Aexy tracking commands"
 
 ## 4. Enable Events
 
@@ -145,7 +145,7 @@ curl -X POST https://slack.com/api/auth.test \
 
 ## Channel Configuration
 
-For escalation notifications to work, the Devograph bot must be:
+For escalation notifications to work, the Aexy bot must be:
 
 1. **Invited to the target channel** (for private channels)
 2. **Has `chat:write.public`** scope (for public channels without joining)
@@ -160,7 +160,7 @@ Escalation rules can notify via:
 
 ## Setting Up Escalation Channels
 
-1. Go to **Settings > Escalation Matrix** in Devograph
+1. Go to **Settings > Escalation Matrix** in Aexy
 2. Create/edit an escalation rule
 3. Select notification channels (email, slack, in_app)
 4. For Slack notifications:
@@ -196,12 +196,12 @@ The bot token is missing required scopes. Re-install the app after adding scopes
 ## "channel_not_found" Error
 
 1. Ensure the channel exists
-2. Invite the bot to the channel: `/invite @Devograph`
+2. Invite the bot to the channel: `/invite @Aexy`
 
 ## "not_in_channel" Error
 
 Bot needs to be in the channel. Either:
-- Invite the bot: `/invite @Devograph`
+- Invite the bot: `/invite @Aexy`
 - Use `chat:write.public` scope for public channels
 
 ## Token Expired
@@ -218,5 +218,5 @@ If using token rotation and token expired:
 curl -X POST http://localhost:8000/api/v1/slack/test-notification \
   -H "Authorization: Bearer YOUR_JWT" \
   -H "Content-Type: application/json" \
-  -d '{"channel": "#general", "message": "Test from Devograph"}'
+  -d '{"channel": "#general", "message": "Test from Aexy"}'
 ```

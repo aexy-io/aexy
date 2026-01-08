@@ -26,7 +26,7 @@ class AnalysisCache:
             redis_client: Redis client (async or sync).
         """
         self._redis = redis_client
-        self._prefix = "devograph:llm:cache:"
+        self._prefix = "aexy:llm:cache:"
 
     def _make_key(self, cache_key: str) -> str:
         """Create a prefixed cache key.
@@ -218,7 +218,7 @@ class InMemoryCache:
     def __init__(self) -> None:
         """Initialize the in-memory cache."""
         self._cache: dict[str, tuple[str, float]] = {}
-        self._prefix = "devograph:llm:cache:"
+        self._prefix = "aexy:llm:cache:"
 
     def _make_key(self, cache_key: str) -> str:
         return f"{self._prefix}{cache_key}"
@@ -296,7 +296,7 @@ def get_analysis_cache() -> AnalysisCache | InMemoryCache:
     Returns:
         Analysis cache (Redis-based or in-memory fallback).
     """
-    from devograph.core.config import get_settings
+    from aexy.core.config import get_settings
 
     settings = get_settings()
 

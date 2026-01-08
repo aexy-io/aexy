@@ -6,11 +6,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.database import get_db
-from devograph.api.developers import get_current_developer
-from devograph.models.developer import Developer
-from devograph.services.gamification_service import GamificationService
-from devograph.schemas.gamification import (
+from aexy.core.database import get_db
+from aexy.api.developers import get_current_developer
+from aexy.models.developer import Developer
+from aexy.services.gamification_service import GamificationService
+from aexy.schemas.gamification import (
     BadgeResponse,
     EarnedBadgeResponse,
     GamificationProfileWithBadges,

@@ -1,1 +1,1 @@
-"""Core module for Devograph."""
+"""Core module for Aexy."""

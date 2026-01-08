@@ -9,9 +9,9 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.database import get_db
-from devograph.models.documentation import CollaborationSession, Document
-from devograph.services.document_service import DocumentService
+from aexy.core.database import get_db
+from aexy.models.documentation import CollaborationSession, Document
+from aexy.services.document_service import DocumentService
 
 logger = logging.getLogger(__name__)
 

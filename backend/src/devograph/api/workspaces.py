@@ -3,10 +3,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from devograph.core.database import get_db
-from devograph.api.developers import get_current_developer
-from devograph.models.developer import Developer
-from devograph.schemas.workspace import (
+from aexy.core.database import get_db
+from aexy.api.developers import get_current_developer
+from aexy.models.developer import Developer
+from aexy.schemas.workspace import (
     WorkspaceCreate,
     WorkspaceUpdate,
     WorkspaceResponse,
@@ -22,8 +22,8 @@ from devograph.schemas.workspace import (
     WorkspaceBillingStatus,
     GitHubOrgLink,
 )
-from devograph.services.workspace_service import WorkspaceService
-from devograph.services.developer_service import DeveloperService
+from aexy.services.workspace_service import WorkspaceService
+from aexy.services.developer_service import DeveloperService
 
 router = APIRouter(prefix="/workspaces", tags=["Workspaces"])
 

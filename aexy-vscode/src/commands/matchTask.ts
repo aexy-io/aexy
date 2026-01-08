@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { DevographClient, TaskMatch } from '../api/client';
+import { AexyClient, TaskMatch } from '../api/client';
 
 export async function matchTask(): Promise<void> {
     const description = await vscode.window.showInputBox({
@@ -28,7 +28,7 @@ export async function matchTask(): Promise<void> {
         : [];
 
     try {
-        const client = new DevographClient();
+        const client = new AexyClient();
 
         const result = await vscode.window.withProgress(
             {
@@ -69,7 +69,7 @@ export async function matchTask(): Promise<void> {
 
 function showMatchDetails(match: TaskMatch, description: string): void {
     const panel = vscode.window.createWebviewPanel(
-        'devographMatch',
+        'aexyMatch',
         `Match: @${match.github_username}`,
         vscode.ViewColumn.One,
         {}
