@@ -19,6 +19,7 @@ from aexy.models.developer import Developer, GoogleConnection
 from aexy.models.google_integration import (
     EmailSyncCursor,
     GoogleIntegration,
+    GoogleSyncJob,
     SyncedCalendarEvent,
     SyncedCalendarEventRecordLink,
     SyncedEmail,
@@ -49,6 +50,7 @@ from aexy.schemas.google_integration import (
     SyncedEmailResponse,
     SyncedEventListResponse,
     SyncedEventResponse,
+    SyncJobStatusResponse,
 )
 from aexy.services.workspace_service import WorkspaceService
 
@@ -466,7 +468,10 @@ async def trigger_gmail_sync(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Trigger Gmail sync (full or incremental)."""
+    """Trigger Gmail sync (async via Celery).
+
+    Returns immediately with a job_id for polling progress.
+    """
     await verify_workspace_access(workspace_id, current_user, db, "admin")
 
     integration = await get_integration(workspace_id, db)
@@ -477,31 +482,97 @@ async def trigger_gmail_sync(
             detail="Gmail sync is not enabled",
         )
 
-    from aexy.services.gmail_sync_service import GmailSyncService, GmailSyncError
+    # Check if there's already a running job
+    existing_job_result = await db.execute(
+        select(GoogleSyncJob).where(
+            GoogleSyncJob.workspace_id == workspace_id,
+            GoogleSyncJob.job_type == "gmail",
+            GoogleSyncJob.status.in_(["pending", "running"]),
+        )
+    )
+    existing_job = existing_job_result.scalar_one_or_none()
 
-    service = GmailSyncService(db)
-
-    try:
-        if data.full_sync:
-            result = await service.start_full_sync(integration, max_messages=data.max_messages)
-        else:
-            result = await service.start_incremental_sync(integration)
-
-        await db.commit()
-
+    if existing_job:
+        # Return the existing job status
         return GmailSyncResponse(
-            status="completed",
-            messages_synced=result.get("messages_synced", 0),
-            full_sync_completed=result.get("full_sync_completed", False),
-            history_id=result.get("history_id"),
-            error=result.get("error"),
+            status=existing_job.status,
+            job_id=existing_job.id,
+            messages_synced=existing_job.processed_items,
         )
 
-    except GmailSyncError as e:
-        return GmailSyncResponse(
-            status="error",
-            error=str(e),
+    # Create a new sync job
+    job = GoogleSyncJob(
+        id=str(uuid4()),
+        workspace_id=workspace_id,
+        integration_id=integration.id,
+        job_type="gmail",
+        status="pending",
+        progress_message="Queued for sync...",
+    )
+    db.add(job)
+    await db.commit()
+
+    # Queue the Celery task
+    from aexy.processing.google_sync_tasks import sync_gmail_task
+
+    task = sync_gmail_task.delay(
+        job_id=job.id,
+        workspace_id=workspace_id,
+        integration_id=integration.id,
+        max_messages=data.max_messages,
+    )
+
+    # Update job with Celery task ID
+    job.celery_task_id = task.id
+    await db.commit()
+
+    return GmailSyncResponse(
+        status="pending",
+        job_id=job.id,
+        messages_synced=0,
+    )
+
+
+@router.get("/sync-jobs/{job_id}", response_model=SyncJobStatusResponse)
+async def get_sync_job_status(
+    workspace_id: str,
+    job_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the status of a sync job.
+
+    Use this to poll for progress on async Gmail/Calendar sync operations.
+    """
+    await verify_workspace_access(workspace_id, current_user, db, "viewer")
+
+    result = await db.execute(
+        select(GoogleSyncJob).where(
+            GoogleSyncJob.id == job_id,
+            GoogleSyncJob.workspace_id == workspace_id,
         )
+    )
+    job = result.scalar_one_or_none()
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Sync job not found",
+        )
+
+    return SyncJobStatusResponse(
+        job_id=job.id,
+        job_type=job.job_type,
+        status=job.status,
+        processed_items=job.processed_items,
+        total_items=job.total_items,
+        progress_message=job.progress_message,
+        result=job.result,
+        error=job.error,
+        started_at=job.started_at,
+        completed_at=job.completed_at,
+        created_at=job.created_at,
+    )
 
 
 @router.get("/gmail/emails", response_model=SyncedEmailListResponse)
@@ -756,7 +827,10 @@ async def trigger_calendar_sync(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Trigger calendar sync."""
+    """Trigger calendar sync (async via Celery).
+
+    Returns immediately with a job_id for polling progress.
+    """
     await verify_workspace_access(workspace_id, current_user, db, "admin")
 
     integration = await get_integration(workspace_id, db)
@@ -767,30 +841,55 @@ async def trigger_calendar_sync(
             detail="Calendar sync is not enabled",
         )
 
-    from aexy.services.calendar_sync_service import CalendarSyncService, CalendarSyncError
-
-    service = CalendarSyncService(db)
-
-    try:
-        result = await service.start_calendar_sync(
-            integration,
-            calendar_ids=data.calendar_ids,
+    # Check if there's already a running job
+    existing_job_result = await db.execute(
+        select(GoogleSyncJob).where(
+            GoogleSyncJob.workspace_id == workspace_id,
+            GoogleSyncJob.job_type == "calendar",
+            GoogleSyncJob.status.in_(["pending", "running"]),
         )
+    )
+    existing_job = existing_job_result.scalar_one_or_none()
 
-        await db.commit()
-
+    if existing_job:
+        # Return the existing job status
         return CalendarSyncResponse(
-            status="completed",
-            events_synced=result.get("events_synced", 0),
-            calendars_synced=result.get("calendars_synced", []),
-            error=result.get("error"),
+            status=existing_job.status,
+            job_id=existing_job.id,
+            events_synced=existing_job.processed_items,
         )
 
-    except CalendarSyncError as e:
-        return CalendarSyncResponse(
-            status="error",
-            error=str(e),
-        )
+    # Create a new sync job
+    job = GoogleSyncJob(
+        id=str(uuid4()),
+        workspace_id=workspace_id,
+        integration_id=integration.id,
+        job_type="calendar",
+        status="pending",
+        progress_message="Queued for sync...",
+    )
+    db.add(job)
+    await db.commit()
+
+    # Queue the Celery task
+    from aexy.processing.google_sync_tasks import sync_calendar_task
+
+    task = sync_calendar_task.delay(
+        job_id=job.id,
+        workspace_id=workspace_id,
+        integration_id=integration.id,
+        calendar_ids=data.calendar_ids,
+    )
+
+    # Update job with Celery task ID
+    job.celery_task_id = task.id
+    await db.commit()
+
+    return CalendarSyncResponse(
+        status="pending",
+        job_id=job.id,
+        events_synced=0,
+    )
 
 
 @router.get("/calendar/events", response_model=SyncedEventListResponse)
