@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useOnboarding } from "../OnboardingContext";
+import { repositoriesApi } from "@/lib/api";
 import confetti from "canvas-confetti";
 
 export default function OnboardingComplete() {
@@ -21,6 +22,17 @@ export default function OnboardingComplete() {
 
   useEffect(() => {
     setCurrentStep(7);
+
+    // Mark onboarding as complete in the backend
+    const markComplete = async () => {
+      try {
+        await repositoriesApi.completeOnboarding();
+        localStorage.setItem("aexy_onboarding_complete", "true");
+      } catch (err) {
+        console.error("Failed to mark onboarding as complete:", err);
+      }
+    };
+    markComplete();
 
     // Trigger confetti
     const duration = 2000;
@@ -93,8 +105,6 @@ export default function OnboardingComplete() {
   };
 
   const handleGoToDashboard = () => {
-    // Mark onboarding as complete
-    localStorage.setItem("aexy_onboarding_complete", "true");
     resetOnboarding();
     router.push("/dashboard");
   };
@@ -158,7 +168,6 @@ export default function OnboardingComplete() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.3 + index * 0.1 }}
               onClick={() => {
-                localStorage.setItem("aexy_onboarding_complete", "true");
                 router.push(link.href);
               }}
               className="flex items-start gap-4 p-5 rounded-xl bg-slate-800/30 border border-slate-700/50 hover:border-slate-600/50 transition-all text-left group"

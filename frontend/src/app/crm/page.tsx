@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useCRMObjects } from "@/hooks/useCRM";
-import { CRMObject, CRMObjectType, googleIntegrationApi } from "@/lib/api";
+import { CRMObject, CRMObjectType, googleIntegrationApi, developerApi, GoogleIntegrationStatus } from "@/lib/api";
 import { GettingStartedChecklist } from "@/components/crm/GettingStartedChecklist";
 
 const objectTypeIcons: Record<CRMObjectType, React.ReactNode> = {
@@ -123,27 +123,50 @@ function GoogleIntegrationBanner({
   workspaceId: string;
   onConnect: () => void;
 }) {
-  const [status, setStatus] = useState<{
-    is_connected: boolean;
-    gmail_sync_enabled?: boolean;
-    calendar_sync_enabled?: boolean;
-    google_email?: string;
-    last_gmail_sync?: string;
-    last_calendar_sync?: string;
-  } | null>(null);
+  const [status, setStatus] = useState<Partial<GoogleIntegrationStatus> & { is_connected: boolean } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadStatus = async () => {
+      // First check workspace-level Google integration
       try {
-        const data = await googleIntegrationApi.getStatus(workspaceId);
-        setStatus(data);
+        const workspaceStatus = await googleIntegrationApi.getStatus(workspaceId);
+        if (workspaceStatus.is_connected) {
+          setStatus(workspaceStatus);
+          setIsLoading(false);
+          return;
+        }
       } catch {
-        // Not connected or error
-        setStatus({ is_connected: false });
-      } finally {
-        setIsLoading(false);
+        // Continue to check developer level
       }
+
+      // Check developer-level Google connection (from main onboarding)
+      try {
+        const developerStatus = await developerApi.getGoogleStatus();
+        if (developerStatus.is_connected) {
+          // Developer has Google connected, auto-link to workspace
+          try {
+            await googleIntegrationApi.connectFromDeveloper(workspaceId);
+            // Fetch the newly created workspace status
+            const workspaceStatus = await googleIntegrationApi.getStatus(workspaceId);
+            setStatus(workspaceStatus);
+          } catch {
+            // Failed to link, show as connected but may have limited functionality
+            setStatus({
+              is_connected: true,
+              google_email: developerStatus.google_email || undefined,
+            });
+          }
+          setIsLoading(false);
+          return;
+        }
+      } catch {
+        // No developer connection
+      }
+
+      // Not connected at either level
+      setStatus({ is_connected: false });
+      setIsLoading(false);
     };
     loadStatus();
   }, [workspaceId]);
@@ -405,8 +428,8 @@ export default function CRMPage() {
   const handleConnectGoogle = async () => {
     if (!workspaceId) return;
     try {
-      const { url } = await googleIntegrationApi.getConnectUrl(workspaceId, ["gmail", "calendar"]);
-      window.location.href = url;
+      const { auth_url } = await googleIntegrationApi.getConnectUrl(workspaceId, window.location.href);
+      window.location.href = auth_url;
     } catch (err) {
       console.error("Failed to get connect URL:", err);
     }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Mail,
   MailOpen,
@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { googleIntegrationApi, SyncedEmail } from "@/lib/api";
+import { googleIntegrationApi, developerApi, SyncedEmail } from "@/lib/api";
 
 function formatDate(dateString: string) {
   const date = new Date(dateString);
@@ -411,8 +411,12 @@ function EmptyState({
 
 export default function InboxPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
+
+  // Check if returning from OAuth reconnect
+  const isReconnecting = searchParams.get("reconnected") === "true";
 
   const [emails, setEmails] = useState<SyncedEmail[]>([]);
   const [selectedEmail, setSelectedEmail] = useState<SyncedEmail | null>(null);
@@ -422,6 +426,7 @@ export default function InboxPage() {
   const [hasIntegration, setHasIntegration] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsReconnect, setNeedsReconnect] = useState(false);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -430,13 +435,42 @@ export default function InboxPage() {
       setIsLoading(true);
       setError(null);
       try {
-        // Check integration status
-        const status = await googleIntegrationApi.getStatus(workspaceId);
-        setHasIntegration(status.is_connected && status.gmail_sync_enabled);
+        // First check workspace-level integration status
+        let status = await googleIntegrationApi.getStatus(workspaceId);
 
-        if (status.is_connected && status.gmail_sync_enabled) {
-          const emailList = await googleIntegrationApi.gmail.listEmails(workspaceId);
-          setEmails(emailList);
+        // Check developer level and sync tokens if:
+        // 1. Not connected at workspace level, OR
+        // 2. Returning from reconnect flow (need to refresh tokens)
+        if (!status.is_connected || isReconnecting) {
+          try {
+            const developerStatus = await developerApi.getGoogleStatus();
+            if (developerStatus.is_connected) {
+              // Link/refresh developer's Google tokens to workspace
+              await googleIntegrationApi.connectFromDeveloper(workspaceId);
+              status = await googleIntegrationApi.getStatus(workspaceId);
+
+              // Clear the reconnected param from URL
+              if (isReconnecting) {
+                router.replace("/crm/inbox", { scroll: false });
+              }
+            }
+          } catch (linkError: unknown) {
+            // Check if the error is about missing scopes
+            const errorMessage = linkError instanceof Error ? linkError.message : String(linkError);
+            if (errorMessage.includes("permissions") || errorMessage.includes("scopes")) {
+              setError("Your Google connection needs Gmail permissions. Please reconnect with full access.");
+              setNeedsReconnect(true);
+            }
+            // Continue with workspace-only status
+          }
+        }
+
+        const hasGmailSync = status.is_connected && status.gmail_sync_enabled;
+        setHasIntegration(hasGmailSync);
+
+        if (hasGmailSync) {
+          const response = await googleIntegrationApi.gmail.listEmails(workspaceId);
+          setEmails(response.emails);
         }
       } catch (err) {
         console.error("Failed to load emails:", err);
@@ -447,19 +481,37 @@ export default function InboxPage() {
     };
 
     loadEmails();
-  }, [workspaceId]);
+  }, [workspaceId, isReconnecting, router]);
+
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const handleSync = async () => {
     if (!workspaceId) return;
     setIsSyncing(true);
+    setSyncError(null);
     try {
-      await googleIntegrationApi.gmail.sync(workspaceId);
-      // Reload emails after sync
-      const emailList = await googleIntegrationApi.gmail.listEmails(workspaceId);
-      setEmails(emailList);
+      const result = await googleIntegrationApi.gmail.sync(workspaceId);
+
+      // Check for errors in response
+      if (result.status === "error" || result.error) {
+        const errorMessage = result.error || "Gmail sync failed";
+        setSyncError(errorMessage);
+        console.error("Gmail sync error:", errorMessage);
+
+        // Check if it's a permissions/scope error
+        if (errorMessage.includes("403") || errorMessage.includes("scope") || errorMessage.includes("permission")) {
+          setNeedsReconnect(true);
+          setSyncError("Gmail permissions are insufficient. Please reconnect with full access.");
+        }
+        return;
+      }
+
+      // Reload emails after successful sync
+      const response = await googleIntegrationApi.gmail.listEmails(workspaceId);
+      setEmails(response.emails);
     } catch (err) {
       console.error("Failed to sync emails:", err);
-      setError("Failed to sync emails");
+      setSyncError("Failed to sync emails. Please try again.");
     } finally {
       setIsSyncing(false);
     }
@@ -468,14 +520,21 @@ export default function InboxPage() {
   const handleConnect = async () => {
     if (!workspaceId) return;
     try {
-      const { url } = await googleIntegrationApi.getConnectUrl(workspaceId, [
-        "gmail",
-        "calendar",
-      ]);
-      window.location.href = url;
+      const { auth_url } = await googleIntegrationApi.getConnectUrl(workspaceId, window.location.href);
+      window.location.href = auth_url;
     } catch (err) {
       console.error("Failed to get connect URL:", err);
     }
+  };
+
+  const handleReconnect = () => {
+    // Redirect to Google CRM connect with full permissions
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+    // Add reconnected=true param so we know to refresh tokens when returning
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set("reconnected", "true");
+    const redirectUrl = encodeURIComponent(currentUrl.toString());
+    window.location.href = `${apiBase}/auth/google/connect-crm?redirect_url=${redirectUrl}`;
   };
 
   const filteredEmails = emails.filter(
@@ -543,11 +602,35 @@ export default function InboxPage() {
         </div>
       </div>
 
-      {error && (
+      {(error || syncError) && (
         <div className="px-6 py-3 bg-red-500/10 border-b border-red-500/30">
-          <div className="max-w-7xl mx-auto flex items-center gap-2 text-red-400">
-            <AlertCircle className="w-4 h-4" />
-            {error}
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-2 text-red-400">
+              <AlertCircle className="w-4 h-4" />
+              {error || syncError}
+            </div>
+            <div className="flex items-center gap-3">
+              {needsReconnect && (
+                <button
+                  onClick={handleReconnect}
+                  className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded-lg transition-colors"
+                >
+                  Reconnect Google
+                </button>
+              )}
+              {(syncError || error) && (
+                <button
+                  onClick={() => {
+                    setSyncError(null);
+                    setError(null);
+                    setNeedsReconnect(false);
+                  }}
+                  className="text-red-400 hover:text-red-300 text-sm"
+                >
+                  Dismiss
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -15,7 +15,7 @@ from sqlalchemy.orm import selectinload
 from aexy.api.developers import get_current_developer
 from aexy.core.config import get_settings
 from aexy.core.database import get_db
-from aexy.models.developer import Developer
+from aexy.models.developer import Developer, GoogleConnection
 from aexy.models.google_integration import (
     EmailSyncCursor,
     GoogleIntegration,
@@ -157,6 +157,91 @@ async def get_connect_url(
     auth_url = f"{GOOGLE_AUTH_URL}?{urllib.parse.urlencode(params)}"
 
     return GoogleIntegrationConnectResponse(auth_url=auth_url)
+
+
+@router.post("/connect-from-developer", response_model=GoogleIntegrationStatusResponse)
+async def connect_from_developer_google(
+    workspace_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create workspace Google integration from developer's existing Google connection.
+
+    This allows users who connected Google during the main onboarding to use
+    those credentials for the workspace CRM integration without re-authenticating.
+
+    Requires admin permission on the workspace.
+    """
+    await verify_workspace_access(workspace_id, current_user, db, "admin")
+
+    # Check if developer has a Google connection
+    dev_conn_result = await db.execute(
+        select(GoogleConnection).where(GoogleConnection.developer_id == str(current_user.id))
+    )
+    dev_connection = dev_conn_result.scalar_one_or_none()
+
+    if not dev_connection:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No Google connection found for your account. Please connect Google first.",
+        )
+
+    # Required scopes for Gmail and Calendar sync
+    required_scopes = {
+        "https://www.googleapis.com/auth/gmail.readonly",
+        "https://www.googleapis.com/auth/calendar",
+    }
+
+    # Check if the developer's connection has the required scopes
+    granted_scopes = set(dev_connection.scopes or [])
+    missing_scopes = required_scopes - granted_scopes
+
+    if missing_scopes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your Google connection doesn't have Gmail/Calendar permissions. Please reconnect Google with full permissions.",
+        )
+
+    # Check if workspace already has an integration
+    existing_result = await db.execute(
+        select(GoogleIntegration).where(GoogleIntegration.workspace_id == workspace_id)
+    )
+    existing = existing_result.scalar_one_or_none()
+
+    if existing:
+        # Update existing integration with latest tokens from developer
+        # This ensures tokens are refreshed when user reconnects Google
+        existing.access_token = dev_connection.access_token
+        existing.refresh_token = dev_connection.refresh_token
+        existing.token_expiry = dev_connection.token_expires_at
+        existing.google_email = dev_connection.google_email
+        existing.google_user_id = dev_connection.google_id
+        existing.granted_scopes = dev_connection.scopes or []
+        existing.gmail_sync_enabled = True
+        existing.calendar_sync_enabled = True
+        existing.is_active = True
+        existing.last_error = None
+    else:
+        # Create new workspace integration
+        integration = GoogleIntegration(
+            id=str(uuid4()),
+            workspace_id=workspace_id,
+            connected_by_id=str(current_user.id),
+            access_token=dev_connection.access_token,
+            refresh_token=dev_connection.refresh_token,
+            token_expiry=dev_connection.token_expires_at,
+            google_email=dev_connection.google_email,
+            google_user_id=dev_connection.google_id,
+            granted_scopes=dev_connection.scopes or [],
+            gmail_sync_enabled=True,
+            calendar_sync_enabled=True,
+            is_active=True,
+        )
+        db.add(integration)
+
+    await db.commit()
+
+    return await get_status(workspace_id, current_user, db)
 
 
 @router.get("/callback")

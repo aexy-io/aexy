@@ -279,14 +279,33 @@ class DeveloperService:
 
         # Check if developer already has a Google connection
         if developer.google_connection:
-            # Update existing connection
-            developer.google_connection.access_token = access_token
-            if refresh_token:
-                developer.google_connection.refresh_token = refresh_token
-            if token_expires_at:
-                developer.google_connection.token_expires_at = token_expires_at
+            # Update tokens only if new scopes include CRM scopes or existing has none
+            existing_scopes = set(developer.google_connection.scopes or [])
+            new_scopes = set(scopes or [])
+
+            # CRM-specific scopes that we want to preserve
+            crm_scopes = {
+                "https://www.googleapis.com/auth/gmail.readonly",
+                "https://www.googleapis.com/auth/calendar",
+            }
+
+            existing_has_crm = bool(existing_scopes & crm_scopes)
+            new_has_crm = bool(new_scopes & crm_scopes)
+
+            # Only update tokens if:
+            # 1. New login has CRM scopes (broader permission), OR
+            # 2. Existing doesn't have CRM scopes (nothing to preserve)
+            if new_has_crm or not existing_has_crm:
+                developer.google_connection.access_token = access_token
+                if refresh_token:
+                    developer.google_connection.refresh_token = refresh_token
+                if token_expires_at:
+                    developer.google_connection.token_expires_at = token_expires_at
+
+            # Always merge scope lists
             if scopes:
-                developer.google_connection.scopes = scopes
+                developer.google_connection.scopes = list(existing_scopes | new_scopes)
+
             await self.db.flush()
             await self.db.refresh(developer.google_connection)
             return developer.google_connection
@@ -328,15 +347,34 @@ class DeveloperService:
         # Try to find by Google ID first
         developer = await self.get_by_google_id(google_id)
         if developer:
-            # Update access token
+            # Update tokens only if new scopes include CRM scopes or existing has none
             if developer.google_connection:
-                developer.google_connection.access_token = access_token
-                if refresh_token:
-                    developer.google_connection.refresh_token = refresh_token
-                if token_expires_at:
-                    developer.google_connection.token_expires_at = token_expires_at
+                existing_scopes = set(developer.google_connection.scopes or [])
+                new_scopes = set(scopes or [])
+
+                # CRM-specific scopes that we want to preserve
+                crm_scopes = {
+                    "https://www.googleapis.com/auth/gmail.readonly",
+                    "https://www.googleapis.com/auth/calendar",
+                }
+
+                existing_has_crm = bool(existing_scopes & crm_scopes)
+                new_has_crm = bool(new_scopes & crm_scopes)
+
+                # Only update tokens if:
+                # 1. New login has CRM scopes (broader permission), OR
+                # 2. Existing doesn't have CRM scopes (nothing to preserve)
+                if new_has_crm or not existing_has_crm:
+                    developer.google_connection.access_token = access_token
+                    if refresh_token:
+                        developer.google_connection.refresh_token = refresh_token
+                    if token_expires_at:
+                        developer.google_connection.token_expires_at = token_expires_at
+
+                # Always merge scope lists
                 if scopes:
-                    developer.google_connection.scopes = scopes
+                    developer.google_connection.scopes = list(existing_scopes | new_scopes)
+
                 await self.db.flush()
             return developer
 

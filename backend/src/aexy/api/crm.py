@@ -1513,6 +1513,51 @@ async def delete_note(
 # ACTIVITY ENDPOINTS
 # =============================================================================
 
+@router.get("/activities")
+async def list_workspace_activities(
+    workspace_id: str,
+    activity_type: str | None = Query(None, description="Filter by activity type"),
+    limit: int = Query(default=50, le=100),
+    offset: int = Query(default=0, ge=0),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """List all activities in a workspace."""
+    await check_workspace_permission(workspace_id, current_user, db)
+
+    service = CRMActivityService(db)
+    activity_types = [activity_type] if activity_type else None
+    activities, total = await service.list_workspace_activities(
+        workspace_id=workspace_id,
+        activity_types=activity_types,
+        limit=limit,
+        offset=offset,
+    )
+
+    return {
+        "activities": [
+            CRMActivityResponse(
+                id=str(a.id),
+                workspace_id=str(a.workspace_id),
+                record_id=str(a.record_id),
+                activity_type=a.activity_type,
+                actor_type=a.actor_type,
+                actor_id=a.actor_id,
+                actor_name=a.actor_name,
+                title=a.title,
+                description=a.description,
+                metadata=a.metadata,
+                occurred_at=a.occurred_at,
+                created_at=a.created_at,
+            )
+            for a in activities
+        ],
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
+
+
 @router.get("/records/{record_id}/activities")
 async def list_activities(
     workspace_id: str,

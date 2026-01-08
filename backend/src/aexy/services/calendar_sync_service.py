@@ -169,6 +169,7 @@ class CalendarSyncService:
         time_max = datetime.now(timezone.utc) + timedelta(days=days_forward)
 
         total_events_synced = 0
+        synced_calendar_ids = []
         errors = []
 
         for calendar_id in calendar_ids:
@@ -180,6 +181,7 @@ class CalendarSyncService:
                     time_max,
                 )
                 total_events_synced += result["events_synced"]
+                synced_calendar_ids.append(calendar_id)
             except Exception as e:
                 logger.error(f"Failed to sync calendar {calendar_id}: {e}")
                 errors.append({"calendar_id": calendar_id, "error": str(e)})
@@ -190,8 +192,9 @@ class CalendarSyncService:
 
         return {
             "events_synced": total_events_synced,
-            "calendars_synced": len(calendar_ids) - len(errors),
+            "calendars_synced": synced_calendar_ids,
             "errors": errors if errors else None,
+            "error": errors[0]["error"] if errors else None,
         }
 
     async def _sync_calendar(

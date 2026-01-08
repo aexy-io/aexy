@@ -14,7 +14,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { crmApi } from "@/lib/api";
+import { crmApi, googleIntegrationApi, developerApi } from "@/lib/api";
 import { useWorkspace } from "@/hooks/useWorkspace";
 
 export default function OnboardingComplete() {
@@ -24,6 +24,7 @@ export default function OnboardingComplete() {
   const [error, setError] = useState<string | null>(null);
   const [createdObjects, setCreatedObjects] = useState<string[]>([]);
   const [countdown, setCountdown] = useState(5);
+  const [syncProgress, setSyncProgress] = useState<string | null>(null);
 
   useEffect(() => {
     const setupCRM = async () => {
@@ -49,6 +50,73 @@ export default function OnboardingComplete() {
         );
 
         setCreatedObjects(result.objects.map((o: { name: string }) => o.name));
+
+        // Apply Google sync settings if connected
+        const googleSettingsData = localStorage.getItem("crm_onboarding_google_settings");
+        if (googleSettingsData) {
+          const googleSettings = JSON.parse(googleSettingsData);
+
+          // Check if Google is connected at developer level
+          try {
+            const developerStatus = await developerApi.getGoogleStatus();
+            if (developerStatus.is_connected) {
+              setSyncProgress("Linking Google account...");
+
+              // First, create workspace integration from developer's Google connection
+              try {
+                await googleIntegrationApi.connectFromDeveloper(currentWorkspace.id);
+              } catch (e) {
+                console.warn("Failed to link developer Google:", e);
+              }
+
+              setSyncProgress("Configuring sync settings...");
+
+              // Update workspace integration settings
+              try {
+                await googleIntegrationApi.updateSettings(currentWorkspace.id, {
+                  gmail_sync_enabled: googleSettings.gmail,
+                  calendar_sync_enabled: googleSettings.calendar,
+                });
+
+                // Trigger initial sync if enabled
+                if (googleSettings.gmail) {
+                  setSyncProgress("Syncing emails...");
+                  try {
+                    await googleIntegrationApi.gmail.sync(currentWorkspace.id, { full_sync: true });
+                  } catch (e) {
+                    console.warn("Gmail sync failed:", e);
+                  }
+                }
+
+                if (googleSettings.calendar) {
+                  setSyncProgress("Syncing calendar events...");
+                  try {
+                    await googleIntegrationApi.calendar.sync(currentWorkspace.id);
+                  } catch (e) {
+                    console.warn("Calendar sync failed:", e);
+                  }
+                }
+
+                // Run AI enrichment if enabled
+                if (googleSettings.enrichWithAI && googleSettings.gmail) {
+                  setSyncProgress("Enriching contacts with AI...");
+                  try {
+                    await googleIntegrationApi.enrichContacts(currentWorkspace.id);
+                  } catch (e) {
+                    console.warn("Contact enrichment failed:", e);
+                  }
+                }
+
+                setSyncProgress(null);
+              } catch (e) {
+                console.warn("Failed to apply Google settings:", e);
+              }
+            }
+          } catch {
+            // No Google connection
+          }
+        }
+
         setStatus("success");
 
         // Mark onboarding as complete
@@ -118,7 +186,7 @@ export default function OnboardingComplete() {
           </h1>
 
           <p className="text-slate-400">
-            Creating your objects and attributes based on your template selection.
+            {syncProgress || "Creating your objects and attributes based on your template selection."}
           </p>
 
           <div className="mt-8 space-y-2">

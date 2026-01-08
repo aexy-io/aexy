@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { googleIntegrationApi, GoogleIntegrationStatus } from "@/lib/api";
+import { googleIntegrationApi, developerApi, GoogleIntegrationStatus } from "@/lib/api";
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -73,7 +73,23 @@ export default function IntegrationsSettingsPage() {
     const fetchStatus = async () => {
       if (!workspaceId) return;
       try {
-        const data = await googleIntegrationApi.getStatus(workspaceId);
+        // First check workspace-level status
+        let data = await googleIntegrationApi.getStatus(workspaceId);
+
+        // If not connected at workspace level, check developer level and auto-link
+        if (!data.is_connected) {
+          try {
+            const developerStatus = await developerApi.getGoogleStatus();
+            if (developerStatus.is_connected) {
+              // Auto-link developer's Google to workspace
+              await googleIntegrationApi.connectFromDeveloper(workspaceId);
+              data = await googleIntegrationApi.getStatus(workspaceId);
+            }
+          } catch {
+            // Continue with workspace-only status
+          }
+        }
+
         setStatus(data);
       } catch {
         setStatus(null);
