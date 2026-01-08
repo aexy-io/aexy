@@ -34,6 +34,22 @@ GOOGLE_AUTH_SCOPES = [
     "https://www.googleapis.com/auth/userinfo.profile",
 ]
 
+# Google OAuth scopes for CRM (includes Gmail and Calendar)
+GOOGLE_CRM_SCOPES = [
+    "openid",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/gmail.send",
+    "https://www.googleapis.com/auth/gmail.modify",
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/calendar.events",
+]
+
+# Store state with metadata (scope type and redirect URL)
+# Format: state -> {"created_at": datetime, "scope_type": "login"|"crm", "redirect_url": str|None}
+oauth_state_meta: dict[str, dict] = {}
+
 
 def create_access_token(developer_id: str) -> str:
     """Create a JWT access token."""
@@ -166,6 +182,17 @@ async def github_callback(
 # ============================================================================
 
 
+def _clean_old_oauth_states():
+    """Clean expired OAuth states."""
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=10)
+    for old_state in list(oauth_states.keys()):
+        if oauth_states[old_state] < cutoff:
+            del oauth_states[old_state]
+    for old_state in list(oauth_state_meta.keys()):
+        if oauth_state_meta[old_state].get("created_at", datetime.min.replace(tzinfo=timezone.utc)) < cutoff:
+            del oauth_state_meta[old_state]
+
+
 @router.get("/google/login")
 async def google_login() -> RedirectResponse:
     """Initiate Google OAuth flow for authentication."""
@@ -177,12 +204,13 @@ async def google_login() -> RedirectResponse:
 
     state = secrets.token_urlsafe(32)
     oauth_states[state] = datetime.now(timezone.utc)
+    oauth_state_meta[state] = {
+        "created_at": datetime.now(timezone.utc),
+        "scope_type": "login",
+        "redirect_url": None,
+    }
 
-    # Clean old states (older than 10 minutes)
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=10)
-    for old_state in list(oauth_states.keys()):
-        if oauth_states[old_state] < cutoff:
-            del oauth_states[old_state]
+    _clean_old_oauth_states()
 
     # Build Google OAuth URL
     params = {
@@ -193,6 +221,44 @@ async def google_login() -> RedirectResponse:
         "state": state,
         "access_type": "offline",  # Request refresh token
         "prompt": "consent",  # Always show consent screen to get refresh token
+    }
+    auth_url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
+
+    return RedirectResponse(url=auth_url)
+
+
+@router.get("/google/connect-crm")
+async def google_connect_crm(redirect_url: str | None = None) -> RedirectResponse:
+    """Initiate Google OAuth flow with CRM scopes (Gmail + Calendar).
+
+    This endpoint requests full Gmail and Calendar access for CRM features.
+    Use this during onboarding or when connecting Google for CRM purposes.
+    """
+    if not settings.google_client_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Google OAuth is not configured",
+        )
+
+    state = secrets.token_urlsafe(32)
+    oauth_states[state] = datetime.now(timezone.utc)
+    oauth_state_meta[state] = {
+        "created_at": datetime.now(timezone.utc),
+        "scope_type": "crm",
+        "redirect_url": redirect_url,
+    }
+
+    _clean_old_oauth_states()
+
+    # Build Google OAuth URL with CRM scopes
+    params = {
+        "client_id": settings.google_client_id,
+        "redirect_uri": settings.google_auth_redirect_uri,
+        "response_type": "code",
+        "scope": " ".join(GOOGLE_CRM_SCOPES),
+        "state": state,
+        "access_type": "offline",
+        "prompt": "consent",
     }
     auth_url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
 
@@ -217,6 +283,14 @@ async def google_callback(
     if not state or state not in oauth_states:
         return RedirectResponse(url=f"{frontend_url}/?error=invalid_state")
     del oauth_states[state]
+
+    # Get metadata about this OAuth flow
+    state_meta = oauth_state_meta.pop(state, {})
+    scope_type = state_meta.get("scope_type", "login")
+    custom_redirect_url = state_meta.get("redirect_url")
+
+    # Determine which scopes to store
+    scopes_to_store = GOOGLE_CRM_SCOPES if scope_type == "crm" else GOOGLE_AUTH_SCOPES
 
     try:
         # Exchange code for tokens
@@ -274,7 +348,7 @@ async def google_callback(
                 token_expires_at=token_expires_at,
                 google_name=name,
                 google_avatar_url=picture,
-                scopes=GOOGLE_AUTH_SCOPES,
+                scopes=scopes_to_store,
             )
 
             # Commit the transaction
@@ -283,8 +357,15 @@ async def google_callback(
             # Create JWT
             jwt_token = create_access_token(developer.id)
 
-            # Redirect to frontend callback with token
-            return RedirectResponse(url=f"{frontend_url}/auth/callback?token={jwt_token}")
+            # Determine redirect URL
+            if custom_redirect_url:
+                # Use custom redirect URL (e.g., from onboarding)
+                # Append token as query param
+                separator = "&" if "?" in custom_redirect_url else "?"
+                return RedirectResponse(url=f"{custom_redirect_url}{separator}token={jwt_token}")
+            else:
+                # Default: redirect to frontend callback
+                return RedirectResponse(url=f"{frontend_url}/auth/callback?token={jwt_token}")
 
     except httpx.RequestError as e:
         return RedirectResponse(url=f"{frontend_url}/?error=request_failed")
