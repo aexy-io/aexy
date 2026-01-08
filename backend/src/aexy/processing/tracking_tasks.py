@@ -1,24 +1,14 @@
 """Celery tasks for tracking: standups, blockers, time aggregation, and patterns."""
 
-import asyncio
 import logging
 from datetime import date, datetime, timedelta
 from typing import Any
 
 from celery import shared_task
 
+from aexy.processing.tasks import run_async
+
 logger = logging.getLogger(__name__)
-
-
-def run_async(coro):
-    """Run an async coroutine in a sync context."""
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-    return loop.run_until_complete(coro)
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)

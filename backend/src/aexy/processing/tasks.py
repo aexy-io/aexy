@@ -14,12 +14,27 @@ def run_async(coro):
 
     Always creates a new event loop to avoid conflicts between
     concurrent Celery tasks sharing the same worker process.
+
+    IMPORTANT: This disposes the database connection pool after each run
+    to prevent asyncpg connections created on one event loop from being
+    reused on a different loop (which causes "Future attached to a
+    different loop" errors).
     """
+    from aexy.core.database import get_engine
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
         return loop.run_until_complete(coro)
     finally:
+        # Dispose all pooled connections before closing the loop.
+        # This prevents asyncpg connections from being reused on a
+        # different event loop in the next task execution.
+        try:
+            engine = get_engine()
+            loop.run_until_complete(engine.dispose())
+        except Exception:
+            pass  # Best effort - don't fail the task if disposal fails
         loop.close()
 
 
