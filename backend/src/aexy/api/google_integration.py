@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -1104,9 +1104,9 @@ async def link_event_to_record(
 @router.post("/enrich", response_model=ContactEnrichResponse)
 async def enrich_contacts(
     workspace_id: str,
-    data: ContactEnrichRequest,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
+    data: ContactEnrichRequest = Body(default=ContactEnrichRequest()),
 ):
     """Process emails to extract and enrich contacts."""
     await verify_workspace_access(workspace_id, current_user, db, "admin")
