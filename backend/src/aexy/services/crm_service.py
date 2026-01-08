@@ -1256,6 +1256,35 @@ class CRMActivityService:
 
         return activities, total
 
+    async def list_workspace_activities(
+        self,
+        workspace_id: str,
+        activity_types: list[str] | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[CRMActivity], int]:
+        """List all activities in a workspace."""
+        stmt = select(CRMActivity).where(CRMActivity.workspace_id == workspace_id)
+
+        if activity_types:
+            stmt = stmt.where(CRMActivity.activity_type.in_(activity_types))
+
+        # Get total count
+        count_stmt = select(func.count(CRMActivity.id)).where(
+            CRMActivity.workspace_id == workspace_id
+        )
+        if activity_types:
+            count_stmt = count_stmt.where(CRMActivity.activity_type.in_(activity_types))
+        count_result = await self.db.execute(count_stmt)
+        total = count_result.scalar() or 0
+
+        # Get activities
+        stmt = stmt.order_by(CRMActivity.occurred_at.desc()).limit(limit).offset(offset)
+        result = await self.db.execute(stmt)
+        activities = list(result.scalars().all())
+
+        return activities, total
+
     async def create_activity(
         self,
         workspace_id: str,

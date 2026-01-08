@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { googleIntegrationApi, SyncedCalendarEvent } from "@/lib/api";
+import { googleIntegrationApi, developerApi, SyncedCalendarEvent } from "@/lib/api";
 
 type ViewMode = "month" | "week" | "day";
 
@@ -33,6 +33,7 @@ function formatTime(dateString: string) {
 
 function formatEventTime(event: SyncedCalendarEvent) {
   if (event.is_all_day) return "All day";
+  if (!event.start_time || !event.end_time) return "";
   const start = formatTime(event.start_time);
   const end = formatTime(event.end_time);
   return `${start} - ${end}`;
@@ -69,7 +70,7 @@ function EventCard({
         onClick={onClick}
         className="w-full text-left px-2 py-1 text-xs bg-purple-500/20 text-purple-300 rounded truncate hover:bg-purple-500/30 transition-colors"
       >
-        {event.is_all_day ? "" : formatTime(event.start_time) + " "}
+        {event.is_all_day || !event.start_time ? "" : formatTime(event.start_time) + " "}
         {event.title}
       </button>
     );
@@ -121,8 +122,8 @@ function EventDetailModal({
 }) {
   if (!isOpen || !event) return null;
 
-  const eventDate = new Date(event.start_time);
-  const endDate = new Date(event.end_time);
+  const eventDate = event.start_time ? new Date(event.start_time) : new Date();
+  const endDate = event.end_time ? new Date(event.end_time) : new Date();
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -162,9 +163,7 @@ function EventDetailModal({
                 })}
               </p>
               <p className="text-sm text-slate-400">
-                {event.is_all_day
-                  ? "All day"
-                  : `${formatTime(event.start_time)} - ${formatTime(event.end_time)}`}
+                {formatEventTime(event)}
               </p>
             </div>
           </div>
@@ -307,6 +306,7 @@ function MonthView({
   const getEventsForDay = (day: number) => {
     const date = new Date(year, month, day);
     return events.filter((event) => {
+      if (!event.start_time) return false;
       const eventDate = new Date(event.start_time);
       return isSameDay(eventDate, date);
     });
@@ -394,6 +394,7 @@ function DayView({
   onEventClick: (event: SyncedCalendarEvent) => void;
 }) {
   const dayEvents = events.filter((event) => {
+    if (!event.start_time) return false;
     const eventDate = new Date(event.start_time);
     return isSameDay(eventDate, date);
   });
@@ -402,7 +403,9 @@ function DayView({
   dayEvents.sort((a, b) => {
     if (a.is_all_day && !b.is_all_day) return -1;
     if (!a.is_all_day && b.is_all_day) return 1;
-    return new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
+    const aTime = a.start_time ? new Date(a.start_time).getTime() : 0;
+    const bTime = b.start_time ? new Date(b.start_time).getTime() : 0;
+    return aTime - bTime;
   });
 
   return (
@@ -480,8 +483,12 @@ function EmptyState({
 
 export default function CalendarPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
+
+  // Check if returning from OAuth reconnect
+  const isReconnecting = searchParams.get("reconnected") === "true";
 
   const [events, setEvents] = useState<SyncedCalendarEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<SyncedCalendarEvent | null>(null);
@@ -489,6 +496,7 @@ export default function CalendarPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [hasIntegration, setHasIntegration] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsReconnect, setNeedsReconnect] = useState(false);
 
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -504,12 +512,42 @@ export default function CalendarPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const status = await googleIntegrationApi.getStatus(workspaceId);
-        setHasIntegration(status.is_connected && status.calendar_sync_enabled);
+        // First check workspace-level integration status
+        let status = await googleIntegrationApi.getStatus(workspaceId);
 
-        if (status.is_connected && status.calendar_sync_enabled) {
-          const eventList = await googleIntegrationApi.calendar.listEvents(workspaceId);
-          setEvents(eventList);
+        // Check developer level and sync tokens if:
+        // 1. Not connected at workspace level, OR
+        // 2. Returning from reconnect flow (need to refresh tokens)
+        if (!status.is_connected || isReconnecting) {
+          try {
+            const developerStatus = await developerApi.getGoogleStatus();
+            if (developerStatus.is_connected) {
+              // Link/refresh developer's Google tokens to workspace
+              await googleIntegrationApi.connectFromDeveloper(workspaceId);
+              status = await googleIntegrationApi.getStatus(workspaceId);
+
+              // Clear the reconnected param from URL
+              if (isReconnecting) {
+                router.replace("/crm/calendar", { scroll: false });
+              }
+            }
+          } catch (linkError: unknown) {
+            // Check if the error is about missing scopes
+            const errorMessage = linkError instanceof Error ? linkError.message : String(linkError);
+            if (errorMessage.includes("permissions") || errorMessage.includes("scopes")) {
+              setError("Your Google connection needs Calendar permissions. Please reconnect with full access.");
+              setNeedsReconnect(true);
+            }
+            // Continue with workspace-only status
+          }
+        }
+
+        const hasCalendarSync = status.is_connected && status.calendar_sync_enabled;
+        setHasIntegration(hasCalendarSync);
+
+        if (hasCalendarSync) {
+          const response = await googleIntegrationApi.calendar.listEvents(workspaceId);
+          setEvents(response.events);
         }
       } catch (err) {
         console.error("Failed to load events:", err);
@@ -520,18 +558,37 @@ export default function CalendarPage() {
     };
 
     loadEvents();
-  }, [workspaceId]);
+  }, [workspaceId, isReconnecting, router]);
+
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const handleSync = async () => {
     if (!workspaceId) return;
     setIsSyncing(true);
+    setSyncError(null);
     try {
-      await googleIntegrationApi.calendar.sync(workspaceId);
-      const eventList = await googleIntegrationApi.calendar.listEvents(workspaceId);
-      setEvents(eventList);
+      const result = await googleIntegrationApi.calendar.sync(workspaceId);
+
+      // Check for errors in response
+      if (result.status === "error" || result.error) {
+        const errorMessage = result.error || "Calendar sync failed";
+        setSyncError(errorMessage);
+        console.error("Calendar sync error:", errorMessage);
+
+        // Check if it's a permissions/scope error
+        if (errorMessage.includes("403") || errorMessage.includes("scope") || errorMessage.includes("permission")) {
+          setNeedsReconnect(true);
+          setSyncError("Calendar permissions are insufficient. Please reconnect with full access.");
+        }
+        return;
+      }
+
+      // Reload events after successful sync
+      const response = await googleIntegrationApi.calendar.listEvents(workspaceId);
+      setEvents(response.events);
     } catch (err) {
       console.error("Failed to sync events:", err);
-      setError("Failed to sync calendar");
+      setSyncError("Failed to sync calendar. Please try again.");
     } finally {
       setIsSyncing(false);
     }
@@ -540,14 +597,21 @@ export default function CalendarPage() {
   const handleConnect = async () => {
     if (!workspaceId) return;
     try {
-      const { url } = await googleIntegrationApi.getConnectUrl(workspaceId, [
-        "gmail",
-        "calendar",
-      ]);
-      window.location.href = url;
+      const { auth_url } = await googleIntegrationApi.getConnectUrl(workspaceId, window.location.href);
+      window.location.href = auth_url;
     } catch (err) {
       console.error("Failed to get connect URL:", err);
     }
+  };
+
+  const handleReconnect = () => {
+    // Redirect to Google CRM connect with full permissions
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+    // Add reconnected=true param so we know to refresh tokens when returning
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set("reconnected", "true");
+    const redirectUrl = encodeURIComponent(currentUrl.toString());
+    window.location.href = `${apiBase}/auth/google/connect-crm?redirect_url=${redirectUrl}`;
   };
 
   const navigateMonth = (delta: number) => {
@@ -626,11 +690,35 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {error && (
+      {(error || syncError) && (
         <div className="px-6 py-3 bg-red-500/10 border-b border-red-500/30">
-          <div className="max-w-7xl mx-auto flex items-center gap-2 text-red-400">
-            <AlertCircle className="w-4 h-4" />
-            {error}
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-2 text-red-400">
+              <AlertCircle className="w-4 h-4" />
+              {error || syncError}
+            </div>
+            <div className="flex items-center gap-3">
+              {needsReconnect && (
+                <button
+                  onClick={handleReconnect}
+                  className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded-lg transition-colors"
+                >
+                  Reconnect Google
+                </button>
+              )}
+              {(syncError || error) && (
+                <button
+                  onClick={() => {
+                    setSyncError(null);
+                    setError(null);
+                    setNeedsReconnect(false);
+                  }}
+                  className="text-red-400 hover:text-red-300 text-sm"
+                >
+                  Dismiss
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -7559,6 +7559,14 @@ export const crmApi = {
 
   // Activities
   activities: {
+    listWorkspace: async (
+      workspaceId: string,
+      params?: { activity_type?: string; limit?: number; offset?: number }
+    ): Promise<{ activities: CRMActivity[]; total: number; limit: number; offset: number }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/crm/activities`, { params });
+      return response.data;
+    },
+
     list: async (
       workspaceId: string,
       recordId: string,
@@ -8005,13 +8013,19 @@ export const googleIntegrationApi = {
     await api.post(`/workspaces/${workspaceId}/integrations/google/disconnect`);
   },
 
+  // Connect from existing developer Google connection (for main onboarding users)
+  connectFromDeveloper: async (workspaceId: string): Promise<GoogleIntegrationStatus> => {
+    const response = await api.post(`/workspaces/${workspaceId}/integrations/google/connect-from-developer`);
+    return response.data;
+  },
+
   // Gmail
   gmail: {
     sync: async (
       workspaceId: string,
       options?: { full_sync?: boolean; max_messages?: number }
     ): Promise<{ status: string; messages_synced: number; full_sync_completed: boolean; history_id: string | null; error: string | null }> => {
-      const response = await api.post(`/workspaces/${workspaceId}/integrations/google/gmail/sync`, options);
+      const response = await api.post(`/workspaces/${workspaceId}/integrations/google/gmail/sync`, options || {});
       return response.data;
     },
 
@@ -8073,7 +8087,7 @@ export const googleIntegrationApi = {
       workspaceId: string,
       options?: { calendar_ids?: string[] }
     ): Promise<{ status: string; events_synced: number; calendars_synced: string[]; error: string | null }> => {
-      const response = await api.post(`/workspaces/${workspaceId}/integrations/google/calendar/sync`, options);
+      const response = await api.post(`/workspaces/${workspaceId}/integrations/google/calendar/sync`, options || {});
       return response.data;
     },
 

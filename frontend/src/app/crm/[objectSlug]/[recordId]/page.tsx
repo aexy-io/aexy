@@ -105,7 +105,7 @@ export default function RecordDetailPage() {
 
   const handleDelete = async () => {
     if (confirm("Are you sure you want to delete this record?")) {
-      await deleteRecord();
+      await deleteRecord(false);
       router.push(`/crm/${objectSlug}`);
     }
   };

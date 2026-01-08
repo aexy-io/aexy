@@ -6,7 +6,10 @@ import { Providers } from "./providers";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Aexy - Developer Analytics Platform",
+  title: {
+    default: "Aexy",
+    template: "%s | Aexy",
+  },
   description:
     "GitHub-based developer profiling and analytics for intelligent task allocation and career growth",
 };
