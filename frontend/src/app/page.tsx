@@ -82,7 +82,7 @@ export default function Home() {
               </div>
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
-              Devograph
+              Aexy
             </span>
           </div>
           <nav className="hidden md:flex items-center gap-8">
@@ -98,7 +98,7 @@ export default function Home() {
             <Link href="/pricing" className="text-white/60 hover:text-white transition text-sm">
               Pricing
             </Link>
-            <a href="https://github.com/devograph/devograph" className="text-white/60 hover:text-white transition text-sm flex items-center gap-1">
+            <a href="https://github.com/aexy-io/aexy" className="text-white/60 hover:text-white transition text-sm flex items-center gap-1">
               <Github className="h-4 w-4" />
               GitHub
             </a>
@@ -129,7 +129,7 @@ export default function Home() {
           <div className="max-w-4xl mx-auto text-center">
             {/* Open Source Badge */}
             <a
-              href="https://github.com/devograph/devograph"
+              href="https://github.com/aexy-io/aexy"
               className="group inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 rounded-full text-emerald-400 text-sm mb-6 hover:border-emerald-500/50 transition-all hover:scale-105"
             >
               <Github className="h-4 w-4" />
@@ -443,7 +443,7 @@ export default function Home() {
 
           <div className="flex justify-center gap-4">
             <a
-              href="https://github.com/devograph/devograph"
+              href="https://github.com/aexy-io/aexy"
               className="group inline-flex items-center gap-2 bg-white text-black px-6 py-3 rounded-full font-semibold transition-all hover:scale-105"
             >
               <Github className="h-5 w-5" />
@@ -1058,13 +1058,13 @@ export default function Home() {
                 <div className="p-2 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl">
                   <GitBranch className="h-5 w-5 text-white" />
                 </div>
-                <span className="text-lg font-bold text-white">Devograph</span>
+                <span className="text-lg font-bold text-white">Aexy</span>
               </div>
               <p className="text-white/40 text-sm mb-4">
                 The open-source operating system for engineering organizations.
               </p>
               <div className="flex items-center gap-3">
-                <a href="https://github.com/devograph/devograph" className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition">
+                <a href="https://github.com/aexy-io/aexy" className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition">
                   <Github className="h-4 w-4 text-white/60" />
                 </a>
                 <a href="#" className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition">
@@ -1097,7 +1097,7 @@ export default function Home() {
               <h4 className="text-white font-semibold mb-4">Resources</h4>
               <ul className="space-y-2 text-white/40 text-sm">
                 <li><Link href="/docs" className="hover:text-white transition">Documentation</Link></li>
-                <li><a href="https://github.com/devograph/devograph" className="hover:text-white transition">GitHub</a></li>
+                <li><a href="https://github.com/aexy-io/aexy" className="hover:text-white transition">GitHub</a></li>
                 <li><Link href="#" className="hover:text-white transition">Changelog</Link></li>
                 <li><Link href="#" className="hover:text-white transition">Community</Link></li>
               </ul>
@@ -1113,7 +1113,7 @@ export default function Home() {
             </div>
           </div>
           <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-white/40 text-sm">&copy; 2025 Devograph. All rights reserved.</p>
+            <p className="text-white/40 text-sm">&copy; 2025 Aexy. All rights reserved.</p>
             <div className="flex items-center gap-6 text-white/40 text-sm">
               <Link href="#" className="hover:text-white transition">Privacy Policy</Link>
               <Link href="#" className="hover:text-white transition">Terms of Service</Link>
@@ -1208,7 +1208,7 @@ function DashboardPreview() {
             <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
               <GitBranch className="h-4 w-4 text-white" />
             </div>
-            <span className="text-white font-semibold">Devograph</span>
+            <span className="text-white font-semibold">Aexy</span>
           </div>
           <div className="flex gap-2">
             <div className="px-3 py-1 bg-white/10 rounded-lg text-white text-xs">Dashboard</div>

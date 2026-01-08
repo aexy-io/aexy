@@ -1,9 +1,9 @@
 {
-  "name": "devograph-vscode",
-  "displayName": "Devograph",
-  "description": "Developer intelligence and team insights for VS Code",
+  "name": "aexy-vscode",
+  "displayName": "Aexy",
+  "description": "Engineering OS - intelligence and team insights for VS Code",
   "version": "0.1.0",
-  "publisher": "devograph",
+  "publisher": "aexy-io",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -24,58 +24,58 @@
   "contributes": {
     "commands": [
       {
-        "command": "devograph.showProfile",
+        "command": "aexy.showProfile",
         "title": "Show Developer Profile",
-        "category": "Devograph"
+        "category": "Aexy"
       },
       {
-        "command": "devograph.matchTask",
+        "command": "aexy.matchTask",
         "title": "Match Task to Developer",
-        "category": "Devograph"
+        "category": "Aexy"
       },
       {
-        "command": "devograph.teamSkills",
+        "command": "aexy.teamSkills",
         "title": "Show Team Skills",
-        "category": "Devograph"
+        "category": "Aexy"
       },
       {
-        "command": "devograph.insights",
+        "command": "aexy.insights",
         "title": "Show Predictive Insights",
-        "category": "Devograph"
+        "category": "Aexy"
       },
       {
-        "command": "devograph.refresh",
+        "command": "aexy.refresh",
         "title": "Refresh Data",
-        "category": "Devograph",
+        "category": "Aexy",
         "icon": "$(refresh)"
       },
       {
-        "command": "devograph.configure",
+        "command": "aexy.configure",
         "title": "Configure API Settings",
-        "category": "Devograph"
+        "category": "Aexy"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "devograph",
-          "title": "Devograph",
-          "icon": "resources/icons/devograph.svg"
+          "id": "aexy",
+          "title": "Aexy",
+          "icon": "resources/icons/aexy.svg"
         }
       ]
     },
     "views": {
-      "devograph": [
+      "aexy": [
         {
-          "id": "devograph.profile",
+          "id": "aexy.profile",
           "name": "Developer Profile"
         },
         {
-          "id": "devograph.insights",
+          "id": "aexy.insights",
           "name": "Insights"
         },
         {
-          "id": "devograph.team",
+          "id": "aexy.team",
           "name": "Team Overview"
         }
       ]
@@ -83,31 +83,31 @@
     "menus": {
       "view/title": [
         {
-          "command": "devograph.refresh",
-          "when": "view =~ /devograph\\./",
+          "command": "aexy.refresh",
+          "when": "view =~ /aexy\\./",
           "group": "navigation"
         }
       ]
     },
     "configuration": {
-      "title": "Devograph",
+      "title": "Aexy",
       "properties": {
-        "devograph.apiUrl": {
+        "aexy.apiUrl": {
           "type": "string",
           "default": "http://localhost:8000/api",
-          "description": "Devograph API URL"
+          "description": "Aexy API URL"
         },
-        "devograph.apiToken": {
+        "aexy.apiToken": {
           "type": "string",
           "default": "",
-          "description": "Devograph API Token"
+          "description": "Aexy API Token"
         },
-        "devograph.autoRefresh": {
+        "aexy.autoRefresh": {
           "type": "boolean",
           "default": true,
           "description": "Automatically refresh data periodically"
         },
-        "devograph.refreshInterval": {
+        "aexy.refreshInterval": {
           "type": "number",
           "default": 300,
           "description": "Refresh interval in seconds"

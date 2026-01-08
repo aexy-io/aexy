@@ -118,7 +118,7 @@ class Settings(BaseSettings):
     )
 
     # Application
-    app_name: str = "Devograph"
+    app_name: str = "Aexy"
     debug: bool = False
     api_v1_prefix: str = "/api/v1"
     frontend_url: str = "http://localhost:3000"

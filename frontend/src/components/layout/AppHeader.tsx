@@ -137,10 +137,10 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
             </div>
             <div className="flex flex-col">
               <span className="text-xl font-bold bg-gradient-to-r from-white via-white to-slate-400 bg-clip-text text-transparent tracking-tight">
-                Devograph
+                Aexy
               </span>
               <span className="text-[10px] text-slate-500 font-medium tracking-widest uppercase -mt-0.5">
-                Developer Platform
+                Engineering OS
               </span>
             </div>
           </Link>
