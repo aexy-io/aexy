@@ -434,6 +434,7 @@ class ContactEnrichmentService:
             object_id=person_object.id,
             values=values,
             display_name=name or email,
+            source=source,
         )
         self.db.add(person)
 
@@ -507,6 +508,7 @@ class ContactEnrichmentService:
             object_id=company_object.id,
             values=values,
             display_name=company_name,
+            source="email_sync",
         )
         self.db.add(company)
 

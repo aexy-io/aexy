@@ -275,6 +275,26 @@ class Settings(BaseSettings):
         description="Slack OAuth redirect URI",
     )
 
+    # Twilio SMS Integration
+    twilio_account_sid: str = Field(
+        default="",
+        description="Twilio Account SID",
+    )
+    twilio_auth_token: str = Field(
+        default="",
+        description="Twilio Auth Token",
+    )
+    twilio_phone_number: str = Field(
+        default="",
+        description="Default Twilio phone number for sending SMS",
+    )
+
+    # Anthropic (for AI Agents and Email generation)
+    anthropic_api_key: str = Field(
+        default="",
+        description="Anthropic API key for Claude (used by AI agents)",
+    )
+
     # LLM Configuration
     llm: LLMSettings = Field(default_factory=LLMSettings)
 

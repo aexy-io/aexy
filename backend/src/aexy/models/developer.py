@@ -65,6 +65,12 @@ class Developer(Base):
     # Onboarding state
     has_completed_onboarding: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    # LLM analysis tracking
+    last_llm_analysis_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
