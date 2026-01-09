@@ -1316,6 +1316,42 @@ async def get_record(
     )
 
 
+@router.get("/records/{record_id}", response_model=CRMRecordResponse)
+async def get_record_by_id(
+    workspace_id: str,
+    record_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a record by ID (without requiring object_id)."""
+    await check_workspace_permission(workspace_id, current_user, db)
+
+    service = CRMRecordService(db)
+    record = await service.get_record(record_id)
+
+    if not record or str(record.workspace_id) != workspace_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Record not found",
+        )
+
+    return CRMRecordResponse(
+        id=str(record.id),
+        workspace_id=str(record.workspace_id),
+        object_id=str(record.object_id),
+        values=record.values,
+        display_name=record.display_name,
+        owner_id=str(record.owner_id) if record.owner_id else None,
+        created_by_id=str(record.created_by_id) if record.created_by_id else None,
+        is_archived=record.is_archived,
+        archived_at=record.archived_at,
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+        owner_name=record.owner.name if record.owner else None,
+        created_by_name=record.created_by.name if record.created_by else None,
+    )
+
+
 @router.patch("/objects/{object_id}/records/{record_id}", response_model=CRMRecordResponse)
 async def update_record(
     workspace_id: str,
