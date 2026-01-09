@@ -189,6 +189,7 @@ from aexy.models.google_integration import (
     SyncedCalendarEventRecordLink,
     EmailSyncCursor,
 )
+from aexy.models.workflow import WorkflowDefinition
 
 __all__ = [
     # Plan
@@ -373,4 +374,6 @@ __all__ = [
     "SyncedCalendarEvent",
     "SyncedCalendarEventRecordLink",
     "EmailSyncCursor",
+    # Workflow
+    "WorkflowDefinition",
 ]

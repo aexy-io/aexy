@@ -7191,8 +7191,10 @@ export interface CRMActivity {
   title: string;
   description: string | null;
   metadata: Record<string, unknown>;
+  actor_type: string;
   actor_id: string | null;
-  actor?: { id: string; name: string | null; avatar_url: string | null };
+  actor_name: string | null;
+  occurred_at: string;
   created_at: string;
 }
 
@@ -7573,7 +7575,7 @@ export const crmApi = {
       params?: { skip?: number; limit?: number }
     ): Promise<CRMActivity[]> => {
       const response = await api.get(`/workspaces/${workspaceId}/crm/records/${recordId}/activities`, { params });
-      return response.data;
+      return response.data.activities;
     },
   },
 
@@ -8216,6 +8218,227 @@ export const googleIntegrationApi = {
     emails_analyzed: number;
   }> => {
     const response = await api.post(`/workspaces/${workspaceId}/integrations/google/records/${recordId}/enrich`);
+    return response.data;
+  },
+};
+
+// =============================================================================
+// AI Agents API
+// =============================================================================
+
+export interface CRMAgent {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description: string | null;
+  agent_type: string;
+  is_system: boolean;
+  goal: string | null;
+  system_prompt: string | null;
+  tools: string[];
+  max_iterations: number;
+  timeout_seconds: number;
+  model: string;
+  is_active: boolean;
+  created_by_id: string | null;
+  total_executions: number;
+  successful_executions: number;
+  failed_executions: number;
+  avg_duration_ms: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CRMAgentExecution {
+  id: string;
+  agent_id: string;
+  record_id: string | null;
+  triggered_by: string | null;
+  trigger_id: string | null;
+  input_context: Record<string, unknown>;
+  output_result: Record<string, unknown> | null;
+  steps: Array<{
+    step_number: number;
+    tool_name?: string;
+    tool_input?: Record<string, unknown>;
+    tool_output?: string;
+    thought?: string;
+    timestamp?: string;
+  }>;
+  status: "pending" | "running" | "completed" | "failed" | "cancelled";
+  error_message: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  duration_ms: number | null;
+  input_tokens: number;
+  output_tokens: number;
+  created_at: string;
+}
+
+export interface AgentToolInfo {
+  name: string;
+  description: string;
+  category: string;
+}
+
+export interface WritingStyle {
+  id: string;
+  developer_id: string;
+  workspace_id: string;
+  style_profile: {
+    formality?: string;
+    tone?: string;
+    avg_sentence_length?: number;
+    common_greetings?: string[];
+    common_signoffs?: string[];
+    common_phrases?: string[];
+    sample_excerpts?: string[];
+  };
+  samples_analyzed: number;
+  is_trained: boolean;
+  last_trained_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GeneratedEmail {
+  subject: string;
+  body: string;
+  style_applied: string;
+}
+
+export const agentsApi = {
+  // Agents CRUD
+  list: async (
+    workspaceId: string,
+    params?: {
+      agent_type?: string;
+      is_active?: boolean;
+      include_system?: boolean;
+      skip?: number;
+      limit?: number;
+    }
+  ): Promise<CRMAgent[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/crm/agents`, { params });
+    return response.data;
+  },
+
+  get: async (workspaceId: string, agentId: string): Promise<CRMAgent> => {
+    const response = await api.get(`/workspaces/${workspaceId}/crm/agents/${agentId}`);
+    return response.data;
+  },
+
+  create: async (
+    workspaceId: string,
+    data: {
+      name: string;
+      description?: string;
+      agent_type?: string;
+      goal?: string;
+      system_prompt?: string;
+      tools?: string[];
+      max_iterations?: number;
+      timeout_seconds?: number;
+      model?: string;
+    }
+  ): Promise<CRMAgent> => {
+    const response = await api.post(`/workspaces/${workspaceId}/crm/agents`, data);
+    return response.data;
+  },
+
+  update: async (
+    workspaceId: string,
+    agentId: string,
+    data: Partial<{
+      name: string;
+      description: string;
+      goal: string;
+      system_prompt: string;
+      tools: string[];
+      max_iterations: number;
+      timeout_seconds: number;
+      model: string;
+      is_active: boolean;
+    }>
+  ): Promise<CRMAgent> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/crm/agents/${agentId}`, data);
+    return response.data;
+  },
+
+  delete: async (workspaceId: string, agentId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/crm/agents/${agentId}`);
+  },
+
+  toggle: async (workspaceId: string, agentId: string): Promise<CRMAgent> => {
+    const response = await api.post(`/workspaces/${workspaceId}/crm/agents/${agentId}/toggle`);
+    return response.data;
+  },
+
+  // Tools
+  getTools: async (workspaceId: string): Promise<AgentToolInfo[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/crm/agents/tools`);
+    return response.data;
+  },
+
+  // Execution
+  execute: async (
+    workspaceId: string,
+    agentId: string,
+    data: {
+      record_id?: string;
+      context?: Record<string, unknown>;
+    }
+  ): Promise<CRMAgentExecution> => {
+    const response = await api.post(`/workspaces/${workspaceId}/crm/agents/${agentId}/run`, data);
+    return response.data;
+  },
+
+  listExecutions: async (
+    workspaceId: string,
+    agentId: string,
+    params?: {
+      status?: string;
+      skip?: number;
+      limit?: number;
+    }
+  ): Promise<CRMAgentExecution[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/crm/agents/${agentId}/executions`, { params });
+    return response.data;
+  },
+
+  getExecution: async (
+    workspaceId: string,
+    agentId: string,
+    executionId: string
+  ): Promise<CRMAgentExecution> => {
+    const response = await api.get(`/workspaces/${workspaceId}/crm/agents/${agentId}/executions/${executionId}`);
+    return response.data;
+  },
+};
+
+export const writingStyleApi = {
+  get: async (workspaceId: string): Promise<WritingStyle | null> => {
+    const response = await api.get(`/workspaces/${workspaceId}/crm/writing-style`);
+    return response.data;
+  },
+
+  analyze: async (workspaceId: string, maxSamples?: number): Promise<WritingStyle> => {
+    const response = await api.post(`/workspaces/${workspaceId}/crm/writing-style/analyze`, null, {
+      params: { max_samples: maxSamples },
+    });
+    return response.data;
+  },
+
+  generateEmail: async (
+    workspaceId: string,
+    data: {
+      recipient_name: string;
+      purpose: string;
+      key_points?: string[];
+      tone_override?: string;
+    }
+  ): Promise<GeneratedEmail> => {
+    const response = await api.post(`/workspaces/${workspaceId}/crm/writing-style/generate-email`, data);
     return response.data;
   },
 };

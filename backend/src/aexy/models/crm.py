@@ -14,6 +14,7 @@ from aexy.core.database import Base
 if TYPE_CHECKING:
     from aexy.models.developer import Developer
     from aexy.models.workspace import Workspace
+    from aexy.models.workflow import WorkflowDefinition
 
 
 # =============================================================================
@@ -398,6 +399,9 @@ class CRMRecord(Base):
     # Soft delete support
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Source tracking (manual, email_sync, api, import, etc.)
+    source: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -893,6 +897,13 @@ class CRMAutomation(Base):
     runs: Mapped[list["CRMAutomationRun"]] = relationship(
         "CRMAutomationRun",
         back_populates="automation",
+        cascade="all, delete-orphan",
+        lazy="noload",
+    )
+    workflow_definition: Mapped["WorkflowDefinition"] = relationship(
+        "WorkflowDefinition",
+        back_populates="automation",
+        uselist=False,
         cascade="all, delete-orphan",
         lazy="noload",
     )

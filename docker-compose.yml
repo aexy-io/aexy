@@ -75,7 +75,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
-    command: celery -A aexy.processing.celery_app worker --loglevel=info -E -Q celery,analysis,sync,batch
+    command: celery -A aexy.processing.celery_app worker --loglevel=info -E -Q celery,analysis,sync,batch,google_sync,tracking
 
   celery-beat:
     build:

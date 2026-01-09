@@ -132,7 +132,7 @@ interface ActivityItemProps {
     activity_type: string;
     title: string;
     description?: string | null;
-    actor?: { name: string | null } | null;
+    actor_name?: string | null;
     created_at: string;
   };
 }
@@ -163,7 +163,7 @@ export function ActivityItem({ activity }: ActivityItemProps) {
           <p className="text-xs text-slate-400 mt-0.5">{activity.description}</p>
         )}
         <p className="text-xs text-slate-500 mt-1">
-          {activity.actor?.name || "System"} • {new Date(activity.created_at).toLocaleString()}
+          {activity.actor_name || "System"} • {new Date(activity.created_at).toLocaleString()}
         </p>
       </div>
     </div>
@@ -268,7 +268,7 @@ interface ActivityTabContentProps {
     activity_type: string;
     title: string;
     description?: string | null;
-    actor?: { name: string | null } | null;
+    actor_name?: string | null;
     created_at: string;
   }[];
   isLoading?: boolean;
@@ -378,7 +378,7 @@ interface OverviewTabContentProps {
     activity_type: string;
     title: string;
     description?: string | null;
-    actor?: { name: string | null } | null;
+    actor_name?: string | null;
     created_at: string;
   }[];
   pinnedNotes: CRMNote[];

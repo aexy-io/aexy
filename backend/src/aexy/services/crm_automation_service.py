@@ -128,6 +128,33 @@ class CRMAutomationService:
         await self.db.flush()
         return True
 
+    async def toggle_automation(self, automation_id: str) -> CRMAutomation | None:
+        """Toggle automation active status."""
+        automation = await self.get_automation(automation_id)
+        if not automation:
+            return None
+
+        automation.is_active = not automation.is_active
+        await self.db.flush()
+        await self.db.refresh(automation)
+        return automation
+
+    async def get_automation_run(self, run_id: str) -> CRMAutomationRun | None:
+        """Get an automation run by ID."""
+        stmt = select(CRMAutomationRun).where(CRMAutomationRun.id == run_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def list_automation_runs(
+        self,
+        automation_id: str,
+        skip: int = 0,
+        limit: int = 50,
+    ) -> list[CRMAutomationRun]:
+        """List automation runs (API-compatible version)."""
+        runs, _ = await self.list_runs(automation_id, limit=limit, offset=skip)
+        return runs
+
     # =========================================================================
     # AUTOMATION EXECUTION
     # =========================================================================
@@ -786,20 +813,65 @@ class CRMSequenceService:
         await self.db.flush()
         return True
 
+    async def toggle_sequence(self, sequence_id: str) -> CRMSequence | None:
+        """Toggle sequence active status."""
+        sequence = await self.get_sequence(sequence_id)
+        if not sequence:
+            return None
+
+        sequence.is_active = not sequence.is_active
+        await self.db.flush()
+        await self.db.refresh(sequence)
+        return sequence
+
     # =========================================================================
     # SEQUENCE STEPS
     # =========================================================================
+
+    async def get_step(self, step_id: str) -> CRMSequenceStep | None:
+        """Get a sequence step by ID."""
+        stmt = select(CRMSequenceStep).where(CRMSequenceStep.id == step_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def list_steps(self, sequence_id: str) -> list[CRMSequenceStep]:
+        """List steps in a sequence."""
+        stmt = (
+            select(CRMSequenceStep)
+            .where(CRMSequenceStep.sequence_id == sequence_id)
+            .order_by(CRMSequenceStep.position)
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
 
     async def add_step(
         self,
         sequence_id: str,
         step_type: str,
         config: dict,
-        delay_value: int = 0,
+        delay_value: int | None = None,
         delay_unit: str = "days",
         position: int | None = None,
+        # API-compatible params
+        delay_days: int | None = None,
+        delay_hours: int | None = None,
+        order: int | None = None,
     ) -> CRMSequenceStep:
         """Add a step to a sequence."""
+        # Handle API-compatible parameters
+        if order is not None:
+            position = order
+        if delay_days is not None:
+            delay_value = delay_days
+            delay_unit = "days"
+        elif delay_hours is not None:
+            delay_value = delay_hours
+            delay_unit = "hours"
+
+        # Default delay_value if not set
+        if delay_value is None:
+            delay_value = 0
+
         if position is None:
             result = await self.db.execute(
                 select(func.max(CRMSequenceStep.position))
@@ -859,32 +931,70 @@ class CRMSequenceService:
     async def reorder_steps(
         self,
         sequence_id: str,
-        step_ids: list[str],
+        step_id_or_ids: str | list[str],
+        new_order: int | None = None,
     ) -> list[CRMSequenceStep]:
-        """Reorder sequence steps."""
-        for position, step_id in enumerate(step_ids):
-            stmt = select(CRMSequenceStep).where(
-                CRMSequenceStep.id == step_id,
-                CRMSequenceStep.sequence_id == sequence_id,
-            )
-            result = await self.db.execute(stmt)
-            step = result.scalar_one_or_none()
-            if step:
-                step.position = position
+        """Reorder sequence steps.
+
+        Can be called two ways:
+        1. reorder_steps(sequence_id, step_ids: list) - reorder all steps
+        2. reorder_steps(sequence_id, step_id, new_order) - move single step
+        """
+        if isinstance(step_id_or_ids, list):
+            # Reorder all steps based on list order
+            for position, step_id in enumerate(step_id_or_ids):
+                stmt = select(CRMSequenceStep).where(
+                    CRMSequenceStep.id == step_id,
+                    CRMSequenceStep.sequence_id == sequence_id,
+                )
+                result = await self.db.execute(stmt)
+                step = result.scalar_one_or_none()
+                if step:
+                    step.position = position
+        else:
+            # Move single step to new position
+            step_id = step_id_or_ids
+            if new_order is None:
+                new_order = 0
+
+            # Get all steps
+            steps = await self.list_steps(sequence_id)
+
+            # Find the step to move
+            step_to_move = None
+            for s in steps:
+                if s.id == step_id:
+                    step_to_move = s
+                    break
+
+            if step_to_move:
+                old_position = step_to_move.position
+                # Shift other steps
+                for s in steps:
+                    if s.id == step_id:
+                        s.position = new_order
+                    elif old_position < new_order:
+                        # Moving down - shift items up
+                        if old_position < s.position <= new_order:
+                            s.position -= 1
+                    else:
+                        # Moving up - shift items down
+                        if new_order <= s.position < old_position:
+                            s.position += 1
 
         await self.db.flush()
 
-        stmt = (
-            select(CRMSequenceStep)
-            .where(CRMSequenceStep.sequence_id == sequence_id)
-            .order_by(CRMSequenceStep.position)
-        )
-        result = await self.db.execute(stmt)
-        return list(result.scalars().all())
+        return await self.list_steps(sequence_id)
 
     # =========================================================================
     # ENROLLMENT
     # =========================================================================
+
+    async def get_enrollment(self, enrollment_id: str) -> CRMSequenceEnrollment | None:
+        """Get an enrollment by ID."""
+        stmt = select(CRMSequenceEnrollment).where(CRMSequenceEnrollment.id == enrollment_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def enroll_record(
         self,
@@ -976,6 +1086,14 @@ class CRMSequenceService:
         await self.db.refresh(enrollment)
         return enrollment
 
+    async def unenroll(
+        self,
+        enrollment_id: str,
+        exit_reason: str = "manual",
+    ) -> CRMSequenceEnrollment | None:
+        """Alias for unenroll_record for API compatibility."""
+        return await self.unenroll_record(enrollment_id, exit_reason)
+
     async def pause_enrollment(
         self,
         enrollment_id: str,
@@ -1021,8 +1139,13 @@ class CRMSequenceService:
         status: str | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> tuple[list[CRMSequenceEnrollment], int]:
+        skip: int | None = None,  # API-compatible alias for offset
+    ) -> list[CRMSequenceEnrollment]:
         """List sequence enrollments."""
+        # Handle skip as alias for offset
+        if skip is not None:
+            offset = skip
+
         stmt = select(CRMSequenceEnrollment)
 
         if sequence_id:
@@ -1032,18 +1155,11 @@ class CRMSequenceService:
         if status:
             stmt = stmt.where(CRMSequenceEnrollment.status == status)
 
-        count_result = await self.db.execute(
-            select(func.count()).select_from(stmt.subquery())
-        )
-        total = count_result.scalar() or 0
-
         stmt = stmt.order_by(CRMSequenceEnrollment.enrolled_at.desc())
         stmt = stmt.limit(limit).offset(offset)
 
         result = await self.db.execute(stmt)
-        enrollments = list(result.scalars().all())
-
-        return enrollments, total
+        return list(result.scalars().all())
 
     def _calculate_next_step_time(
         self,
@@ -1082,6 +1198,8 @@ class CRMWebhookService:
         headers: dict | None = None,
         retry_config: dict | None = None,
         is_active: bool = True,
+        object_id: str | None = None,  # API-compatible (not stored - webhooks aren't object-specific)
+        created_by_id: str | None = None,  # API-compatible (not stored)
     ) -> CRMWebhook:
         """Create a new webhook subscription."""
         import secrets
@@ -1155,6 +1273,82 @@ class CRMWebhookService:
         await self.db.delete(webhook)
         await self.db.flush()
         return True
+
+    async def toggle_webhook(self, webhook_id: str) -> CRMWebhook | None:
+        """Toggle webhook active status."""
+        webhook = await self.get_webhook(webhook_id)
+        if not webhook:
+            return None
+
+        webhook.is_active = not webhook.is_active
+        await self.db.flush()
+        await self.db.refresh(webhook)
+        return webhook
+
+    async def rotate_secret(self, webhook_id: str) -> CRMWebhook | None:
+        """Rotate the webhook signing secret."""
+        import secrets
+
+        webhook = await self.get_webhook(webhook_id)
+        if not webhook:
+            return None
+
+        webhook.secret = secrets.token_hex(32)
+        await self.db.flush()
+        await self.db.refresh(webhook)
+        return webhook
+
+    async def get_delivery(self, delivery_id: str) -> CRMWebhookDelivery | None:
+        """Get a webhook delivery by ID."""
+        stmt = select(CRMWebhookDelivery).where(CRMWebhookDelivery.id == delivery_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def deliver_webhook(self, webhook_id: str, payload: dict) -> CRMWebhookDelivery | None:
+        """Deliver a payload to a specific webhook by ID."""
+        webhook = await self.get_webhook(webhook_id)
+        if not webhook:
+            return None
+
+        event_type = payload.get("event", "custom")
+        await self._deliver_to_webhook(webhook, event_type, payload)
+
+        # Return the latest delivery
+        stmt = (
+            select(CRMWebhookDelivery)
+            .where(CRMWebhookDelivery.webhook_id == webhook_id)
+            .order_by(CRMWebhookDelivery.created_at.desc())
+            .limit(1)
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def retry_delivery(self, delivery_id: str) -> CRMWebhookDelivery | None:
+        """Retry a failed webhook delivery."""
+        delivery = await self.get_delivery(delivery_id)
+        if not delivery:
+            return None
+
+        webhook = await self.get_webhook(delivery.webhook_id)
+        if not webhook:
+            return None
+
+        # Create a new delivery attempt
+        new_delivery = CRMWebhookDelivery(
+            id=str(uuid4()),
+            webhook_id=webhook.id,
+            event_type=delivery.event_type,
+            payload=delivery.payload,
+            status="pending",
+            attempt_number=delivery.attempt_number + 1,
+        )
+        self.db.add(new_delivery)
+        await self.db.flush()
+
+        # Execute the delivery
+        await self._deliver_to_webhook(webhook, delivery.event_type, delivery.payload)
+
+        return new_delivery
 
     async def deliver_event(
         self,
@@ -1280,13 +1474,12 @@ class CRMWebhookService:
         webhook_id: str,
         limit: int = 50,
         offset: int = 0,
-    ) -> tuple[list[CRMWebhookDelivery], int]:
+        skip: int | None = None,  # API-compatible alias for offset
+    ) -> list[CRMWebhookDelivery]:
         """List webhook deliveries."""
-        count_result = await self.db.execute(
-            select(func.count(CRMWebhookDelivery.id))
-            .where(CRMWebhookDelivery.webhook_id == webhook_id)
-        )
-        total = count_result.scalar() or 0
+        # Handle skip as alias for offset
+        if skip is not None:
+            offset = skip
 
         stmt = (
             select(CRMWebhookDelivery)
@@ -1296,6 +1489,4 @@ class CRMWebhookService:
             .offset(offset)
         )
         result = await self.db.execute(stmt)
-        deliveries = list(result.scalars().all())
-
-        return deliveries, total
+        return list(result.scalars().all())

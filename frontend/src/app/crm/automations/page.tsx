@@ -18,6 +18,7 @@ import {
   Filter,
   GitBranch,
   Webhook,
+  Edit2,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useCRMObjects, useCRMAutomations, useCRMSequences, useCRMWebhooks } from "@/hooks/useCRM";
@@ -62,25 +63,37 @@ function AutomationCard({
   objectName,
   onToggle,
   onDelete,
+  onEdit,
 }: {
   automation: CRMAutomation;
   objectName?: string;
   onToggle: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }) {
   return (
-    <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 hover:border-slate-600 transition-colors">
+    <div
+      onClick={onEdit}
+      className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 hover:border-blue-500/50 transition-colors cursor-pointer group"
+    >
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
           <div className={`p-2 rounded-lg ${automation.is_active ? "bg-green-500/20 text-green-400" : "bg-slate-700 text-slate-400"}`}>
             <Zap className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-white font-medium">{automation.name}</h3>
+            <h3 className="text-white font-medium group-hover:text-blue-400 transition-colors">{automation.name}</h3>
             <p className="text-sm text-slate-400">{objectName}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={onEdit}
+            className="p-2 rounded-lg bg-slate-700 text-slate-400 hover:bg-blue-500/20 hover:text-blue-400 transition-colors"
+            title="Edit in visual builder"
+          >
+            <Edit2 className="h-4 w-4" />
+          </button>
           <button
             onClick={onToggle}
             className={`p-2 rounded-lg transition-colors ${
@@ -333,6 +346,13 @@ export default function AutomationsPage() {
             <h1 className="text-2xl font-bold text-white">Automations</h1>
             <p className="text-sm text-slate-400">Automate your CRM workflows</p>
           </div>
+          <button
+            onClick={() => router.push("/crm/automations/new")}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+          >
+            <Plus className="h-4 w-4" />
+            Create Automation
+          </button>
         </div>
 
         {/* Tabs */}
@@ -404,6 +424,7 @@ export default function AutomationsPage() {
                     objectName={getObjectName(automation.object_id)}
                     onToggle={() => toggleAutomation(automation.id)}
                     onDelete={() => handleDeleteAutomation(automation.id)}
+                    onEdit={() => router.push(`/crm/automations/${automation.id}`)}
                   />
                 ))}
               </div>
