@@ -268,12 +268,82 @@ class WorkflowExecutionResponse(BaseModel):
     """Response from workflow execution."""
     execution_id: str
     automation_id: str
-    status: Literal["running", "completed", "failed", "paused"]
+    workflow_id: str | None = None
+    status: Literal["pending", "running", "completed", "failed", "paused", "cancelled"]
     started_at: datetime
     completed_at: datetime | None = None
+    paused_at: datetime | None = None
+    resume_at: datetime | None = None
+    current_node_id: str | None = None
     node_results: list[NodeExecutionResult] = Field(default_factory=list)
     final_context: dict[str, Any] = Field(default_factory=dict)
     error: str | None = None
+    error_node_id: str | None = None
+    is_dry_run: bool = False
+
+
+class WorkflowExecutionStepResponse(BaseModel):
+    """Response for a single execution step."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    execution_id: str
+    node_id: str
+    node_type: str
+    node_label: str | None = None
+    status: Literal["pending", "running", "success", "failed", "skipped", "waiting"]
+    input_data: dict[str, Any] | None = None
+    output_data: dict[str, Any] | None = None
+    condition_result: bool | None = None
+    selected_branch: str | None = None
+    error: str | None = None
+    duration_ms: int | None = None
+    executed_at: datetime
+
+
+class WorkflowExecutionDetailResponse(BaseModel):
+    """Detailed response for a workflow execution with steps."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    workflow_id: str
+    automation_id: str
+    workspace_id: str
+    record_id: str | None = None
+    status: Literal["pending", "running", "completed", "failed", "paused", "cancelled"]
+    current_node_id: str | None = None
+    next_node_id: str | None = None
+    context: dict[str, Any] = Field(default_factory=dict)
+    trigger_data: dict[str, Any] = Field(default_factory=dict)
+    resume_at: datetime | None = None
+    wait_event_type: str | None = None
+    wait_timeout_at: datetime | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    paused_at: datetime | None = None
+    error: str | None = None
+    error_node_id: str | None = None
+    is_dry_run: bool = False
+    triggered_by: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    steps: list[WorkflowExecutionStepResponse] = Field(default_factory=list)
+
+
+class WorkflowExecutionListResponse(BaseModel):
+    """List response for workflow executions."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    workflow_id: str
+    automation_id: str
+    record_id: str | None = None
+    status: str
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    error: str | None = None
+    is_dry_run: bool = False
+    created_at: datetime
 
 
 # =============================================================================
@@ -301,13 +371,11 @@ class WorkflowValidationResult(BaseModel):
 # =============================================================================
 
 class WorkflowTemplateCreate(BaseModel):
-    """Schema for creating a workflow template."""
+    """Schema for creating a workflow template from current workflow."""
     name: str = Field(..., min_length=1, max_length=255)
     description: str | None = None
-    category: str | None = None
-    nodes: list[WorkflowNode] = Field(default_factory=list)
-    edges: list[WorkflowEdge] = Field(default_factory=list)
-    preview_image_url: str | None = None
+    category: str = "custom"
+    icon: str | None = None
 
 
 class WorkflowTemplateResponse(BaseModel):
@@ -317,10 +385,35 @@ class WorkflowTemplateResponse(BaseModel):
     id: str
     name: str
     description: str | None = None
-    category: str | None = None
+    category: str
+    icon: str | None = None
     nodes: list[dict]
     edges: list[dict]
-    preview_image_url: str | None = None
+    viewport: dict | None = None
     is_system: bool
-    usage_count: int
+    is_published: bool
+    use_count: int
     created_at: datetime
+
+
+class WorkflowTemplateListResponse(BaseModel):
+    """Schema for listing workflow templates (without full node/edge data)."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    name: str
+    description: str | None = None
+    category: str
+    icon: str | None = None
+    is_system: bool
+    use_count: int
+    node_count: int = 0  # Computed field
+    created_at: datetime
+
+
+class WorkflowTemplateCategoryResponse(BaseModel):
+    """Schema for template category."""
+    id: str
+    label: str
+    icon: str
+    template_count: int = 0

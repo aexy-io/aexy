@@ -67,6 +67,9 @@ from aexy.api.crm_automation import router as crm_automation_router
 # Visual Workflow Builder
 from aexy.api.workflows import router as workflows_router
 from aexy.api.workflows import workflows_router as workflows_list_router
+from aexy.api.workflows import templates_router as workflow_templates_router
+# Workflow Events (webhooks for event-based waits)
+from aexy.api.workflow_events import router as workflow_events_router
 # Google Integration (Gmail & Calendar sync for CRM)
 from aexy.api.google_integration import router as google_integration_router
 # AI Agents
@@ -144,6 +147,9 @@ api_router.include_router(crm_automation_router, tags=["crm-automation"])
 # Visual Workflow Builder
 api_router.include_router(workflows_router, tags=["workflows"])
 api_router.include_router(workflows_list_router, tags=["workflows"])
+api_router.include_router(workflow_templates_router, tags=["workflow-templates"])
+# Workflow Events (webhooks for event-based waits)
+api_router.include_router(workflow_events_router, tags=["workflow-events"])
 # Google Integration (Gmail & Calendar for CRM)
 api_router.include_router(google_integration_router, tags=["google-integration"])
 # AI Agents

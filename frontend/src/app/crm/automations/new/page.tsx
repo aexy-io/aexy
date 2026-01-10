@@ -7,7 +7,7 @@ import { Node, Edge } from "@xyflow/react";
 
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { WorkflowCanvas } from "@/components/workflow-builder";
-import api from "@/lib/api";
+import { api } from "@/lib/api";
 
 const defaultNodes: Node[] = [
   {

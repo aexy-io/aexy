@@ -152,3 +152,129 @@ async def webhook_status() -> dict:
         "status": "active",
         "supported_events": ["push", "pull_request", "pull_request_review", "issues"],
     }
+
+
+# =============================================================================
+# AUTOMATION WORKFLOW WEBHOOK TRIGGERS
+# =============================================================================
+
+
+@router.post("/automations/{automation_id}/trigger")
+async def trigger_automation_webhook(
+    automation_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Trigger an automation workflow via webhook.
+
+    This is a public endpoint that allows external systems to trigger workflows.
+    The automation must have a webhook trigger type and be published.
+    """
+    from datetime import datetime, timezone
+    from uuid import uuid4
+    from sqlalchemy import select
+
+    from aexy.models.crm import CRMAutomation, CRMRecord
+    from aexy.models.workflow import (
+        WorkflowDefinition,
+        WorkflowExecution,
+        WorkflowExecutionStatus,
+    )
+    from aexy.processing.workflow_tasks import execute_workflow_task
+
+    # Get payload
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+
+    # Find automation
+    stmt = select(CRMAutomation).where(CRMAutomation.id == automation_id)
+    result = await db.execute(stmt)
+    automation = result.scalar_one_or_none()
+
+    if not automation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Automation not found",
+        )
+
+    if not automation.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Automation is not active",
+        )
+
+    # Get workflow
+    stmt = select(WorkflowDefinition).where(WorkflowDefinition.automation_id == automation_id)
+    result = await db.execute(stmt)
+    workflow = result.scalar_one_or_none()
+
+    if not workflow:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workflow not found for this automation",
+        )
+
+    if not workflow.is_published:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Workflow is not published",
+        )
+
+    # Build trigger data
+    trigger_data = {
+        "type": "webhook",
+        "workspace_id": automation.workspace_id,
+        "triggered_at": datetime.now(timezone.utc).isoformat(),
+        "payload": payload,
+        "source_ip": request.client.host if request.client else None,
+    }
+
+    # Check for record_id in payload
+    record_id = payload.get("record_id")
+    record_data = {}
+
+    if record_id:
+        stmt = select(CRMRecord).where(CRMRecord.id == record_id)
+        result = await db.execute(stmt)
+        record = result.scalar_one_or_none()
+        if record:
+            record_data = {
+                "id": record.id,
+                "object_id": record.object_id,
+                "values": record.values,
+                "owner_id": record.owner_id,
+            }
+
+    # Create execution
+    execution = WorkflowExecution(
+        id=str(uuid4()),
+        workflow_id=workflow.id,
+        automation_id=automation_id,
+        workspace_id=automation.workspace_id,
+        record_id=record_id,
+        status=WorkflowExecutionStatus.PENDING.value,
+        context={
+            "record_data": record_data,
+            "trigger_data": trigger_data,
+            "variables": {},
+            "executed_nodes": [],
+        },
+        trigger_data=trigger_data,
+        is_dry_run=False,
+    )
+    db.add(execution)
+    await db.commit()
+    await db.refresh(execution)
+
+    # Queue execution
+    execute_workflow_task.delay(execution.id)
+
+    return {
+        "status": "accepted",
+        "execution_id": execution.id,
+        "automation_id": automation_id,
+        "message": "Workflow execution started",
+    }

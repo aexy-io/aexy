@@ -17,6 +17,7 @@ celery_app = Celery(
         "aexy.processing.tracking_tasks",
         "aexy.processing.google_sync_tasks",
         "aexy.processing.integration_tasks",
+        "aexy.processing.workflow_tasks",
     ],
 )
 
@@ -62,6 +63,7 @@ celery_app.conf.update(
         "aexy.processing.tracking_tasks.*": {"queue": "tracking"},
         "aexy.processing.google_sync_tasks.*": {"queue": "google_sync"},
         "aexy.processing.integration_tasks.*": {"queue": "integrations"},
+        "aexy.processing.workflow_tasks.*": {"queue": "workflows"},
     },
 
     # Retry settings
@@ -97,6 +99,23 @@ celery_app.conf.update(
         "check-oncall-ending-shifts": {
             "task": "aexy.processing.oncall_tasks.check_ending_shifts",
             "schedule": 300,  # Every 5 minutes
+        },
+        # Workflow scheduling
+        "check-paused-workflows": {
+            "task": "aexy.processing.workflow_tasks.check_paused_workflows",
+            "schedule": 60,  # Every minute
+        },
+        "check-event-subscription-timeouts": {
+            "task": "aexy.processing.workflow_tasks.check_event_subscription_timeouts",
+            "schedule": 60,  # Every minute
+        },
+        "process-workflow-retries": {
+            "task": "aexy.processing.workflow_tasks.process_workflow_retries",
+            "schedule": 60,  # Every minute
+        },
+        "cleanup-old-workflow-executions": {
+            "task": "aexy.processing.workflow_tasks.cleanup_old_executions",
+            "schedule": 3600 * 24,  # Daily
         },
     },
 )
