@@ -15,7 +15,7 @@ CRMAttributeType = Literal[
     "text", "textarea", "number", "currency", "date", "timestamp",
     "checkbox", "select", "multi_select", "status", "email", "phone",
     "url", "location", "person_name", "rating", "record_reference",
-    "file", "ai_computed"
+    "user_reference", "file", "ai_computed"
 ]
 
 CRMListViewType = Literal["table", "kanban", "calendar", "timeline", "gallery"]

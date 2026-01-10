@@ -25,6 +25,9 @@ from aexy.models.crm import (
     CRMSequenceEnrollmentStatus,
 )
 from aexy.services.crm_service import CRMRecordService, CRMActivityService
+from aexy.services.slack_integration import SlackIntegrationService
+from aexy.schemas.integrations import SlackMessage, SlackNotificationType
+from aexy.models.developer import Developer
 
 
 class CRMAutomationService:
@@ -410,7 +413,7 @@ class CRMAutomationService:
         elif action_type == "create_task":
             return await self._action_create_task(config, record, workspace_id)
         elif action_type == "send_slack":
-            return await self._action_send_slack(config, record)
+            return await self._action_send_slack(config, record, workspace_id)
         else:
             return {"message": f"Action type {action_type} not implemented"}
 
@@ -583,22 +586,130 @@ class CRMAutomationService:
         self,
         config: dict,
         record: CRMRecord | None,
+        workspace_id: str,
     ) -> dict:
-        """Send Slack notification (placeholder)."""
-        channel = config.get("channel")
-        message = config.get("message", "")
+        """Send Slack notification to a channel or DM to a user.
 
-        # Replace placeholders in message
+        Config options:
+        - channel: Slack channel ID (e.g., "C1234567890") for channel messages
+        - user_email: Email address to send DM to (e.g., "john@company.com")
+        - user_email_field: Record field containing email to send DM to (e.g., "owner_email")
+        - message: Message template with {field_name} placeholders
+        """
+        channel = config.get("channel")
+        user_email = config.get("user_email")
+        user_email_field = config.get("user_email_field")
+        message_template = config.get("message", "")
+
+        # Get Slack integration for workspace
+        slack_service = SlackIntegrationService()
+        integration = await slack_service.get_integration_by_workspace(
+            workspace_id, self.db
+        )
+
+        if not integration:
+            return {
+                "error": "No Slack integration found for workspace",
+                "text": message_template,
+            }
+
+        # Determine the target (channel or user DM)
+        target_id = None
+        target_type = None
+        target_email = None
+
+        if channel:
+            target_id = channel
+            target_type = "channel"
+        elif user_email:
+            # Direct email provided - look up Slack user
+            target_email = user_email
+            slack_user_id = await self._get_slack_user_by_email(
+                integration.user_mappings or {}, user_email
+            )
+            if slack_user_id:
+                target_id = slack_user_id
+                target_type = "dm"
+            else:
+                return {
+                    "error": f"No Slack user found for email '{user_email}'",
+                    "email": user_email,
+                }
+        elif user_email_field and record:
+            # Get email from record field
+            target_email = record.values.get(user_email_field)
+            if target_email:
+                slack_user_id = await self._get_slack_user_by_email(
+                    integration.user_mappings or {}, target_email
+                )
+                if slack_user_id:
+                    target_id = slack_user_id
+                    target_type = "dm"
+                else:
+                    return {
+                        "error": f"No Slack user found for email in field '{user_email_field}'",
+                        "email": target_email,
+                    }
+            else:
+                return {
+                    "error": f"Record field '{user_email_field}' is empty or not found",
+                }
+
+        if not target_id:
+            return {"error": "No channel, user_email, or user_email_field specified for Slack notification"}
+
+        # Replace placeholders in message with record values
+        message = message_template
         if record:
             for key, value in record.values.items():
-                message = message.replace(f"{{{key}}}", str(value))
+                message = message.replace(f"{{{key}}}", str(value or ""))
+            # Also support record metadata placeholders
+            message = message.replace("{record_id}", record.id)
+            if hasattr(record, "name") and record.name:
+                message = message.replace("{record_name}", record.name)
 
-        # This would integrate with Slack service
+        # Send the message
+        slack_message = SlackMessage(text=message)
+        response = await slack_service.send_message(
+            integration=integration,
+            channel_id=target_id,
+            message=slack_message,
+            notification_type=SlackNotificationType.AUTOMATION,
+            db=self.db,
+        )
+
         return {
-            "message": "Slack notification placeholder",
-            "channel": channel,
+            "success": response.success,
+            "target": target_id,
+            "target_type": target_type,
+            "target_email": target_email,
             "text": message,
+            "message_ts": response.message_ts,
+            "error": response.error,
         }
+
+    async def _get_slack_user_by_email(
+        self, user_mappings: dict, email: str
+    ) -> str | None:
+        """Find Slack user ID for a given email address.
+
+        Looks up developer by email, then finds their Slack user ID from mappings.
+        """
+        # Find developer by email
+        result = await self.db.execute(
+            select(Developer).where(Developer.email == email)
+        )
+        developer = result.scalar_one_or_none()
+
+        if not developer:
+            return None
+
+        # Reverse lookup: find slack_user_id for this developer_id
+        for slack_user_id, dev_id in user_mappings.items():
+            if dev_id == developer.id:
+                return slack_user_id
+
+        return None
 
     # =========================================================================
     # TRIGGER MATCHING
