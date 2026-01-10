@@ -23,7 +23,7 @@ class PermissionCategoryInfo(BaseModel):
 class PermissionCatalogResponse(BaseModel):
     """Response containing the full permission catalog."""
 
-    permissions: dict[str, dict]
+    permissions: list[PermissionInfo]
     categories: list[str]
 
 
@@ -103,7 +103,7 @@ class RoleListResponse(BaseModel):
     color: str
     icon: str
     is_system: bool
-    permission_count: int
+    permissions: list[str]
     priority: int
     is_active: bool
 
@@ -123,3 +123,16 @@ class RoleSummary(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# Wrapper schemas for API responses
+class RolesListWrapper(BaseModel):
+    """Wrapper for roles list response."""
+
+    roles: list[RoleListResponse]
+
+
+class RoleTemplatesListWrapper(BaseModel):
+    """Wrapper for role templates list response."""
+
+    templates: list[RoleTemplateResponse]
