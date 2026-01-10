@@ -24,9 +24,11 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { useAuth } from "@/hooks/useAuth";
 import { useCRMObjects } from "@/hooks/useCRM";
 import { CRMObject, CRMObjectType, googleIntegrationApi, developerApi, GoogleIntegrationStatus } from "@/lib/api";
 import { GettingStartedChecklist } from "@/components/crm/GettingStartedChecklist";
+import { AppHeader } from "@/components/layout/AppHeader";
 
 const objectTypeIcons: Record<CRMObjectType, React.ReactNode> = {
   company: <Building2 className="h-5 w-5" />,
@@ -376,6 +378,7 @@ function CreateObjectModal({
 
 export default function CRMPage() {
   const router = useRouter();
+  const { user, logout, isLoading: authLoading } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
   const [showChecklist, setShowChecklist] = useState(false);
@@ -435,16 +438,19 @@ export default function CRMPage() {
     }
   };
 
-  if (isLoading || !hasCheckedOnboarding) {
+  if (isLoading || authLoading || !hasCheckedOnboarding) {
     return (
-      <div className="min-h-screen bg-slate-950 p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="animate-pulse space-y-8">
-            <div className="h-8 w-48 bg-slate-800 rounded" />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-48 bg-slate-800 rounded-xl" />
-              ))}
+      <div className="min-h-screen bg-slate-950">
+        <AppHeader user={user} logout={logout} />
+        <div className="p-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="animate-pulse space-y-8">
+              <div className="h-8 w-48 bg-slate-800 rounded" />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-48 bg-slate-800 rounded-xl" />
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -456,22 +462,27 @@ export default function CRMPage() {
   const onboardingComplete = localStorage.getItem("crm_onboarding_complete") === "true";
   if (objects.length === 0 && !onboardingComplete) {
     return (
-      <div className="min-h-screen bg-slate-950 p-8">
-        <div className="max-w-7xl mx-auto">
-          <EmptyState onStartOnboarding={handleStartOnboarding} />
+      <div className="min-h-screen bg-slate-950">
+        <AppHeader user={user} logout={logout} />
+        <div className="p-8">
+          <div className="max-w-7xl mx-auto">
+            <EmptyState onStartOnboarding={handleStartOnboarding} />
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex gap-8">
-          {/* Main content */}
-          <div className="flex-1">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-slate-950">
+      <AppHeader user={user} logout={logout} />
+      <div className="p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex gap-8">
+            {/* Main content */}
+            <div className="flex-1">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
               <div>
                 <h1 className="text-3xl font-bold text-white mb-1">CRM</h1>
                 <p className="text-slate-400">Manage your contacts, companies, and deals</p>
@@ -610,12 +621,13 @@ export default function CRMPage() {
           )}
         </div>
 
-        <CreateObjectModal
-          isOpen={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
-          onCreate={handleCreate}
-          isCreating={isCreating}
-        />
+          <CreateObjectModal
+            isOpen={showCreateModal}
+            onClose={() => setShowCreateModal(false)}
+            onCreate={handleCreate}
+            isCreating={isCreating}
+          />
+        </div>
       </div>
     </div>
   );

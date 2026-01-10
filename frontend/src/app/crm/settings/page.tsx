@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
+import { AppHeader } from "@/components/layout/AppHeader";
 import {
   ChevronLeft,
   Plus,
@@ -233,7 +235,7 @@ function ConfigurationTab({
             <p className="text-sm text-slate-400">Records</p>
           </div>
           <div className="p-4 bg-slate-700/30 rounded-lg">
-            <p className="text-2xl font-bold text-white">{object.attribute_count || 0}</p>
+            <p className="text-2xl font-bold text-white">{object.attributes?.length || 0}</p>
             <p className="text-sm text-slate-400">Attributes</p>
           </div>
           <div className="p-4 bg-slate-700/30 rounded-lg">
@@ -280,7 +282,7 @@ function AppearanceTab({
           >
             {objectTypeIcons[object.object_type as CRMObjectType] || objectTypeIcons.custom}
           </div>
-          <ColorPicker color={color} onChange={handleColorChange} size="lg" />
+          <ColorPicker value={color} onChange={handleColorChange} size="lg" />
         </div>
       </div>
 
@@ -1102,6 +1104,7 @@ type SettingsSection = "objects" | "integrations";
 export default function CRMSettingsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user, logout } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
 
@@ -1153,18 +1156,21 @@ export default function CRMSettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex">
-        <div className="w-64 bg-slate-800/30 border-r border-slate-700 p-4">
-          <div className="animate-pulse space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-14 bg-slate-800 rounded-lg" />
-            ))}
+      <div className="min-h-screen bg-slate-950">
+        <AppHeader user={user} logout={logout} />
+        <div className="flex">
+          <div className="w-64 bg-slate-800/30 border-r border-slate-700 p-4">
+            <div className="animate-pulse space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-14 bg-slate-800 rounded-lg" />
+              ))}
+            </div>
           </div>
-        </div>
-        <div className="flex-1 p-8">
-          <div className="animate-pulse space-y-4">
-            <div className="h-20 bg-slate-800 rounded-xl" />
-            <div className="h-64 bg-slate-800 rounded-xl" />
+          <div className="flex-1 p-8">
+            <div className="animate-pulse space-y-4">
+              <div className="h-20 bg-slate-800 rounded-xl" />
+              <div className="h-64 bg-slate-800 rounded-xl" />
+            </div>
           </div>
         </div>
       </div>
@@ -1172,9 +1178,11 @@ export default function CRMSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex">
-      {/* Sidebar */}
-      <div className="w-64 flex flex-col bg-slate-800/30 border-r border-slate-700">
+    <div className="min-h-screen bg-slate-950">
+      <AppHeader user={user} logout={logout} />
+      <div className="flex">
+        {/* Sidebar */}
+        <div className="w-64 flex flex-col bg-slate-800/30 border-r border-slate-700">
         {/* Header */}
         <div className="p-4 border-b border-slate-700">
           <button
@@ -1328,6 +1336,7 @@ export default function CRMSettingsPage() {
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

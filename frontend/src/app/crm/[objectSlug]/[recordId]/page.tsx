@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
+import { AppHeader } from "@/components/layout/AppHeader";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import {
   useCRMObjects,
@@ -28,6 +30,7 @@ export default function RecordDetailPage() {
   const objectSlug = params.objectSlug as string;
   const recordId = params.recordId as string;
 
+  const { user, logout } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
 
@@ -139,23 +142,26 @@ export default function RecordDetailPage() {
   // Loading state
   if (isLoadingRecord || !record) {
     return (
-      <div className="min-h-screen bg-slate-950 p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="animate-pulse space-y-6">
-            <div className="flex items-center gap-4">
-              <div className="h-10 w-10 bg-slate-800 rounded" />
-              <div className="h-12 w-12 bg-slate-800 rounded-xl" />
-              <div className="flex-1">
-                <div className="h-6 w-48 bg-slate-800 rounded mb-2" />
-                <div className="h-4 w-24 bg-slate-800 rounded" />
+      <div className="min-h-screen bg-slate-950">
+        <AppHeader user={user} logout={logout} />
+        <div className="p-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="animate-pulse space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 bg-slate-800 rounded" />
+                <div className="h-12 w-12 bg-slate-800 rounded-xl" />
+                <div className="flex-1">
+                  <div className="h-6 w-48 bg-slate-800 rounded mb-2" />
+                  <div className="h-4 w-24 bg-slate-800 rounded" />
+                </div>
               </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="h-20 bg-slate-800 rounded-xl" />
+                <div className="h-20 bg-slate-800 rounded-xl" />
+                <div className="h-20 bg-slate-800 rounded-xl" />
+              </div>
+              <div className="h-64 bg-slate-800 rounded-xl" />
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="h-20 bg-slate-800 rounded-xl" />
-              <div className="h-20 bg-slate-800 rounded-xl" />
-              <div className="h-20 bg-slate-800 rounded-xl" />
-            </div>
-            <div className="h-64 bg-slate-800 rounded-xl" />
           </div>
         </div>
       </div>
@@ -166,105 +172,108 @@ export default function RecordDetailPage() {
   const pinnedNotes = notes.filter((n) => n.is_pinned);
 
   return (
-    <div className="min-h-screen bg-slate-950 flex">
-      {/* Main content area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <div className="px-8 pt-6 pb-4 border-b border-slate-800">
-          <RecordHeader
-            record={record}
-            object={currentObject}
-            onBack={() => router.push(`/crm/${objectSlug}`)}
-            onPrev={navigateToPrev}
-            onNext={navigateToNext}
-            hasPrev={hasPrev}
-            hasNext={hasNext}
-            isEditing={isEditing}
-            isUpdating={isUpdating}
-            isDeleting={isDeleting}
-            onEdit={startEditing}
-            onSave={handleSave}
-            onCancel={handleCancel}
-            onDelete={handleDelete}
-          />
-        </div>
+    <div className="min-h-screen bg-slate-950">
+      <AppHeader user={user} logout={logout} />
+      <div className="flex">
+        {/* Main content area */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Header */}
+          <div className="px-8 pt-6 pb-4 border-b border-slate-800">
+            <RecordHeader
+              record={record}
+              object={currentObject}
+              onBack={() => router.push(`/crm/${objectSlug}`)}
+              onPrev={navigateToPrev}
+              onNext={navigateToNext}
+              hasPrev={hasPrev}
+              hasNext={hasNext}
+              isEditing={isEditing}
+              isUpdating={isUpdating}
+              isDeleting={isDeleting}
+              onEdit={startEditing}
+              onSave={handleSave}
+              onCancel={handleCancel}
+              onDelete={handleDelete}
+            />
+          </div>
 
-        {/* Highlights */}
-        <div className="px-8 py-6">
-          <RecordHighlights
-            record={record}
-            attributes={attributes}
-            maxCards={6}
-          />
-        </div>
-
-        {/* Tabs */}
-        <div className="px-8">
-          <RecordTabs
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            notesCount={notes.length}
-            activitiesCount={activities.length}
-            relatedCount={0}
-          />
-        </div>
-
-        {/* Tab content */}
-        <div className="flex-1 px-8 py-6 overflow-y-auto">
-          {activeTab === "overview" && (
-            <OverviewTabContent
+          {/* Highlights */}
+          <div className="px-8 py-6">
+            <RecordHighlights
               record={record}
               attributes={attributes}
-              recentActivities={activities}
-              pinnedNotes={pinnedNotes}
-              onNoteTogglePin={handleTogglePin}
-              onNoteDelete={handleDeleteNote}
-              onViewAllActivity={() => setActiveTab("activity")}
-              onViewAllNotes={() => setActiveTab("notes")}
+              maxCards={6}
             />
-          )}
+          </div>
 
-          {activeTab === "notes" && (
-            <NotesTabContent
-              notes={notes}
-              isLoading={isLoadingNotes}
-              newNote={newNote}
-              onNewNoteChange={setNewNote}
-              onCreateNote={handleCreateNote}
-              onDeleteNote={handleDeleteNote}
-              onTogglePin={handleTogglePin}
-              isCreating={isCreatingNote}
+          {/* Tabs */}
+          <div className="px-8">
+            <RecordTabs
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              notesCount={notes.length}
+              activitiesCount={activities.length}
+              relatedCount={0}
             />
-          )}
+          </div>
 
-          {activeTab === "activity" && (
-            <ActivityTabContent
-              activities={activities}
-              isLoading={isLoadingActivities}
-            />
-          )}
+          {/* Tab content */}
+          <div className="flex-1 px-8 py-6 overflow-y-auto">
+            {activeTab === "overview" && (
+              <OverviewTabContent
+                record={record}
+                attributes={attributes}
+                recentActivities={activities}
+                pinnedNotes={pinnedNotes}
+                onNoteTogglePin={handleTogglePin}
+                onNoteDelete={handleDeleteNote}
+                onViewAllActivity={() => setActiveTab("activity")}
+                onViewAllNotes={() => setActiveTab("notes")}
+              />
+            )}
 
-          {activeTab === "related" && (
-            <RelatedTabContent
-              relatedRecords={[]}
-              onRecordClick={(related) =>
-                router.push(`/crm/${related.object_slug}/${related.id}`)
-              }
-            />
-          )}
+            {activeTab === "notes" && (
+              <NotesTabContent
+                notes={notes}
+                isLoading={isLoadingNotes}
+                newNote={newNote}
+                onNewNoteChange={setNewNote}
+                onCreateNote={handleCreateNote}
+                onDeleteNote={handleDeleteNote}
+                onTogglePin={handleTogglePin}
+                isCreating={isCreatingNote}
+              />
+            )}
+
+            {activeTab === "activity" && (
+              <ActivityTabContent
+                activities={activities}
+                isLoading={isLoadingActivities}
+              />
+            )}
+
+            {activeTab === "related" && (
+              <RelatedTabContent
+                relatedRecords={[]}
+                onRecordClick={(related) =>
+                  router.push(`/crm/${related.object_slug}/${related.id}`)
+                }
+              />
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Sidebar */}
-      <RecordSidebar
-        record={record}
-        attributes={attributes}
-        isEditing={isEditing}
-        editedValues={editedValues}
-        onValueChange={handleValueChange}
-        isCollapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
+        {/* Sidebar */}
+        <RecordSidebar
+          record={record}
+          attributes={attributes}
+          isEditing={isEditing}
+          editedValues={editedValues}
+          onValueChange={handleValueChange}
+          isCollapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
+      </div>
     </div>
   );
 }

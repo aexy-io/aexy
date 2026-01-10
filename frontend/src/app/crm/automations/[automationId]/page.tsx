@@ -6,6 +6,8 @@ import { ChevronLeft, Loader2 } from "lucide-react";
 import { Node, Edge } from "@xyflow/react";
 
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { useAuth } from "@/hooks/useAuth";
+import { AppHeader } from "@/components/layout/AppHeader";
 import { WorkflowCanvas } from "@/components/workflow-builder";
 import { api } from "@/lib/api";
 
@@ -30,6 +32,7 @@ export default function EditAutomationPage() {
   const router = useRouter();
   const params = useParams();
   const { currentWorkspace } = useWorkspace();
+  const { user, logout } = useAuth();
   const automationId = params.automationId as string;
 
   const [automation, setAutomation] = useState<Automation | null>(null);
@@ -170,80 +173,89 @@ export default function EditAutomationPage() {
 
   if (isLoading || !workspaceId) {
     return (
-      <div className="flex items-center justify-center h-screen bg-slate-900">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="min-h-screen bg-slate-900">
+        <AppHeader user={user} logout={logout} />
+        <div className="flex items-center justify-center h-[calc(100vh-64px)]">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        </div>
       </div>
     );
   }
 
   if (error && !workflow) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-slate-900">
-        <div className="text-red-400 text-lg mb-4">{error}</div>
-        <button
-          onClick={() => router.push("/crm/automations")}
-          className="text-blue-400 hover:text-blue-300"
-        >
-          Back to Automations
-        </button>
+      <div className="min-h-screen bg-slate-900">
+        <AppHeader user={user} logout={logout} />
+        <div className="flex flex-col items-center justify-center h-[calc(100vh-64px)]">
+          <div className="text-red-400 text-lg mb-4">{error}</div>
+          <button
+            onClick={() => router.push("/crm/automations")}
+            className="text-blue-400 hover:text-blue-300"
+          >
+            Back to Automations
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex flex-col bg-slate-900">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700 bg-slate-800/50">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => router.push("/crm/automations")}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <div>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="text-lg font-semibold text-white bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1 -ml-2"
-              placeholder="Automation name"
-            />
-            <input
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="block text-sm text-slate-400 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-0.5 -ml-2 w-full max-w-md"
-              placeholder="Add a description..."
-            />
+    <div className="min-h-screen bg-slate-900">
+      <AppHeader user={user} logout={logout} />
+      <div className="h-[calc(100vh-64px)] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700 bg-slate-800/50">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push("/crm/automations")}
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <div>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="text-lg font-semibold text-white bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1 -ml-2"
+                placeholder="Automation name"
+              />
+              <input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="block text-sm text-slate-400 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-0.5 -ml-2 w-full max-w-md"
+                placeholder="Add a description..."
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="text-red-400 text-sm bg-red-500/10 px-3 py-1 rounded-lg">
+              {error}
+            </div>
+          )}
+
+          <div className="text-sm text-slate-400">
+            Version {workflow?.version || 1}
           </div>
         </div>
 
-        {error && (
-          <div className="text-red-400 text-sm bg-red-500/10 px-3 py-1 rounded-lg">
-            {error}
-          </div>
-        )}
-
-        <div className="text-sm text-slate-400">
-          Version {workflow?.version || 1}
+        {/* Workflow Canvas */}
+        <div className="flex-1">
+          <WorkflowCanvas
+            automationId={automationId}
+            workspaceId={workspaceId}
+            initialNodes={workflow?.nodes || []}
+            initialEdges={workflow?.edges || []}
+            initialViewport={workflow?.viewport || { x: 0, y: 0, zoom: 1 }}
+            isPublished={workflow?.is_published || false}
+            onSave={handleSave}
+            onPublish={handlePublish}
+            onUnpublish={handleUnpublish}
+            onTest={handleTest}
+          />
         </div>
-      </div>
-
-      {/* Workflow Canvas */}
-      <div className="flex-1">
-        <WorkflowCanvas
-          automationId={automationId}
-          workspaceId={workspaceId}
-          initialNodes={workflow?.nodes || []}
-          initialEdges={workflow?.edges || []}
-          initialViewport={workflow?.viewport || { x: 0, y: 0, zoom: 1 }}
-          isPublished={workflow?.is_published || false}
-          onSave={handleSave}
-          onPublish={handlePublish}
-          onUnpublish={handleUnpublish}
-          onTest={handleTest}
-        />
       </div>
     </div>
   );
