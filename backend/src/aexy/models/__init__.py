@@ -201,6 +201,7 @@ from aexy.models.forms import (
     FormSubmissionStatus,
     TicketAssignmentMode,
 )
+from aexy.models.dashboard import DashboardPreferences
 
 __all__ = [
     # Plan
@@ -397,4 +398,6 @@ __all__ = [
     "FormFieldType",
     "FormSubmissionStatus",
     "TicketAssignmentMode",
+    # Dashboard
+    "DashboardPreferences",
 ]

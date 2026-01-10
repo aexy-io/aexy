@@ -78,6 +78,8 @@ from aexy.api.google_integration import router as google_integration_router
 # AI Agents
 from aexy.api.agents import router as agents_router
 from aexy.api.agents import writing_style_router
+# Dashboard Customization
+from aexy.api.dashboard import router as dashboard_router
 
 api_router = APIRouter()
 
@@ -161,3 +163,5 @@ api_router.include_router(google_integration_router, tags=["google-integration"]
 # AI Agents
 api_router.include_router(agents_router, tags=["agents"])
 api_router.include_router(writing_style_router, tags=["writing-style"])
+# Dashboard Customization
+api_router.include_router(dashboard_router, tags=["dashboard"])

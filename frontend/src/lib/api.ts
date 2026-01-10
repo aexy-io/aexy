@@ -8549,3 +8549,77 @@ export const workflowTemplatesApi = {
     return response.data;
   },
 };
+
+// Dashboard Customization API
+export interface DashboardPreferences {
+  id: string;
+  developer_id: string;
+  preset_type: string;
+  visible_widgets: string[];
+  widget_order: string[];
+  widget_sizes: Record<string, string>;
+  layout: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DashboardPreferencesUpdate {
+  preset_type?: string;
+  visible_widgets?: string[];
+  widget_order?: string[];
+  widget_sizes?: Record<string, string>;
+  layout?: Record<string, unknown>;
+}
+
+export interface DashboardPresetInfo {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  widgets: string[];
+}
+
+export interface WidgetInfo {
+  id: string;
+  name: string;
+  category: string;
+  personas: string[];
+  default_size: string;
+  icon: string;
+}
+
+export interface WidgetCategoryInfo {
+  id: string;
+  name: string;
+  icon: string;
+}
+
+export const dashboardApi = {
+  getPreferences: async (): Promise<DashboardPreferences> => {
+    const response = await api.get("/dashboard/preferences");
+    return response.data;
+  },
+
+  updatePreferences: async (data: DashboardPreferencesUpdate): Promise<DashboardPreferences> => {
+    const response = await api.put("/dashboard/preferences", data);
+    return response.data;
+  },
+
+  resetPreferences: async (presetType: string = "developer"): Promise<DashboardPreferences> => {
+    const response = await api.post("/dashboard/preferences/reset", null, {
+      params: { preset_type: presetType },
+    });
+    return response.data;
+  },
+
+  getPresets: async (): Promise<{ presets: DashboardPresetInfo[] }> => {
+    const response = await api.get("/dashboard/presets");
+    return response.data;
+  },
+
+  getWidgets: async (): Promise<{ widgets: WidgetInfo[]; categories: WidgetCategoryInfo[] }> => {
+    const response = await api.get("/dashboard/widgets");
+    return response.data;
+  },
+};
