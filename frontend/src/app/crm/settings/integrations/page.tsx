@@ -17,10 +17,29 @@ import {
   Building2,
   Clock,
   Shield,
+  DollarSign,
+  Bot,
+  Filter,
+  Zap,
+  Plus,
+  X,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { googleIntegrationApi, developerApi, GoogleIntegrationStatus } from "@/lib/api";
+import { googleIntegrationApi, developerApi, GoogleIntegrationStatus, DealCreationSettings } from "@/lib/api";
+
+const DEFAULT_DEAL_SETTINGS: DealCreationSettings = {
+  auto_create_deals: false,
+  deal_creation_mode: "auto",
+  skip_personal_domains: true,
+  default_deal_stage: "new",
+  default_deal_value: null,
+  criteria: {
+    subject_keywords: [],
+    body_keywords: [],
+    from_domains: [],
+  },
+};
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -56,6 +75,10 @@ export default function IntegrationsSettingsPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [syncResult, setSyncResult] = useState<{ gmail?: string; calendar?: string } | null>(null);
+  const [dealSettings, setDealSettings] = useState<DealCreationSettings>(DEFAULT_DEAL_SETTINGS);
+  const [showDealSettings, setShowDealSettings] = useState(false);
+  const [newKeyword, setNewKeyword] = useState("");
+  const [newDomain, setNewDomain] = useState("");
 
   // Check for callback status
   useEffect(() => {
@@ -91,6 +114,10 @@ export default function IntegrationsSettingsPage() {
         }
 
         setStatus(data);
+        // Load deal settings from status
+        if (data.sync_settings?.deal_settings) {
+          setDealSettings({ ...DEFAULT_DEAL_SETTINGS, ...data.sync_settings.deal_settings });
+        }
       } catch {
         setStatus(null);
       } finally {
@@ -184,6 +211,57 @@ export default function IntegrationsSettingsPage() {
     } finally {
       setIsSyncing(false);
     }
+  };
+
+  const handleUpdateDealSettings = async (newSettings: Partial<DealCreationSettings>) => {
+    if (!workspaceId) return;
+    const updatedSettings = { ...dealSettings, ...newSettings };
+    setDealSettings(updatedSettings);
+    try {
+      const newStatus = await googleIntegrationApi.updateSettings(workspaceId, {
+        sync_settings: {
+          ...status?.sync_settings,
+          deal_settings: updatedSettings,
+        },
+      });
+      setStatus(newStatus);
+    } catch (error) {
+      console.error("Failed to update deal settings:", error);
+      // Revert on error
+      setDealSettings(dealSettings);
+    }
+  };
+
+  const addSubjectKeyword = () => {
+    if (!newKeyword.trim()) return;
+    const keywords = [...dealSettings.criteria.subject_keywords, newKeyword.trim().toLowerCase()];
+    handleUpdateDealSettings({
+      criteria: { ...dealSettings.criteria, subject_keywords: keywords },
+    });
+    setNewKeyword("");
+  };
+
+  const removeSubjectKeyword = (keyword: string) => {
+    const keywords = dealSettings.criteria.subject_keywords.filter((k) => k !== keyword);
+    handleUpdateDealSettings({
+      criteria: { ...dealSettings.criteria, subject_keywords: keywords },
+    });
+  };
+
+  const addDomain = () => {
+    if (!newDomain.trim()) return;
+    const domains = [...dealSettings.criteria.from_domains, newDomain.trim().toLowerCase()];
+    handleUpdateDealSettings({
+      criteria: { ...dealSettings.criteria, from_domains: domains },
+    });
+    setNewDomain("");
+  };
+
+  const removeDomain = (domain: string) => {
+    const domains = dealSettings.criteria.from_domains.filter((d) => d !== domain);
+    handleUpdateDealSettings({
+      criteria: { ...dealSettings.criteria, from_domains: domains },
+    });
   };
 
   if (isLoading) {
@@ -392,6 +470,244 @@ export default function IntegrationsSettingsPage() {
                   </button>
                 </div>
 
+                {/* Deal Auto-Creation */}
+                <div className="border-t border-slate-700/50 pt-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 rounded-lg bg-amber-500/10 text-amber-400">
+                        <DollarSign className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-white">Auto-Create Deals from Emails</h3>
+                        <p className="text-sm text-slate-400 mt-1">
+                          Automatically create deals when new emails are synced
+                        </p>
+                        {dealSettings.auto_create_deals && (
+                          <p className="text-xs text-amber-400 mt-2 flex items-center gap-1">
+                            <Zap className="w-3 h-3" />
+                            Mode: {dealSettings.deal_creation_mode === "auto" ? "All business emails" :
+                                   dealSettings.deal_creation_mode === "ai" ? "AI-detected opportunities" :
+                                   "Matching criteria only"}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setShowDealSettings(!showDealSettings)}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+                      >
+                        <Settings className="w-4 h-4" />
+                        Configure
+                      </button>
+                      <button
+                        onClick={() => handleUpdateDealSettings({ auto_create_deals: !dealSettings.auto_create_deals })}
+                        className={`relative w-11 h-6 rounded-full transition-colors ${
+                          dealSettings.auto_create_deals ? "bg-amber-500" : "bg-slate-700"
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                            dealSettings.auto_create_deals ? "left-6" : "left-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Deal Settings Panel */}
+                  {showDealSettings && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mt-4 ml-14 p-4 bg-slate-800/50 rounded-lg border border-slate-700/50 space-y-4"
+                    >
+                      {/* Creation Mode */}
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                          Deal Creation Mode
+                        </label>
+                        <div className="grid grid-cols-3 gap-2">
+                          <button
+                            onClick={() => handleUpdateDealSettings({ deal_creation_mode: "auto" })}
+                            className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-colors ${
+                              dealSettings.deal_creation_mode === "auto"
+                                ? "border-amber-500 bg-amber-500/10 text-amber-400"
+                                : "border-slate-600 hover:border-slate-500 text-slate-400"
+                            }`}
+                          >
+                            <Zap className="w-5 h-5" />
+                            <span className="text-xs font-medium">Auto</span>
+                            <span className="text-xs text-slate-500">All emails</span>
+                          </button>
+                          <button
+                            onClick={() => handleUpdateDealSettings({ deal_creation_mode: "ai" })}
+                            className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-colors ${
+                              dealSettings.deal_creation_mode === "ai"
+                                ? "border-purple-500 bg-purple-500/10 text-purple-400"
+                                : "border-slate-600 hover:border-slate-500 text-slate-400"
+                            }`}
+                          >
+                            <Bot className="w-5 h-5" />
+                            <span className="text-xs font-medium">AI</span>
+                            <span className="text-xs text-slate-500">Smart detection</span>
+                          </button>
+                          <button
+                            onClick={() => handleUpdateDealSettings({ deal_creation_mode: "criteria" })}
+                            className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-colors ${
+                              dealSettings.deal_creation_mode === "criteria"
+                                ? "border-blue-500 bg-blue-500/10 text-blue-400"
+                                : "border-slate-600 hover:border-slate-500 text-slate-400"
+                            }`}
+                          >
+                            <Filter className="w-5 h-5" />
+                            <span className="text-xs font-medium">Criteria</span>
+                            <span className="text-xs text-slate-500">Rules-based</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Skip Personal Domains */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-slate-300">Skip personal email domains</p>
+                          <p className="text-xs text-slate-500">Gmail, Yahoo, Outlook, etc.</p>
+                        </div>
+                        <button
+                          onClick={() => handleUpdateDealSettings({ skip_personal_domains: !dealSettings.skip_personal_domains })}
+                          className={`relative w-10 h-5 rounded-full transition-colors ${
+                            dealSettings.skip_personal_domains ? "bg-amber-500" : "bg-slate-700"
+                          }`}
+                        >
+                          <span
+                            className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                              dealSettings.skip_personal_domains ? "left-5" : "left-0.5"
+                            }`}
+                          />
+                        </button>
+                      </div>
+
+                      {/* Default Stage */}
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                          Default Deal Stage
+                        </label>
+                        <input
+                          type="text"
+                          value={dealSettings.default_deal_stage}
+                          onChange={(e) => handleUpdateDealSettings({ default_deal_stage: e.target.value })}
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500"
+                          placeholder="new"
+                        />
+                      </div>
+
+                      {/* Criteria Settings (only show when criteria mode) */}
+                      {dealSettings.deal_creation_mode === "criteria" && (
+                        <div className="space-y-4 pt-4 border-t border-slate-700">
+                          <p className="text-sm font-medium text-slate-300">Filter Criteria</p>
+
+                          {/* Subject Keywords */}
+                          <div>
+                            <label className="block text-xs text-slate-400 mb-2">
+                              Subject Keywords (creates deal if subject contains any)
+                            </label>
+                            <div className="flex gap-2 mb-2">
+                              <input
+                                type="text"
+                                value={newKeyword}
+                                onChange={(e) => setNewKeyword(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && addSubjectKeyword()}
+                                className="flex-1 px-3 py-1.5 bg-slate-900 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+                                placeholder="e.g., quote, proposal, pricing"
+                              />
+                              <button
+                                onClick={addSubjectKeyword}
+                                className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm"
+                              >
+                                <Plus className="w-4 h-4" />
+                              </button>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {dealSettings.criteria.subject_keywords.map((keyword) => (
+                                <span
+                                  key={keyword}
+                                  className="flex items-center gap-1 px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs"
+                                >
+                                  {keyword}
+                                  <button onClick={() => removeSubjectKeyword(keyword)}>
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* From Domains */}
+                          <div>
+                            <label className="block text-xs text-slate-400 mb-2">
+                              From Domains (creates deal if sender is from domain)
+                            </label>
+                            <div className="flex gap-2 mb-2">
+                              <input
+                                type="text"
+                                value={newDomain}
+                                onChange={(e) => setNewDomain(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && addDomain()}
+                                className="flex-1 px-3 py-1.5 bg-slate-900 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-green-500"
+                                placeholder="e.g., enterprise.com"
+                              />
+                              <button
+                                onClick={addDomain}
+                                className="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm"
+                              >
+                                <Plus className="w-4 h-4" />
+                              </button>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {dealSettings.criteria.from_domains.map((domain) => (
+                                <span
+                                  key={domain}
+                                  className="flex items-center gap-1 px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs"
+                                >
+                                  {domain}
+                                  <button onClick={() => removeDomain(domain)}>
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Mode descriptions */}
+                      <div className="pt-4 border-t border-slate-700">
+                        <p className="text-xs text-slate-500">
+                          {dealSettings.deal_creation_mode === "auto" && (
+                            <>
+                              <strong>Auto mode:</strong> Creates a deal for every new email from business domains.
+                              Existing deals linked to the same company will be updated instead.
+                            </>
+                          )}
+                          {dealSettings.deal_creation_mode === "ai" && (
+                            <>
+                              <strong>AI mode:</strong> Uses AI to analyze email content and only creates deals
+                              for emails that indicate sales opportunities (pricing requests, proposals, demos, etc.)
+                            </>
+                          )}
+                          {dealSettings.deal_creation_mode === "criteria" && (
+                            <>
+                              <strong>Criteria mode:</strong> Only creates deals when the email matches
+                              your specified keywords or domains. Good for high-volume inboxes.
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+
                 {/* Sync result message */}
                 {syncResult && (
                   <div className="mt-4 p-4 rounded-lg bg-slate-800/50 border border-slate-700">
@@ -470,7 +786,7 @@ export default function IntegrationsSettingsPage() {
 
         {/* Quick Links */}
         {status?.is_connected && (
-          <div className="mt-8 grid sm:grid-cols-2 gap-4">
+          <div className="mt-8 grid sm:grid-cols-3 gap-4">
             <button
               onClick={() => router.push("/crm/inbox")}
               className="flex items-center gap-4 p-4 bg-slate-800/30 border border-slate-700/50 rounded-xl hover:border-slate-600 transition-colors text-left"
@@ -493,6 +809,18 @@ export default function IntegrationsSettingsPage() {
               <div>
                 <h3 className="font-medium text-white">View People</h3>
                 <p className="text-sm text-slate-400">See auto-created contacts</p>
+              </div>
+            </button>
+            <button
+              onClick={() => router.push("/crm/deal")}
+              className="flex items-center gap-4 p-4 bg-slate-800/30 border border-slate-700/50 rounded-xl hover:border-slate-600 transition-colors text-left"
+            >
+              <div className="p-3 rounded-lg bg-amber-500/10 text-amber-400">
+                <DollarSign className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-medium text-white">View Deals</h3>
+                <p className="text-sm text-slate-400">See auto-created deals</p>
               </div>
             </button>
           </div>

@@ -414,6 +414,7 @@ async def get_status(
         events_synced=events_count,
         last_error=integration.last_error,
         granted_scopes=integration.granted_scopes or [],
+        sync_settings=integration.sync_settings,
     )
 
 
