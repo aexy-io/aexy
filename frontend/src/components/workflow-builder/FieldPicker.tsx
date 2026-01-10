@@ -29,6 +29,7 @@ interface FieldPickerProps {
   workspaceId: string;
   automationId: string;
   nodeId?: string;
+  objectId?: string; // For fetching fields when automation is new
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -98,6 +99,7 @@ export function FieldPicker({
   workspaceId,
   automationId,
   nodeId,
+  objectId,
   value,
   onChange,
   placeholder = "Select field...",
@@ -129,13 +131,53 @@ export function FieldPicker({
       }
     }
 
-    // Use default schema for new automations, fetch from API for existing ones
+    async function fetchObjectSchema() {
+      if (!objectId) {
+        setSchema(defaultSchema);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const response = await api.get(
+          `/workspaces/${workspaceId}/crm/objects/${objectId}`
+        );
+        const obj = response.data;
+        if (obj && obj.attributes) {
+          setSchema({
+            record: {
+              label: "Record Fields",
+              fields: [
+                { path: "record.id", name: "Record ID", type: "text" },
+                ...obj.attributes.map((attr: { slug: string; name: string; attribute_type: string; config?: Record<string, unknown>; is_required?: boolean; description?: string }) => ({
+                  path: `record.values.${attr.slug}`,
+                  name: attr.name,
+                  type: attr.attribute_type,
+                  config: attr.config,
+                  required: attr.is_required,
+                  description: attr.description,
+                })),
+              ],
+            },
+            trigger: defaultSchema.trigger,
+            system: defaultSchema.system,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch object schema:", error);
+        setSchema(defaultSchema);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // Use default schema for new automations (or fetch object schema if objectId provided)
     if (automationId === "new") {
-      setSchema(defaultSchema);
+      fetchObjectSchema();
     } else if (workspaceId && automationId) {
       fetchSchema();
     }
-  }, [workspaceId, automationId]);
+  }, [workspaceId, automationId, objectId]);
 
   // Fetch node outputs when nodeId changes
   useEffect(() => {
@@ -433,12 +475,14 @@ export function InlineFieldPicker({
   workspaceId,
   automationId,
   nodeId,
+  objectId,
   onInsert,
   className = "",
 }: {
   workspaceId: string;
   automationId: string;
   nodeId?: string;
+  objectId?: string;
   onInsert: (value: string) => void;
   className?: string;
 }) {
@@ -450,6 +494,7 @@ export function InlineFieldPicker({
         workspaceId={workspaceId}
         automationId={automationId}
         nodeId={nodeId}
+        objectId={objectId}
         value={value}
         onChange={(v) => {
           if (v) {

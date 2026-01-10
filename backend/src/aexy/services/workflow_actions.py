@@ -253,15 +253,36 @@ class WorkflowActionHandler:
     async def _send_slack(
         self, data: dict, context: WorkflowExecutionContext
     ) -> NodeExecutionResult:
-        """Send a Slack message."""
-        channel_id = data.get("channel_id")
+        """Send a Slack message to channel or DM to user.
+
+        Supports:
+        - channel/channel_id: Send to a Slack channel
+        - user_email: Send DM to user by email
+        - user_email_field: Send DM to user from record field containing email
+        """
+        channel_id = data.get("channel_id") or data.get("channel")
+        user_email = data.get("user_email")
+        user_email_field = data.get("user_email_field")
         message = data.get("message_template", "")
 
-        if not channel_id or not message:
+        # Determine target
+        target_type = "channel"
+        target = channel_id
+
+        if not channel_id:
+            if user_email:
+                target_type = "dm"
+                target = user_email
+            elif user_email_field:
+                # Get email from record field
+                target_type = "dm"
+                target = context.record_data.get("values", {}).get(user_email_field)
+
+        if not target or not message:
             return NodeExecutionResult(
                 node_id="",
                 status="failed",
-                error="Missing channel ID or message",
+                error="Missing target (channel/user_email) or message",
             )
 
         message = self._render_template(message, context)
@@ -270,9 +291,11 @@ class WorkflowActionHandler:
         from aexy.processing.celery_app import celery_app
 
         celery_app.send_task(
-            "aexy.processing.tasks.integration_tasks.send_slack_message",
+            "aexy.processing.integration_tasks.send_slack_workflow_message",
             kwargs={
-                "channel_id": channel_id,
+                "workspace_id": context.workspace_id,
+                "target_type": target_type,
+                "target": target,
                 "message": message,
                 "record_id": context.record_id,
             },
@@ -282,7 +305,7 @@ class WorkflowActionHandler:
         return NodeExecutionResult(
             node_id="",
             status="success",
-            output={"channel_id": channel_id, "queued": True},
+            output={"target_type": target_type, "target": target, "queued": True},
         )
 
     async def _send_sms(
