@@ -80,6 +80,9 @@ from aexy.api.agents import router as agents_router
 from aexy.api.agents import writing_style_router
 # Dashboard Customization
 from aexy.api.dashboard import router as dashboard_router
+# Roles & Projects
+from aexy.api.roles import router as roles_router
+from aexy.api.projects import router as projects_router
 
 api_router = APIRouter()
 
@@ -165,3 +168,6 @@ api_router.include_router(agents_router, tags=["agents"])
 api_router.include_router(writing_style_router, tags=["writing-style"])
 # Dashboard Customization
 api_router.include_router(dashboard_router, tags=["dashboard"])
+# Roles & Projects
+api_router.include_router(roles_router, tags=["roles"])
+api_router.include_router(projects_router, tags=["projects"])

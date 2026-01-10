@@ -6,7 +6,7 @@ import {
   Settings,
   FolderGit2,
   Building2,
-  Users,
+  FolderKanban,
   ListChecks,
   Link2,
   CreditCard,
@@ -94,7 +94,7 @@ export default function SettingsPage() {
 
           <SettingsSection
             href="/settings/projects"
-            icon={<Users className="h-5 w-5 text-green-400" />}
+            icon={<FolderKanban className="h-5 w-5 text-green-400" />}
             title="Projects"
             description="Manage projects, members, and permissions"
           />

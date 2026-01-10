@@ -8,90 +8,111 @@ import {
   ChevronDown,
   ChevronRight,
   Crown,
-  FolderGit2,
+  FolderKanban,
   MoreVertical,
-  Phone,
   Plus,
   RefreshCw,
   Settings,
+  Shield,
   Target,
   Trash2,
   UserMinus,
   Users,
-  Zap,
   Check,
-  GitBranch,
+  X,
+  ChevronUp,
 } from "lucide-react";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
-import { useTeams, useTeam, useTeamMembers } from "@/hooks/useTeams";
+import { useProjects, useProjectMembers } from "@/hooks/useProjects";
+import { useRoles } from "@/hooks/useRoles";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
-import { useCurrentOnCall, useOnCallConfig } from "@/hooks/useOnCall";
-import { TeamListItem, TeamMember, WorkspaceMember, repositoriesApi, Repository } from "@/lib/api";
-import { useQuery } from "@tanstack/react-query";
+import { Project, ProjectMember, CustomRole, WorkspaceMember } from "@/lib/api";
 import { PremiumGate, ProBadge, UpgradeModal } from "@/components/PremiumGate";
 
-const TEAM_ROLE_OPTIONS = [
-  { value: "lead", label: "Project Lead", description: "Can manage project members" },
-  { value: "member", label: "Member", description: "Regular project member" },
-];
+function getRoleBadgeColor(roleName: string | null) {
+  if (!roleName) return "bg-slate-700 text-slate-400";
 
-function getRoleBadgeColor(role: string) {
-  switch (role) {
-    case "lead":
+  const name = roleName.toLowerCase();
+  if (name.includes("admin") || name.includes("owner")) {
+    return "bg-amber-900/30 text-amber-400";
+  }
+  if (name.includes("manager") || name.includes("lead")) {
+    return "bg-purple-900/30 text-purple-400";
+  }
+  if (name.includes("developer") || name.includes("dev")) {
+    return "bg-blue-900/30 text-blue-400";
+  }
+  if (name.includes("viewer") || name.includes("read")) {
+    return "bg-slate-700 text-slate-300";
+  }
+  return "bg-green-900/30 text-green-400";
+}
+
+function getStatusBadgeColor(status: Project["status"]) {
+  switch (status) {
+    case "active":
+      return "bg-green-900/30 text-green-400";
+    case "on_hold":
       return "bg-amber-900/30 text-amber-400";
-    case "member":
+    case "completed":
       return "bg-blue-900/30 text-blue-400";
+    case "archived":
+      return "bg-slate-700 text-slate-400";
     default:
       return "bg-slate-700 text-slate-400";
   }
 }
 
-function getTypeBadgeColor(type: string) {
-  switch (type) {
-    case "repo_based":
-      return "bg-purple-900/30 text-purple-400";
-    case "manual":
-      return "bg-blue-900/30 text-blue-400";
-    default:
-      return "bg-slate-700 text-slate-400";
-  }
-}
-
-interface TeamCardProps {
-  team: TeamListItem;
+interface ProjectCardProps {
+  project: Project;
   workspaceId: string;
   isAdmin: boolean;
-  onDelete: (teamId: string) => void;
-  canUseTeamFeatures: boolean;
+  roles: CustomRole[];
+  onDelete: (projectId: string) => void;
+  canUseProjectFeatures: boolean;
 }
 
-function TeamCard({ team, workspaceId, isAdmin, onDelete, canUseTeamFeatures }: TeamCardProps) {
+function ProjectCard({
+  project,
+  workspaceId,
+  isAdmin,
+  roles,
+  onDelete,
+  canUseProjectFeatures,
+}: ProjectCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [syncResult, setSyncResult] = useState<{ added: number; removed: number } | null>(null);
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [selectedRoleId, setSelectedRoleId] = useState<string>("");
+  const [selectedDeveloperId, setSelectedDeveloperId] = useState<string>("");
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+  const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
 
-  const { members, isLoading: membersLoading, addMember, removeMember, updateMemberRole, isUpdatingRole } = useTeamMembers(
-    expanded ? workspaceId : null,
-    expanded ? team.id : null
-  );
-  const { syncTeam, isSyncing } = useTeam(
-    team.type === "repo_based" ? workspaceId : null,
-    team.type === "repo_based" ? team.id : null
-  );
+  const {
+    members,
+    isLoading: membersLoading,
+    addMember,
+    updateMember,
+    removeMember,
+    isAdding,
+    isUpdating,
+  } = useProjectMembers(expanded ? workspaceId : null, expanded ? project.id : null);
+
   const { members: workspaceMembers } = useWorkspaceMembers(expanded ? workspaceId : null);
 
-  // On-call hooks - always fetch to show status in collapsed view
-  const { config: onCallConfig } = useOnCallConfig(workspaceId, team.id);
-  const { isActive: isOnCallActive, currentSchedule } = useCurrentOnCall(
-    onCallConfig?.is_enabled ? workspaceId : null,
-    onCallConfig?.is_enabled ? team.id : null
-  );
+  const handleAddMember = async () => {
+    if (!selectedDeveloperId) return;
 
-  const handleAddMember = async (developerId: string) => {
     try {
-      await addMember({ developerId, role: "member" });
+      await addMember({
+        developer_id: selectedDeveloperId,
+        role_id: selectedRoleId || undefined,
+      });
+      setSelectedDeveloperId("");
+      setSelectedRoleId("");
+      setShowAddMember(false);
     } catch (error) {
       console.error("Failed to add member:", error);
     }
@@ -107,37 +128,26 @@ function TeamCard({ team, workspaceId, isAdmin, onDelete, canUseTeamFeatures }: 
     }
   };
 
-  const handleSync = async () => {
-    if (!canUseTeamFeatures) {
-      setShowUpgradeModal(true);
-      setShowMenu(false);
-      return;
-    }
-    try {
-      const result = await syncTeam();
-      setSyncResult({ added: result.added_members, removed: result.removed_members });
-      setTimeout(() => setSyncResult(null), 5000);
-      setShowMenu(false);
-    } catch (error) {
-      console.error("Failed to sync team:", error);
-    }
-  };
-
-  const handleRoleChange = async (developerId: string, newRole: string) => {
-    if (!canUseTeamFeatures) {
+  const handleRoleChange = async (developerId: string, roleId: string | null) => {
+    if (!canUseProjectFeatures) {
       setShowUpgradeModal(true);
       return;
     }
     try {
-      await updateMemberRole({ developerId, role: newRole });
+      await updateMember({
+        developerId,
+        data: { role_id: roleId },
+      });
+      setEditingMemberId(null);
+      setEditingRoleId(null);
     } catch (error) {
       console.error("Failed to update role:", error);
     }
   };
 
-  // Filter workspace members who are not already in the team
+  // Filter workspace members who are not already in the project
   const availableMembers = workspaceMembers.filter(
-    (wm) => !members.some((tm) => tm.developer_id === wm.developer_id)
+    (wm) => !members.some((pm) => pm.developer_id === wm.developer_id)
   );
 
   return (
@@ -155,101 +165,78 @@ function TeamCard({ team, workspaceId, isAdmin, onDelete, canUseTeamFeatures }: 
                 <ChevronRight className="h-5 w-5 text-slate-400" />
               )}
             </div>
-            <div className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Users className="h-5 w-5 text-slate-400" />
+            <div
+              className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: project.color + "20" }}
+            >
+              <FolderKanban className="h-5 w-5" style={{ color: project.color }} />
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-white font-medium">{team.name}</span>
-                <span className={`px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${getTypeBadgeColor(team.type)}`}>
-                  {team.type === "repo_based" ? "Repo-based" : "Manual"}
+                <span className="text-white font-medium">{project.name}</span>
+                <span
+                  className={`px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${getStatusBadgeColor(
+                    project.status
+                  )}`}
+                >
+                  {project.status.replace("_", " ")}
                 </span>
-                {onCallConfig?.is_enabled && (
-                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-900/30 text-green-400 flex items-center gap-1 whitespace-nowrap">
-                    <Phone className="h-3 w-3" />
-                    On-Call
-                  </span>
-                )}
               </div>
               <div className="text-sm text-slate-400 mt-1">
-                {team.member_count} members
-                {syncResult && (
-                  <span className="ml-2 text-green-400 text-xs">
-                    (+{syncResult.added} added, -{syncResult.removed} removed)
-                  </span>
-                )}
+                {project.member_count} members
+                {project.team_count > 0 && ` · ${project.team_count} teams`}
               </div>
-              {onCallConfig?.is_enabled && isOnCallActive && currentSchedule && (
-                <div className="flex items-center gap-1.5 mt-1.5 text-sm">
-                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-green-400 font-medium">
-                    {currentSchedule.developer?.name || currentSchedule.developer?.email || "Unknown"}
-                  </span>
-                  <span className="text-slate-500">on-call</span>
-                </div>
+              {project.description && (
+                <p className="text-sm text-slate-500 mt-1 line-clamp-1">{project.description}</p>
               )}
             </div>
           </button>
-        {isAdmin && (
-          <div className="relative">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowMenu(!showMenu);
-              }}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </button>
-            {showMenu && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-                <div className="absolute right-0 top-full mt-1 w-48 bg-slate-700 rounded-lg shadow-xl z-20 py-1">
-                  <Link
-                    href={`/sprints/${team.id}`}
-                    className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-600 flex items-center gap-2"
-                    onClick={() => setShowMenu(false)}
-                  >
-                    <Target className="h-4 w-4" />
-                    Sprint Planning
-                  </Link>
-                  <Link
-                    href={`/settings/projects/${team.id}/oncall`}
-                    className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-600 flex items-center gap-2"
-                    onClick={() => setShowMenu(false)}
-                  >
-                    <Phone className="h-4 w-4" />
-                    <span className="flex-1">On-Call Settings</span>
-                    {onCallConfig?.is_enabled && (
-                      <span className="w-2 h-2 rounded-full bg-green-500" />
-                    )}
-                  </Link>
-                  {team.type === "repo_based" && (
-                    <button
-                      onClick={handleSync}
-                      disabled={isSyncing}
-                      className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-600 flex items-center gap-2 disabled:opacity-50"
+          {isAdmin && (
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMenu(!showMenu);
+                }}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
+              {showMenu && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-slate-700 rounded-lg shadow-xl z-20 py-1">
+                    <Link
+                      href={`/settings/projects/${project.id}`}
+                      className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-600 flex items-center gap-2"
+                      onClick={() => setShowMenu(false)}
                     >
-                      <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
-                      <span className="flex-1">Sync Members</span>
-                      {!canUseTeamFeatures && <ProBadge />}
+                      <Settings className="h-4 w-4" />
+                      Project Settings
+                    </Link>
+                    <Link
+                      href={`/settings/projects/${project.id}/permissions`}
+                      className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-600 flex items-center gap-2"
+                      onClick={() => setShowMenu(false)}
+                    >
+                      <Shield className="h-4 w-4" />
+                      Permissions
+                    </Link>
+                    <button
+                      onClick={() => {
+                        onDelete(project.id);
+                        setShowMenu(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-600 flex items-center gap-2"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete Project
                     </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      onDelete(team.id);
-                      setShowMenu(false);
-                    }}
-                    className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-600 flex items-center gap-2"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Delete Project
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -259,10 +246,13 @@ function TeamCard({ team, workspaceId, isAdmin, onDelete, canUseTeamFeatures }: 
             <div className="p-4 text-center text-slate-400">Loading members...</div>
           ) : (
             <>
-              {/* Team Members */}
+              {/* Project Members */}
               <div className="divide-y divide-slate-700/50">
                 {members.map((member) => (
-                  <div key={member.id} className="p-3 px-4 flex items-center justify-between hover:bg-slate-700/30">
+                  <div
+                    key={member.id}
+                    className="p-3 px-4 flex items-center justify-between hover:bg-slate-700/30"
+                  >
                     <div className="flex items-center gap-3">
                       {member.developer_avatar_url ? (
                         <Image
@@ -281,42 +271,80 @@ function TeamCard({ team, workspaceId, isAdmin, onDelete, canUseTeamFeatures }: 
                         <span className="text-white text-sm">
                           {member.developer_name || member.developer_email || "Unknown"}
                         </span>
-                        {member.source === "repo_contributor" && (
-                          <span className="ml-1 text-xs text-slate-500">(auto)</span>
+                        {member.status === "pending" && (
+                          <span className="ml-2 text-xs text-amber-400">(pending)</span>
                         )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       {isAdmin ? (
-                        <div className="relative flex items-center">
-                          <select
-                            value={member.role}
-                            onChange={(e) => handleRoleChange(member.developer_id, e.target.value)}
-                            disabled={isUpdatingRole}
-                            className={`px-2 py-1 text-xs rounded border-0 focus:outline-none focus:ring-1 focus:ring-primary-500 ${
-                              canUseTeamFeatures
-                                ? "bg-slate-700 text-white cursor-pointer"
-                                : "bg-slate-700/50 text-slate-400 cursor-not-allowed"
-                            }`}
+                        editingMemberId === member.developer_id ? (
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={editingRoleId || ""}
+                              onChange={(e) => setEditingRoleId(e.target.value || null)}
+                              className="px-2 py-1 text-xs rounded bg-slate-700 text-white border border-slate-600 focus:outline-none focus:border-primary-500"
+                            >
+                              <option value="">Use org role</option>
+                              {roles.map((role) => (
+                                <option key={role.id} value={role.id}>
+                                  {role.name}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={() =>
+                                handleRoleChange(member.developer_id, editingRoleId)
+                              }
+                              disabled={isUpdating}
+                              className="p-1 text-green-400 hover:bg-slate-600 rounded transition"
+                              title="Save"
+                            >
+                              <Check className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingMemberId(null);
+                                setEditingRoleId(null);
+                              }}
+                              className="p-1 text-slate-400 hover:bg-slate-600 rounded transition"
+                              title="Cancel"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              if (!canUseProjectFeatures) {
+                                setShowUpgradeModal(true);
+                                return;
+                              }
+                              setEditingMemberId(member.developer_id);
+                              setEditingRoleId(member.role_id);
+                            }}
+                            className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${getRoleBadgeColor(
+                              member.role_name
+                            )} hover:opacity-80 transition`}
                           >
-                            {TEAM_ROLE_OPTIONS.map((opt) => (
-                              <option key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </option>
-                            ))}
-                          </select>
-                          {!canUseTeamFeatures && (
-                            <span title="Pro feature">
-                              <Crown className="ml-1 h-3 w-3 text-amber-500" />
-                            </span>
-                          )}
-                        </div>
+                            {member.role_name || "Org role"}
+                            {canUseProjectFeatures ? (
+                              <ChevronDown className="h-3 w-3" />
+                            ) : (
+                              <Crown className="h-3 w-3 text-amber-500" />
+                            )}
+                          </button>
+                        )
                       ) : (
-                        <span className={`px-1.5 py-0.5 rounded text-xs ${getRoleBadgeColor(member.role)}`}>
-                          {member.role}
+                        <span
+                          className={`px-2 py-1 rounded text-xs ${getRoleBadgeColor(
+                            member.role_name
+                          )}`}
+                        >
+                          {member.role_name || "Member"}
                         </span>
                       )}
-                      {isAdmin && member.source === "manual" && (
+                      {isAdmin && (
                         <button
                           onClick={() => handleRemoveMember(member.developer_id)}
                           className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded transition"
@@ -336,27 +364,88 @@ function TeamCard({ team, workspaceId, isAdmin, onDelete, canUseTeamFeatures }: 
               </div>
 
               {/* Add Member */}
-              {isAdmin && availableMembers.length > 0 && (
+              {isAdmin && (
                 <div className="p-3 border-t border-slate-700">
-                  <div className="flex items-center gap-2">
-                    <select
-                      className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-primary-500"
-                      defaultValue=""
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          handleAddMember(e.target.value);
-                          e.target.value = "";
+                  {showAddMember ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={selectedDeveloperId}
+                          onChange={(e) => setSelectedDeveloperId(e.target.value)}
+                          className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-primary-500"
+                        >
+                          <option value="">Select a member...</option>
+                          {availableMembers.map((wm) => (
+                            <option key={wm.developer_id} value={wm.developer_id}>
+                              {wm.developer_name || wm.developer_email || "Unknown"}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={selectedRoleId}
+                          onChange={(e) => setSelectedRoleId(e.target.value)}
+                          className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-primary-500"
+                        >
+                          <option value="">Use organization role</option>
+                          {roles.map((role) => (
+                            <option key={role.id} value={role.id}>
+                              {role.name}
+                            </option>
+                          ))}
+                        </select>
+                        {!canUseProjectFeatures && selectedRoleId && (
+                          <Crown className="h-4 w-4 text-amber-500" title="Pro feature" />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleAddMember}
+                          disabled={!selectedDeveloperId || isAdding}
+                          className="flex-1 px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                          {isAdding ? (
+                            <>
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                              Adding...
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="h-4 w-4" />
+                              Add Member
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowAddMember(false);
+                            setSelectedDeveloperId("");
+                            setSelectedRoleId("");
+                          }}
+                          className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        if (availableMembers.length === 0) {
+                          return;
                         }
+                        setShowAddMember(true);
                       }}
+                      disabled={availableMembers.length === 0}
+                      className="w-full px-3 py-2 border border-dashed border-slate-600 hover:border-slate-500 text-slate-400 hover:text-white rounded-lg text-sm transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <option value="">Add a member...</option>
-                      {availableMembers.map((wm) => (
-                        <option key={wm.developer_id} value={wm.developer_id}>
-                          {wm.developer_name || wm.developer_email || "Unknown"}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                      <Plus className="h-4 w-4" />
+                      {availableMembers.length === 0
+                        ? "All workspace members added"
+                        : "Add Member"}
+                    </button>
+                  )}
                 </div>
               )}
             </>
@@ -372,49 +461,48 @@ function TeamCard({ team, workspaceId, isAdmin, onDelete, canUseTeamFeatures }: 
   );
 }
 
-interface CreateTeamModalProps {
+interface CreateProjectModalProps {
   onClose: () => void;
-  onCreate: (data: { name: string; description?: string; type?: string; source_repository_ids?: string[] }) => Promise<unknown>;
-  onCreateFromRepo: (data: { repository_id: string; team_name?: string }) => Promise<unknown>;
+  onCreate: (data: { name: string; description?: string; color?: string }) => Promise<unknown>;
   isCreating: boolean;
-  repositories: Repository[];
 }
 
-function CreateTeamModal({ onClose, onCreate, onCreateFromRepo, isCreating, repositories }: CreateTeamModalProps) {
-  const [mode, setMode] = useState<"manual" | "repo">("manual");
+function CreateProjectModal({ onClose, onCreate, isCreating }: CreateProjectModalProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [selectedRepoId, setSelectedRepoId] = useState("");
+  const [color, setColor] = useState("#6366f1");
   const [error, setError] = useState<string | null>(null);
+
+  const colors = [
+    "#6366f1", // indigo
+    "#8b5cf6", // violet
+    "#ec4899", // pink
+    "#ef4444", // red
+    "#f97316", // orange
+    "#eab308", // yellow
+    "#22c55e", // green
+    "#06b6d4", // cyan
+    "#3b82f6", // blue
+  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
+    if (!name.trim()) {
+      setError("Project name is required");
+      return;
+    }
+
     try {
-      if (mode === "manual") {
-        if (!name.trim()) {
-          setError("Team name is required");
-          return;
-        }
-        await onCreate({
-          name: name.trim(),
-          description: description.trim() || undefined,
-          type: "manual",
-        });
-      } else {
-        if (!selectedRepoId) {
-          setError("Please select a repository");
-          return;
-        }
-        await onCreateFromRepo({
-          repository_id: selectedRepoId,
-          team_name: name.trim() || undefined,
-        });
-      }
+      await onCreate({
+        name: name.trim(),
+        description: description.trim() || undefined,
+        color,
+      });
       onClose();
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to create team";
+      const errorMessage = err instanceof Error ? err.message : "Failed to create project";
       setError(errorMessage);
     }
   };
@@ -425,98 +513,44 @@ function CreateTeamModal({ onClose, onCreate, onCreateFromRepo, isCreating, repo
         <h3 className="text-xl font-semibold text-white mb-4">Create Project</h3>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
-            {/* Mode Selection */}
             <div>
-              <label className="block text-sm text-slate-400 mb-2">Project Type</label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setMode("manual")}
-                  className={`p-3 rounded-lg border text-left transition ${
-                    mode === "manual"
-                      ? "border-primary-500 bg-primary-900/20"
-                      : "border-slate-600 hover:border-slate-500"
-                  }`}
-                >
-                  <Users className="h-5 w-5 text-slate-400 mb-1" />
-                  <div className="text-white font-medium text-sm">Manual</div>
-                  <div className="text-slate-400 text-xs">Add members manually</div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMode("repo")}
-                  className={`p-3 rounded-lg border text-left transition ${
-                    mode === "repo"
-                      ? "border-primary-500 bg-primary-900/20"
-                      : "border-slate-600 hover:border-slate-500"
-                  }`}
-                >
-                  <GitBranch className="h-5 w-5 text-slate-400 mb-1" />
-                  <div className="text-white font-medium text-sm">From Repository</div>
-                  <div className="text-slate-400 text-xs">Auto-add contributors</div>
-                </button>
+              <label className="block text-sm text-slate-400 mb-1">Project Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g., Frontend Redesign"
+                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Description (optional)</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="What is this project about?"
+                rows={2}
+                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-2">Color</label>
+              <div className="flex gap-2 flex-wrap">
+                {colors.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setColor(c)}
+                    className={`w-8 h-8 rounded-lg transition ${
+                      color === c ? "ring-2 ring-white ring-offset-2 ring-offset-slate-800" : ""
+                    }`}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
               </div>
             </div>
 
-            {mode === "manual" ? (
-              <>
-                <div>
-                  <label className="block text-sm text-slate-400 mb-1">Project Name</label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Frontend Project"
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-slate-400 mb-1">Description (optional)</label>
-                  <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="What does this team work on?"
-                    rows={2}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500"
-                  />
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <label className="block text-sm text-slate-400 mb-1">Repository</label>
-                  <select
-                    value={selectedRepoId}
-                    onChange={(e) => setSelectedRepoId(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
-                  >
-                    <option value="">Select a repository...</option>
-                    {repositories.filter(r => r.is_enabled).map((repo) => (
-                      <option key={repo.id} value={repo.id}>
-                        {repo.full_name}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-slate-500 text-xs mt-1">
-                    Contributors from the last 90 days will be added as members
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm text-slate-400 mb-1">Project Name (optional)</label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Defaults to: repo name + Project"
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500"
-                  />
-                </div>
-              </>
-            )}
-
-            {error && (
-              <p className="text-red-400 text-sm">{error}</p>
-            )}
+            {error && <p className="text-red-400 text-sm">{error}</p>}
           </div>
           <div className="flex gap-3 mt-6">
             <button
@@ -550,7 +584,7 @@ function CreateTeamModal({ onClose, onCreate, onCreateFromRepo, isCreating, repo
   );
 }
 
-export default function TeamsSettingsPage() {
+export default function ProjectsSettingsPage() {
   const { user } = useAuth();
   const {
     currentWorkspace,
@@ -561,39 +595,32 @@ export default function TeamsSettingsPage() {
   const { canUseTeamFeatures } = useSubscription(currentWorkspaceId);
 
   const { members: workspaceMembers } = useWorkspaceMembers(currentWorkspaceId);
+  const { roles } = useRoles(currentWorkspaceId);
 
   const {
-    teams,
-    isLoading: teamsLoading,
-    createTeam,
-    createFromRepository,
-    deleteTeam,
+    projects,
+    isLoading: projectsLoading,
+    createProject,
+    deleteProject,
     isCreating,
-  } = useTeams(currentWorkspaceId);
+  } = useProjects(currentWorkspaceId);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
-
-  // Fetch repositories for create-from-repo
-  const { data: repositories = [] } = useQuery({
-    queryKey: ["repositories"],
-    queryFn: () => repositoriesApi.listRepositories({ enabled_only: true }),
-    enabled: showCreateModal,
-  });
 
   const currentMember = workspaceMembers.find((m) => m.developer_id === user?.id);
   const isAdmin = currentMember?.role === "owner" || currentMember?.role === "admin";
 
-  const handleDelete = async (teamId: string) => {
-    if (confirm("Are you sure you want to delete this project?")) {
+  const handleDelete = async (projectId: string) => {
+    if (confirm("Are you sure you want to delete this project? This action cannot be undone.")) {
       try {
-        await deleteTeam(teamId);
+        await deleteProject(projectId);
       } catch (error) {
-        console.error("Failed to delete team:", error);
+        console.error("Failed to delete project:", error);
       }
     }
   };
 
-  const isLoading = currentWorkspaceLoading || teamsLoading;
+  const isLoading = currentWorkspaceLoading || projectsLoading;
 
   if (isLoading) {
     return (
@@ -620,12 +647,12 @@ export default function TeamsSettingsPage() {
             </Link>
             <div className="flex items-center gap-3">
               <div className="p-2 bg-slate-700 rounded-lg">
-                <Settings className="h-5 w-5 text-slate-300" />
+                <FolderKanban className="h-5 w-5 text-slate-300" />
               </div>
               <div>
                 <h1 className="text-xl font-semibold text-white">Project Settings</h1>
                 <p className="text-slate-400 text-sm">
-                  Manage projects within your workspace
+                  Manage projects and team access within your workspace
                 </p>
               </div>
             </div>
@@ -636,7 +663,7 @@ export default function TeamsSettingsPage() {
       <main className="max-w-5xl mx-auto px-4 py-8">
         {!hasWorkspaces ? (
           <div className="bg-slate-800 rounded-xl p-12 text-center">
-            <Users className="h-16 w-16 text-slate-600 mx-auto mb-4" />
+            <FolderKanban className="h-16 w-16 text-slate-600 mx-auto mb-4" />
             <h3 className="text-xl font-medium text-white mb-2">No Workspace</h3>
             <p className="text-slate-400 mb-6">
               Create a workspace first to start managing projects.
@@ -654,10 +681,10 @@ export default function TeamsSettingsPage() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-lg font-medium text-white flex items-center gap-2">
-                  <Users className="h-5 w-5 text-slate-400" />
+                  <FolderKanban className="h-5 w-5 text-slate-400" />
                   Projects in {currentWorkspace?.name}
                 </h2>
-                <p className="text-slate-400 text-sm">{teams.length} projects</p>
+                <p className="text-slate-400 text-sm">{projects.length} projects</p>
               </div>
               {isAdmin && (
                 <button
@@ -670,26 +697,27 @@ export default function TeamsSettingsPage() {
               )}
             </div>
 
-            {/* Teams List */}
-            {teams.length > 0 ? (
+            {/* Projects List */}
+            {projects.length > 0 ? (
               <div className="space-y-4">
-                {teams.map((team) => (
-                  <TeamCard
-                    key={team.id}
-                    team={team}
+                {projects.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
                     workspaceId={currentWorkspaceId!}
                     isAdmin={isAdmin}
+                    roles={roles}
                     onDelete={handleDelete}
-                    canUseTeamFeatures={canUseTeamFeatures}
+                    canUseProjectFeatures={canUseTeamFeatures}
                   />
                 ))}
               </div>
             ) : (
               <div className="bg-slate-800 rounded-xl p-12 text-center">
-                <Users className="h-16 w-16 text-slate-600 mx-auto mb-4" />
+                <FolderKanban className="h-16 w-16 text-slate-600 mx-auto mb-4" />
                 <h3 className="text-xl font-medium text-white mb-2">No Projects Yet</h3>
                 <p className="text-slate-400 mb-6">
-                  Create your first project to organize your developers.
+                  Create your first project to organize your work and manage team access.
                 </p>
                 {isAdmin && (
                   <button
@@ -708,12 +736,10 @@ export default function TeamsSettingsPage() {
 
       {/* Modals */}
       {showCreateModal && (
-        <CreateTeamModal
+        <CreateProjectModal
           onClose={() => setShowCreateModal(false)}
-          onCreate={createTeam}
-          onCreateFromRepo={createFromRepository}
+          onCreate={createProject}
           isCreating={isCreating}
-          repositories={repositories}
         />
       )}
     </div>
