@@ -28,6 +28,16 @@ import { GrowthTrajectoryCard } from "@/components/GrowthTrajectoryCard";
 import { TaskMatcherCard } from "@/components/TaskMatcherCard";
 import { PeerBenchmarkCard } from "@/components/PeerBenchmarkCard";
 import { SimpleTooltip as Tooltip } from "@/components/ui/tooltip";
+import { useDashboardPreferences } from "@/hooks/useDashboardPreferences";
+import { useDashboardStore } from "@/stores/dashboardStore";
+import {
+  DashboardCustomizeModal,
+  CustomizeButton,
+  TicketStatsWidget,
+  SprintOverviewWidget,
+  TrackingSummaryWidget,
+  CRMPipelineWidget,
+} from "@/components/dashboard";
 
 export default function DashboardPage() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
@@ -36,6 +46,18 @@ export default function DashboardPage() {
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [softSkillsLoading, setSoftSkillsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Dashboard customization
+  const { preferences, isLoading: prefsLoading } = useDashboardPreferences();
+  const { isModalOpen, setModalOpen } = useDashboardStore();
+  const visibleWidgets = preferences?.visible_widgets || [
+    "welcome", "quickStats", "languageProficiency", "workPatterns",
+    "domainExpertise", "frameworksTools", "aiInsights", "softSkills",
+    "growthTrajectory", "peerBenchmark", "taskMatcher", "myGoals", "performanceReviews"
+  ];
+
+  // Helper to check if a widget should be shown
+  const showWidget = (widgetId: string) => visibleWidgets.includes(widgetId);
 
   const fetchInsights = useCallback(async () => {
     if (!user?.id) return;
@@ -151,6 +173,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="flex gap-3">
+              <CustomizeButton onClick={() => setModalOpen(true)} />
               <Link
                 href="/reviews"
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-sm font-medium transition flex items-center gap-2"
@@ -177,6 +200,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick Stats */}
+        {showWidget("quickStats") && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">
             <div className="flex items-center gap-3 mb-2">
@@ -221,10 +245,13 @@ export default function DashboardPage() {
             <p className="text-xs text-slate-500 mt-1">Collaboration type</p>
           </div>
         </div>
+        )}
 
         {/* Main Content Grid */}
+        {(showWidget("languageProficiency") || showWidget("workPatterns")) && (
         <div className="grid lg:grid-cols-3 gap-6 mb-10">
           {/* Languages Card */}
+          {showWidget("languageProficiency") && (
           <div className="lg:col-span-2 bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -281,8 +308,10 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
+          )}
 
           {/* Work Patterns Card */}
+          {showWidget("workPatterns") && (
           <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-800">
               <div className="flex items-center gap-3">
@@ -345,11 +374,15 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
+          )}
         </div>
+        )}
 
         {/* Skills Section */}
+        {(showWidget("domainExpertise") || showWidget("frameworksTools")) && (
         <div className="grid lg:grid-cols-2 gap-6 mb-10">
           {/* Domain Expertise */}
+          {showWidget("domainExpertise") && (
           <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-800">
               <div className="flex items-center gap-3">
@@ -383,8 +416,10 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
+          )}
 
           {/* Frameworks */}
+          {showWidget("frameworksTools") && (
           <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-800">
               <div className="flex items-center gap-3">
@@ -418,9 +453,12 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
+          )}
         </div>
+        )}
 
         {/* AI Insights Section */}
+        {(showWidget("aiInsights") || showWidget("softSkills") || showWidget("growthTrajectory") || showWidget("peerBenchmark")) && (
         <div className="mb-10">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-gradient-to-br from-primary-500/20 to-purple-500/20 rounded-lg">
@@ -428,25 +466,37 @@ export default function DashboardPage() {
             </div>
             <h2 className="text-xl font-bold text-white">AI-Powered Insights</h2>
           </div>
+          {(showWidget("aiInsights") || showWidget("softSkills")) && (
           <div className="grid lg:grid-cols-2 gap-6 mb-6">
+            {showWidget("aiInsights") && (
             <InsightsCard
               insights={insights}
               isLoading={insightsLoading}
               onRefresh={handleRefreshInsights}
               isRefreshing={isRefreshing}
             />
+            )}
+            {showWidget("softSkills") && (
             <SoftSkillsCard
               softSkills={softSkills}
               isLoading={softSkillsLoading}
             />
+            )}
           </div>
+          )}
+          {(showWidget("growthTrajectory") || showWidget("peerBenchmark")) && (
           <div className="grid lg:grid-cols-2 gap-6">
+            {showWidget("growthTrajectory") && (
             <GrowthTrajectoryCard growth={user?.growth_trajectory || null} />
-            {user?.id && <PeerBenchmarkCard developerId={user.id} />}
+            )}
+            {showWidget("peerBenchmark") && user?.id && <PeerBenchmarkCard developerId={user.id} />}
           </div>
+          )}
         </div>
+        )}
 
         {/* Task Matching Section */}
+        {showWidget("taskMatcher") && (
         <div>
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-lg">
@@ -508,8 +558,26 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+        )}
+
+        {/* Tracking & Sprint Section (for Manager/Product personas) */}
+        {(showWidget("trackingSummary") || showWidget("sprintOverview")) && (
+        <div className="grid lg:grid-cols-2 gap-6 mt-10">
+          {showWidget("trackingSummary") && <TrackingSummaryWidget />}
+          {showWidget("sprintOverview") && <SprintOverviewWidget />}
+        </div>
+        )}
+
+        {/* Tickets & CRM Section (for Support/Sales personas) */}
+        {(showWidget("ticketStats") || showWidget("crmPipeline")) && (
+        <div className="grid lg:grid-cols-2 gap-6 mt-10">
+          {showWidget("ticketStats") && <TicketStatsWidget />}
+          {showWidget("crmPipeline") && <CRMPipelineWidget />}
+        </div>
+        )}
 
         {/* Reviews & Goals Section */}
+        {(showWidget("myGoals") || showWidget("performanceReviews")) && (
         <div className="mt-10">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-teal-500/20 rounded-lg">
@@ -519,6 +587,7 @@ export default function DashboardPage() {
           </div>
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Goals Overview Card */}
+            {showWidget("myGoals") && (
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -548,8 +617,10 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+            )}
 
             {/* Reviews Overview Card */}
+            {showWidget("performanceReviews") && (
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -589,9 +660,17 @@ export default function DashboardPage() {
                 </Link>
               </div>
             </div>
+            )}
           </div>
         </div>
+        )}
       </main>
+
+      {/* Dashboard Customize Modal */}
+      <DashboardCustomizeModal
+        open={isModalOpen}
+        onOpenChange={setModalOpen}
+      />
     </div>
   );
 }
