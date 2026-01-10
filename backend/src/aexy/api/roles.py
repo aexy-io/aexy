@@ -14,6 +14,8 @@ from aexy.schemas.role import (
     RoleListResponse,
     RoleTemplateResponse,
     PermissionCatalogResponse,
+    RolesListWrapper,
+    RoleTemplatesListWrapper,
 )
 from aexy.services.role_service import RoleService
 from aexy.services.permission_service import PermissionService
@@ -21,7 +23,7 @@ from aexy.services.permission_service import PermissionService
 router = APIRouter(prefix="/workspaces/{workspace_id}/roles", tags=["Roles"])
 
 
-@router.get("/templates", response_model=list[RoleTemplateResponse])
+@router.get("/templates", response_model=RoleTemplatesListWrapper)
 async def list_role_templates(
     workspace_id: str,
     current_user: Developer = Depends(get_current_developer),
@@ -35,19 +37,21 @@ async def list_role_templates(
     ):
         raise HTTPException(status_code=403, detail="Permission denied")
 
-    return [
-        RoleTemplateResponse(
-            id=template_id,
-            name=template["name"],
-            description=template["description"],
-            color=template["color"],
-            icon=template["icon"],
-            is_system=template.get("is_system", True),
-            priority=template.get("priority", 50),
-            permissions=template["permissions"],
-        )
-        for template_id, template in ROLE_TEMPLATES.items()
-    ]
+    return RoleTemplatesListWrapper(
+        templates=[
+            RoleTemplateResponse(
+                id=template_id,
+                name=template["name"],
+                description=template["description"],
+                color=template["color"],
+                icon=template["icon"],
+                is_system=template.get("is_system", True),
+                priority=template.get("priority", 50),
+                permissions=template["permissions"],
+            )
+            for template_id, template in ROLE_TEMPLATES.items()
+        ]
+    )
 
 
 @router.get("/permissions", response_model=PermissionCatalogResponse)
@@ -64,8 +68,19 @@ async def get_permission_catalog(
     ):
         raise HTTPException(status_code=403, detail="Permission denied")
 
+    # Transform PERMISSIONS dict to array format expected by frontend
+    permissions_list = [
+        {
+            "id": perm_id,
+            "category": perm_info["category"].value,
+            "description": perm_info["description"],
+            "default_for": perm_info.get("default_for", []),
+        }
+        for perm_id, perm_info in PERMISSIONS.items()
+    ]
+
     return PermissionCatalogResponse(
-        permissions=PERMISSIONS,
+        permissions=permissions_list,
         categories=[cat.value for cat in PermissionCategory],
     )
 
@@ -100,7 +115,7 @@ async def create_role(
     return role
 
 
-@router.get("", response_model=list[RoleListResponse])
+@router.get("", response_model=RolesListWrapper)
 async def list_roles(
     workspace_id: str,
     include_system: bool = True,
@@ -118,22 +133,24 @@ async def list_roles(
     role_service = RoleService(db)
     roles = await role_service.list_roles(workspace_id, include_system=include_system)
 
-    return [
-        RoleListResponse(
-            id=role.id,
-            workspace_id=role.workspace_id,
-            name=role.name,
-            slug=role.slug,
-            description=role.description,
-            color=role.color,
-            icon=role.icon,
-            is_system=role.is_system,
-            permission_count=len(role.permissions),
-            priority=role.priority,
-            is_active=role.is_active,
-        )
-        for role in roles
-    ]
+    return RolesListWrapper(
+        roles=[
+            RoleListResponse(
+                id=role.id,
+                workspace_id=role.workspace_id,
+                name=role.name,
+                slug=role.slug,
+                description=role.description,
+                color=role.color,
+                icon=role.icon,
+                is_system=role.is_system,
+                permissions=role.permissions,
+                priority=role.priority,
+                is_active=role.is_active,
+            )
+            for role in roles
+        ]
+    )
 
 
 @router.get("/{role_id}", response_model=RoleResponse)
