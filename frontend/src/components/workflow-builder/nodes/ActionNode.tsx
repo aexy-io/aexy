@@ -16,6 +16,11 @@ import {
   Webhook,
   UserPlus,
   Zap,
+  Bell,
+  Link,
+  Sparkles,
+  Target,
+  FileText,
 } from "lucide-react";
 import { useExecutionState, ExecutionStatus } from "./useExecutionState";
 
@@ -31,8 +36,17 @@ const actionIcons: Record<string, React.ElementType> = {
   remove_from_list: ListMinus,
   enroll_sequence: GitBranch,
   unenroll_sequence: GitBranch,
+  enroll_in_sequence: GitBranch,
+  remove_from_sequence: GitBranch,
   webhook_call: Webhook,
+  api_request: Webhook,
   assign_owner: UserPlus,
+  notify_user: Bell,
+  notify_team: Bell,
+  link_records: Link,
+  enrich_record: Sparkles,
+  classify_record: Target,
+  generate_summary: FileText,
 };
 
 interface ActionNodeData {
