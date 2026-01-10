@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Node } from "@xyflow/react";
-import { X, Trash2, ChevronDown, Plus } from "lucide-react";
+import { X, Trash2, ChevronDown, Plus, Database, Copy, Check, ExternalLink, Code } from "lucide-react";
+import { FieldPicker, InlineFieldPicker } from "./FieldPicker";
+import { api } from "@/lib/api";
 
 interface NodeConfigPanelProps {
   node: Node;
   workspaceId: string;
+  automationId: string;
   onUpdate: (data: Record<string, unknown>) => void;
   onDelete: () => void;
   onClose: () => void;
@@ -30,11 +33,77 @@ const conditionOperators = [
 export function NodeConfigPanel({
   node,
   workspaceId,
+  automationId,
   onUpdate,
   onDelete,
   onClose,
 }: NodeConfigPanelProps) {
   const [label, setLabel] = useState((node.data.label as string) || "");
+  const emailBodyRef = useRef<HTMLTextAreaElement>(null);
+  const messageTemplateRef = useRef<HTMLTextAreaElement>(null);
+  const webhookBodyRef = useRef<HTMLTextAreaElement>(null);
+
+  // Webhook trigger state
+  const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
+  const [webhookLoading, setWebhookLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [showSamplePayload, setShowSamplePayload] = useState(false);
+
+  const triggerType = node.data.trigger_type as string;
+
+  // Fetch webhook URL for webhook triggers
+  useEffect(() => {
+    // Skip API call for new automations (automationId is "new" before creation)
+    if (node.type === "trigger" && triggerType === "webhook_received" && workspaceId && automationId && automationId !== "new") {
+      setWebhookLoading(true);
+      api
+        .get(`/workspaces/${workspaceId}/crm/automations/${automationId}/workflow/webhook-url`)
+        .then((res) => {
+          setWebhookUrl(res.data.webhook_url);
+        })
+        .catch(() => {
+          setWebhookUrl(null);
+        })
+        .finally(() => {
+          setWebhookLoading(false);
+        });
+    }
+  }, [node.type, triggerType, workspaceId, automationId]);
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
+
+  // Insert field at cursor position in a textarea
+  const insertAtCursor = (
+    ref: React.RefObject<HTMLTextAreaElement | null>,
+    value: string,
+    fieldName: string
+  ) => {
+    const textarea = ref.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const currentValue = (node.data[fieldName] as string) || "";
+      const newValue = currentValue.slice(0, start) + value + currentValue.slice(end);
+      onUpdate({ [fieldName]: newValue });
+      // Restore cursor position after React re-render
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + value.length, start + value.length);
+      }, 0);
+    } else {
+      // No ref, just append
+      const currentValue = (node.data[fieldName] as string) || "";
+      onUpdate({ [fieldName]: currentValue + value });
+    }
+  };
 
   const handleLabelChange = (newLabel: string) => {
     setLabel(newLabel);
@@ -55,13 +124,25 @@ export function NodeConfigPanel({
         return renderAgentConfig();
       case "branch":
         return renderBranchConfig();
+      case "join":
+        return renderJoinConfig();
       default:
         return null;
     }
   };
 
   const renderTriggerConfig = () => {
-    const triggerType = node.data.trigger_type as string;
+    const samplePayload = JSON.stringify(
+      {
+        record_id: "optional-crm-record-id",
+        data: {
+          field1: "value1",
+          field2: "value2",
+        },
+      },
+      null,
+      2
+    );
 
     return (
       <div className="space-y-4">
@@ -95,15 +176,85 @@ export function NodeConfigPanel({
         )}
 
         {triggerType === "webhook_received" && (
-          <div>
-            <label className="block text-sm text-slate-400 mb-1">Webhook Path</label>
-            <input
-              type="text"
-              value={(node.data.webhook_path as string) || ""}
-              onChange={(e) => onUpdate({ webhook_path: e.target.value })}
-              placeholder="/my-webhook"
-              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
-            />
+          <div className="space-y-4">
+            {/* Webhook URL */}
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Webhook URL</label>
+              {webhookLoading ? (
+                <div className="flex items-center gap-2 text-slate-500 text-sm py-2">
+                  <div className="animate-spin h-4 w-4 border-2 border-slate-500 border-t-transparent rounded-full" />
+                  Loading...
+                </div>
+              ) : webhookUrl ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={webhookUrl}
+                      readOnly
+                      className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-xs font-mono cursor-text"
+                    />
+                    <button
+                      onClick={() => copyToClipboard(webhookUrl)}
+                      className={`p-2 rounded-lg transition-colors ${
+                        copied
+                          ? "bg-green-500/20 text-green-400"
+                          : "bg-slate-700 text-slate-400 hover:text-white hover:bg-slate-600"
+                      }`}
+                      title={copied ? "Copied!" : "Copy URL"}
+                    >
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded font-medium">POST</span>
+                    <span>Send a POST request to trigger this workflow</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500">
+                  Save and publish your workflow to get a webhook URL
+                </p>
+              )}
+            </div>
+
+            {/* Sample Payload */}
+            <div>
+              <button
+                onClick={() => setShowSamplePayload(!showSamplePayload)}
+                className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+              >
+                <Code className="h-4 w-4" />
+                <span>{showSamplePayload ? "Hide" : "Show"} sample payload</span>
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${showSamplePayload ? "rotate-180" : ""}`}
+                />
+              </button>
+              {showSamplePayload && (
+                <div className="mt-2 relative">
+                  <pre className="bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs text-slate-300 font-mono overflow-x-auto">
+                    {samplePayload}
+                  </pre>
+                  <button
+                    onClick={() => copyToClipboard(samplePayload)}
+                    className="absolute top-2 right-2 p-1.5 bg-slate-800 rounded text-slate-400 hover:text-white transition-colors"
+                    title="Copy payload"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Info box */}
+            <div className="text-xs text-slate-500 bg-slate-800/50 rounded-lg p-3">
+              <p className="font-medium text-slate-400 mb-1">How it works</p>
+              <ul className="space-y-1 list-disc list-inside">
+                <li>Send a POST request with JSON payload</li>
+                <li>Include <code className="text-blue-400">record_id</code> to link to a CRM record</li>
+                <li>Access payload data via <code className="text-blue-400">{"{{trigger.payload}}"}</code></li>
+              </ul>
+            </div>
           </div>
         )}
       </div>
@@ -128,11 +279,20 @@ export function NodeConfigPanel({
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Body</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm text-slate-400">Body</label>
+                <InlineFieldPicker
+                  workspaceId={workspaceId}
+                  automationId={automationId}
+                  nodeId={node.id}
+                  onInsert={(value) => insertAtCursor(emailBodyRef, value, "email_body")}
+                />
+              </div>
               <textarea
+                ref={emailBodyRef}
                 value={(node.data.email_body as string) || ""}
                 onChange={(e) => onUpdate({ email_body: e.target.value })}
-                placeholder="Email body... Use {{record.field}} for variables"
+                placeholder="Email body... Click 'Insert field' to add variables"
                 rows={4}
                 className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
               />
@@ -154,11 +314,20 @@ export function NodeConfigPanel({
 
         {(actionType === "send_slack" || actionType === "send_sms") && (
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Message</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm text-slate-400">Message</label>
+              <InlineFieldPicker
+                workspaceId={workspaceId}
+                automationId={automationId}
+                nodeId={node.id}
+                onInsert={(value) => insertAtCursor(messageTemplateRef, value, "message_template")}
+              />
+            </div>
             <textarea
+              ref={messageTemplateRef}
               value={(node.data.message_template as string) || ""}
               onChange={(e) => onUpdate({ message_template: e.target.value })}
-              placeholder="Message... Use {{record.field}} for variables"
+              placeholder="Message... Click 'Insert field' to add variables"
               rows={3}
               className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
             />
@@ -192,8 +361,17 @@ export function NodeConfigPanel({
               </select>
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Body (JSON)</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm text-slate-400">Body (JSON)</label>
+                <InlineFieldPicker
+                  workspaceId={workspaceId}
+                  automationId={automationId}
+                  nodeId={node.id}
+                  onInsert={(value) => insertAtCursor(webhookBodyRef, value, "body_template")}
+                />
+              </div>
               <textarea
+                ref={webhookBodyRef}
                 value={(node.data.body_template as string) || ""}
                 onChange={(e) => onUpdate({ body_template: e.target.value })}
                 placeholder='{"key": "{{record.field}}"}'
@@ -247,17 +425,25 @@ export function NodeConfigPanel({
           <label className="block text-sm text-slate-400">Conditions</label>
           {conditions.map((condition, index) => (
             <div key={index} className="bg-slate-700/50 rounded-lg p-3 space-y-2">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={condition.field}
-                  onChange={(e) => updateCondition(index, { field: e.target.value })}
-                  placeholder="Field"
-                  className="flex-1 bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-white text-sm"
-                />
+              <div className="flex gap-2 items-start">
+                <div className="flex-1">
+                  <FieldPicker
+                    workspaceId={workspaceId}
+                    automationId={automationId}
+                    nodeId={node.id}
+                    value={condition.field}
+                    onChange={(value) => {
+                      // Extract the path from {{path}} format
+                      const match = value.match(/\{\{(.+?)\}\}/);
+                      updateCondition(index, { field: match ? match[1] : value });
+                    }}
+                    placeholder="Select field..."
+                    allowCustom={true}
+                  />
+                </div>
                 <button
                   onClick={() => removeCondition(index)}
-                  className="p-1.5 text-slate-400 hover:text-red-400"
+                  className="p-1.5 text-slate-400 hover:text-red-400 mt-1"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -363,12 +549,108 @@ export function NodeConfigPanel({
                 className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
               >
                 <option value="">Select event...</option>
-                <option value="email.opened">Email Opened</option>
-                <option value="email.clicked">Email Clicked</option>
-                <option value="email.replied">Email Replied</option>
-                <option value="form.submitted">Form Submitted</option>
+                <optgroup label="Email Events">
+                  <option value="email.opened">Email Opened</option>
+                  <option value="email.clicked">Email Link Clicked</option>
+                  <option value="email.replied">Email Replied</option>
+                  <option value="email.bounced">Email Bounced</option>
+                </optgroup>
+                <optgroup label="Form Events">
+                  <option value="form.submitted">Form Submitted</option>
+                </optgroup>
+                <optgroup label="Meeting Events">
+                  <option value="meeting.scheduled">Meeting Scheduled</option>
+                  <option value="meeting.completed">Meeting Completed</option>
+                  <option value="meeting.cancelled">Meeting Cancelled</option>
+                </optgroup>
+                <optgroup label="Other Events">
+                  <option value="webhook.received">Webhook Received</option>
+                  <option value="record.updated">Record Updated</option>
+                </optgroup>
               </select>
             </div>
+
+            {/* Event-specific filter options */}
+            {(node.data.wait_for_event as string)?.startsWith("email.") && (
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">
+                  Filter by Email ID (optional)
+                </label>
+                <input
+                  type="text"
+                  value={(node.data.event_filter as Record<string, string>)?.email_id || ""}
+                  onChange={(e) => onUpdate({
+                    event_filter: {
+                      ...((node.data.event_filter as Record<string, string>) || {}),
+                      email_id: e.target.value || undefined,
+                    },
+                  })}
+                  placeholder="Leave empty to match any email"
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                />
+              </div>
+            )}
+
+            {(node.data.wait_for_event as string) === "form.submitted" && (
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">
+                  Filter by Form ID (optional)
+                </label>
+                <input
+                  type="text"
+                  value={(node.data.event_filter as Record<string, string>)?.form_id || ""}
+                  onChange={(e) => onUpdate({
+                    event_filter: {
+                      ...((node.data.event_filter as Record<string, string>) || {}),
+                      form_id: e.target.value || undefined,
+                    },
+                  })}
+                  placeholder="Leave empty to match any form"
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                />
+              </div>
+            )}
+
+            {(node.data.wait_for_event as string)?.startsWith("meeting.") && (
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">
+                  Filter by Calendar/Meeting Type (optional)
+                </label>
+                <input
+                  type="text"
+                  value={(node.data.event_filter as Record<string, string>)?.calendar_id || ""}
+                  onChange={(e) => onUpdate({
+                    event_filter: {
+                      ...((node.data.event_filter as Record<string, string>) || {}),
+                      calendar_id: e.target.value || undefined,
+                    },
+                  })}
+                  placeholder="Leave empty to match any meeting"
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                />
+              </div>
+            )}
+
+            {(node.data.wait_for_event as string) === "webhook.received" && (
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">
+                  Webhook ID
+                </label>
+                <input
+                  type="text"
+                  value={(node.data.event_filter as Record<string, string>)?.webhook_id || ""}
+                  onChange={(e) => onUpdate({
+                    event_filter: {
+                      ...((node.data.event_filter as Record<string, string>) || {}),
+                      webhook_id: e.target.value,
+                    },
+                  })}
+                  placeholder="Your webhook identifier"
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                />
+              </div>
+            )}
+
             <div>
               <label className="block text-sm text-slate-400 mb-1">Timeout (hours)</label>
               <input
@@ -378,6 +660,17 @@ export function NodeConfigPanel({
                 onChange={(e) => onUpdate({ timeout_hours: parseInt(e.target.value) || 24 })}
                 className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
               />
+              <p className="text-xs text-slate-500 mt-1">
+                Workflow fails if event not received within timeout
+              </p>
+            </div>
+
+            <div className="text-xs text-slate-500 bg-slate-800/50 rounded-lg p-3">
+              <p className="font-medium text-slate-400 mb-1">How it works</p>
+              <p>
+                The workflow will pause and wait until the selected event is received.
+                Events are matched to the current record automatically.
+              </p>
             </div>
           </>
         )}
@@ -434,6 +727,86 @@ export function NodeConfigPanel({
           )}
           {agentType === "custom" && (
             <p>Use a custom agent you&apos;ve configured.</p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderJoinConfig = () => {
+    const joinType = (node.data.join_type as string) || "all";
+    const incomingBranches = (node.data.incoming_branches as number) || 2;
+
+    return (
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm text-slate-400 mb-1">Join Type</label>
+          <select
+            value={joinType}
+            onChange={(e) => onUpdate({ join_type: e.target.value })}
+            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+          >
+            <option value="all">Wait for All Branches</option>
+            <option value="any">Wait for Any Branch</option>
+            <option value="count">Wait for Count</option>
+          </select>
+        </div>
+
+        {joinType === "count" && (
+          <div>
+            <label className="block text-sm text-slate-400 mb-1">Expected Count</label>
+            <input
+              type="number"
+              min="1"
+              max={incomingBranches}
+              value={(node.data.expected_count as number) || 1}
+              onChange={(e) => onUpdate({ expected_count: parseInt(e.target.value) || 1 })}
+              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Continue when this many branches complete
+            </p>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm text-slate-400 mb-1">Incoming Branches</label>
+          <input
+            type="number"
+            min="2"
+            max="10"
+            value={incomingBranches}
+            onChange={(e) => onUpdate({ incoming_branches: parseInt(e.target.value) || 2 })}
+            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+          />
+          <p className="text-xs text-slate-500 mt-1">
+            Number of input handles for parallel branches
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-sm text-slate-400 mb-1">On Failure</label>
+          <select
+            value={(node.data.on_failure as string) || "fail"}
+            onChange={(e) => onUpdate({ on_failure: e.target.value })}
+            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+          >
+            <option value="fail">Stop workflow if any branch fails</option>
+            <option value="continue">Continue with successful branches</option>
+            <option value="skip">Skip join and continue workflow</option>
+          </select>
+        </div>
+
+        <div className="text-xs text-slate-500 bg-slate-800/50 rounded-lg p-3">
+          <p className="font-medium text-slate-400 mb-1">How it works</p>
+          {joinType === "all" && (
+            <p>Waits for all incoming parallel branches to complete before continuing.</p>
+          )}
+          {joinType === "any" && (
+            <p>Continues as soon as any one of the incoming branches completes.</p>
+          )}
+          {joinType === "count" && (
+            <p>Continues when the specified number of branches have completed.</p>
           )}
         </div>
       </div>
@@ -500,16 +873,23 @@ export function NodeConfigPanel({
   };
 
   return (
-    <div className="w-80 bg-slate-800/50 border-l border-slate-700 overflow-y-auto">
-      <div className="p-4 border-b border-slate-700 flex items-center justify-between">
-        <h3 className="text-white font-semibold">Configure Node</h3>
-        <button
-          onClick={onClose}
-          className="p-1 text-slate-400 hover:text-white"
-        >
-          <X className="h-5 w-5" />
-        </button>
-      </div>
+    <>
+      {/* Mobile backdrop */}
+      <div
+        className="fixed inset-0 bg-black/50 z-40 md:hidden"
+        onClick={onClose}
+      />
+      {/* Config panel - responsive */}
+      <div className="fixed inset-y-0 right-0 w-full sm:w-96 md:w-80 md:relative md:inset-auto bg-slate-800 md:bg-slate-800/50 border-l border-slate-700 overflow-y-auto z-50 md:z-auto">
+        <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+          <h3 className="text-white font-semibold">Configure Node</h3>
+          <button
+            onClick={onClose}
+            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
       <div className="p-4 space-y-4">
         {/* Label */}
@@ -537,6 +917,7 @@ export function NodeConfigPanel({
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

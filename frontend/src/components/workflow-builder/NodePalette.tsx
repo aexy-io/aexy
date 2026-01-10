@@ -10,6 +10,7 @@ import {
   Merge,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   FileText,
   Webhook,
   Mail,
@@ -32,6 +33,9 @@ import {
 
 interface NodePaletteProps {
   onAddNode: (type: string, subtype?: string) => void;
+  onDragStart?: (event: React.DragEvent, type: string, subtype?: string) => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 interface NodeCategory {
@@ -127,9 +131,21 @@ const nodeCategories: NodeCategory[] = [
     bgColor: "bg-indigo-500/20",
     subtypes: [],
   },
+  {
+    type: "join",
+    label: "Join",
+    icon: GitBranch,
+    color: "text-teal-400",
+    bgColor: "bg-teal-500/20",
+    subtypes: [
+      { value: "all", label: "Wait for All", icon: Merge },
+      { value: "any", label: "Wait for Any", icon: Merge },
+      { value: "count", label: "Wait for Count", icon: Merge },
+    ],
+  },
 ];
 
-export function NodePalette({ onAddNode }: NodePaletteProps) {
+export function NodePalette({ onAddNode, onDragStart, isCollapsed, onToggleCollapse }: NodePaletteProps) {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(["trigger"]));
 
   const toggleCategory = (type: string) => {
@@ -148,13 +164,70 @@ export function NodePalette({ onAddNode }: NodePaletteProps) {
     onAddNode(category.type, subtype);
   };
 
+  const handleDragStart = (
+    event: React.DragEvent,
+    category: NodeCategory,
+    subtype?: string
+  ) => {
+    // Set drag data for React Flow
+    const nodeData = {
+      type: category.type,
+      subtype: subtype,
+    };
+    event.dataTransfer.setData("application/reactflow", JSON.stringify(nodeData));
+    event.dataTransfer.effectAllowed = "move";
+
+    // Call parent handler if provided
+    if (onDragStart) {
+      onDragStart(event, category.type, subtype);
+    }
+  };
+
+  // Collapsed mode for mobile - just show icons
+  if (isCollapsed) {
+    return (
+      <div className="w-14 bg-slate-800/50 border-r border-slate-700 flex flex-col">
+        <button
+          onClick={onToggleCollapse}
+          className="p-3 border-b border-slate-700 hover:bg-slate-700/50"
+          title="Expand palette"
+        >
+          <ChevronRight className="h-5 w-5 text-slate-400" />
+        </button>
+        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+          {nodeCategories.map((category) => (
+            <button
+              key={category.type}
+              onClick={() => onAddNode(category.type)}
+              className={`w-full p-2 rounded-lg hover:bg-slate-700/50 flex items-center justify-center ${category.bgColor}`}
+              title={category.label}
+            >
+              <category.icon className={`h-5 w-5 ${category.color}`} />
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-64 bg-slate-800/50 border-r border-slate-700 overflow-y-auto">
-      <div className="p-4 border-b border-slate-700">
-        <h3 className="text-white font-semibold">Node Palette</h3>
-        <p className="text-xs text-slate-400 mt-1">
-          Click to add nodes to canvas
-        </p>
+    <div className="w-64 bg-slate-800/50 border-r border-slate-700 overflow-y-auto hidden md:block">
+      <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+        <div>
+          <h3 className="text-white font-semibold">Node Palette</h3>
+          <p className="text-xs text-slate-400 mt-1">
+            Drag nodes to canvas or click to add
+          </p>
+        </div>
+        {onToggleCollapse && (
+          <button
+            onClick={onToggleCollapse}
+            className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white lg:hidden"
+            title="Collapse palette"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       <div className="p-2">
@@ -170,6 +243,12 @@ export function NodePalette({ onAddNode }: NodePaletteProps) {
                     toggleCategory(category.type);
                   } else {
                     handleAddNode(category);
+                  }
+                }}
+                draggable={!hasSubtypes}
+                onDragStart={(e) => {
+                  if (!hasSubtypes) {
+                    handleDragStart(e, category);
                   }
                 }}
                 className={`
@@ -201,6 +280,8 @@ export function NodePalette({ onAddNode }: NodePaletteProps) {
                     <button
                       key={subtype.value}
                       onClick={() => handleAddNode(category, subtype.value)}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, category, subtype.value)}
                       className={`
                         w-full flex items-center gap-2 px-3 py-2 rounded-lg
                         hover:bg-slate-700/50 transition-colors

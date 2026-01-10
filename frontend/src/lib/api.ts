@@ -8442,3 +8442,91 @@ export const writingStyleApi = {
     return response.data;
   },
 };
+
+// Workflow Templates API
+export interface WorkflowTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string;
+  icon: string | null;
+  nodes: unknown[];
+  edges: unknown[];
+  viewport: { x: number; y: number; zoom: number } | null;
+  is_system: boolean;
+  is_published: boolean;
+  use_count: number;
+  created_at: string | null;
+}
+
+export interface WorkflowTemplateListItem {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string;
+  icon: string | null;
+  is_system: boolean;
+  use_count: number;
+  node_count: number;
+  created_at: string | null;
+}
+
+export interface WorkflowTemplateCategory {
+  id: string;
+  label: string;
+  icon: string;
+  template_count: number;
+}
+
+export const workflowTemplatesApi = {
+  getCategories: async (workspaceId: string): Promise<WorkflowTemplateCategory[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/crm/workflow-templates/categories`);
+    return response.data;
+  },
+
+  list: async (workspaceId: string, category?: string): Promise<WorkflowTemplateListItem[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/crm/workflow-templates`, {
+      params: category ? { category } : undefined,
+    });
+    return response.data;
+  },
+
+  get: async (workspaceId: string, templateId: string): Promise<WorkflowTemplate> => {
+    const response = await api.get(`/workspaces/${workspaceId}/crm/workflow-templates/${templateId}`);
+    return response.data;
+  },
+
+  apply: async (
+    workspaceId: string,
+    templateId: string,
+    automationId: string
+  ): Promise<{ success: boolean; workflow_id: string; node_count: number; edge_count: number }> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/crm/workflow-templates/${templateId}/apply`,
+      null,
+      { params: { automation_id: automationId } }
+    );
+    return response.data;
+  },
+
+  create: async (
+    workspaceId: string,
+    automationId: string,
+    data: { name: string; description?: string; category?: string }
+  ): Promise<WorkflowTemplateListItem> => {
+    const response = await api.post(`/workspaces/${workspaceId}/crm/workflow-templates`, null, {
+      params: {
+        automation_id: automationId,
+        name: data.name,
+        description: data.description,
+        category: data.category || "custom",
+      },
+    });
+    return response.data;
+  },
+
+  delete: async (workspaceId: string, templateId: string): Promise<{ success: boolean }> => {
+    const response = await api.delete(`/workspaces/${workspaceId}/crm/workflow-templates/${templateId}`);
+    return response.data;
+  },
+};

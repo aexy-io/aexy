@@ -14,7 +14,7 @@ from aexy.core.database import Base
 if TYPE_CHECKING:
     from aexy.models.developer import Developer
     from aexy.models.workspace import Workspace
-    from aexy.models.workflow import WorkflowDefinition
+    from aexy.models.workflow import WorkflowDefinition, WorkflowExecution
 
 
 # =============================================================================
@@ -904,6 +904,12 @@ class CRMAutomation(Base):
         "WorkflowDefinition",
         back_populates="automation",
         uselist=False,
+        cascade="all, delete-orphan",
+        lazy="noload",
+    )
+    workflow_executions: Mapped[list["WorkflowExecution"]] = relationship(
+        "WorkflowExecution",
+        back_populates="automation",
         cascade="all, delete-orphan",
         lazy="noload",
     )
