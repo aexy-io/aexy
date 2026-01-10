@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAgents, useAgentTools } from "@/hooks/useAgents";
+import { useAuth } from "@/hooks/useAuth";
+import { AppHeader } from "@/components/layout/AppHeader";
 
 const agentTypes = [
   { value: "custom", label: "Custom Agent", icon: Settings, description: "Build your own agent with custom goal and tools" },
@@ -35,6 +37,7 @@ export default function NewAgentPage() {
   const router = useRouter();
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
+  const { user, logout } = useAuth();
 
   const { createAgent, isCreating } = useAgents(workspaceId);
   const { tools: availableTools, isLoading: isLoadingTools } = useAgentTools(workspaceId);
@@ -79,10 +82,12 @@ export default function NewAgentPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 p-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
+    <div className="min-h-screen bg-slate-950">
+      <AppHeader user={user} logout={logout} />
+      <div className="p-8">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center gap-4 mb-8">
           <button
             onClick={() => router.push("/crm/agents")}
             className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
@@ -287,8 +292,9 @@ export default function NewAgentPage() {
               <Save className="h-4 w-4" />
               {isCreating ? "Creating..." : "Create Agent"}
             </button>
-          </div>
-        </form>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

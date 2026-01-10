@@ -24,6 +24,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
+import { AppHeader } from "@/components/layout/AppHeader";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { googleIntegrationApi, developerApi, SyncedEmail, SyncJobStatus } from "@/lib/api";
 
@@ -84,7 +86,7 @@ function EmailListItem({
               {email.from_name || email.from_email}
             </span>
             <span className="text-xs text-slate-500 flex-shrink-0">
-              {formatDate(email.gmail_date)}
+              {email.gmail_date ? formatDate(email.gmail_date) : ""}
             </span>
           </div>
           <p
@@ -120,14 +122,14 @@ function EmailDetail({
   const [isSending, setIsSending] = useState(false);
 
   const handleSendReply = async () => {
-    if (!replyText.trim()) return;
+    if (!replyText.trim() || !email.from_email) return;
     setIsSending(true);
     try {
       await googleIntegrationApi.gmail.sendEmail(workspaceId, {
         to: email.from_email,
-        subject: `Re: ${email.subject}`,
+        subject: `Re: ${email.subject || ""}`,
         body_html: `<p>${replyText.replace(/\n/g, "<br>")}</p>`,
-        reply_to_message_id: email.gmail_id,
+        reply_to_message_id: email.gmail_id || undefined,
       });
       setReplyText("");
       setShowReply(false);
@@ -187,7 +189,7 @@ function EmailDetail({
             <div className="flex items-center gap-4 text-sm text-slate-400">
               <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
-                {new Date(email.gmail_date).toLocaleString()}
+                {email.gmail_date ? new Date(email.gmail_date).toLocaleString() : ""}
               </span>
               {email.to_emails && email.to_emails.length > 0 && (
                 <span>To: {email.to_emails.join(", ")}</span>
@@ -290,7 +292,7 @@ function LinkToRecordModal({
   const handleLink = async (recordId: string) => {
     setIsLinking(true);
     try {
-      await googleIntegrationApi.gmail.linkEmailToRecord(workspaceId, email.id, recordId, linkType);
+      await googleIntegrationApi.gmail.linkEmailToRecord(workspaceId, email.id, { record_id: recordId, link_type: linkType });
       onClose();
     } catch (error) {
       console.error("Failed to link email:", error);
@@ -412,6 +414,7 @@ function EmptyState({
 export default function InboxPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user, logout } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
 
@@ -619,182 +622,191 @@ export default function InboxPage() {
 
   if (!workspaceId) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="text-slate-400">Loading workspace...</div>
+      <div className="min-h-screen bg-slate-950">
+        <AppHeader user={user} logout={logout} />
+        <div className="flex items-center justify-center h-[calc(100vh-64px)]">
+          <div className="text-slate-400">Loading workspace...</div>
+        </div>
       </div>
     );
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+      <div className="min-h-screen bg-slate-950">
+        <AppHeader user={user} logout={logout} />
+        <div className="flex items-center justify-center h-[calc(100vh-64px)]">
+          <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-slate-950">
-      {/* Header */}
-      <div className="border-b border-slate-800 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.push("/crm")}
-              className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              CRM
-            </button>
-            <h1 className="text-xl font-semibold text-white flex items-center gap-2">
-              <Mail className="w-5 h-5 text-purple-400" />
-              Inbox
-            </h1>
-          </div>
-          <div className="flex items-center gap-3">
-            {hasIntegration && (
-              <button
-                onClick={handleSync}
-                disabled={isSyncing}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg transition-colors disabled:opacity-50"
-              >
-                <RefreshCw
-                  className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`}
-                />
-                {isSyncing ? (syncProgress || "Syncing...") : "Sync"}
-              </button>
-            )}
-            <button
-              onClick={() => router.push("/crm/settings/integrations")}
-              className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
-            >
-              Settings
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {(error || syncError) && (
-        <div className="px-6 py-3 bg-red-500/10 border-b border-red-500/30">
+      <AppHeader user={user} logout={logout} />
+      <div className="p-0">
+        {/* Header */}
+        <div className="border-b border-slate-800 px-6 py-4">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-2 text-red-400">
-              <AlertCircle className="w-4 h-4" />
-              {error || syncError}
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => router.push("/crm")}
+                className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                CRM
+              </button>
+              <h1 className="text-xl font-semibold text-white flex items-center gap-2">
+                <Mail className="w-5 h-5 text-purple-400" />
+                Inbox
+              </h1>
             </div>
             <div className="flex items-center gap-3">
-              {needsReconnect && (
+              {hasIntegration && (
                 <button
-                  onClick={handleReconnect}
-                  className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded-lg transition-colors"
+                  onClick={handleSync}
+                  disabled={isSyncing}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg transition-colors disabled:opacity-50"
                 >
-                  Reconnect Google
-                </button>
-              )}
-              {(syncError || error) && (
-                <button
-                  onClick={() => {
-                    setSyncError(null);
-                    setError(null);
-                    setNeedsReconnect(false);
-                  }}
-                  className="text-red-400 hover:text-red-300 text-sm"
-                >
-                  Dismiss
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {!hasIntegration || emails.length === 0 ? (
-        <EmptyState
-          hasIntegration={hasIntegration}
-          onConnect={handleConnect}
-          onSync={handleSync}
-        />
-      ) : (
-        <div className="flex h-[calc(100vh-73px)]">
-          {/* Email List */}
-          <div
-            className={`w-full lg:w-96 border-r border-slate-800 flex flex-col ${
-              selectedEmail ? "hidden lg:flex" : "flex"
-            }`}
-          >
-            {/* Search */}
-            <div className="p-4 border-b border-slate-800">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search emails..."
-                  className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-            </div>
-
-            {/* Email List */}
-            <div className="flex-1 overflow-auto">
-              {filteredEmails.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-                  <Search className="w-8 h-8 text-slate-600 mb-2" />
-                  <p className="text-slate-400">No emails found</p>
-                </div>
-              ) : (
-                filteredEmails.map((email) => (
-                  <EmailListItem
-                    key={email.id}
-                    email={email}
-                    isSelected={selectedEmail?.id === email.id}
-                    onClick={() => setSelectedEmail(email)}
+                  <RefreshCw
+                    className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`}
                   />
-                ))
+                  {isSyncing ? (syncProgress || "Syncing...") : "Sync"}
+                </button>
               )}
+              <button
+                onClick={() => router.push("/crm/settings/integrations")}
+                className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+              >
+                Settings
+              </button>
             </div>
-
-            {/* Stats */}
-            <div className="p-4 border-t border-slate-800 text-sm text-slate-500">
-              {filteredEmails.length} email{filteredEmails.length !== 1 ? "s" : ""}
-              {searchQuery && ` matching "${searchQuery}"`}
-            </div>
-          </div>
-
-          {/* Email Detail */}
-          <div
-            className={`flex-1 ${
-              selectedEmail ? "flex" : "hidden lg:flex"
-            } flex-col`}
-          >
-            {selectedEmail ? (
-              <EmailDetail
-                email={selectedEmail}
-                workspaceId={workspaceId}
-                onClose={() => setSelectedEmail(null)}
-                onLinkToRecord={() => setShowLinkModal(true)}
-              />
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-slate-500">
-                <div className="text-center">
-                  <MailOpen className="w-12 h-12 mx-auto mb-4 text-slate-600" />
-                  <p>Select an email to view</p>
-                </div>
-              </div>
-            )}
           </div>
         </div>
-      )}
 
-      {/* Link to Record Modal */}
-      {selectedEmail && (
-        <LinkToRecordModal
-          isOpen={showLinkModal}
-          onClose={() => setShowLinkModal(false)}
-          email={selectedEmail}
-          workspaceId={workspaceId}
-        />
-      )}
+        {(error || syncError) && (
+          <div className="px-6 py-3 bg-red-500/10 border-b border-red-500/30">
+            <div className="max-w-7xl mx-auto flex items-center justify-between">
+              <div className="flex items-center gap-2 text-red-400">
+                <AlertCircle className="w-4 h-4" />
+                {error || syncError}
+              </div>
+              <div className="flex items-center gap-3">
+                {needsReconnect && (
+                  <button
+                    onClick={handleReconnect}
+                    className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded-lg transition-colors"
+                  >
+                    Reconnect Google
+                  </button>
+                )}
+                {(syncError || error) && (
+                  <button
+                    onClick={() => {
+                      setSyncError(null);
+                      setError(null);
+                      setNeedsReconnect(false);
+                    }}
+                    className="text-red-400 hover:text-red-300 text-sm"
+                  >
+                    Dismiss
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!hasIntegration || emails.length === 0 ? (
+          <EmptyState
+            hasIntegration={hasIntegration}
+            onConnect={handleConnect}
+            onSync={handleSync}
+          />
+        ) : (
+          <div className="flex h-[calc(100vh-73px)]">
+            {/* Email List */}
+            <div
+              className={`w-full lg:w-96 border-r border-slate-800 flex flex-col ${
+                selectedEmail ? "hidden lg:flex" : "flex"
+              }`}
+            >
+              {/* Search */}
+              <div className="p-4 border-b border-slate-800">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search emails..."
+                    className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+
+              {/* Email List */}
+              <div className="flex-1 overflow-auto">
+                {filteredEmails.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+                    <Search className="w-8 h-8 text-slate-600 mb-2" />
+                    <p className="text-slate-400">No emails found</p>
+                  </div>
+                ) : (
+                  filteredEmails.map((email) => (
+                    <EmailListItem
+                      key={email.id}
+                      email={email}
+                      isSelected={selectedEmail?.id === email.id}
+                      onClick={() => setSelectedEmail(email)}
+                    />
+                  ))
+                )}
+              </div>
+
+              {/* Stats */}
+              <div className="p-4 border-t border-slate-800 text-sm text-slate-500">
+                {filteredEmails.length} email{filteredEmails.length !== 1 ? "s" : ""}
+                {searchQuery && ` matching "${searchQuery}"`}
+              </div>
+            </div>
+
+            {/* Email Detail */}
+            <div
+              className={`flex-1 ${
+                selectedEmail ? "flex" : "hidden lg:flex"
+              } flex-col`}
+            >
+              {selectedEmail ? (
+                <EmailDetail
+                  email={selectedEmail}
+                  workspaceId={workspaceId}
+                  onClose={() => setSelectedEmail(null)}
+                  onLinkToRecord={() => setShowLinkModal(true)}
+                />
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-slate-500">
+                  <div className="text-center">
+                    <MailOpen className="w-12 h-12 mx-auto mb-4 text-slate-600" />
+                    <p>Select an email to view</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Link to Record Modal */}
+        {selectedEmail && (
+          <LinkToRecordModal
+            isOpen={showLinkModal}
+            onClose={() => setShowLinkModal(false)}
+            email={selectedEmail}
+            workspaceId={workspaceId}
+          />
+        )}
+      </div>
     </div>
   );
 }

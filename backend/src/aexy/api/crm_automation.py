@@ -69,6 +69,10 @@ async def create_automation(
     await check_workspace_permission(db, workspace_id, current_user.id, "admin")
 
     service = CRMAutomationService(db)
+    # Convert Pydantic models to dicts for JSONB serialization
+    conditions = [c.model_dump() for c in data.conditions] if data.conditions else None
+    actions = [a.model_dump() for a in data.actions]
+
     automation = await service.create_automation(
         workspace_id=workspace_id,
         name=data.name,
@@ -76,8 +80,8 @@ async def create_automation(
         object_id=data.object_id,
         trigger_type=data.trigger_type,
         trigger_config=data.trigger_config,
-        conditions=data.conditions,
-        actions=data.actions,
+        conditions=conditions,
+        actions=actions,
         created_by_id=current_user.id,
     )
     return automation
@@ -140,6 +144,7 @@ async def update_automation(
     if not automation or automation.workspace_id != workspace_id:
         raise HTTPException(status_code=404, detail="Automation not found")
 
+    # model_dump() recursively converts nested Pydantic models to dicts
     automation = await service.update_automation(
         automation_id=automation_id,
         **data.model_dump(exclude_unset=True),
