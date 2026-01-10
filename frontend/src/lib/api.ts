@@ -7920,6 +7920,24 @@ export const crmAutomationApi = {
 // Google Integration API (Gmail & Calendar sync for CRM)
 // =============================================================================
 
+export interface DealCreationSettings {
+  auto_create_deals: boolean;
+  deal_creation_mode: "auto" | "ai" | "criteria";
+  skip_personal_domains: boolean;
+  default_deal_stage: string;
+  default_deal_value: number | null;
+  criteria: {
+    subject_keywords: string[];
+    body_keywords: string[];
+    from_domains: string[];
+  };
+}
+
+export interface GoogleSyncSettings {
+  deal_settings?: DealCreationSettings;
+  [key: string]: unknown;
+}
+
 export interface GoogleIntegrationStatus {
   is_connected: boolean;
   google_email: string | null;
@@ -7931,6 +7949,7 @@ export interface GoogleIntegrationStatus {
   events_synced: number;
   last_error: string | null;
   granted_scopes: string[];
+  sync_settings?: GoogleSyncSettings;
 }
 
 export interface SyncJobStatus {
