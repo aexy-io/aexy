@@ -202,6 +202,14 @@ from aexy.models.forms import (
     TicketAssignmentMode,
 )
 from aexy.models.dashboard import DashboardPreferences
+from aexy.models.role import CustomRole
+from aexy.models.project import Project, ProjectMember, ProjectTeam
+from aexy.models.permissions import (
+    PERMISSIONS,
+    ROLE_TEMPLATES,
+    WIDGET_PERMISSIONS,
+    PermissionCategory,
+)
 
 __all__ = [
     # Plan
@@ -400,4 +408,14 @@ __all__ = [
     "TicketAssignmentMode",
     # Dashboard
     "DashboardPreferences",
+    # Roles & Permissions
+    "CustomRole",
+    "PERMISSIONS",
+    "ROLE_TEMPLATES",
+    "WIDGET_PERMISSIONS",
+    "PermissionCategory",
+    # Projects
+    "Project",
+    "ProjectMember",
+    "ProjectTeam",
 ]

@@ -73,6 +73,8 @@ class WidgetInfo(BaseModel):
     personas: list[str]
     default_size: WidgetSize
     icon: str
+    accessible: bool = True  # Whether user has permission to access this widget
+    required_permissions: list[str] = Field(default_factory=list)  # Permissions needed
 
 
 class WidgetCategoryInfo(BaseModel):
