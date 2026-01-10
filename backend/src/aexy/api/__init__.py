@@ -58,6 +58,9 @@ from aexy.api.tickets import router as tickets_router
 from aexy.api.public_forms import router as public_forms_router
 from aexy.api.escalation import router as escalation_router
 from aexy.api.escalation import escalation_ticket_router
+# Forms (Standalone Module)
+from aexy.api.forms import router as forms_router
+from aexy.api.forms import public_router as public_forms_new_router
 # Assessment Platform
 from aexy.api.assessments import router as assessments_router
 from aexy.api.assessment_take import router as assessment_take_router
@@ -138,6 +141,9 @@ api_router.include_router(tickets_router, tags=["tickets"])
 api_router.include_router(public_forms_router, tags=["public-forms"])
 api_router.include_router(escalation_router, tags=["escalation"])
 api_router.include_router(escalation_ticket_router, tags=["escalation"])
+# Forms (Standalone Module with CRM/Ticketing integration)
+api_router.include_router(forms_router, tags=["forms"])
+api_router.include_router(public_forms_new_router, tags=["forms-public"])
 # Assessment Platform
 api_router.include_router(assessments_router, tags=["assessments"])
 api_router.include_router(assessment_take_router, tags=["assessment-take"])

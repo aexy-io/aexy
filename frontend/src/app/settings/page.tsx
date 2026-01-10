@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Ticket,
   AlertTriangle,
+  Contact,
 } from "lucide-react";
 
 interface SettingsSectionProps {
@@ -82,6 +83,13 @@ export default function SettingsPage() {
             icon={<Building2 className="h-5 w-5 text-purple-400" />}
             title="Organization"
             description="Manage your organization settings and preferences"
+          />
+
+          <SettingsSection
+            href="/crm/settings"
+            icon={<Contact className="h-5 w-5 text-cyan-400" />}
+            title="CRM Settings"
+            description="Configure CRM objects, integrations, and deal automation"
           />
 
           <SettingsSection

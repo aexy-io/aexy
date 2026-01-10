@@ -22,6 +22,7 @@ import {
   XCircle,
   Ticket,
   Building2,
+  FormInput,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { NotificationBell } from "@/components/notifications";
@@ -45,6 +46,7 @@ const appItems = [
   { href: "/tracking", label: "Tracking", icon: Target, color: "from-emerald-500 to-emerald-600" },
   { href: "/sprints", label: "Planning", icon: Calendar, color: "from-green-500 to-green-600" },
   { href: "/tickets", label: "Tickets", icon: Ticket, color: "from-pink-500 to-pink-600" },
+  { href: "/forms", label: "Forms", icon: FormInput, color: "from-violet-500 to-violet-600" },
   { href: "/docs", label: "Docs", icon: FileText, color: "from-indigo-500 to-indigo-600" },
   { href: "/reviews", label: "Reviews", icon: ClipboardCheck, color: "from-orange-500 to-orange-600" },
   { href: "/learning", label: "Learning", icon: GraduationCap, color: "from-rose-500 to-rose-600" },
