@@ -14,6 +14,8 @@ export interface WidgetDefinition {
   defaultSize: WidgetSize;
   icon: string;
   description?: string;
+  /** Permissions required to access this widget. Empty array means no permission required. */
+  requiredPermissions?: string[];
 }
 
 export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
@@ -140,6 +142,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     icon: 'Target',
     description: 'Daily tracking overview',
+    requiredPermissions: ['can_view_tracking'],
   },
   standupStatus: {
     id: 'standupStatus',
@@ -149,6 +152,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'small',
     icon: 'CheckCircle',
     description: 'Daily standup submission status',
+    requiredPermissions: ['can_view_tracking'],
   },
   blockersOverview: {
     id: 'blockersOverview',
@@ -158,6 +162,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     icon: 'AlertTriangle',
     description: 'Active blockers and issues',
+    requiredPermissions: ['can_view_tracking'],
   },
   timeTracking: {
     id: 'timeTracking',
@@ -167,6 +172,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'small',
     icon: 'Clock',
     description: 'Time logged today',
+    requiredPermissions: ['can_view_time_entries'],
   },
 
   // === PLANNING / SPRINTS ===
@@ -178,6 +184,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'large',
     icon: 'Calendar',
     description: 'Current sprint progress',
+    requiredPermissions: ['can_view_sprints'],
   },
   sprintBurndown: {
     id: 'sprintBurndown',
@@ -187,6 +194,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     icon: 'TrendingDown',
     description: 'Sprint burndown chart',
+    requiredPermissions: ['can_view_sprints'],
   },
   upcomingDeadlines: {
     id: 'upcomingDeadlines',
@@ -196,6 +204,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'small',
     icon: 'Clock',
     description: 'Tasks due soon',
+    requiredPermissions: ['can_view_tasks'],
   },
 
   // === TICKETS ===
@@ -207,6 +216,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     icon: 'Ticket',
     description: 'Ticket volume and resolution',
+    requiredPermissions: ['can_view_tickets'],
   },
   slaOverview: {
     id: 'slaOverview',
@@ -216,6 +226,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     icon: 'AlertCircle',
     description: 'SLA compliance metrics',
+    requiredPermissions: ['can_view_tickets'],
   },
   recentTickets: {
     id: 'recentTickets',
@@ -225,6 +236,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'large',
     icon: 'List',
     description: 'Latest ticket activity',
+    requiredPermissions: ['can_view_tickets'],
   },
   ticketsByPriority: {
     id: 'ticketsByPriority',
@@ -234,6 +246,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     icon: 'Flag',
     description: 'Tickets grouped by priority',
+    requiredPermissions: ['can_view_tickets'],
   },
 
   // === FORMS ===
@@ -245,6 +258,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     icon: 'FormInput',
     description: 'Recent form submissions',
+    requiredPermissions: ['can_view_tickets'], // Forms submissions usually relate to tickets
   },
   recentForms: {
     id: 'recentForms',
@@ -254,6 +268,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     icon: 'FileText',
     description: 'Recently created forms',
+    requiredPermissions: ['can_manage_ticket_forms'],
   },
 
   // === DOCS ===
@@ -265,6 +280,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     icon: 'FileText',
     description: 'Recently updated documents',
+    requiredPermissions: ['can_view_docs'],
   },
   docActivity: {
     id: 'docActivity',
@@ -274,6 +290,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'small',
     icon: 'Activity',
     description: 'Documentation activity feed',
+    requiredPermissions: ['can_view_docs'],
   },
 
   // === REVIEWS ===
@@ -285,6 +302,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     icon: 'ClipboardCheck',
     description: 'Review cycle status',
+    requiredPermissions: [], // Everyone can see their own reviews
   },
   pendingReviews: {
     id: 'pendingReviews',
@@ -294,6 +312,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     icon: 'Clock',
     description: 'Reviews awaiting completion',
+    requiredPermissions: ['can_view_hiring'], // Uses hiring permission for HR access
   },
   reviewCycle: {
     id: 'reviewCycle',
@@ -303,6 +322,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     icon: 'RefreshCw',
     description: 'Organization review progress',
+    requiredPermissions: ['can_manage_hiring'],
   },
 
   // === LEARNING ===
@@ -314,6 +334,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     icon: 'GraduationCap',
     description: 'Personalized learning journey',
+    requiredPermissions: [], // Everyone can see their own learning
   },
   skillGaps: {
     id: 'skillGaps',
@@ -323,6 +344,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     icon: 'AlertCircle',
     description: 'Areas for improvement',
+    requiredPermissions: [], // Everyone can see their own skill gaps
   },
 
   // === HIRING ===
@@ -334,6 +356,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'large',
     icon: 'Users',
     description: 'Candidate pipeline overview',
+    requiredPermissions: ['can_view_hiring'],
   },
   candidateStats: {
     id: 'candidateStats',
@@ -343,6 +366,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     icon: 'BarChart3',
     description: 'Hiring metrics and stats',
+    requiredPermissions: ['can_view_candidates'],
   },
   openPositions: {
     id: 'openPositions',
@@ -352,6 +376,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     icon: 'Briefcase',
     description: 'Active job openings',
+    requiredPermissions: ['can_view_hiring'],
   },
   interviewSchedule: {
     id: 'interviewSchedule',
@@ -361,6 +386,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     icon: 'Calendar',
     description: 'Upcoming interviews',
+    requiredPermissions: ['can_view_hiring'],
   },
 
   // === CRM ===
@@ -372,6 +398,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'large',
     icon: 'Building2',
     description: 'Sales pipeline overview',
+    requiredPermissions: ['can_view_crm'],
   },
   dealStats: {
     id: 'dealStats',
@@ -381,6 +408,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     icon: 'DollarSign',
     description: 'Deal metrics and revenue',
+    requiredPermissions: ['can_view_crm'],
   },
   recentDeals: {
     id: 'recentDeals',
@@ -390,6 +418,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     icon: 'TrendingUp',
     description: 'Latest deal activity',
+    requiredPermissions: ['can_view_crm'],
   },
   crmQuickView: {
     id: 'crmQuickView',
@@ -399,6 +428,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'small',
     icon: 'Eye',
     description: 'Quick CRM access',
+    requiredPermissions: ['can_view_crm'],
   },
 
   // === TEAM / ORG ===
@@ -410,6 +440,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'large',
     icon: 'Users',
     description: 'Team status and health',
+    requiredPermissions: ['can_view_teams'],
   },
   teamActivity: {
     id: 'teamActivity',
@@ -419,6 +450,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     icon: 'Activity',
     description: 'Team activity feed',
+    requiredPermissions: ['can_view_teams'],
   },
 
   // === ADMIN ===
@@ -430,6 +462,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'full',
     icon: 'BarChart3',
     description: 'Organization-wide KPIs',
+    requiredPermissions: ['can_view_analytics'],
   },
   systemHealth: {
     id: 'systemHealth',
@@ -439,6 +472,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     icon: 'Activity',
     description: 'System status and health',
+    requiredPermissions: ['can_manage_workspace_settings'],
   },
 };
 
@@ -490,4 +524,43 @@ export function getWidgetsForPersona(persona: PersonaType): WidgetDefinition[] {
  */
 export function getWidgetById(widgetId: string): WidgetDefinition | undefined {
   return DASHBOARD_WIDGETS[widgetId];
+}
+
+/**
+ * Get widgets that user has permission to access
+ * @param accessibleWidgetIds - List of widget IDs the user has permission to access (from API)
+ */
+export function getAccessibleWidgets(accessibleWidgetIds: string[]): WidgetDefinition[] {
+  const accessibleSet = new Set(accessibleWidgetIds);
+  return Object.values(DASHBOARD_WIDGETS).filter(w => accessibleSet.has(w.id));
+}
+
+/**
+ * Filter widgets by both persona and permissions
+ * @param persona - User's persona type
+ * @param accessibleWidgetIds - List of widget IDs the user has permission to access
+ */
+export function getWidgetsForPersonaWithPermissions(
+  persona: PersonaType,
+  accessibleWidgetIds: string[]
+): WidgetDefinition[] {
+  const accessibleSet = new Set(accessibleWidgetIds);
+  return Object.values(DASHBOARD_WIDGETS).filter(
+    w => (w.personas.includes('all') || w.personas.includes(persona)) && accessibleSet.has(w.id)
+  );
+}
+
+/**
+ * Check if a widget requires specific permissions
+ */
+export function widgetRequiresPermission(widgetId: string): boolean {
+  const widget = DASHBOARD_WIDGETS[widgetId];
+  return widget?.requiredPermissions ? widget.requiredPermissions.length > 0 : false;
+}
+
+/**
+ * Get required permissions for a widget
+ */
+export function getWidgetPermissions(widgetId: string): string[] {
+  return DASHBOARD_WIDGETS[widgetId]?.requiredPermissions || [];
 }

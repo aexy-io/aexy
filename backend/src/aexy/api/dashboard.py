@@ -18,6 +18,8 @@ from aexy.schemas.dashboard import (
     WidgetCategoryInfo,
     WidgetRegistryResponse,
 )
+from aexy.services.permission_service import PermissionService
+from aexy.models.permissions import WIDGET_PERMISSIONS
 
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
@@ -355,6 +357,92 @@ async def get_widgets(
             personas=widget["personas"],
             default_size=widget["default_size"],
             icon=widget["icon"],
+        )
+        for widget_id, widget in DASHBOARD_WIDGETS.items()
+    ]
+
+    categories = [
+        WidgetCategoryInfo(
+            id=cat_id,
+            name=cat["name"],
+            icon=cat["icon"],
+        )
+        for cat_id, cat in WIDGET_CATEGORIES.items()
+    ]
+
+    return WidgetRegistryResponse(widgets=widgets, categories=categories)
+
+
+@router.get("/accessible-widgets")
+async def get_accessible_widgets(
+    workspace_id: str | None = None,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_developer: Developer = Depends(get_current_developer),
+):
+    """
+    Get widgets the user can access based on their role permissions.
+
+    If workspace_id is provided, filters widgets based on user's permissions in that workspace.
+    If project_id is also provided, uses project-level permissions (which supersede workspace).
+
+    Returns all widgets if no workspace_id is provided (for users without workspace context).
+    """
+    if not workspace_id:
+        # Return all widgets if no workspace context
+        return {
+            "widgets": list(DASHBOARD_WIDGETS.keys()),
+            "filtered": False,
+            "workspace_id": None,
+            "project_id": None,
+        }
+
+    permission_service = PermissionService(db)
+    accessible_widget_ids = await permission_service.get_accessible_widgets(
+        workspace_id, str(current_developer.id), project_id
+    )
+
+    return {
+        "widgets": accessible_widget_ids,
+        "filtered": True,
+        "workspace_id": workspace_id,
+        "project_id": project_id,
+    }
+
+
+@router.get("/widgets-with-permissions", response_model=WidgetRegistryResponse)
+async def get_widgets_with_permission_info(
+    workspace_id: str | None = None,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_developer: Developer = Depends(get_current_developer),
+):
+    """
+    Get available widgets with information about which ones the user can access.
+
+    Each widget includes an 'accessible' field indicating if the user has permission.
+    """
+    accessible_widgets = set()
+
+    if workspace_id:
+        permission_service = PermissionService(db)
+        accessible_widgets = set(await permission_service.get_accessible_widgets(
+            workspace_id, str(current_developer.id), project_id
+        ))
+    else:
+        # All widgets accessible without workspace context
+        accessible_widgets = set(DASHBOARD_WIDGETS.keys())
+
+    widgets = [
+        WidgetInfo(
+            id=widget_id,
+            name=widget["name"],
+            category=widget["category"],
+            personas=widget["personas"],
+            default_size=widget["default_size"],
+            icon=widget["icon"],
+            accessible=widget_id in accessible_widgets,
+            required_permissions=WIDGET_PERMISSIONS.get(widget_id, []),
         )
         for widget_id, widget in DASHBOARD_WIDGETS.items()
     ]
