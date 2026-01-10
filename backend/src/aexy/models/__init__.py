@@ -190,6 +190,17 @@ from aexy.models.google_integration import (
     EmailSyncCursor,
 )
 from aexy.models.workflow import WorkflowDefinition
+from aexy.models.forms import (
+    Form,
+    FormField,
+    FormSubmission,
+    FormAutomationLink,
+    FormAuthMode,
+    FormTemplateType,
+    FormFieldType,
+    FormSubmissionStatus,
+    TicketAssignmentMode,
+)
 
 __all__ = [
     # Plan
@@ -376,4 +387,14 @@ __all__ = [
     "EmailSyncCursor",
     # Workflow
     "WorkflowDefinition",
+    # Forms
+    "Form",
+    "FormField",
+    "FormSubmission",
+    "FormAutomationLink",
+    "FormAuthMode",
+    "FormTemplateType",
+    "FormFieldType",
+    "FormSubmissionStatus",
+    "TicketAssignmentMode",
 ]
