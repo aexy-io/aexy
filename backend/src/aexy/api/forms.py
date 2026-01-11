@@ -776,7 +776,7 @@ async def get_submission(
 # =============================================================================
 
 public_router = APIRouter(
-    prefix="/forms",
+    prefix="/public/forms",
     tags=["Public Forms"],
 )
 
@@ -827,6 +827,7 @@ async def get_public_form(
         theme=form.theme or {},
         fields=fields,
         conditional_rules=form.conditional_rules or [],
+        thank_you_page=form.thank_you_page or {},
     )
 
 

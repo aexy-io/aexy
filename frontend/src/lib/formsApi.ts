@@ -26,16 +26,74 @@ export interface FieldOption {
   color?: string;
 }
 
+export type ValidationType = "email" | "phone" | "url" | "alpha" | "alphanumeric" | "numeric" | "custom";
+
 export interface ValidationRules {
+  // Common validation type preset
+  validation_type?: ValidationType;
+
+  // Length constraints
   min_length?: number;
   max_length?: number;
-  pattern?: string;
+
+  // Number constraints
   min?: number;
   max?: number;
+
+  // Pattern matching
+  pattern?: string;
+  pattern_message?: string;
+
+  // File upload constraints
   allowed_file_types?: string[];
   max_file_size_mb?: number;
+
+  // Date constraints
+  min_date?: string;
+  max_date?: string;
+
+  // Custom error message
   custom_message?: string;
 }
+
+// Validation presets with their patterns and messages
+export const VALIDATION_PRESETS: Record<ValidationType, { pattern: string; message: string; label: string }> = {
+  email: {
+    pattern: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+    message: "Please enter a valid email address",
+    label: "Email",
+  },
+  phone: {
+    pattern: "^[+]?[(]?[0-9]{1,4}[)]?[-\\s./0-9]*$",
+    message: "Please enter a valid phone number",
+    label: "Phone Number",
+  },
+  url: {
+    pattern: "^(https?://)?([\\da-z.-]+)\\.([a-z.]{2,6})([/\\w .-]*)*/?$",
+    message: "Please enter a valid URL",
+    label: "URL",
+  },
+  alpha: {
+    pattern: "^[a-zA-Z\\s]*$",
+    message: "Only letters are allowed",
+    label: "Letters Only",
+  },
+  alphanumeric: {
+    pattern: "^[a-zA-Z0-9\\s]*$",
+    message: "Only letters and numbers are allowed",
+    label: "Letters & Numbers",
+  },
+  numeric: {
+    pattern: "^[0-9]*$",
+    message: "Only numbers are allowed",
+    label: "Numbers Only",
+  },
+  custom: {
+    pattern: "",
+    message: "Invalid format",
+    label: "Custom Pattern",
+  },
+};
 
 export interface ExternalMappings {
   github?: string;
@@ -417,7 +475,7 @@ export const formsApi = {
 
   // ==================== Public Form ====================
   getPublicForm: async (publicToken: string): Promise<PublicForm> => {
-    const response = await api.get(`/forms/${publicToken}`);
+    const response = await api.get(`/public/forms/${publicToken}`);
     return response.data;
   },
 
@@ -430,12 +488,12 @@ export const formsApi = {
       utm_params?: Record<string, string>;
     }
   ): Promise<PublicSubmissionResponse> => {
-    const response = await api.post(`/forms/${publicToken}/submit`, data);
+    const response = await api.post(`/public/forms/${publicToken}/submit`, data);
     return response.data;
   },
 
   verifyEmail: async (publicToken: string, token: string): Promise<{ status: string; submission_id: string }> => {
-    const response = await api.post(`/forms/${publicToken}/verify`, { token });
+    const response = await api.post(`/public/forms/${publicToken}/verify`, { token });
     return response.data;
   },
 };

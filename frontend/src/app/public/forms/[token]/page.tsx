@@ -11,6 +11,7 @@ import {
   User,
 } from "lucide-react";
 import { publicFormsApi, TicketFormField } from "@/lib/api";
+import { VALIDATION_PRESETS, ValidationType } from "@/lib/formsApi";
 import type { FormTheme, ThankYouPageConfig, ThankYouButton } from "@/lib/formThemeTypes";
 import { normalizeTheme, getDefaultThankYouPage } from "@/lib/formThemeTypes";
 import { themeToCSSSVariables, normalizeThankYouPage, tipTapToHtml, getThankYouTheme } from "@/lib/formThemeUtils";
@@ -235,12 +236,95 @@ export default function PublicFormPage() {
       errors["submitter_email"] = "Please enter a valid email address";
     }
 
-    // Validate required fields
+    // Validate each field
     form?.fields?.forEach((field) => {
-      if (field.is_required && field.is_visible) {
-        const value = formData.field_values[field.field_key];
+      if (!field.is_visible) return;
+
+      const value = formData.field_values[field.field_key];
+      const strValue = value?.toString() || "";
+      const rules = field.validation_rules || {};
+
+      // Check required
+      if (field.is_required) {
         if (value === undefined || value === null || value === "" || (Array.isArray(value) && value.length === 0)) {
-          errors[field.field_key] = `${field.name} is required`;
+          errors[field.field_key] = rules.custom_message || `${field.name} is required`;
+          return;
+        }
+      }
+
+      // Skip further validation if value is empty and not required
+      if (!strValue && !field.is_required) return;
+
+      // Validation type preset
+      if (rules.validation_type && rules.validation_type !== "custom") {
+        const preset = VALIDATION_PRESETS[rules.validation_type as ValidationType];
+        if (preset && preset.pattern) {
+          const regex = new RegExp(preset.pattern);
+          if (!regex.test(strValue)) {
+            errors[field.field_key] = rules.custom_message || preset.message;
+            return;
+          }
+        }
+      }
+
+      // Custom pattern validation
+      if (rules.pattern) {
+        try {
+          const regex = new RegExp(rules.pattern);
+          if (!regex.test(strValue)) {
+            errors[field.field_key] = rules.pattern_message || rules.custom_message || "Invalid format";
+            return;
+          }
+        } catch (e) {
+          // Invalid regex, skip validation
+        }
+      }
+
+      // Min length
+      if (rules.min_length !== undefined && rules.min_length !== null && strValue.length < rules.min_length) {
+        errors[field.field_key] = rules.custom_message || `${field.name} must be at least ${rules.min_length} characters`;
+        return;
+      }
+
+      // Max length
+      if (rules.max_length !== undefined && rules.max_length !== null && strValue.length > rules.max_length) {
+        errors[field.field_key] = rules.custom_message || `${field.name} must be at most ${rules.max_length} characters`;
+        return;
+      }
+
+      // Number validation
+      if (field.field_type === "number" && strValue) {
+        const numValue = parseFloat(strValue);
+        if (isNaN(numValue)) {
+          errors[field.field_key] = rules.custom_message || "Please enter a valid number";
+          return;
+        }
+        if (rules.min !== undefined && rules.min !== null && numValue < rules.min) {
+          errors[field.field_key] = rules.custom_message || `${field.name} must be at least ${rules.min}`;
+          return;
+        }
+        if (rules.max !== undefined && rules.max !== null && numValue > rules.max) {
+          errors[field.field_key] = rules.custom_message || `${field.name} must be at most ${rules.max}`;
+          return;
+        }
+      }
+
+      // Date validation
+      if ((field.field_type === "date" || field.field_type === "datetime") && strValue) {
+        const dateValue = new Date(strValue);
+        if (rules.min_date) {
+          const minDate = new Date(rules.min_date);
+          if (dateValue < minDate) {
+            errors[field.field_key] = rules.custom_message || `${field.name} must be on or after ${rules.min_date}`;
+            return;
+          }
+        }
+        if (rules.max_date) {
+          const maxDate = new Date(rules.max_date);
+          if (dateValue > maxDate) {
+            errors[field.field_key] = rules.custom_message || `${field.name} must be on or before ${rules.max_date}`;
+            return;
+          }
         }
       }
     });
