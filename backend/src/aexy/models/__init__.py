@@ -59,6 +59,17 @@ from aexy.models.sprint import (
     TaskActivity,
 )
 from aexy.models.epic import Epic
+from aexy.models.story import UserStory, StoryActivity
+from aexy.models.release import Release, ReleaseSprint
+from aexy.models.goal import Goal, GoalProject, GoalEpic
+from aexy.models.bug import Bug, BugActivity
+from aexy.models.dependency import StoryDependency, TaskDependency
+from aexy.models.metrics import (
+    WorkItemMetrics,
+    SprintPredictability,
+    CycleTimePercentiles,
+    FlowEfficiency,
+)
 from aexy.models.learning_activity import (
     LearningActivityLog,
     LearningTimeSession,
@@ -275,6 +286,27 @@ __all__ = [
     "TaskActivity",
     # Epic
     "Epic",
+    # User Story
+    "UserStory",
+    "StoryActivity",
+    # Release
+    "Release",
+    "ReleaseSprint",
+    # Goal/OKR
+    "Goal",
+    "GoalProject",
+    "GoalEpic",
+    # Bug
+    "Bug",
+    "BugActivity",
+    # Dependencies
+    "StoryDependency",
+    "TaskDependency",
+    # Advanced Metrics
+    "WorkItemMetrics",
+    "SprintPredictability",
+    "CycleTimePercentiles",
+    "FlowEfficiency",
     # Learning Activity
     "LearningActivityLog",
     "LearningTimeSession",

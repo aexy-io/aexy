@@ -17,10 +17,19 @@ import {
   AlertCircle,
   Pause,
   RotateCcw,
+  BookOpen,
+  Bug,
+  Package,
+  TrendingUp,
+  ArrowRight,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useSprints, useActiveSprint } from "@/hooks/useSprints";
+import { useStories } from "@/hooks/useStories";
+import { useBugs, useBugStats } from "@/hooks/useBugs";
+import { useReleases } from "@/hooks/useReleases";
+import { useOKRDashboard } from "@/hooks/useOKRGoals";
 import { SprintListItem, SprintStatus } from "@/lib/api";
 import { redirect } from "next/navigation";
 
@@ -349,6 +358,12 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
 
   const { sprint: activeSprint } = useActiveSprint(currentWorkspaceId, projectId);
 
+  // New feature hooks
+  const { stories, total: storiesTotal } = useStories(currentWorkspaceId, { project_id: projectId });
+  const { stats: bugStats } = useBugStats(currentWorkspaceId, projectId);
+  const { releases, total: releasesTotal } = useReleases(currentWorkspaceId, { project_id: projectId });
+  const { summary: okrSummary } = useOKRDashboard(currentWorkspaceId);
+
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const handleDelete = async (sprintId: string) => {
@@ -419,6 +434,129 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
+        {/* Quick Stats Dashboard */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {/* Stories Widget */}
+          <Link
+            href={`/sprints/${projectId}/stories`}
+            className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-blue-500/50 transition group"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="p-2 bg-blue-500/20 rounded-lg">
+                <BookOpen className="h-5 w-5 text-blue-400" />
+              </div>
+              <ArrowRight className="h-4 w-4 text-slate-500 group-hover:text-blue-400 transition" />
+            </div>
+            <div className="text-2xl font-bold text-white">{storiesTotal}</div>
+            <div className="text-sm text-slate-400">User Stories</div>
+            <div className="mt-2 text-xs text-slate-500">
+              {stories.filter(s => s.status === 'in_progress').length} in progress
+            </div>
+          </Link>
+
+          {/* Bugs Widget */}
+          <Link
+            href={`/sprints/${projectId}/bugs`}
+            className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-red-500/50 transition group"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="p-2 bg-red-500/20 rounded-lg">
+                <Bug className="h-5 w-5 text-red-400" />
+              </div>
+              <ArrowRight className="h-4 w-4 text-slate-500 group-hover:text-red-400 transition" />
+            </div>
+            <div className="text-2xl font-bold text-white">{bugStats?.total || 0}</div>
+            <div className="text-sm text-slate-400">Open Bugs</div>
+            <div className="mt-2 text-xs">
+              <span className="text-red-400">{bugStats?.by_severity?.blocker || 0} blockers</span>
+              <span className="text-slate-500 mx-1">·</span>
+              <span className="text-orange-400">{bugStats?.by_severity?.critical || 0} critical</span>
+            </div>
+          </Link>
+
+          {/* Releases Widget */}
+          <Link
+            href={`/sprints/${projectId}/releases`}
+            className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-green-500/50 transition group"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="p-2 bg-green-500/20 rounded-lg">
+                <Package className="h-5 w-5 text-green-400" />
+              </div>
+              <ArrowRight className="h-4 w-4 text-slate-500 group-hover:text-green-400 transition" />
+            </div>
+            <div className="text-2xl font-bold text-white">{releasesTotal}</div>
+            <div className="text-sm text-slate-400">Releases</div>
+            <div className="mt-2 text-xs text-slate-500">
+              {releases.filter(r => r.status === 'in_progress').length} in progress
+            </div>
+          </Link>
+
+          {/* Goals Widget */}
+          <Link
+            href={`/sprints/${projectId}/goals`}
+            className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-purple-500/50 transition group"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="p-2 bg-purple-500/20 rounded-lg">
+                <TrendingUp className="h-5 w-5 text-purple-400" />
+              </div>
+              <ArrowRight className="h-4 w-4 text-slate-500 group-hover:text-purple-400 transition" />
+            </div>
+            <div className="text-2xl font-bold text-white">{okrSummary.total_objectives}</div>
+            <div className="text-sm text-slate-400">OKR Goals</div>
+            <div className="mt-2 text-xs">
+              <span className="text-green-400">{okrSummary.on_track} on track</span>
+              <span className="text-slate-500 mx-1">·</span>
+              <span className="text-amber-400">{okrSummary.at_risk} at risk</span>
+            </div>
+          </Link>
+        </div>
+
+        {/* Sprint Progress Overview */}
+        {activeSprint && (
+          <div className="bg-gradient-to-r from-primary-900/30 to-slate-800 rounded-xl p-6 border border-primary-500/30 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="text-sm text-primary-400 mb-1">Current Sprint</div>
+                <h3 className="text-xl font-semibold text-white">{activeSprint.name}</h3>
+              </div>
+              <Link
+                href={`/sprints/${projectId}/${activeSprint.id}`}
+                className="px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg text-sm transition flex items-center gap-2"
+              >
+                View Board
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
+            {activeSprint.goal && (
+              <p className="text-slate-400 text-sm mb-4">{activeSprint.goal}</p>
+            )}
+            <div className="grid grid-cols-4 gap-4">
+              <div className="bg-slate-800/50 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-white">{activeSprint.tasks_count}</div>
+                <div className="text-xs text-slate-400">Total Tasks</div>
+              </div>
+              <div className="bg-slate-800/50 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-green-400">{activeSprint.completed_count}</div>
+                <div className="text-xs text-slate-400">Completed</div>
+              </div>
+              <div className="bg-slate-800/50 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-blue-400">{activeSprint.total_points || 0}</div>
+                <div className="text-xs text-slate-400">Story Points</div>
+              </div>
+              <div className="bg-slate-800/50 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-white">
+                  {activeSprint.tasks_count > 0
+                    ? Math.round((activeSprint.completed_count / activeSprint.tasks_count) * 100)
+                    : 0}%
+                </div>
+                <div className="text-xs text-slate-400">Progress</div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {sprintsLoading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>

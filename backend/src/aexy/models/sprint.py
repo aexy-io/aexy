@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from aexy.models.workspace import Workspace
     from aexy.models.activity import Commit, PullRequest
     from aexy.models.epic import Epic
+    from aexy.models.story import UserStory
 
 
 def slugify(text: str) -> str:
@@ -337,6 +338,30 @@ class SprintTask(Base):
         index=True,
     )
 
+    # User Story reference (for story -> task hierarchy)
+    story_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("user_stories.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # Task type for categorization
+    task_type: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="task"
+    )  # "task" | "bug" | "subtask" | "spike" | "chore" | "feature"
+
+    # Cycle time tracking (for flow metrics)
+    work_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )  # First moved to "in_progress"
+    cycle_time_hours: Mapped[float | None] = mapped_column(
+        Float, nullable=True
+    )  # Calculated on completion (work_started_at to completed_at)
+    lead_time_hours: Mapped[float | None] = mapped_column(
+        Float, nullable=True
+    )  # Calculated on completion (created_at to completed_at)
+
     # External sync tracking
     last_synced_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -411,6 +436,11 @@ class SprintTask(Base):
     )
     epic: Mapped["Epic | None"] = relationship(
         "Epic",
+        back_populates="tasks",
+        lazy="selectin",
+    )
+    story: Mapped["UserStory | None"] = relationship(
+        "UserStory",
         back_populates="tasks",
         lazy="selectin",
     )

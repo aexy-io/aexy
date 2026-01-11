@@ -8971,3 +8971,762 @@ export const projectApi = {
     return response.data;
   },
 };
+
+// ============ User Stories Types ============
+
+export type StoryStatus = "draft" | "ready" | "in_progress" | "review" | "accepted" | "rejected";
+export type StoryPriority = "critical" | "high" | "medium" | "low";
+
+export interface AcceptanceCriterion {
+  id: string;
+  description: string;
+  completed: boolean;
+  completed_at?: string;
+  completed_by?: string;
+}
+
+export interface UserStory {
+  id: string;
+  key: string;
+  title: string;
+  as_a: string;
+  i_want: string;
+  so_that?: string;
+  description?: string;
+  acceptance_criteria: AcceptanceCriterion[];
+  story_points?: number;
+  priority: StoryPriority;
+  status: StoryStatus;
+  workspace_id: string;
+  project_id?: string;
+  epic_id?: string;
+  release_id?: string;
+  reporter_id: string;
+  assignee_id?: string;
+  design_links?: string[];
+  labels?: string[];
+  custom_fields?: Record<string, unknown>;
+  ready_at?: string;
+  accepted_at?: string;
+  rejected_at?: string;
+  cycle_time_hours?: number;
+  lead_time_hours?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserStoryCreate {
+  title: string;
+  as_a: string;
+  i_want: string;
+  so_that?: string;
+  description?: string;
+  acceptance_criteria?: AcceptanceCriterion[];
+  story_points?: number;
+  priority?: StoryPriority;
+  epic_id?: string;
+  release_id?: string;
+  assignee_id?: string;
+  design_links?: string[];
+  labels?: string[];
+}
+
+export interface UserStoryUpdate {
+  title?: string;
+  as_a?: string;
+  i_want?: string;
+  so_that?: string;
+  description?: string;
+  story_points?: number;
+  priority?: StoryPriority;
+  status?: StoryStatus;
+  epic_id?: string;
+  release_id?: string;
+  assignee_id?: string;
+  design_links?: string[];
+  labels?: string[];
+}
+
+// User Stories API
+export const storiesApi = {
+  list: async (
+    workspaceId: string,
+    params?: {
+      project_id?: string;
+      epic_id?: string;
+      release_id?: string;
+      status?: StoryStatus;
+      priority?: StoryPriority;
+      assignee_id?: string;
+      skip?: number;
+      limit?: number;
+    }
+  ): Promise<{ items: UserStory[]; total: number }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/stories`, { params });
+    return response.data;
+  },
+
+  get: async (workspaceId: string, storyId: string): Promise<UserStory> => {
+    const response = await api.get(`/workspaces/${workspaceId}/stories/${storyId}`);
+    return response.data;
+  },
+
+  create: async (workspaceId: string, data: UserStoryCreate): Promise<UserStory> => {
+    const response = await api.post(`/workspaces/${workspaceId}/stories`, data);
+    return response.data;
+  },
+
+  update: async (workspaceId: string, storyId: string, data: UserStoryUpdate): Promise<UserStory> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/stories/${storyId}`, data);
+    return response.data;
+  },
+
+  delete: async (workspaceId: string, storyId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/stories/${storyId}`);
+  },
+
+  // Status transitions
+  markReady: async (workspaceId: string, storyId: string): Promise<UserStory> => {
+    const response = await api.post(`/workspaces/${workspaceId}/stories/${storyId}/ready`);
+    return response.data;
+  },
+
+  accept: async (workspaceId: string, storyId: string): Promise<UserStory> => {
+    const response = await api.post(`/workspaces/${workspaceId}/stories/${storyId}/accept`);
+    return response.data;
+  },
+
+  reject: async (workspaceId: string, storyId: string, reason?: string): Promise<UserStory> => {
+    const response = await api.post(`/workspaces/${workspaceId}/stories/${storyId}/reject`, { reason });
+    return response.data;
+  },
+
+  // Acceptance criteria
+  updateAcceptanceCriterion: async (
+    workspaceId: string,
+    storyId: string,
+    criterionId: string,
+    completed: boolean
+  ): Promise<UserStory> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/stories/${storyId}/acceptance-criteria/${criterionId}`,
+      { completed }
+    );
+    return response.data;
+  },
+
+  // Tasks
+  getTasks: async (workspaceId: string, storyId: string): Promise<{ items: unknown[]; total: number }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/stories/${storyId}/tasks`);
+    return response.data;
+  },
+};
+
+// ============ Releases Types ============
+
+export type ReleaseStatus = "planning" | "in_progress" | "code_freeze" | "testing" | "released" | "cancelled";
+export type ReleaseRiskLevel = "low" | "medium" | "high" | "critical";
+
+export interface ReadinessChecklistItem {
+  id: string;
+  item: string;
+  completed: boolean;
+  required: boolean;
+  completed_at?: string;
+  completed_by?: string;
+}
+
+export interface Release {
+  id: string;
+  name: string;
+  version?: string;
+  description?: string;
+  target_date?: string;
+  actual_release_date?: string;
+  status: ReleaseStatus;
+  risk_level: ReleaseRiskLevel;
+  readiness_checklist: ReadinessChecklistItem[];
+  workspace_id: string;
+  project_id?: string;
+  owner_id?: string;
+  release_notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReleaseCreate {
+  name: string;
+  version?: string;
+  description?: string;
+  target_date?: string;
+  project_id?: string;
+  owner_id?: string;
+  readiness_checklist?: ReadinessChecklistItem[];
+}
+
+export interface ReleaseUpdate {
+  name?: string;
+  version?: string;
+  description?: string;
+  target_date?: string;
+  status?: ReleaseStatus;
+  risk_level?: ReleaseRiskLevel;
+  owner_id?: string;
+  release_notes?: string;
+}
+
+// Releases API
+export const releasesApi = {
+  list: async (
+    workspaceId: string,
+    params?: {
+      project_id?: string;
+      status?: ReleaseStatus;
+      skip?: number;
+      limit?: number;
+    }
+  ): Promise<{ items: Release[]; total: number }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/releases`, { params });
+    return response.data;
+  },
+
+  get: async (workspaceId: string, releaseId: string): Promise<Release> => {
+    const response = await api.get(`/workspaces/${workspaceId}/releases/${releaseId}`);
+    return response.data;
+  },
+
+  create: async (workspaceId: string, data: ReleaseCreate): Promise<Release> => {
+    const response = await api.post(`/workspaces/${workspaceId}/releases`, data);
+    return response.data;
+  },
+
+  update: async (workspaceId: string, releaseId: string, data: ReleaseUpdate): Promise<Release> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/releases/${releaseId}`, data);
+    return response.data;
+  },
+
+  delete: async (workspaceId: string, releaseId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/releases/${releaseId}`);
+  },
+
+  // Lifecycle actions
+  freeze: async (workspaceId: string, releaseId: string): Promise<Release> => {
+    const response = await api.post(`/workspaces/${workspaceId}/releases/${releaseId}/freeze`);
+    return response.data;
+  },
+
+  publish: async (workspaceId: string, releaseId: string, releaseNotes?: string): Promise<Release> => {
+    const response = await api.post(`/workspaces/${workspaceId}/releases/${releaseId}/publish`, { release_notes: releaseNotes });
+    return response.data;
+  },
+
+  // Readiness
+  getReadiness: async (workspaceId: string, releaseId: string): Promise<{
+    total_items: number;
+    completed_items: number;
+    required_items: number;
+    required_completed: number;
+    is_ready: boolean;
+    readiness_percentage: number;
+  }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/releases/${releaseId}/readiness`);
+    return response.data;
+  },
+
+  updateChecklistItem: async (
+    workspaceId: string,
+    releaseId: string,
+    itemId: string,
+    completed: boolean
+  ): Promise<Release> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/releases/${releaseId}/checklist/${itemId}`,
+      { completed }
+    );
+    return response.data;
+  },
+
+  // Stories in release
+  getStories: async (workspaceId: string, releaseId: string): Promise<{ items: UserStory[]; total: number }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/releases/${releaseId}/stories`);
+    return response.data;
+  },
+};
+
+// ============ OKR Goals Types ============
+
+export type OKRGoalType = "objective" | "key_result" | "initiative";
+export type OKRGoalStatus = "draft" | "active" | "on_track" | "at_risk" | "behind" | "achieved" | "cancelled";
+export type OKRPeriodType = "quarter" | "year" | "half_year" | "custom";
+export type OKRMetricType = "percentage" | "number" | "currency" | "boolean";
+
+export interface OKRGoal {
+  id: string;
+  key: string;
+  title: string;
+  description?: string;
+  goal_type: OKRGoalType;
+  parent_goal_id?: string;
+  workspace_id: string;
+  owner_id?: string;
+  period_type: OKRPeriodType;
+  period_start?: string;
+  period_end?: string;
+  metric_type: OKRMetricType;
+  target_value: number;
+  current_value: number;
+  starting_value: number;
+  unit?: string;
+  status: OKRGoalStatus;
+  confidence_level: number;
+  progress_percentage: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OKRGoalCreate {
+  title: string;
+  description?: string;
+  goal_type?: OKRGoalType;
+  parent_goal_id?: string;
+  owner_id?: string;
+  period_type?: OKRPeriodType;
+  period_start?: string;
+  period_end?: string;
+  metric_type?: OKRMetricType;
+  target_value?: number;
+  starting_value?: number;
+  unit?: string;
+}
+
+export interface OKRGoalUpdate {
+  title?: string;
+  description?: string;
+  owner_id?: string;
+  period_start?: string;
+  period_end?: string;
+  target_value?: number;
+  unit?: string;
+  status?: OKRGoalStatus;
+  confidence_level?: number;
+}
+
+export interface OKRProgressUpdate {
+  current_value: number;
+  notes?: string;
+}
+
+// OKR Goals API
+export const okrGoalsApi = {
+  list: async (
+    workspaceId: string,
+    params?: {
+      goal_type?: OKRGoalType;
+      status?: OKRGoalStatus;
+      owner_id?: string;
+      parent_goal_id?: string;
+      period_type?: OKRPeriodType;
+      skip?: number;
+      limit?: number;
+    }
+  ): Promise<{ items: OKRGoal[]; total: number }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/goals`, { params });
+    return response.data;
+  },
+
+  get: async (workspaceId: string, goalId: string): Promise<OKRGoal> => {
+    const response = await api.get(`/workspaces/${workspaceId}/goals/${goalId}`);
+    return response.data;
+  },
+
+  create: async (workspaceId: string, data: OKRGoalCreate): Promise<OKRGoal> => {
+    const response = await api.post(`/workspaces/${workspaceId}/goals`, data);
+    return response.data;
+  },
+
+  update: async (workspaceId: string, goalId: string, data: OKRGoalUpdate): Promise<OKRGoal> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/goals/${goalId}`, data);
+    return response.data;
+  },
+
+  delete: async (workspaceId: string, goalId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/goals/${goalId}`);
+  },
+
+  // Key Results
+  getKeyResults: async (workspaceId: string, goalId: string): Promise<{ items: OKRGoal[]; total: number }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/goals/${goalId}/key-results`);
+    return response.data;
+  },
+
+  addKeyResult: async (workspaceId: string, goalId: string, data: OKRGoalCreate): Promise<OKRGoal> => {
+    const response = await api.post(`/workspaces/${workspaceId}/goals/${goalId}/key-results`, data);
+    return response.data;
+  },
+
+  // Progress
+  updateProgress: async (workspaceId: string, goalId: string, data: OKRProgressUpdate): Promise<OKRGoal> => {
+    const response = await api.post(`/workspaces/${workspaceId}/goals/${goalId}/progress`, data);
+    return response.data;
+  },
+
+  // Linking
+  linkEpic: async (workspaceId: string, goalId: string, epicId: string): Promise<void> => {
+    await api.post(`/workspaces/${workspaceId}/goals/${goalId}/link-epic`, { epic_id: epicId });
+  },
+
+  unlinkEpic: async (workspaceId: string, goalId: string, epicId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/goals/${goalId}/link-epic/${epicId}`);
+  },
+
+  linkProject: async (workspaceId: string, goalId: string, projectId: string): Promise<void> => {
+    await api.post(`/workspaces/${workspaceId}/goals/${goalId}/link-project`, { project_id: projectId });
+  },
+
+  unlinkProject: async (workspaceId: string, goalId: string, projectId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/goals/${goalId}/link-project/${projectId}`);
+  },
+
+  // Dashboard
+  getDashboard: async (workspaceId: string): Promise<{
+    objectives: OKRGoal[];
+    summary: {
+      total_objectives: number;
+      on_track: number;
+      at_risk: number;
+      behind: number;
+      achieved: number;
+      average_progress: number;
+    };
+  }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/goals/dashboard`);
+    return response.data;
+  },
+};
+
+// ============ Bugs Types ============
+
+export type BugSeverity = "blocker" | "critical" | "major" | "minor" | "trivial";
+export type BugPriority = "critical" | "high" | "medium" | "low";
+export type BugType = "functional" | "performance" | "security" | "ui" | "data" | "integration" | "other";
+export type BugStatus = "new" | "confirmed" | "in_progress" | "fixed" | "verified" | "closed" | "wont_fix" | "duplicate" | "cannot_reproduce";
+
+export interface ReproductionStep {
+  step_number: number;
+  description: string;
+}
+
+export interface Bug {
+  id: string;
+  key: string;
+  title: string;
+  description?: string;
+  severity: BugSeverity;
+  priority: BugPriority;
+  bug_type: BugType;
+  status: BugStatus;
+  steps_to_reproduce: ReproductionStep[];
+  expected_behavior?: string;
+  actual_behavior?: string;
+  environment?: string;
+  affected_version?: string;
+  fixed_version?: string;
+  workspace_id: string;
+  project_id?: string;
+  story_id?: string;
+  release_id?: string;
+  reporter_id: string;
+  assignee_id?: string;
+  is_regression: boolean;
+  labels?: string[];
+  attachments?: string[];
+  confirmed_at?: string;
+  fixed_at?: string;
+  verified_at?: string;
+  closed_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BugCreate {
+  title: string;
+  description?: string;
+  severity?: BugSeverity;
+  priority?: BugPriority;
+  bug_type?: BugType;
+  steps_to_reproduce?: ReproductionStep[];
+  expected_behavior?: string;
+  actual_behavior?: string;
+  environment?: string;
+  affected_version?: string;
+  project_id?: string;
+  story_id?: string;
+  release_id?: string;
+  assignee_id?: string;
+  is_regression?: boolean;
+  labels?: string[];
+}
+
+export interface BugUpdate {
+  title?: string;
+  description?: string;
+  severity?: BugSeverity;
+  priority?: BugPriority;
+  bug_type?: BugType;
+  steps_to_reproduce?: ReproductionStep[];
+  expected_behavior?: string;
+  actual_behavior?: string;
+  environment?: string;
+  affected_version?: string;
+  fixed_version?: string;
+  story_id?: string;
+  release_id?: string;
+  assignee_id?: string;
+  is_regression?: boolean;
+  labels?: string[];
+}
+
+// Bugs API
+export const bugsApi = {
+  list: async (
+    workspaceId: string,
+    params?: {
+      project_id?: string;
+      story_id?: string;
+      release_id?: string;
+      status?: BugStatus;
+      severity?: BugSeverity;
+      priority?: BugPriority;
+      assignee_id?: string;
+      is_regression?: boolean;
+      skip?: number;
+      limit?: number;
+    }
+  ): Promise<{ items: Bug[]; total: number }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/bugs`, { params });
+    return response.data;
+  },
+
+  get: async (workspaceId: string, bugId: string): Promise<Bug> => {
+    const response = await api.get(`/workspaces/${workspaceId}/bugs/${bugId}`);
+    return response.data;
+  },
+
+  create: async (workspaceId: string, data: BugCreate): Promise<Bug> => {
+    const response = await api.post(`/workspaces/${workspaceId}/bugs`, data);
+    return response.data;
+  },
+
+  update: async (workspaceId: string, bugId: string, data: BugUpdate): Promise<Bug> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/bugs/${bugId}`, data);
+    return response.data;
+  },
+
+  delete: async (workspaceId: string, bugId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/bugs/${bugId}`);
+  },
+
+  // Status transitions
+  confirm: async (workspaceId: string, bugId: string): Promise<Bug> => {
+    const response = await api.post(`/workspaces/${workspaceId}/bugs/${bugId}/confirm`);
+    return response.data;
+  },
+
+  fix: async (workspaceId: string, bugId: string, fixedVersion?: string): Promise<Bug> => {
+    const response = await api.post(`/workspaces/${workspaceId}/bugs/${bugId}/fix`, { fixed_version: fixedVersion });
+    return response.data;
+  },
+
+  verify: async (workspaceId: string, bugId: string): Promise<Bug> => {
+    const response = await api.post(`/workspaces/${workspaceId}/bugs/${bugId}/verify`);
+    return response.data;
+  },
+
+  close: async (workspaceId: string, bugId: string, resolution?: string): Promise<Bug> => {
+    const response = await api.post(`/workspaces/${workspaceId}/bugs/${bugId}/close`, { resolution });
+    return response.data;
+  },
+
+  reopen: async (workspaceId: string, bugId: string, reason?: string): Promise<Bug> => {
+    const response = await api.post(`/workspaces/${workspaceId}/bugs/${bugId}/reopen`, { reason });
+    return response.data;
+  },
+
+  // Statistics
+  getStats: async (workspaceId: string, projectId?: string): Promise<{
+    total: number;
+    by_status: Record<BugStatus, number>;
+    by_severity: Record<BugSeverity, number>;
+    by_priority: Record<BugPriority, number>;
+    regressions: number;
+    avg_resolution_hours?: number;
+  }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/bugs/stats`, {
+      params: { project_id: projectId },
+    });
+    return response.data;
+  },
+};
+
+// ============ Dependencies Types ============
+
+export type DependencyType = "blocks" | "is_blocked_by" | "relates_to" | "duplicates" | "is_child_of" | "is_parent_of";
+export type DependencyStatus = "active" | "resolved";
+
+export interface StoryDependency {
+  id: string;
+  dependent_story_id: string;
+  blocking_story_id: string;
+  dependency_type: DependencyType;
+  description?: string;
+  is_cross_project: boolean;
+  status: DependencyStatus;
+  resolved_at?: string;
+  resolved_by?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TaskDependency {
+  id: string;
+  dependent_task_id: string;
+  blocking_task_id: string;
+  dependency_type: DependencyType;
+  description?: string;
+  is_cross_sprint: boolean;
+  status: DependencyStatus;
+  resolved_at?: string;
+  resolved_by?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DependencyCreate {
+  blocking_story_id?: string;
+  blocking_task_id?: string;
+  dependency_type?: DependencyType;
+  description?: string;
+}
+
+export interface DependencyGraphNode {
+  id: string;
+  type: "story" | "task";
+  key: string;
+  title: string;
+  status: string;
+}
+
+export interface DependencyGraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  type: DependencyType;
+  status: DependencyStatus;
+}
+
+export interface BlockedItem {
+  id: string;
+  key: string;
+  title: string;
+  status: string;
+  blocked_by: {
+    id: string;
+    key: string;
+    title: string;
+    status: string;
+  };
+}
+
+// Dependencies API
+export const dependenciesApi = {
+  // Story dependencies
+  createStoryDependency: async (storyId: string, data: DependencyCreate): Promise<StoryDependency> => {
+    const response = await api.post(`/dependencies/stories/${storyId}`, data);
+    return response.data;
+  },
+
+  listStoryDependencies: async (
+    storyId: string,
+    params?: {
+      direction?: "all" | "blocking" | "blocked_by";
+      include_resolved?: boolean;
+    }
+  ): Promise<{ items: StoryDependency[]; total: number }> => {
+    const response = await api.get(`/dependencies/stories/${storyId}`, { params });
+    return response.data;
+  },
+
+  updateStoryDependency: async (
+    dependencyId: string,
+    data: { dependency_type?: DependencyType; description?: string }
+  ): Promise<StoryDependency> => {
+    const response = await api.patch(`/dependencies/stories/dependency/${dependencyId}`, data);
+    return response.data;
+  },
+
+  deleteStoryDependency: async (dependencyId: string): Promise<void> => {
+    await api.delete(`/dependencies/stories/dependency/${dependencyId}`);
+  },
+
+  resolveStoryDependency: async (dependencyId: string): Promise<StoryDependency> => {
+    const response = await api.post(`/dependencies/stories/dependency/${dependencyId}/resolve`);
+    return response.data;
+  },
+
+  // Task dependencies
+  createTaskDependency: async (taskId: string, data: DependencyCreate): Promise<TaskDependency> => {
+    const response = await api.post(`/dependencies/tasks/${taskId}`, data);
+    return response.data;
+  },
+
+  listTaskDependencies: async (
+    taskId: string,
+    params?: {
+      direction?: "all" | "blocking" | "blocked_by";
+      include_resolved?: boolean;
+    }
+  ): Promise<{ items: TaskDependency[]; total: number }> => {
+    const response = await api.get(`/dependencies/tasks/${taskId}`, { params });
+    return response.data;
+  },
+
+  updateTaskDependency: async (
+    dependencyId: string,
+    data: { dependency_type?: DependencyType; description?: string }
+  ): Promise<TaskDependency> => {
+    const response = await api.patch(`/dependencies/tasks/dependency/${dependencyId}`, data);
+    return response.data;
+  },
+
+  deleteTaskDependency: async (dependencyId: string): Promise<void> => {
+    await api.delete(`/dependencies/tasks/dependency/${dependencyId}`);
+  },
+
+  resolveTaskDependency: async (dependencyId: string): Promise<TaskDependency> => {
+    const response = await api.post(`/dependencies/tasks/dependency/${dependencyId}/resolve`);
+    return response.data;
+  },
+
+  // Graph & blocked items
+  getGraph: async (
+    workspaceId: string,
+    params?: {
+      entity_type?: "stories" | "tasks" | "all";
+      include_resolved?: boolean;
+    }
+  ): Promise<{ nodes: DependencyGraphNode[]; edges: DependencyGraphEdge[] }> => {
+    const response = await api.get(`/dependencies/workspaces/${workspaceId}/graph`, { params });
+    return response.data;
+  },
+
+  getBlockedItems: async (workspaceId: string): Promise<{
+    blocked_stories: BlockedItem[];
+    blocked_tasks: BlockedItem[];
+    total_blocked: number;
+  }> => {
+    const response = await api.get(`/dependencies/workspaces/${workspaceId}/blocked`);
+    return response.data;
+  },
+};

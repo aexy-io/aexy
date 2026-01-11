@@ -38,7 +38,17 @@ from aexy.api.integrations import router as integrations_router
 from aexy.api.integrations import webhook_router as integration_webhooks_router
 # Epics
 from aexy.api.epics import router as epics_router
-# Reviews & Goals
+# User Stories
+from aexy.api.stories import router as stories_router
+# Releases
+from aexy.api.releases import router as releases_router
+# Goals/OKRs
+from aexy.api.goals import router as goals_router
+# Bugs
+from aexy.api.bugs import router as bugs_router
+# Dependencies
+from aexy.api.dependencies import router as dependencies_router
+# Reviews
 from aexy.api.reviews import router as reviews_router
 # Notifications
 from aexy.api.notifications import router as notifications_router
@@ -126,7 +136,17 @@ api_router.include_router(integrations_router, tags=["integrations"])
 api_router.include_router(integration_webhooks_router, tags=["integration-webhooks"])
 # Epics
 api_router.include_router(epics_router, tags=["epics"])
-# Reviews & Goals
+# User Stories
+api_router.include_router(stories_router, tags=["stories"])
+# Releases
+api_router.include_router(releases_router, tags=["releases"])
+# Goals/OKRs
+api_router.include_router(goals_router, tags=["goals"])
+# Bugs
+api_router.include_router(bugs_router, tags=["bugs"])
+# Dependencies
+api_router.include_router(dependencies_router, tags=["dependencies"])
+# Reviews
 api_router.include_router(reviews_router, tags=["reviews"])
 # Notifications
 api_router.include_router(notifications_router, tags=["notifications"])
