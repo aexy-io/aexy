@@ -24,6 +24,8 @@ import {
   MoreHorizontal,
   ChevronDown,
   ChevronUp,
+  Palette,
+  PartyPopper,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -44,8 +46,12 @@ import type {
   TicketAssignmentMode,
   FormSubmissionListItem,
 } from "@/lib/formsApi";
+import { ThemeBuilderTab } from "@/components/forms/theme";
+import { ThankYouPageEditor } from "@/components/forms/thank-you";
+import { normalizeTheme, getDefaultThankYouPage } from "@/lib/formThemeTypes";
+import { normalizeThankYouPage } from "@/lib/formThemeUtils";
 
-type TabType = "fields" | "ticketing" | "crm" | "deals" | "automations" | "submissions" | "settings";
+type TabType = "fields" | "appearance" | "thank-you" | "ticketing" | "crm" | "deals" | "automations" | "submissions" | "settings";
 
 const FIELD_TYPES: { value: FormFieldType; label: string }[] = [
   { value: "text", label: "Text" },
@@ -947,6 +953,8 @@ export default function FormEditorPage() {
 
   const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
     { id: "fields", label: "Fields", icon: <FileText className="h-4 w-4" /> },
+    { id: "appearance", label: "Appearance", icon: <Palette className="h-4 w-4" /> },
+    { id: "thank-you", label: "Thank You", icon: <PartyPopper className="h-4 w-4" /> },
     { id: "ticketing", label: "Ticketing", icon: <Ticket className="h-4 w-4" /> },
     { id: "crm", label: "CRM", icon: <Users className="h-4 w-4" /> },
     { id: "deals", label: "Deals", icon: <DollarSign className="h-4 w-4" /> },
@@ -1106,6 +1114,29 @@ export default function FormEditorPage() {
               </div>
             )}
           </div>
+        )}
+
+        {activeTab === "appearance" && (
+          <ThemeBuilderTab
+            theme={normalizeTheme(form.theme)}
+            formName={form.name}
+            fields={form.fields || []}
+            onSave={async (newTheme) => {
+              await updateForm({ theme: newTheme });
+            }}
+            isSaving={isUpdating}
+          />
+        )}
+
+        {activeTab === "thank-you" && (
+          <ThankYouPageEditor
+            config={normalizeThankYouPage(form.thank_you_page)}
+            formTheme={normalizeTheme(form.theme)}
+            onSave={async (newConfig) => {
+              await updateForm({ thank_you_page: newConfig });
+            }}
+            isSaving={isUpdating}
+          />
         )}
 
         {activeTab === "ticketing" && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import {
   Send,
@@ -9,9 +9,11 @@ import {
   AlertCircle,
   Mail,
   User,
-  Ticket,
 } from "lucide-react";
-import { publicFormsApi, TicketFormField, TicketFieldType } from "@/lib/api";
+import { publicFormsApi, TicketFormField } from "@/lib/api";
+import type { FormTheme, ThankYouPageConfig, ThankYouButton } from "@/lib/formThemeTypes";
+import { normalizeTheme, getDefaultThankYouPage } from "@/lib/formThemeTypes";
+import { themeToCSSSVariables, normalizeThankYouPage, tipTapToHtml, getThankYouTheme } from "@/lib/formThemeUtils";
 
 interface FormData {
   submitter_email: string;
@@ -25,11 +27,8 @@ interface PublicForm {
   description?: string;
   auth_mode: string;
   require_email: boolean;
-  theme: {
-    primary_color?: string;
-    background_color?: string;
-    logo_url?: string;
-  };
+  theme: FormTheme;
+  thank_you_page?: ThankYouPageConfig;
   fields: TicketFormField[];
 }
 
@@ -318,29 +317,193 @@ export default function PublicFormPage() {
   }
 
   if (submitted && submissionResult) {
+    const thankYouConfig = form?.thank_you_page
+      ? normalizeThankYouPage(form.thank_you_page)
+      : getDefaultThankYouPage();
+    const formTheme = form ? normalizeTheme(form.theme) : {};
+    const thankYouTheme = getThankYouTheme(thankYouConfig, formTheme);
+    const cssVars = themeToCSSSVariables(thankYouTheme);
+    const content = thankYouConfig.content;
+    const layout = thankYouConfig.layout;
+    const messageHtml = tipTapToHtml(content?.message);
+
+    const handleButtonClick = (button: ThankYouButton) => {
+      switch (button.action) {
+        case "reload":
+          setSubmitted(false);
+          setFormData({ submitter_email: "", submitter_name: "", field_values: {} });
+          break;
+        case "redirect":
+          if (button.url) window.location.href = button.url;
+          break;
+        case "close":
+          window.close();
+          break;
+      }
+    };
+
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Submission Received!</h1>
-          <p className="text-gray-600 mb-4">
-            {submissionResult.success_message || "Thank you for your submission. We'll get back to you soon."}
-          </p>
-          <div className="bg-white rounded-lg p-4 border border-gray-200 inline-block">
-            <p className="text-sm text-gray-500">Your ticket number</p>
-            <p className="text-2xl font-mono font-bold text-purple-600">
-              TKT-{submissionResult.ticket_number}
-            </p>
-          </div>
+      <div
+        className="min-h-screen flex items-center justify-center p-4"
+        style={{
+          ...cssVars,
+          backgroundColor: "var(--form-background, #f8fafc)",
+          color: "var(--form-text, #1e293b)",
+          fontFamily: "var(--form-font-family, Inter, system-ui, sans-serif)",
+        } as React.CSSProperties}
+      >
+        <div
+          className="text-center animate-fade-in"
+          style={{
+            maxWidth: layout?.max_width || "480px",
+            padding: layout?.padding || "24px",
+            textAlign: layout?.alignment || "center",
+          }}
+        >
+          {/* Success Icon */}
+          <CheckCircle
+            className="mx-auto mb-4"
+            style={{
+              width: "64px",
+              height: "64px",
+              color: "var(--form-success, #22c55e)"
+            }}
+          />
+
+          {/* Image (top) */}
+          {content?.image?.url && content.image.position === "top" && (
+            <div className="mb-4">
+              <img
+                src={content.image.url}
+                alt={content.image.alt || ""}
+                style={{ maxWidth: content.image.max_width || "200px" }}
+                className="inline-block"
+              />
+            </div>
+          )}
+
+          {/* Message */}
+          {messageHtml ? (
+            <div
+              className="prose max-w-none mb-4"
+              style={{ color: "var(--form-text)" }}
+              dangerouslySetInnerHTML={{ __html: messageHtml }}
+            />
+          ) : (
+            <>
+              <h1
+                className="text-2xl font-bold mb-2"
+                style={{ color: "var(--form-text)" }}
+              >
+                Submission Received!
+              </h1>
+              <p style={{ color: "var(--form-text-secondary, #64748b)" }} className="mb-4">
+                {submissionResult.success_message || "Thank you for your submission. We'll get back to you soon."}
+              </p>
+            </>
+          )}
+
+          {/* Ticket Number */}
+          {content?.show_ticket_number !== false && submissionResult.ticket_number && (
+            <div
+              className="rounded-lg p-4 inline-block mb-4"
+              style={{
+                backgroundColor: "var(--form-surface, #ffffff)",
+                border: "1px solid var(--form-border, #e2e8f0)",
+              }}
+            >
+              <p
+                className="text-sm mb-1"
+                style={{ color: "var(--form-text-secondary)" }}
+              >
+                {content?.ticket_number_label || "Your Reference Number"}
+              </p>
+              <p
+                className="text-2xl font-mono font-bold"
+                style={{ color: "var(--form-primary, #6366f1)" }}
+              >
+                TKT-{submissionResult.ticket_number}
+              </p>
+            </div>
+          )}
+
+          {/* Image (bottom) */}
+          {content?.image?.url && content.image.position === "bottom" && (
+            <div className="mb-4">
+              <img
+                src={content.image.url}
+                alt={content.image.alt || ""}
+                style={{ maxWidth: content.image.max_width || "200px" }}
+                className="inline-block"
+              />
+            </div>
+          )}
+
+          {/* Email Verification Notice */}
           {submissionResult.requires_email_verification && (
-            <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-              <Mail className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
-              <p className="text-yellow-800 text-sm">
+            <div
+              className="mt-4 p-4 rounded-lg border"
+              style={{
+                backgroundColor: "rgba(234, 179, 8, 0.1)",
+                borderColor: "rgba(234, 179, 8, 0.3)",
+              }}
+            >
+              <Mail className="h-6 w-6 mx-auto mb-2" style={{ color: "#eab308" }} />
+              <p className="text-sm" style={{ color: "#ca8a04" }}>
                 Please check your email to verify your submission.
               </p>
             </div>
           )}
+
+          {/* Buttons */}
+          {content?.buttons && content.buttons.length > 0 && (
+            <div
+              className="flex gap-3 flex-wrap mt-6"
+              style={{ justifyContent: layout?.alignment === "left" ? "flex-start" : "center" }}
+            >
+              {content.buttons.map((button, index) => (
+                <button
+                  key={button.id || index}
+                  type="button"
+                  onClick={() => handleButtonClick(button)}
+                  className="px-4 py-2 rounded-lg transition-colors"
+                  style={
+                    button.style === "primary"
+                      ? {
+                          backgroundColor: "var(--form-btn-primary-bg, var(--form-primary, #6366f1))",
+                          color: "var(--form-btn-primary-text, #fff)",
+                          borderRadius: "var(--form-border-radius, 6px)",
+                        }
+                      : button.style === "link"
+                      ? {
+                          color: "var(--form-primary, #6366f1)",
+                          backgroundColor: "transparent",
+                          textDecoration: "underline",
+                        }
+                      : {
+                          backgroundColor: "transparent",
+                          color: "var(--form-primary, #6366f1)",
+                          border: "1px solid var(--form-primary, #6366f1)",
+                          borderRadius: "var(--form-border-radius, 6px)",
+                        }
+                  }
+                >
+                  {button.text}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+
+        <style jsx>{`
+          @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .animate-fade-in {
+            animation: fade-in 0.5s ease-out;
+          }
+        `}</style>
       </div>
     );
   }
@@ -350,29 +513,71 @@ export default function PublicFormPage() {
   const visibleFields = form.fields?.filter((f) => f.is_visible) || [];
   const sortedFields = [...visibleFields].sort((a, b) => a.position - b.position);
 
+  // Apply theme
+  const theme = normalizeTheme(form.theme);
+  const cssVars = themeToCSSSVariables(theme);
+  const headerSettings = theme.elements?.header;
+  const logoUrl = headerSettings?.logo_url || (form.theme as { logo_url?: string })?.logo_url;
+
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-2xl mx-auto">
+    <div
+      className="min-h-screen py-12 px-4"
+      style={{
+        ...cssVars,
+        backgroundColor: "var(--form-background, #f8fafc)",
+        color: "var(--form-text, #1e293b)",
+        fontFamily: "var(--form-font-family, Inter, system-ui, sans-serif)",
+      } as React.CSSProperties}
+    >
+      <div
+        className="mx-auto"
+        style={{ maxWidth: "var(--form-container-max-width, 640px)" }}
+      >
         {/* Header */}
-        <div className="text-center mb-8">
-          {form.theme?.logo_url && (
+        <div
+          className="mb-8"
+          style={{ textAlign: (headerSettings?.alignment || "center") as React.CSSProperties["textAlign"] }}
+        >
+          {logoUrl && (
             <img
-              src={form.theme.logo_url}
+              src={logoUrl}
               alt="Logo"
-              className="h-12 mx-auto mb-4"
+              className="h-12 mb-4"
+              style={{ display: "inline-block" }}
             />
           )}
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <Ticket className="h-6 w-6 text-purple-600" />
-            <h1 className="text-3xl font-bold text-gray-900">{form.name}</h1>
-          </div>
+          <h1
+            className="font-bold"
+            style={{
+              color: "var(--form-header-color, var(--form-text))",
+              fontSize: "var(--form-header-size, 28px)",
+              fontWeight: "var(--form-header-weight, 700)" as React.CSSProperties["fontWeight"],
+            }}
+          >
+            {headerSettings?.text || form.name}
+          </h1>
           {form.description && (
-            <p className="text-gray-600 mt-2">{form.description}</p>
+            <p
+              className="mt-2"
+              style={{ color: "var(--form-text-secondary, #64748b)" }}
+            >
+              {form.description}
+            </p>
           )}
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 md:p-8">
+        <form
+          onSubmit={handleSubmit}
+          className="rounded-xl"
+          style={{
+            backgroundColor: "var(--form-container-bg, var(--form-surface, #ffffff))",
+            boxShadow: "var(--form-container-shadow, 0 1px 3px 0 rgb(0 0 0 / 0.1))",
+            border: "1px solid var(--form-border, #e2e8f0)",
+            padding: "var(--form-container-padding, 32px)",
+            borderRadius: "var(--form-border-radius, 12px)",
+          }}
+        >
           {/* Contact Info */}
           <div className="space-y-6 mb-8">
             <div>
@@ -458,8 +663,15 @@ export default function PublicFormPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
-              style={form.theme?.primary_color ? { backgroundColor: form.theme.primary_color } : undefined}
+              className="w-full flex items-center justify-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                backgroundColor: "var(--form-btn-primary-bg, var(--form-primary, #6366f1))",
+                color: "var(--form-btn-primary-text, #ffffff)",
+                borderRadius: "var(--form-btn-primary-radius, var(--form-border-radius, 8px))",
+                padding: "var(--form-btn-primary-padding, 16px 24px)",
+                fontSize: "var(--form-btn-primary-size, 16px)",
+                fontWeight: "var(--form-btn-primary-weight, 600)" as React.CSSProperties["fontWeight"],
+              }}
             >
               {isSubmitting ? (
                 <>

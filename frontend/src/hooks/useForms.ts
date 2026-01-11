@@ -75,6 +75,14 @@ export function useForms(workspaceId: string | null) {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ formId, data }: { formId: string; data: Partial<{ is_active: boolean }> }) =>
+      formsApi.update(workspaceId!, formId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["forms", workspaceId] });
+    },
+  });
+
   return {
     forms: forms || [],
     isLoading,
@@ -84,9 +92,11 @@ export function useForms(workspaceId: string | null) {
     createFromTemplate: createFromTemplateMutation.mutateAsync,
     deleteForm: deleteMutation.mutateAsync,
     duplicateForm: duplicateMutation.mutateAsync,
+    updateForm: updateMutation.mutateAsync,
     isCreating: createMutation.isPending || createFromTemplateMutation.isPending,
     isDeleting: deleteMutation.isPending,
     isDuplicating: duplicateMutation.isPending,
+    isUpdating: updateMutation.isPending,
   };
 }
 

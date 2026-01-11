@@ -107,6 +107,7 @@ def form_to_response(form, include_fields: bool = True) -> FormResponse:
         fields=fields,
         crm_object_name=form.crm_object.name if form.crm_object else None,
         default_team_name=form.default_team.name if form.default_team else None,
+        thank_you_page=form.thank_you_page or {},
     )
 
 
