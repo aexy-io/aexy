@@ -31,13 +31,30 @@ class FieldOption(BaseModel):
 
 class ValidationRules(BaseModel):
     """Validation rules for form fields."""
+    # Common validation type presets
+    validation_type: str | None = None  # "email", "phone", "url", "alpha", "alphanumeric", "numeric", "custom"
+
+    # Length constraints
     min_length: int | None = None
     max_length: int | None = None
-    pattern: str | None = None
+
+    # Number constraints
     min: float | None = None
     max: float | None = None
+
+    # Pattern matching
+    pattern: str | None = None  # Custom regex pattern
+    pattern_message: str | None = None  # Error message for pattern mismatch
+
+    # File upload constraints
     allowed_file_types: list[str] | None = None
     max_file_size_mb: int | None = None
+
+    # Date constraints
+    min_date: str | None = None  # ISO date string
+    max_date: str | None = None  # ISO date string
+
+    # Custom error message
     custom_message: str | None = None
 
 
