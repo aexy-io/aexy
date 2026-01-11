@@ -137,11 +137,32 @@ class Form(Base):
     require_email: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Form appearance
+    # Theme structure: {
+    #   preset: "light"|"dark"|"minimal"|"modern"|"colorful"|"corporate"|null,
+    #   global: {primary_color, secondary_color, background_color, surface_color, text_color,
+    #            text_secondary_color, border_color, error_color, success_color, font_family,
+    #            border_radius, spacing},
+    #   elements: {form, header, labels, inputs, buttons, errors, help_text},
+    #   custom_css: string|null
+    # }
     theme: Mapped[dict] = mapped_column(
         JSONB,
         default=dict,
         nullable=False,
-    )  # {primaryColor, logoUrl, customCSS, headerText, backgroundColor, fontFamily}
+    )
+
+    # Thank you page configuration
+    # Structure: {
+    #   use_form_theme: bool,
+    #   theme: {...},  # same as form theme, used if use_form_theme=false
+    #   content: {message (TipTap JSON), show_ticket_number, ticket_number_label, image, buttons},
+    #   layout: {alignment, max_width, padding, animation}
+    # }
+    thank_you_page: Mapped[dict] = mapped_column(
+        JSONB,
+        default=dict,
+        nullable=False,
+    )
 
     success_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     redirect_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
