@@ -20,6 +20,11 @@ import {
   Zap,
   LayoutTemplate,
   Clock,
+  BarChart3,
+  Code,
+  Power,
+  Eye,
+  Send,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -43,12 +48,18 @@ function FormCard({
   onDuplicate,
   onDelete,
   onCopyLink,
+  onToggleActive,
+  onViewSubmissions,
+  onCopyEmbed,
 }: {
   form: FormListItem;
   onEdit: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
   onCopyLink: () => void;
+  onToggleActive: () => void;
+  onViewSubmissions: () => void;
+  onCopyEmbed: () => void;
 }) {
   const [showMenu, setShowMenu] = useState(false);
 
@@ -98,7 +109,8 @@ function FormCard({
           {showMenu && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-              <div className="absolute right-0 top-10 z-20 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1">
+              <div className="absolute right-0 top-10 z-20 w-52 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1">
+                {/* View & Edit Section */}
                 <button
                   onClick={() => {
                     onEdit();
@@ -110,6 +122,33 @@ function FormCard({
                 </button>
                 <button
                   onClick={() => {
+                    onViewSubmissions();
+                    setShowMenu(false);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2"
+                >
+                  <BarChart3 className="h-4 w-4" /> View Submissions
+                  {form.submission_count > 0 && (
+                    <span className="ml-auto px-1.5 py-0.5 bg-purple-500/20 text-purple-400 rounded text-xs">
+                      {form.submission_count}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    window.open(publicUrl, "_blank");
+                    setShowMenu(false);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2"
+                >
+                  <Eye className="h-4 w-4" /> Preview Form
+                </button>
+
+                <div className="border-t border-slate-700 my-1" />
+
+                {/* Share Section */}
+                <button
+                  onClick={() => {
                     onCopyLink();
                     setShowMenu(false);
                   }}
@@ -119,12 +158,35 @@ function FormCard({
                 </button>
                 <button
                   onClick={() => {
+                    onCopyEmbed();
+                    setShowMenu(false);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2"
+                >
+                  <Code className="h-4 w-4" /> Copy Embed Code
+                </button>
+                <button
+                  onClick={() => {
                     window.open(publicUrl, "_blank");
                     setShowMenu(false);
                   }}
                   className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2"
                 >
-                  <ExternalLink className="h-4 w-4" /> Preview Form
+                  <ExternalLink className="h-4 w-4" /> Open in New Tab
+                </button>
+
+                <div className="border-t border-slate-700 my-1" />
+
+                {/* Actions Section */}
+                <button
+                  onClick={() => {
+                    onToggleActive();
+                    setShowMenu(false);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2"
+                >
+                  <Power className="h-4 w-4" />
+                  {form.is_active ? "Deactivate Form" : "Activate Form"}
                 </button>
                 <button
                   onClick={() => {
@@ -133,16 +195,20 @@ function FormCard({
                   }}
                   className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2"
                 >
-                  <Copy className="h-4 w-4" /> Duplicate
+                  <Copy className="h-4 w-4" /> Duplicate Form
                 </button>
+
+                <div className="border-t border-slate-700 my-1" />
+
+                {/* Danger Zone */}
                 <button
                   onClick={() => {
                     onDelete();
                     setShowMenu(false);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-slate-700 flex items-center gap-2"
+                  className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-900/20 flex items-center gap-2"
                 >
-                  <Trash2 className="h-4 w-4" /> Delete
+                  <Trash2 className="h-4 w-4" /> Delete Form
                 </button>
               </div>
             </>
@@ -153,6 +219,15 @@ function FormCard({
       {form.description && (
         <p className="text-sm text-slate-400 mb-3 line-clamp-2">{form.description}</p>
       )}
+
+      {/* Submission Count - Prominent Display */}
+      <div className="flex items-center gap-3 mb-3">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-900/20 rounded-lg">
+          <Send className="h-4 w-4 text-purple-400" />
+          <span className="text-lg font-semibold text-purple-400">{form.submission_count}</span>
+          <span className="text-xs text-purple-400/70">submissions</span>
+        </div>
+      </div>
 
       {/* Destination indicators */}
       <div className="flex items-center gap-2 mb-3">
@@ -179,13 +254,15 @@ function FormCard({
       {/* Stats */}
       <div className="flex items-center gap-4 text-xs text-slate-500 pt-3 border-t border-slate-700">
         <span className="flex items-center gap-1">
-          <FileText className="h-3 w-3" />
-          {form.submission_count} submissions
-        </span>
-        <span className="flex items-center gap-1">
           <Clock className="h-3 w-3" />
-          {new Date(form.created_at).toLocaleDateString()}
+          Created {new Date(form.created_at).toLocaleDateString()}
         </span>
+        {form.updated_at && form.updated_at !== form.created_at && (
+          <span className="flex items-center gap-1">
+            <Edit2 className="h-3 w-3" />
+            Updated {new Date(form.updated_at).toLocaleDateString()}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -319,6 +396,7 @@ export default function FormsPage() {
     createFromTemplate,
     deleteForm,
     duplicateForm,
+    updateForm,
     isCreating,
   } = useForms(workspaceId);
 
@@ -351,6 +429,21 @@ export default function FormsPage() {
 
   const handleDuplicate = async (form: FormListItem) => {
     await duplicateForm({ formId: form.id, newName: `${form.name} (Copy)` });
+  };
+
+  const handleToggleActive = async (form: FormListItem) => {
+    await updateForm({ formId: form.id, data: { is_active: !form.is_active } });
+  };
+
+  const handleViewSubmissions = (form: FormListItem) => {
+    router.push(`/forms/${form.id}?tab=submissions`);
+  };
+
+  const handleCopyEmbed = (form: FormListItem) => {
+    const publicUrl = `${window.location.origin}/public/forms/${form.public_url_token}`;
+    const embedCode = `<iframe src="${publicUrl}" width="100%" height="600" frameborder="0" style="border: none; border-radius: 8px;"></iframe>`;
+    navigator.clipboard.writeText(embedCode);
+    // Could add a toast notification here
   };
 
   const handleCreateFromTemplate = async (templateType: FormTemplateType, name?: string) => {
@@ -521,6 +614,9 @@ export default function FormsPage() {
                 onDuplicate={() => handleDuplicate(form)}
                 onDelete={() => handleDelete(form.id)}
                 onCopyLink={() => handleCopyLink(form)}
+                onToggleActive={() => handleToggleActive(form)}
+                onViewSubmissions={() => handleViewSubmissions(form)}
+                onCopyEmbed={() => handleCopyEmbed(form)}
               />
             ))}
           </div>

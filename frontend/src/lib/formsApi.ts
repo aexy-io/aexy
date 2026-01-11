@@ -4,6 +4,13 @@
  */
 
 import { api } from "./api";
+import type {
+  FormTheme,
+  ThankYouPageConfig,
+} from "./formThemeTypes";
+
+// Re-export theme types for convenience
+export type { FormTheme, ThankYouPageConfig } from "./formThemeTypes";
 
 // ==================== Types ====================
 
@@ -34,15 +41,6 @@ export interface ExternalMappings {
   github?: string;
   jira?: string;
   linear?: string;
-}
-
-export interface FormTheme {
-  primary_color?: string;
-  background_color?: string;
-  logo_url?: string;
-  custom_css?: string;
-  header_text?: string;
-  font_family?: string;
 }
 
 export interface ConditionalRule {
@@ -97,6 +95,7 @@ export interface Form {
   auth_mode: FormAuthMode;
   require_email: boolean;
   theme: FormTheme;
+  thank_you_page: ThankYouPageConfig;
   success_message?: string;
   redirect_url?: string;
   auto_create_ticket: boolean;
@@ -236,6 +235,7 @@ export interface PublicForm {
   auth_mode: FormAuthMode;
   require_email: boolean;
   theme: FormTheme;
+  thank_you_page: ThankYouPageConfig;
   fields: FormField[];
   conditional_rules: ConditionalRule[];
 }

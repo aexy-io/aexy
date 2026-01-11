@@ -48,14 +48,171 @@ class ExternalMappings(BaseModel):
     linear: str | None = None  # "title", "description", "labels"
 
 
+class GlobalThemeSettings(BaseModel):
+    """Global theme settings that apply across the form."""
+    primary_color: str | None = Field(default=None, max_length=20)
+    secondary_color: str | None = Field(default=None, max_length=20)
+    background_color: str | None = Field(default=None, max_length=20)
+    surface_color: str | None = Field(default=None, max_length=20)
+    text_color: str | None = Field(default=None, max_length=20)
+    text_secondary_color: str | None = Field(default=None, max_length=20)
+    border_color: str | None = Field(default=None, max_length=20)
+    error_color: str | None = Field(default=None, max_length=20)
+    success_color: str | None = Field(default=None, max_length=20)
+    font_family: str | None = Field(default=None, max_length=100)
+    border_radius: str | None = Field(default=None, max_length=20)
+    spacing: Literal["compact", "normal", "relaxed"] | None = None
+
+
+class FormElementSettings(BaseModel):
+    """Settings for form container element."""
+    background_color: str | None = None
+    padding: str | None = None
+    max_width: str | None = None
+    shadow: Literal["none", "sm", "md", "lg", "xl"] | None = None
+
+
+class HeaderElementSettings(BaseModel):
+    """Settings for form header."""
+    text: str | None = None
+    text_color: str | None = None
+    font_size: str | None = None
+    font_weight: str | None = None
+    alignment: Literal["left", "center", "right"] | None = None
+    logo_url: str | None = Field(default=None, max_length=500)
+    logo_position: Literal["above", "left", "right"] | None = None
+
+
+class LabelElementSettings(BaseModel):
+    """Settings for form labels."""
+    text_color: str | None = None
+    font_size: str | None = None
+    font_weight: str | None = None
+    required_indicator_color: str | None = None
+
+
+class InputElementSettings(BaseModel):
+    """Settings for input fields."""
+    background_color: str | None = None
+    border_color: str | None = None
+    text_color: str | None = None
+    placeholder_color: str | None = None
+    focus_border_color: str | None = None
+    focus_ring_color: str | None = None
+    border_radius: str | None = None
+    padding: str | None = None
+    font_size: str | None = None
+
+
+class ButtonStyleSettings(BaseModel):
+    """Settings for a button style."""
+    background_color: str | None = None
+    text_color: str | None = None
+    border_color: str | None = None
+    hover_background_color: str | None = None
+    border_radius: str | None = None
+    padding: str | None = None
+    font_size: str | None = None
+    font_weight: str | None = None
+
+
+class ButtonElementSettings(BaseModel):
+    """Settings for buttons."""
+    primary: ButtonStyleSettings | None = None
+    secondary: ButtonStyleSettings | None = None
+
+
+class ErrorElementSettings(BaseModel):
+    """Settings for error messages."""
+    text_color: str | None = None
+    background_color: str | None = None
+    border_color: str | None = None
+    icon_color: str | None = None
+
+
+class HelpTextElementSettings(BaseModel):
+    """Settings for help text."""
+    text_color: str | None = None
+    font_size: str | None = None
+
+
+class ElementThemeSettings(BaseModel):
+    """Element-level theme overrides."""
+    form: FormElementSettings | None = None
+    header: HeaderElementSettings | None = None
+    labels: LabelElementSettings | None = None
+    inputs: InputElementSettings | None = None
+    buttons: ButtonElementSettings | None = None
+    errors: ErrorElementSettings | None = None
+    help_text: HelpTextElementSettings | None = None
+
+
 class FormTheme(BaseModel):
-    """Theme customization for the form."""
+    """Extended theme customization for the form."""
+    preset: Literal["light", "dark", "minimal", "modern", "colorful", "corporate"] | None = None
+    global_settings: GlobalThemeSettings | None = Field(default=None, alias="global")
+    elements: ElementThemeSettings | None = None
+    custom_css: str | None = None
+
+    class Config:
+        populate_by_name = True
+
+
+# Legacy FormTheme for backwards compatibility
+class LegacyFormTheme(BaseModel):
+    """Legacy theme format for backwards compatibility."""
     primary_color: str | None = Field(default=None, max_length=20)
     background_color: str | None = Field(default=None, max_length=20)
     logo_url: str | None = Field(default=None, max_length=500)
     custom_css: str | None = None
     header_text: str | None = None
     font_family: str | None = Field(default=None, max_length=100)
+
+
+# =============================================================================
+# THANK YOU PAGE SCHEMAS
+# =============================================================================
+
+class ThankYouImage(BaseModel):
+    """Image configuration for thank you page."""
+    url: str | None = Field(default=None, max_length=500)
+    alt: str | None = Field(default=None, max_length=255)
+    position: Literal["top", "bottom", "left", "right"] | None = None
+    max_width: str | None = None
+
+
+class ThankYouButton(BaseModel):
+    """CTA button for thank you page."""
+    id: str | None = None
+    text: str = Field(..., min_length=1, max_length=100)
+    action: Literal["reload", "redirect", "close"]
+    url: str | None = Field(default=None, max_length=500)
+    style: Literal["primary", "secondary", "link"] = "primary"
+
+
+class ThankYouContent(BaseModel):
+    """Content configuration for thank you page."""
+    message: dict | None = None  # TipTap JSON format
+    show_ticket_number: bool = True
+    ticket_number_label: str | None = Field(default="Your Reference Number", max_length=100)
+    image: ThankYouImage | None = None
+    buttons: list[ThankYouButton] | None = None
+
+
+class ThankYouLayout(BaseModel):
+    """Layout configuration for thank you page."""
+    alignment: Literal["center", "left"] = "center"
+    max_width: str | None = Field(default="480px", max_length=20)
+    padding: str | None = None
+    animation: Literal["fade", "slide", "none"] = "fade"
+
+
+class ThankYouPageConfig(BaseModel):
+    """Complete thank you page configuration."""
+    use_form_theme: bool = True
+    theme: FormTheme | None = None
+    content: ThankYouContent | None = None
+    layout: ThankYouLayout | None = None
 
 
 class ConditionalRule(BaseModel):
@@ -267,6 +424,7 @@ class FormCreate(BaseModel):
     auth_mode: FormAuthMode = "anonymous"
     require_email: bool = True
     theme: FormTheme | None = None
+    thank_you_page: ThankYouPageConfig | None = None
     success_message: str | None = None
     redirect_url: str | None = Field(default=None, max_length=500)
     conditional_rules: list[ConditionalRule] | None = None
@@ -286,6 +444,7 @@ class FormUpdate(BaseModel):
     auth_mode: FormAuthMode | None = None
     require_email: bool | None = None
     theme: FormTheme | None = None
+    thank_you_page: ThankYouPageConfig | None = None
     success_message: str | None = None
     redirect_url: str | None = Field(default=None, max_length=500)
     conditional_rules: list[ConditionalRule] | None = None
@@ -308,6 +467,7 @@ class FormResponse(BaseModel):
     auth_mode: FormAuthMode
     require_email: bool
     theme: dict
+    thank_you_page: dict
     success_message: str | None = None
     redirect_url: str | None = None
 
@@ -382,6 +542,7 @@ class PublicFormResponse(BaseModel):
     auth_mode: FormAuthMode
     require_email: bool
     theme: dict
+    thank_you_page: dict
     fields: list[FormFieldResponse]
     conditional_rules: list[dict]
 

@@ -490,6 +490,8 @@ class FormsService:
             update_data["conditional_rules"] = [r.model_dump() for r in form_data.conditional_rules]
         if "destinations" in update_data and update_data["destinations"]:
             update_data["destinations"] = [d.model_dump() for d in form_data.destinations]
+        if "thank_you_page" in update_data and update_data["thank_you_page"]:
+            update_data["thank_you_page"] = form_data.thank_you_page.model_dump()
 
         for key, value in update_data.items():
             setattr(form, key, value)
