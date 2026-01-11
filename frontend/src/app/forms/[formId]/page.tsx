@@ -26,6 +26,7 @@ import {
   ChevronUp,
   Palette,
   PartyPopper,
+  ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -37,7 +38,7 @@ import {
   useFormAutomations,
   useFormSubmissions,
 } from "@/hooks/useForms";
-import { useCRMObjects, useCRMAutomations } from "@/hooks/useCRM";
+import { useCRMObjects, useCRMAutomations, useCRMAttributes } from "@/hooks/useCRM";
 import { useTeams } from "@/hooks/useTeams";
 import { AppHeader } from "@/components/layout/AppHeader";
 import type {
@@ -45,7 +46,10 @@ import type {
   FormFieldType,
   TicketAssignmentMode,
   FormSubmissionListItem,
+  ValidationType,
+  ValidationRules,
 } from "@/lib/formsApi";
+import { VALIDATION_PRESETS } from "@/lib/formsApi";
 import { ThemeBuilderTab } from "@/components/forms/theme";
 import { ThankYouPageEditor } from "@/components/forms/thank-you";
 import { normalizeTheme, getDefaultThankYouPage } from "@/lib/formThemeTypes";
@@ -237,6 +241,243 @@ function FieldEditor({
             </label>
           </div>
 
+          {/* Validation Rules Section */}
+          <div className="border-t border-slate-700 pt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <ShieldCheck className="h-4 w-4 text-purple-400" />
+              <span className="text-sm font-medium text-slate-300">Validation Rules</span>
+            </div>
+
+            <div className="space-y-4">
+              {/* Validation Type Preset */}
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Validation Type</label>
+                <select
+                  value={localField.validation_rules?.validation_type || ""}
+                  onChange={(e) => {
+                    const validationType = e.target.value as ValidationType | "";
+                    const preset = validationType ? VALIDATION_PRESETS[validationType] : null;
+                    setLocalField({
+                      ...localField,
+                      validation_rules: {
+                        ...localField.validation_rules,
+                        validation_type: validationType || undefined,
+                        pattern: validationType === "custom" ? localField.validation_rules?.pattern : preset?.pattern,
+                        pattern_message: validationType === "custom" ? localField.validation_rules?.pattern_message : preset?.message,
+                      },
+                    });
+                  }}
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                >
+                  <option value="">None</option>
+                  {Object.entries(VALIDATION_PRESETS).map(([key, preset]) => (
+                    <option key={key} value={key}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Custom Pattern (only for custom validation type) */}
+              {localField.validation_rules?.validation_type === "custom" && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Regex Pattern</label>
+                    <input
+                      type="text"
+                      value={localField.validation_rules?.pattern || ""}
+                      onChange={(e) => setLocalField({
+                        ...localField,
+                        validation_rules: { ...localField.validation_rules, pattern: e.target.value },
+                      })}
+                      placeholder="^[a-z]+$"
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Error Message</label>
+                    <input
+                      type="text"
+                      value={localField.validation_rules?.pattern_message || ""}
+                      onChange={(e) => setLocalField({
+                        ...localField,
+                        validation_rules: { ...localField.validation_rules, pattern_message: e.target.value },
+                      })}
+                      placeholder="Invalid format"
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Length Constraints (for text fields) */}
+              {["text", "textarea", "email", "phone", "url"].includes(localField.field_type) && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Min Length</label>
+                    <input
+                      type="number"
+                      value={localField.validation_rules?.min_length || ""}
+                      onChange={(e) => setLocalField({
+                        ...localField,
+                        validation_rules: {
+                          ...localField.validation_rules,
+                          min_length: e.target.value ? parseInt(e.target.value) : undefined,
+                        },
+                      })}
+                      min={0}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Max Length</label>
+                    <input
+                      type="number"
+                      value={localField.validation_rules?.max_length || ""}
+                      onChange={(e) => setLocalField({
+                        ...localField,
+                        validation_rules: {
+                          ...localField.validation_rules,
+                          max_length: e.target.value ? parseInt(e.target.value) : undefined,
+                        },
+                      })}
+                      min={0}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Number Constraints */}
+              {localField.field_type === "number" && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Minimum Value</label>
+                    <input
+                      type="number"
+                      value={localField.validation_rules?.min ?? ""}
+                      onChange={(e) => setLocalField({
+                        ...localField,
+                        validation_rules: {
+                          ...localField.validation_rules,
+                          min: e.target.value ? parseFloat(e.target.value) : undefined,
+                        },
+                      })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Maximum Value</label>
+                    <input
+                      type="number"
+                      value={localField.validation_rules?.max ?? ""}
+                      onChange={(e) => setLocalField({
+                        ...localField,
+                        validation_rules: {
+                          ...localField.validation_rules,
+                          max: e.target.value ? parseFloat(e.target.value) : undefined,
+                        },
+                      })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Date Constraints */}
+              {["date", "datetime"].includes(localField.field_type) && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Min Date</label>
+                    <input
+                      type="date"
+                      value={localField.validation_rules?.min_date || ""}
+                      onChange={(e) => setLocalField({
+                        ...localField,
+                        validation_rules: {
+                          ...localField.validation_rules,
+                          min_date: e.target.value || undefined,
+                        },
+                      })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Max Date</label>
+                    <input
+                      type="date"
+                      value={localField.validation_rules?.max_date || ""}
+                      onChange={(e) => setLocalField({
+                        ...localField,
+                        validation_rules: {
+                          ...localField.validation_rules,
+                          max_date: e.target.value || undefined,
+                        },
+                      })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* File Constraints */}
+              {localField.field_type === "file" && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Allowed File Types</label>
+                    <input
+                      type="text"
+                      value={localField.validation_rules?.allowed_file_types?.join(", ") || ""}
+                      onChange={(e) => setLocalField({
+                        ...localField,
+                        validation_rules: {
+                          ...localField.validation_rules,
+                          allowed_file_types: e.target.value ? e.target.value.split(",").map(s => s.trim()) : undefined,
+                        },
+                      })}
+                      placeholder=".pdf, .doc, .docx"
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Max File Size (MB)</label>
+                    <input
+                      type="number"
+                      value={localField.validation_rules?.max_file_size_mb || ""}
+                      onChange={(e) => setLocalField({
+                        ...localField,
+                        validation_rules: {
+                          ...localField.validation_rules,
+                          max_file_size_mb: e.target.value ? parseInt(e.target.value) : undefined,
+                        },
+                      })}
+                      min={1}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Custom Error Message */}
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Custom Error Message (optional)</label>
+                <input
+                  type="text"
+                  value={localField.validation_rules?.custom_message || ""}
+                  onChange={(e) => setLocalField({
+                    ...localField,
+                    validation_rules: {
+                      ...localField.validation_rules,
+                      custom_message: e.target.value || undefined,
+                    },
+                  })}
+                  placeholder="Please enter a valid value"
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                />
+              </div>
+            </div>
+          </div>
+
           <div className="flex justify-end">
             <button
               onClick={handleSave}
@@ -251,13 +492,25 @@ function FieldEditor({
   );
 }
 
+// Ticket fields that can be mapped
+const TICKET_FIELDS = [
+  { key: "title", name: "Title", description: "Ticket title/subject" },
+  { key: "description", name: "Description", description: "Ticket description/details" },
+  { key: "priority", name: "Priority", description: "Ticket priority level" },
+  { key: "submitter_email", name: "Submitter Email", description: "Contact email" },
+  { key: "submitter_name", name: "Submitter Name", description: "Contact name" },
+  { key: "tags", name: "Tags", description: "Ticket tags/labels" },
+];
+
 // Ticketing Configuration Tab
 function TicketingTab({
   workspaceId,
   formId,
+  formFields,
 }: {
   workspaceId: string;
   formId: string;
+  formFields: FormField[];
 }) {
   const { config, isLoading, configure, disable, isConfiguring } = useFormTicketConfig(
     workspaceId,
@@ -269,6 +522,7 @@ function TicketingTab({
     auto_create_ticket: false,
     default_team_id: "",
     ticket_assignment_mode: "none" as TicketAssignmentMode,
+    ticket_field_mappings: {} as Record<string, string>,
   });
 
   useEffect(() => {
@@ -277,6 +531,7 @@ function TicketingTab({
         auto_create_ticket: config.auto_create_ticket,
         default_team_id: config.default_team_id || "",
         ticket_assignment_mode: config.ticket_assignment_mode,
+        ticket_field_mappings: config.ticket_field_mappings || {},
       });
     }
   }, [config]);
@@ -291,6 +546,26 @@ function TicketingTab({
       auto_create_ticket: false,
       default_team_id: "",
       ticket_assignment_mode: "none",
+      ticket_field_mappings: {},
+    });
+  };
+
+  const updateFieldMapping = (formFieldKey: string, ticketField: string) => {
+    setLocalConfig({
+      ...localConfig,
+      ticket_field_mappings: {
+        ...localConfig.ticket_field_mappings,
+        [formFieldKey]: ticketField,
+      },
+    });
+  };
+
+  const removeFieldMapping = (formFieldKey: string) => {
+    const newMappings = { ...localConfig.ticket_field_mappings };
+    delete newMappings[formFieldKey];
+    setLocalConfig({
+      ...localConfig,
+      ticket_field_mappings: newMappings,
     });
   };
 
@@ -325,7 +600,7 @@ function TicketingTab({
         </div>
 
         {localConfig.auto_create_ticket && (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">Default Team</label>
               <select
@@ -364,7 +639,59 @@ function TicketingTab({
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4">
+            {/* Field Mappings */}
+            {formFields.length > 0 && (
+              <div className="border-t border-slate-700 pt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Link2 className="h-4 w-4 text-blue-400" />
+                  <h4 className="text-sm font-medium text-slate-300">Field Mappings</h4>
+                </div>
+                <p className="text-xs text-slate-400 mb-4">
+                  Map form fields to ticket fields. Mapped fields will populate the ticket automatically.
+                </p>
+
+                <div className="space-y-3">
+                  {formFields.filter(f => f.is_visible).map((field) => (
+                    <div
+                      key={field.id}
+                      className="flex items-center gap-3 p-3 bg-slate-900/50 rounded-lg"
+                    >
+                      <div className="flex-1">
+                        <div className="text-sm text-white">{field.name}</div>
+                        <div className="text-xs text-slate-500">{field.field_key}</div>
+                      </div>
+                      <div className="text-slate-500">→</div>
+                      <div className="flex-1">
+                        <select
+                          value={localConfig.ticket_field_mappings[field.field_key] || ""}
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              updateFieldMapping(field.field_key, e.target.value);
+                            } else {
+                              removeFieldMapping(field.field_key);
+                            }
+                          }}
+                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
+                        >
+                          <option value="">Don't map</option>
+                          {TICKET_FIELDS.map((ticketField) => (
+                            <option key={ticketField.key} value={ticketField.key}>
+                              {ticketField.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 text-xs text-slate-400">
+                  {Object.keys(localConfig.ticket_field_mappings).length} of {formFields.filter(f => f.is_visible).length} fields mapped
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
               {config?.auto_create_ticket && (
                 <button
                   onClick={handleDisable}
@@ -392,9 +719,11 @@ function TicketingTab({
 function CRMTab({
   workspaceId,
   formId,
+  formFields,
 }: {
   workspaceId: string;
   formId: string;
+  formFields: FormField[];
 }) {
   const { mapping, isLoading, configure, remove, isConfiguring } = useFormCRMMapping(
     workspaceId,
@@ -407,6 +736,12 @@ function CRMTab({
     crm_object_id: "",
     crm_field_mappings: {} as Record<string, string>,
   });
+
+  // Get attributes for selected CRM object
+  const { attributes } = useCRMAttributes(
+    workspaceId,
+    localMapping.crm_object_id || null
+  );
 
   useEffect(() => {
     if (mapping) {
@@ -428,6 +763,25 @@ function CRMTab({
       auto_create_record: false,
       crm_object_id: "",
       crm_field_mappings: {},
+    });
+  };
+
+  const updateFieldMapping = (formFieldKey: string, crmAttributeSlug: string) => {
+    setLocalMapping({
+      ...localMapping,
+      crm_field_mappings: {
+        ...localMapping.crm_field_mappings,
+        [formFieldKey]: crmAttributeSlug,
+      },
+    });
+  };
+
+  const removeFieldMapping = (formFieldKey: string) => {
+    const newMappings = { ...localMapping.crm_field_mappings };
+    delete newMappings[formFieldKey];
+    setLocalMapping({
+      ...localMapping,
+      crm_field_mappings: newMappings,
     });
   };
 
@@ -462,13 +816,17 @@ function CRMTab({
         </div>
 
         {localMapping.auto_create_record && (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">CRM Object</label>
               <select
                 value={localMapping.crm_object_id}
                 onChange={(e) =>
-                  setLocalMapping({ ...localMapping, crm_object_id: e.target.value })
+                  setLocalMapping({
+                    ...localMapping,
+                    crm_object_id: e.target.value,
+                    crm_field_mappings: {}, // Reset mappings when object changes
+                  })
                 }
                 className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
               >
@@ -481,7 +839,60 @@ function CRMTab({
               </select>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4">
+            {/* Field Mappings */}
+            {localMapping.crm_object_id && formFields.length > 0 && (
+              <div className="border-t border-slate-700 pt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Link2 className="h-4 w-4 text-green-400" />
+                  <h4 className="text-sm font-medium text-slate-300">Field Mappings</h4>
+                </div>
+                <p className="text-xs text-slate-400 mb-4">
+                  Map form fields to CRM attributes. Unmapped fields will not be synced.
+                </p>
+
+                <div className="space-y-3">
+                  {formFields.filter(f => f.is_visible).map((field) => (
+                    <div
+                      key={field.id}
+                      className="flex items-center gap-3 p-3 bg-slate-900/50 rounded-lg"
+                    >
+                      <div className="flex-1">
+                        <div className="text-sm text-white">{field.name}</div>
+                        <div className="text-xs text-slate-500">{field.field_key}</div>
+                      </div>
+                      <div className="text-slate-500">→</div>
+                      <div className="flex-1">
+                        <select
+                          value={localMapping.crm_field_mappings[field.field_key] || ""}
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              updateFieldMapping(field.field_key, e.target.value);
+                            } else {
+                              removeFieldMapping(field.field_key);
+                            }
+                          }}
+                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
+                        >
+                          <option value="">Don't map</option>
+                          {attributes.map((attr) => (
+                            <option key={attr.id} value={attr.slug}>
+                              {attr.name} ({attr.attribute_type})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Quick mapping stats */}
+                <div className="mt-4 text-xs text-slate-400">
+                  {Object.keys(localMapping.crm_field_mappings).length} of {formFields.filter(f => f.is_visible).length} fields mapped
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
               {mapping?.auto_create_record && (
                 <button
                   onClick={handleRemove}
@@ -505,13 +916,27 @@ function CRMTab({
   );
 }
 
+// Deal fields that can be mapped
+const DEAL_FIELDS = [
+  { key: "name", name: "Deal Name", description: "Name of the deal" },
+  { key: "value", name: "Deal Value", description: "Monetary value of the deal" },
+  { key: "currency", name: "Currency", description: "Currency code (e.g., USD)" },
+  { key: "contact_email", name: "Contact Email", description: "Primary contact email" },
+  { key: "contact_name", name: "Contact Name", description: "Primary contact name" },
+  { key: "company_name", name: "Company Name", description: "Company or organization name" },
+  { key: "expected_close_date", name: "Expected Close Date", description: "When the deal is expected to close" },
+  { key: "notes", name: "Notes", description: "Additional notes or details" },
+];
+
 // Deals Tab
 function DealsTab({
   workspaceId,
   formId,
+  formFields,
 }: {
   workspaceId: string;
   formId: string;
+  formFields: FormField[];
 }) {
   const { config, isLoading, configure, disable, isConfiguring } = useFormDealConfig(
     workspaceId,
@@ -523,6 +948,7 @@ function DealsTab({
     deal_pipeline_id: "",
     deal_stage_id: "",
     link_deal_to_record: true,
+    deal_field_mappings: {} as Record<string, string>,
   });
 
   useEffect(() => {
@@ -532,6 +958,7 @@ function DealsTab({
         deal_pipeline_id: config.deal_pipeline_id || "",
         deal_stage_id: config.deal_stage_id || "",
         link_deal_to_record: config.link_deal_to_record,
+        deal_field_mappings: config.deal_field_mappings || {},
       });
     }
   }, [config]);
@@ -547,6 +974,26 @@ function DealsTab({
       deal_pipeline_id: "",
       deal_stage_id: "",
       link_deal_to_record: true,
+      deal_field_mappings: {},
+    });
+  };
+
+  const updateFieldMapping = (formFieldKey: string, dealField: string) => {
+    setLocalConfig({
+      ...localConfig,
+      deal_field_mappings: {
+        ...localConfig.deal_field_mappings,
+        [formFieldKey]: dealField,
+      },
+    });
+  };
+
+  const removeFieldMapping = (formFieldKey: string) => {
+    const newMappings = { ...localConfig.deal_field_mappings };
+    delete newMappings[formFieldKey];
+    setLocalConfig({
+      ...localConfig,
+      deal_field_mappings: newMappings,
     });
   };
 
@@ -581,7 +1028,7 @@ function DealsTab({
         </div>
 
         {localConfig.auto_create_deal && (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="p-4 bg-slate-900/50 rounded-lg border border-slate-700">
               <p className="text-sm text-slate-400">
                 Configure pipeline and stage selection in the CRM settings. Deals will be created
@@ -601,7 +1048,59 @@ function DealsTab({
               Link deal to CRM record
             </label>
 
-            <div className="flex justify-end gap-3 pt-4">
+            {/* Field Mappings */}
+            {formFields.length > 0 && (
+              <div className="border-t border-slate-700 pt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Link2 className="h-4 w-4 text-orange-400" />
+                  <h4 className="text-sm font-medium text-slate-300">Field Mappings</h4>
+                </div>
+                <p className="text-xs text-slate-400 mb-4">
+                  Map form fields to deal attributes. Mapped fields will populate the deal automatically.
+                </p>
+
+                <div className="space-y-3">
+                  {formFields.filter(f => f.is_visible).map((field) => (
+                    <div
+                      key={field.id}
+                      className="flex items-center gap-3 p-3 bg-slate-900/50 rounded-lg"
+                    >
+                      <div className="flex-1">
+                        <div className="text-sm text-white">{field.name}</div>
+                        <div className="text-xs text-slate-500">{field.field_key}</div>
+                      </div>
+                      <div className="text-slate-500">→</div>
+                      <div className="flex-1">
+                        <select
+                          value={localConfig.deal_field_mappings[field.field_key] || ""}
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              updateFieldMapping(field.field_key, e.target.value);
+                            } else {
+                              removeFieldMapping(field.field_key);
+                            }
+                          }}
+                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
+                        >
+                          <option value="">Don't map</option>
+                          {DEAL_FIELDS.map((dealField) => (
+                            <option key={dealField.key} value={dealField.key}>
+                              {dealField.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 text-xs text-slate-400">
+                  {Object.keys(localConfig.deal_field_mappings).length} of {formFields.filter(f => f.is_visible).length} fields mapped
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
               {config?.auto_create_deal && (
                 <button
                   onClick={handleDisable}
@@ -1140,12 +1639,12 @@ export default function FormEditorPage() {
         )}
 
         {activeTab === "ticketing" && (
-          <TicketingTab workspaceId={workspaceId} formId={formId} />
+          <TicketingTab workspaceId={workspaceId} formId={formId} formFields={form?.fields || []} />
         )}
 
-        {activeTab === "crm" && <CRMTab workspaceId={workspaceId} formId={formId} />}
+        {activeTab === "crm" && <CRMTab workspaceId={workspaceId} formId={formId} formFields={form?.fields || []} />}
 
-        {activeTab === "deals" && <DealsTab workspaceId={workspaceId} formId={formId} />}
+        {activeTab === "deals" && <DealsTab workspaceId={workspaceId} formId={formId} formFields={form?.fields || []} />}
 
         {activeTab === "automations" && (
           <AutomationsTab workspaceId={workspaceId} formId={formId} />

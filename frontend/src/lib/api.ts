@@ -6287,14 +6287,15 @@ export const publicFormsApi = {
     auth_mode: TicketFormAuthMode;
     require_email: boolean;
     theme: FormTheme;
+    thank_you_page?: Record<string, unknown>;
     fields: TicketFormField[];
     conditional_rules: ConditionalRule[];
   }> => {
-    const response = await api.get(`/forms/${publicToken}`);
+    const response = await api.get(`/public/forms/${publicToken}`);
     return response.data;
   },
 
-  // Submit ticket
+  // Submit form
   submit: async (
     publicToken: string,
     data: {
@@ -6303,13 +6304,19 @@ export const publicFormsApi = {
       field_values: Record<string, unknown>;
     }
   ): Promise<{
-    ticket_id: string;
-    ticket_number: number;
+    submission_id: string;
+    ticket_number?: number;
     success_message?: string;
     redirect_url?: string;
     requires_email_verification: boolean;
   }> => {
-    const response = await api.post(`/forms/${publicToken}/submit`, data);
+    // Transform field names to match backend schema
+    const payload = {
+      email: data.submitter_email,
+      name: data.submitter_name,
+      data: data.field_values,
+    };
+    const response = await api.post(`/public/forms/${publicToken}/submit`, payload);
     return response.data;
   },
 
@@ -6318,7 +6325,7 @@ export const publicFormsApi = {
     publicToken: string,
     token: string
   ): Promise<{ verified: boolean; ticket_number: number }> => {
-    const response = await api.post(`/forms/${publicToken}/verify-email`, { token });
+    const response = await api.post(`/public/forms/${publicToken}/verify-email`, { token });
     return response.data;
   },
 };
