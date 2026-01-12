@@ -186,7 +186,7 @@ export default function OnCallSettingsPage() {
     <div className="min-h-screen bg-slate-900 pb-12">
       {/* Header */}
       <div className="bg-slate-800 border-b border-slate-700">
-        <div className="max-w-6xl mx-auto px-4 py-4">
+        <div className="mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
             <Link
               href="/settings/projects"
@@ -216,7 +216,7 @@ export default function OnCallSettingsPage() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-6">
+      <div className=" mx-auto px-4 py-6">
         {/* Not Enabled State */}
         {!config?.is_enabled && (
           <div className="bg-slate-800 rounded-xl p-8 text-center">

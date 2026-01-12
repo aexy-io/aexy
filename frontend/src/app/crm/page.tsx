@@ -465,8 +465,8 @@ export default function CRMPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 p-8">
-      <div className="max-w-7xl mx-auto">
+    
+      <div className="px-4 py-4">
         <div className="flex gap-8">
           {/* Main content */}
           <div className="flex-1">
@@ -617,6 +617,6 @@ export default function CRMPage() {
           isCreating={isCreating}
         />
       </div>
-    </div>
+    
   );
 }

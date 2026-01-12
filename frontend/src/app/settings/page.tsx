@@ -45,7 +45,7 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-slate-900">
       {/* Header */}
       <header className="border-b border-slate-700 bg-slate-800/50">
-        <div className="max-w-3xl mx-auto px-4 py-4">
+        <div className=" mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
             <Link
               href="/dashboard"
@@ -68,7 +68,7 @@ export default function SettingsPage() {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-8">
+      <main className=" mx-auto px-4 py-8">
         <div className="space-y-4">
           <SettingsSection
             href="/settings/repositories"
@@ -128,5 +128,5 @@ export default function SettingsPage() {
         </div>
       </main>
     </div>
-  );
+  )
 }

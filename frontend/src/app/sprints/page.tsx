@@ -326,11 +326,7 @@ export default function SprintsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      <AppHeader user={user} logout={logout} />
-
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
+        <div className="w-full px-4 py-4">
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -416,7 +412,6 @@ export default function SprintsPage() {
             hasWorkspaces={hasWorkspaces}
           />
         )}
-      </main>
-    </div>
+        </div>
   );
 }

@@ -24,6 +24,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useTicketStats } from "@/hooks/useTicketing";
 import { AppHeader } from "@/components/layout/AppHeader";
+import React from "react";
 
 export default function TrackingPage() {
   const router = useRouter();
@@ -65,11 +66,7 @@ export default function TrackingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      <AppHeader user={user} logout={logout} />
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
+        <div className="px-4 py-4">
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
@@ -181,7 +178,7 @@ export default function TrackingPage() {
           isReportingBlocker={reportBlocker.isPending}
           isResolvingBlocker={resolveBlocker.isPending}
         />
-      </main>
-    </div>
+      </div>
+    
   );
 }

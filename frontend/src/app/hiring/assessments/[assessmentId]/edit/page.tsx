@@ -58,7 +58,7 @@ function StepIndicator({
     }
     return (
       <div className="w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center">
-        <span className="text-gray-500 font-semibold">{step.number}</span>
+        <span className="text-slate-400 font-semibold">{step.number}</span>
       </div>
     );
   };
@@ -77,7 +77,7 @@ function StepIndicator({
       <div className="text-left hidden md:block">
         <p
           className={`text-sm font-medium ${
-            isCurrent ? "text-blue-600" : "text-gray-900"
+            isCurrent ? "text-blue-600" : "text-slate-400"
           }`}
         >
           {step.name}
@@ -98,7 +98,7 @@ function WizardProgress({
   onStepClick: (step: number) => void;
 }) {
   return (
-    <div className="bg-white border-b px-6 py-4">
+    <div className="bg-slate-900 border-b px-6 py-4">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between">
           {steps.map((step, index) => (
@@ -229,9 +229,9 @@ export default function AssessmentWizardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-slate-900 flex flex-col">
       {/* Header */}
-      <div className="bg-white border-b">
+      <div className="bg-slate-800/50 border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
@@ -242,7 +242,7 @@ export default function AssessmentWizardPage() {
                 <ArrowLeft className="h-5 w-5" />
               </Link>
               <div>
-                <h1 className="text-lg font-semibold text-gray-900">
+                <h1 className="text-lg font-semibold text-white">
                   {assessment.title || "Untitled Assessment"}
                 </h1>
                 <div className="flex items-center gap-2">
@@ -270,7 +270,7 @@ export default function AssessmentWizardPage() {
               <button
                 onClick={handlePrevStep}
                 disabled={currentStep === 1}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-slate-700 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Previous
               </button>

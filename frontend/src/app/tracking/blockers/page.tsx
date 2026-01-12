@@ -30,10 +30,8 @@ export default function BlockersPage() {
   const escalatedCount = blockers.filter((b) => b.status === "escalated").length;
   const resolvedCount = blockers.filter((b) => b.status === "resolved").length;
 
-  return (
-    <div className="min-h-screen bg-slate-950">
-      <AppHeader user={user} logout={logout} />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  return (  
+      <div className="px-4 py-4">
         {/* Header */}
         <div className="mb-8">
           <button
@@ -108,6 +106,5 @@ export default function BlockersPage() {
           isEscalating={escalateBlocker.isPending}
         />
       </div>
-    </div>
   );
 }

@@ -1,3 +1,4 @@
+import PrimaryLayout from "@/components/layout/PrimaryLayout";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -9,5 +10,8 @@ export default function SprintsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return <PrimaryLayout>
+    {children}
+  </PrimaryLayout>
+  
 }

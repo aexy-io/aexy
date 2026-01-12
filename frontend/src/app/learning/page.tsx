@@ -337,10 +337,7 @@ export default function LearningPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      <AppHeader user={user} logout={logout} />
-
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <div className="px-4 py-4">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl">
@@ -1062,7 +1059,6 @@ export default function LearningPage() {
         </div>
           </>
         )}
-      </main>
-    </div>
+      </div>
   );
 }

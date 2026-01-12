@@ -167,24 +167,24 @@ export default function Step3ScheduleSettings({
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">Schedule & Settings</h2>
+        <h2 className="text-xl font-semibold text-slate-400 mb-1">Schedule & Settings</h2>
         <p className="text-gray-500">Configure when and how candidates can take the assessment</p>
       </div>
 
       {/* Schedule Settings */}
-      <div className="bg-white rounded-lg border p-6 space-y-6">
-        <h3 className="font-medium text-gray-900 border-b pb-3 flex items-center gap-2">
+      <div className="bg-slate-900 rounded-lg border p-6 space-y-6">
+        <h3 className="font-medium text-slate-400 border-b pb-3 flex items-center gap-2">
           <Calendar className="w-5 h-5 text-blue-600" />
           Schedule Configuration
         </h3>
 
         {/* Schedule Type */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">Schedule Type</label>
+          <label className="block text-sm font-medium text-slate-400 mb-3">Schedule Type</label>
           <div className="grid grid-cols-2 gap-4">
             <label
               className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer ${
-                scheduleType === "flexible" ? "border-blue-500 bg-blue-50" : ""
+                scheduleType === "flexible" ? "border-blue-500 bg-blue-50" : "text-gray-400"
               }`}
             >
               <input
@@ -194,7 +194,7 @@ export default function Step3ScheduleSettings({
                 className="mt-1"
               />
               <div>
-                <p className="font-medium text-gray-900">Flexible Window</p>
+                <p className={`font-medium ${scheduleType==="flexible"?"text-gray-900":"text-gray-400"}`}>Flexible Window</p>
                 <p className="text-sm text-gray-500">
                   Candidates can take the test anytime within the date range
                 </p>
@@ -202,7 +202,7 @@ export default function Step3ScheduleSettings({
             </label>
             <label
               className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer ${
-                scheduleType === "fixed" ? "border-blue-500 bg-blue-50" : ""
+                scheduleType === "fixed" ? "border-blue-500 bg-blue-50" : "text-gray-400"
               }`}
             >
               <input
@@ -212,7 +212,7 @@ export default function Step3ScheduleSettings({
                 className="mt-1"
               />
               <div>
-                <p className="font-medium text-gray-900">Fixed Time Slot</p>
+                <p className={`font-medium ${scheduleType==="fixed"?"text-gray-900":"text-gray-400"}`}>Fixed Time Slot</p>
                 <p className="text-sm text-gray-500">
                   All candidates must take the test at a specific time
                 </p>
@@ -224,7 +224,7 @@ export default function Step3ScheduleSettings({
         {/* Date Range */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-slate-400 mb-1">
               Start Date <span className="text-red-500">*</span>
             </label>
             <input
@@ -232,11 +232,11 @@ export default function Step3ScheduleSettings({
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
               min={new Date().toISOString().split("T")[0]}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-slate-400 mb-1">
               End Date <span className="text-red-500">*</span>
             </label>
             <input
@@ -244,7 +244,7 @@ export default function Step3ScheduleSettings({
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               min={startDate || new Date().toISOString().split("T")[0]}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
         </div>
@@ -253,21 +253,21 @@ export default function Step3ScheduleSettings({
         {scheduleType === "fixed" && (
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+              <label className="block text-sm font-medium text-slate-400 mb-1">Start Time</label>
               <input
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+              <label className="block text-sm font-medium text-slate-400 mb-1">End Time</label>
               <input
                 type="time"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
           </div>
@@ -275,11 +275,11 @@ export default function Step3ScheduleSettings({
 
         {/* Timezone */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
+          <label className="block text-sm font-medium text-slate-400 mb-1">Timezone</label>
           <select
             value={timezone}
             onChange={(e) => setTimezone(e.target.value)}
-            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
             <option value="Asia/Kolkata">India (IST)</option>
             <option value="America/New_York">Eastern Time (ET)</option>
@@ -298,7 +298,7 @@ export default function Step3ScheduleSettings({
               onChange={(e) => setAllowLateSubmission(e.target.checked)}
               className="w-4 h-4 rounded border-gray-300 text-blue-600"
             />
-            <span className="text-sm text-gray-700">Allow late submission with grace period</span>
+            <span className="text-sm text-slate-400">Allow late submission with grace period</span>
           </label>
           {allowLateSubmission && (
             <input
@@ -307,17 +307,17 @@ export default function Step3ScheduleSettings({
               max={30}
               value={gracePeriodMinutes}
               onChange={(e) => setGracePeriodMinutes(parseInt(e.target.value))}
-              className="w-20 px-2 py-1 border rounded text-sm bg-white text-gray-900"
+              className="w-20 px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           )}
-          {allowLateSubmission && <span className="text-sm text-gray-500">minutes</span>}
+          {allowLateSubmission && <span className="text-sm text-gray-400">minutes</span>}
         </div>
       </div>
 
       {/* Proctoring Settings */}
-      <div className="bg-white rounded-lg border p-6 space-y-6">
+      <div className="bg-slate-900 rounded-lg border p-6 space-y-6">
         <div className="flex items-center justify-between border-b pb-3">
-          <h3 className="font-medium text-gray-900 flex items-center gap-2">
+          <h3 className="font-medium text-gray-400 flex items-center gap-2">
             <Camera className="w-5 h-5 text-blue-600" />
             Proctoring Settings
           </h3>
@@ -328,7 +328,7 @@ export default function Step3ScheduleSettings({
               onChange={(e) => setEnableProctoring(e.target.checked)}
               className="w-4 h-4 rounded border-gray-300 text-blue-600"
             />
-            <span className="text-sm font-medium text-gray-700">Enable Proctoring</span>
+            <span className="text-sm font-medium text-gray-400">Enable Proctoring</span>
           </label>
         </div>
 
@@ -342,7 +342,7 @@ export default function Step3ScheduleSettings({
                 className="w-4 h-4 rounded border-gray-300 text-blue-600"
               />
               <div>
-                <p className="text-sm font-medium text-gray-900">Webcam Required</p>
+                <p className="text-sm font-medium text-gray-400">Webcam Required</p>
                 <p className="text-xs text-gray-500">Candidates must enable webcam</p>
               </div>
             </label>
@@ -354,7 +354,7 @@ export default function Step3ScheduleSettings({
                 className="w-4 h-4 rounded border-gray-300 text-blue-600"
               />
               <div>
-                <p className="text-sm font-medium text-gray-900">Screen Recording</p>
+                <p className="text-sm font-medium text-gray-400">Screen Recording</p>
                 <p className="text-xs text-gray-500">Record candidate's screen</p>
               </div>
             </label>
@@ -366,7 +366,7 @@ export default function Step3ScheduleSettings({
                 className="w-4 h-4 rounded border-gray-300 text-blue-600"
               />
               <div>
-                <p className="text-sm font-medium text-gray-900">Fullscreen Mode</p>
+                <p className="text-sm font-medium text-gray-400">Fullscreen Mode</p>
                 <p className="text-xs text-gray-500">Force fullscreen during test</p>
               </div>
             </label>
@@ -378,7 +378,7 @@ export default function Step3ScheduleSettings({
                 className="w-4 h-4 rounded border-gray-300 text-blue-600"
               />
               <div>
-                <p className="text-sm font-medium text-gray-900">Face Detection</p>
+                <p className="text-sm font-medium text-gray-400">Face Detection</p>
                 <p className="text-xs text-gray-500">Detect face presence and multiple faces</p>
               </div>
             </label>
@@ -390,7 +390,7 @@ export default function Step3ScheduleSettings({
                 className="w-4 h-4 rounded border-gray-300 text-blue-600"
               />
               <div>
-                <p className="text-sm font-medium text-gray-900">Tab Switch Detection</p>
+                <p className="text-sm font-medium text-gray-400">Tab Switch Detection</p>
                 <p className="text-xs text-gray-500">Detect when candidate switches tabs</p>
               </div>
             </label>
@@ -399,8 +399,8 @@ export default function Step3ScheduleSettings({
       </div>
 
       {/* Security Settings */}
-      <div className="bg-white rounded-lg border p-6 space-y-6">
-        <h3 className="font-medium text-gray-900 border-b pb-3 flex items-center gap-2">
+      <div className="bg-slate-900 rounded-lg border p-6 space-y-6">
+        <h3 className="font-medium text-gray-400 border-b pb-3 flex items-center gap-2">
           <Shield className="w-5 h-5 text-blue-600" />
           Security Settings
         </h3>
@@ -414,7 +414,7 @@ export default function Step3ScheduleSettings({
               className="w-4 h-4 rounded border-gray-300 text-blue-600"
             />
             <div>
-              <p className="text-sm font-medium text-gray-900">Disable Copy/Paste</p>
+              <p className="text-sm font-medium text-gray-400">Disable Copy/Paste</p>
               <p className="text-xs text-gray-500">Prevent copying question text</p>
             </div>
           </label>
@@ -426,7 +426,7 @@ export default function Step3ScheduleSettings({
               className="w-4 h-4 rounded border-gray-300 text-blue-600"
             />
             <div>
-              <p className="text-sm font-medium text-gray-900">Disable Right Click</p>
+              <p className="text-sm font-medium text-gray-400">Disable Right Click</p>
               <p className="text-xs text-gray-500">Prevent context menu access</p>
             </div>
           </label>
@@ -438,7 +438,7 @@ export default function Step3ScheduleSettings({
               className="w-4 h-4 rounded border-gray-300 text-blue-600"
             />
             <div>
-              <p className="text-sm font-medium text-gray-900">Shuffle Questions</p>
+              <p className="text-sm font-medium text-gray-400">Shuffle Questions</p>
               <p className="text-xs text-gray-500">Randomize question order</p>
             </div>
           </label>
@@ -450,7 +450,7 @@ export default function Step3ScheduleSettings({
               className="w-4 h-4 rounded border-gray-300 text-blue-600"
             />
             <div>
-              <p className="text-sm font-medium text-gray-900">Shuffle Options</p>
+              <p className="text-sm font-medium text-gray-400">Shuffle Options</p>
               <p className="text-xs text-gray-500">Randomize MCQ option order</p>
             </div>
           </label>
@@ -462,7 +462,7 @@ export default function Step3ScheduleSettings({
               className="w-4 h-4 rounded border-gray-300 text-blue-600"
             />
             <div>
-              <p className="text-sm font-medium text-gray-900">One Question at a Time</p>
+              <p className="text-sm font-medium text-gray-400">One Question at a Time</p>
               <p className="text-xs text-gray-500">Show questions sequentially</p>
             </div>
           </label>
@@ -474,7 +474,7 @@ export default function Step3ScheduleSettings({
               className="w-4 h-4 rounded border-gray-300 text-blue-600"
             />
             <div>
-              <p className="text-sm font-medium text-gray-900">Prevent Back Navigation</p>
+              <p className="text-sm font-medium text-gray-400">Prevent Back Navigation</p>
               <p className="text-xs text-gray-500">No going back to previous questions</p>
             </div>
           </label>
@@ -482,18 +482,18 @@ export default function Step3ScheduleSettings({
       </div>
 
       {/* Attempt & Score Settings */}
-      <div className="bg-white rounded-lg border p-6 space-y-6">
-        <h3 className="font-medium text-gray-900 border-b pb-3">Attempt & Score Settings</h3>
+      <div className="bg-slate-900 rounded-lg border p-6 space-y-6">
+        <h3 className="font-medium text-gray-400 border-b pb-3">Attempt & Score Settings</h3>
 
         <div className="grid grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-500 mb-1">
               Maximum Attempts
             </label>
             <select
               value={maxAttempts}
               onChange={(e) => setMaxAttempts(parseInt(e.target.value))}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value={1}>1 attempt</option>
               <option value={2}>2 attempts</option>
@@ -501,7 +501,7 @@ export default function Step3ScheduleSettings({
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-400 mb-1">
               Passing Score (%)
             </label>
             <input
@@ -510,15 +510,15 @@ export default function Step3ScheduleSettings({
               max={100}
               value={passingScore}
               onChange={(e) => setPassingScore(parseInt(e.target.value))}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
         </div>
       </div>
 
       {/* Candidate Field Requirements */}
-      <div className="bg-white rounded-lg border p-6 space-y-6">
-        <h3 className="font-medium text-gray-900 border-b pb-3">
+      <div className="bg-slate-900 rounded-lg border p-6 space-y-6">
+        <h3 className="font-medium text-gray-400 border-b pb-3">
           Required Candidate Information
         </h3>
         <p className="text-sm text-gray-500">
@@ -533,7 +533,7 @@ export default function Step3ScheduleSettings({
               onChange={(e) => setRequirePhone(e.target.checked)}
               className="w-4 h-4 rounded border-gray-300 text-blue-600"
             />
-            <span className="text-sm text-gray-700">Phone Number</span>
+            <span className="text-sm text-gray-500">Phone Number</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
@@ -542,7 +542,7 @@ export default function Step3ScheduleSettings({
               onChange={(e) => setRequireResume(e.target.checked)}
               className="w-4 h-4 rounded border-gray-300 text-blue-600"
             />
-            <span className="text-sm text-gray-700">Resume Upload</span>
+            <span className="text-sm text-gray-500">Resume Upload</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
@@ -551,7 +551,7 @@ export default function Step3ScheduleSettings({
               onChange={(e) => setRequireLinkedIn(e.target.checked)}
               className="w-4 h-4 rounded border-gray-300 text-blue-600"
             />
-            <span className="text-sm text-gray-700">LinkedIn Profile</span>
+            <span className="text-sm text-gray-500">LinkedIn Profile</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
@@ -560,7 +560,7 @@ export default function Step3ScheduleSettings({
               onChange={(e) => setRequireGitHub(e.target.checked)}
               className="w-4 h-4 rounded border-gray-300 text-blue-600"
             />
-            <span className="text-sm text-gray-700">GitHub Profile</span>
+            <span className="text-sm text-gray-500">GitHub Profile</span>
           </label>
         </div>
       </div>
@@ -569,7 +569,7 @@ export default function Step3ScheduleSettings({
       <div className="flex justify-between pt-4 border-t">
         <button
           onClick={onPrev}
-          className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+          className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-lg"
         >
           Previous
         </button>

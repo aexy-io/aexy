@@ -100,9 +100,7 @@ export default function NewReviewCyclePage() {
 
   if (!hasWorkspaces || !currentWorkspaceId) {
     return (
-      <div className="min-h-screen bg-slate-950">
-        <AppHeader user={user} logout={logout} />
-        <main className="max-w-7xl mx-auto px-4 py-8">
+        <div className="px-4 py-4">
           <div className="text-center py-16">
             <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
               <Calendar className="w-10 h-10 text-slate-500" />
@@ -119,16 +117,12 @@ export default function NewReviewCyclePage() {
               Manage Workspaces
             </Link>
           </div>
-        </main>
-      </div>
+        </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      <AppHeader user={user} logout={logout} />
-
-      <main className="max-w-3xl mx-auto px-4 py-8">
+      <div className="px-4 py-4">
         {/* Back Link */}
         <Link
           href="/reviews/cycles"
@@ -415,7 +409,6 @@ export default function NewReviewCyclePage() {
             </button>
           </div>
         </form>
-      </main>
-    </div>
+      </div>
   );
 }

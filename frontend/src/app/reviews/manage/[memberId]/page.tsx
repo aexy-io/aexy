@@ -219,9 +219,7 @@ export default function MemberDetailPage() {
 
   if (reviewError || !member) {
     return (
-      <div className="min-h-screen bg-slate-900">
-        <AppHeader user={user} onLogout={logout} />
-        <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="px-4 py-4">
           <div className="text-center py-16">
             <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-white mb-2">Review not found</h2>
@@ -231,7 +229,7 @@ export default function MemberDetailPage() {
             </Link>
           </div>
         </div>
-      </div>
+     
     );
   }
 
@@ -239,10 +237,8 @@ export default function MemberDetailPage() {
   const completedGoals = member.goals.filter(g => g.status === "completed");
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      <AppHeader user={user} logout={logout} />
-
-      <main className="max-w-7xl mx-auto px-4 py-8">
+    
+      <div className="px-4 py-4">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm mb-6">
           <Link href="/reviews" className="text-slate-400 hover:text-white transition">
@@ -712,7 +708,7 @@ export default function MemberDetailPage() {
             </div>
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    
   );
 }

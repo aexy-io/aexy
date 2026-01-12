@@ -299,10 +299,8 @@ export default function EscalationSettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      <AppHeader user={user} logout={logout} />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="px-4 py-4">
         <button
           onClick={() => router.push("/settings")}
           className="flex items-center gap-2 text-slate-400 hover:text-white mb-6 transition"
@@ -601,7 +599,6 @@ export default function EscalationSettingsPage() {
             ))}
           </div>
         )}
-      </main>
-    </div>
+      </div>
   );
 }

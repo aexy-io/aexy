@@ -293,7 +293,7 @@ export default function TicketFormsPage() {
     <div className="min-h-screen bg-slate-900">
       {/* Header */}
       <header className="border-b border-slate-700 bg-slate-800/50">
-        <div className="max-w-4xl mx-auto px-4 py-4">
+        <div className=" mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
             <Link
               href="/tickets"
@@ -316,7 +316,7 @@ export default function TicketFormsPage() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className=" mx-auto px-4 py-8">
         {/* Create Button */}
         <div className="flex justify-end mb-6">
           <button

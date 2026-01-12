@@ -28,6 +28,7 @@ import { GrowthTrajectoryCard } from "@/components/GrowthTrajectoryCard";
 import { TaskMatcherCard } from "@/components/TaskMatcherCard";
 import { PeerBenchmarkCard } from "@/components/PeerBenchmarkCard";
 import { SimpleTooltip as Tooltip } from "@/components/ui/tooltip";
+import SideBar from "@/components/layout/SideBar";
 
 export default function DashboardPage() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
@@ -116,8 +117,9 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-slate-950">
       <AppHeader user={user} logout={logout} />
-
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <div className="flex max-w-7xl mx-auto px-4 py-8">
+        <SideBar/>
+      <main className="ml-[84px]">
         {/* Welcome Section */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -592,6 +594,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+      </div>
     </div>
   );
 }
