@@ -2,9 +2,12 @@
 
 import os
 from collections.abc import AsyncGenerator
+from contextlib import contextmanager
+from typing import Generator
 
+from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from aexy.core.config import get_settings
 
@@ -86,3 +89,64 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             raise
         finally:
             await session.close()
+
+
+# Synchronous database support for Celery tasks
+_sync_engine_cache: dict[int, tuple] = {}
+
+
+def _get_sync_engine():
+    """Get or create the sync engine for the current process.
+
+    This ensures each forked Celery worker gets its own engine instance.
+    """
+    pid = os.getpid()
+    if pid not in _sync_engine_cache:
+        settings = get_settings()
+        # Convert async URL to sync URL (postgresql+asyncpg -> postgresql+psycopg2)
+        sync_url = settings.database_url.replace(
+            "postgresql+asyncpg", "postgresql+psycopg2"
+        ).replace(
+            "postgresql://", "postgresql+psycopg2://"
+        )
+        # Handle case where it's already a sync URL
+        if "asyncpg" not in sync_url and "+psycopg2" not in sync_url:
+            sync_url = sync_url.replace("postgresql://", "postgresql+psycopg2://")
+
+        sync_engine = create_engine(
+            sync_url,
+            echo=settings.database_echo,
+            pool_pre_ping=True,
+        )
+        sync_session_factory = sessionmaker(
+            bind=sync_engine,
+            class_=Session,
+            expire_on_commit=False,
+        )
+        _sync_engine_cache[pid] = (sync_engine, sync_session_factory)
+    return _sync_engine_cache[pid]
+
+
+def get_sync_engine():
+    """Get the sync engine for the current process."""
+    return _get_sync_engine()[0]
+
+
+@contextmanager
+def get_sync_session() -> Generator[Session, None, None]:
+    """Get a synchronous database session for Celery tasks.
+
+    Usage:
+        with get_sync_session() as session:
+            result = session.execute(query)
+    """
+    _, session_factory = _get_sync_engine()
+    session = session_factory()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()

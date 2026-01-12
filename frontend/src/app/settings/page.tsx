@@ -6,13 +6,14 @@ import {
   Settings,
   FolderGit2,
   Building2,
-  Users,
+  FolderKanban,
   ListChecks,
   Link2,
   CreditCard,
   ChevronRight,
   Ticket,
   AlertTriangle,
+  Contact,
 } from "lucide-react";
 
 interface SettingsSectionProps {
@@ -85,8 +86,15 @@ export default function SettingsPage() {
           />
 
           <SettingsSection
+            href="/crm/settings"
+            icon={<Contact className="h-5 w-5 text-cyan-400" />}
+            title="CRM Settings"
+            description="Configure CRM objects, integrations, and deal automation"
+          />
+
+          <SettingsSection
             href="/settings/projects"
-            icon={<Users className="h-5 w-5 text-green-400" />}
+            icon={<FolderKanban className="h-5 w-5 text-green-400" />}
             title="Projects"
             description="Manage projects, members, and permissions"
           />

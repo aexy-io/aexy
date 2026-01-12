@@ -49,6 +49,7 @@ class CRMAttributeType(str, Enum):
     PERSON_NAME = "person_name"
     RATING = "rating"
     RECORD_REFERENCE = "record_reference"
+    USER_REFERENCE = "user_reference"
     FILE = "file"
     AI_COMPUTED = "ai_computed"
 

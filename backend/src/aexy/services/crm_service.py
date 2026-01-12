@@ -358,6 +358,27 @@ class CRMObjectService:
             attribute_type=CRMAttributeType.RECORD_REFERENCE.value,
             config={"targetObjectId": person.id, "allowMultiple": True},
         )
+        await attr_service.create_attribute(
+            object_id=deal.id,
+            name="Deal Owner",
+            attribute_type=CRMAttributeType.TEXT.value,
+            description="The team member responsible for this deal",
+        )
+        await attr_service.create_attribute(
+            object_id=deal.id,
+            name="Source",
+            attribute_type=CRMAttributeType.SELECT.value,
+            config={"options": [
+                {"value": "website", "label": "Website"},
+                {"value": "referral", "label": "Referral"},
+                {"value": "cold_outreach", "label": "Cold Outreach"},
+                {"value": "social_media", "label": "Social Media"},
+                {"value": "event", "label": "Event/Conference"},
+                {"value": "partner", "label": "Partner"},
+                {"value": "advertisement", "label": "Advertisement"},
+                {"value": "other", "label": "Other"},
+            ]},
+        )
 
         return objects
 

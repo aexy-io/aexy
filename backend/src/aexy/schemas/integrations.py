@@ -15,6 +15,7 @@ class SlackNotificationType(str, Enum):
     INSIGHT = "insight"
     COMMAND_RESPONSE = "command_response"
     DIGEST = "digest"
+    AUTOMATION = "automation"
 
 
 class SlackCommandType(str, Enum):

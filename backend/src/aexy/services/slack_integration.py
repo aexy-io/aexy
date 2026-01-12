@@ -175,6 +175,18 @@ class SlackIntegrationService:
         )
         return result.scalar_one_or_none()
 
+    async def get_integration_by_workspace(
+        self, workspace_id: str, db: AsyncSession
+    ) -> SlackIntegration | None:
+        """Get integration by workspace ID."""
+        result = await db.execute(
+            select(SlackIntegration).where(
+                SlackIntegration.workspace_id == workspace_id,
+                SlackIntegration.is_active == True,
+            )
+        )
+        return result.scalar_one_or_none()
+
     async def update_integration(
         self, integration_id: str, data: SlackIntegrationUpdate, db: AsyncSession
     ) -> SlackIntegrationResponse | None:

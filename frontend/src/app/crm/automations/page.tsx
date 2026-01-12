@@ -21,6 +21,8 @@ import {
   Edit2,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { useAuth } from "@/hooks/useAuth";
+import { AppHeader } from "@/components/layout/AppHeader";
 import { useCRMObjects, useCRMAutomations, useCRMSequences, useCRMWebhooks } from "@/hooks/useCRM";
 import {
   CRMAutomation,
@@ -275,6 +277,7 @@ type TabType = "automations" | "sequences" | "webhooks";
 export default function AutomationsPage() {
   const router = useRouter();
   const { currentWorkspace } = useWorkspace();
+  const { user, logout } = useAuth();
   const workspaceId = currentWorkspace?.id || null;
 
   const { objects } = useCRMObjects(workspaceId);
@@ -332,10 +335,12 @@ export default function AutomationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
+    <div className="min-h-screen bg-slate-950">
+      <AppHeader user={user} logout={logout} />
+      <div className="p-8">
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center gap-4 mb-6">
           <button
             onClick={() => router.push("/crm")}
             className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
@@ -492,6 +497,7 @@ export default function AutomationsPage() {
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

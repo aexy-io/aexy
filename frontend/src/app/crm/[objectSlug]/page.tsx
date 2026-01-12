@@ -15,7 +15,9 @@ import {
   Settings,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { useAuth } from "@/hooks/useAuth";
 import { useCRMObjects, useCRMRecords } from "@/hooks/useCRM";
+import { AppHeader } from "@/components/layout/AppHeader";
 import { CRMObject, CRMRecord, CRMAttribute, CRMObjectType } from "@/lib/api";
 import { ViewSwitcher, ViewMode } from "@/components/crm/ViewSwitcher";
 import { DataTable } from "@/components/crm/DataTable";
@@ -163,6 +165,7 @@ export default function RecordsPage() {
   const params = useParams();
   const objectSlug = params.objectSlug as string;
 
+  const { user, logout } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
 
@@ -307,17 +310,20 @@ export default function RecordsPage() {
 
   if (!currentObject && !isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center py-16">
-            <h2 className="text-2xl font-bold text-white mb-2">Object not found</h2>
-            <p className="text-slate-400 mb-4">The object you&apos;re looking for doesn&apos;t exist.</p>
-            <button
-              onClick={() => router.push("/crm")}
-              className="text-purple-400 hover:text-purple-300"
-            >
-              Go back to CRM
-            </button>
+      <div className="min-h-screen bg-slate-950">
+        <AppHeader user={user} logout={logout} />
+        <div className="p-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center py-16">
+              <h2 className="text-2xl font-bold text-white mb-2">Object not found</h2>
+              <p className="text-slate-400 mb-4">The object you&apos;re looking for doesn&apos;t exist.</p>
+              <button
+                onClick={() => router.push("/crm")}
+                className="text-purple-400 hover:text-purple-300"
+              >
+                Go back to CRM
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -328,130 +334,133 @@ export default function RecordsPage() {
   const availableViews: ViewMode[] = hasStatusAttribute ? ["table", "board"] : ["table"];
 
   return (
-    <div className="min-h-screen bg-slate-950 p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <button
-            onClick={() => router.push("/crm")}
-            className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <div className="flex items-center gap-3">
-            {icon && <div className="text-purple-400">{icon}</div>}
-            <div>
-              <h1 className="text-2xl font-bold text-white">{currentObject?.plural_name || "Records"}</h1>
-              <p className="text-sm text-slate-400">{total} records</p>
-            </div>
-          </div>
-          <div className="flex-1" />
-
-          {/* View Switcher */}
-          <ViewSwitcher
-            value={viewMode}
-            onChange={setViewMode}
-            availableViews={availableViews}
-          />
-
-          <button
-            onClick={() => {
-              setCreateDefaultValues({});
-              setShowCreateModal(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            New {currentObject?.name}
-          </button>
-        </div>
-
-        {/* Toolbar */}
-        <div className="flex items-center gap-4 mb-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={`Search ${currentObject?.plural_name?.toLowerCase() || "records"}...`}
-              className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-          </div>
-          <button className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg transition-colors">
-            <Filter className="h-4 w-4" />
-            Filter
-          </button>
-
-          {/* Column visibility (table view only) */}
-          {viewMode === "table" && currentObject?.attributes && (
-            <ColumnVisibilityMenu
-              attributes={currentObject.attributes}
-              visibleColumns={visibleColumns}
-              onToggleColumn={handleToggleColumn}
-              onShowAll={() => setVisibleColumns(currentObject.attributes?.filter((a) => !a.is_system).map((a) => a.slug) || [])}
-              onHideAll={() => setVisibleColumns([])}
-            />
-          )}
-
-          {selectedRecords.length > 0 && (
+    <div className="min-h-screen bg-slate-950">
+      <AppHeader user={user} logout={logout} />
+      <div className="p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center gap-4 mb-6">
             <button
-              onClick={handleBulkDelete}
-              disabled={isDeleting}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600/30 text-red-400 rounded-lg transition-colors"
+              onClick={() => router.push("/crm")}
+              className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
             >
-              <Trash2 className="h-4 w-4" />
-              Delete ({selectedRecords.length})
+              <ChevronLeft className="h-5 w-5" />
             </button>
+            <div className="flex items-center gap-3">
+              {icon && <div className="text-purple-400">{icon}</div>}
+              <div>
+                <h1 className="text-2xl font-bold text-white">{currentObject?.plural_name || "Records"}</h1>
+                <p className="text-sm text-slate-400">{total} records</p>
+              </div>
+            </div>
+            <div className="flex-1" />
+
+            {/* View Switcher */}
+            <ViewSwitcher
+              value={viewMode}
+              onChange={setViewMode}
+              availableViews={availableViews}
+            />
+
+            <button
+              onClick={() => {
+                setCreateDefaultValues({});
+                setShowCreateModal(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              New {currentObject?.name}
+            </button>
+          </div>
+
+          {/* Toolbar */}
+          <div className="flex items-center gap-4 mb-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={`Search ${currentObject?.plural_name?.toLowerCase() || "records"}...`}
+                className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+            <button className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg transition-colors">
+              <Filter className="h-4 w-4" />
+              Filter
+            </button>
+
+            {/* Column visibility (table view only) */}
+            {viewMode === "table" && currentObject?.attributes && (
+              <ColumnVisibilityMenu
+                attributes={currentObject.attributes}
+                visibleColumns={visibleColumns}
+                onToggleColumn={handleToggleColumn}
+                onShowAll={() => setVisibleColumns(currentObject.attributes?.filter((a) => !a.is_system).map((a) => a.slug) || [])}
+                onHideAll={() => setVisibleColumns([])}
+              />
+            )}
+
+            {selectedRecords.length > 0 && (
+              <button
+                onClick={handleBulkDelete}
+                disabled={isDeleting}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600/30 text-red-400 rounded-lg transition-colors"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete ({selectedRecords.length})
+              </button>
+            )}
+          </div>
+
+          {/* Content */}
+          {viewMode === "table" ? (
+            <DataTable
+              records={filteredRecords}
+              attributes={currentObject?.attributes || []}
+              isLoading={isLoading}
+              emptyMessage={searchQuery ? "No records match your search" : `No ${currentObject?.plural_name?.toLowerCase() || "records"} yet`}
+              visibleColumns={visibleColumns}
+              onVisibleColumnsChange={setVisibleColumns}
+              columnOrder={columnOrder}
+              onColumnOrderChange={setColumnOrder}
+              sortConfig={sortConfig}
+              onSort={handleSort}
+              selectedRecords={selectedRecords}
+              onSelectRecord={handleSelectRecord}
+              onSelectAll={handleSelectAll}
+              onRecordClick={handleRecordClick}
+              onRecordDelete={handleDelete}
+              enableColumnReorder={true}
+              enableColumnSelector={true}
+            />
+          ) : (
+            <KanbanBoard
+              records={filteredRecords}
+              attributes={currentObject?.attributes || []}
+              onRecordClick={handleRecordClick}
+              onRecordUpdate={handleRecordUpdate}
+              onCreateInStage={handleCreateInStage}
+              highlightAttributes={kanbanHighlightAttributes}
+              isLoading={isLoading}
+            />
+          )}
+
+          {currentObject && (
+            <CreateRecordModal
+              isOpen={showCreateModal}
+              onClose={() => {
+                setShowCreateModal(false);
+                setCreateDefaultValues({});
+              }}
+              onCreate={handleCreate}
+              isCreating={isCreating}
+              object={currentObject}
+              defaultValues={createDefaultValues}
+            />
           )}
         </div>
-
-        {/* Content */}
-        {viewMode === "table" ? (
-          <DataTable
-            records={filteredRecords}
-            attributes={currentObject?.attributes || []}
-            isLoading={isLoading}
-            emptyMessage={searchQuery ? "No records match your search" : `No ${currentObject?.plural_name?.toLowerCase() || "records"} yet`}
-            visibleColumns={visibleColumns}
-            onVisibleColumnsChange={setVisibleColumns}
-            columnOrder={columnOrder}
-            onColumnOrderChange={setColumnOrder}
-            sortConfig={sortConfig}
-            onSort={handleSort}
-            selectedRecords={selectedRecords}
-            onSelectRecord={handleSelectRecord}
-            onSelectAll={handleSelectAll}
-            onRecordClick={handleRecordClick}
-            onRecordDelete={handleDelete}
-            enableColumnReorder={true}
-            enableColumnSelector={true}
-          />
-        ) : (
-          <KanbanBoard
-            records={filteredRecords}
-            attributes={currentObject?.attributes || []}
-            onRecordClick={handleRecordClick}
-            onRecordUpdate={handleRecordUpdate}
-            onCreateInStage={handleCreateInStage}
-            highlightAttributes={kanbanHighlightAttributes}
-            isLoading={isLoading}
-          />
-        )}
-
-        {currentObject && (
-          <CreateRecordModal
-            isOpen={showCreateModal}
-            onClose={() => {
-              setShowCreateModal(false);
-              setCreateDefaultValues({});
-            }}
-            onCreate={handleCreate}
-            isCreating={isCreating}
-            object={currentObject}
-            defaultValues={createDefaultValues}
-          />
-        )}
       </div>
     </div>
   );

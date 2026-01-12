@@ -49,7 +49,7 @@ const TIMEZONES = [
 export default function OnCallSettingsPage() {
   const params = useParams();
   const router = useRouter();
-  const teamId = params.teamId as string;
+  const teamId = params.projectId as string;
 
   const { user:developer } = useAuth();
   const { currentWorkspace, currentWorkspaceLoading } = useWorkspace();

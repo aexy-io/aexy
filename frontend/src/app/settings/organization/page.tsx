@@ -8,6 +8,7 @@ import {
   Building2,
   ChevronDown,
   CreditCard,
+  FolderKanban,
   Mail,
   MoreVertical,
   Plus,
@@ -505,7 +506,7 @@ const APP_LABELS: Record<string, { label: string; description: string }> = {
 
 interface AppSettingsSectionProps {
   appSettings: Record<string, boolean>;
-  onUpdate: (apps: Record<string, boolean>) => Promise<void>;
+  onUpdate: (apps: Record<string, boolean>) => Promise<unknown>;
   isUpdating: boolean;
   isOwner: boolean;
 }
@@ -790,7 +791,7 @@ export default function OrganizationSettingsPage() {
                         {currentWorkspace.member_count} members
                       </span>
                       <span className="text-slate-400 text-sm">
-                        {currentWorkspace.team_count} teams
+                        {currentWorkspace.team_count} projects
                       </span>
                     </div>
                   </div>
@@ -888,7 +889,7 @@ export default function OrganizationSettingsPage() {
               >
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-slate-700 rounded-lg group-hover:bg-slate-600 transition">
-                    <Users className="h-5 w-5 text-slate-300" />
+                    <FolderKanban className="h-5 w-5 text-slate-300" />
                   </div>
                   <div>
                     <h4 className="text-white font-medium">Projects</h4>

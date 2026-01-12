@@ -28,6 +28,7 @@ class GoogleIntegrationStatusResponse(BaseModel):
     events_synced: int = 0
     last_error: str | None = None
     granted_scopes: list[str] = []
+    sync_settings: dict[str, Any] | None = None
 
 
 class GoogleIntegrationSettingsUpdate(BaseModel):

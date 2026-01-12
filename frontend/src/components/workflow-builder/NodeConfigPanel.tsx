@@ -1,10 +1,28 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Node } from "@xyflow/react";
 import { X, Trash2, ChevronDown, Plus, Database, Copy, Check, ExternalLink, Code } from "lucide-react";
 import { FieldPicker, InlineFieldPicker } from "./FieldPicker";
 import { api } from "@/lib/api";
+
+interface FieldSchema {
+  path: string;
+  name: string;
+  type: string;
+  description?: string;
+  config?: {
+    options?: Array<{ value: string; label: string; color?: string }>;
+    statuses?: Array<{ value: string; label: string; color?: string }>;
+    [key: string]: unknown;
+  };
+  required?: boolean;
+}
+
+interface SchemaCategory {
+  label: string;
+  fields: FieldSchema[];
+}
 
 interface NodeConfigPanelProps {
   node: Node;
@@ -49,7 +67,107 @@ export function NodeConfigPanel({
   const [copied, setCopied] = useState(false);
   const [showSamplePayload, setShowSamplePayload] = useState(false);
 
+  // Field schema for condition value dropdowns
+  const [fieldSchema, setFieldSchema] = useState<Record<string, SchemaCategory>>({});
+
+  // CRM objects for trigger object selector
+  const [crmObjects, setCrmObjects] = useState<Array<{ id: string; name: string; slug: string }>>([]);
+  const [objectsLoading, setObjectsLoading] = useState(false);
+
   const triggerType = node.data.trigger_type as string;
+
+  // Fetch CRM objects for trigger object selector
+  useEffect(() => {
+    async function fetchCrmObjects() {
+      if (!workspaceId) return;
+
+      setObjectsLoading(true);
+      try {
+        const response = await api.get(`/workspaces/${workspaceId}/crm/objects`);
+        setCrmObjects(response.data || []);
+      } catch (error) {
+        console.error("Failed to fetch CRM objects:", error);
+      } finally {
+        setObjectsLoading(false);
+      }
+    }
+
+    fetchCrmObjects();
+  }, [workspaceId]);
+
+  // Fetch field schema for condition dropdowns
+  // Re-fetch when object_id changes to get the correct fields
+  const selectedObjectId = node.data.object_id as string | undefined;
+
+  useEffect(() => {
+    async function fetchFieldSchema() {
+      if (!workspaceId) return;
+
+      // For existing automations, fetch from API
+      if (automationId && automationId !== "new") {
+        try {
+          const response = await api.get(
+            `/workspaces/${workspaceId}/crm/automations/${automationId}/workflow/field-schema`
+          );
+          setFieldSchema(response.data);
+        } catch (error) {
+          console.error("Failed to fetch field schema:", error);
+        }
+      }
+      // For new automations with selected object, fetch object schema directly
+      else if (selectedObjectId) {
+        try {
+          const response = await api.get(
+            `/workspaces/${workspaceId}/crm/objects/${selectedObjectId}`
+          );
+          const obj = response.data;
+          if (obj && obj.attributes) {
+            setFieldSchema({
+              record: {
+                label: "Record Fields",
+                fields: [
+                  { path: "record.id", name: "Record ID", type: "text" },
+                  ...obj.attributes.map((attr: { slug: string; name: string; attribute_type: string; config: Record<string, unknown>; is_required: boolean }) => ({
+                    path: `record.values.${attr.slug}`,
+                    name: attr.name,
+                    type: attr.attribute_type,
+                    config: attr.config,
+                    required: attr.is_required,
+                  })),
+                ],
+              },
+            });
+          }
+        } catch (error) {
+          console.error("Failed to fetch object schema:", error);
+        }
+      }
+    }
+
+    fetchFieldSchema();
+  }, [workspaceId, automationId, selectedObjectId]);
+
+  // Helper to get field info by path
+  const getFieldByPath = useMemo(() => {
+    return (fieldPath: string): FieldSchema | null => {
+      // Handle paths like "record.values.status" or "record.status"
+      for (const category of Object.values(fieldSchema)) {
+        const field = category.fields.find((f) => {
+          // Direct match
+          if (f.path === fieldPath) return true;
+          // Match without record prefix
+          if (f.path === `record.${fieldPath}`) return true;
+          if (f.path === `record.values.${fieldPath}`) return true;
+          // Match field name in path
+          const pathParts = fieldPath.split(".");
+          const lastPart = pathParts[pathParts.length - 1];
+          return f.path.endsWith(`.${lastPart}`);
+        });
+        if (field) return field;
+      }
+      return null;
+    };
+  }, [fieldSchema]);
 
   // Fetch webhook URL for webhook triggers
   useEffect(() => {
@@ -144,18 +262,67 @@ export function NodeConfigPanel({
       2
     );
 
+    // Record-based triggers need an object selector
+    const isRecordTrigger = ["record_created", "record_updated", "record_deleted", "field_changed", "status_changed"].includes(triggerType);
+
     return (
       <div className="space-y-4">
+        {/* Object Type Selector - for record-based triggers */}
+        {isRecordTrigger && (
+          <div>
+            <label className="block text-sm text-slate-400 mb-1">Object Type</label>
+            {objectsLoading ? (
+              <div className="flex items-center gap-2 text-slate-500 text-sm py-2">
+                <div className="animate-spin h-4 w-4 border-2 border-slate-500 border-t-transparent rounded-full" />
+                Loading objects...
+              </div>
+            ) : (
+              <select
+                value={(node.data.object_id as string) || ""}
+                onChange={(e) => onUpdate({ object_id: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                <option value="">Select object type...</option>
+                {crmObjects.map((obj) => (
+                  <option key={obj.id} value={obj.id}>
+                    {obj.name}
+                  </option>
+                ))}
+              </select>
+            )}
+            <p className="text-xs text-slate-500 mt-1">
+              Select the CRM object this automation applies to
+            </p>
+          </div>
+        )}
+
         {triggerType === "field_changed" && (
           <div>
             <label className="block text-sm text-slate-400 mb-1">Field to Watch</label>
-            <input
-              type="text"
-              value={(node.data.field_slug as string) || ""}
-              onChange={(e) => onUpdate({ field_slug: e.target.value })}
-              placeholder="e.g., status"
-              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
-            />
+            {selectedObjectId ? (
+              <select
+                value={(node.data.field_slug as string) || ""}
+                onChange={(e) => onUpdate({ field_slug: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                <option value="">Select field...</option>
+                {fieldSchema.record?.fields
+                  ?.filter((f) => f.path.startsWith("record.values."))
+                  .map((field) => (
+                    <option key={field.path} value={field.path.replace("record.values.", "")}>
+                      {field.name}
+                    </option>
+                  ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={(node.data.field_slug as string) || ""}
+                onChange={(e) => onUpdate({ field_slug: e.target.value })}
+                placeholder="e.g., status (select object type first)"
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+            )}
           </div>
         )}
 
@@ -312,7 +479,7 @@ export function NodeConfigPanel({
           </>
         )}
 
-        {(actionType === "send_slack" || actionType === "send_sms") && (
+        {actionType === "send_sms" && (
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="text-sm text-slate-400">Message</label>
@@ -332,6 +499,121 @@ export function NodeConfigPanel({
               className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
             />
           </div>
+        )}
+
+        {actionType === "send_slack" && (
+          <>
+            {/* Target Type Selection */}
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Send to</label>
+              <select
+                value={(node.data.slack_target_type as string) || "channel"}
+                onChange={(e) => onUpdate({
+                  slack_target_type: e.target.value,
+                  // Clear other fields when switching
+                  channel: e.target.value === "channel" ? node.data.channel : "",
+                  user_email: "",
+                  user_email_field: "",
+                })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                <option value="channel">Channel</option>
+                <option value="dm">Direct Message (DM)</option>
+              </select>
+            </div>
+
+            {/* Channel Config */}
+            {((node.data.slack_target_type as string) || "channel") === "channel" && (
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Channel ID</label>
+                <input
+                  type="text"
+                  value={(node.data.channel as string) || ""}
+                  onChange={(e) => onUpdate({ channel: e.target.value })}
+                  placeholder="C1234567890"
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Find Channel ID in Slack: right-click channel → View channel details → scroll to bottom
+                </p>
+              </div>
+            )}
+
+            {/* DM Config */}
+            {(node.data.slack_target_type as string) === "dm" && (
+              <>
+                <div>
+                  <label className="block text-sm text-slate-400 mb-1">Recipient</label>
+                  <select
+                    value={(node.data.slack_dm_type as string) || "email_field"}
+                    onChange={(e) => onUpdate({
+                      slack_dm_type: e.target.value,
+                      user_email: "",
+                      user_email_field: "",
+                    })}
+                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                  >
+                    <option value="email_field">From record field (dynamic)</option>
+                    <option value="email">Specific email address</option>
+                  </select>
+                </div>
+
+                {((node.data.slack_dm_type as string) || "email_field") === "email_field" && (
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-1">Email Field</label>
+                    <FieldPicker
+                      workspaceId={workspaceId}
+                      automationId={automationId}
+                      nodeId={node.id}
+                      value={(node.data.user_email_field as string) || ""}
+                      onChange={(value) => onUpdate({ user_email_field: value })}
+                      placeholder="Select field containing email..."
+                    />
+                    <p className="text-xs text-slate-500 mt-1">
+                      e.g., owner_email, assigned_to_email
+                    </p>
+                  </div>
+                )}
+
+                {(node.data.slack_dm_type as string) === "email" && (
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-1">Email Address</label>
+                    <input
+                      type="email"
+                      value={(node.data.user_email as string) || ""}
+                      onChange={(e) => onUpdate({ user_email: e.target.value })}
+                      placeholder="user@company.com"
+                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">
+                      User must be mapped in Slack integration settings
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Message */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm text-slate-400">Message</label>
+                <InlineFieldPicker
+                  workspaceId={workspaceId}
+                  automationId={automationId}
+                  nodeId={node.id}
+                  onInsert={(value) => insertAtCursor(messageTemplateRef, value, "message_template")}
+                />
+              </div>
+              <textarea
+                ref={messageTemplateRef}
+                value={(node.data.message_template as string) || ""}
+                onChange={(e) => onUpdate({ message_template: e.target.value })}
+                placeholder="Message... Click 'Insert field' to add variables like {name}, {deal_value}"
+                rows={4}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+            </div>
+          </>
         )}
 
         {actionType === "webhook_call" && (
@@ -380,6 +662,785 @@ export function NodeConfigPanel({
               />
             </div>
           </>
+        )}
+
+        {actionType === "update_record" && (
+          <>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Field to Update</label>
+              <FieldPicker
+                workspaceId={workspaceId}
+                automationId={automationId}
+                nodeId={node.id}
+                value={(node.data.update_field as string) || ""}
+                onChange={(value) => {
+                  const match = value.match(/\{\{(.+?)\}\}/);
+                  onUpdate({ update_field: match ? match[1] : value });
+                }}
+                placeholder="Select field..."
+                allowCustom={true}
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">New Value</label>
+              <input
+                type="text"
+                value={(node.data.update_value as string) || ""}
+                onChange={(e) => onUpdate({ update_value: e.target.value })}
+                placeholder="Enter value or use {{field}} syntax"
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Use {"{{record.field}}"} to reference other fields
+              </p>
+            </div>
+          </>
+        )}
+
+        {actionType === "create_record" && (
+          <>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Object Type</label>
+              {objectsLoading ? (
+                <div className="flex items-center gap-2 text-slate-500 text-sm py-2">
+                  <div className="animate-spin h-4 w-4 border-2 border-slate-500 border-t-transparent rounded-full" />
+                  Loading...
+                </div>
+              ) : (
+                <select
+                  value={(node.data.target_object_id as string) || ""}
+                  onChange={(e) => onUpdate({ target_object_id: e.target.value })}
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                >
+                  <option value="">Select object type...</option>
+                  {crmObjects.map((obj) => (
+                    <option key={obj.id} value={obj.id}>
+                      {obj.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Record Name</label>
+              <input
+                type="text"
+                value={(node.data.record_name as string) || ""}
+                onChange={(e) => onUpdate({ record_name: e.target.value })}
+                placeholder="Name for the new record"
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="link-to-current"
+                checked={(node.data.link_to_current as boolean) || false}
+                onChange={(e) => onUpdate({ link_to_current: e.target.checked })}
+                className="rounded bg-slate-700 border-slate-600"
+              />
+              <label htmlFor="link-to-current" className="text-sm text-slate-300">
+                Link to triggering record
+              </label>
+            </div>
+          </>
+        )}
+
+        {actionType === "create_task" && (
+          <>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Task Title</label>
+              <input
+                type="text"
+                value={(node.data.task_title as string) || ""}
+                onChange={(e) => onUpdate({ task_title: e.target.value })}
+                placeholder="Follow up with {{record.name}}"
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Description</label>
+              <textarea
+                value={(node.data.task_description as string) || ""}
+                onChange={(e) => onUpdate({ task_description: e.target.value })}
+                placeholder="Task details..."
+                rows={3}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Due In</label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min="1"
+                  value={(node.data.due_in_value as number) || 1}
+                  onChange={(e) => onUpdate({ due_in_value: parseInt(e.target.value) || 1 })}
+                  className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                />
+                <select
+                  value={(node.data.due_in_unit as string) || "days"}
+                  onChange={(e) => onUpdate({ due_in_unit: e.target.value })}
+                  className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                >
+                  <option value="hours">Hours</option>
+                  <option value="days">Days</option>
+                  <option value="weeks">Weeks</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Priority</label>
+              <select
+                value={(node.data.task_priority as string) || "medium"}
+                onChange={(e) => onUpdate({ task_priority: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Assign To</label>
+              <input
+                type="text"
+                value={(node.data.assignee_email as string) || ""}
+                onChange={(e) => onUpdate({ assignee_email: e.target.value })}
+                placeholder="user@company.com or {{record.owner_email}}"
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+            </div>
+          </>
+        )}
+
+        {actionType === "notify_user" && (
+          <>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Notify</label>
+              <select
+                value={(node.data.notify_type as string) || "email"}
+                onChange={(e) => onUpdate({ notify_type: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                <option value="email">Specific Email</option>
+                <option value="field">From Record Field</option>
+                <option value="owner">Record Owner</option>
+              </select>
+            </div>
+            {(node.data.notify_type as string) === "email" && (
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Email Address</label>
+                <input
+                  type="email"
+                  value={(node.data.notify_email as string) || ""}
+                  onChange={(e) => onUpdate({ notify_email: e.target.value })}
+                  placeholder="user@company.com"
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                />
+              </div>
+            )}
+            {(node.data.notify_type as string) === "field" && (
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Email Field</label>
+                <FieldPicker
+                  workspaceId={workspaceId}
+                  automationId={automationId}
+                  nodeId={node.id}
+                  value={(node.data.notify_field as string) || ""}
+                  onChange={(value) => onUpdate({ notify_field: value })}
+                  placeholder="Select field..."
+                />
+              </div>
+            )}
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Notification Title</label>
+              <input
+                type="text"
+                value={(node.data.notify_title as string) || ""}
+                onChange={(e) => onUpdate({ notify_title: e.target.value })}
+                placeholder="New deal requires attention"
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Message</label>
+              <textarea
+                value={(node.data.notify_message as string) || ""}
+                onChange={(e) => onUpdate({ notify_message: e.target.value })}
+                placeholder="Notification message..."
+                rows={3}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+            </div>
+          </>
+        )}
+
+        {actionType === "notify_team" && (
+          <>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Notification Channel</label>
+              <select
+                value={(node.data.notify_channel as string) || "slack"}
+                onChange={(e) => onUpdate({ notify_channel: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                <option value="slack">Slack Channel</option>
+                <option value="email">Email Group</option>
+                <option value="in_app">In-App Notification</option>
+              </select>
+            </div>
+            {(node.data.notify_channel as string) === "slack" && (
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Slack Channel ID</label>
+                <input
+                  type="text"
+                  value={(node.data.team_channel_id as string) || ""}
+                  onChange={(e) => onUpdate({ team_channel_id: e.target.value })}
+                  placeholder="C1234567890"
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                />
+              </div>
+            )}
+            {(node.data.notify_channel as string) === "email" && (
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Email Addresses</label>
+                <textarea
+                  value={(node.data.team_emails as string) || ""}
+                  onChange={(e) => onUpdate({ team_emails: e.target.value })}
+                  placeholder="team@company.com&#10;sales@company.com"
+                  rows={3}
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                />
+              </div>
+            )}
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Notification Title</label>
+              <input
+                type="text"
+                value={(node.data.team_notify_title as string) || ""}
+                onChange={(e) => onUpdate({ team_notify_title: e.target.value })}
+                placeholder="New high-value deal created"
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Message</label>
+              <textarea
+                value={(node.data.team_notify_message as string) || ""}
+                onChange={(e) => onUpdate({ team_notify_message: e.target.value })}
+                placeholder="A new deal worth {{record.value}} has been created..."
+                rows={3}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+            </div>
+          </>
+        )}
+
+        {actionType === "assign_owner" && (
+          <>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Assignment Type</label>
+              <select
+                value={(node.data.assign_type as string) || "specific"}
+                onChange={(e) => onUpdate({ assign_type: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                <option value="specific">Specific User</option>
+                <option value="field">From Record Field</option>
+                <option value="round_robin">Round Robin</option>
+                <option value="least_busy">Least Busy</option>
+              </select>
+            </div>
+            {(node.data.assign_type as string) === "specific" && (
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">User Email</label>
+                <input
+                  type="email"
+                  value={(node.data.owner_email as string) || ""}
+                  onChange={(e) => onUpdate({ owner_email: e.target.value })}
+                  placeholder="user@company.com"
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                />
+              </div>
+            )}
+            {(node.data.assign_type as string) === "field" && (
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Owner Field</label>
+                <FieldPicker
+                  workspaceId={workspaceId}
+                  automationId={automationId}
+                  nodeId={node.id}
+                  value={(node.data.owner_field as string) || ""}
+                  onChange={(value) => onUpdate({ owner_field: value })}
+                  placeholder="Select field containing owner..."
+                />
+              </div>
+            )}
+            {(node.data.assign_type as string) === "round_robin" && (
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Team Members</label>
+                <textarea
+                  value={(node.data.team_emails as string) || ""}
+                  onChange={(e) => onUpdate({ team_emails: e.target.value })}
+                  placeholder="user1@company.com&#10;user2@company.com&#10;user3@company.com"
+                  rows={3}
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  One email per line. Assignments rotate evenly.
+                </p>
+              </div>
+            )}
+            {(node.data.assign_type as string) === "least_busy" && (
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Team Members</label>
+                <textarea
+                  value={(node.data.team_emails as string) || ""}
+                  onChange={(e) => onUpdate({ team_emails: e.target.value })}
+                  placeholder="user1@company.com&#10;user2@company.com&#10;user3@company.com"
+                  rows={3}
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Assigns to the team member with fewest open records.
+                </p>
+              </div>
+            )}
+          </>
+        )}
+
+        {actionType === "add_to_list" && (
+          <>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">List</label>
+              <input
+                type="text"
+                value={(node.data.list_id as string) || ""}
+                onChange={(e) => onUpdate({ list_id: e.target.value })}
+                placeholder="Enter list ID or name"
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                The record will be added to this CRM list
+              </p>
+            </div>
+          </>
+        )}
+
+        {actionType === "remove_from_list" && (
+          <>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">List</label>
+              <input
+                type="text"
+                value={(node.data.list_id as string) || ""}
+                onChange={(e) => onUpdate({ list_id: e.target.value })}
+                placeholder="Enter list ID or name"
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                The record will be removed from this CRM list
+              </p>
+            </div>
+          </>
+        )}
+
+        {(actionType === "enroll_in_sequence" || actionType === "enroll_sequence") && (
+          <>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Sequence</label>
+              <input
+                type="text"
+                value={(node.data.sequence_id as string) || ""}
+                onChange={(e) => onUpdate({ sequence_id: e.target.value })}
+                placeholder="Enter sequence ID"
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Start At Step</label>
+              <input
+                type="number"
+                min="1"
+                value={(node.data.start_step as number) || 1}
+                onChange={(e) => onUpdate({ start_step: parseInt(e.target.value) || 1 })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="skip-if-enrolled"
+                checked={(node.data.skip_if_enrolled as boolean) ?? true}
+                onChange={(e) => onUpdate({ skip_if_enrolled: e.target.checked })}
+                className="rounded bg-slate-700 border-slate-600"
+              />
+              <label htmlFor="skip-if-enrolled" className="text-sm text-slate-300">
+                Skip if already enrolled
+              </label>
+            </div>
+          </>
+        )}
+
+        {(actionType === "remove_from_sequence" || actionType === "unenroll_sequence") && (
+          <>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Sequence</label>
+              <input
+                type="text"
+                value={(node.data.sequence_id as string) || ""}
+                onChange={(e) => onUpdate({ sequence_id: e.target.value })}
+                placeholder="Enter sequence ID (leave empty for all)"
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Leave empty to remove from all active sequences
+              </p>
+            </div>
+          </>
+        )}
+
+        {actionType === "enrich_record" && (
+          <>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Enrichment Source</label>
+              <select
+                value={(node.data.enrichment_source as string) || "clearbit"}
+                onChange={(e) => onUpdate({ enrichment_source: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                <option value="clearbit">Clearbit</option>
+                <option value="apollo">Apollo</option>
+                <option value="zoominfo">ZoomInfo</option>
+                <option value="linkedin">LinkedIn</option>
+                <option value="ai">AI (Web Search)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Fields to Enrich</label>
+              <div className="space-y-2">
+                {["company", "title", "phone", "linkedin", "industry", "company_size"].map((field) => (
+                  <label key={field} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={((node.data.enrich_fields as string[]) || []).includes(field)}
+                      onChange={(e) => {
+                        const current = (node.data.enrich_fields as string[]) || [];
+                        const updated = e.target.checked
+                          ? [...current, field]
+                          : current.filter((f) => f !== field);
+                        onUpdate({ enrich_fields: updated });
+                      }}
+                      className="rounded bg-slate-700 border-slate-600"
+                    />
+                    <span className="text-sm text-slate-300 capitalize">{field.replace("_", " ")}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="overwrite-existing"
+                checked={(node.data.overwrite_existing as boolean) || false}
+                onChange={(e) => onUpdate({ overwrite_existing: e.target.checked })}
+                className="rounded bg-slate-700 border-slate-600"
+              />
+              <label htmlFor="overwrite-existing" className="text-sm text-slate-300">
+                Overwrite existing values
+              </label>
+            </div>
+          </>
+        )}
+
+        {actionType === "classify_record" && (
+          <>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Classification Type</label>
+              <select
+                value={(node.data.classification_type as string) || "lead_score"}
+                onChange={(e) => onUpdate({ classification_type: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                <option value="lead_score">Lead Score (0-100)</option>
+                <option value="sentiment">Sentiment Analysis</option>
+                <option value="intent">Intent Classification</option>
+                <option value="category">Custom Category</option>
+              </select>
+            </div>
+            {(node.data.classification_type as string) === "category" && (
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Categories</label>
+                <input
+                  type="text"
+                  value={(node.data.categories as string) || ""}
+                  onChange={(e) => onUpdate({ categories: e.target.value })}
+                  placeholder="hot_lead, warm_lead, cold_lead"
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Comma-separated list of categories
+                </p>
+              </div>
+            )}
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Save Result To</label>
+              <FieldPicker
+                workspaceId={workspaceId}
+                automationId={automationId}
+                nodeId={node.id}
+                value={(node.data.result_field as string) || ""}
+                onChange={(value) => {
+                  const match = value.match(/\{\{(.+?)\}\}/);
+                  onUpdate({ result_field: match ? match[1] : value });
+                }}
+                placeholder="Select field to store result..."
+                allowCustom={true}
+              />
+            </div>
+          </>
+        )}
+
+        {actionType === "generate_summary" && (
+          <>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Summary Type</label>
+              <select
+                value={(node.data.summary_type as string) || "brief"}
+                onChange={(e) => onUpdate({ summary_type: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                <option value="brief">Brief (1-2 sentences)</option>
+                <option value="detailed">Detailed (paragraph)</option>
+                <option value="bullet_points">Bullet Points</option>
+                <option value="executive">Executive Summary</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Include</label>
+              <div className="space-y-2">
+                {["activities", "notes", "emails", "meetings", "deals"].map((item) => (
+                  <label key={item} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={((node.data.summary_includes as string[]) || ["activities", "notes"]).includes(item)}
+                      onChange={(e) => {
+                        const current = (node.data.summary_includes as string[]) || ["activities", "notes"];
+                        const updated = e.target.checked
+                          ? [...current, item]
+                          : current.filter((i) => i !== item);
+                        onUpdate({ summary_includes: updated });
+                      }}
+                      className="rounded bg-slate-700 border-slate-600"
+                    />
+                    <span className="text-sm text-slate-300 capitalize">{item}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Save Summary To</label>
+              <FieldPicker
+                workspaceId={workspaceId}
+                automationId={automationId}
+                nodeId={node.id}
+                value={(node.data.summary_field as string) || ""}
+                onChange={(value) => {
+                  const match = value.match(/\{\{(.+?)\}\}/);
+                  onUpdate({ summary_field: match ? match[1] : value });
+                }}
+                placeholder="Select field..."
+                allowCustom={true}
+              />
+            </div>
+          </>
+        )}
+
+        {actionType === "delete_record" && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+            <p className="text-sm text-red-400 font-medium mb-1">Warning</p>
+            <p className="text-xs text-slate-400">
+              This action will permanently delete the record. This cannot be undone.
+            </p>
+            <div className="flex items-center gap-2 mt-3">
+              <input
+                type="checkbox"
+                id="confirm-delete"
+                checked={(node.data.confirm_delete as boolean) || false}
+                onChange={(e) => onUpdate({ confirm_delete: e.target.checked })}
+                className="rounded bg-slate-700 border-slate-600"
+              />
+              <label htmlFor="confirm-delete" className="text-sm text-slate-300">
+                I understand this will delete records
+              </label>
+            </div>
+          </div>
+        )}
+
+        {actionType === "link_records" && (
+          <>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Link To</label>
+              <select
+                value={(node.data.link_type as string) || "field"}
+                onChange={(e) => onUpdate({ link_type: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                <option value="field">Record from Field Value</option>
+                <option value="specific">Specific Record</option>
+                <option value="created">Newly Created Record (from previous step)</option>
+              </select>
+            </div>
+            {(node.data.link_type as string) === "field" && (
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Record ID Field</label>
+                <FieldPicker
+                  workspaceId={workspaceId}
+                  automationId={automationId}
+                  nodeId={node.id}
+                  value={(node.data.link_field as string) || ""}
+                  onChange={(value) => onUpdate({ link_field: value })}
+                  placeholder="Select field containing record ID..."
+                />
+              </div>
+            )}
+            {(node.data.link_type as string) === "specific" && (
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Record ID</label>
+                <input
+                  type="text"
+                  value={(node.data.link_record_id as string) || ""}
+                  onChange={(e) => onUpdate({ link_record_id: e.target.value })}
+                  placeholder="Enter record ID"
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                />
+              </div>
+            )}
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Relationship Type</label>
+              <input
+                type="text"
+                value={(node.data.relation_type as string) || ""}
+                onChange={(e) => onUpdate({ relation_type: e.target.value })}
+                placeholder="e.g., parent, related, associated"
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+            </div>
+          </>
+        )}
+
+        {actionType === "api_request" && (
+          <>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">URL</label>
+              <input
+                type="url"
+                value={(node.data.api_url as string) || ""}
+                onChange={(e) => onUpdate({ api_url: e.target.value })}
+                placeholder="https://api.example.com/endpoint"
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Method</label>
+              <select
+                value={(node.data.api_method as string) || "POST"}
+                onChange={(e) => onUpdate({ api_method: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="PATCH">PATCH</option>
+                <option value="DELETE">DELETE</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Authentication</label>
+              <select
+                value={(node.data.auth_type as string) || "none"}
+                onChange={(e) => onUpdate({ auth_type: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                <option value="none">None</option>
+                <option value="bearer">Bearer Token</option>
+                <option value="api_key">API Key</option>
+                <option value="basic">Basic Auth</option>
+              </select>
+            </div>
+            {(node.data.auth_type as string) === "bearer" && (
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Bearer Token</label>
+                <input
+                  type="password"
+                  value={(node.data.bearer_token as string) || ""}
+                  onChange={(e) => onUpdate({ bearer_token: e.target.value })}
+                  placeholder="Enter token"
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                />
+              </div>
+            )}
+            {(node.data.auth_type as string) === "api_key" && (
+              <>
+                <div>
+                  <label className="block text-sm text-slate-400 mb-1">Header Name</label>
+                  <input
+                    type="text"
+                    value={(node.data.api_key_header as string) || "X-API-Key"}
+                    onChange={(e) => onUpdate({ api_key_header: e.target.value })}
+                    placeholder="X-API-Key"
+                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-slate-400 mb-1">API Key</label>
+                  <input
+                    type="password"
+                    value={(node.data.api_key as string) || ""}
+                    onChange={(e) => onUpdate({ api_key: e.target.value })}
+                    placeholder="Enter API key"
+                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                  />
+                </div>
+              </>
+            )}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm text-slate-400">Request Body (JSON)</label>
+                <InlineFieldPicker
+                  workspaceId={workspaceId}
+                  automationId={automationId}
+                  nodeId={node.id}
+                  onInsert={(value) => insertAtCursor(webhookBodyRef, value, "api_body")}
+                />
+              </div>
+              <textarea
+                ref={webhookBodyRef}
+                value={(node.data.api_body as string) || ""}
+                onChange={(e) => onUpdate({ api_body: e.target.value })}
+                placeholder='{"key": "{{record.field}}"}'
+                rows={3}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm font-mono"
+              />
+            </div>
+          </>
+        )}
+
+        {/* Fallback for unhandled action types */}
+        {actionType && ![
+          "send_email", "send_sms", "send_slack", "webhook_call",
+          "update_record", "create_record", "create_task", "notify_user", "notify_team",
+          "assign_owner", "add_to_list", "remove_from_list",
+          "enroll_in_sequence", "enroll_sequence", "remove_from_sequence", "unenroll_sequence",
+          "enrich_record", "classify_record", "generate_summary",
+          "delete_record", "link_records", "api_request"
+        ].includes(actionType) && (
+          <div className="text-xs text-slate-500 bg-slate-800/50 rounded-lg p-3">
+            <p className="font-medium text-slate-400 mb-1">Action: {actionType}</p>
+            <p>Configuration for this action type will be applied when the workflow runs.</p>
+          </div>
         )}
       </div>
     );
@@ -460,13 +1521,69 @@ export function NodeConfigPanel({
                 ))}
               </select>
               {!["is_empty", "is_not_empty"].includes(condition.operator) && (
-                <input
-                  type="text"
-                  value={condition.value}
-                  onChange={(e) => updateCondition(index, { value: e.target.value })}
-                  placeholder="Value"
-                  className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-white text-sm"
-                />
+                (() => {
+                  const fieldInfo = getFieldByPath(condition.field);
+                  const isSelectField = fieldInfo?.type === "select" || fieldInfo?.type === "multi_select";
+                  const isStatusField = fieldInfo?.type === "status";
+
+                  // Get options from config - handle both 'options' and 'statuses' keys
+                  const options = fieldInfo?.config?.options || fieldInfo?.config?.statuses || [];
+
+                  if ((isSelectField || isStatusField) && options.length > 0) {
+                    return (
+                      <select
+                        value={condition.value}
+                        onChange={(e) => updateCondition(index, { value: e.target.value })}
+                        className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-white text-sm"
+                      >
+                        <option value="">Select value...</option>
+                        {options.map((opt: { value: string; label: string; color?: string }) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    );
+                  }
+
+                  // For boolean/checkbox fields
+                  if (fieldInfo?.type === "checkbox") {
+                    return (
+                      <select
+                        value={condition.value}
+                        onChange={(e) => updateCondition(index, { value: e.target.value })}
+                        className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-white text-sm"
+                      >
+                        <option value="">Select value...</option>
+                        <option value="true">Yes / True</option>
+                        <option value="false">No / False</option>
+                      </select>
+                    );
+                  }
+
+                  // For date fields
+                  if (fieldInfo?.type === "date") {
+                    return (
+                      <input
+                        type="date"
+                        value={condition.value}
+                        onChange={(e) => updateCondition(index, { value: e.target.value })}
+                        className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-white text-sm"
+                      />
+                    );
+                  }
+
+                  // Default text input (with number type for numeric fields)
+                  return (
+                    <input
+                      type={fieldInfo?.type === "number" || fieldInfo?.type === "currency" ? "number" : "text"}
+                      value={condition.value}
+                      onChange={(e) => updateCondition(index, { value: e.target.value })}
+                      placeholder="Value"
+                      className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-white text-sm"
+                    />
+                  );
+                })()
               )}
             </div>
           ))}
@@ -698,35 +1815,430 @@ export function NodeConfigPanel({
           </select>
         </div>
 
-        {agentType === "custom" && (
-          <div>
-            <label className="block text-sm text-slate-400 mb-1">Agent ID</label>
-            <input
-              type="text"
-              value={(node.data.agent_id as string) || ""}
-              onChange={(e) => onUpdate({ agent_id: e.target.value })}
-              placeholder="Select or enter agent ID"
-              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
-            />
-          </div>
+        {/* Sales Outreach Configuration */}
+        {agentType === "sales_outreach" && (
+          <>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Outreach Channel</label>
+              <select
+                value={(node.data.outreach_channel as string) || "email"}
+                onChange={(e) => onUpdate({ outreach_channel: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                <option value="email">Email</option>
+                <option value="linkedin">LinkedIn</option>
+                <option value="phone">Phone Script</option>
+                <option value="multi">Multi-channel Sequence</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Tone</label>
+              <select
+                value={(node.data.outreach_tone as string) || "professional"}
+                onChange={(e) => onUpdate({ outreach_tone: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                <option value="professional">Professional</option>
+                <option value="friendly">Friendly & Casual</option>
+                <option value="formal">Formal</option>
+                <option value="consultative">Consultative</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Target Persona</label>
+              <input
+                type="text"
+                value={(node.data.target_persona as string) || ""}
+                onChange={(e) => onUpdate({ target_persona: e.target.value })}
+                placeholder="e.g., VP of Engineering, IT Decision Maker"
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Value Proposition</label>
+              <textarea
+                value={(node.data.value_proposition as string) || ""}
+                onChange={(e) => onUpdate({ value_proposition: e.target.value })}
+                placeholder="Key benefits to highlight..."
+                rows={2}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="research-company"
+                checked={(node.data.research_company as boolean) ?? true}
+                onChange={(e) => onUpdate({ research_company: e.target.checked })}
+                className="rounded bg-slate-700 border-slate-600"
+              />
+              <label htmlFor="research-company" className="text-sm text-slate-300">
+                Research company before outreach
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="personalize-pain-points"
+                checked={(node.data.personalize_pain_points as boolean) ?? true}
+                onChange={(e) => onUpdate({ personalize_pain_points: e.target.checked })}
+                className="rounded bg-slate-700 border-slate-600"
+              />
+              <label htmlFor="personalize-pain-points" className="text-sm text-slate-300">
+                Identify and address pain points
+              </label>
+            </div>
+          </>
         )}
 
+        {/* Lead Scoring Configuration */}
+        {agentType === "lead_scoring" && (
+          <>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Scoring Model</label>
+              <select
+                value={(node.data.scoring_model as string) || "balanced"}
+                onChange={(e) => onUpdate({ scoring_model: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                <option value="balanced">Balanced (Fit + Engagement)</option>
+                <option value="fit_focused">Fit-Focused (Demographics)</option>
+                <option value="engagement_focused">Engagement-Focused (Behavior)</option>
+                <option value="custom">Custom Criteria</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Ideal Customer Profile</label>
+              <textarea
+                value={(node.data.ideal_customer_profile as string) || ""}
+                onChange={(e) => onUpdate({ ideal_customer_profile: e.target.value })}
+                placeholder="Describe your ideal customer: company size, industry, tech stack..."
+                rows={3}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Score Threshold for Hot Lead</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={(node.data.hot_lead_threshold as number) || 70}
+                onChange={(e) => onUpdate({ hot_lead_threshold: parseInt(e.target.value) || 70 })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Leads scoring above this will be marked as hot
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Save Score To</label>
+              <FieldPicker
+                workspaceId={workspaceId}
+                automationId={automationId}
+                nodeId={node.id}
+                value={(node.data.score_field as string) || ""}
+                onChange={(value) => {
+                  const match = value.match(/\{\{(.+?)\}\}/);
+                  onUpdate({ score_field: match ? match[1] : value });
+                }}
+                placeholder="Select field to store score..."
+                allowCustom={true}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="include-reasoning"
+                checked={(node.data.include_scoring_reasoning as boolean) ?? true}
+                onChange={(e) => onUpdate({ include_scoring_reasoning: e.target.checked })}
+                className="rounded bg-slate-700 border-slate-600"
+              />
+              <label htmlFor="include-reasoning" className="text-sm text-slate-300">
+                Include scoring reasoning in notes
+              </label>
+            </div>
+          </>
+        )}
+
+        {/* Email Drafter Configuration */}
+        {agentType === "email_drafter" && (
+          <>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Email Type</label>
+              <select
+                value={(node.data.email_type as string) || "outreach"}
+                onChange={(e) => onUpdate({ email_type: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                <option value="outreach">Cold Outreach</option>
+                <option value="follow_up">Follow-up</option>
+                <option value="nurture">Nurture</option>
+                <option value="proposal">Proposal</option>
+                <option value="thank_you">Thank You</option>
+                <option value="re_engagement">Re-engagement</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Tone</label>
+              <select
+                value={(node.data.email_tone as string) || "professional"}
+                onChange={(e) => onUpdate({ email_tone: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                <option value="professional">Professional</option>
+                <option value="friendly">Friendly</option>
+                <option value="formal">Formal</option>
+                <option value="urgent">Urgent</option>
+                <option value="casual">Casual</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Length</label>
+              <select
+                value={(node.data.email_length as string) || "medium"}
+                onChange={(e) => onUpdate({ email_length: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                <option value="short">Short (2-3 sentences)</option>
+                <option value="medium">Medium (1 paragraph)</option>
+                <option value="long">Long (2-3 paragraphs)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Key Points to Include</label>
+              <textarea
+                value={(node.data.email_key_points as string) || ""}
+                onChange={(e) => onUpdate({ email_key_points: e.target.value })}
+                placeholder="Main points or call-to-action to include..."
+                rows={2}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Writing Sample (Optional)</label>
+              <textarea
+                value={(node.data.writing_sample as string) || ""}
+                onChange={(e) => onUpdate({ writing_sample: e.target.value })}
+                placeholder="Paste an example email to match your style..."
+                rows={3}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="include-signature"
+                checked={(node.data.include_signature as boolean) ?? true}
+                onChange={(e) => onUpdate({ include_signature: e.target.checked })}
+                className="rounded bg-slate-700 border-slate-600"
+              />
+              <label htmlFor="include-signature" className="text-sm text-slate-300">
+                Include email signature
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="personalize-email"
+                checked={(node.data.personalize_email as boolean) ?? true}
+                onChange={(e) => onUpdate({ personalize_email: e.target.checked })}
+                className="rounded bg-slate-700 border-slate-600"
+              />
+              <label htmlFor="personalize-email" className="text-sm text-slate-300">
+                Personalize based on record data
+              </label>
+            </div>
+          </>
+        )}
+
+        {/* Data Enrichment Configuration */}
+        {agentType === "data_enrichment" && (
+          <>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Enrichment Sources</label>
+              <div className="space-y-2">
+                {[
+                  { value: "linkedin", label: "LinkedIn" },
+                  { value: "company_website", label: "Company Website" },
+                  { value: "news", label: "Recent News" },
+                  { value: "social_media", label: "Social Media" },
+                  // { value: "clearbit", label: "Clearbit" },
+                  // { value: "apollo", label: "Apollo" },
+                ].map((source) => (
+                  <label key={source.value} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={((node.data.enrichment_sources as string[]) || ["linkedin", "company_website"]).includes(source.value)}
+                      onChange={(e) => {
+                        const current = (node.data.enrichment_sources as string[]) || ["linkedin", "company_website"];
+                        const updated = e.target.checked
+                          ? [...current, source.value]
+                          : current.filter((s) => s !== source.value);
+                        onUpdate({ enrichment_sources: updated });
+                      }}
+                      className="rounded bg-slate-700 border-slate-600"
+                    />
+                    <span className="text-sm text-slate-300">{source.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Fields to Enrich</label>
+              <div className="space-y-2">
+                {[
+                  { value: "company_info", label: "Company Info (size, industry, revenue)" },
+                  { value: "contact_info", label: "Contact Info (title, phone, email)" },
+                  { value: "social_profiles", label: "Social Profiles" },
+                  { value: "tech_stack", label: "Technology Stack" },
+                  { value: "funding", label: "Funding & Investors" },
+                  { value: "recent_news", label: "Recent News & Events" },
+                ].map((field) => (
+                  <label key={field.value} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={((node.data.enrich_field_types as string[]) || ["company_info", "contact_info"]).includes(field.value)}
+                      onChange={(e) => {
+                        const current = (node.data.enrich_field_types as string[]) || ["company_info", "contact_info"];
+                        const updated = e.target.checked
+                          ? [...current, field.value]
+                          : current.filter((f) => f !== field.value);
+                        onUpdate({ enrich_field_types: updated });
+                      }}
+                      className="rounded bg-slate-700 border-slate-600"
+                    />
+                    <span className="text-sm text-slate-300">{field.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="overwrite-enrichment"
+                checked={(node.data.overwrite_enriched as boolean) || false}
+                onChange={(e) => onUpdate({ overwrite_enriched: e.target.checked })}
+                className="rounded bg-slate-700 border-slate-600"
+              />
+              <label htmlFor="overwrite-enrichment" className="text-sm text-slate-300">
+                Overwrite existing field values
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="add-enrichment-note"
+                checked={(node.data.add_enrichment_note as boolean) ?? true}
+                onChange={(e) => onUpdate({ add_enrichment_note: e.target.checked })}
+                className="rounded bg-slate-700 border-slate-600"
+              />
+              <label htmlFor="add-enrichment-note" className="text-sm text-slate-300">
+                Add note with enrichment summary
+              </label>
+            </div>
+          </>
+        )}
+
+        {/* Custom Agent Configuration */}
+        {agentType === "custom" && (
+          <>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Agent ID</label>
+              <input
+                type="text"
+                value={(node.data.agent_id as string) || ""}
+                onChange={(e) => onUpdate({ agent_id: e.target.value })}
+                placeholder="Select or enter agent ID"
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Custom Goal</label>
+              <textarea
+                value={(node.data.custom_goal as string) || ""}
+                onChange={(e) => onUpdate({ custom_goal: e.target.value })}
+                placeholder="What should this agent accomplish?"
+                rows={3}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Additional Context</label>
+              <textarea
+                value={(node.data.custom_context as string) || ""}
+                onChange={(e) => onUpdate({ custom_context: e.target.value })}
+                placeholder="Any additional instructions or context..."
+                rows={2}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Max Iterations</label>
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={(node.data.max_iterations as number) || 10}
+                onChange={(e) => onUpdate({ max_iterations: parseInt(e.target.value) || 10 })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Maximum reasoning steps before stopping
+              </p>
+            </div>
+          </>
+        )}
+
+        {/* Common Settings */}
+        <div className="border-t border-slate-700 pt-4">
+          <label className="block text-sm text-slate-400 mb-2">Output Settings</label>
+          <div>
+            <label className="block text-sm text-slate-400 mb-1">Save Output To</label>
+            <FieldPicker
+              workspaceId={workspaceId}
+              automationId={automationId}
+              nodeId={node.id}
+              value={(node.data.output_field as string) || ""}
+              onChange={(value) => {
+                const match = value.match(/\{\{(.+?)\}\}/);
+                onUpdate({ output_field: match ? match[1] : value });
+              }}
+              placeholder="Select field to store agent output..."
+              allowCustom={true}
+            />
+          </div>
+          <div className="flex items-center gap-2 mt-3">
+            <input
+              type="checkbox"
+              id="add-agent-note"
+              checked={(node.data.add_execution_note as boolean) ?? true}
+              onChange={(e) => onUpdate({ add_execution_note: e.target.checked })}
+              className="rounded bg-slate-700 border-slate-600"
+            />
+            <label htmlFor="add-agent-note" className="text-sm text-slate-300">
+              Add note with agent execution details
+            </label>
+          </div>
+        </div>
+
+        {/* Description */}
         <div className="text-xs text-slate-500 bg-slate-800/50 rounded-lg p-3">
-          <p className="font-medium text-slate-400 mb-1">Agent Description</p>
+          <p className="font-medium text-slate-400 mb-1">How it works</p>
           {agentType === "sales_outreach" && (
-            <p>Research prospect, identify pain points, and craft personalized outreach.</p>
+            <p>Researches the prospect, identifies pain points based on their company and role, then crafts personalized outreach messages designed to start conversations.</p>
           )}
           {agentType === "lead_scoring" && (
-            <p>Score leads 0-100 based on fit and engagement signals.</p>
+            <p>Analyzes lead data against your ideal customer profile, evaluates engagement signals, and assigns a score from 0-100 with detailed reasoning.</p>
           )}
           {agentType === "email_drafter" && (
-            <p>Generate emails matching your personal writing style.</p>
+            <p>Generates contextual emails based on record data and your specifications. Can match your writing style if provided with samples.</p>
           )}
           {agentType === "data_enrichment" && (
-            <p>Fill missing CRM fields from external sources.</p>
+            <p>Searches multiple sources to fill in missing record data like company info, contact details, and recent news.</p>
           )}
           {agentType === "custom" && (
-            <p>Use a custom agent you&apos;ve configured.</p>
+            <p>Executes a custom agent you&apos;ve configured with specific goals, tools, and behaviors.</p>
           )}
         </div>
       </div>
