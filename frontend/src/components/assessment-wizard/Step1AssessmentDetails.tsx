@@ -127,17 +127,17 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">Assessment Details</h2>
+        <h2 className="text-xl font-semibold text-white mb-1">Assessment Details</h2>
         <p className="text-gray-500">Configure the basic information for this assessment</p>
       </div>
 
       {/* Basic Information */}
-      <div className="bg-white rounded-lg border p-6 space-y-6">
-        <h3 className="font-medium text-gray-900 border-b pb-3">Basic Information</h3>
+      <div className="bg-slate-900 rounded-lg border p-6 space-y-6">
+        <h3 className="font-medium text-slate-400 border-b pb-3">Basic Information</h3>
 
         {/* Title */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-400 mb-1">
             Title of Assessment <span className="text-red-500">*</span>
           </label>
           <input
@@ -145,7 +145,7 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Senior Software Engineer Assessment"
-            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
+            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
             maxLength={100}
           />
           <p className="text-xs text-gray-400 mt-1">{title.length}/100 characters</p>
@@ -154,7 +154,7 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
         {/* Job Designation & Department */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-400 mb-1">
               Job Designation <span className="text-red-500">*</span>
             </label>
             <select
@@ -167,7 +167,7 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
                   setCustomDesignation("");
                 }
               }}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
+              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value="">Select designation...</option>
               {JOB_DESIGNATIONS.map((d) => (
@@ -181,7 +181,7 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
                 value={customDesignation}
                 onChange={(e) => setCustomDesignation(e.target.value)}
                 placeholder="Enter custom designation"
-                className="w-full mt-2 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full mt-2 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             )}
           </div>
@@ -192,7 +192,7 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
             <select
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
+              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value="">Select department...</option>
               {DEPARTMENTS.map((d) => (
@@ -204,11 +204,11 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
       </div>
 
       {/* Experience Requirements */}
-      <div className="bg-white rounded-lg border p-6 space-y-6">
-        <h3 className="font-medium text-gray-900 border-b pb-3">Experience Requirements</h3>
+      <div className="bg-slate-900 rounded-lg border p-6 space-y-6">
+        <h3 className="font-medium text-slate-400 border-b pb-3">Experience Requirements</h3>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">
+          <label className="block text-sm font-medium text-gray-400 mb-3">
             Experience Range (Years) <span className="text-red-500">*</span>
           </label>
           <div className="flex items-center gap-4">
@@ -223,10 +223,10 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
                   setExperienceMin(val);
                   if (val > experienceMax) setExperienceMax(val);
                 }}
-                className="w-full"
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
-            <span className="text-sm text-gray-600 w-20 text-center">
+            <span className="text-sm text-gray-400 w-20 text-center">
               {experienceMin} - {experienceMax} years
             </span>
             <div className="flex-1">
@@ -240,7 +240,7 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
                   setExperienceMax(val);
                   if (val < experienceMin) setExperienceMin(val);
                 }}
-                className="w-full"
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
           </div>
@@ -251,18 +251,18 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
             type="checkbox"
             checked={includeFreshers}
             onChange={(e) => setIncludeFreshers(e.target.checked)}
-            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            className="w-4 h-4 bg-slate-900 border border-slate-700 rounded-lg text-gray-400 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
           />
-          <span className="text-sm text-gray-700">Include freshers (0 experience)</span>
+          <span className="text-sm text-gray-400">Include freshers (0 experience)</span>
         </label>
       </div>
 
       {/* Skills to Assess */}
-      <div className="bg-white rounded-lg border p-6 space-y-6">
-        <h3 className="font-medium text-gray-900 border-b pb-3">Skills to Assess</h3>
+      <div className="bg-slate-900 rounded-lg border p-6 space-y-6">
+        <h3 className="font-medium text-slate-400 border-b pb-3">Skills to Assess</h3>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-slate-700 mb-1">
             Select the technical skills you want to evaluate <span className="text-red-500">*</span>
           </label>
 
@@ -277,15 +277,15 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
               }}
               onFocus={() => setShowSkillDropdown(true)}
               placeholder="Search skills..."
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
+              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
             {showSkillDropdown && skillSearch && filteredSkills.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-auto">
+              <div className="absolute z-10 w-full mt-1 bg-slate-900 border rounded-lg shadow-lg max-h-60 overflow-auto">
                 {filteredSkills.slice(0, 10).map(({ skill, category }) => (
                   <button
                     key={skill}
                     onClick={() => handleAddSkill(skill, category)}
-                    className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center justify-between"
+                    className="w-full px-4 py-2 text-left hover:bg-slate-700 flex items-center justify-between"
                   >
                     <span>{skill}</span>
                     <span className="text-xs text-gray-400">{category}</span>
@@ -378,14 +378,14 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
       </div>
 
       {/* Description */}
-      <div className="bg-white rounded-lg border p-6 space-y-4">
-        <h3 className="font-medium text-gray-900 border-b pb-3">Assessment Description (Optional)</h3>
+      <div className="bg-slate-900 rounded-lg border p-6 space-y-4">
+        <h3 className="font-medium text-slate-400 border-b pb-3">Assessment Description (Optional)</h3>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Describe the assessment objectives, expectations, and any special instructions for candidates..."
           rows={4}
-          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white text-gray-900 placeholder-gray-400"
+          className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
           maxLength={2000}
         />
         <p className="text-xs text-gray-400">{description.length}/2000 characters</p>

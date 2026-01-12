@@ -81,10 +81,9 @@ export default function TicketsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      <AppHeader user={user} logout={logout} />
+    
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="px-4 py-4">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
@@ -275,7 +274,7 @@ export default function TicketsPage() {
             </p>
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    
   );
 }

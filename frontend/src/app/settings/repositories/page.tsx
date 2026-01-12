@@ -333,7 +333,7 @@ export default function RepositorySettingsPage() {
     <div className="min-h-screen bg-slate-900">
       {/* Header */}
       <header className="border-b border-slate-700 bg-slate-800/50">
-        <div className="max-w-5xl mx-auto px-4 py-4">
+        <div className=" mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
             <Link
               href="/dashboard"
@@ -356,7 +356,7 @@ export default function RepositorySettingsPage() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <main className=" mx-auto px-4 py-8">
         {/* Stats & Actions Bar */}
         {installationStatus?.has_installation && repositories.length > 0 && (
           <div className="flex items-center justify-between mb-6">

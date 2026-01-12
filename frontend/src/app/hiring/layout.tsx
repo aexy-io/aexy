@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import HiringLayoutClient from "./HiringLayoutClient";
+import PrimaryLayout from "@/components/layout/PrimaryLayout";
 
 export const metadata: Metadata = {
   title: "Hiring",
@@ -10,5 +11,5 @@ export default function HiringLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <HiringLayoutClient>{children}</HiringLayoutClient>;
+  return <PrimaryLayout>{children}</PrimaryLayout>;
 }

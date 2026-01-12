@@ -274,7 +274,7 @@ export default function Step4AddCandidates({
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">Add Candidates</h2>
+        <h2 className="text-xl font-semibold text-gray-400 mb-1">Add Candidates</h2>
         <p className="text-gray-500">Invite candidates to take this assessment</p>
       </div>
 
@@ -353,17 +353,17 @@ export default function Step4AddCandidates({
         <p className="text-xs text-gray-500 mb-2">
           Upload a CSV file with the following columns (header required):
         </p>
-        <code className="text-xs bg-white px-2 py-1 rounded border">
+        <code className="text-xs bg-slate-900 px-2 py-1 rounded border">
           email,name,phone
         </code>
       </div>
 
       {/* Candidates List */}
-      <div className="bg-white rounded-lg border">
+      <div className="bg-slate-900 rounded-lg border">
         {candidates.length === 0 ? (
           <div className="p-12 text-center">
             <User className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No candidates added</h3>
+            <h3 className="text-lg font-medium text-gray-400 mb-2">No candidates added</h3>
             <p className="text-gray-500 mb-4">
               Add candidates manually or import from a CSV file
             </p>
@@ -402,7 +402,7 @@ export default function Step4AddCandidates({
                       value={candidate.email}
                       onChange={(e) => handleCandidateChange(candidate.id, "email", e.target.value)}
                       placeholder="email@example.com"
-                      className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-900 placeholder-gray-400 ${
+                      className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-slate-900 text-gray-400 placeholder-gray-400 ${
                         candidate.error ? "border-red-300" : ""
                       }`}
                     />
@@ -419,7 +419,7 @@ export default function Step4AddCandidates({
                       value={candidate.name}
                       onChange={(e) => handleCandidateChange(candidate.id, "name", e.target.value)}
                       placeholder="Full Name"
-                      className="w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-900 placeholder-gray-400"
+                      className="w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-slate-900 text-gray-400 placeholder-gray-400"
                     />
                   </div>
                 </div>
@@ -431,7 +431,7 @@ export default function Step4AddCandidates({
                       value={candidate.phone}
                       onChange={(e) => handleCandidateChange(candidate.id, "phone", e.target.value)}
                       placeholder="Optional"
-                      className="w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-900 placeholder-gray-400"
+                      className="w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-slate-900 text-gray-400 placeholder-gray-400"
                     />
                   </div>
                 </div>
@@ -461,9 +461,9 @@ export default function Step4AddCandidates({
       </div>
 
       {/* Email Template */}
-      <div className="bg-white rounded-lg border p-6 space-y-4">
+      <div className="bg-slate-900 rounded-lg border p-6 space-y-4">
         <div className="flex items-center justify-between border-b pb-3">
-          <h3 className="font-medium text-gray-900 flex items-center gap-2">
+          <h3 className="font-medium text-gray-400 flex items-center gap-2">
             <Mail className="w-5 h-5 text-blue-600" />
             Invitation Email Template
           </h3>
@@ -486,7 +486,7 @@ export default function Step4AddCandidates({
                 onChange={(e) =>
                   setEmailTemplate({ ...emailTemplate, subject: e.target.value })
                 }
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-900 text-gray-400 placeholder-gray-400"
               />
             </div>
             <div>
@@ -495,7 +495,7 @@ export default function Step4AddCandidates({
                 value={emailTemplate.body}
                 onChange={(e) => setEmailTemplate({ ...emailTemplate, body: e.target.value })}
                 rows={10}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm bg-white text-gray-900 placeholder-gray-400"
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm bg-slate-900 text-gray-400 placeholder-gray-400"
               />
               <p className="text-xs text-gray-400 mt-1">
                 Available variables: {"{{candidate_name}}"}, {"{{assessment_title}}"},{" "}

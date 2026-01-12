@@ -194,10 +194,7 @@ export default function ReviewsManagePage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      <AppHeader user={user} logout={logout} />
-
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <div className="px-4 py-4">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm mb-6">
           <Link href="/reviews" className="text-slate-400 hover:text-white transition flex items-center gap-1">
@@ -644,7 +641,6 @@ export default function ReviewsManagePage() {
             )}
           </div>
         )}
-      </main>
-    </div>
+      </div>
   );
 }

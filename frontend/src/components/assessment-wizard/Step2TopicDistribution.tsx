@@ -210,7 +210,7 @@ export default function Step2TopicDistribution({
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">Topic Distribution</h2>
+        <h2 className="text-xl font-semibold text-gray-400 mb-1">Topic Distribution</h2>
         <p className="text-gray-500">Configure topics and question distribution for the assessment</p>
       </div>
 
@@ -249,7 +249,7 @@ export default function Step2TopicDistribution({
         {topics.map((topic, index) => (
           <div
             key={topic.id}
-            className="bg-white rounded-lg border shadow-sm"
+            className="bg-slate-900 rounded-lg border shadow-sm"
           >
             {/* Topic Header */}
             <div className="p-4 flex items-center gap-4">
@@ -260,7 +260,7 @@ export default function Step2TopicDistribution({
                 value={topic.topic}
                 onChange={(e) => handleTopicChange(topic.id, "topic", e.target.value)}
                 placeholder="Topic name (e.g., Data Structures, React Hooks)"
-                className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
+                className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <span>{topic.question_count} Q</span>
@@ -290,7 +290,7 @@ export default function Step2TopicDistribution({
               <div className="px-4 pb-4 border-t pt-4 space-y-6">
                 {/* Subtopics */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-400 mb-2">
                     Subtopics (comma-separated)
                   </label>
                   <input
@@ -304,13 +304,13 @@ export default function Step2TopicDistribution({
                       )
                     }
                     placeholder="Arrays, Linked Lists, Trees, Graphs"
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
 
                 {/* Question Types */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-400 mb-2">
                     Question Types
                   </label>
                   <div className="flex gap-3">
@@ -319,7 +319,7 @@ export default function Step2TopicDistribution({
                         key={qt.value}
                         className={`flex items-center gap-2 px-4 py-2 border rounded-lg cursor-pointer transition-colors ${
                           topic.question_types?.includes(qt.value)
-                            ? "border-blue-500 bg-blue-50"
+                            ? "border-blue-500 bg-blue-50 text-blue-700"
                             : "border-gray-200 hover:border-gray-300"
                         }`}
                       >
@@ -337,7 +337,7 @@ export default function Step2TopicDistribution({
 
                 {/* Difficulty Level */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-400 mb-2">
                     Difficulty Level
                   </label>
                   <div className="flex gap-3">
@@ -361,7 +361,7 @@ export default function Step2TopicDistribution({
                 {/* Question Count & Duration */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-slate-400 mb-1">
                       Number of Questions
                     </label>
                     <input
@@ -372,11 +372,11 @@ export default function Step2TopicDistribution({
                       onChange={(e) =>
                         handleTopicChange(topic.id, "question_count", parseInt(e.target.value))
                       }
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
                       Duration (minutes)
                     </label>
                     <input
@@ -387,7 +387,7 @@ export default function Step2TopicDistribution({
                       onChange={(e) =>
                         handleTopicChange(topic.id, "duration_minutes", parseInt(e.target.value))
                       }
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
                 </div>

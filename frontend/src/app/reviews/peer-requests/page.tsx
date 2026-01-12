@@ -105,10 +105,8 @@ export default function PeerRequestsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      <AppHeader user={user} logout={logout} />
 
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <div className="px-4 py-4">
         {/* Back Link */}
         <Link
           href="/reviews"
@@ -241,7 +239,6 @@ export default function PeerRequestsPage() {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
   );
 }

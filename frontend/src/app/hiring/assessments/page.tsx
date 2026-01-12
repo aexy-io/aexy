@@ -50,11 +50,11 @@ function MetricCard({
   trend?: { value: number; isPositive: boolean };
 }) {
   return (
-    <div className="bg-white rounded-lg border p-6 shadow-sm">
+    <div className="bg-slate-900/50 rounded-xl p-6 border border-slate-800 hover:border-slate-700 transition">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <p className="text-3xl font-bold text-gray-900 mt-1">{value}</p>
+          <p className="text-sm font-medium text-slate-400">{title}</p>
+          <p className="text-3xl font-bold text-white mt-1">{value}</p>
           {trend && (
             <p
               className={`text-sm mt-1 ${
@@ -90,12 +90,12 @@ function AssessmentCard({
   const [showMenu, setShowMenu] = useState(false);
 
   return (
-    <div className="bg-white rounded-lg border shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-slate-900 rounded-lg border border-slate-700 shadow-sm hover:shadow-md transition-shadow">
       <div className="p-6">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className="text-lg font-semibold text-slate-400">
                 {assessment.title}
               </h3>
               <span
@@ -169,25 +169,25 @@ function AssessmentCard({
         <div className="grid grid-cols-4 gap-4 mt-6">
           <div>
             <p className="text-xs text-gray-500">Questions</p>
-            <p className="text-lg font-semibold text-gray-900">
+            <p className="text-lg font-semibold text-white">
               {assessment.total_questions}
             </p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Duration</p>
-            <p className="text-lg font-semibold text-gray-900">
+            <p className="text-lg font-semibold text-white">
               {assessment.total_duration_minutes} min
             </p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Candidates</p>
-            <p className="text-lg font-semibold text-gray-900">
+            <p className="text-lg font-semibold text-white">
               {assessment.completed_candidates}/{assessment.total_candidates}
             </p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Avg Score</p>
-            <p className="text-lg font-semibold text-gray-900">
+            <p className="text-lg font-semibold text-white">
               {assessment.average_score !== null
                 ? `${assessment.average_score}%`
                 : "-"}
@@ -290,14 +290,12 @@ export default function AssessmentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader user={user} onLogout={logout} />
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="px-4 py-4">
+      <div>
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Assessments</h1>
+            <h1 className="text-2xl font-bold text-white">Assessments</h1>
             <p className="text-gray-500 mt-1">
               Create and manage technical assessments for candidates
             </p>
@@ -344,14 +342,14 @@ export default function AssessmentsPage() {
               placeholder="Search assessments..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
           <div className="relative">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as AssessmentStatus | "")}
-              className="appearance-none pl-4 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              className="appearance-none pl-4 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-900"
             >
               <option value="">All Status</option>
               <option value="draft">Draft</option>
@@ -369,9 +367,9 @@ export default function AssessmentsPage() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
           </div>
         ) : assessments.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg border">
+          <div className="text-center py-12 bg-slate-900/50 rounded-lg border-slate-600">
             <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <h3 className="text-lg font-medium text-slate-400 mb-2">
               No assessments yet
             </h3>
             <p className="text-gray-500 mb-4">
@@ -406,19 +404,19 @@ export default function AssessmentsPage() {
             Showing {assessments.length} of {total} assessments
           </div>
         )}
-      </main>
+      </div>
 
       {/* Create Assessment Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+          <div className="bg-slate-900 rounded-lg shadow-xl w-full max-w-md p-6">
+            <h2 className="text-xl font-semibold text-slate-400 mb-4">
               Create New Assessment
             </h2>
             <div className="mb-4">
               <label
                 htmlFor="title"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-slate-500 mb-1"
               >
                 Assessment Title
               </label>
@@ -431,7 +429,7 @@ export default function AssessmentsPage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleCreateAssessment();
                 }}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 autoFocus
               />
             </div>

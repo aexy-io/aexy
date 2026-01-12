@@ -429,7 +429,7 @@ export default function FormBuilderPage() {
     <div className="min-h-screen bg-slate-900">
       {/* Header */}
       <header className="border-b border-slate-700 bg-slate-800/50">
-        <div className="max-w-5xl mx-auto px-4 py-4">
+        <div className=" mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link
@@ -467,7 +467,7 @@ export default function FormBuilderPage() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <main className=" mx-auto px-4 py-8">
         {/* Tabs */}
         <div className="flex gap-1 bg-slate-800 p-1 rounded-lg w-fit mb-6">
           <button
