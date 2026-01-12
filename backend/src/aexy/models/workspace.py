@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from aexy.models.plan import Plan
     from aexy.models.repository import Organization
     from aexy.models.review import ReviewCycle, WorkGoal
+    from aexy.models.role import CustomRole
     from aexy.models.team import Team
 
 
@@ -161,10 +162,22 @@ class WorkspaceMember(Base):
         index=True,
     )
 
-    # Role within workspace
+    # Legacy role within workspace (kept for backwards compatibility)
     role: Mapped[str] = mapped_column(
         String(50), nullable=False, default="member"
     )  # "owner" | "admin" | "member" | "viewer"
+
+    # Custom role reference (new - takes precedence over legacy role)
+    role_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("custom_roles.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # Permission overrides at org level (beyond role permissions)
+    # Example: {"can_manage_crm": true, "can_view_billing": false}
+    permission_overrides: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # Invitation state
     status: Mapped[str] = mapped_column(
@@ -220,6 +233,10 @@ class WorkspaceMember(Base):
     invited_by: Mapped["Developer | None"] = relationship(
         "Developer",
         foreign_keys=[invited_by_id],
+        lazy="selectin",
+    )
+    custom_role: Mapped["CustomRole | None"] = relationship(
+        "CustomRole",
         lazy="selectin",
     )
 

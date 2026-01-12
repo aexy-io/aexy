@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAgent, useAgentExecutions, useAgentExecution, useAgentTools } from "@/hooks/useAgents";
+import { useAuth } from "@/hooks/useAuth";
+import { AppHeader } from "@/components/layout/AppHeader";
 import { CRMAgentExecution } from "@/lib/api";
 
 const agentTypeLabels: Record<string, { label: string; icon: typeof Bot; color: string }> = {
@@ -183,6 +185,7 @@ export default function AgentDetailPage() {
   const agentId = params.agentId as string;
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
+  const { user, logout } = useAuth();
 
   const { agent, isLoading, executeAgent, isExecuting } = useAgent(workspaceId, agentId);
   const { executions, isLoading: isLoadingExecutions } = useAgentExecutions(workspaceId, agentId);
@@ -207,34 +210,42 @@ export default function AgentDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+      <div className="min-h-screen bg-slate-950">
+        <AppHeader user={user} logout={logout} />
+        <div className="flex items-center justify-center p-8" style={{ minHeight: 'calc(100vh - 64px)' }}>
+          <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+        </div>
       </div>
     );
   }
 
   if (!agent) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="text-center">
-          <Bot className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">Agent not found</h3>
-          <button
-            onClick={() => router.push("/crm/agents")}
-            className="text-blue-400 hover:text-blue-300"
-          >
-            Back to agents
-          </button>
+      <div className="min-h-screen bg-slate-950">
+        <AppHeader user={user} logout={logout} />
+        <div className="flex items-center justify-center p-8" style={{ minHeight: 'calc(100vh - 64px)' }}>
+          <div className="text-center">
+            <Bot className="h-12 w-12 text-slate-600 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-white mb-2">Agent not found</h3>
+            <button
+              onClick={() => router.push("/crm/agents")}
+              className="text-blue-400 hover:text-blue-300"
+            >
+              Back to agents
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
+    <div className="min-h-screen bg-slate-950">
+      <AppHeader user={user} logout={logout} />
+      <div className="p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center gap-4 mb-8">
           <button
             onClick={() => router.push("/crm/agents")}
             className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
@@ -388,6 +399,7 @@ export default function AgentDetailPage() {
                 <p className="text-slate-500">Select an execution to view details</p>
               </div>
             )}
+            </div>
           </div>
         </div>
       </div>

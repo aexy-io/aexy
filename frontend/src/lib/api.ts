@@ -6287,14 +6287,15 @@ export const publicFormsApi = {
     auth_mode: TicketFormAuthMode;
     require_email: boolean;
     theme: FormTheme;
+    thank_you_page?: Record<string, unknown>;
     fields: TicketFormField[];
     conditional_rules: ConditionalRule[];
   }> => {
-    const response = await api.get(`/forms/${publicToken}`);
+    const response = await api.get(`/public/forms/${publicToken}`);
     return response.data;
   },
 
-  // Submit ticket
+  // Submit form
   submit: async (
     publicToken: string,
     data: {
@@ -6303,13 +6304,19 @@ export const publicFormsApi = {
       field_values: Record<string, unknown>;
     }
   ): Promise<{
-    ticket_id: string;
-    ticket_number: number;
+    submission_id: string;
+    ticket_number?: number;
     success_message?: string;
     redirect_url?: string;
     requires_email_verification: boolean;
   }> => {
-    const response = await api.post(`/forms/${publicToken}/submit`, data);
+    // Transform field names to match backend schema
+    const payload = {
+      email: data.submitter_email,
+      name: data.submitter_name,
+      data: data.field_values,
+    };
+    const response = await api.post(`/public/forms/${publicToken}/submit`, payload);
     return response.data;
   },
 
@@ -6318,7 +6325,7 @@ export const publicFormsApi = {
     publicToken: string,
     token: string
   ): Promise<{ verified: boolean; ticket_number: number }> => {
-    const response = await api.post(`/forms/${publicToken}/verify-email`, { token });
+    const response = await api.post(`/public/forms/${publicToken}/verify-email`, { token });
     return response.data;
   },
 };
@@ -7920,6 +7927,24 @@ export const crmAutomationApi = {
 // Google Integration API (Gmail & Calendar sync for CRM)
 // =============================================================================
 
+export interface DealCreationSettings {
+  auto_create_deals: boolean;
+  deal_creation_mode: "auto" | "ai" | "criteria";
+  skip_personal_domains: boolean;
+  default_deal_stage: string;
+  default_deal_value: number | null;
+  criteria: {
+    subject_keywords: string[];
+    body_keywords: string[];
+    from_domains: string[];
+  };
+}
+
+export interface GoogleSyncSettings {
+  deal_settings?: DealCreationSettings;
+  [key: string]: unknown;
+}
+
 export interface GoogleIntegrationStatus {
   is_connected: boolean;
   google_email: string | null;
@@ -7931,6 +7956,7 @@ export interface GoogleIntegrationStatus {
   events_synced: number;
   last_error: string | null;
   granted_scopes: string[];
+  sync_settings?: GoogleSyncSettings;
 }
 
 export interface SyncJobStatus {
@@ -8527,6 +8553,421 @@ export const workflowTemplatesApi = {
 
   delete: async (workspaceId: string, templateId: string): Promise<{ success: boolean }> => {
     const response = await api.delete(`/workspaces/${workspaceId}/crm/workflow-templates/${templateId}`);
+    return response.data;
+  },
+};
+
+// Dashboard Customization API
+export interface DashboardPreferences {
+  id: string;
+  developer_id: string;
+  preset_type: string;
+  visible_widgets: string[];
+  widget_order: string[];
+  widget_sizes: Record<string, string>;
+  layout: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DashboardPreferencesUpdate {
+  preset_type?: string;
+  visible_widgets?: string[];
+  widget_order?: string[];
+  widget_sizes?: Record<string, string>;
+  layout?: Record<string, unknown>;
+}
+
+export interface DashboardPresetInfo {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  widgets: string[];
+}
+
+export interface WidgetInfo {
+  id: string;
+  name: string;
+  category: string;
+  personas: string[];
+  default_size: string;
+  icon: string;
+}
+
+export interface WidgetCategoryInfo {
+  id: string;
+  name: string;
+  icon: string;
+}
+
+export const dashboardApi = {
+  getPreferences: async (): Promise<DashboardPreferences> => {
+    const response = await api.get("/dashboard/preferences");
+    return response.data;
+  },
+
+  updatePreferences: async (data: DashboardPreferencesUpdate): Promise<DashboardPreferences> => {
+    const response = await api.put("/dashboard/preferences", data);
+    return response.data;
+  },
+
+  resetPreferences: async (presetType: string = "developer"): Promise<DashboardPreferences> => {
+    const response = await api.post("/dashboard/preferences/reset", null, {
+      params: { preset_type: presetType },
+    });
+    return response.data;
+  },
+
+  getPresets: async (): Promise<{ presets: DashboardPresetInfo[] }> => {
+    const response = await api.get("/dashboard/presets");
+    return response.data;
+  },
+
+  getWidgets: async (): Promise<{ widgets: WidgetInfo[]; categories: WidgetCategoryInfo[] }> => {
+    const response = await api.get("/dashboard/widgets");
+    return response.data;
+  },
+
+  getAccessibleWidgets: async (workspaceId: string, projectId?: string): Promise<string[]> => {
+    const params: Record<string, string> = {};
+    if (projectId) params.project_id = projectId;
+    const response = await api.get(`/workspaces/${workspaceId}/dashboard/accessible-widgets`, { params });
+    return response.data.widget_ids;
+  },
+
+  getWidgetsWithPermissions: async (): Promise<{ widgets: WidgetInfo[]; categories: WidgetCategoryInfo[] }> => {
+    const response = await api.get("/dashboard/widgets-with-permissions");
+    return response.data;
+  },
+};
+
+// Role Management Types
+export type PermissionCategory =
+  | "members"
+  | "roles"
+  | "projects"
+  | "teams"
+  | "sprints"
+  | "tasks"
+  | "epics"
+  | "tickets"
+  | "crm"
+  | "documents"
+  | "assessments"
+  | "hiring"
+  | "tracking"
+  | "billing"
+  | "integrations"
+  | "workspace";
+
+export interface PermissionInfo {
+  id: string;
+  name: string;
+  description: string;
+  category: PermissionCategory;
+}
+
+export interface RoleTemplateInfo {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  icon: string;
+  permissions: string[];
+  priority: number;
+}
+
+export interface CustomRole {
+  id: string;
+  workspace_id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  color: string;
+  icon: string;
+  based_on_template: string | null;
+  is_system: boolean;
+  permissions: string[];
+  priority: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RoleCreate {
+  name: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  based_on_template?: string;
+  permissions?: string[];
+  priority?: number;
+}
+
+export interface RoleUpdate {
+  name?: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  permissions?: string[];
+  priority?: number;
+  is_active?: boolean;
+}
+
+// Project Management Types
+export type ProjectStatus = "active" | "on_hold" | "completed" | "archived";
+
+export interface Project {
+  id: string;
+  workspace_id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  color: string;
+  icon: string;
+  settings: Record<string, unknown>;
+  status: ProjectStatus;
+  member_count: number;
+  team_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectCreate {
+  name: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  settings?: Record<string, unknown>;
+  status?: ProjectStatus;
+}
+
+export interface ProjectUpdate {
+  name?: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  settings?: Record<string, unknown>;
+  status?: ProjectStatus;
+}
+
+export interface ProjectMember {
+  id: string;
+  project_id: string;
+  developer_id: string;
+  developer_name: string | null;
+  developer_email: string | null;
+  developer_avatar_url: string | null;
+  role_id: string | null;
+  role_name: string | null;
+  permission_overrides: Record<string, boolean> | null;
+  status: "active" | "pending" | "removed";
+  invited_at: string | null;
+  joined_at: string | null;
+  created_at: string;
+}
+
+export interface ProjectMemberAdd {
+  developer_id: string;
+  role_id?: string;
+  permission_overrides?: Record<string, boolean>;
+}
+
+export interface ProjectMemberUpdate {
+  role_id?: string | null;
+  permission_overrides?: Record<string, boolean> | null;
+  status?: "active" | "pending" | "removed";
+}
+
+export interface MyPermissionsResponse {
+  permissions: string[];
+  role_id: string | null;
+  role_name: string | null;
+  is_workspace_owner: boolean;
+  permission_overrides: Record<string, boolean> | null;
+}
+
+export interface ProjectTeamInfo {
+  team_id: string;
+  team_name: string;
+  team_slug: string;
+  added_at: string;
+}
+
+export interface ProjectInviteRequest {
+  emails: string[];
+  role_id?: string;
+}
+
+export interface ProjectInviteResult {
+  invited: string[];
+  already_members: string[];
+  pending_invites: string[];
+  failed: Array<{ email: string; reason: string }>;
+}
+
+// Role Management API
+export const roleApi = {
+  // List role templates
+  getTemplates: async (workspaceId: string): Promise<{ templates: RoleTemplateInfo[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/roles/templates`);
+    return response.data;
+  },
+
+  // Get permission catalog
+  getPermissions: async (workspaceId: string): Promise<{
+    permissions: PermissionInfo[];
+    categories: { id: PermissionCategory; name: string; icon: string }[];
+  }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/roles/permissions`);
+    return response.data;
+  },
+
+  // List workspace roles
+  list: async (workspaceId: string, includeInactive = false): Promise<{ roles: CustomRole[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/roles`, {
+      params: { include_inactive: includeInactive },
+    });
+    return response.data;
+  },
+
+  // Get single role
+  get: async (workspaceId: string, roleId: string): Promise<CustomRole> => {
+    const response = await api.get(`/workspaces/${workspaceId}/roles/${roleId}`);
+    return response.data;
+  },
+
+  // Create role
+  create: async (workspaceId: string, data: RoleCreate): Promise<CustomRole> => {
+    const response = await api.post(`/workspaces/${workspaceId}/roles`, data);
+    return response.data;
+  },
+
+  // Update role
+  update: async (workspaceId: string, roleId: string, data: RoleUpdate): Promise<CustomRole> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/roles/${roleId}`, data);
+    return response.data;
+  },
+
+  // Delete role
+  delete: async (workspaceId: string, roleId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/roles/${roleId}`);
+  },
+
+  // Duplicate role
+  duplicate: async (workspaceId: string, roleId: string, newName?: string): Promise<CustomRole> => {
+    const response = await api.post(`/workspaces/${workspaceId}/roles/${roleId}/duplicate`, null, {
+      params: newName ? { new_name: newName } : undefined,
+    });
+    return response.data;
+  },
+
+  // Reset role to template
+  resetToTemplate: async (workspaceId: string, roleId: string): Promise<CustomRole> => {
+    const response = await api.post(`/workspaces/${workspaceId}/roles/${roleId}/reset`);
+    return response.data;
+  },
+};
+
+// Project Management API
+export const projectApi = {
+  // List projects
+  list: async (workspaceId: string, status?: ProjectStatus): Promise<{ projects: Project[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/projects`, {
+      params: status ? { status } : undefined,
+    });
+    return response.data;
+  },
+
+  // Get single project
+  get: async (workspaceId: string, projectId: string): Promise<Project> => {
+    const response = await api.get(`/workspaces/${workspaceId}/projects/${projectId}`);
+    return response.data;
+  },
+
+  // Create project
+  create: async (workspaceId: string, data: ProjectCreate): Promise<Project> => {
+    const response = await api.post(`/workspaces/${workspaceId}/projects`, data);
+    return response.data;
+  },
+
+  // Update project
+  update: async (workspaceId: string, projectId: string, data: ProjectUpdate): Promise<Project> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/projects/${projectId}`, data);
+    return response.data;
+  },
+
+  // Delete project
+  delete: async (workspaceId: string, projectId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/projects/${projectId}`);
+  },
+
+  // Project Members
+  getMembers: async (workspaceId: string, projectId: string): Promise<{ members: ProjectMember[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/projects/${projectId}/members`);
+    return response.data;
+  },
+
+  addMember: async (workspaceId: string, projectId: string, data: ProjectMemberAdd): Promise<ProjectMember> => {
+    const response = await api.post(`/workspaces/${workspaceId}/projects/${projectId}/members`, data);
+    return response.data;
+  },
+
+  updateMember: async (
+    workspaceId: string,
+    projectId: string,
+    developerId: string,
+    data: ProjectMemberUpdate
+  ): Promise<ProjectMember> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/projects/${projectId}/members/${developerId}`,
+      data
+    );
+    return response.data;
+  },
+
+  removeMember: async (workspaceId: string, projectId: string, developerId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/projects/${projectId}/members/${developerId}`);
+  },
+
+  // Invite by email
+  invite: async (
+    workspaceId: string,
+    projectId: string,
+    data: ProjectInviteRequest
+  ): Promise<ProjectInviteResult> => {
+    const response = await api.post(`/workspaces/${workspaceId}/projects/${projectId}/invite`, data);
+    return response.data;
+  },
+
+  // Project Teams
+  getTeams: async (workspaceId: string, projectId: string): Promise<{ teams: ProjectTeamInfo[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/projects/${projectId}/teams`);
+    return response.data;
+  },
+
+  addTeam: async (workspaceId: string, projectId: string, teamId: string): Promise<ProjectTeamInfo> => {
+    const response = await api.post(`/workspaces/${workspaceId}/projects/${projectId}/teams`, {
+      team_id: teamId,
+    });
+    return response.data;
+  },
+
+  removeTeam: async (workspaceId: string, projectId: string, teamId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/projects/${projectId}/teams/${teamId}`);
+  },
+
+  // My permissions in project
+  getMyPermissions: async (workspaceId: string, projectId: string): Promise<MyPermissionsResponse> => {
+    const response = await api.get(`/workspaces/${workspaceId}/projects/${projectId}/my-permissions`);
+    return response.data;
+  },
+
+  // Accessible widgets in project context
+  getAccessibleWidgets: async (workspaceId: string, projectId: string): Promise<{ widget_ids: string[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/projects/${projectId}/accessible-widgets`);
     return response.data;
   },
 };

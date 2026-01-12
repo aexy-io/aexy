@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAgents } from "@/hooks/useAgents";
+import { useAuth } from "@/hooks/useAuth";
+import { AppHeader } from "@/components/layout/AppHeader";
 import { CRMAgent } from "@/lib/api";
 
 const agentTypeLabels: Record<string, { label: string; icon: typeof Bot; color: string }> = {
@@ -146,6 +148,7 @@ export default function AgentsPage() {
   const router = useRouter();
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
+  const { user, logout } = useAuth();
 
   const {
     agents,
@@ -183,10 +186,12 @@ export default function AgentsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
+    <div className="min-h-screen bg-slate-950">
+      <AppHeader user={user} logout={logout} />
+      <div className="p-8">
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center gap-4 mb-6">
           <button
             onClick={() => router.push("/crm")}
             className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
@@ -314,8 +319,9 @@ export default function AgentsPage() {
                 </div>
               </div>
             )}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

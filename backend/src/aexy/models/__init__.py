@@ -190,6 +190,26 @@ from aexy.models.google_integration import (
     EmailSyncCursor,
 )
 from aexy.models.workflow import WorkflowDefinition
+from aexy.models.forms import (
+    Form,
+    FormField,
+    FormSubmission,
+    FormAutomationLink,
+    FormAuthMode,
+    FormTemplateType,
+    FormFieldType,
+    FormSubmissionStatus,
+    TicketAssignmentMode,
+)
+from aexy.models.dashboard import DashboardPreferences
+from aexy.models.role import CustomRole
+from aexy.models.project import Project, ProjectMember, ProjectTeam
+from aexy.models.permissions import (
+    PERMISSIONS,
+    ROLE_TEMPLATES,
+    WIDGET_PERMISSIONS,
+    PermissionCategory,
+)
 
 __all__ = [
     # Plan
@@ -376,4 +396,26 @@ __all__ = [
     "EmailSyncCursor",
     # Workflow
     "WorkflowDefinition",
+    # Forms
+    "Form",
+    "FormField",
+    "FormSubmission",
+    "FormAutomationLink",
+    "FormAuthMode",
+    "FormTemplateType",
+    "FormFieldType",
+    "FormSubmissionStatus",
+    "TicketAssignmentMode",
+    # Dashboard
+    "DashboardPreferences",
+    # Roles & Permissions
+    "CustomRole",
+    "PERMISSIONS",
+    "ROLE_TEMPLATES",
+    "WIDGET_PERMISSIONS",
+    "PermissionCategory",
+    # Projects
+    "Project",
+    "ProjectMember",
+    "ProjectTeam",
 ]

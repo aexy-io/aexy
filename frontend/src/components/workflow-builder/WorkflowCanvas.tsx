@@ -355,6 +355,12 @@ function WorkflowCanvasInner({
         node.id === nodeId ? { ...node, data: { ...node.data, ...data } } : node
       )
     );
+    // Also update selectedNode if it's the one being edited
+    setSelectedNode((current) =>
+      current?.id === nodeId
+        ? { ...current, data: { ...current.data, ...data } }
+        : current
+    );
     setHasChanges(true);
   }, []);
 

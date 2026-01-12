@@ -178,6 +178,111 @@ async def _send_slack_dm(
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_slack_workflow_message(
+    self,
+    workspace_id: str,
+    target_type: str,
+    target: str,
+    message: str,
+    record_id: str | None = None,
+) -> dict[str, Any]:
+    """Send a Slack message from workflow automation.
+
+    Supports both channel messages and DMs via email lookup.
+
+    Args:
+        workspace_id: Workspace ID to get Slack integration.
+        target_type: "channel" or "dm"
+        target: Channel ID (for channel) or email address (for dm)
+        message: Message text.
+        record_id: Optional CRM record ID.
+
+    Returns:
+        Result dict with message info.
+    """
+    logger.info(f"Sending Slack workflow message: {target_type} -> {target}")
+
+    try:
+        result = run_async(_send_slack_workflow_message(
+            workspace_id, target_type, target, message, record_id
+        ))
+        return result
+    except Exception as exc:
+        logger.error(f"Slack workflow message failed: {exc}")
+        raise self.retry(exc=exc)
+
+
+async def _send_slack_workflow_message(
+    workspace_id: str,
+    target_type: str,
+    target: str,
+    message: str,
+    record_id: str | None = None,
+) -> dict[str, Any]:
+    """Async implementation of workflow Slack message sending."""
+    from sqlalchemy import select
+
+    from aexy.core.database import async_session_maker
+    from aexy.models.developer import Developer
+    from aexy.models.integrations import SlackIntegration
+    from aexy.services.slack_integration import SlackIntegrationService
+    from aexy.schemas.integrations import SlackMessage, SlackNotificationType
+
+    async with async_session_maker() as db:
+        # Get Slack integration for workspace
+        slack_service = SlackIntegrationService()
+        integration = await slack_service.get_integration_by_workspace(workspace_id, db)
+
+        if not integration:
+            return {"success": False, "error": "No Slack integration found for workspace"}
+
+        # Determine the channel/user ID to send to
+        send_to = target
+
+        if target_type == "dm":
+            # target is an email - need to look up Slack user ID
+            result = await db.execute(
+                select(Developer).where(Developer.email == target)
+            )
+            developer = result.scalar_one_or_none()
+
+            if not developer:
+                return {"success": False, "error": f"No developer found with email: {target}"}
+
+            # Find Slack user ID from mappings
+            user_mappings = integration.user_mappings or {}
+            slack_user_id = None
+            for slack_id, dev_id in user_mappings.items():
+                if dev_id == developer.id:
+                    slack_user_id = slack_id
+                    break
+
+            if not slack_user_id:
+                return {"success": False, "error": f"No Slack user mapping found for: {target}"}
+
+            send_to = slack_user_id
+
+        # Send the message
+        slack_message = SlackMessage(text=message)
+        response = await slack_service.send_message(
+            integration=integration,
+            channel_id=send_to,
+            message=slack_message,
+            notification_type=SlackNotificationType.AUTOMATION,
+            db=db,
+        )
+
+        return {
+            "success": response.success,
+            "target_type": target_type,
+            "target": target,
+            "sent_to": send_to,
+            "message_ts": response.message_ts,
+            "error": response.error,
+        }
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def send_slack_record_notification(
     self,
     workspace_id: str,

@@ -24,6 +24,12 @@ class SlackIntegration(Base):
         UUID(as_uuid=False),
         index=True,
     )
+    workspace_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     # Slack workspace info
     team_id: Mapped[str] = mapped_column(String(50), unique=True)  # Slack team ID

@@ -58,6 +58,9 @@ from aexy.api.tickets import router as tickets_router
 from aexy.api.public_forms import router as public_forms_router
 from aexy.api.escalation import router as escalation_router
 from aexy.api.escalation import escalation_ticket_router
+# Forms (Standalone Module)
+from aexy.api.forms import router as forms_router
+from aexy.api.forms import public_router as public_forms_new_router
 # Assessment Platform
 from aexy.api.assessments import router as assessments_router
 from aexy.api.assessment_take import router as assessment_take_router
@@ -75,6 +78,11 @@ from aexy.api.google_integration import router as google_integration_router
 # AI Agents
 from aexy.api.agents import router as agents_router
 from aexy.api.agents import writing_style_router
+# Dashboard Customization
+from aexy.api.dashboard import router as dashboard_router
+# Roles & Projects
+from aexy.api.roles import router as roles_router
+from aexy.api.projects import router as projects_router
 
 api_router = APIRouter()
 
@@ -138,6 +146,9 @@ api_router.include_router(tickets_router, tags=["tickets"])
 api_router.include_router(public_forms_router, tags=["public-forms"])
 api_router.include_router(escalation_router, tags=["escalation"])
 api_router.include_router(escalation_ticket_router, tags=["escalation"])
+# Forms (Standalone Module with CRM/Ticketing integration)
+api_router.include_router(forms_router, tags=["forms"])
+api_router.include_router(public_forms_new_router, tags=["forms-public"])
 # Assessment Platform
 api_router.include_router(assessments_router, tags=["assessments"])
 api_router.include_router(assessment_take_router, tags=["assessment-take"])
@@ -155,3 +166,8 @@ api_router.include_router(google_integration_router, tags=["google-integration"]
 # AI Agents
 api_router.include_router(agents_router, tags=["agents"])
 api_router.include_router(writing_style_router, tags=["writing-style"])
+# Dashboard Customization
+api_router.include_router(dashboard_router, tags=["dashboard"])
+# Roles & Projects
+api_router.include_router(roles_router, tags=["roles"])
+api_router.include_router(projects_router, tags=["projects"])

@@ -18,9 +18,24 @@ from aexy.models.google_integration import (
     SyncedEmail,
     SyncedEmailRecordLink,
 )
-from aexy.models.crm import CRMRecord, CRMObject, CRMObjectType
+from aexy.models.crm import CRMRecord, CRMObject, CRMObjectType, CRMRecordRelation
 
 logger = logging.getLogger(__name__)
+
+
+# Default deal creation settings
+DEFAULT_DEAL_SETTINGS = {
+    "auto_create_deals": False,  # Master toggle
+    "deal_creation_mode": "auto",  # "auto", "ai", "criteria"
+    "skip_personal_domains": True,
+    "default_deal_stage": "new",
+    "default_deal_value": None,
+    "criteria": {
+        "subject_keywords": [],  # e.g., ["quote", "proposal", "pricing", "interested"]
+        "body_keywords": [],
+        "from_domains": [],  # Specific domains to create deals for
+    },
+}
 
 
 async def auto_enrich_contact_from_email(
@@ -29,14 +44,14 @@ async def auto_enrich_contact_from_email(
     from_email: str | None,
     from_name: str | None,
     synced_email: "SyncedEmail",
-) -> CRMRecord | None:
+) -> tuple[CRMRecord | None, CRMRecord | None]:
     """Auto-create or find contact from email sender and link the email.
 
     Also creates company record from email domain if applicable.
-    Returns the contact record if created/found, None otherwise.
+    Returns a tuple of (contact_record, company_record).
     """
     if not from_email:
-        return None
+        return None, None
 
     # Skip common personal email domains
     personal_domains = {"gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com", "aol.com", "protonmail.com"}
@@ -49,7 +64,7 @@ async def auto_enrich_contact_from_email(
         )
         integration = int_result.scalar_one_or_none()
         if integration and integration.google_email and from_email.lower() == integration.google_email.lower():
-            return None
+            return None, None
     except Exception:
         pass
 
@@ -64,7 +79,7 @@ async def auto_enrich_contact_from_email(
 
     if not person_obj:
         # No person object type configured, skip enrichment
-        return None
+        return None, None
 
     # Get the Company object type
     company_obj_result = await db.execute(
@@ -204,7 +219,307 @@ async def auto_enrich_contact_from_email(
         )
         db.add(link)
 
-    return existing_record
+    return existing_record, company_record
+
+
+async def auto_create_or_update_deal_from_email(
+    db: AsyncSession,
+    workspace_id: str,
+    synced_email: "SyncedEmail",
+    contact_record: CRMRecord | None,
+    company_record: CRMRecord | None,
+    deal_settings: dict,
+) -> CRMRecord | None:
+    """Auto-create or update a deal from an email.
+
+    This function creates deals based on the configured settings:
+    - "auto": Create deal for every email from non-personal domains
+    - "ai": Use AI to determine if email indicates a deal opportunity
+    - "criteria": Only create deals for emails matching specific criteria
+
+    Returns the created/updated deal record, or None if skipped.
+    """
+    from uuid import uuid4
+
+    if not deal_settings.get("auto_create_deals", False):
+        return None
+
+    from_email = synced_email.from_email
+    if not from_email:
+        return None
+
+    # Extract domain
+    domain = from_email.split("@")[1].lower() if "@" in from_email else None
+    if not domain:
+        return None
+
+    # Skip personal domains if configured
+    personal_domains = {"gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com", "aol.com", "protonmail.com"}
+    if deal_settings.get("skip_personal_domains", True) and domain in personal_domains:
+        return None
+
+    # Get creation mode
+    mode = deal_settings.get("deal_creation_mode", "auto")
+
+    # For criteria mode, check if email matches
+    if mode == "criteria":
+        criteria = deal_settings.get("criteria", {})
+        subject_keywords = [kw.lower() for kw in criteria.get("subject_keywords", [])]
+        body_keywords = [kw.lower() for kw in criteria.get("body_keywords", [])]
+        from_domains = [d.lower() for d in criteria.get("from_domains", [])]
+
+        matches = False
+
+        # Check domain filter
+        if from_domains and domain in from_domains:
+            matches = True
+
+        # Check subject keywords
+        subject = (synced_email.subject or "").lower()
+        if subject_keywords and any(kw in subject for kw in subject_keywords):
+            matches = True
+
+        # Check body keywords
+        body = (synced_email.body_text or "").lower()
+        if body_keywords and any(kw in body for kw in body_keywords):
+            matches = True
+
+        if not matches:
+            return None
+
+    # For AI mode, use LLM to determine if this is a deal opportunity
+    if mode == "ai":
+        is_deal_opportunity = await _check_deal_opportunity_with_ai(
+            synced_email.subject,
+            synced_email.snippet or synced_email.body_text[:500] if synced_email.body_text else None,
+        )
+        if not is_deal_opportunity:
+            return None
+
+    # Get the Deal object type
+    deal_obj_result = await db.execute(
+        select(CRMObject).where(
+            CRMObject.workspace_id == workspace_id,
+            CRMObject.slug == "deal",
+        )
+    )
+    deal_obj = deal_obj_result.scalar_one_or_none()
+
+    if not deal_obj:
+        logger.debug("No deal object type configured, skipping deal creation")
+        return None
+
+    # Check for existing deal linked to this company or contact
+    existing_deal = None
+    if company_record or contact_record:
+        # Look for deals related to the company or contact
+        deal_records_result = await db.execute(
+            select(CRMRecord).where(
+                CRMRecord.workspace_id == workspace_id,
+                CRMRecord.object_id == deal_obj.id,
+            )
+        )
+        deal_records = deal_records_result.scalars().all()
+
+        # Check relations to find linked deals
+        for deal in deal_records:
+            relations_result = await db.execute(
+                select(CRMRecordRelation).where(
+                    CRMRecordRelation.source_record_id == deal.id
+                )
+            )
+            relations = relations_result.scalars().all()
+
+            for rel in relations:
+                target_id = rel.target_record_id
+                if company_record and target_id == company_record.id:
+                    existing_deal = deal
+                    break
+                if contact_record and target_id == contact_record.id:
+                    existing_deal = deal
+                    break
+            if existing_deal:
+                break
+
+    if existing_deal:
+        # Update existing deal - add email info to notes/activity
+        existing_values = existing_deal.values or {}
+
+        # Update last_activity date
+        existing_values["last_activity"] = datetime.now(timezone.utc).isoformat()
+
+        # Append email to notes if there's a notes field
+        if "notes" in existing_values:
+            email_note = f"\n---\nEmail from {synced_email.from_email} on {synced_email.gmail_date}: {synced_email.subject}"
+            existing_values["notes"] = existing_values["notes"] + email_note
+        else:
+            existing_values["email_count"] = existing_values.get("email_count", 0) + 1
+
+        existing_deal.values = existing_values
+        await db.flush()
+        logger.info(f"Updated existing deal {existing_deal.display_name} with new email activity")
+
+        # Link email to deal
+        await _link_email_to_record(db, synced_email, existing_deal, "deal_activity")
+
+        return existing_deal
+
+    # Create a new deal
+    deal_name = f"Deal - {synced_email.from_name or domain}"
+    if synced_email.subject:
+        # Use subject for more context
+        deal_name = f"{synced_email.from_name or domain}: {synced_email.subject[:50]}"
+
+    deal_values = {
+        "name": deal_name,
+        "stage": deal_settings.get("default_deal_stage", "new"),
+        "source": "email_sync",
+        "source_email": from_email,
+        "created_from_email": synced_email.id,
+    }
+
+    if deal_settings.get("default_deal_value"):
+        deal_values["value"] = deal_settings["default_deal_value"]
+
+    # Add company/contact info
+    if company_record:
+        deal_values["company"] = company_record.display_name
+        deal_values["company_domain"] = domain
+
+    deal_record = CRMRecord(
+        id=str(uuid4()),
+        workspace_id=workspace_id,
+        object_id=deal_obj.id,
+        display_name=deal_name[:500],
+        values=deal_values,
+        source="email_sync",
+    )
+    db.add(deal_record)
+    await db.flush()
+
+    # Create relations to company and contact
+    if company_record:
+        relation = CRMRecordRelation(
+            id=str(uuid4()),
+            source_record_id=deal_record.id,
+            target_record_id=company_record.id,
+            relation_type="deal_company",
+        )
+        db.add(relation)
+
+    if contact_record:
+        relation = CRMRecordRelation(
+            id=str(uuid4()),
+            source_record_id=deal_record.id,
+            target_record_id=contact_record.id,
+            relation_type="deal_contact",
+        )
+        db.add(relation)
+
+    # Link email to deal
+    await _link_email_to_record(db, synced_email, deal_record, "deal_source")
+
+    logger.info(f"Auto-created deal '{deal_name}' from email sync")
+
+    return deal_record
+
+
+async def _check_deal_opportunity_with_ai(
+    subject: str | None,
+    body_preview: str | None,
+) -> bool:
+    """Use AI to check if an email indicates a deal opportunity."""
+    if not subject and not body_preview:
+        return False
+
+    try:
+        from aexy.agents.llm import llm_completion
+
+        prompt = f"""Analyze this email and determine if it indicates a potential business deal or sales opportunity.
+
+Subject: {subject or 'N/A'}
+Preview: {body_preview or 'N/A'}
+
+Respond with ONLY "yes" or "no".
+- "yes" if the email suggests: pricing inquiry, proposal request, product interest, partnership opportunity, quote request, demo request, or similar sales indicators
+- "no" for: newsletters, notifications, support tickets, internal emails, spam, or general inquiries not related to potential deals"""
+
+        response = await llm_completion(
+            messages=[{"role": "user", "content": prompt}],
+            model="haiku",  # Use fast model for quick classification
+            max_tokens=10,
+        )
+
+        answer = response.strip().lower()
+        return answer == "yes"
+
+    except Exception as e:
+        logger.warning(f"AI deal check failed, defaulting to create deal: {e}")
+        return True  # Default to creating deal if AI fails
+
+
+async def _link_email_to_record(
+    db: AsyncSession,
+    synced_email: "SyncedEmail",
+    record: CRMRecord,
+    link_type: str,
+) -> None:
+    """Link an email to a CRM record if not already linked."""
+    existing_link_result = await db.execute(
+        select(SyncedEmailRecordLink).where(
+            SyncedEmailRecordLink.email_id == synced_email.id,
+            SyncedEmailRecordLink.record_id == record.id,
+        )
+    )
+    if existing_link_result.scalar_one_or_none():
+        return
+
+    from uuid import uuid4
+    link = SyncedEmailRecordLink(
+        id=str(uuid4()),
+        email_id=synced_email.id,
+        record_id=record.id,
+        link_type=link_type,
+        confidence=1.0,
+    )
+    db.add(link)
+
+
+async def _find_company_for_email(
+    db: AsyncSession,
+    workspace_id: str,
+    domain: str,
+) -> CRMRecord | None:
+    """Find an existing company record for a given domain."""
+    company_obj_result = await db.execute(
+        select(CRMObject).where(
+            CRMObject.workspace_id == workspace_id,
+            CRMObject.slug == "company",
+        )
+    )
+    company_obj = company_obj_result.scalar_one_or_none()
+
+    if not company_obj:
+        return None
+
+    company_records_result = await db.execute(
+        select(CRMRecord).where(
+            CRMRecord.workspace_id == workspace_id,
+            CRMRecord.object_id == company_obj.id,
+        )
+    )
+    company_records = company_records_result.scalars().all()
+
+    for record in company_records:
+        if record.values:
+            record_domain = record.values.get("domain", "").lower()
+            record_website = record.values.get("website", "").lower()
+            if domain == record_domain or domain in record_website:
+                return record
+
+    return None
+
+
 settings = get_settings()
 
 # Gmail API URLs
@@ -525,9 +840,11 @@ class GmailSyncService:
         self.db.add(synced_email)
         await self.db.flush()
 
-        # Auto-enrich: create contact from email sender if not exists
+        # Auto-enrich: create contact and company from email sender if not exists
+        contact_record = None
+        company_record = None
         try:
-            await auto_enrich_contact_from_email(
+            contact_record, company_record = await auto_enrich_contact_from_email(
                 db=self.db,
                 workspace_id=integration.workspace_id,
                 from_email=email_data.get("from_email"),
@@ -537,6 +854,24 @@ class GmailSyncService:
         except Exception as e:
             # Don't fail sync if enrichment fails
             logger.warning(f"Failed to auto-enrich contact from email: {e}")
+
+        # Auto-create deal from email if enabled
+        try:
+            sync_settings = integration.sync_settings or {}
+            deal_settings = {**DEFAULT_DEAL_SETTINGS, **sync_settings.get("deal_settings", {})}
+
+            if deal_settings.get("auto_create_deals", False):
+                await auto_create_or_update_deal_from_email(
+                    db=self.db,
+                    workspace_id=integration.workspace_id,
+                    synced_email=synced_email,
+                    contact_record=contact_record,
+                    company_record=company_record,
+                    deal_settings=deal_settings,
+                )
+        except Exception as e:
+            # Don't fail sync if deal creation fails
+            logger.warning(f"Failed to auto-create deal from email: {e}")
 
         return synced_email
 
