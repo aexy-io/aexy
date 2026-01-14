@@ -187,6 +187,7 @@ class GitHubAppService:
         )
 
         installations = []
+        processed_installation_ids: set[int] = set()
 
         if user_installation:
             # Upsert user installation
@@ -222,11 +223,18 @@ class GitHubAppService:
                 self.db.add(new_install)
                 installations.append(new_install)
 
+            # Track this installation as processed
+            processed_installation_ids.add(user_installation["id"])
+
         # Also check org installations the user might have access to
         # This is done via the main installations list filtered by user access
         all_installations = await self.get_app_installations()
 
         for inst in all_installations:
+            # Skip if already processed (e.g., user's personal installation)
+            if inst["id"] in processed_installation_ids:
+                continue
+
             if inst["account"]["type"] == "Organization":
                 # Check if this installation already exists (by installation_id only)
                 stmt = select(GitHubInstallation).where(
@@ -257,6 +265,9 @@ class GitHubAppService:
                     )
                     self.db.add(new_install)
                     installations.append(new_install)
+
+                # Track this installation as processed
+                processed_installation_ids.add(inst["id"])
 
         await self.db.flush()
         return installations
