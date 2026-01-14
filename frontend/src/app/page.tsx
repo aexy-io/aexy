@@ -19,7 +19,6 @@ import {
   GitPullRequest,
   Bot,
   Rocket,
-  Star,
   ChevronRight,
   ChevronDown,
   Github,
@@ -247,9 +246,6 @@ export default function Home() {
             >
               <Github className="h-4 w-4" />
               <span>Open Source</span>
-              <span className="text-white/40">·</span>
-              <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-              <span>5,000+ Stars</span>
               <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
             </a>
 
@@ -548,7 +544,7 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-bold text-white mb-3">Community Driven</h3>
                 <p className="text-white/50 text-sm">
-                  500+ contributors. Weekly releases. Features you actually need. Join the community shaping the future of engineering intelligence.
+                  Active development. Regular releases. Features you actually need. Join the community shaping the future of engineering intelligence.
                 </p>
               </div>
             </div>
@@ -561,7 +557,6 @@ export default function Home() {
             >
               <Github className="h-5 w-5" />
               View on GitHub
-              <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
             </a>
             <Link
               href="/about"
@@ -1074,46 +1069,6 @@ export default function Home() {
                 ))}
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-              Loved by Engineering Teams
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { quote: "Finally, a tool that understands developers. The GitHub integration is seamless and skill profiles are surprisingly accurate.", author: "Sarah Chen", role: "Engineering Manager", company: "TechStartup" },
-              { quote: "The Jira auto-sync alone saved us hours every week. Now our sprints actually reflect what's happening in code.", author: "Marcus Rodriguez", role: "Tech Lead", company: "CloudScale" },
-              { quote: "Sprint planning went from 2-hour meetings to 30 minutes. The AI task suggestions are spot-on.", author: "Emily Zhang", role: "VP Engineering", company: "DataFlow" },
-            ].map((t, i) => (
-              <div key={i} className="group relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary-500/20 to-purple-500/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500" />
-                <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-6 hover:border-white/20 transition-all">
-                  <div className="flex gap-1 mb-4">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                    ))}
-                  </div>
-                  <p className="text-white/70 mb-6 leading-relaxed">&ldquo;{t.quote}&rdquo;</p>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                      {t.author.split(" ").map(n => n[0]).join("")}
-                    </div>
-                    <div>
-                      <div className="text-white font-medium">{t.author}</div>
-                      <div className="text-white/40 text-sm">{t.role} at {t.company}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </section>
