@@ -1,11 +1,11 @@
 "use client";
 
 import { memo } from "react";
-import { Handle, Position, NodeProps } from "@xyflow/react";
+import { Handle, Position, NodeProps, Node } from "@xyflow/react";
 import { GitMerge } from "lucide-react";
 import { useExecutionState, ExecutionStatus } from "./useExecutionState";
 
-interface BranchNodeData {
+interface BranchNodeData extends Record<string, unknown> {
   label: string;
   branches?: Array<{ id: string; label: string }>;
   hasError?: boolean;
@@ -16,7 +16,9 @@ interface BranchNodeData {
   selectedBranch?: string;
 }
 
-export const BranchNode = memo(({ data, selected }: NodeProps<BranchNodeData>) => {
+type BranchNodeType = Node<BranchNodeData>;
+
+export const BranchNode = memo(({ data, selected }: NodeProps<BranchNodeType>) => {
   const branches = (data.branches as Array<{ id: string; label: string }>) || [];
   const isHighlighted = data.isHighlighted;
   const { isRunning, isSuccess, isFailed, isSkipped, StatusIndicator, DurationBadge } = useExecutionState(data);

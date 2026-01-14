@@ -26,7 +26,7 @@ export default function TeamTrackingPage({ params }: TeamTrackingPageProps) {
   const teamMembers =
     dashboard?.member_summaries?.map((m) => ({
       id: m.developer_id,
-      name: m.name || m.email,
+      name: m.name || m.email || "Unknown",
     })) || [];
 
   return (
@@ -65,12 +65,12 @@ export default function TeamTrackingPage({ params }: TeamTrackingPageProps) {
         <TeamTrackingDashboard
           dashboard={dashboard}
           isLoading={isLoading}
-          onResolveBlocker={(blockerId, notes) =>
-            resolveBlocker.mutateAsync({ blockerId, notes })
-          }
-          onEscalateBlocker={(blockerId, escalateToId, notes) =>
-            escalateBlocker.mutateAsync({ blockerId, escalateToId, notes })
-          }
+          onResolveBlocker={async (blockerId, notes) => {
+            await resolveBlocker.mutateAsync({ blockerId, notes });
+          }}
+          onEscalateBlocker={async (blockerId, escalateToId, notes) => {
+            await escalateBlocker.mutateAsync({ blockerId, escalateToId, notes });
+          }}
           teamMembers={teamMembers}
           isResolvingBlocker={resolveBlocker.isPending}
           isEscalatingBlocker={escalateBlocker.isPending}

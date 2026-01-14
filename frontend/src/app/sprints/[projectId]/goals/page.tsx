@@ -69,7 +69,7 @@ export default function GoalsPage() {
   const router = useRouter();
   const projectId = params.projectId as string;
 
-  const { developer } = useAuth();
+  const { user } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
 
@@ -155,7 +155,7 @@ export default function GoalsPage() {
     }
   };
 
-  if (!developer) {
+  if (!user) {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-slate-400">Please log in to view goals.</p>
@@ -632,7 +632,6 @@ function GoalDetailModal({ goal, workspaceId, onClose }: GoalDetailModalProps) {
                   <KeyResultProgress
                     key={kr.id}
                     keyResult={kr}
-                    onClick={() => {}}
                   />
                 ))}
               </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -283,7 +283,7 @@ function SprintsContent({ teams, teamsLoading, workspaceId, hasWorkspaces }: {
   );
 }
 
-export default function SprintsPage() {
+function SprintsPageContent() {
   const { user, isLoading: authLoading, isAuthenticated, logout } = useAuth();
   const {
     currentWorkspaceId,
@@ -418,5 +418,13 @@ export default function SprintsPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function SprintsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="animate-spin h-8 w-8 border-2 border-primary-500 border-t-transparent rounded-full" /></div>}>
+      <SprintsPageContent />
+    </Suspense>
   );
 }

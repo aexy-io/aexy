@@ -513,7 +513,7 @@ export default function ConnectIntegrations() {
 
   const isRecommended = (integrationId: string) => {
     const config = integrationConfig[integrationId as keyof typeof integrationConfig];
-    return data.useCases.some(uc => config.recommendedFor.includes(uc));
+    return data.useCases.some(uc => (config.recommendedFor as readonly string[]).includes(uc));
   };
 
   const handleContinue = () => {

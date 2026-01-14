@@ -194,8 +194,10 @@ export default function PublicFormPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submissionResult, setSubmissionResult] = useState<{
-    ticket_number: number;
+    submission_id?: string;
+    ticket_number?: number;
     success_message?: string;
+    redirect_url?: string;
     requires_email_verification: boolean;
   } | null>(null);
 

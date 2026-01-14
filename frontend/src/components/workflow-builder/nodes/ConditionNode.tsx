@@ -1,11 +1,11 @@
 "use client";
 
 import { memo } from "react";
-import { Handle, Position, NodeProps } from "@xyflow/react";
+import { Handle, Position, NodeProps, Node } from "@xyflow/react";
 import { GitBranch } from "lucide-react";
 import { useExecutionState, ExecutionStatus } from "./useExecutionState";
 
-interface ConditionNodeData {
+interface ConditionNodeData extends Record<string, unknown> {
   label: string;
   conditions?: Array<{ field: string; operator: string; value: string }>;
   hasError?: boolean;
@@ -16,7 +16,9 @@ interface ConditionNodeData {
   conditionResult?: boolean;
 }
 
-export const ConditionNode = memo(({ data, selected }: NodeProps<ConditionNodeData>) => {
+type ConditionNodeType = Node<ConditionNodeData>;
+
+export const ConditionNode = memo(({ data, selected }: NodeProps<ConditionNodeType>) => {
   const conditions = (data.conditions as Array<{ field: string; operator: string; value: string }>) || [];
   const isHighlighted = data.isHighlighted;
   const { isRunning, isSuccess, isFailed, isSkipped, StatusIndicator, DurationBadge } = useExecutionState(data);

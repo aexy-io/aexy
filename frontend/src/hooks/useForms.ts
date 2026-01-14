@@ -17,6 +17,7 @@ import type {
   FormTemplateType,
   FormFieldType,
   FormTheme,
+  ThankYouPageConfig,
   ExternalDestination,
   ConditionalRule,
   ValidationRules,
@@ -144,6 +145,7 @@ export function useForm(workspaceId: string | null, formId: string | null) {
       auth_mode: FormAuthMode;
       require_email: boolean;
       theme: FormTheme;
+      thank_you_page: ThankYouPageConfig;
       success_message: string;
       redirect_url: string;
       destinations: ExternalDestination[];

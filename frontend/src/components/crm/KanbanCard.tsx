@@ -45,7 +45,7 @@ export function KanbanCard({
       const attr = attributes.find((a) => a.slug === slug);
       const value = record.values[slug];
       if (!attr || value === null || value === undefined) return null;
-      return { attr, value };
+      return { attr, value: value as unknown };
     })
     .filter((v): v is { attr: CRMAttribute; value: unknown } => v !== null)
     .slice(0, 3); // Max 3 fields
@@ -119,7 +119,7 @@ export function KanbanCard({
             <User className="h-3 w-3 text-purple-400" />
           </div>
           <span className="text-xs text-slate-400 truncate">
-            {record.owner.name || record.owner.email}
+            {record.owner.name || "Unknown"}
           </span>
         </div>
       )}

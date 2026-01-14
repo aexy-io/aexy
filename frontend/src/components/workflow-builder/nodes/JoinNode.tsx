@@ -1,11 +1,11 @@
 "use client";
 
 import { memo } from "react";
-import { Handle, Position, NodeProps } from "@xyflow/react";
+import { Handle, Position, NodeProps, Node } from "@xyflow/react";
 import { Merge } from "lucide-react";
 import { useExecutionState, ExecutionStatus } from "./useExecutionState";
 
-interface JoinNodeData {
+interface JoinNodeData extends Record<string, unknown> {
   label: string;
   join_type?: "all" | "any" | "count";
   expected_count?: number;
@@ -19,13 +19,15 @@ interface JoinNodeData {
   completedBranches?: number;
 }
 
+type JoinNodeType = Node<JoinNodeData>;
+
 const joinTypeLabels: Record<string, string> = {
   all: "Wait for all",
   any: "Wait for any",
   count: "Wait for count",
 };
 
-export const JoinNode = memo(({ data, selected }: NodeProps<JoinNodeData>) => {
+export const JoinNode = memo(({ data, selected }: NodeProps<JoinNodeType>) => {
   const joinType = data.join_type || "all";
   const expectedCount = data.expected_count || 1;
   const incomingBranches = data.incoming_branches || 2;

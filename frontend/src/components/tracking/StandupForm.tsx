@@ -20,6 +20,7 @@ export function StandupForm({ onSubmit, isSubmitting = false, sprintId, teamId }
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!yesterday.trim() && !today.trim()) return;
+    if (!teamId) return;
 
     try {
       await onSubmit({

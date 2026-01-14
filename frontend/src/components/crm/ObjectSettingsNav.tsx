@@ -74,7 +74,7 @@ export function ObjectSettingsNav({
           <div>
             <h2 className="text-lg font-semibold text-white">{object.name}</h2>
             <p className="text-sm text-slate-400">
-              {object.record_count} records • {object.attribute_count || 0} attributes
+              {object.record_count} records • {object.attributes?.length || 0} attributes
             </p>
           </div>
         </div>

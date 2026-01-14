@@ -6,15 +6,18 @@ import {
   EdgeProps,
   getBezierPath,
   EdgeLabelRenderer,
+  Edge,
 } from "@xyflow/react";
 
 export type ExecutionStatus = "idle" | "pending" | "running" | "success" | "failed" | "skipped";
 
-interface AnimatedEdgeData {
+interface AnimatedEdgeData extends Record<string, unknown> {
   executionStatus?: ExecutionStatus;
   durationMs?: number;
   label?: string;
 }
+
+type AnimatedEdge = Edge<AnimatedEdgeData>;
 
 const statusColors: Record<ExecutionStatus, { stroke: string; glow: string }> = {
   idle: { stroke: "#6366f1", glow: "none" },
@@ -37,7 +40,7 @@ export const AnimatedEdge = memo(
     style = {},
     markerEnd,
     data,
-  }: EdgeProps<AnimatedEdgeData>) => {
+  }: EdgeProps<AnimatedEdge>) => {
     const [edgePath, labelX, labelY] = getBezierPath({
       sourceX,
       sourceY,

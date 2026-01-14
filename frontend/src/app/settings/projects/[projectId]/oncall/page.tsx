@@ -391,8 +391,8 @@ export default function OnCallSettingsPage() {
                 <SwapRequestsList
                   swapRequests={swapRequests}
                   currentUserId={currentUserId}
-                  onAccept={acceptSwap}
-                  onDecline={(swapId) => declineSwap({ swapId })}
+                  onAccept={async (swapId) => { await acceptSwap(swapId); }}
+                  onDecline={async (swapId) => { await declineSwap({ swapId }); }}
                   isAccepting={isAccepting}
                   isDeclining={isDeclining}
                 />
@@ -407,11 +407,11 @@ export default function OnCallSettingsPage() {
                 teamMembers={teamMembers}
                 currentUserId={currentUserId}
                 isAdmin={isAdmin}
-                onCreateSchedule={createSchedule}
-                onDeleteSchedule={deleteSchedule}
-                onRequestSwap={(scheduleId, targetId, message) =>
-                  requestSwap({ scheduleId, targetId, message })
-                }
+                onCreateSchedule={async (schedule) => { await createSchedule(schedule); }}
+                onDeleteSchedule={async (scheduleId) => { await deleteSchedule(scheduleId); }}
+                onRequestSwap={async (scheduleId, targetId, message) => {
+                  await requestSwap({ scheduleId, targetId, message });
+                }}
                 isCreating={isCreating}
                 isDeleting={isDeleting}
               />

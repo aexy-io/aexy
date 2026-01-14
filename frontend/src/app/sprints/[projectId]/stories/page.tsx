@@ -16,7 +16,7 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { useStories } from "@/hooks/useStories";
 import { StoryCard } from "@/components/stories/StoryCard";
 import { StoryForm } from "@/components/stories/StoryForm";
-import { UserStory, StoryStatus, StoryPriority, UserStoryCreate } from "@/lib/api";
+import { UserStory, StoryStatus, StoryPriority, UserStoryCreate, UserStoryUpdate } from "@/lib/api";
 
 const STATUS_OPTIONS: { value: StoryStatus | "all"; label: string }[] = [
   { value: "all", label: "All Statuses" },
@@ -41,7 +41,7 @@ export default function StoriesPage() {
   const router = useRouter();
   const projectId = params.projectId as string;
 
-  const { developer } = useAuth();
+  const { user } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
 
@@ -72,8 +72,8 @@ export default function StoriesPage() {
     story.i_want.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleCreateStory = async (data: UserStoryCreate) => {
-    await createStory(data);
+  const handleCreateStory = async (data: UserStoryCreate | UserStoryUpdate) => {
+    await createStory(data as UserStoryCreate);
     setShowCreateModal(false);
   };
 
@@ -87,7 +87,7 @@ export default function StoriesPage() {
     }
   };
 
-  if (!developer) {
+  if (!user) {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-slate-400">Please log in to view stories.</p>

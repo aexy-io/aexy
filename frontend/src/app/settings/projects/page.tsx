@@ -396,7 +396,9 @@ function ProjectCard({
                           ))}
                         </select>
                         {!canUseProjectFeatures && selectedRoleId && (
-                          <Crown className="h-4 w-4 text-amber-500" title="Pro feature" />
+                          <span title="Pro feature">
+                            <Crown className="h-4 w-4 text-amber-500" />
+                          </span>
                         )}
                       </div>
                       <div className="flex items-center gap-2">

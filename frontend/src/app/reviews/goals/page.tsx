@@ -144,7 +144,7 @@ export default function GoalsPage() {
   const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const developerId = user?.developer?.id;
+  const developerId = user?.id;
   const { goals, isLoading: goalsLoading, deleteGoal } = useGoals(developerId, {
     workspace_id: currentWorkspaceId || undefined,
   });

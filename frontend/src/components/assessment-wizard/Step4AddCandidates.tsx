@@ -57,6 +57,7 @@ Best regards,
 {{company_name}}`,
   include_instructions: true,
   include_deadline: true,
+  include_duration: true,
 };
 
 export default function Step4AddCandidates({

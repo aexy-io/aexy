@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -545,7 +545,7 @@ function ConnectedIntegration({
   );
 }
 
-export default function IntegrationsPage() {
+function IntegrationsPageContent() {
   const { user } = useAuth();
   const {
     currentWorkspace,
@@ -599,7 +599,7 @@ export default function IntegrationsPage() {
     getInstallUrl: getSlackInstallUrl,
     disconnect: disconnectSlack,
     isDisconnecting: isDisconnectingSlack,
-  } = useSlackIntegration(currentWorkspaceId);
+  } = useSlackIntegration(currentWorkspaceId || undefined);
 
   const {
     syncChannels: syncSlackChannels,
@@ -954,7 +954,7 @@ export default function IntegrationsPage() {
                           </div>
                           <div>
                             <div className="text-white font-medium">
-                              {slackIntegration.workspace_name || "Slack Workspace"}
+                              {slackIntegration.team_name || "Slack Workspace"}
                             </div>
                             <div className="text-slate-400 text-sm">
                               Team: {slackIntegration.team_id}
@@ -1005,7 +1005,7 @@ export default function IntegrationsPage() {
                       {slackMappingResult && (
                         <div className="text-green-400 text-sm flex items-center gap-2">
                           <CheckCircle className="h-4 w-4" />
-                          Mapped {slackMappingResult.mapped_count || 0} users
+                          Mapped {slackMappingResult.newly_mapped || 0} users
                         </div>
                       )}
                     </div>
@@ -1196,5 +1196,13 @@ export default function IntegrationsPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function IntegrationsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-900 flex items-center justify-center"><div className="animate-spin h-8 w-8 border-2 border-primary-500 border-t-transparent rounded-full" /></div>}>
+      <IntegrationsPageContent />
+    </Suspense>
   );
 }

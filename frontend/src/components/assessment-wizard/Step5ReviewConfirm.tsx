@@ -91,7 +91,7 @@ export default function Step5ReviewConfirm({
       items: [
         { label: "Title", value: assessment.title },
         { label: "Job Designation", value: assessment.job_designation },
-        { label: "Department", value: assessment.department },
+        { label: "Department", value: assessment.department ?? undefined },
         {
           label: "Experience",
           value: `${assessment.experience_min || 0} - ${assessment.experience_max || 10} years`,

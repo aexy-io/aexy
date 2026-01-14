@@ -285,7 +285,7 @@ export default function RoadmapPage({
   const displayEpics = epics && epics.length > 0
     ? epics
     : [
-        { id: "default", key: "DEFAULT", title: "All Sprints", color: "#6366f1", status: "active", progress_percentage: 0 } as EpicListItem,
+        { id: "default", key: "DEFAULT", title: "All Sprints", color: "#6366f1", status: "active", progress_percentage: 0 } as unknown as EpicListItem,
       ];
 
   return (

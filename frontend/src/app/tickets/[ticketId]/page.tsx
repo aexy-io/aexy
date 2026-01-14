@@ -372,8 +372,8 @@ export default function TicketDetailPage() {
               >
                 <option value="">Unassigned</option>
                 {members.map((member) => (
-                  <option key={member.id} value={member.id}>
-                    {member.name || member.email}
+                  <option key={member.id} value={member.developer_id}>
+                    {member.developer_name || member.developer_email}
                   </option>
                 ))}
               </select>

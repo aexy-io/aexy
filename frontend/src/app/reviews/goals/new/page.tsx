@@ -47,7 +47,7 @@ export default function NewGoalPage() {
   const { currentWorkspaceId, currentWorkspaceLoading } = useWorkspace();
   const router = useRouter();
 
-  const developerId = user?.developer?.id;
+  const developerId = user?.id;
   const { createGoal } = useGoals(developerId, {
     workspace_id: currentWorkspaceId || undefined,
   });
@@ -248,7 +248,7 @@ export default function NewGoalPage() {
                   </label>
                   <select
                     value={goalType}
-                    onChange={(e) => setGoalType(e.target.value)}
+                    onChange={(e) => setGoalType(e.target.value as GoalType)}
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary-500"
                   >
                     {goalTypes.map((type) => (
@@ -265,7 +265,7 @@ export default function NewGoalPage() {
                   </label>
                   <select
                     value={priority}
-                    onChange={(e) => setPriority(e.target.value)}
+                    onChange={(e) => setPriority(e.target.value as GoalPriority)}
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary-500"
                   >
                     {priorities.map((p) => (

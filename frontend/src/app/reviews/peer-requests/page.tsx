@@ -63,7 +63,7 @@ function RequestCard({ request }: { request: ReviewRequest }) {
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1">
             <Calendar className="h-3.5 w-3.5" />
-            {new Date(request.requested_at).toLocaleDateString("en-US", {
+            {new Date(request.created_at).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
               year: "numeric",
@@ -79,7 +79,7 @@ function RequestCard({ request }: { request: ReviewRequest }) {
 
 export default function PeerRequestsPage() {
   const { user, isLoading: authLoading, isAuthenticated, logout } = useAuth();
-  const developerId = user?.developer?.id;
+  const developerId = user?.id;
 
   const { requests, isLoading, error, refetch } = usePeerRequests(developerId);
 

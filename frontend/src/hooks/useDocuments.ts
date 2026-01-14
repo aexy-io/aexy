@@ -282,7 +282,7 @@ export function useTemplates(workspaceId: string | null) {
   });
 
   // Get templates by category
-  const templatesByCategory = useMemo(() => {
+  const templatesByCategory = useMemo((): Partial<Record<TemplateCategory, TemplateListItem[]>> => {
     if (!templates) return {};
     return templates.reduce(
       (acc, template) => {
@@ -290,10 +290,10 @@ export function useTemplates(workspaceId: string | null) {
         if (!acc[category]) {
           acc[category] = [];
         }
-        acc[category].push(template);
+        acc[category]!.push(template);
         return acc;
       },
-      {} as Record<TemplateCategory, TemplateListItem[]>
+      {} as Partial<Record<TemplateCategory, TemplateListItem[]>>
     );
   }, [templates]);
 

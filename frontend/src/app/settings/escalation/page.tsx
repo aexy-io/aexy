@@ -210,7 +210,16 @@ export default function EscalationSettingsPage() {
     mutationFn: (data: typeof formData) =>
       escalationApi.create(workspaceId!, {
         ...data,
-        rules: data.rules.filter((r) => r.level && r.channels?.length) as EscalationRule[],
+        rules: data.rules
+          .filter((r): r is EscalationRule => !!(r.level && r.channels?.length && r.delay_minutes !== undefined))
+          .map(r => ({
+            level: r.level,
+            delay_minutes: r.delay_minutes,
+            channels: r.channels,
+            notify_users: r.notify_users,
+            notify_teams: r.notify_teams,
+            notify_oncall: r.notify_oncall,
+          })),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["escalationMatrices", workspaceId] });
@@ -458,7 +467,7 @@ export default function EscalationSettingsPage() {
                       rule={rule}
                       onChange={(newRule) => updateRule(index, newRule)}
                       onRemove={() => removeRule(index)}
-                      members={members}
+                      members={members.map(m => ({ id: m.developer_id, name: m.developer_name || undefined, email: m.developer_email || "" }))}
                       teams={teams}
                     />
                   ))}

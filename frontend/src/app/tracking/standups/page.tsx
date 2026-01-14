@@ -65,7 +65,7 @@ export default function StandupsPage() {
 
         {/* Standup Timeline */}
         <StandupTimeline
-          standups={standupsData?.items || []}
+          standups={standupsData?.standups || []}
           isLoading={isLoading}
         />
       </div>

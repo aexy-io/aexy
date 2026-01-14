@@ -299,9 +299,11 @@ function WorkflowCanvasInner({
 
   const onConnect = useCallback(
     (connection: Connection) => {
-      const newEdge = {
+      const newEdge: Edge = {
         ...connection,
         id: `edge-${connection.source}-${connection.target}-${Date.now()}`,
+        source: connection.source!,
+        target: connection.target!,
         animated: true,
         markerEnd: {
           type: MarkerType.ArrowClosed,

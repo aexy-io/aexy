@@ -191,7 +191,7 @@ export function CollaborativeEditor({
       baseExtensions.push(
         Collaboration.configure({
           document: ydocRef.current,
-        }) as typeof StarterKit,
+        }) as unknown as typeof StarterKit,
         CollaborationCursor.configure({
           provider: {
             awareness: {
@@ -208,7 +208,7 @@ export function CollaborativeEditor({
             name: userName,
             color: userColor,
           },
-        }) as typeof StarterKit
+        }) as unknown as typeof StarterKit
       );
     }
 

@@ -80,7 +80,7 @@ export function GitHubSyncPanel({
   // Fetch repositories for selection
   const { data: repositories } = useQuery({
     queryKey: ["repositories"],
-    queryFn: repositoriesApi.list,
+    queryFn: () => repositoriesApi.listRepositories(),
   });
 
   // Setup sync mutation

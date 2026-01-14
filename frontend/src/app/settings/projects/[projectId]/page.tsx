@@ -15,6 +15,7 @@ import {
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useProject } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
+import { ProjectStatus } from "@/lib/api";
 
 const STATUS_OPTIONS = [
   { value: "active", label: "Active", color: "bg-green-500" },
@@ -51,7 +52,7 @@ export default function ProjectSettingsPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [color, setColor] = useState("#6366f1");
-  const [status, setStatus] = useState("active");
+  const [status, setStatus] = useState<ProjectStatus>("active");
   const [hasChanges, setHasChanges] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -91,7 +92,7 @@ export default function ProjectSettingsPage() {
         setColor(value);
         break;
       case "status":
-        setStatus(value);
+        setStatus(value as ProjectStatus);
         break;
     }
   };

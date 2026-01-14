@@ -53,7 +53,7 @@ export default function ReleasesPage() {
   const router = useRouter();
   const projectId = params.projectId as string;
 
-  const { developer } = useAuth();
+  const { user } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
 
@@ -134,7 +134,7 @@ export default function ReleasesPage() {
     }
   };
 
-  if (!developer) {
+  if (!user) {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-slate-400">Please log in to view releases.</p>

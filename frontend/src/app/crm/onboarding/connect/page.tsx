@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowRight,
@@ -41,7 +41,7 @@ function GoogleIcon({ className }: { className?: string }) {
   );
 }
 
-export default function ConnectGoogle() {
+function ConnectGoogleContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentWorkspace } = useWorkspace();
@@ -345,5 +345,13 @@ export default function ConnectGoogle() {
         </div>
       </motion.div>
     </div>
+  );
+}
+
+export default function ConnectGoogle() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="animate-spin h-8 w-8 border-2 border-purple-500 border-t-transparent rounded-full" /></div>}>
+      <ConnectGoogleContent />
+    </Suspense>
   );
 }

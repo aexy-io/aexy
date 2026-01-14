@@ -61,22 +61,12 @@ export default function AssessmentPublishSuccessPage() {
     );
   }
 
-  const totalQuestions = assessment.topics?.reduce((sum, t) => {
-    const qt = t.question_types;
-    if (qt && typeof qt === 'object') {
-      return sum + (qt.code || 0) + (qt.mcq || 0) + (qt.subjective || 0) + (qt.pseudo_code || 0);
-    }
-    return sum;
-  }, 0) || 0;
-
-  const totalDuration = assessment.topics?.reduce(
-    (sum, t) => sum + (t.estimated_time_minutes || 0),
-    0
-  ) || 0;
+  const totalQuestions = assessment.total_questions || 0;
+  const totalDuration = assessment.total_duration_minutes || 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AppHeader user={user} onLogout={logout} />
+      <AppHeader user={user} logout={logout} />
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Success Header */}
@@ -109,12 +99,12 @@ export default function AssessmentPublishSuccessPage() {
             </div>
             <div className="text-center p-3 bg-gray-50 rounded-lg">
               <Users className="h-5 w-5 text-green-600 mx-auto mb-1" />
-              <p className="text-xl font-bold text-gray-900">{assessment.total_candidates || 0}</p>
+              <p className="text-xl font-bold text-gray-900">0</p>
               <p className="text-xs text-gray-500">Candidates</p>
             </div>
             <div className="text-center p-3 bg-gray-50 rounded-lg">
               <Mail className="h-5 w-5 text-orange-600 mx-auto mb-1" />
-              <p className="text-xl font-bold text-gray-900">{assessment.total_candidates || 0}</p>
+              <p className="text-xl font-bold text-gray-900">0</p>
               <p className="text-xs text-gray-500">Invites Sent</p>
             </div>
           </div>

@@ -20,6 +20,8 @@ const categoryIcons: Record<TemplateCategory, React.ElementType> = {
   module_docs: Layers,
   guides: FileText,
   general: FileText,
+  changelog: FileText,
+  custom: FileText,
 };
 
 const categoryLabels: Record<TemplateCategory, string> = {
@@ -29,6 +31,8 @@ const categoryLabels: Record<TemplateCategory, string> = {
   module_docs: "Module Documentation",
   guides: "Guides & Tutorials",
   general: "General",
+  changelog: "Changelog",
+  custom: "Custom",
 };
 
 const categoryDescriptions: Record<TemplateCategory, string> = {
@@ -38,6 +42,8 @@ const categoryDescriptions: Record<TemplateCategory, string> = {
   module_docs: "Architecture and module overviews",
   guides: "Step-by-step tutorials and how-tos",
   general: "General purpose documentation",
+  changelog: "Track changes and version history",
+  custom: "Custom template format",
 };
 
 export function TemplateSelector({

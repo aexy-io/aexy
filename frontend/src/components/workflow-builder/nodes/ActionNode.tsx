@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { Handle, Position, NodeProps } from "@xyflow/react";
+import { Handle, Position, NodeProps, Node } from "@xyflow/react";
 import {
   FileEdit,
   FilePlus,
@@ -49,7 +49,7 @@ const actionIcons: Record<string, React.ElementType> = {
   generate_summary: FileText,
 };
 
-interface ActionNodeData {
+interface ActionNodeData extends Record<string, unknown> {
   label: string;
   action_type?: string;
   hasError?: boolean;
@@ -59,7 +59,9 @@ interface ActionNodeData {
   executionDurationMs?: number;
 }
 
-export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) => {
+type ActionNodeType = Node<ActionNodeData>;
+
+export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeType>) => {
   const Icon = actionIcons[data.action_type as string] || Zap;
   const isHighlighted = data.isHighlighted;
   const { isRunning, isSuccess, isFailed, isSkipped, StatusIndicator, DurationBadge } = useExecutionState(data);

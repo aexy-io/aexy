@@ -39,7 +39,7 @@ function RecordValue({ value, attribute }: { value: unknown; attribute?: CRMAttr
     case "currency":
       return (
         <span className="text-green-400 font-medium">
-          ${typeof value === "number" ? value.toLocaleString() : value}
+          ${typeof value === "number" ? value.toLocaleString() : String(value)}
         </span>
       );
     case "status":

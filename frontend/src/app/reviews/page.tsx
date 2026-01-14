@@ -125,7 +125,7 @@ export default function ReviewsPage() {
   } = useWorkspace();
 
   // Fetch real data using hooks
-  const developerId = user?.developer?.id;
+  const developerId = user?.id;
   const { stats, goals, peerRequests, isLoading: statsLoading } = useReviewStats(
     developerId,
     currentWorkspaceId

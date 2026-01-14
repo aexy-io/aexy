@@ -23,7 +23,7 @@ export default function BlockersPage() {
   };
 
   // Get all blockers from response
-  const blockers = blockersData?.items || [];
+  const blockers = blockersData?.blockers || [];
 
   // Stats
   const activeCount = blockers.filter((b) => b.status === "active").length;
@@ -98,12 +98,12 @@ export default function BlockersPage() {
         <BlockerBoard
           blockers={blockers}
           isLoading={isLoading}
-          onResolve={(blockerId, notes) =>
-            resolveBlocker.mutateAsync({ blockerId, notes })
-          }
-          onEscalate={(blockerId, escalateToId, notes) =>
-            escalateBlocker.mutateAsync({ blockerId, escalateToId, notes })
-          }
+          onResolve={async (blockerId, notes) => {
+            await resolveBlocker.mutateAsync({ blockerId, notes });
+          }}
+          onEscalate={async (blockerId, escalateToId, notes) => {
+            await escalateBlocker.mutateAsync({ blockerId, escalateToId, notes });
+          }}
           isResolving={resolveBlocker.isPending}
           isEscalating={escalateBlocker.isPending}
         />

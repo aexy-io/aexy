@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { Handle, Position, NodeProps } from "@xyflow/react";
+import { Handle, Position, NodeProps, Node } from "@xyflow/react";
 import { Clock, Calendar, Bell } from "lucide-react";
 import { useExecutionState, ExecutionStatus } from "./useExecutionState";
 
@@ -11,7 +11,7 @@ const waitIcons: Record<string, React.ElementType> = {
   event: Bell,
 };
 
-interface WaitNodeData {
+interface WaitNodeData extends Record<string, unknown> {
   label: string;
   wait_type?: string;
   duration_value?: number;
@@ -25,7 +25,9 @@ interface WaitNodeData {
   executionDurationMs?: number;
 }
 
-export const WaitNode = memo(({ data, selected }: NodeProps<WaitNodeData>) => {
+type WaitNodeType = Node<WaitNodeData>;
+
+export const WaitNode = memo(({ data, selected }: NodeProps<WaitNodeType>) => {
   const Icon = waitIcons[data.wait_type as string] || Clock;
   const waitType = data.wait_type as string || "duration";
   const isHighlighted = data.isHighlighted;

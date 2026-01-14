@@ -23,7 +23,7 @@ export default function TimeTrackingPage() {
   };
 
   // Calculate stats
-  const entries = timeData?.items || [];
+  const entries = timeData?.entries || [];
   const totalMinutes = entries.reduce((sum, e) => sum + e.duration_minutes, 0);
   const todayEntries = entries.filter(
     (e) => new Date(e.entry_date).toDateString() === new Date().toDateString()

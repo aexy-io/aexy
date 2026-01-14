@@ -271,7 +271,7 @@ export default function AssessmentReportPage() {
     let status = "invited";
     if (invitation.status === "completed") {
       status = "completed";
-    } else if (invitation.status === "in_progress" || invitation.started_at) {
+    } else if (invitation.status === "started" || invitation.started_at) {
       status = "in_progress";
     } else if (invitation.status === "expired") {
       status = "expired";
@@ -353,7 +353,7 @@ export default function AssessmentReportPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AppHeader user={user} onLogout={logout} />
+      <AppHeader user={user} logout={logout} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}

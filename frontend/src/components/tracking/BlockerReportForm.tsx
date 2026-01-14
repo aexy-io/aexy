@@ -42,7 +42,7 @@ export function BlockerReportForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description.trim()) return;
+    if (!description.trim() || !teamId) return;
 
     try {
       await onSubmit({

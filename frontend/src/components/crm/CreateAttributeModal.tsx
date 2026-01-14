@@ -121,7 +121,7 @@ export function CreateAttributeModal({
 
   // Type-specific config
   const [options, setOptions] = useState<SelectOption[]>([
-    { value: "", label: "", color: STATUS_COLORS[0] },
+    { value: "", label: "", color: STATUS_COLORS[0].color },
   ]);
   const [defaultValue, setDefaultValue] = useState<string>("");
 
@@ -134,7 +134,7 @@ export function CreateAttributeModal({
       setDescription("");
       setIsRequired(false);
       setIsUnique(false);
-      setOptions([{ value: "", label: "", color: STATUS_COLORS[0] }]);
+      setOptions([{ value: "", label: "", color: STATUS_COLORS[0].color }]);
       setDefaultValue("");
     }
   }, [isOpen]);
@@ -149,7 +149,7 @@ export function CreateAttributeModal({
   const handleAddOption = () => {
     setOptions([
       ...options,
-      { value: "", label: "", color: STATUS_COLORS[options.length % STATUS_COLORS.length] },
+      { value: "", label: "", color: STATUS_COLORS[options.length % STATUS_COLORS.length].color },
     ]);
   };
 
@@ -307,7 +307,7 @@ export function CreateAttributeModal({
                     {options.map((option, index) => (
                       <div key={index} className="flex items-center gap-2">
                         <ColorPicker
-                          color={option.color}
+                          value={option.color}
                           onChange={(color) => handleOptionChange(index, "color", color)}
                           size="sm"
                         />

@@ -84,7 +84,7 @@ export default function ReviewsManagePage() {
 
   // Fetch real data
   const { members, isLoading: membersLoading } = useWorkspaceMembers(currentWorkspaceId);
-  const managerId = user?.developer?.id;
+  const managerId = user?.id;
   const { reviews, isLoading: reviewsLoading } = useManagerReviews(managerId);
   const { cycles, isLoading: cyclesLoading } = useReviewCycles(currentWorkspaceId);
 
@@ -100,15 +100,15 @@ export default function ReviewsManagePage() {
       const memberReview = reviews.find(r => r.developer_id === member.developer_id);
       return {
         id: member.developer_id || member.id,
-        name: member.developer?.name || member.email?.split("@")[0] || "Unknown",
-        avatar: member.developer?.avatar_url,
+        name: member.developer_name || member.developer_email?.split("@")[0] || "Unknown",
+        avatar: member.developer_avatar_url,
         role: member.role || "Team Member",
         reviewStatus: memberReview?.status || "pending",
         goalsCount: 0, // Would need separate API call
         completedGoals: 0,
         pendingFeedback: 0,
-        lastActivity: member.developer?.last_activity_at
-          ? new Date(member.developer.last_activity_at).toLocaleDateString()
+        lastActivity: member.joined_at
+          ? new Date(member.joined_at).toLocaleDateString()
           : "Unknown",
       };
     });
@@ -121,7 +121,7 @@ export default function ReviewsManagePage() {
     // Find reviews that need manager attention
     reviews.forEach(review => {
       const member = members.find(m => m.developer_id === review.developer_id);
-      const memberName = member?.developer?.name || "Team member";
+      const memberName = member?.developer_name || "Team member";
 
       if (review.status === "peer_review_in_progress" || review.status === "manager_review_in_progress") {
         items.push({

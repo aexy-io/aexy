@@ -59,6 +59,7 @@ const FIELD_TYPE_CONFIG: Record<TicketFieldType, { icon: React.ReactNode; label:
   multiselect: { icon: <CheckSquare className="h-4 w-4" />, label: "Multi-Select", description: "Multiple choice selection" },
   checkbox: { icon: <ToggleLeft className="h-4 w-4" />, label: "Checkbox", description: "Yes/No toggle" },
   date: { icon: <Calendar className="h-4 w-4" />, label: "Date", description: "Date picker" },
+  datetime: { icon: <Calendar className="h-4 w-4" />, label: "Date & Time", description: "Date and time picker" },
   file: { icon: <Paperclip className="h-4 w-4" />, label: "File Upload", description: "File attachment" },
   number: { icon: <Hash className="h-4 w-4" />, label: "Number", description: "Numeric input" },
 };

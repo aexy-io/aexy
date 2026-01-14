@@ -109,7 +109,7 @@ function formatValue(value: unknown, attribute: CRMAttribute): React.ReactNode {
     case "currency":
       return (
         <span className="text-green-400 font-medium">
-          ${typeof value === "number" ? value.toLocaleString() : value}
+          ${typeof value === "number" ? value.toLocaleString() : String(value)}
         </span>
       );
     case "checkbox":

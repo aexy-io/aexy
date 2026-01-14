@@ -21,10 +21,11 @@ import { slackSyncApi, SlackChannel, SlackConfiguredChannel, SlackUserMappingSta
 interface SlackSyncSettingsProps {
   integrationId: string;
   teamId: string;
+  slackTeamId?: string;
   isConnected: boolean;
 }
 
-export function SlackSyncSettings({ integrationId, teamId, isConnected }: SlackSyncSettingsProps) {
+export function SlackSyncSettings({ integrationId, teamId, slackTeamId = "", isConnected }: SlackSyncSettingsProps) {
   const [channels, setChannels] = useState<SlackChannel[]>([]);
   const [configuredChannels, setConfiguredChannels] = useState<SlackConfiguredChannel[]>([]);
   const [isLoadingChannels, setIsLoadingChannels] = useState(false);
@@ -81,6 +82,7 @@ export function SlackSyncSettings({ integrationId, teamId, isConnected }: SlackS
       await slackSyncApi.configureChannel(integrationId, {
         channel_id: channel.id,
         channel_name: channel.name,
+        slack_team_id: slackTeamId,
         team_id: teamId,
         channel_type: channelType,
         auto_parse_standups: autoParseStandups,

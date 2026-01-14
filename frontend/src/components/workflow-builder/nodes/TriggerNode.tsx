@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { Handle, Position, NodeProps } from "@xyflow/react";
+import { Handle, Position, NodeProps, Node } from "@xyflow/react";
 import { Zap, Clock, Webhook, Mail, FileText, MousePointer } from "lucide-react";
 import { useExecutionState, ExecutionStatus } from "./useExecutionState";
 
@@ -18,7 +18,7 @@ const triggerIcons: Record<string, React.ElementType> = {
   manual: MousePointer,
 };
 
-interface TriggerNodeData {
+interface TriggerNodeData extends Record<string, unknown> {
   label: string;
   trigger_type?: string;
   hasError?: boolean;
@@ -28,7 +28,9 @@ interface TriggerNodeData {
   executionDurationMs?: number;
 }
 
-export const TriggerNode = memo(({ data, selected }: NodeProps<TriggerNodeData>) => {
+type TriggerNodeType = Node<TriggerNodeData>;
+
+export const TriggerNode = memo(({ data, selected }: NodeProps<TriggerNodeType>) => {
   const Icon = triggerIcons[data.trigger_type as string] || Zap;
   const isHighlighted = data.isHighlighted;
   const { isRunning, isSuccess, isFailed, isSkipped, StatusIndicator, DurationBadge } = useExecutionState(data);

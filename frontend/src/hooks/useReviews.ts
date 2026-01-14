@@ -183,6 +183,9 @@ export function usePendingPeerRequests(reviewerId: string | null | undefined) {
   return { requests, isLoading, error, refetch: fetchRequests };
 }
 
+// Alias for backwards compatibility
+export { usePendingPeerRequests as usePeerRequests };
+
 // ============ Goals Hooks ============
 
 export function useGoals(

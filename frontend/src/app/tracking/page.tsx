@@ -170,12 +170,12 @@ export default function TrackingPage() {
         <IndividualTrackingDashboard
           dashboard={dashboard}
           isLoading={isLoading}
-          onSubmitStandup={submitStandup.mutateAsync}
-          onLogTime={logTime.mutateAsync}
-          onReportBlocker={reportBlocker.mutateAsync}
-          onResolveBlocker={(blockerId, notes) =>
-            resolveBlocker.mutateAsync({ blockerId, notes })
-          }
+          onSubmitStandup={async (data) => { await submitStandup.mutateAsync(data); }}
+          onLogTime={async (data) => { await logTime.mutateAsync(data); }}
+          onReportBlocker={async (data) => { await reportBlocker.mutateAsync(data); }}
+          onResolveBlocker={async (blockerId, notes) => {
+            await resolveBlocker.mutateAsync({ blockerId, notes });
+          }}
           isSubmittingStandup={submitStandup.isPending}
           isLoggingTime={logTime.isPending}
           isReportingBlocker={reportBlocker.isPending}

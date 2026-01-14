@@ -4521,7 +4521,7 @@ export type DocumentLinkType = "file" | "directory";
 export type DocumentPermission = "view" | "comment" | "edit" | "admin";
 export type DocumentVisibility = "private" | "workspace" | "public";
 export type DocumentNotificationType = "comment" | "mention" | "share" | "edit";
-export type TemplateCategory = "api_docs" | "readme" | "function_docs" | "module_docs" | "guides" | "changelog" | "custom";
+export type TemplateCategory = "api_docs" | "readme" | "function_docs" | "module_docs" | "guides" | "changelog" | "custom" | "general";
 export type DocumentSpaceRole = "admin" | "editor" | "viewer";
 
 export interface DocumentTreeItem {
@@ -5250,6 +5250,8 @@ export interface Standup {
   updated_at: string;
   developer_name: string | null;
   developer_avatar: string | null;
+  // Nested developer object (optional - may be included in expanded responses)
+  developer?: { id: string; name: string | null; email: string | null; avatar_url: string | null };
 }
 
 export interface StandupCreate {
@@ -5324,6 +5326,9 @@ export interface TimeEntry {
   updated_at: string;
   developer_name: string | null;
   task_title: string | null;
+  // Nested objects (optional - may be included in expanded responses)
+  task?: { id: string; title: string };
+  developer?: { id: string; name: string | null; email: string | null };
 }
 
 export interface TimeEntryCreate {
@@ -5375,6 +5380,10 @@ export interface Blocker {
   resolved_by_name: string | null;
   escalated_to_name: string | null;
   task_title: string | null;
+  // Nested objects (optional - may be included in expanded responses)
+  task?: { id: string; title: string };
+  developer?: { id: string; name: string | null; email: string | null };
+  escalated_to?: { id: string; name: string | null; email: string | null };
 }
 
 export interface BlockerCreate {
@@ -5429,8 +5438,16 @@ export interface IndividualDashboard {
   active_tasks: ActiveTaskSummary[];
   active_blockers: Blocker[];
   time_logged_today: number;
+  time_logged_this_week?: number;
   weekly_summary: WeeklySummary;
   activity_pattern: Record<string, unknown> | null;
+  standup_streak?: number;
+  has_standup_today?: boolean;
+  time_entries?: TimeEntry[];
+  resolved_blockers_count?: number;
+  work_logs?: WorkLog[];
+  todays_standup?: Standup;
+  recent_standups?: Standup[];
 }
 
 export interface TeamMemberStandupStatus {
@@ -5441,6 +5458,18 @@ export interface TeamMemberStandupStatus {
   submitted_at: string | null;
 }
 
+export interface TeamMemberSummary {
+  developer_id: string;
+  name?: string;
+  email?: string;
+  avatar_url?: string | null;
+  has_standup_today?: boolean;
+  time_logged_today?: number;
+  time_logged_this_week?: number;
+  active_blockers_count?: number;
+  todays_standup?: Standup;
+}
+
 export interface TeamDashboard {
   team_id: string;
   team_name: string | null;
@@ -5448,10 +5477,18 @@ export interface TeamDashboard {
   standup_completion: TeamMemberStandupStatus[];
   participation_rate: number;
   active_blockers: Blocker[];
+  escalated_blockers?: Blocker[];
+  resolved_blockers?: Blocker[];
   blockers_by_severity: Record<string, number>;
   sprint_progress: Record<string, unknown> | null;
   total_time_logged_today: number;
+  total_time_logged?: number;
   recent_work_logs: WorkLog[];
+  member_summaries?: TeamMemberSummary[];
+  resolved_blockers_count?: number;
+  sprint_completion_rate?: number;
+  completed_tasks?: number;
+  total_tasks?: number;
 }
 
 export interface SlackChannelConfig {
@@ -5781,7 +5818,7 @@ export type TicketPriority = "low" | "medium" | "high" | "urgent";
 export type TicketSeverity = "critical" | "high" | "medium" | "low";
 export type EscalationLevel = "level_1" | "level_2" | "level_3" | "level_4";
 export type NotificationChannel = "email" | "slack" | "in_app";
-export type TicketFieldType = "text" | "textarea" | "email" | "select" | "multiselect" | "checkbox" | "file" | "date";
+export type TicketFieldType = "text" | "textarea" | "email" | "number" | "select" | "multiselect" | "checkbox" | "file" | "date" | "datetime";
 
 export interface EscalationRule {
   level: EscalationLevel;
@@ -5825,11 +5862,31 @@ export interface FieldOption {
 }
 
 export interface ValidationRules {
+  // Common validation type preset
+  validation_type?: string;
+
+  // Length constraints
   min_length?: number;
   max_length?: number;
+
+  // Number constraints
+  min?: number;
+  max?: number;
+
+  // Pattern matching
   pattern?: string;
+  pattern_message?: string;
+
+  // File upload constraints
   allowed_file_types?: string[];
   max_file_size_mb?: number;
+
+  // Date constraints
+  min_date?: string;
+  max_date?: string;
+
+  // Custom error message
+  custom_message?: string;
 }
 
 export interface ExternalMappings {
@@ -6004,6 +6061,8 @@ export interface TicketStats {
   open_tickets: number;
   by_status: Record<string, number>;
   sla_breached: number;
+  assigned_to_me?: number;
+  unassigned?: number;
 }
 
 export interface FormTemplate {
@@ -6352,7 +6411,7 @@ export const escalationApi = {
       name: string;
       description?: string;
       severity_levels: TicketSeverity[];
-      rules: Omit<EscalationRule, "level"> & { level: EscalationLevel }[];
+      rules: EscalationRule[];
       form_ids?: string[];
       team_ids?: string[];
       priority_order?: number;
@@ -6452,37 +6511,59 @@ export interface FullStackConfig {
 }
 
 export interface ScheduleConfig {
-  start_date: string;
-  end_date: string;
-  time_zone: string;
+  type?: "flexible" | "fixed";
+  start_date?: string;
+  end_date?: string;
+  start_time?: string;
+  end_time?: string;
+  time_zone?: string;
+  timezone?: string;
   access_window_hours?: number;
+  allow_late_submission?: boolean;
+  grace_period_minutes?: number;
 }
 
 export interface ProctoringSettings {
-  enable_webcam: boolean;
-  enable_screen_recording: boolean;
-  enable_face_detection: boolean;
-  enable_tab_tracking: boolean;
-  enable_copy_paste_detection: boolean;
-  enable_fullscreen_enforcement: boolean;
-  allow_calculator: boolean;
-  allow_ide: boolean;
+  enable_webcam?: boolean;
+  enable_screen_recording?: boolean;
+  enable_face_detection?: boolean;
+  enable_tab_tracking?: boolean;
+  enable_copy_paste_detection?: boolean;
+  enable_fullscreen_enforcement?: boolean;
+  allow_calculator?: boolean;
+  allow_ide?: boolean;
+  // Alternative property names used by wizard
+  enabled?: boolean;
+  webcam_required?: boolean;
+  screen_recording?: boolean;
+  fullscreen_required?: boolean;
+  face_detection?: boolean;
+  tab_switch_detection?: boolean;
 }
 
 export interface SecuritySettings {
-  shuffle_questions: boolean;
-  shuffle_options: boolean;
-  prevent_copy_paste: boolean;
-  prevent_right_click: boolean;
-  prevent_devtools: boolean;
-  require_fullscreen: boolean;
-  max_violations_allowed: number;
+  shuffle_questions?: boolean;
+  shuffle_options?: boolean;
+  prevent_copy_paste?: boolean;
+  prevent_right_click?: boolean;
+  prevent_devtools?: boolean;
+  require_fullscreen?: boolean;
+  max_violations_allowed?: number;
+  // Alternative property names used by wizard
+  disable_copy_paste?: boolean;
+  disable_right_click?: boolean;
+  show_one_question_at_time?: boolean;
+  prevent_back_navigation?: boolean;
 }
 
 export interface CandidateFieldConfig {
-  required: string[];
-  optional: string[];
-  custom: Array<{ name: string; label: string; type: string; required: boolean }>;
+  required?: string[];
+  optional?: string[];
+  custom?: Array<{ name: string; label: string; type: string; required: boolean }>;
+  phone_required?: boolean;
+  resume_required?: boolean;
+  linkedin_required?: boolean;
+  github_required?: boolean;
 }
 
 export interface EmailTemplateConfig {
@@ -6537,6 +6618,10 @@ export interface Assessment {
   published_at: string | null;
   created_at: string;
   updated_at: string;
+  topics?: AssessmentTopic[];
+  max_attempts?: number;
+  passing_score_percent?: number;
+  total_candidates?: number;
 }
 
 export interface AssessmentSummary {
@@ -6558,7 +6643,7 @@ export interface AssessmentTopic {
   assessment_id: string;
   topic: string;
   subtopics: string[];
-  difficulty_level: string;
+  difficulty_level: DifficultyLevel;
   question_types: QuestionTypeConfig;
   fullstack_config: FullStackConfig | null;
   estimated_time_minutes: number;
@@ -6651,6 +6736,10 @@ export interface AssessmentInvitation {
   attempt_count?: number;
   latest_score?: number | null;
   latest_trust_score?: number | null;
+  // Alternative flat properties
+  candidate_email?: string;
+  candidate_name?: string;
+  source?: string;
 }
 
 export interface AssessmentMetrics {
@@ -7063,7 +7152,7 @@ export interface LinearCredentials {
   api_key: string;
 }
 
-export interface LinearIntegration {
+export interface LinearIntegrationBasic {
   id: string;
   organization_id: string;
   is_active: boolean;
@@ -7076,12 +7165,12 @@ export const linearApi = {
     return response.data;
   },
 
-  createIntegration: async (credentials: LinearCredentials): Promise<LinearIntegration> => {
+  createIntegration: async (credentials: LinearCredentials): Promise<LinearIntegrationBasic> => {
     const response = await api.post("/integrations/linear", credentials);
     return response.data;
   },
 
-  getIntegration: async (): Promise<LinearIntegration | null> => {
+  getIntegration: async (): Promise<LinearIntegrationBasic | null> => {
     try {
       const response = await api.get("/integrations/linear");
       return response.data;
@@ -9161,6 +9250,7 @@ export interface ReleaseCreate {
   target_date?: string;
   project_id?: string;
   owner_id?: string;
+  risk_level?: ReleaseRiskLevel;
   readiness_checklist?: ReadinessChecklistItem[];
 }
 
@@ -9444,6 +9534,7 @@ export interface Bug {
   fixed_at?: string;
   verified_at?: string;
   closed_at?: string;
+  resolution?: string;
   created_at: string;
   updated_at: string;
 }

@@ -45,12 +45,12 @@ export function useGoogleIntegrationConnect(workspaceId: string | null) {
   const [isDisconnecting, setIsDisconnecting] = useState(false);
 
   const connect = useCallback(
-    async (scopes: ("gmail" | "calendar")[]) => {
+    async (_scopes?: ("gmail" | "calendar")[]) => {
       if (!workspaceId) return;
       setIsConnecting(true);
       try {
-        const { url } = await googleIntegrationApi.getConnectUrl(workspaceId, scopes);
-        window.location.href = url;
+        const { auth_url } = await googleIntegrationApi.getConnectUrl(workspaceId);
+        window.location.href = auth_url;
       } catch (err) {
         console.error("Failed to get connect URL:", err);
         setIsConnecting(false);
@@ -91,7 +91,7 @@ export function useGoogleEmails(workspaceId: string | null) {
     setError(null);
     try {
       const data = await googleIntegrationApi.gmail.listEmails(workspaceId);
-      setEmails(data);
+      setEmails(data.emails);
     } catch (err) {
       console.error("Failed to load emails:", err);
       setError("Failed to load emails");
@@ -142,13 +142,12 @@ export function useGoogleEmails(workspaceId: string | null) {
   );
 
   const linkToRecord = useCallback(
-    async (emailId: string, recordId: string, linkType: string) => {
+    async (emailId: string, recordId: string, linkType?: string) => {
       if (!workspaceId) throw new Error("No workspace");
       return await googleIntegrationApi.gmail.linkEmailToRecord(
         workspaceId,
         emailId,
-        recordId,
-        linkType
+        { record_id: recordId, link_type: linkType }
       );
     },
     [workspaceId]
@@ -187,7 +186,7 @@ export function useGoogleCalendarEvents(workspaceId: string | null) {
     setError(null);
     try {
       const data = await googleIntegrationApi.calendar.listEvents(workspaceId);
-      setEvents(data);
+      setEvents(data.events);
     } catch (err) {
       console.error("Failed to load events:", err);
       setError("Failed to load calendar events");
@@ -200,7 +199,7 @@ export function useGoogleCalendarEvents(workspaceId: string | null) {
     if (!workspaceId) return;
     try {
       const data = await googleIntegrationApi.calendar.listCalendars(workspaceId);
-      setCalendars(data);
+      setCalendars(data.calendars);
     } catch (err) {
       console.error("Failed to load calendars:", err);
     }
@@ -236,6 +235,7 @@ export function useGoogleCalendarEvents(workspaceId: string | null) {
 
   const createEvent = useCallback(
     async (data: {
+      calendar_id: string;
       title: string;
       start_time: string;
       end_time: string;
@@ -252,13 +252,12 @@ export function useGoogleCalendarEvents(workspaceId: string | null) {
   );
 
   const linkToRecord = useCallback(
-    async (eventId: string, recordId: string, linkType: string) => {
+    async (eventId: string, recordId: string, linkType?: string) => {
       if (!workspaceId) throw new Error("No workspace");
       return await googleIntegrationApi.calendar.linkEventToRecord(
         workspaceId,
         eventId,
-        recordId,
-        linkType
+        { record_id: recordId, link_type: linkType }
       );
     },
     [workspaceId]

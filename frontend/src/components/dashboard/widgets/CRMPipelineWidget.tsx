@@ -42,17 +42,20 @@ export function CRMPipelineWidget() {
 
   // Calculate stats from records
   const totalDeals = records?.length || 0;
-  const totalValue = records?.reduce((sum: number, r: { data?: { value?: number } }) => sum + (r.data?.value || 0), 0) || 0;
-  const wonDeals = records?.filter((r: { data?: { status?: string } }) => r.data?.status === "won" || r.data?.status === "closed_won").length || 0;
+  const totalValue = records?.reduce((sum, r) => sum + (typeof r.values?.value === "number" ? r.values.value : 0), 0) || 0;
+  const wonDeals = records?.filter((r) => {
+    const status = r.values?.status;
+    return status === "won" || status === "closed_won";
+  }).length || 0;
 
   // Group by stage for pipeline view
   const stageMap = new Map<string, { count: number; value: number }>();
-  records?.forEach((r: { data?: { stage?: string; value?: number } }) => {
-    const stage = r.data?.stage || "Unknown";
+  records?.forEach((r) => {
+    const stage = String(r.values?.stage || "Unknown");
     const existing = stageMap.get(stage) || { count: 0, value: 0 };
     stageMap.set(stage, {
       count: existing.count + 1,
-      value: existing.value + (r.data?.value || 0),
+      value: existing.value + (typeof r.values?.value === "number" ? r.values.value : 0),
     });
   });
   const stages = Array.from(stageMap.entries()).map(([name, data]) => ({ name, ...data }));

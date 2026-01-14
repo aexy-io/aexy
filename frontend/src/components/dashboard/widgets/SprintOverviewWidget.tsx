@@ -38,9 +38,9 @@ export function SprintOverviewWidget() {
   const hasActiveSprint = !!sprint && !!defaultTeamId;
 
   // Calculate sprint progress
-  const totalTasks = sprint?.total_tasks || 0;
-  const completedTasks = sprint?.completed_tasks || 0;
-  const inProgressTasks = sprint?.in_progress_tasks || 0;
+  const totalTasks = sprint?.tasks_count || 0;
+  const completedTasks = sprint?.completed_count || 0;
+  const inProgressTasks = Math.max(0, totalTasks - completedTasks);
   const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   // Calculate days remaining

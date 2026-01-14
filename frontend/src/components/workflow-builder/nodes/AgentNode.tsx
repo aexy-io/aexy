@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { Handle, Position, NodeProps } from "@xyflow/react";
+import { Handle, Position, NodeProps, Node } from "@xyflow/react";
 import { Bot, Target, Mail, Database, Sparkles } from "lucide-react";
 import { useExecutionState, ExecutionStatus } from "./useExecutionState";
 
@@ -13,7 +13,7 @@ const agentIcons: Record<string, React.ElementType> = {
   custom: Bot,
 };
 
-interface AgentNodeData {
+interface AgentNodeData extends Record<string, unknown> {
   label: string;
   agent_type?: string;
   agent_id?: string;
@@ -24,7 +24,9 @@ interface AgentNodeData {
   executionDurationMs?: number;
 }
 
-export const AgentNode = memo(({ data, selected }: NodeProps<AgentNodeData>) => {
+type AgentNodeType = Node<AgentNodeData>;
+
+export const AgentNode = memo(({ data, selected }: NodeProps<AgentNodeType>) => {
   const Icon = agentIcons[data.agent_type as string] || Bot;
   const isHighlighted = data.isHighlighted;
   const { isRunning, isSuccess, isFailed, isSkipped, StatusIndicator, DurationBadge } = useExecutionState(data);

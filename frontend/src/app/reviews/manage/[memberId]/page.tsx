@@ -133,9 +133,9 @@ function transformReviewToMemberData(review: IndividualReviewDetail, suggestions
 
   return {
     id: review.id,
-    name: review.employee_name || "Team Member",
+    name: review.developer_name || "Team Member",
     role: "Team Member",
-    email: review.employee_email || "",
+    email: review.developer_email || "",
     joinedDate: new Date(review.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" }),
     manager: review.manager_name || "Manager",
     team: "Team",
@@ -162,14 +162,14 @@ function transformReviewToMemberData(review: IndividualReviewDetail, suggestions
         unit: kr.unit,
       })),
     })),
-    suggestions: suggestions.map(s => ({
-      id: s.id || crypto.randomUUID(),
+    suggestions: suggestions.map((s, index) => ({
+      id: `suggestion-${index}`,
       title: s.title,
-      description: s.description,
-      suggestedGoal: s.suggested_goal || s.title,
+      description: s.suggested_measurable || "",
+      suggestedGoal: s.title,
       source: s.source,
       confidence: s.confidence,
-      keywords: s.keywords || [],
+      keywords: s.suggested_keywords || [],
     })),
     feedbackSummary: {
       strengths: strengths.slice(0, 5),
@@ -197,9 +197,9 @@ export default function MemberDetailPage() {
 
   // Fetch goal suggestions
   const { data: suggestions = [] } = useQuery({
-    queryKey: ["goalSuggestions", review?.employee_id],
-    queryFn: () => reviewsApi.getGoalSuggestions(review!.employee_id, currentWorkspace?.id || ""),
-    enabled: !!review?.employee_id && !!currentWorkspace?.id,
+    queryKey: ["goalSuggestions", review?.developer_id],
+    queryFn: () => reviewsApi.getGoalSuggestions(review!.developer_id),
+    enabled: !!review?.developer_id,
   });
 
   // Transform data for display
@@ -220,7 +220,7 @@ export default function MemberDetailPage() {
   if (reviewError || !member) {
     return (
       <div className="min-h-screen bg-slate-900">
-        <AppHeader user={user} onLogout={logout} />
+        <AppHeader user={user} logout={logout} />
         <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="text-center py-16">
             <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />

@@ -189,10 +189,10 @@ export function TeamTrackingDashboard({
                   <div className="text-left">
                     <p className="font-medium text-white">{member.name || member.email}</p>
                     <div className="flex items-center gap-3 text-xs text-slate-400">
-                      <span>Time: {formatDuration(member.time_logged_this_week)}</span>
-                      {member.active_blockers_count > 0 && (
+                      <span>Time: {formatDuration(member.time_logged_this_week || 0)}</span>
+                      {(member.active_blockers_count || 0) > 0 && (
                         <span className="text-red-400">
-                          {member.active_blockers_count} blocker{member.active_blockers_count > 1 ? "s" : ""}
+                          {member.active_blockers_count} blocker{(member.active_blockers_count || 0) > 1 ? "s" : ""}
                         </span>
                       )}
                     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { Suspense, useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Calendar as CalendarIcon,
@@ -483,7 +483,7 @@ function EmptyState({
   );
 }
 
-export default function CalendarPage() {
+function CalendarPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentWorkspace } = useWorkspace();
@@ -893,5 +893,13 @@ export default function CalendarPage() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+export default function CalendarPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="animate-spin h-8 w-8 border-2 border-purple-500 border-t-transparent rounded-full" /></div>}>
+      <CalendarPageContent />
+    </Suspense>
   );
 }

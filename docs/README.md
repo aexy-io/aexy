@@ -1,6 +1,12 @@
 # Aexy Documentation
 
-**Aexy** is a GitHub-based developer profiling and analytics platform that uses AI to provide insights into developer skills, team dynamics, and organizational health.
+**Aexy** is the open-source operating system for engineering organizations. Built with AI to help teams understand their work, optimize operations, and build talent—all in one platform.
+
+## Mission
+
+We're on a mission to bring positive change by building world-class tools actually accessible for everyone using AI. We believe good companies can be created by good people with good culture.
+
+[Read our full mission →](/mission)
 
 ## Documentation Index
 
@@ -12,14 +18,9 @@
 
 ### API Reference
 - [API Overview](./api/overview.md) - API design principles and authentication
-- [Developer API](./api/developers.md) - Developer profile endpoints
-- [Analytics API](./api/analytics.md) - Team analytics endpoints
-- [Predictions API](./api/predictions.md) - Predictive analytics endpoints
 
 ### Guides
 - [Getting Started](./guides/getting-started.md) - Quick start guide
-- [Backend Setup](./guides/backend-setup.md) - Backend development setup
-- [Frontend Setup](./guides/frontend-setup.md) - Frontend development setup
 - [CLI Usage](./guides/cli-usage.md) - Command-line interface guide
 - [VS Code Extension](./guides/vscode-extension.md) - IDE extension guide
 - [Deployment](./guides/deployment.md) - Production deployment guide
@@ -28,14 +29,46 @@
 - [Testing Strategy](./testing/testing-strategy.md) - Overall testing approach
 - [Testing Tracker](./testing/testing-tracker.md) - Test coverage and status
 
+## Products
+
+Aexy is a complete Engineering OS with 9 integrated products:
+
+| Product | Description |
+|---------|-------------|
+| **Activity Tracking** | Real-time visibility into engineering activity |
+| **Sprint Planning** | AI-powered capacity planning and sprint management |
+| **Ticketing** | Keyboard-first issue tracking |
+| **Forms** | Drag-and-drop form builder |
+| **Documentation** | Connected team knowledge base |
+| **Performance Reviews** | 360° feedback and SMART goals |
+| **Learning & Dev** | Personalized skill growth paths |
+| **Technical Hiring** | AI-powered assessments |
+| **CRM** | Relationship management for teams |
+
+## For Different Personas
+
+- **Engineering Managers** - Visibility and planning tools
+- **Developers** - No surveillance, just growth
+- **CTOs & VPs** - Scale with confidence
+- **HR & People Ops** - Hiring, reviews, and L&D
+
 ## Quick Links
 
 | Resource | Description |
 |----------|-------------|
-| [Implementation Tracker](../tracker.md) | Project implementation status |
+| [Implementation Tracker](./tracker.md) | Project implementation status |
 | [Testing Tracker](./testing/testing-tracker.md) | Test coverage and validation |
 | [API Endpoints](./api/overview.md) | Complete API reference |
 | [Getting Started](./guides/getting-started.md) | Development setup |
+
+## Why Open Source
+
+We believe in transparency:
+- See how every metric is calculated
+- Every algorithm is open-source and auditable
+- Your data is always yours
+- No vendor lock-in
+- Community-driven development
 
 ## Project Status
 
@@ -44,4 +77,7 @@
 - **Phase 3**: Career - Complete
 - **Phase 4**: Scale - Complete
 
-See the [Implementation Tracker](../tracker.md) for detailed status.
+## Links
+
+- [Website](https://aexy.io)
+- [GitHub](https://github.com/aexy-io/aexy)
