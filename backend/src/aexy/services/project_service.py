@@ -10,6 +10,7 @@ from sqlalchemy import select, and_
 from aexy.models.project import Project, ProjectMember, ProjectTeam
 from aexy.models.workspace import WorkspaceMember
 from aexy.models.developer import Developer
+from aexy.models.team import Team, TeamMember
 
 
 def generate_slug(name: str) -> str:
@@ -36,7 +37,7 @@ class ProjectService:
         settings: dict | None = None,
         created_by_id: str | None = None,
     ) -> Project:
-        """Create a new project."""
+        """Create a new project with an associated team for sprint planning."""
         # Generate slug
         slug = generate_slug(name)
 
@@ -48,8 +49,10 @@ class ProjectService:
                 counter += 1
             slug = f"{slug}-{counter}"
 
+        project_id = str(uuid4())
+
         project = Project(
-            id=str(uuid4()),
+            id=project_id,
             workspace_id=workspace_id,
             name=name,
             slug=slug,
@@ -61,14 +64,47 @@ class ProjectService:
 
         self.db.add(project)
 
+        # Create a corresponding team for sprint planning (using same ID for easy correlation)
+        team = Team(
+            id=project_id,  # Use same ID as project for easy correlation
+            workspace_id=workspace_id,
+            name=name,
+            slug=slug,
+            type="internal",
+            auto_sync_enabled=False,
+            settings={},
+            is_active=True,
+        )
+        self.db.add(team)
+
+        # Link project and team
+        project_team = ProjectTeam(
+            id=str(uuid4()),
+            project_id=project_id,
+            team_id=project_id,
+        )
+        self.db.add(project_team)
+
         # Automatically add creator as a member if provided
         if created_by_id:
-            await self.db.flush()  # Get project ID
+            await self.db.flush()  # Get IDs
+
+            # Add as project member
             await self.add_member(
                 project_id=project.id,
                 developer_id=created_by_id,
                 invited_by_id=created_by_id,
             )
+
+            # Add as team member for sprint access
+            team_member = TeamMember(
+                id=str(uuid4()),
+                team_id=project_id,
+                developer_id=created_by_id,
+                role="admin",
+                source="manual",
+            )
+            self.db.add(team_member)
 
         return project
 
@@ -163,20 +199,36 @@ class ProjectService:
         return project
 
     async def delete_project(self, project_id: str) -> bool:
-        """Soft delete a project."""
+        """Soft delete a project and its associated team."""
         project = await self.get_project(project_id)
         if not project:
             return False
 
         project.is_active = False
         project.status = "archived"
+
+        # Also deactivate the associated team (if using same ID)
+        stmt = select(Team).where(Team.id == project_id)
+        result = await self.db.execute(stmt)
+        team = result.scalar_one_or_none()
+        if team:
+            team.is_active = False
+
         return True
 
     async def hard_delete_project(self, project_id: str) -> bool:
-        """Permanently delete a project and all its data."""
+        """Permanently delete a project, its associated team, and all data."""
         project = await self.get_project(project_id)
         if not project:
             return False
+
+        # Delete the associated team first (if using same ID)
+        # Note: Team deletion will cascade to sprints, tasks, etc.
+        stmt = select(Team).where(Team.id == project_id)
+        result = await self.db.execute(stmt)
+        team = result.scalar_one_or_none()
+        if team:
+            await self.db.delete(team)
 
         await self.db.delete(project)
         return True

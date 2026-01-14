@@ -517,7 +517,7 @@ class FormSubmission(Base):
     )  # [{field_key, filename, url, size, mime_type}]
 
     # Submitter information
-    email: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     name: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Email verification
