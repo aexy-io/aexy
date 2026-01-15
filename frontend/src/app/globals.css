@@ -2,6 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
+/* NProgress - Navigation Progress Bar */
+#nprogress {
+  pointer-events: none;
+}
+
+#nprogress .bar {
+  background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+  position: fixed;
+  z-index: 9999;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+}
+
+#nprogress .peg {
+  display: block;
+  position: absolute;
+  right: 0;
+  width: 100px;
+  height: 100%;
+  box-shadow: 0 0 10px #8b5cf6, 0 0 5px #8b5cf6;
+  opacity: 1;
+  transform: rotate(3deg) translate(0, -4px);
+}
+
 :root {
   --foreground-rgb: 255, 255, 255;
   --background-start-rgb: 2, 6, 23;

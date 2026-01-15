@@ -553,7 +553,7 @@ async def seed_from_template(
                     "color": "#f59e0b",
                     "attributes": [
                         {"name": "Title", "attribute_type": "text", "is_required": True},
-                        {"name": "Date", "attribute_type": "datetime", "is_required": True},
+                        {"name": "Date", "attribute_type": "timestamp", "is_required": True},
                         {"name": "Type", "attribute_type": "select", "config": {"options": ["Phone Screen", "Technical", "Behavioral", "Final", "Culture Fit"]}},
                         {"name": "Feedback", "attribute_type": "text"},
                         {"name": "Rating", "attribute_type": "number", "config": {"min": 1, "max": 5}},

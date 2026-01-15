@@ -25,6 +25,7 @@ import {
   FormInput,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { motion } from "framer-motion";
 import { NotificationBell } from "@/components/notifications";
 import { OnCallIndicator } from "@/components/oncall/OnCallIndicator";
 import { useTrackingDashboard } from "@/hooks/useTracking";
@@ -152,7 +153,9 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
         <div className="flex items-center gap-2">
           {/* Google-style App Switcher */}
           <div className="relative" ref={appSwitcherRef}>
-            <button
+            <motion.button
+              whileTap={{ scale: 0.92 }}
+              transition={{ duration: 0.1 }}
               onClick={() => setShowAppSwitcher(!showAppSwitcher)}
               className={`p-2.5 rounded-full hover:bg-slate-800/70 transition-all duration-200 ${
                 showAppSwitcher ? "bg-slate-800/70" : ""
@@ -160,7 +163,7 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
               aria-label="Apps"
             >
               <Grid3X3 className="h-5 w-5 text-slate-400 hover:text-white transition-colors" />
-            </button>
+            </motion.button>
 
             {/* App Switcher Dropdown */}
             {showAppSwitcher && (
@@ -206,7 +209,9 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
 
           {/* Tracking Quick Info */}
           <div className="relative" ref={trackingRef}>
-            <button
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 0.1 }}
               onClick={() => setShowTrackingMenu(!showTrackingMenu)}
               className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200 ${
                 showTrackingMenu
@@ -234,7 +239,7 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
                 <Clock className="h-3 w-3" />
                 {formatTime(timeLoggedToday)}
               </span>
-            </button>
+            </motion.button>
 
             {/* Tracking Dropdown */}
             {showTrackingMenu && (
@@ -382,7 +387,9 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
 
           {/* User Profile Dropdown */}
           <div className="relative" ref={menuRef}>
-            <button
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 0.1 }}
               onClick={() => setShowUserMenu(!showUserMenu)}
               className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-slate-800/50 transition group"
             >
@@ -408,7 +415,7 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
                 </p>
               </div>
               <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${showUserMenu ? "rotate-180" : ""}`} />
-            </button>
+            </motion.button>
 
             {/* Dropdown Menu */}
             {showUserMenu && (
@@ -450,7 +457,9 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
                   </Link>
                 </div>
                 <div className="border-t border-slate-800 py-1">
-                  <button
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    transition={{ duration: 0.1 }}
                     onClick={() => {
                       setShowUserMenu(false);
                       logout();
@@ -461,7 +470,7 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
                       <LogOut className="h-4 w-4 text-red-400" />
                     </div>
                     Sign Out
-                  </button>
+                  </motion.button>
                 </div>
               </div>
             )}
