@@ -18,7 +18,12 @@ ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV CI=false
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Ensure public directory exists (may be empty)
+RUN mkdir -p public
+
+# Debug: show environment and run build
 RUN set -ex && npm run build --verbose
+
 
 # Production image
 FROM node:20-alpine AS runner
