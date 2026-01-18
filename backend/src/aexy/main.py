@@ -38,10 +38,17 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # CORS middleware
+    # CORS middleware - allow frontend URL from settings
+    allowed_origins = [
+        settings.frontend_url,
+        "http://localhost:3000",  # Local development
+    ]
+    # Remove duplicates and empty strings
+    allowed_origins = list(set(origin for origin in allowed_origins if origin))
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000"],  # Next.js dev server
+        allow_origins=allowed_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
