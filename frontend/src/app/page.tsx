@@ -575,7 +575,7 @@ export default function Home() {
               View on GitHub
             </a>
             <Link
-              href="/about"
+              href="/story"
               className="group inline-flex items-center gap-2 bg-white/5 text-white px-6 py-3 rounded-full font-semibold transition-all border border-white/10 hover:border-white/20"
             >
               Read Our Story
