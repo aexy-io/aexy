@@ -13,11 +13,9 @@ import {
   Variable,
   User,
   Building2,
-  Mail,
   Calendar,
   Link,
   Hash,
-  AtSign,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
@@ -85,10 +83,10 @@ export default function NewTemplatePage() {
 
   // Form state
   const [name, setName] = useState("");
-  const [subject, setSubject] = useState("");
+  const [subjectTemplate, setSubjectTemplate] = useState("");
   const [description, setDescription] = useState("");
   const [templateType, setTemplateType] = useState<EmailTemplateType>("code");
-  const [htmlContent, setHtmlContent] = useState("");
+  const [bodyHtml, setBodyHtml] = useState("");
 
   // Track the last focused input and cursor position
   const lastFocusedField = useRef<"subject" | "content" | null>(null);
@@ -130,8 +128,8 @@ export default function NewTemplatePage() {
 
     if (lastFocusedField.current === "subject") {
       const { start, end } = lastCursorPosition.current;
-      const newValue = subject.slice(0, start) + variableText + subject.slice(end);
-      setSubject(newValue);
+      const newValue = subjectTemplate.slice(0, start) + variableText + subjectTemplate.slice(end);
+      setSubjectTemplate(newValue);
 
       // Restore focus and set cursor after the inserted variable
       setTimeout(() => {
@@ -143,8 +141,8 @@ export default function NewTemplatePage() {
       }, 0);
     } else if (lastFocusedField.current === "content") {
       const { start, end } = lastCursorPosition.current;
-      const newValue = htmlContent.slice(0, start) + variableText + htmlContent.slice(end);
-      setHtmlContent(newValue);
+      const newValue = bodyHtml.slice(0, start) + variableText + bodyHtml.slice(end);
+      setBodyHtml(newValue);
 
       // Restore focus and set cursor after the inserted variable
       setTimeout(() => {
@@ -156,20 +154,20 @@ export default function NewTemplatePage() {
       }, 0);
     } else {
       // If no field was focused, append to content
-      setHtmlContent((prev) => prev + variableText);
+      setBodyHtml((prev) => prev + variableText);
       lastFocusedField.current = "content";
       setTimeout(() => {
         if (contentTextareaRef.current) {
           contentTextareaRef.current.focus();
-          const newPosition = htmlContent.length + variableText.length;
+          const newPosition = bodyHtml.length + variableText.length;
           contentTextareaRef.current.setSelectionRange(newPosition, newPosition);
         }
       }, 0);
     }
-  }, [subject, htmlContent]);
+  }, [subjectTemplate, bodyHtml]);
 
   const handleSubmit = async () => {
-    if (!workspaceId || !name) return;
+    if (!workspaceId || !name || !subjectTemplate || !bodyHtml) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -177,10 +175,10 @@ export default function NewTemplatePage() {
     try {
       const data: EmailTemplateCreate = {
         name,
-        subject: subject || undefined,
+        subject_template: subjectTemplate,
+        body_html: bodyHtml,
         description: description || undefined,
         template_type: templateType,
-        html_content: htmlContent || undefined,
       };
 
       const template = await createTemplate(data);
@@ -290,12 +288,12 @@ export default function NewTemplatePage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm text-slate-400 mb-2">Default Subject Line</label>
+                    <label className="block text-sm text-slate-400 mb-2">Subject Line *</label>
                     <input
                       ref={subjectInputRef}
                       type="text"
-                      value={subject}
-                      onChange={(e) => setSubject(e.target.value)}
+                      value={subjectTemplate}
+                      onChange={(e) => setSubjectTemplate(e.target.value)}
                       onFocus={handleSubjectFocus}
                       onSelect={handleSubjectSelect}
                       onKeyUp={handleSubjectSelect}
@@ -325,25 +323,28 @@ export default function NewTemplatePage() {
               ) : (
                 <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
                   <h2 className="text-lg font-medium text-white mb-4">
-                    {templateType === "mjml" ? "MJML Content" : "HTML Content"}
+                    {templateType === "mjml" ? "MJML Content" : "HTML Content"} *
                   </h2>
                   <textarea
                     ref={contentTextareaRef}
-                    value={htmlContent}
-                    onChange={(e) => setHtmlContent(e.target.value)}
+                    value={bodyHtml}
+                    onChange={(e) => setBodyHtml(e.target.value)}
                     onFocus={handleContentFocus}
                     onSelect={handleContentSelect}
                     onKeyUp={handleContentSelect}
                     onClick={handleContentSelect}
                     placeholder={templateType === "mjml"
-                      ? `<mjml>\n  <mj-body>\n    <mj-section>\n      <mj-column>\n        <mj-text>Hello {{first_name}}</mj-text>\n      </mj-column>\n    </mj-section>\n  </mj-body>\n</mjml>`
+                      ? `<mjml>\n  <mj-body>\n    <mj-section>\n      <mj-column>\n        <mj-text>Hello {{first_name}}</mj-text>\n        <mj-text>Welcome to {{company_name}}!</mj-text>\n      </mj-column>\n    </mj-section>\n  </mj-body>\n</mjml>`
                       : `<!DOCTYPE html>\n<html>\n<body>\n  <h1>Hello {{first_name}}</h1>\n  <p>Welcome to {{company_name}}!</p>\n</body>\n</html>`
                     }
                     rows={18}
                     className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono text-sm"
                   />
                   <p className="text-xs text-slate-500 mt-2">
-                    Click a variable from the sidebar to insert it at your cursor position
+                    {templateType === "mjml"
+                      ? "MJML will be compiled to responsive HTML. Click a variable from the sidebar to insert it."
+                      : "Click a variable from the sidebar to insert it at your cursor position"
+                    }
                   </p>
                 </div>
               )}
@@ -358,7 +359,7 @@ export default function NewTemplatePage() {
                 </button>
                 <button
                   onClick={handleSubmit}
-                  disabled={isSubmitting || !name}
+                  disabled={isSubmitting || !name || !subjectTemplate || !bodyHtml}
                   className="flex items-center gap-2 px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (

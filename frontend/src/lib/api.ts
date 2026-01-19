@@ -9834,7 +9834,8 @@ export const dependenciesApi = {
 
 // ==================== Email Marketing Types ====================
 
-export type EmailTemplateType = "promotional" | "transactional" | "newsletter" | "onboarding";
+export type EmailTemplateType = "code" | "visual" | "mjml";
+export type EmailTemplateCategory = "general" | "marketing" | "onboarding" | "release" | "transactional" | "newsletter";
 export type CampaignStatus = "draft" | "scheduled" | "sending" | "sent" | "paused" | "cancelled" | "completed";
 export type CampaignType = "one_time" | "recurring" | "triggered";
 export type RecipientStatus = "pending" | "sent" | "delivered" | "opened" | "clicked" | "bounced" | "failed" | "unsubscribed" | "complained";
@@ -9845,36 +9846,48 @@ export interface EmailTemplate {
   id: string;
   workspace_id: string;
   name: string;
-  subject: string;
-  html_content: string;
-  text_content: string | null;
+  slug: string;
+  description: string | null;
   template_type: EmailTemplateType;
-  variables: string[];
-  is_active: boolean;
+  category: EmailTemplateCategory;
+  subject_template: string;
+  body_html: string;
+  body_text: string | null;
+  preview_text: string | null;
+  variables: Array<{ name: string; description?: string; default_value?: string; required?: boolean }>;
   visual_definition: Record<string, unknown> | null;
+  is_active: boolean;
+  version: number;
+  created_by_id: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface EmailTemplateCreate {
   name: string;
-  subject: string;
-  html_content: string;
-  text_content?: string;
+  slug?: string;
+  description?: string;
   template_type?: EmailTemplateType;
-  variables?: string[];
+  category?: EmailTemplateCategory;
+  subject_template: string;
+  body_html: string;
+  body_text?: string;
+  preview_text?: string;
+  variables?: Array<{ name: string; description?: string; default_value?: string; required?: boolean }>;
   visual_definition?: Record<string, unknown>;
 }
 
 export interface EmailTemplateUpdate {
   name?: string;
-  subject?: string;
-  html_content?: string;
-  text_content?: string;
-  template_type?: EmailTemplateType;
-  variables?: string[];
-  is_active?: boolean;
+  description?: string;
+  category?: EmailTemplateCategory;
+  subject_template?: string;
+  body_html?: string;
+  body_text?: string;
+  preview_text?: string;
+  variables?: Array<{ name: string; description?: string; default_value?: string; required?: boolean }>;
   visual_definition?: Record<string, unknown>;
+  is_active?: boolean;
 }
 
 export interface EmailCampaign {

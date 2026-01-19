@@ -10,6 +10,12 @@ from jinja2 import Environment, BaseLoader, TemplateSyntaxError, UndefinedError
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+try:
+    import mjml
+    MJML_AVAILABLE = True
+except ImportError:
+    MJML_AVAILABLE = False
+
 from aexy.models.email_marketing import EmailTemplate, EmailTemplateType
 from aexy.schemas.email_marketing import (
     EmailTemplateCreate,
@@ -245,6 +251,8 @@ class TemplateService:
         """
         Render subject, HTML body, and text body with Jinja2.
 
+        For MJML templates, compiles MJML to HTML first, then renders variables.
+
         Returns:
             Tuple of (subject, html_body, text_body)
         """
@@ -261,8 +269,12 @@ class TemplateService:
         # Render subject
         subject = self._render_string(template.subject_template, full_context)
 
-        # Render HTML body
-        html_body = self._render_string(template.body_html, full_context)
+        # Render HTML body - handle MJML templates
+        html_body = template.body_html
+        if template.template_type == "mjml":
+            html_body = self._compile_mjml(html_body)
+
+        html_body = self._render_string(html_body, full_context)
 
         # Render text body if present
         text_body = None
@@ -270,6 +282,31 @@ class TemplateService:
             text_body = self._render_string(template.body_text, full_context)
 
         return subject, html_body, text_body
+
+    def _compile_mjml(self, mjml_content: str) -> str:
+        """
+        Compile MJML to HTML.
+
+        Args:
+            mjml_content: The MJML template content
+
+        Returns:
+            Compiled HTML string
+        """
+        if not MJML_AVAILABLE:
+            logger.warning("MJML package not available, returning raw content")
+            return mjml_content
+
+        try:
+            result = mjml.mjml2html(mjml_content)
+            if result.get("errors"):
+                for error in result["errors"]:
+                    logger.warning(f"MJML compilation warning: {error}")
+            return result.get("html", mjml_content)
+        except Exception as e:
+            logger.error(f"MJML compilation error: {e}")
+            # Return original content if compilation fails
+            return mjml_content
 
     def _render_string(
         self,
@@ -390,9 +427,30 @@ class TemplateService:
         except UndefinedError as e:
             errors.append(f"Subject template missing variable: {e}")
 
+        # Validate MJML syntax if applicable
+        if template.template_type == "mjml":
+            if not MJML_AVAILABLE:
+                errors.append("MJML package is not installed")
+            else:
+                try:
+                    result = mjml.mjml2html(template.body_html)
+                    if result.get("errors"):
+                        for error in result["errors"]:
+                            errors.append(f"MJML error: {error}")
+                except Exception as e:
+                    errors.append(f"MJML compilation error: {e}")
+
         # Try rendering HTML body
+        html_body = template.body_html
+        if template.template_type == "mjml" and MJML_AVAILABLE:
+            try:
+                result = mjml.mjml2html(html_body)
+                html_body = result.get("html", html_body)
+            except Exception:
+                pass  # Already reported above
+
         try:
-            html_tmpl = self._jinja_env.from_string(template.body_html)
+            html_tmpl = self._jinja_env.from_string(html_body)
             html_tmpl.render(**context)
         except TemplateSyntaxError as e:
             errors.append(f"HTML body syntax error: {e}")
