@@ -40,6 +40,7 @@ class WorkflowActionHandler:
             "create_record": self._create_record,
             "delete_record": self._delete_record,
             "send_email": self._send_email,
+            "send_tracked_email": self._send_tracked_email,
             "send_slack": self._send_slack,
             "send_sms": self._send_sms,
             "create_task": self._create_task,
@@ -49,6 +50,9 @@ class WorkflowActionHandler:
             "unenroll_sequence": self._unenroll_sequence,
             "webhook_call": self._webhook_call,
             "assign_owner": self._assign_owner,
+            "send_campaign": self._send_campaign,
+            "trigger_onboarding": self._trigger_onboarding,
+            "complete_onboarding_step": self._complete_onboarding_step,
         }
 
         handler = handlers.get(action_type)
@@ -249,6 +253,358 @@ class WorkflowActionHandler:
             status="success",
             output={"to": email_to, "subject": subject, "queued": True},
         )
+
+    async def _send_tracked_email(
+        self, data: dict, context: WorkflowExecutionContext
+    ) -> NodeExecutionResult:
+        """
+        Send a tracked email using the email marketing infrastructure.
+
+        Supports:
+        - Open tracking (pixel)
+        - Link click tracking
+        - Multi-domain sending (optional)
+
+        Data options:
+        - to: Recipient email (or email_field to get from record)
+        - email_field: Field name containing email (default: "email")
+        - email_subject: Subject line with template support
+        - email_body: HTML body with template support
+        - from_email: Sender email (optional, uses default)
+        - from_name: Sender name (optional)
+        - track_opens: Enable open tracking (default: true)
+        - track_clicks: Enable click tracking (default: true)
+        - sending_pool_id: Optional sending pool for multi-domain
+        """
+        from aexy.services.email_service import email_service
+        from aexy.services.tracking_service import TrackingService
+
+        email_to = data.get("to")
+        if not email_to:
+            email_field = data.get("email_field", "email")
+            email_to = context.record_data.get("values", {}).get(email_field)
+
+        if not email_to:
+            return NodeExecutionResult(
+                node_id="",
+                status="failed",
+                error="No recipient email address",
+            )
+
+        subject = data.get("email_subject", "")
+        body = data.get("email_body", "")
+        from_email = data.get("from_email")
+        from_name = data.get("from_name")
+        track_opens = data.get("track_opens", True)
+        track_clicks = data.get("track_clicks", True)
+
+        # Template variable replacement
+        subject = self._render_template(subject, context)
+        body = self._render_template(body, context)
+
+        # Process tracking if enabled
+        pixel_id = None
+        if track_opens or track_clicks:
+            tracking_service = TrackingService(self.db)
+            body, pixel_id = await tracking_service.process_email_body(
+                html_body=body,
+                workspace_id=context.workspace_id,
+                record_id=context.record_id,
+                inject_pixel=track_opens,
+                track_links=track_clicks,
+            )
+
+        # Queue email for sending
+        from aexy.processing.celery_app import celery_app
+
+        celery_app.send_task(
+            "aexy.processing.email_marketing_tasks.send_workflow_email",
+            kwargs={
+                "workspace_id": context.workspace_id,
+                "to": email_to,
+                "subject": subject,
+                "body": body,
+                "from_email": from_email,
+                "from_name": from_name,
+                "record_id": context.record_id,
+                "sending_pool_id": data.get("sending_pool_id"),
+            },
+            queue="email_campaigns",
+        )
+
+        return NodeExecutionResult(
+            node_id="",
+            status="success",
+            output={
+                "to": email_to,
+                "subject": subject,
+                "queued": True,
+                "tracking_enabled": track_opens or track_clicks,
+                "pixel_id": pixel_id,
+            },
+        )
+
+    async def _send_campaign(
+        self, data: dict, context: WorkflowExecutionContext
+    ) -> NodeExecutionResult:
+        """
+        Send an email campaign to a user or trigger a release campaign.
+
+        Data options:
+        - campaign_id: Existing campaign ID to send
+        - template_id: Template ID to create ad-hoc campaign
+        - to: Recipient email (or get from record)
+        - email_field: Field name containing email (default: "email")
+        - context_overrides: Additional template context
+        """
+        campaign_id = data.get("campaign_id")
+        template_id = data.get("template_id")
+
+        email_to = data.get("to")
+        if not email_to:
+            email_field = data.get("email_field", "email")
+            email_to = context.record_data.get("values", {}).get(email_field)
+
+        if not email_to:
+            return NodeExecutionResult(
+                node_id="",
+                status="failed",
+                error="No recipient email address",
+            )
+
+        context_overrides = data.get("context_overrides", {})
+
+        if campaign_id:
+            # Send existing campaign to this recipient
+            from aexy.services.campaign_service import CampaignService
+
+            campaign_service = CampaignService(self.db)
+            campaign = await campaign_service.get_campaign(campaign_id, context.workspace_id)
+
+            if not campaign:
+                return NodeExecutionResult(
+                    node_id="",
+                    status="failed",
+                    error=f"Campaign not found: {campaign_id}",
+                )
+
+            # Add single recipient to campaign
+            from aexy.models.email_marketing import CampaignRecipient, RecipientStatus
+            from uuid import uuid4
+
+            recipient = CampaignRecipient(
+                id=str(uuid4()),
+                campaign_id=campaign_id,
+                record_id=context.record_id,
+                email=email_to,
+                status=RecipientStatus.PENDING.value,
+                context=context_overrides,
+            )
+            self.db.add(recipient)
+            await self.db.flush()
+
+            # Queue send task
+            from aexy.processing.email_marketing_tasks import send_campaign_email_task
+            send_campaign_email_task.delay(campaign_id, recipient.id)
+
+            return NodeExecutionResult(
+                node_id="",
+                status="success",
+                output={
+                    "campaign_id": campaign_id,
+                    "recipient_id": recipient.id,
+                    "to": email_to,
+                    "queued": True,
+                },
+            )
+
+        elif template_id:
+            # Create ad-hoc send from template
+            from aexy.services.template_service import TemplateService
+
+            template_service = TemplateService(self.db)
+            template = await template_service.get_template(template_id, context.workspace_id)
+
+            if not template:
+                return NodeExecutionResult(
+                    node_id="",
+                    status="failed",
+                    error=f"Template not found: {template_id}",
+                )
+
+            # Merge context
+            render_context = {
+                **context.record_data.get("values", {}),
+                **context_overrides,
+            }
+
+            subject, html_body, text_body = template_service.render_template(
+                template, render_context
+            )
+
+            # Queue email
+            from aexy.processing.email_marketing_tasks import send_workflow_email
+            send_workflow_email.delay(
+                workspace_id=context.workspace_id,
+                to=email_to,
+                subject=subject,
+                body=html_body,
+                record_id=context.record_id,
+            )
+
+            return NodeExecutionResult(
+                node_id="",
+                status="success",
+                output={
+                    "template_id": template_id,
+                    "to": email_to,
+                    "subject": subject,
+                    "queued": True,
+                },
+            )
+
+        return NodeExecutionResult(
+            node_id="",
+            status="failed",
+            error="Must specify campaign_id or template_id",
+        )
+
+    async def _trigger_onboarding(
+        self, data: dict, context: WorkflowExecutionContext
+    ) -> NodeExecutionResult:
+        """
+        Trigger an onboarding flow for a user.
+
+        Data options:
+        - flow_id: Onboarding flow ID to trigger
+        - flow_slug: Onboarding flow slug (alternative to flow_id)
+        - user_id: User ID to onboard (or get from context/record)
+        - user_id_field: Field name containing user ID
+        """
+        from aexy.services.onboarding_service import OnboardingService
+
+        onboarding_service = OnboardingService(self.db)
+
+        flow_id = data.get("flow_id")
+        flow_slug = data.get("flow_slug")
+
+        # Resolve flow
+        if not flow_id and flow_slug:
+            flow = await onboarding_service.get_flow_by_slug(
+                context.workspace_id, flow_slug
+            )
+            if flow:
+                flow_id = flow.id
+
+        if not flow_id:
+            return NodeExecutionResult(
+                node_id="",
+                status="failed",
+                error="Must specify flow_id or flow_slug",
+            )
+
+        # Resolve user_id
+        user_id = data.get("user_id")
+        if not user_id:
+            user_id_field = data.get("user_id_field", "developer_id")
+            user_id = context.record_data.get("values", {}).get(user_id_field)
+
+        if not user_id:
+            # Try to get from context
+            user_id = context.record_data.get("created_by_id")
+
+        if not user_id:
+            return NodeExecutionResult(
+                node_id="",
+                status="failed",
+                error="No user_id found for onboarding",
+            )
+
+        # Start onboarding
+        try:
+            progress = await onboarding_service.start_onboarding(
+                flow_id=flow_id,
+                user_id=user_id,
+                record_id=context.record_id,
+            )
+
+            return NodeExecutionResult(
+                node_id="",
+                status="success",
+                output={
+                    "flow_id": flow_id,
+                    "user_id": user_id,
+                    "progress_id": progress.id,
+                    "started": True,
+                },
+            )
+        except Exception as e:
+            return NodeExecutionResult(
+                node_id="",
+                status="failed",
+                error=f"Failed to start onboarding: {str(e)}",
+            )
+
+    async def _complete_onboarding_step(
+        self, data: dict, context: WorkflowExecutionContext
+    ) -> NodeExecutionResult:
+        """
+        Complete an onboarding step for a user.
+
+        Data options:
+        - progress_id: Onboarding progress ID
+        - flow_id: Flow ID (with user_id to find progress)
+        - user_id: User ID
+        - step_id: Optional specific step ID to complete
+        """
+        from aexy.services.onboarding_service import OnboardingService
+
+        onboarding_service = OnboardingService(self.db)
+
+        progress_id = data.get("progress_id")
+        flow_id = data.get("flow_id")
+        user_id = data.get("user_id")
+        step_id = data.get("step_id")
+
+        if not progress_id and flow_id and user_id:
+            # Find progress by flow and user
+            progress = await onboarding_service.get_user_progress(flow_id, user_id)
+            if progress:
+                progress_id = progress.id
+
+        if not progress_id:
+            return NodeExecutionResult(
+                node_id="",
+                status="failed",
+                error="Must specify progress_id or (flow_id + user_id)",
+            )
+
+        try:
+            progress = await onboarding_service.complete_step(progress_id, step_id)
+
+            if not progress:
+                return NodeExecutionResult(
+                    node_id="",
+                    status="failed",
+                    error=f"Progress not found: {progress_id}",
+                )
+
+            return NodeExecutionResult(
+                node_id="",
+                status="success",
+                output={
+                    "progress_id": progress.id,
+                    "current_step": progress.current_step,
+                    "status": progress.status,
+                    "completed": progress.status == "completed",
+                },
+            )
+        except Exception as e:
+            return NodeExecutionResult(
+                node_id="",
+                status="failed",
+                error=f"Failed to complete step: {str(e)}",
+            )
 
     async def _send_slack(
         self, data: dict, context: WorkflowExecutionContext
@@ -684,6 +1040,9 @@ class SyncWorkflowActionHandler:
             "unenroll_sequence": self._unenroll_sequence,
             "webhook_call": self._webhook_call,
             "assign_owner": self._assign_owner,
+            "send_campaign": self._send_campaign,
+            "trigger_onboarding": self._trigger_onboarding,
+            "complete_onboarding_step": self._complete_onboarding_step,
         }
 
         handler = handlers.get(action_type)
@@ -1039,6 +1398,138 @@ class SyncWorkflowActionHandler:
         self.db.commit()
 
         return {"status": "success", "output": {"record_id": record_id, "owner_id": owner_id}}
+
+    def _send_campaign(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
+        """Send an email campaign to a user (sync version)."""
+        campaign_id = data.get("campaign_id")
+        template_id = data.get("template_id")
+
+        email_to = data.get("to")
+        if not email_to:
+            record_data = context.get("record_data", {})
+            email_field = data.get("email_field", "email")
+            email_to = record_data.get("values", {}).get(email_field)
+
+        if not email_to:
+            return {"status": "failed", "error": "No recipient email address"}
+
+        context_overrides = data.get("context_overrides", {})
+
+        if campaign_id:
+            from aexy.models.email_marketing import CampaignRecipient, RecipientStatus
+
+            recipient = CampaignRecipient(
+                id=str(uuid4()),
+                campaign_id=campaign_id,
+                record_id=execution.record_id,
+                email=email_to,
+                status=RecipientStatus.PENDING.value,
+                context=context_overrides,
+            )
+            self.db.add(recipient)
+            self.db.commit()
+
+            from aexy.processing.email_marketing_tasks import send_campaign_email_task
+            send_campaign_email_task.delay(campaign_id, recipient.id)
+
+            return {
+                "status": "success",
+                "output": {
+                    "campaign_id": campaign_id,
+                    "recipient_id": recipient.id,
+                    "to": email_to,
+                    "queued": True,
+                },
+            }
+
+        elif template_id:
+            from aexy.processing.email_marketing_tasks import send_workflow_email
+            send_workflow_email.delay(
+                workspace_id=execution.workspace_id,
+                to=email_to,
+                subject=data.get("subject", ""),
+                body=data.get("body", ""),
+                record_id=execution.record_id,
+            )
+
+            return {
+                "status": "success",
+                "output": {"template_id": template_id, "to": email_to, "queued": True},
+            }
+
+        return {"status": "failed", "error": "Must specify campaign_id or template_id"}
+
+    def _trigger_onboarding(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
+        """Trigger an onboarding flow for a user (sync version)."""
+        flow_id = data.get("flow_id")
+        flow_slug = data.get("flow_slug")
+
+        if not flow_id and not flow_slug:
+            return {"status": "failed", "error": "Must specify flow_id or flow_slug"}
+
+        user_id = data.get("user_id")
+        if not user_id:
+            record_data = context.get("record_data", {})
+            user_id_field = data.get("user_id_field", "developer_id")
+            user_id = record_data.get("values", {}).get(user_id_field)
+
+        if not user_id:
+            user_id = context.get("record_data", {}).get("created_by_id")
+
+        if not user_id:
+            return {"status": "failed", "error": "No user_id found for onboarding"}
+
+        # Queue onboarding start via Celery
+        from aexy.processing.celery_app import celery_app
+
+        celery_app.send_task(
+            "aexy.processing.email_marketing_tasks.start_user_onboarding",
+            kwargs={
+                "workspace_id": execution.workspace_id,
+                "flow_id": flow_id,
+                "flow_slug": flow_slug,
+                "user_id": user_id,
+                "record_id": execution.record_id,
+            },
+            queue="email_campaigns",
+        )
+
+        return {
+            "status": "success",
+            "output": {
+                "flow_id": flow_id or flow_slug,
+                "user_id": user_id,
+                "queued": True,
+            },
+        }
+
+    def _complete_onboarding_step(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
+        """Complete an onboarding step (sync version)."""
+        progress_id = data.get("progress_id")
+        flow_id = data.get("flow_id")
+        user_id = data.get("user_id")
+        step_id = data.get("step_id")
+
+        if not progress_id and not (flow_id and user_id):
+            return {"status": "failed", "error": "Must specify progress_id or (flow_id + user_id)"}
+
+        from aexy.processing.celery_app import celery_app
+
+        celery_app.send_task(
+            "aexy.processing.email_marketing_tasks.complete_onboarding_step",
+            kwargs={
+                "progress_id": progress_id,
+                "flow_id": flow_id,
+                "user_id": user_id,
+                "step_id": step_id,
+            },
+            queue="email_campaigns",
+        )
+
+        return {
+            "status": "success",
+            "output": {"progress_id": progress_id or "pending", "queued": True},
+        }
 
     def _get_context_value(self, path: str, context: dict) -> Any:
         """Get a value from context using dot notation."""

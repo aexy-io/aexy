@@ -18,6 +18,9 @@ celery_app = Celery(
         "aexy.processing.google_sync_tasks",
         "aexy.processing.integration_tasks",
         "aexy.processing.workflow_tasks",
+        "aexy.processing.email_marketing_tasks",
+        "aexy.processing.warming_tasks",
+        "aexy.processing.reputation_tasks",
     ],
 )
 
@@ -64,6 +67,9 @@ celery_app.conf.update(
         "aexy.processing.google_sync_tasks.*": {"queue": "google_sync"},
         "aexy.processing.integration_tasks.*": {"queue": "integrations"},
         "aexy.processing.workflow_tasks.*": {"queue": "workflows"},
+        "aexy.processing.email_marketing_tasks.*": {"queue": "email_campaigns"},
+        "aexy.processing.warming_tasks.*": {"queue": "email_warming"},
+        "aexy.processing.reputation_tasks.*": {"queue": "email_reputation"},
     },
 
     # Retry settings
@@ -116,6 +122,57 @@ celery_app.conf.update(
         "cleanup-old-workflow-executions": {
             "task": "aexy.processing.workflow_tasks.cleanup_old_executions",
             "schedule": 3600 * 24,  # Daily
+        },
+        # Email Marketing
+        "check-scheduled-campaigns": {
+            "task": "aexy.processing.email_marketing_tasks.check_scheduled_campaigns_task",
+            "schedule": 60,  # Every minute
+        },
+        "aggregate-email-analytics": {
+            "task": "aexy.processing.email_marketing_tasks.aggregate_daily_analytics_task",
+            "schedule": 3600,  # Hourly
+        },
+        "aggregate-workspace-stats": {
+            "task": "aexy.processing.email_marketing_tasks.aggregate_workspace_stats_task",
+            "schedule": 3600 * 24,  # Daily
+        },
+        "cleanup-old-analytics": {
+            "task": "aexy.processing.email_marketing_tasks.cleanup_old_analytics_task",
+            "schedule": 3600 * 24 * 7,  # Weekly
+        },
+        "check-due-onboarding-steps": {
+            "task": "aexy.processing.email_marketing_tasks.check_due_onboarding_steps",
+            "schedule": 300,  # Every 5 minutes
+        },
+        # Email Warming (Multi-domain infrastructure)
+        "process-warming-day": {
+            "task": "aexy.processing.warming_tasks.process_warming_day",
+            "schedule": 3600 * 24,  # Daily at midnight UTC
+        },
+        "check-warming-thresholds": {
+            "task": "aexy.processing.warming_tasks.check_warming_thresholds",
+            "schedule": 3600,  # Hourly
+        },
+        "reset-daily-volumes-email": {
+            "task": "aexy.processing.warming_tasks.reset_daily_volumes",
+            "schedule": 3600 * 24,  # Daily at midnight UTC
+        },
+        # Email Reputation Monitoring
+        "calculate-daily-health": {
+            "task": "aexy.processing.reputation_tasks.calculate_daily_health",
+            "schedule": 3600 * 24,  # Daily
+        },
+        "calculate-isp-metrics": {
+            "task": "aexy.processing.reputation_tasks.calculate_isp_metrics",
+            "schedule": 3600 * 24,  # Daily
+        },
+        "auto-pause-unhealthy-domains": {
+            "task": "aexy.processing.reputation_tasks.auto_pause_unhealthy_domains",
+            "schedule": 900,  # Every 15 minutes
+        },
+        "process-unprocessed-events": {
+            "task": "aexy.processing.reputation_tasks.process_unprocessed_events",
+            "schedule": 300,  # Every 5 minutes
         },
     },
 )

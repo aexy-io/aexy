@@ -343,6 +343,26 @@ class Settings(BaseSettings):
         description="Anthropic API key for Claude (used by AI agents)",
     )
 
+    # Email Tracking
+    email_tracking_enabled: bool = Field(
+        default=True,
+        description="Enable email open and click tracking",
+    )
+    email_tracking_domain: str = Field(
+        default="",
+        description="Domain for tracking URLs (e.g., track.example.com). If empty, uses backend_url.",
+    )
+    email_image_cdn_url: str = Field(
+        default="",
+        description="CDN URL for hosted images. If empty, uses backend_url.",
+    )
+
+    def get_tracking_base_url(self) -> str:
+        """Get the base URL for tracking endpoints."""
+        if self.email_tracking_domain:
+            return f"https://{self.email_tracking_domain}"
+        return self.backend_url
+
     # LLM Configuration
     llm: LLMSettings = Field(default_factory=LLMSettings)
 

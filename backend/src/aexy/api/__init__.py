@@ -94,6 +94,18 @@ from aexy.api.dashboard import router as dashboard_router
 # Roles & Projects
 from aexy.api.roles import router as roles_router
 from aexy.api.projects import router as projects_router
+# Email Marketing
+from aexy.api.email_marketing import router as email_marketing_router
+# Email Infrastructure (Multi-domain sending, warming, routing)
+from aexy.api.email_infrastructure import router as email_infrastructure_router
+from aexy.api.email_webhooks import router as email_webhooks_router
+# Email Tracking (open/click tracking - public endpoints)
+from aexy.api.email_tracking import router as email_tracking_router
+# Email Preferences (subscription management)
+from aexy.api.preferences import public_router as preferences_public_router
+from aexy.api.preferences import admin_router as subscriptions_router
+# Visual Email Builder
+from aexy.api.visual_builder import router as visual_builder_router
 
 api_router = APIRouter()
 
@@ -193,3 +205,15 @@ api_router.include_router(dashboard_router, tags=["dashboard"])
 # Roles & Projects
 api_router.include_router(roles_router, tags=["roles"])
 api_router.include_router(projects_router, tags=["projects"])
+# Email Marketing
+api_router.include_router(email_marketing_router, tags=["email-marketing"])
+# Email Infrastructure (Multi-domain sending, warming, routing)
+api_router.include_router(email_infrastructure_router, tags=["email-infrastructure"])
+api_router.include_router(email_webhooks_router, tags=["email-webhooks"])
+# Email Tracking (public endpoints for pixel/link tracking)
+api_router.include_router(email_tracking_router, tags=["email-tracking"])
+# Email Preferences (subscription management)
+api_router.include_router(preferences_public_router, tags=["preferences-public"])
+api_router.include_router(subscriptions_router, tags=["subscriptions"])
+# Visual Email Builder
+api_router.include_router(visual_builder_router, tags=["visual-builder"])

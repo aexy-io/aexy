@@ -20,6 +20,7 @@ import {
   Code2,
   Briefcase,
   Heart,
+  Mail,
 } from "lucide-react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
@@ -34,6 +35,7 @@ const productLinks = [
   { href: "/products/learning", label: "Learning & Dev", icon: GraduationCap, desc: "Personalized skill growth", color: "from-rose-500 to-pink-500" },
   { href: "/products/hiring", label: "Technical Hiring", icon: UserPlus, desc: "AI-powered assessments", color: "from-cyan-500 to-blue-500" },
   { href: "/products/crm", label: "CRM", icon: Building2, desc: "Relationship management", color: "from-purple-500 to-violet-500" },
+  { href: "/products/email-marketing", label: "Email Marketing", icon: Mail, desc: "Campaigns & automation", color: "from-sky-500 to-blue-500" },
 ];
 
 const solutionLinks = [
@@ -232,6 +234,7 @@ export function LandingFooter() {
               <li><Link href="/products/learning" className="hover:text-white transition">Learning</Link></li>
               <li><Link href="/products/hiring" className="hover:text-white transition">Hiring</Link></li>
               <li><Link href="/products/crm" className="hover:text-white transition">CRM</Link></li>
+              <li><Link href="/products/email-marketing" className="hover:text-white transition">Email Marketing</Link></li>
             </ul>
           </div>
           <div>

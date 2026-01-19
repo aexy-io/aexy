@@ -24,6 +24,7 @@ We're on a mission to bring positive change by building world-class tools actual
 - [CLI Usage](./guides/cli-usage.md) - Command-line interface guide
 - [VS Code Extension](./guides/vscode-extension.md) - IDE extension guide
 - [Deployment](./guides/deployment.md) - Production deployment guide
+- [Email Marketing](./email-marketing.md) - Campaigns, automation & infrastructure
 
 ### Testing
 - [Testing Strategy](./testing/testing-strategy.md) - Overall testing approach
@@ -31,7 +32,7 @@ We're on a mission to bring positive change by building world-class tools actual
 
 ## Products
 
-Aexy is a complete Engineering OS with 9 integrated products:
+Aexy is a complete Engineering OS with 10 integrated products:
 
 | Product | Description |
 |---------|-------------|
@@ -44,6 +45,7 @@ Aexy is a complete Engineering OS with 9 integrated products:
 | **Learning & Dev** | Personalized skill growth paths |
 | **Technical Hiring** | AI-powered assessments |
 | **CRM** | Relationship management for teams |
+| **Email Marketing** | Campaigns, automation & multi-domain infrastructure |
 
 ## For Different Personas
 
@@ -76,6 +78,7 @@ We believe in transparency:
 - **Phase 2**: Intelligence - Complete
 - **Phase 3**: Career - Complete
 - **Phase 4**: Scale - Complete
+- **Phase 5**: Email Marketing & Engagement - Complete
 
 ## Links
 

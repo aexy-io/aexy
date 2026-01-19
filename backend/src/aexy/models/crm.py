@@ -121,6 +121,13 @@ class CRMAutomationTriggerType(str, Enum):
     EMAIL_OPENED = "email.opened"
     EMAIL_CLICKED = "email.clicked"
     EMAIL_REPLIED = "email.replied"
+    # User onboarding events
+    USER_FIRST_LOGIN = "user.first_login"
+    USER_PROFILE_COMPLETED = "user.profile_completed"
+    USER_INTEGRATION_CONNECTED = "user.integration_connected"
+    USER_MILESTONE_REACHED = "user.milestone_reached"
+    # Release events
+    RELEASE_PUBLISHED = "release.published"
 
 
 class CRMAutomationActionType(str, Enum):
@@ -151,6 +158,12 @@ class CRMAutomationActionType(str, Enum):
     ENRICH_RECORD = "enrich_record"
     CLASSIFY_RECORD = "classify_record"
     GENERATE_SUMMARY = "generate_summary"
+    # Email Marketing
+    SEND_CAMPAIGN = "send_campaign"
+    SEND_TRACKED_EMAIL = "send_tracked_email"
+    # Onboarding
+    TRIGGER_ONBOARDING = "trigger_onboarding"
+    COMPLETE_ONBOARDING_STEP = "complete_onboarding_step"
 
 
 class CRMSequenceStepType(str, Enum):

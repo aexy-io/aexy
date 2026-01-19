@@ -53,6 +53,7 @@ const productLinks = [
   { href: "/products/learning", label: "Learning & Dev", icon: GraduationCap, desc: "Personalized skill growth", color: "from-rose-500 to-pink-500" },
   { href: "/products/hiring", label: "Technical Hiring", icon: UserPlus, desc: "AI-powered assessments", color: "from-cyan-500 to-blue-500" },
   { href: "/products/crm", label: "CRM", icon: Building2, desc: "Relationship management", color: "from-purple-500 to-violet-500" },
+  { href: "/products/email-marketing", label: "Email Marketing", icon: Mail, desc: "Campaigns & automation", color: "from-sky-500 to-blue-500" },
 ];
 
 const solutionLinks = [
@@ -479,7 +480,7 @@ export default function Home() {
                 <div className="text-amber-400 text-sm font-semibold tracking-wider mb-2">CONNECT</div>
                 <h3 className="text-2xl font-bold text-white mb-3">Relationships</h3>
                 <p className="text-white/50 mb-6">
-                  Manage all your business relationships. CRM, email sync, calendar integration, AI enrichment.
+                  Manage all your business relationships. CRM, email marketing, calendar integration, AI enrichment.
                 </p>
                 <div className="border-t border-white/10 pt-6 space-y-3">
                   <div className="flex items-center gap-2 text-white/60 text-sm">
@@ -492,15 +493,15 @@ export default function Home() {
                   </div>
                   <div className="flex items-center gap-2 text-white/60 text-sm">
                     <CheckCircle2 className="h-4 w-4 text-amber-400" />
-                    AI contact enrichment
+                    Email campaigns & automation
                   </div>
                   <div className="flex items-center gap-2 text-white/60 text-sm">
                     <CheckCircle2 className="h-4 w-4 text-amber-400" />
-                    Sales pipeline tracking
+                    Multi-domain email infrastructure
                   </div>
                 </div>
-                <Link href="/crm" className="inline-flex items-center gap-2 text-amber-400 mt-6 text-sm font-medium group-hover:gap-3 transition-all">
-                  Explore CRM <ArrowRight className="h-4 w-4" />
+                <Link href="/products/email-marketing" className="inline-flex items-center gap-2 text-amber-400 mt-6 text-sm font-medium group-hover:gap-3 transition-all">
+                  Explore Email Marketing <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
             </div>
