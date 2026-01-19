@@ -63,6 +63,12 @@ class EmailService:
     @property
     def is_configured(self) -> bool:
         """Check if email service is properly configured for the selected provider."""
+        logger.info(
+            f"Email config check: provider={settings.email_provider}, "
+            f"notifications_enabled={settings.email_notifications_enabled}, "
+            f"smtp_host={settings.smtp_host}, smtp_port={settings.smtp_port}, "
+            f"smtp_sender_email={settings.smtp_sender_email}"
+        )
         if not settings.email_notifications_enabled:
             return False
 
@@ -288,9 +294,12 @@ class EmailService:
         body_html: str | None = None,
     ) -> dict[str, Any]:
         """Send email using the configured provider."""
+        logger.info(f"_send_email called with provider={self.provider}, smtp_configured={self.is_smtp_configured}, ses_configured={self.is_ses_configured}")
         if self.provider == "smtp":
+            logger.info(f"Using SMTP to send email to {recipient_email}")
             return await self._send_via_smtp(recipient_email, subject, body_text, body_html)
         else:
+            logger.info(f"Using SES to send email to {recipient_email}")
             return await self._send_via_ses(recipient_email, subject, body_text, body_html)
 
     async def send_notification_email(
@@ -401,7 +410,7 @@ class EmailService:
             error_message = e.response.get("Error", {}).get("Message", str(e))
             log.status = "failed"
             log.error_message = error_message
-            logger.error(f"Failed to send templated email via SES: {error_message}")
+            logger.error(f"Failed to send templated email via {self.provider}: {error_message}")
 
         except aiosmtplib.SMTPException as e:
             log.status = "failed"
