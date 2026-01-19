@@ -2,7 +2,7 @@
 
 import os
 from collections.abc import AsyncGenerator
-from contextlib import contextmanager
+from contextlib import asynccontextmanager, contextmanager
 from typing import Generator
 
 from sqlalchemy import create_engine
@@ -89,6 +89,28 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             raise
         finally:
             await session.close()
+
+
+@asynccontextmanager
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
+    """Get an async database session as a context manager.
+
+    Usage:
+        async with get_async_session() as session:
+            result = await session.execute(query)
+
+    This is useful for background tasks and non-FastAPI contexts
+    where you need a database session but aren't using Depends().
+    """
+    session = async_session_maker()
+    try:
+        yield session
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
 
 
 # Synchronous database support for Celery tasks
