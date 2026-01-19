@@ -44,9 +44,9 @@ export default function TemplateDetailPage() {
 
   // Form state
   const [name, setName] = useState("");
-  const [subject, setSubject] = useState("");
+  const [subjectTemplate, setSubjectTemplate] = useState("");
   const [description, setDescription] = useState("");
-  const [htmlContent, setHtmlContent] = useState("");
+  const [bodyHtml, setBodyHtml] = useState("");
 
   const { data: template, isLoading, error, refetch } = useEmailTemplate(workspaceId, templateId);
   const { updateTemplate } = useEmailTemplates(workspaceId);
@@ -58,15 +58,15 @@ export default function TemplateDetailPage() {
   useEffect(() => {
     if (template) {
       setName(template.name);
-      setSubject(template.subject || "");
+      setSubjectTemplate(template.subject_template || "");
       setDescription(template.description || "");
-      setHtmlContent(template.html_content || "");
+      setBodyHtml(template.body_html || "");
 
       // Initialize preview data with empty values for each variable
       if (template.variables) {
         const initialData: Record<string, string> = {};
-        template.variables.forEach((v: string) => {
-          initialData[v] = "";
+        template.variables.forEach((v) => {
+          initialData[v.name] = v.default_value || "";
         });
         setPreviewData(initialData);
       }
@@ -80,9 +80,9 @@ export default function TemplateDetailPage() {
     try {
       const data: EmailTemplateUpdate = {
         name,
-        subject: subject || undefined,
+        subject_template: subjectTemplate || undefined,
         description: description || undefined,
-        html_content: htmlContent || undefined,
+        body_html: bodyHtml || undefined,
       };
 
       await updateTemplate({ templateId, data });
@@ -286,13 +286,13 @@ export default function TemplateDetailPage() {
                 {isEditing ? (
                   <input
                     type="text"
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
+                    value={subjectTemplate}
+                    onChange={(e) => setSubjectTemplate(e.target.value)}
                     placeholder="Email subject..."
                     className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
                   />
                 ) : (
-                  <p className="text-slate-300">{template.subject || "No subject set"}</p>
+                  <p className="text-slate-300">{template.subject_template || "No subject set"}</p>
                 )}
               </div>
 
@@ -301,14 +301,14 @@ export default function TemplateDetailPage() {
                 <h3 className="text-lg font-medium text-white mb-4">HTML Content</h3>
                 {isEditing ? (
                   <textarea
-                    value={htmlContent}
-                    onChange={(e) => setHtmlContent(e.target.value)}
+                    value={bodyHtml}
+                    onChange={(e) => setBodyHtml(e.target.value)}
                     rows={20}
                     className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono text-sm"
                   />
                 ) : (
                   <pre className="p-4 bg-slate-800 rounded-lg overflow-auto max-h-96 text-sm text-slate-300 font-mono">
-                    {template.html_content || "No content"}
+                    {template.body_html || "No content"}
                   </pre>
                 )}
               </div>
@@ -324,16 +324,22 @@ export default function TemplateDetailPage() {
                     <h3 className="text-lg font-medium text-white">Variables</h3>
                   </div>
                   <div className="space-y-3">
-                    {template.variables.map((variable: string) => (
-                      <div key={variable}>
-                        <label className="block text-xs text-slate-500 mb-1">{`{{${variable}}}`}</label>
+                    {template.variables.map((variable) => (
+                      <div key={variable.name}>
+                        <label className="block text-xs text-slate-500 mb-1">
+                          {`{{${variable.name}}}`}
+                          {variable.required && <span className="text-red-400 ml-1">*</span>}
+                        </label>
+                        {variable.description && (
+                          <p className="text-xs text-slate-600 mb-1">{variable.description}</p>
+                        )}
                         <input
                           type="text"
-                          value={previewData[variable] || ""}
+                          value={previewData[variable.name] || ""}
                           onChange={(e) =>
-                            setPreviewData((prev) => ({ ...prev, [variable]: e.target.value }))
+                            setPreviewData((prev) => ({ ...prev, [variable.name]: e.target.value }))
                           }
-                          placeholder={`Enter ${variable}...`}
+                          placeholder={variable.default_value || `Enter ${variable.name}...`}
                           className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
                         />
                       </div>

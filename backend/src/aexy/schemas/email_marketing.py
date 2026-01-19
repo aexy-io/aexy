@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, EmailStr
 # TYPE LITERALS
 # =============================================================================
 
-EmailTemplateType = Literal["code", "visual"]
+EmailTemplateType = Literal["code", "visual", "mjml"]
 EmailTemplateCategory = Literal["general", "marketing", "onboarding", "release", "transactional", "newsletter"]
 CampaignType = Literal["one_time", "recurring", "triggered"]
 CampaignStatus = Literal["draft", "scheduled", "sending", "sent", "paused", "cancelled"]

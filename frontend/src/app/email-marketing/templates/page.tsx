@@ -144,10 +144,10 @@ function TemplateCard({
         </div>
       </div>
 
-      {template.subject && (
+      {template.subject_template && (
         <div className="mb-4 p-3 bg-slate-800/50 rounded-lg">
           <p className="text-xs text-slate-500 mb-1">Subject Line</p>
-          <p className="text-sm text-slate-300 truncate">{template.subject}</p>
+          <p className="text-sm text-slate-300 truncate">{template.subject_template}</p>
         </div>
       )}
 
@@ -155,12 +155,12 @@ function TemplateCard({
         <div className="mb-4">
           <p className="text-xs text-slate-500 mb-2">Variables</p>
           <div className="flex flex-wrap gap-1">
-            {template.variables.slice(0, 5).map((variable: string) => (
+            {template.variables.slice(0, 5).map((variable) => (
               <span
-                key={variable}
+                key={variable.name}
                 className="px-2 py-0.5 bg-slate-800 rounded text-xs text-slate-400"
               >
-                {`{{${variable}}}`}
+                {`{{${variable.name}}}`}
               </span>
             ))}
             {template.variables.length > 5 && (
