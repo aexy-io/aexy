@@ -9831,3 +9831,529 @@ export const dependenciesApi = {
     return response.data;
   },
 };
+
+// ==================== Email Marketing Types ====================
+
+export type EmailTemplateType = "promotional" | "transactional" | "newsletter" | "onboarding";
+export type CampaignStatus = "draft" | "scheduled" | "sending" | "sent" | "paused" | "cancelled" | "completed";
+export type CampaignType = "one_time" | "recurring" | "triggered";
+export type RecipientStatus = "pending" | "sent" | "delivered" | "opened" | "clicked" | "bounced" | "failed" | "unsubscribed" | "complained";
+export type DomainStatus = "pending" | "verified" | "failed" | "suspended";
+export type WarmingStatus = "not_started" | "in_progress" | "completed" | "paused";
+
+export interface EmailTemplate {
+  id: string;
+  workspace_id: string;
+  name: string;
+  subject: string;
+  html_content: string;
+  text_content: string | null;
+  template_type: EmailTemplateType;
+  variables: string[];
+  is_active: boolean;
+  visual_definition: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EmailTemplateCreate {
+  name: string;
+  subject: string;
+  html_content: string;
+  text_content?: string;
+  template_type?: EmailTemplateType;
+  variables?: string[];
+  visual_definition?: Record<string, unknown>;
+}
+
+export interface EmailTemplateUpdate {
+  name?: string;
+  subject?: string;
+  html_content?: string;
+  text_content?: string;
+  template_type?: EmailTemplateType;
+  variables?: string[];
+  is_active?: boolean;
+  visual_definition?: Record<string, unknown>;
+}
+
+export interface EmailCampaign {
+  id: string;
+  workspace_id: string;
+  name: string;
+  subject: string;
+  template_id: string | null;
+  template_name?: string;
+  html_content: string | null;
+  text_content: string | null;
+  from_name: string | null;
+  from_email: string | null;
+  reply_to: string | null;
+  campaign_type: CampaignType;
+  status: CampaignStatus;
+  audience_filter: Record<string, unknown> | null;
+  scheduled_at: string | null;
+  sent_at: string | null;
+  completed_at: string | null;
+  total_recipients: number;
+  sent_count: number;
+  delivered_count: number;
+  open_count: number;
+  click_count: number;
+  bounce_count: number;
+  unsubscribe_count: number;
+  complaint_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EmailCampaignCreate {
+  name: string;
+  subject: string;
+  template_id?: string;
+  html_content?: string;
+  text_content?: string;
+  from_name?: string;
+  from_email?: string;
+  reply_to?: string;
+  campaign_type?: CampaignType;
+  audience_filter?: Record<string, unknown>;
+}
+
+export interface EmailCampaignUpdate {
+  name?: string;
+  subject?: string;
+  template_id?: string;
+  html_content?: string;
+  text_content?: string;
+  from_name?: string;
+  from_email?: string;
+  reply_to?: string;
+  audience_filter?: Record<string, unknown>;
+}
+
+export interface CampaignRecipient {
+  id: string;
+  campaign_id: string;
+  email: string;
+  name: string | null;
+  status: RecipientStatus;
+  sent_at: string | null;
+  delivered_at: string | null;
+  opened_at: string | null;
+  clicked_at: string | null;
+  bounced_at: string | null;
+  open_count: number;
+  click_count: number;
+}
+
+export interface CampaignAnalytics {
+  campaign_id: string;
+  sent_count: number;
+  delivered_count: number;
+  open_count: number;
+  unique_open_count: number;
+  click_count: number;
+  unique_click_count: number;
+  bounce_count: number;
+  soft_bounce_count: number;
+  hard_bounce_count: number;
+  unsubscribe_count: number;
+  complaint_count: number;
+  delivery_rate: number;
+  open_rate: number;
+  click_rate: number;
+  click_to_open_rate: number;
+  bounce_rate: number;
+  unsubscribe_rate: number;
+}
+
+export interface AnalyticsOverview {
+  total_sent: number;
+  total_delivered: number;
+  total_opens: number;
+  total_clicks: number;
+  total_bounces: number;
+  total_unsubscribes: number;
+  avg_open_rate: number;
+  avg_click_rate: number;
+  avg_bounce_rate: number;
+  campaigns_sent: number;
+  active_subscribers: number;
+}
+
+export interface SendingDomain {
+  id: string;
+  workspace_id: string;
+  domain: string;
+  status: DomainStatus;
+  is_verified: boolean;
+  spf_verified: boolean;
+  dkim_verified: boolean;
+  dmarc_verified: boolean;
+  health_score: number;
+  daily_limit: number;
+  daily_sent: number;
+  warming_status: WarmingStatus;
+  warming_day: number | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EmailProvider {
+  id: string;
+  workspace_id: string;
+  name: string;
+  provider_type: "ses" | "sendgrid" | "mailgun" | "postmark";
+  is_active: boolean;
+  is_default: boolean;
+  rate_limit_per_second: number | null;
+  rate_limit_per_day: number | null;
+  created_at: string;
+}
+
+export interface VisualBlock {
+  id: string;
+  workspace_id: string | null;
+  block_type: string;
+  name: string;
+  description: string | null;
+  default_props: Record<string, unknown>;
+  schema: Record<string, unknown>;
+  is_system: boolean;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface SavedDesign {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description: string | null;
+  design_json: Record<string, unknown>;
+  thumbnail_url: string | null;
+  is_template: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// ==================== Email Marketing API ====================
+
+export const emailMarketingApi = {
+  // Templates
+  templates: {
+    list: async (workspaceId: string, params?: { template_type?: EmailTemplateType; is_active?: boolean }): Promise<EmailTemplate[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/email-marketing/templates`, { params });
+      return response.data;
+    },
+
+    get: async (workspaceId: string, templateId: string): Promise<EmailTemplate> => {
+      const response = await api.get(`/workspaces/${workspaceId}/email-marketing/templates/${templateId}`);
+      return response.data;
+    },
+
+    create: async (workspaceId: string, data: EmailTemplateCreate): Promise<EmailTemplate> => {
+      const response = await api.post(`/workspaces/${workspaceId}/email-marketing/templates`, data);
+      return response.data;
+    },
+
+    update: async (workspaceId: string, templateId: string, data: EmailTemplateUpdate): Promise<EmailTemplate> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/email-marketing/templates/${templateId}`, data);
+      return response.data;
+    },
+
+    delete: async (workspaceId: string, templateId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/email-marketing/templates/${templateId}`);
+    },
+
+    duplicate: async (workspaceId: string, templateId: string, name?: string): Promise<EmailTemplate> => {
+      const response = await api.post(`/workspaces/${workspaceId}/email-marketing/templates/${templateId}/duplicate`, { name });
+      return response.data;
+    },
+
+    preview: async (workspaceId: string, templateId: string, context?: Record<string, unknown>): Promise<{ html: string; subject: string }> => {
+      const response = await api.post(`/workspaces/${workspaceId}/email-marketing/templates/${templateId}/preview`, { context });
+      return response.data;
+    },
+  },
+
+  // Campaigns
+  campaigns: {
+    list: async (workspaceId: string, params?: { status?: CampaignStatus; campaign_type?: CampaignType; skip?: number; limit?: number }): Promise<{ items: EmailCampaign[]; total: number }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/email-marketing/campaigns`, { params });
+      return response.data;
+    },
+
+    get: async (workspaceId: string, campaignId: string): Promise<EmailCampaign> => {
+      const response = await api.get(`/workspaces/${workspaceId}/email-marketing/campaigns/${campaignId}`);
+      return response.data;
+    },
+
+    create: async (workspaceId: string, data: EmailCampaignCreate): Promise<EmailCampaign> => {
+      const response = await api.post(`/workspaces/${workspaceId}/email-marketing/campaigns`, data);
+      return response.data;
+    },
+
+    update: async (workspaceId: string, campaignId: string, data: EmailCampaignUpdate): Promise<EmailCampaign> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/email-marketing/campaigns/${campaignId}`, data);
+      return response.data;
+    },
+
+    delete: async (workspaceId: string, campaignId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/email-marketing/campaigns/${campaignId}`);
+    },
+
+    send: async (workspaceId: string, campaignId: string): Promise<EmailCampaign> => {
+      const response = await api.post(`/workspaces/${workspaceId}/email-marketing/campaigns/${campaignId}/send`);
+      return response.data;
+    },
+
+    pause: async (workspaceId: string, campaignId: string): Promise<EmailCampaign> => {
+      const response = await api.post(`/workspaces/${workspaceId}/email-marketing/campaigns/${campaignId}/pause`);
+      return response.data;
+    },
+
+    resume: async (workspaceId: string, campaignId: string): Promise<EmailCampaign> => {
+      const response = await api.post(`/workspaces/${workspaceId}/email-marketing/campaigns/${campaignId}/resume`);
+      return response.data;
+    },
+
+    cancel: async (workspaceId: string, campaignId: string): Promise<EmailCampaign> => {
+      const response = await api.post(`/workspaces/${workspaceId}/email-marketing/campaigns/${campaignId}/cancel`);
+      return response.data;
+    },
+
+    schedule: async (workspaceId: string, campaignId: string, scheduledAt: string): Promise<EmailCampaign> => {
+      const response = await api.post(`/workspaces/${workspaceId}/email-marketing/campaigns/${campaignId}/schedule`, { scheduled_at: scheduledAt });
+      return response.data;
+    },
+
+    duplicate: async (workspaceId: string, campaignId: string, name?: string): Promise<EmailCampaign> => {
+      const response = await api.post(`/workspaces/${workspaceId}/email-marketing/campaigns/${campaignId}/duplicate`, { name });
+      return response.data;
+    },
+
+    test: async (workspaceId: string, campaignId: string, emails: string[]): Promise<{ sent_to: string[] }> => {
+      const response = await api.post(`/workspaces/${workspaceId}/email-marketing/campaigns/${campaignId}/test`, { emails });
+      return response.data;
+    },
+
+    getAudienceCount: async (workspaceId: string, campaignId: string): Promise<{ count: number }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/email-marketing/campaigns/${campaignId}/audience-count`);
+      return response.data;
+    },
+
+    getRecipients: async (workspaceId: string, campaignId: string, params?: { status?: RecipientStatus; skip?: number; limit?: number }): Promise<{ items: CampaignRecipient[]; total: number }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/email-marketing/campaigns/${campaignId}/recipients`, { params });
+      return response.data;
+    },
+  },
+
+  // Analytics
+  analytics: {
+    getCampaignAnalytics: async (workspaceId: string, campaignId: string): Promise<CampaignAnalytics> => {
+      const response = await api.get(`/workspaces/${workspaceId}/email-marketing/campaigns/${campaignId}/analytics`);
+      return response.data;
+    },
+
+    getCampaignTimeline: async (workspaceId: string, campaignId: string, params?: { interval?: "hour" | "day" }): Promise<{ timeline: { timestamp: string; opens: number; clicks: number }[] }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/email-marketing/campaigns/${campaignId}/analytics/timeline`, { params });
+      return response.data;
+    },
+
+    getCampaignLinks: async (workspaceId: string, campaignId: string): Promise<{ links: { url: string; clicks: number; unique_clicks: number }[] }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/email-marketing/campaigns/${campaignId}/analytics/links`);
+      return response.data;
+    },
+
+    getCampaignDevices: async (workspaceId: string, campaignId: string): Promise<{ devices: { device_type: string; count: number; percentage: number }[] }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/email-marketing/campaigns/${campaignId}/analytics/devices`);
+      return response.data;
+    },
+
+    getOverview: async (workspaceId: string, params?: { days?: number }): Promise<AnalyticsOverview> => {
+      const response = await api.get(`/workspaces/${workspaceId}/email-marketing/analytics/overview`, { params });
+      return response.data;
+    },
+
+    getBestSendTimes: async (workspaceId: string): Promise<{ send_times: { day: string; hour: number; open_rate: number }[] }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/email-marketing/analytics/best-send-times`);
+      return response.data;
+    },
+
+    getTopCampaigns: async (workspaceId: string, params?: { metric?: "opens" | "clicks" | "conversions"; limit?: number }): Promise<{ campaigns: { id: string; name: string; value: number }[] }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/email-marketing/analytics/top-campaigns`, { params });
+      return response.data;
+    },
+
+    getTrends: async (workspaceId: string, params?: { days?: number }): Promise<{ trends: { date: string; sent: number; opens: number; clicks: number }[] }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/email-marketing/analytics/trends`, { params });
+      return response.data;
+    },
+  },
+};
+
+// ==================== Email Infrastructure API ====================
+
+export const emailInfrastructureApi = {
+  // Domains
+  domains: {
+    list: async (workspaceId: string): Promise<SendingDomain[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/email-infrastructure/domains`);
+      return response.data;
+    },
+
+    get: async (workspaceId: string, domainId: string): Promise<SendingDomain> => {
+      const response = await api.get(`/workspaces/${workspaceId}/email-infrastructure/domains/${domainId}`);
+      return response.data;
+    },
+
+    create: async (workspaceId: string, data: { domain: string; daily_limit?: number }): Promise<SendingDomain> => {
+      const response = await api.post(`/workspaces/${workspaceId}/email-infrastructure/domains`, data);
+      return response.data;
+    },
+
+    delete: async (workspaceId: string, domainId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/email-infrastructure/domains/${domainId}`);
+    },
+
+    verify: async (workspaceId: string, domainId: string): Promise<SendingDomain> => {
+      const response = await api.post(`/workspaces/${workspaceId}/email-infrastructure/domains/${domainId}/verify`);
+      return response.data;
+    },
+
+    pause: async (workspaceId: string, domainId: string): Promise<SendingDomain> => {
+      const response = await api.post(`/workspaces/${workspaceId}/email-infrastructure/domains/${domainId}/pause`);
+      return response.data;
+    },
+
+    resume: async (workspaceId: string, domainId: string): Promise<SendingDomain> => {
+      const response = await api.post(`/workspaces/${workspaceId}/email-infrastructure/domains/${domainId}/resume`);
+      return response.data;
+    },
+
+    getHealth: async (workspaceId: string, domainId: string): Promise<{ health_score: number; metrics: Record<string, number> }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/email-infrastructure/domains/${domainId}/health`);
+      return response.data;
+    },
+
+    startWarming: async (workspaceId: string, domainId: string, schedule?: string): Promise<SendingDomain> => {
+      const response = await api.post(`/workspaces/${workspaceId}/email-infrastructure/domains/${domainId}/warming/start`, { schedule });
+      return response.data;
+    },
+
+    pauseWarming: async (workspaceId: string, domainId: string): Promise<SendingDomain> => {
+      const response = await api.post(`/workspaces/${workspaceId}/email-infrastructure/domains/${domainId}/warming/pause`);
+      return response.data;
+    },
+
+    resumeWarming: async (workspaceId: string, domainId: string): Promise<SendingDomain> => {
+      const response = await api.post(`/workspaces/${workspaceId}/email-infrastructure/domains/${domainId}/warming/resume`);
+      return response.data;
+    },
+
+    getWarmingProgress: async (workspaceId: string, domainId: string): Promise<{ day: number; target_volume: number; actual_volume: number; status: WarmingStatus }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/email-infrastructure/domains/${domainId}/warming/progress`);
+      return response.data;
+    },
+  },
+
+  // Providers
+  providers: {
+    list: async (workspaceId: string): Promise<EmailProvider[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/email-infrastructure/providers`);
+      return response.data;
+    },
+
+    get: async (workspaceId: string, providerId: string): Promise<EmailProvider> => {
+      const response = await api.get(`/workspaces/${workspaceId}/email-infrastructure/providers/${providerId}`);
+      return response.data;
+    },
+
+    create: async (workspaceId: string, data: { name: string; provider_type: string; credentials: Record<string, string> }): Promise<EmailProvider> => {
+      const response = await api.post(`/workspaces/${workspaceId}/email-infrastructure/providers`, data);
+      return response.data;
+    },
+
+    update: async (workspaceId: string, providerId: string, data: { name?: string; is_active?: boolean; is_default?: boolean }): Promise<EmailProvider> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/email-infrastructure/providers/${providerId}`, data);
+      return response.data;
+    },
+
+    delete: async (workspaceId: string, providerId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/email-infrastructure/providers/${providerId}`);
+    },
+
+    test: async (workspaceId: string, providerId: string): Promise<{ success: boolean; message: string }> => {
+      const response = await api.post(`/workspaces/${workspaceId}/email-infrastructure/providers/${providerId}/test`);
+      return response.data;
+    },
+  },
+};
+
+// ==================== Visual Builder API ====================
+
+export const visualBuilderApi = {
+  blocks: {
+    list: async (workspaceId: string): Promise<VisualBlock[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/visual-builder/blocks`);
+      return response.data;
+    },
+
+    getTypes: async (workspaceId: string): Promise<{ block_types: string[] }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/visual-builder/block-types`);
+      return response.data;
+    },
+
+    create: async (workspaceId: string, data: { block_type: string; name: string; description?: string; default_props?: Record<string, unknown>; schema?: Record<string, unknown> }): Promise<VisualBlock> => {
+      const response = await api.post(`/workspaces/${workspaceId}/visual-builder/blocks`, data);
+      return response.data;
+    },
+
+    update: async (workspaceId: string, blockId: string, data: { name?: string; description?: string; default_props?: Record<string, unknown>; is_active?: boolean }): Promise<VisualBlock> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/visual-builder/blocks/${blockId}`, data);
+      return response.data;
+    },
+
+    delete: async (workspaceId: string, blockId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/visual-builder/blocks/${blockId}`);
+    },
+  },
+
+  designs: {
+    list: async (workspaceId: string): Promise<SavedDesign[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/visual-builder/designs`);
+      return response.data;
+    },
+
+    get: async (workspaceId: string, designId: string): Promise<SavedDesign> => {
+      const response = await api.get(`/workspaces/${workspaceId}/visual-builder/designs/${designId}`);
+      return response.data;
+    },
+
+    create: async (workspaceId: string, data: { name: string; description?: string; design_json: Record<string, unknown> }): Promise<SavedDesign> => {
+      const response = await api.post(`/workspaces/${workspaceId}/visual-builder/designs`, data);
+      return response.data;
+    },
+
+    update: async (workspaceId: string, designId: string, data: { name?: string; description?: string; design_json?: Record<string, unknown> }): Promise<SavedDesign> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/visual-builder/designs/${designId}`, data);
+      return response.data;
+    },
+
+    delete: async (workspaceId: string, designId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/visual-builder/designs/${designId}`);
+    },
+
+    render: async (workspaceId: string, designJson: Record<string, unknown>): Promise<{ html: string }> => {
+      const response = await api.post(`/workspaces/${workspaceId}/visual-builder/render`, { design_json: designJson });
+      return response.data;
+    },
+
+    convertToTemplate: async (workspaceId: string, designId: string, data: { name: string; subject: string }): Promise<EmailTemplate> => {
+      const response = await api.post(`/workspaces/${workspaceId}/visual-builder/designs/${designId}/convert-to-template`, data);
+      return response.data;
+    },
+  },
+};

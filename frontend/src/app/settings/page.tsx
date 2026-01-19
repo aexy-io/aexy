@@ -14,6 +14,7 @@ import {
   Ticket,
   AlertTriangle,
   Contact,
+  Mail,
 } from "lucide-react";
 
 interface SettingsSectionProps {
@@ -90,6 +91,13 @@ export default function SettingsPage() {
             icon={<Contact className="h-5 w-5 text-cyan-400" />}
             title="CRM Settings"
             description="Configure CRM objects, integrations, and deal automation"
+          />
+
+          <SettingsSection
+            href="/email-marketing/settings"
+            icon={<Mail className="h-5 w-5 text-sky-400" />}
+            title="Email Marketing"
+            description="Configure sending domains, providers, and email infrastructure"
           />
 
           <SettingsSection
