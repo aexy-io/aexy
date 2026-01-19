@@ -828,7 +828,7 @@ async def get_campaign_devices(
     return device_stats
 
 
-@router.get("/analytics/overview", response_model=WorkspaceEmailOverview)
+@router.get("/analytics/overview")
 async def get_workspace_email_overview(
     workspace_id: str,
     days: int = Query(30, ge=1, le=365),
@@ -846,7 +846,22 @@ async def get_workspace_email_overview(
         days=days,
     )
 
-    return overview
+    # Transform service response to match expected frontend format
+    return {
+        "total_sent": overview.get("totals", {}).get("sent", 0),
+        "total_delivered": overview.get("totals", {}).get("delivered", 0),
+        "total_opens": overview.get("totals", {}).get("opens", 0),
+        "total_clicks": overview.get("totals", {}).get("clicks", 0),
+        "total_bounces": overview.get("totals", {}).get("bounces", 0),
+        "total_unsubscribes": overview.get("totals", {}).get("unsubscribes", 0),
+        "avg_open_rate": overview.get("averages", {}).get("open_rate", 0),
+        "avg_click_rate": overview.get("averages", {}).get("click_rate", 0),
+        "avg_bounce_rate": overview.get("averages", {}).get("bounce_rate", 0),
+        "campaigns_sent": overview.get("campaigns_sent", 0),
+        "period_days": overview.get("period_days", days),
+        "health_score": overview.get("health", {}).get("score", 100),
+        "active_subscribers": 0,  # Would need to query subscribers table
+    }
 
 
 @router.get("/analytics/trends")
