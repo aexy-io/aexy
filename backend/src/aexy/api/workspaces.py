@@ -756,6 +756,7 @@ async def resend_pending_invite(
     # Send invite email
     try:
         email_service = EmailService()
+        logger.info(f"Email provider: {email_service.provider}, configured: {email_service.is_configured}")
         if email_service.is_configured:
             invite_url = f"{settings.frontend_url}/invite/{invite.token}"
             subject = f"You've been invited to join {workspace_name} on Aexy"
