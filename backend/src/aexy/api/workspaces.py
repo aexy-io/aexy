@@ -730,10 +730,19 @@ async def resend_pending_invite(
 ):
     """Resend a pending invite by extending its expiry date and sending email."""
     import logging
+    import os
     from aexy.services.email_service import EmailService
     from aexy.core.config import settings
 
     logger = logging.getLogger(__name__)
+
+    # Debug: Log the raw environment variable and settings value
+    env_provider = os.environ.get("EMAIL_PROVIDER", "NOT_SET")
+    settings_provider = settings.email_provider
+    print(f"DEBUG EMAIL: env EMAIL_PROVIDER={env_provider}, settings.email_provider={settings_provider}")
+    print(f"DEBUG SMTP: host={settings.smtp_host}, port={settings.smtp_port}, sender={settings.smtp_sender_email}")
+    logger.warning(f"EMAIL DEBUG: env={env_provider}, settings={settings_provider}, smtp_host={settings.smtp_host}")
+
     service = WorkspaceService(db)
 
     if not await service.check_permission(workspace_id, str(current_user.id), "admin"):
