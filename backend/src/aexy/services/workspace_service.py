@@ -541,6 +541,28 @@ class WorkspaceService:
         await self.db.flush()
         return True
 
+    async def resend_pending_invite(
+        self, workspace_id: str, invite_id: str, expires_days: int = 7
+    ) -> WorkspacePendingInvite | None:
+        """Resend a pending invite by extending its expiry date."""
+        from datetime import timedelta
+
+        stmt = select(WorkspacePendingInvite).where(
+            WorkspacePendingInvite.id == invite_id,
+            WorkspacePendingInvite.workspace_id == workspace_id,
+            WorkspacePendingInvite.status == "pending",
+        )
+        result = await self.db.execute(stmt)
+        invite = result.scalar_one_or_none()
+        if not invite:
+            return None
+
+        # Extend expiry date
+        invite.expires_at = datetime.now(timezone.utc) + timedelta(days=expires_days)
+        await self.db.flush()
+        await self.db.refresh(invite)
+        return invite
+
     # App Permissions
     async def update_member_app_permissions(
         self,

@@ -2167,6 +2167,11 @@ export const workspaceApi = {
     await api.delete(`/workspaces/${workspaceId}/invites/${inviteId}`);
   },
 
+  resendPendingInvite: async (workspaceId: string, inviteId: string): Promise<WorkspacePendingInvite> => {
+    const response = await api.post(`/workspaces/${workspaceId}/invites/${inviteId}/resend`);
+    return response.data;
+  },
+
   // Join Request
   requestToJoin: async (workspaceId: string): Promise<{
     status: string;

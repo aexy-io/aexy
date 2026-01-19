@@ -440,10 +440,12 @@ function SeatUsageBar({ used, total }: { used: number; total: number }) {
 interface PendingInviteRowProps {
   invite: WorkspacePendingInvite;
   onRevoke: (inviteId: string) => void;
+  onResend: (inviteId: string) => void;
   isRevoking: boolean;
+  isResending: boolean;
 }
 
-function PendingInviteRow({ invite, onRevoke, isRevoking }: PendingInviteRowProps) {
+function PendingInviteRow({ invite, onRevoke, onResend, isRevoking, isResending }: PendingInviteRowProps) {
   const expiresAt = invite.expires_at ? new Date(invite.expires_at) : null;
   const isExpired = expiresAt && expiresAt < new Date();
 
@@ -482,6 +484,14 @@ function PendingInviteRow({ invite, onRevoke, isRevoking }: PendingInviteRowProp
         <span className={`px-2 py-1 rounded text-xs font-medium ${getRoleBadgeColor(invite.role)}`}>
           {invite.role}
         </span>
+        <button
+          onClick={() => onResend(invite.id)}
+          disabled={isResending}
+          className="p-2 text-blue-400 hover:text-blue-300 hover:bg-slate-700 rounded-lg transition disabled:opacity-50"
+          title="Resend invite"
+        >
+          <RefreshCw className={`h-4 w-4 ${isResending ? 'animate-spin' : ''}`} />
+        </button>
         <button
           onClick={() => onRevoke(invite.id)}
           disabled={isRevoking}
@@ -590,7 +600,9 @@ export default function OrganizationSettingsPage() {
     pendingInvites,
     isLoading: pendingInvitesLoading,
     revokeInvite,
+    resendInvite,
     isRevoking,
+    isResending,
   } = usePendingInvites(currentWorkspaceId);
 
   const {
@@ -633,6 +645,10 @@ export default function OrganizationSettingsPage() {
     if (confirm("Are you sure you want to revoke this invitation?")) {
       await revokeInvite(inviteId);
     }
+  };
+
+  const handleResendInvite = async (inviteId: string) => {
+    await resendInvite(inviteId);
   };
 
   const isLoading = workspacesLoading || currentWorkspaceLoading || membersLoading || pendingInvitesLoading;
@@ -866,7 +882,9 @@ export default function OrganizationSettingsPage() {
                       key={invite.id}
                       invite={invite}
                       onRevoke={handleRevokeInvite}
+                      onResend={handleResendInvite}
                       isRevoking={isRevoking}
+                      isResending={isResending}
                     />
                   ))}
                 </div>

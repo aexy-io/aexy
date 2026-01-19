@@ -41,6 +41,12 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
+# Install sharp for image optimization in standalone mode
+RUN npm install sharp
+
+# Create cache directory with proper permissions
+RUN mkdir -p .next/cache && chown -R nextjs:nodejs .next /app/node_modules
+
 USER nextjs
 
 EXPOSE 3000

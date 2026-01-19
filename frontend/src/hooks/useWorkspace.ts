@@ -337,13 +337,22 @@ export function usePendingInvites(workspaceId: string | null) {
     },
   });
 
+  const resendMutation = useMutation({
+    mutationFn: (inviteId: string) => workspaceApi.resendPendingInvite(workspaceId!, inviteId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pendingInvites", workspaceId] });
+    },
+  });
+
   return {
     pendingInvites: pendingInvites || [],
     isLoading,
     error,
     refetch,
     revokeInvite: revokeMutation.mutateAsync,
+    resendInvite: resendMutation.mutateAsync,
     isRevoking: revokeMutation.isPending,
+    isResending: resendMutation.isPending,
   };
 }
 

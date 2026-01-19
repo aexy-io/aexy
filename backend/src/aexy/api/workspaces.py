@@ -721,6 +721,32 @@ async def revoke_pending_invite(
     await db.commit()
 
 
+@router.post("/{workspace_id}/invites/{invite_id}/resend", response_model=WorkspacePendingInviteResponse)
+async def resend_pending_invite(
+    workspace_id: str,
+    invite_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Resend a pending invite by extending its expiry date."""
+    service = WorkspaceService(db)
+
+    if not await service.check_permission(workspace_id, str(current_user.id), "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin permission required",
+        )
+
+    invite = await service.resend_pending_invite(workspace_id, invite_id)
+    if not invite:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invite not found",
+        )
+    await db.commit()
+    return pending_invite_to_response(invite)
+
+
 # App Settings and Permissions
 @router.get("/{workspace_id}/apps")
 async def get_workspace_app_settings(
