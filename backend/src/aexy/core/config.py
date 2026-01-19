@@ -254,8 +254,8 @@ class Settings(BaseSettings):
         description="Google OAuth redirect URI for authentication",
     )
     google_redirect_uri: str = Field(
-        default="http://localhost:8000/api/v1/integrations/google-calendar/callback",
-        description="Google OAuth redirect URI for calendar integration",
+        default="http://localhost:8000/api/v1/integrations/google/callback",
+        description="Google OAuth redirect URI for Google integration",
     )
 
     # Slack Integration
