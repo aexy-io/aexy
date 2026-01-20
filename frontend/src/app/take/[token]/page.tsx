@@ -57,6 +57,8 @@ interface AttemptStatus {
   total_questions?: number;
   score?: number;
   completed_at?: string;
+  can_start?: boolean;
+  needs_email?: boolean;
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
@@ -78,6 +80,12 @@ export default function AssessmentTakePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showInstructions, setShowInstructions] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
+  // Token for API calls (may differ from URL token for public access)
+  const [apiToken, setApiToken] = useState<string>(token);
+  // Email for public access
+  const [candidateEmail, setCandidateEmail] = useState("");
+  const [candidateName, setCandidateName] = useState("");
+  const [needsEmail, setNeedsEmail] = useState(false);
 
   // Fetch assessment info
   useEffect(() => {
@@ -97,6 +105,11 @@ export default function AssessmentTakePage() {
           const statusData = await statusResponse.json();
           setAttemptStatus(statusData);
 
+          // Check if this is public access requiring email
+          if (statusData.needs_email) {
+            setNeedsEmail(true);
+          }
+
           if (statusData.status === "in_progress") {
             setShowInstructions(false);
             setTimeRemaining(statusData.time_remaining_seconds || 0);
@@ -115,10 +128,11 @@ export default function AssessmentTakePage() {
     fetchInfo();
   }, [token]);
 
-  // Load questions
-  const loadQuestions = async () => {
+  // Load questions - uses apiToken which may be different from URL token
+  const loadQuestions = async (tokenToUse?: string) => {
     try {
-      const response = await fetch(`${API_BASE}/take/${token}/questions`);
+      const useToken = tokenToUse || apiToken;
+      const response = await fetch(`${API_BASE}/take/${useToken}/questions`);
       if (!response.ok) throw new Error("Failed to load questions");
       const data = await response.json();
       setQuestions(data.questions);
@@ -158,11 +172,27 @@ export default function AssessmentTakePage() {
 
   // Start assessment
   const handleStart = async () => {
+    // Validate email if needed for public access
+    if (needsEmail && !candidateEmail) {
+      setError("Please enter your email address");
+      return;
+    }
+
     setIsStarting(true);
+    setError(null);
     try {
+      const body: Record<string, string> = {};
+      if (needsEmail) {
+        body.candidate_email = candidateEmail;
+        if (candidateName) {
+          body.candidate_name = candidateName;
+        }
+      }
+
       const response = await fetch(`${API_BASE}/take/${token}/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -171,6 +201,11 @@ export default function AssessmentTakePage() {
       }
 
       const data = await response.json();
+
+      // Store the invitation token for subsequent API calls
+      const newToken = data.token || token;
+      setApiToken(newToken);
+
       setAttemptStatus({
         status: "in_progress",
         attempt_id: data.attempt_id,
@@ -180,7 +215,7 @@ export default function AssessmentTakePage() {
       });
       setTimeRemaining(data.time_remaining_seconds);
       setShowInstructions(false);
-      await loadQuestions();
+      await loadQuestions(newToken);
 
       // Request fullscreen if required
       if (assessmentInfo?.fullscreen_required) {
@@ -200,7 +235,7 @@ export default function AssessmentTakePage() {
   // Submit answer
   const handleSubmitAnswer = async (questionId: string, content: any) => {
     try {
-      const response = await fetch(`${API_BASE}/take/${token}/submit/${questionId}`, {
+      const response = await fetch(`${API_BASE}/take/${apiToken}/submit/${questionId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -226,7 +261,7 @@ export default function AssessmentTakePage() {
         await handleSubmitAnswer(questionId, content);
       }
 
-      const response = await fetch(`${API_BASE}/take/${token}/complete`, {
+      const response = await fetch(`${API_BASE}/take/${apiToken}/complete`, {
         method: "POST",
       });
 
@@ -256,7 +291,7 @@ export default function AssessmentTakePage() {
       if (!assessmentInfo?.proctoring_enabled) return;
 
       try {
-        await fetch(`${API_BASE}/take/${token}/proctoring/event`, {
+        await fetch(`${API_BASE}/take/${apiToken}/proctoring/event`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ event_type: eventType, data }),
@@ -265,7 +300,7 @@ export default function AssessmentTakePage() {
         console.warn("Failed to log proctoring event");
       }
     },
-    [token, assessmentInfo?.proctoring_enabled]
+    [apiToken, assessmentInfo?.proctoring_enabled]
   );
 
   // Proctoring: Tab switch detection
@@ -446,18 +481,55 @@ export default function AssessmentTakePage() {
                   <p className="text-gray-600">{assessmentInfo.message}</p>
                 </div>
               ) : (
-                <button
-                  onClick={handleStart}
-                  disabled={isStarting}
-                  className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {isStarting ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <Play className="h-5 w-5" />
+                <div className="space-y-4">
+                  {/* Email collection for public access */}
+                  {needsEmail && (
+                    <div className="space-y-3">
+                      <div>
+                        <label htmlFor="candidate-name" className="block text-sm font-medium text-gray-700 mb-1">
+                          Your Name
+                        </label>
+                        <input
+                          type="text"
+                          id="candidate-name"
+                          value={candidateName}
+                          onChange={(e) => setCandidateName(e.target.value)}
+                          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Enter your name"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="candidate-email" className="block text-sm font-medium text-gray-700 mb-1">
+                          Email Address <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="email"
+                          id="candidate-email"
+                          value={candidateEmail}
+                          onChange={(e) => setCandidateEmail(e.target.value)}
+                          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Enter your email"
+                          required
+                        />
+                      </div>
+                    </div>
                   )}
-                  {isStarting ? "Starting..." : "Start Assessment"}
-                </button>
+                  {error && (
+                    <p className="text-sm text-red-600">{error}</p>
+                  )}
+                  <button
+                    onClick={handleStart}
+                    disabled={isStarting || (needsEmail && !candidateEmail)}
+                    className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isStarting ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Play className="h-5 w-5" />
+                    )}
+                    {isStarting ? "Starting..." : "Start Assessment"}
+                  </button>
+                </div>
               )}
             </div>
           </div>

@@ -60,6 +60,7 @@ class StartAttemptResponse(BaseModel):
     started_at: datetime
     time_remaining_seconds: int
     total_questions: int
+    token: str | None = None  # Invitation token for subsequent requests (for public access)
 
 
 class QuestionResponse(BaseModel):
@@ -143,6 +144,76 @@ async def get_invitation_by_token(
     return invitation
 
 
+async def get_assessment_by_public_token_or_id(
+    token: str,
+    db: AsyncSession,
+) -> Assessment | None:
+    """Try to find assessment by public_token or ID."""
+    # First try public_token
+    query = select(Assessment).where(Assessment.public_token == token)
+    result = await db.execute(query)
+    assessment = result.scalar_one_or_none()
+
+    if assessment:
+        return assessment
+
+    # Try as assessment ID (UUID)
+    try:
+        import re
+        uuid_pattern = re.compile(
+            r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+            re.IGNORECASE
+        )
+        if uuid_pattern.match(token):
+            query = select(Assessment).where(Assessment.id == token)
+            result = await db.execute(query)
+            return result.scalar_one_or_none()
+    except Exception:
+        pass
+
+    return None
+
+
+async def get_invitation_or_assessment(
+    token: str,
+    db: AsyncSession,
+) -> tuple[AssessmentInvitation | None, Assessment]:
+    """Get invitation by token, or assessment by public_token/ID for public access.
+
+    Returns (invitation, assessment) - invitation may be None for public assessments.
+    """
+    # First try invitation_token
+    query = select(AssessmentInvitation).where(
+        AssessmentInvitation.invitation_token == token
+    )
+    result = await db.execute(query)
+    invitation = result.scalar_one_or_none()
+
+    if invitation:
+        # Get the associated assessment
+        query = select(Assessment).where(Assessment.id == invitation.assessment_id)
+        result = await db.execute(query)
+        assessment = result.scalar_one_or_none()
+        if not assessment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Assessment not found",
+            )
+        return invitation, assessment
+
+    # Try public_token or assessment ID
+    assessment = await get_assessment_by_public_token_or_id(token, db)
+    if assessment:
+        # Check if public access is enabled
+        if assessment.public_token or assessment.status.value == "active":
+            return None, assessment
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Invalid assessment link",
+    )
+
+
 async def get_assessment_for_invitation(
     invitation: AssessmentInvitation,
     db: AsyncSession,
@@ -186,9 +257,9 @@ async def get_assessment_info(
     """Get assessment information for a candidate.
 
     This is the landing page data before starting the assessment.
+    Supports both invitation tokens and public access via assessment ID/public_token.
     """
-    invitation = await get_invitation_by_token(token, db)
-    assessment = await get_assessment_for_invitation(invitation, db)
+    invitation, assessment = await get_invitation_or_assessment(token, db)
 
     # Check if assessment is active
     if assessment.status.value != "active":
@@ -197,23 +268,26 @@ async def get_assessment_info(
             detail="This assessment is not currently active",
         )
 
-    # Check deadline
+    # Check deadline and invitation status (only for invited candidates)
     can_start = True
     message = None
+    deadline = None
 
-    if invitation.deadline and datetime.now(timezone.utc) > invitation.deadline:
-        can_start = False
-        message = "The deadline for this assessment has passed"
+    if invitation:
+        deadline = invitation.deadline
+        if invitation.deadline and datetime.now(timezone.utc) > invitation.deadline:
+            can_start = False
+            message = "The deadline for this assessment has passed"
 
-    if invitation.status == InvitationStatus.COMPLETED:
-        can_start = False
-        message = "You have already completed this assessment"
+        if invitation.status == InvitationStatus.COMPLETED:
+            can_start = False
+            message = "You have already completed this assessment"
 
-    if invitation.status == InvitationStatus.EXPIRED:
-        can_start = False
-        message = "This invitation has expired"
+        if invitation.status == InvitationStatus.EXPIRED:
+            can_start = False
+            message = "This invitation has expired"
 
-    # Check schedule
+    # Check schedule (applies to both invited and public access)
     schedule = assessment.schedule or {}
     if schedule.get("start_date"):
         start_date = datetime.fromisoformat(schedule["start_date"].replace("Z", "+00:00"))
@@ -258,7 +332,7 @@ async def get_assessment_info(
         proctoring_enabled=proctoring.get("enabled", False),
         webcam_required=proctoring.get("webcam_required", False),
         fullscreen_required=proctoring.get("fullscreen_required", False),
-        deadline=invitation.deadline,
+        deadline=deadline,
         can_start=can_start,
         message=message,
     )
@@ -270,9 +344,53 @@ async def start_assessment(
     request: StartAttemptRequest | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> StartAttemptResponse:
-    """Start an assessment attempt."""
-    invitation = await get_invitation_by_token(token, db)
-    assessment = await get_assessment_for_invitation(invitation, db)
+    """Start an assessment attempt.
+
+    Supports both invitation tokens and public access.
+    For public access, candidate_email is required.
+    """
+    from aexy.models.assessment import Candidate
+    import secrets
+
+    invitation, assessment = await get_invitation_or_assessment(token, db)
+
+    # For public access (no invitation), create one on-the-fly
+    if not invitation:
+        if not request or not request.candidate_email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email is required to start this assessment",
+            )
+
+        # Check if candidate already exists for this assessment
+        existing_query = select(AssessmentInvitation).join(Candidate).where(
+            AssessmentInvitation.assessment_id == assessment.id,
+            Candidate.email == request.candidate_email,
+        )
+        existing_result = await db.execute(existing_query)
+        existing_invitation = existing_result.scalar_one_or_none()
+
+        if existing_invitation:
+            invitation = existing_invitation
+        else:
+            # Create candidate and invitation
+            candidate = Candidate(
+                organization_id=assessment.organization_id,
+                email=request.candidate_email,
+                name=request.candidate_name or request.candidate_email.split("@")[0],
+                source="public_link",
+            )
+            db.add(candidate)
+            await db.flush()
+
+            invitation = AssessmentInvitation(
+                assessment_id=assessment.id,
+                candidate_id=candidate.id,
+                invitation_token=secrets.token_urlsafe(32),
+                status=InvitationStatus.PENDING,
+            )
+            db.add(invitation)
+            await db.flush()
 
     # Check if can start
     info = await get_assessment_info(token, db)
@@ -296,6 +414,7 @@ async def start_assessment(
             started_at=existing_attempt.started_at or datetime.now(timezone.utc),
             time_remaining_seconds=time_remaining,
             total_questions=assessment.total_questions or 0,
+            token=invitation.invitation_token,
         )
 
     # Check max attempts
@@ -332,6 +451,7 @@ async def start_assessment(
         started_at=attempt.started_at,
         time_remaining_seconds=(assessment.total_duration_minutes or 60) * 60,
         total_questions=assessment.total_questions or 0,
+        token=invitation.invitation_token,
     )
 
 
@@ -610,8 +730,15 @@ async def get_attempt_status(
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Get current attempt status."""
-    invitation = await get_invitation_by_token(token, db)
-    assessment = await get_assessment_for_invitation(invitation, db)
+    invitation, assessment = await get_invitation_or_assessment(token, db)
+
+    # If no invitation (public access with no prior attempt), return not_started
+    if not invitation:
+        return {
+            "status": "not_started",
+            "can_start": True,
+            "needs_email": True,  # Flag for frontend to collect email
+        }
 
     attempt = await get_active_attempt(invitation, db)
 
