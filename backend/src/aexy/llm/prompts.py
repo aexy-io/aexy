@@ -1202,7 +1202,8 @@ Respond with JSON:
 
 IMPORTANT: The "title" field must be a SHORT descriptive name (3-6 words), NOT the full question text.
 Good example: "Python List Type Check"
-Bad example: "What is the output of print(type([]) is list)?""""
+Bad example: "What is the output of print(type([]) is list)"
+"""
 
 MCQ_BATCH_QUESTION_SYSTEM_PROMPT = """You are an expert at creating multiple choice questions for technical assessments.
 Create diverse questions that test conceptual understanding with well-crafted distractors.
