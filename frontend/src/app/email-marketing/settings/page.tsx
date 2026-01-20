@@ -21,14 +21,16 @@ import {
   TrendingUp,
   Mail,
   TestTube,
+  Tags,
+  Edit3,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
 import { AppHeader } from "@/components/layout/AppHeader";
-import { useSendingDomains, useEmailProviders } from "@/hooks/useEmailMarketing";
-import { SendingDomain, EmailProvider } from "@/lib/api";
+import { useSendingDomains, useEmailProviders, useSubscriptionCategories } from "@/hooks/useEmailMarketing";
+import { SendingDomain, EmailProvider, SubscriptionCategory } from "@/lib/api";
 
-type TabType = "domains" | "providers";
+type TabType = "domains" | "providers" | "categories";
 
 function DomainCard({
   domain,
@@ -134,7 +136,7 @@ function DomainCard({
           <p className="text-xs text-slate-500">Daily Limit</p>
         </div>
         <div className="text-center p-3 bg-slate-800/50 rounded-lg">
-          <p className="text-lg font-semibold text-white">{domain.today_sent_count?.toLocaleString() || 0}</p>
+          <p className="text-lg font-semibold text-white">{domain.daily_sent.toLocaleString()}</p>
           <p className="text-xs text-slate-500">Sent Today</p>
         </div>
       </div>
@@ -238,6 +240,85 @@ function ProviderCard({
   );
 }
 
+function CategoryCard({
+  category,
+  onToggle,
+  onEdit,
+  onDelete,
+}: {
+  category: SubscriptionCategory;
+  onToggle: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-purple-500/20 rounded-lg">
+            <Tags className="h-5 w-5 text-purple-400" />
+          </div>
+          <div>
+            <h3 className="text-white font-medium">{category.name}</h3>
+            <p className="text-xs text-slate-500 font-mono">{category.slug}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            category.is_active
+              ? "bg-emerald-500/20 text-emerald-400"
+              : "bg-slate-500/20 text-slate-400"
+          }`}>
+            {category.is_active ? "Active" : "Inactive"}
+          </span>
+          {category.default_subscribed && (
+            <span className="px-2 py-1 bg-sky-500/20 text-sky-400 rounded-full text-xs font-medium">
+              Default On
+            </span>
+          )}
+          {category.required && (
+            <span className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded-full text-xs font-medium">
+              Required
+            </span>
+          )}
+        </div>
+      </div>
+
+      {category.description && (
+        <p className="text-sm text-slate-400 mb-4">{category.description}</p>
+      )}
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onEdit}
+          className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-lg transition text-sm"
+        >
+          <Edit3 className="h-4 w-4" />
+          Edit
+        </button>
+        <button
+          onClick={onToggle}
+          className={`px-3 py-1.5 rounded-lg text-sm transition ${
+            category.is_active
+              ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
+              : "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
+          }`}
+        >
+          {category.is_active ? "Disable" : "Enable"}
+        </button>
+        {!category.required && (
+          <button
+            onClick={onDelete}
+            className="p-1.5 text-slate-400 hover:text-red-400 transition"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function EmailSettingsPage() {
   const router = useRouter();
   const { currentWorkspace } = useWorkspace();
@@ -247,9 +328,15 @@ export default function EmailSettingsPage() {
   const [activeTab, setActiveTab] = useState<TabType>("domains");
   const [showAddDomain, setShowAddDomain] = useState(false);
   const [showAddProvider, setShowAddProvider] = useState(false);
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<SubscriptionCategory | null>(null);
   const [newDomain, setNewDomain] = useState("");
   const [newProviderName, setNewProviderName] = useState("");
   const [newProviderType, setNewProviderType] = useState("ses");
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategorySlug, setNewCategorySlug] = useState("");
+  const [newCategoryDescription, setNewCategoryDescription] = useState("");
+  const [newCategoryDefaultSubscribed, setNewCategoryDefaultSubscribed] = useState(true);
 
   const {
     domains,
@@ -274,6 +361,16 @@ export default function EmailSettingsPage() {
     deleteProvider,
     testProvider,
   } = useEmailProviders(workspaceId);
+
+  const {
+    categories,
+    isLoading: categoriesLoading,
+    error: categoriesError,
+    refetch: refetchCategories,
+    createCategory,
+    updateCategory,
+    deleteCategory,
+  } = useSubscriptionCategories(workspaceId);
 
   const handleCreateDomain = async () => {
     if (!newDomain) return;
@@ -311,6 +408,55 @@ export default function EmailSettingsPage() {
     if (confirm("Are you sure you want to delete this provider?")) {
       await deleteProvider(id);
     }
+  };
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName) return;
+    try {
+      await createCategory({
+        name: newCategoryName,
+        slug: newCategorySlug || newCategoryName.toLowerCase().replace(/\s+/g, "-"),
+        description: newCategoryDescription || undefined,
+        default_subscribed: newCategoryDefaultSubscribed,
+      });
+      setNewCategoryName("");
+      setNewCategorySlug("");
+      setNewCategoryDescription("");
+      setNewCategoryDefaultSubscribed(true);
+      setShowAddCategory(false);
+    } catch {
+      // Error handled by mutation
+    }
+  };
+
+  const handleUpdateCategory = async () => {
+    if (!editingCategory) return;
+    try {
+      await updateCategory({
+        categoryId: editingCategory.id,
+        data: {
+          name: newCategoryName,
+          description: newCategoryDescription || undefined,
+        },
+      });
+      setEditingCategory(null);
+      setNewCategoryName("");
+      setNewCategoryDescription("");
+    } catch {
+      // Error handled by mutation
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    if (confirm("Are you sure you want to delete this category? Subscribers won't be able to manage their preferences for this category anymore.")) {
+      await deleteCategory(id);
+    }
+  };
+
+  const openEditCategory = (category: SubscriptionCategory) => {
+    setEditingCategory(category);
+    setNewCategoryName(category.name);
+    setNewCategoryDescription(category.description || "");
   };
 
   if (!currentWorkspace) {
@@ -377,6 +523,17 @@ export default function EmailSettingsPage() {
             >
               <Zap className="h-4 w-4" />
               Providers ({providers.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("categories")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
+                activeTab === "categories"
+                  ? "bg-slate-800 text-white"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <Tags className="h-4 w-4" />
+              Categories ({categories.length})
             </button>
           </div>
 
@@ -504,6 +661,69 @@ export default function EmailSettingsPage() {
               )}
             </div>
           )}
+
+          {/* Categories Tab */}
+          {activeTab === "categories" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-slate-400">
+                  Manage subscription categories for your emails
+                </p>
+                <button
+                  onClick={() => setShowAddCategory(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Category
+                </button>
+              </div>
+
+              {categoriesError ? (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center">
+                  <AlertCircle className="h-8 w-8 text-red-400 mx-auto mb-2" />
+                  <p className="text-red-400">Failed to load categories</p>
+                  <button
+                    onClick={() => refetchCategories()}
+                    className="mt-2 text-sm text-sky-400 hover:text-sky-300"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              ) : categoriesLoading ? (
+                <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-12 text-center">
+                  <Loader2 className="h-8 w-8 text-slate-500 animate-spin mx-auto" />
+                </div>
+              ) : categories.length === 0 ? (
+                <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-12 text-center">
+                  <Tags className="h-12 w-12 text-slate-600 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-white mb-2">No subscription categories</h3>
+                  <p className="text-slate-400 mb-4">Create categories to let users manage their email preferences</p>
+                  <button
+                    onClick={() => setShowAddCategory(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Category
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {categories.map((category) => (
+                    <CategoryCard
+                      key={category.id}
+                      category={category}
+                      onToggle={() => updateCategory({
+                        categoryId: category.id,
+                        data: { is_active: !category.is_active }
+                      })}
+                      onEdit={() => openEditCategory(category)}
+                      onDelete={() => handleDeleteCategory(category.id)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -595,6 +815,145 @@ export default function EmailSettingsPage() {
                 className="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition disabled:opacity-50"
               >
                 Add Provider
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Category Modal */}
+      {showAddCategory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md">
+            <div className="p-4 border-b border-slate-800">
+              <h3 className="text-lg font-medium text-white">Add Subscription Category</h3>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">Category Name *</label>
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="Product Updates"
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">Slug (optional)</label>
+                <input
+                  type="text"
+                  value={newCategorySlug}
+                  onChange={(e) => setNewCategorySlug(e.target.value)}
+                  placeholder="product-updates"
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+                <p className="text-xs text-slate-500 mt-1">Auto-generated from name if left empty</p>
+              </div>
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">Description (optional)</label>
+                <textarea
+                  value={newCategoryDescription}
+                  onChange={(e) => setNewCategoryDescription(e.target.value)}
+                  placeholder="Get notified about new features and improvements"
+                  rows={3}
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="defaultSubscribed"
+                  checked={newCategoryDefaultSubscribed}
+                  onChange={(e) => setNewCategoryDefaultSubscribed(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500"
+                />
+                <label htmlFor="defaultSubscribed" className="text-sm text-slate-300">
+                  Subscribe new users by default
+                </label>
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-800 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowAddCategory(false);
+                  setNewCategoryName("");
+                  setNewCategorySlug("");
+                  setNewCategoryDescription("");
+                  setNewCategoryDefaultSubscribed(true);
+                }}
+                className="px-4 py-2 text-slate-400 hover:text-white transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateCategory}
+                disabled={!newCategoryName}
+                className="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition disabled:opacity-50"
+              >
+                Add Category
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Category Modal */}
+      {editingCategory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md">
+            <div className="p-4 border-b border-slate-800">
+              <h3 className="text-lg font-medium text-white">Edit Category</h3>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">Category Name *</label>
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="Product Updates"
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">Slug</label>
+                <input
+                  type="text"
+                  value={editingCategory.slug}
+                  disabled
+                  className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-500 cursor-not-allowed"
+                />
+                <p className="text-xs text-slate-500 mt-1">Slug cannot be changed after creation</p>
+              </div>
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">Description (optional)</label>
+                <textarea
+                  value={newCategoryDescription}
+                  onChange={(e) => setNewCategoryDescription(e.target.value)}
+                  placeholder="Get notified about new features and improvements"
+                  rows={3}
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-800 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setEditingCategory(null);
+                  setNewCategoryName("");
+                  setNewCategoryDescription("");
+                }}
+                className="px-4 py-2 text-slate-400 hover:text-white transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateCategory}
+                disabled={!newCategoryName}
+                className="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition disabled:opacity-50"
+              >
+                Save Changes
               </button>
             </div>
           </div>
