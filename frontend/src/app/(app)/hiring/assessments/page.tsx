@@ -24,10 +24,10 @@ import { useAssessments, useOrganizationAssessmentMetrics } from "@/hooks/useAss
 import { AssessmentStatus, AssessmentSummary } from "@/lib/api";
 
 const statusColors: Record<AssessmentStatus, string> = {
-  draft: "bg-gray-100 text-gray-700",
-  active: "bg-green-100 text-green-700",
-  completed: "bg-blue-100 text-blue-700",
-  archived: "bg-gray-100 text-gray-500",
+  draft: "bg-slate-700 text-slate-300",
+  active: "bg-green-900/30 text-green-400",
+  completed: "bg-blue-900/30 text-blue-400",
+  archived: "bg-slate-700 text-slate-500",
 };
 
 const statusLabels: Record<AssessmentStatus, string> = {
@@ -49,15 +49,15 @@ function MetricCard({
   trend?: { value: number; isPositive: boolean };
 }) {
   return (
-    <div className="bg-white rounded-lg border p-6 shadow-sm">
+    <div className="bg-slate-800 rounded-lg border border-slate-700 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <p className="text-3xl font-bold text-gray-900 mt-1">{value}</p>
+          <p className="text-sm font-medium text-slate-400">{title}</p>
+          <p className="text-3xl font-bold text-white mt-1">{value}</p>
           {trend && (
             <p
               className={`text-sm mt-1 ${
-                trend.isPositive ? "text-green-600" : "text-red-600"
+                trend.isPositive ? "text-green-400" : "text-red-400"
               }`}
             >
               {trend.isPositive ? "+" : "-"}
@@ -65,8 +65,8 @@ function MetricCard({
             </p>
           )}
         </div>
-        <div className="bg-blue-50 p-3 rounded-full">
-          <Icon className="h-6 w-6 text-blue-600" />
+        <div className="bg-blue-900/30 p-3 rounded-full">
+          <Icon className="h-6 w-6 text-blue-400" />
         </div>
       </div>
     </div>
@@ -89,12 +89,12 @@ function AssessmentCard({
   const [showMenu, setShowMenu] = useState(false);
 
   return (
-    <div className="bg-white rounded-lg border shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-slate-800 rounded-lg border border-slate-700 hover:border-slate-600 transition-colors">
       <div className="p-6">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className="text-lg font-semibold text-white">
                 {assessment.title}
               </h3>
               <span
@@ -105,25 +105,25 @@ function AssessmentCard({
                 {statusLabels[assessment.status]}
               </span>
             </div>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-slate-400 mt-1">
               {assessment.job_designation}
             </p>
           </div>
           <div className="relative">
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className="p-1 hover:bg-gray-100 rounded"
+              className="p-1 hover:bg-slate-700 rounded"
             >
-              <MoreVertical className="h-5 w-5 text-gray-400" />
+              <MoreVertical className="h-5 w-5 text-slate-400" />
             </button>
             {showMenu && (
-              <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border py-1 z-10">
+              <div className="absolute right-0 mt-1 w-48 bg-slate-800 rounded-md shadow-lg border border-slate-700 py-1 z-10">
                 <button
                   onClick={() => {
                     setShowMenu(false);
                     onEdit();
                   }}
-                  className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  className="flex items-center gap-2 w-full px-4 py-2 text-sm text-slate-300 hover:bg-slate-700"
                 >
                   <Edit className="h-4 w-4" />
                   Edit
@@ -133,7 +133,7 @@ function AssessmentCard({
                     setShowMenu(false);
                     onViewReport();
                   }}
-                  className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  className="flex items-center gap-2 w-full px-4 py-2 text-sm text-slate-300 hover:bg-slate-700"
                 >
                   <BarChart3 className="h-4 w-4" />
                   View Report
@@ -143,7 +143,7 @@ function AssessmentCard({
                     setShowMenu(false);
                     onClone();
                   }}
-                  className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  className="flex items-center gap-2 w-full px-4 py-2 text-sm text-slate-300 hover:bg-slate-700"
                 >
                   <Copy className="h-4 w-4" />
                   Clone
@@ -154,7 +154,7 @@ function AssessmentCard({
                       setShowMenu(false);
                       onDelete();
                     }}
-                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-400 hover:bg-red-900/20"
                   >
                     <Trash2 className="h-4 w-4" />
                     Delete
@@ -167,26 +167,26 @@ function AssessmentCard({
 
         <div className="grid grid-cols-4 gap-4 mt-6">
           <div>
-            <p className="text-xs text-gray-500">Questions</p>
-            <p className="text-lg font-semibold text-gray-900">
+            <p className="text-xs text-slate-500">Questions</p>
+            <p className="text-lg font-semibold text-white">
               {assessment.total_questions}
             </p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">Duration</p>
-            <p className="text-lg font-semibold text-gray-900">
+            <p className="text-xs text-slate-500">Duration</p>
+            <p className="text-lg font-semibold text-white">
               {assessment.total_duration_minutes} min
             </p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">Candidates</p>
-            <p className="text-lg font-semibold text-gray-900">
+            <p className="text-xs text-slate-500">Candidates</p>
+            <p className="text-lg font-semibold text-white">
               {assessment.completed_candidates}/{assessment.total_candidates}
             </p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">Avg Score</p>
-            <p className="text-lg font-semibold text-gray-900">
+            <p className="text-xs text-slate-500">Avg Score</p>
+            <p className="text-lg font-semibold text-white">
               {assessment.average_score !== null
                 ? `${assessment.average_score}%`
                 : "-"}
@@ -194,21 +194,21 @@ function AssessmentCard({
           </div>
         </div>
 
-        <div className="flex items-center justify-between mt-6 pt-4 border-t">
-          <p className="text-xs text-gray-400">
+        <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-700">
+          <p className="text-xs text-slate-500">
             Created {new Date(assessment.created_at).toLocaleDateString()}
           </p>
           {assessment.status === "draft" ? (
             <Link
               href={`/hiring/assessments/${assessment.id}/edit`}
-              className="text-sm font-medium text-blue-600 hover:text-blue-700"
+              className="text-sm font-medium text-blue-400 hover:text-blue-300"
             >
               Continue Editing
             </Link>
           ) : (
             <Link
               href={`/hiring/assessments/${assessment.id}/report`}
-              className="text-sm font-medium text-blue-600 hover:text-blue-700"
+              className="text-sm font-medium text-blue-400 hover:text-blue-300"
             >
               View Details
             </Link>
@@ -282,20 +282,20 @@ export default function AssessmentsPage() {
 
   if (authLoading || workspacesLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-950">
 <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Assessments</h1>
-            <p className="text-gray-500 mt-1">
+            <h1 className="text-2xl font-bold text-white">Assessments</h1>
+            <p className="text-slate-400 mt-1">
               Create and manage technical assessments for candidates
             </p>
           </div>
@@ -335,20 +335,20 @@ export default function AssessmentsPage() {
         {/* Filters */}
         <div className="flex items-center gap-4 mb-6">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
             <input
               type="text"
               placeholder="Search assessments..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-700 text-white placeholder-slate-400"
             />
           </div>
           <div className="relative">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as AssessmentStatus | "")}
-              className="appearance-none pl-4 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              className="appearance-none pl-4 pr-10 py-2 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-700 text-white"
             >
               <option value="">All Status</option>
               <option value="draft">Draft</option>
@@ -356,22 +356,22 @@ export default function AssessmentsPage() {
               <option value="completed">Completed</option>
               <option value="archived">Archived</option>
             </select>
-            <Filter className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            <Filter className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           </div>
         </div>
 
         {/* Assessment List */}
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
           </div>
         ) : assessments.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg border">
-            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <div className="text-center py-12 bg-slate-800 rounded-lg border border-slate-700">
+            <FileText className="h-12 w-12 text-slate-500 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-white mb-2">
               No assessments yet
             </h3>
-            <p className="text-gray-500 mb-4">
+            <p className="text-slate-400 mb-4">
               Create your first assessment to start evaluating candidates
             </p>
             <button
@@ -399,7 +399,7 @@ export default function AssessmentsPage() {
 
         {/* Pagination info */}
         {total > 0 && (
-          <div className="mt-6 text-center text-sm text-gray-500">
+          <div className="mt-6 text-center text-sm text-slate-400">
             Showing {assessments.length} of {total} assessments
           </div>
         )}
@@ -407,15 +407,15 @@ export default function AssessmentsPage() {
 
       {/* Create Assessment Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-slate-800 rounded-lg shadow-xl border border-slate-700 w-full max-w-md p-6">
+            <h2 className="text-xl font-semibold text-white mb-4">
               Create New Assessment
             </h2>
             <div className="mb-4">
               <label
                 htmlFor="title"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-slate-300 mb-1"
               >
                 Assessment Title
               </label>
@@ -428,7 +428,7 @@ export default function AssessmentsPage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleCreateAssessment();
                 }}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
+                className="w-full px-3 py-2 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-700 text-white placeholder-slate-400"
                 autoFocus
               />
             </div>
@@ -438,7 +438,7 @@ export default function AssessmentsPage() {
                   setShowCreateModal(false);
                   setNewAssessmentTitle("");
                 }}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                className="px-4 py-2 text-slate-400 hover:bg-slate-700 rounded-lg"
               >
                 Cancel
               </button>

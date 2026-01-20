@@ -187,6 +187,216 @@ async def get_manager_reviews(
     return [IndividualReviewResponse.model_validate(r) for r in reviews]
 
 
+# ============ Goal Endpoints ============
+# NOTE: Goal routes must be defined BEFORE /{review_id} to avoid route conflicts
+
+@router.post("/goals", response_model=WorkGoalResponse)
+async def create_goal(
+    developer_id: str,
+    workspace_id: str,
+    data: WorkGoalCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new SMART goal."""
+    service = GoalService(db)
+    goal = await service.create_goal(
+        developer_id=developer_id,
+        workspace_id=workspace_id,
+        title=data.title,
+        description=data.description,
+        specific=data.specific,
+        measurable=data.measurable,
+        achievable=data.achievable,
+        relevant=data.relevant,
+        time_bound=data.time_bound,
+        goal_type=data.goal_type.value,
+        priority=data.priority.value,
+        is_private=data.is_private,
+        key_results=[kr.model_dump() for kr in data.key_results],
+        tracking_keywords=data.tracking_keywords,
+        review_cycle_id=data.review_cycle_id,
+        learning_milestone_id=data.learning_milestone_id,
+    )
+    return WorkGoalResponse.model_validate(goal)
+
+
+@router.get("/goals", response_model=list[WorkGoalResponse])
+async def list_goals(
+    developer_id: str,
+    workspace_id: str | None = None,
+    status: str | None = None,
+    goal_type: str | None = None,
+    review_cycle_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """List goals for a developer."""
+    service = GoalService(db)
+    goals = await service.list_goals(
+        developer_id=developer_id,
+        workspace_id=workspace_id,
+        status=status,
+        goal_type=goal_type,
+        review_cycle_id=review_cycle_id,
+    )
+    return [WorkGoalResponse.model_validate(g) for g in goals]
+
+
+@router.get("/goals/suggestions", response_model=list[GoalSuggestion])
+async def get_goal_suggestions(
+    developer_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get goal suggestions from active learning path."""
+    service = GoalService(db)
+    suggestions = await service.suggest_goals_from_learning_path(developer_id)
+    return [
+        GoalSuggestion(
+            title=s.title,
+            goal_type=s.goal_type,
+            suggested_measurable=s.suggested_measurable,
+            suggested_keywords=s.suggested_keywords,
+            learning_milestone_id=s.learning_milestone_id,
+            skill_name=s.skill_name,
+        )
+        for s in suggestions
+    ]
+
+
+@router.get("/goals/{goal_id}", response_model=WorkGoalDetailResponse)
+async def get_goal(
+    goal_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get goal details with linked contributions."""
+    service = GoalService(db)
+    goal = await service.get_goal(goal_id)
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+
+    # Get linked contributions
+    contributions = await service.get_linked_contributions(goal_id)
+
+    return WorkGoalDetailResponse(
+        **WorkGoalResponse.model_validate(goal).model_dump(),
+        linked_commits=[
+            {"sha": c.id, "title": c.title, "additions": c.additions, "deletions": c.deletions}
+            for c in contributions if c.type == "commit"
+        ],
+        linked_pull_requests=[
+            {"id": c.id, "title": c.title, "additions": c.additions, "deletions": c.deletions, "url": c.url}
+            for c in contributions if c.type == "pull_request"
+        ],
+    )
+
+
+@router.put("/goals/{goal_id}", response_model=WorkGoalResponse)
+async def update_goal(
+    goal_id: str,
+    data: WorkGoalUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a goal."""
+    service = GoalService(db)
+    updates = data.model_dump(exclude_unset=True)
+
+    # Convert enums to strings
+    if "goal_type" in updates and updates["goal_type"]:
+        updates["goal_type"] = updates["goal_type"].value
+    if "priority" in updates and updates["priority"]:
+        updates["priority"] = updates["priority"].value
+    if "status" in updates and updates["status"]:
+        updates["status"] = updates["status"].value
+
+    goal = await service.update_goal(goal_id, **updates)
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    return WorkGoalResponse.model_validate(goal)
+
+
+@router.put("/goals/{goal_id}/progress", response_model=WorkGoalResponse)
+async def update_goal_progress(
+    goal_id: str,
+    data: GoalProgressUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update goal progress and key results."""
+    service = GoalService(db)
+    goal = await service.update_progress(
+        goal_id=goal_id,
+        progress_percentage=data.progress_percentage,
+        key_result_updates=[kr.model_dump() for kr in data.key_result_updates] if data.key_result_updates else None,
+    )
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    return WorkGoalResponse.model_validate(goal)
+
+
+@router.post("/goals/{goal_id}/auto-link")
+async def auto_link_contributions(
+    goal_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Auto-link GitHub activity to goal based on tracking keywords."""
+    service = GoalService(db)
+    result = await service.auto_link_contributions(goal_id)
+    return {
+        "linked_commits": len(result["commits"]),
+        "linked_pull_requests": len(result["pull_requests"]),
+        "commits": result["commits"],
+        "pull_requests": result["pull_requests"],
+    }
+
+
+@router.get("/goals/{goal_id}/linked-contributions", response_model=LinkedContributionsResponse)
+async def get_linked_contributions(
+    goal_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get linked contributions for a goal."""
+    service = GoalService(db)
+    goal = await service.get_goal(goal_id)
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+
+    contributions = await service.get_linked_contributions(goal_id)
+
+    total_additions = sum(c.additions for c in contributions)
+    total_deletions = sum(c.deletions for c in contributions)
+
+    return LinkedContributionsResponse(
+        goal_id=goal_id,
+        commits=[
+            {"sha": c.id, "title": c.title, "additions": c.additions, "deletions": c.deletions}
+            for c in contributions if c.type == "commit"
+        ],
+        pull_requests=[
+            {"id": c.id, "title": c.title, "additions": c.additions, "deletions": c.deletions, "url": c.url}
+            for c in contributions if c.type == "pull_request"
+        ],
+        total_additions=total_additions,
+        total_deletions=total_deletions,
+    )
+
+
+@router.post("/goals/{goal_id}/complete", response_model=WorkGoalResponse)
+async def complete_goal(
+    goal_id: str,
+    data: GoalCompletionData | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Mark a goal as completed."""
+    service = GoalService(db)
+    goal = await service.complete_goal(
+        goal_id=goal_id,
+        final_notes=data.final_notes if data else None,
+    )
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    return WorkGoalResponse.model_validate(goal)
+
+
+# ============ Individual Review Endpoints ============
+
 @router.get("/{review_id}", response_model=IndividualReviewDetailResponse)
 async def get_individual_review(
     review_id: str,
@@ -418,213 +628,6 @@ async def submit_peer_review(
         linked_contributions=data.linked_contributions,
     )
     return ReviewSubmissionResponse.model_validate(submission)
-
-
-# ============ Goal Endpoints ============
-
-@router.post("/goals", response_model=WorkGoalResponse)
-async def create_goal(
-    developer_id: str,
-    workspace_id: str,
-    data: WorkGoalCreate,
-    db: AsyncSession = Depends(get_db),
-):
-    """Create a new SMART goal."""
-    service = GoalService(db)
-    goal = await service.create_goal(
-        developer_id=developer_id,
-        workspace_id=workspace_id,
-        title=data.title,
-        description=data.description,
-        specific=data.specific,
-        measurable=data.measurable,
-        achievable=data.achievable,
-        relevant=data.relevant,
-        time_bound=data.time_bound,
-        goal_type=data.goal_type.value,
-        priority=data.priority.value,
-        is_private=data.is_private,
-        key_results=[kr.model_dump() for kr in data.key_results],
-        tracking_keywords=data.tracking_keywords,
-        review_cycle_id=data.review_cycle_id,
-        learning_milestone_id=data.learning_milestone_id,
-    )
-    return WorkGoalResponse.model_validate(goal)
-
-
-@router.get("/goals", response_model=list[WorkGoalResponse])
-async def list_goals(
-    developer_id: str,
-    workspace_id: str | None = None,
-    status: str | None = None,
-    goal_type: str | None = None,
-    review_cycle_id: str | None = None,
-    db: AsyncSession = Depends(get_db),
-):
-    """List goals for a developer."""
-    service = GoalService(db)
-    goals = await service.list_goals(
-        developer_id=developer_id,
-        workspace_id=workspace_id,
-        status=status,
-        goal_type=goal_type,
-        review_cycle_id=review_cycle_id,
-    )
-    return [WorkGoalResponse.model_validate(g) for g in goals]
-
-
-@router.get("/goals/{goal_id}", response_model=WorkGoalDetailResponse)
-async def get_goal(
-    goal_id: str,
-    db: AsyncSession = Depends(get_db),
-):
-    """Get goal details with linked contributions."""
-    service = GoalService(db)
-    goal = await service.get_goal(goal_id)
-    if not goal:
-        raise HTTPException(status_code=404, detail="Goal not found")
-
-    # Get linked contributions
-    contributions = await service.get_linked_contributions(goal_id)
-
-    return WorkGoalDetailResponse(
-        **WorkGoalResponse.model_validate(goal).model_dump(),
-        linked_commits=[
-            {"sha": c.id, "title": c.title, "additions": c.additions, "deletions": c.deletions}
-            for c in contributions if c.type == "commit"
-        ],
-        linked_pull_requests=[
-            {"id": c.id, "title": c.title, "additions": c.additions, "deletions": c.deletions, "url": c.url}
-            for c in contributions if c.type == "pull_request"
-        ],
-    )
-
-
-@router.put("/goals/{goal_id}", response_model=WorkGoalResponse)
-async def update_goal(
-    goal_id: str,
-    data: WorkGoalUpdate,
-    db: AsyncSession = Depends(get_db),
-):
-    """Update a goal."""
-    service = GoalService(db)
-    updates = data.model_dump(exclude_unset=True)
-
-    # Convert enums to strings
-    if "goal_type" in updates and updates["goal_type"]:
-        updates["goal_type"] = updates["goal_type"].value
-    if "priority" in updates and updates["priority"]:
-        updates["priority"] = updates["priority"].value
-    if "status" in updates and updates["status"]:
-        updates["status"] = updates["status"].value
-
-    goal = await service.update_goal(goal_id, **updates)
-    if not goal:
-        raise HTTPException(status_code=404, detail="Goal not found")
-    return WorkGoalResponse.model_validate(goal)
-
-
-@router.put("/goals/{goal_id}/progress", response_model=WorkGoalResponse)
-async def update_goal_progress(
-    goal_id: str,
-    data: GoalProgressUpdate,
-    db: AsyncSession = Depends(get_db),
-):
-    """Update goal progress and key results."""
-    service = GoalService(db)
-    goal = await service.update_progress(
-        goal_id=goal_id,
-        progress_percentage=data.progress_percentage,
-        key_result_updates=[kr.model_dump() for kr in data.key_result_updates] if data.key_result_updates else None,
-    )
-    if not goal:
-        raise HTTPException(status_code=404, detail="Goal not found")
-    return WorkGoalResponse.model_validate(goal)
-
-
-@router.post("/goals/{goal_id}/auto-link")
-async def auto_link_contributions(
-    goal_id: str,
-    db: AsyncSession = Depends(get_db),
-):
-    """Auto-link GitHub activity to goal based on tracking keywords."""
-    service = GoalService(db)
-    result = await service.auto_link_contributions(goal_id)
-    return {
-        "linked_commits": len(result["commits"]),
-        "linked_pull_requests": len(result["pull_requests"]),
-        "commits": result["commits"],
-        "pull_requests": result["pull_requests"],
-    }
-
-
-@router.get("/goals/{goal_id}/linked-contributions", response_model=LinkedContributionsResponse)
-async def get_linked_contributions(
-    goal_id: str,
-    db: AsyncSession = Depends(get_db),
-):
-    """Get linked contributions for a goal."""
-    service = GoalService(db)
-    goal = await service.get_goal(goal_id)
-    if not goal:
-        raise HTTPException(status_code=404, detail="Goal not found")
-
-    contributions = await service.get_linked_contributions(goal_id)
-
-    total_additions = sum(c.additions for c in contributions)
-    total_deletions = sum(c.deletions for c in contributions)
-
-    return LinkedContributionsResponse(
-        goal_id=goal_id,
-        commits=[
-            {"sha": c.id, "title": c.title, "additions": c.additions, "deletions": c.deletions}
-            for c in contributions if c.type == "commit"
-        ],
-        pull_requests=[
-            {"id": c.id, "title": c.title, "additions": c.additions, "deletions": c.deletions, "url": c.url}
-            for c in contributions if c.type == "pull_request"
-        ],
-        total_additions=total_additions,
-        total_deletions=total_deletions,
-    )
-
-
-@router.post("/goals/{goal_id}/complete", response_model=WorkGoalResponse)
-async def complete_goal(
-    goal_id: str,
-    data: GoalCompletionData | None = None,
-    db: AsyncSession = Depends(get_db),
-):
-    """Mark a goal as completed."""
-    service = GoalService(db)
-    goal = await service.complete_goal(
-        goal_id=goal_id,
-        final_notes=data.final_notes if data else None,
-    )
-    if not goal:
-        raise HTTPException(status_code=404, detail="Goal not found")
-    return WorkGoalResponse.model_validate(goal)
-
-
-@router.get("/goals/suggestions", response_model=list[GoalSuggestion])
-async def get_goal_suggestions(
-    developer_id: str,
-    db: AsyncSession = Depends(get_db),
-):
-    """Get goal suggestions from active learning path."""
-    service = GoalService(db)
-    suggestions = await service.suggest_goals_from_learning_path(developer_id)
-    return [
-        GoalSuggestion(
-            title=s.title,
-            goal_type=s.goal_type,
-            suggested_measurable=s.suggested_measurable,
-            suggested_keywords=s.suggested_keywords,
-            learning_milestone_id=s.learning_milestone_id,
-            skill_name=s.skill_name,
-        )
-        for s in suggestions
-    ]
 
 
 # ============ Contribution Summary Endpoints ============
