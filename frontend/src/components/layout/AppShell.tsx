@@ -37,7 +37,7 @@ export function AppShell({ children, user, logout }: AppShellProps) {
 
             <Sidebar user={user} logout={logout} className="hidden md:flex" />
             <main className="flex-1 overflow-y-auto md:pt-0 pt-16">
-                <div className="container mx-auto p-6 md:p-8">
+                <div className="container mx-0 p-0">
                     {children}
                 </div>
             </main>

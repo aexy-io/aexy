@@ -448,7 +448,7 @@ async def delete_bug(
 async def confirm_bug(
     workspace_id: str,
     bug_id: str,
-    data: BugConfirmRequest,
+    data: BugConfirmRequest = BugConfirmRequest(),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -486,7 +486,7 @@ async def confirm_bug(
 async def mark_bug_fixed(
     workspace_id: str,
     bug_id: str,
-    data: BugFixRequest,
+    data: BugFixRequest = BugFixRequest(),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -537,7 +537,7 @@ async def mark_bug_fixed(
 async def verify_bug_fix(
     workspace_id: str,
     bug_id: str,
-    data: BugVerifyRequest,
+    data: BugVerifyRequest = BugVerifyRequest(),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -576,7 +576,7 @@ async def verify_bug_fix(
 async def close_bug(
     workspace_id: str,
     bug_id: str,
-    data: BugCloseRequest,
+    data: BugCloseRequest = BugCloseRequest(),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):

@@ -23,6 +23,7 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { useBugs, useBug, useBugStats } from "@/hooks/useBugs";
 import { BugCard } from "@/components/bugs/BugCard";
 import { SeverityBadge } from "@/components/bugs/SeverityBadge";
+import { BugActionDialog } from "@/components/bugs/BugActionDialog";
 import {
   Bug,
   BugStatus,
@@ -120,6 +121,7 @@ export default function BugsPage() {
     status: statusFilter === "all" ? undefined : statusFilter,
     severity: severityFilter === "all" ? undefined : severityFilter,
     priority: priorityFilter === "all" ? undefined : priorityFilter,
+    include_closed: statusFilter === "all" || statusFilter === "closed" || statusFilter === "wont_fix",
   });
 
   const { stats } = useBugStats(workspaceId, projectId);
@@ -602,6 +604,8 @@ interface BugDetailModalProps {
 }
 
 function BugDetailModal({ bug, workspaceId, onClose }: BugDetailModalProps) {
+  const [activeDialog, setActiveDialog] = useState<"fix" | "close" | "reopen" | null>(null);
+
   const {
     bug: bugDetails,
     isLoading,
@@ -632,24 +636,31 @@ function BugDetailModal({ bug, workspaceId, onClose }: BugDetailModalProps) {
     await confirm();
   };
 
-  const handleFix = async () => {
-    const version = prompt("Enter fixed version (optional):");
-    await fix(version || undefined);
+  const handleFix = async (data: Record<string, string>) => {
+    await fix({
+      fixed_in_version: data.fixed_version || undefined,
+      root_cause: data.root_cause || undefined,
+      resolution_notes: data.resolution_notes || undefined,
+    });
+    setActiveDialog(null);
   };
 
   const handleVerify = async () => {
     await verify();
   };
 
-  const handleClose = async () => {
-    const resolution = prompt("Enter resolution notes (optional):");
-    await close(resolution || undefined);
+  const handleClose = async (data: Record<string, string>) => {
+    await close({
+      resolution: (data.resolution as "fixed" | "wont_fix" | "duplicate" | "cannot_reproduce") || "fixed",
+      notes: data.notes || undefined,
+    });
+    setActiveDialog(null);
   };
 
-  const handleReopen = async () => {
-    const reason = prompt("Enter reason for reopening:");
-    if (reason) {
-      await reopen(reason);
+  const handleReopen = async (data: Record<string, string>) => {
+    if (data.reason) {
+      await reopen(data.reason);
+      setActiveDialog(null);
     }
   };
 
@@ -723,7 +734,7 @@ function BugDetailModal({ bug, workspaceId, onClose }: BugDetailModalProps) {
               )}
               {(currentBug.status === "confirmed" || currentBug.status === "in_progress") && (
                 <button
-                  onClick={handleFix}
+                  onClick={() => setActiveDialog("fix")}
                   disabled={isFixing}
                   className="flex items-center gap-1 px-3 py-1.5 bg-cyan-600 text-white rounded-lg text-sm hover:bg-cyan-500 transition-colors disabled:opacity-50"
                 >
@@ -743,7 +754,7 @@ function BugDetailModal({ bug, workspaceId, onClose }: BugDetailModalProps) {
               )}
               {currentBug.status === "verified" && (
                 <button
-                  onClick={handleClose}
+                  onClick={() => setActiveDialog("close")}
                   disabled={isClosing}
                   className="flex items-center gap-1 px-3 py-1.5 bg-slate-600 text-white rounded-lg text-sm hover:bg-slate-500 transition-colors disabled:opacity-50"
                 >
@@ -753,7 +764,7 @@ function BugDetailModal({ bug, workspaceId, onClose }: BugDetailModalProps) {
               )}
               {(currentBug.status === "closed" || currentBug.status === "wont_fix") && (
                 <button
-                  onClick={handleReopen}
+                  onClick={() => setActiveDialog("reopen")}
                   disabled={isReopening}
                   className="flex items-center gap-1 px-3 py-1.5 bg-amber-600 text-white rounded-lg text-sm hover:bg-amber-500 transition-colors disabled:opacity-50"
                 >
@@ -852,6 +863,91 @@ function BugDetailModal({ bug, workspaceId, onClose }: BugDetailModalProps) {
           </div>
         </div>
       </div>
+
+      {/* Fix Bug Dialog */}
+      <BugActionDialog
+        isOpen={activeDialog === "fix"}
+        onClose={() => setActiveDialog(null)}
+        onConfirm={handleFix}
+        title="Mark Bug as Fixed"
+        description="Enter details about the fix for this bug."
+        fields={[
+          {
+            name: "fixed_version",
+            label: "Fixed in Version",
+            type: "text",
+            placeholder: "e.g., 1.2.3",
+          },
+          {
+            name: "root_cause",
+            label: "Root Cause",
+            type: "textarea",
+            placeholder: "What caused this bug?",
+          },
+          {
+            name: "resolution_notes",
+            label: "Resolution Notes",
+            type: "textarea",
+            placeholder: "How was this bug fixed?",
+          },
+        ]}
+        confirmLabel="Mark as Fixed"
+        confirmVariant="success"
+        isLoading={isFixing}
+      />
+
+      {/* Close Bug Dialog */}
+      <BugActionDialog
+        isOpen={activeDialog === "close"}
+        onClose={() => setActiveDialog(null)}
+        onConfirm={handleClose}
+        title="Close Bug"
+        description="Select the resolution type for this bug."
+        fields={[
+          {
+            name: "resolution",
+            label: "Resolution",
+            type: "select",
+            required: true,
+            defaultValue: "fixed",
+            options: [
+              { value: "fixed", label: "Fixed" },
+              { value: "wont_fix", label: "Won't Fix" },
+              { value: "duplicate", label: "Duplicate" },
+              { value: "cannot_reproduce", label: "Cannot Reproduce" },
+            ],
+          },
+          {
+            name: "notes",
+            label: "Notes",
+            type: "textarea",
+            placeholder: "Additional notes about the resolution...",
+          },
+        ]}
+        confirmLabel="Close Bug"
+        isLoading={isClosing}
+      />
+
+      {/* Reopen Bug Dialog */}
+      <BugActionDialog
+        isOpen={activeDialog === "reopen"}
+        onClose={() => setActiveDialog(null)}
+        onConfirm={handleReopen}
+        title="Reopen Bug"
+        description="Please provide a reason for reopening this bug."
+        fields={[
+          {
+            name: "reason",
+            label: "Reason",
+            type: "textarea",
+            placeholder: "Why is this bug being reopened?",
+            required: true,
+          },
+        ]}
+        confirmLabel="Reopen Bug"
+        confirmVariant="danger"
+        isLoading={isReopening}
+      />
     </div>
   );
 }

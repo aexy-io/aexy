@@ -23,6 +23,7 @@ export function useBugs(
     priority?: BugPriority;
     assignee_id?: string;
     is_regression?: boolean;
+    include_closed?: boolean;
   }
 ) {
   const queryClient = useQueryClient();
@@ -101,7 +102,8 @@ export function useBug(workspaceId: string | null, bugId: string | null) {
   });
 
   const fixMutation = useMutation({
-    mutationFn: (fixedVersion?: string) => bugsApi.fix(workspaceId!, bugId!, fixedVersion),
+    mutationFn: (data?: { fixed_in_version?: string; root_cause?: string; resolution_notes?: string }) =>
+      bugsApi.fix(workspaceId!, bugId!, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bug", workspaceId, bugId] });
       queryClient.invalidateQueries({ queryKey: ["bugs", workspaceId] });
@@ -119,7 +121,8 @@ export function useBug(workspaceId: string | null, bugId: string | null) {
   });
 
   const closeMutation = useMutation({
-    mutationFn: (resolution?: string) => bugsApi.close(workspaceId!, bugId!, resolution),
+    mutationFn: (params: { resolution?: "fixed" | "wont_fix" | "duplicate" | "cannot_reproduce"; notes?: string }) =>
+      bugsApi.close(workspaceId!, bugId!, params.resolution, params.notes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bug", workspaceId, bugId] });
       queryClient.invalidateQueries({ queryKey: ["bugs", workspaceId] });
