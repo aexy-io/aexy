@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Sparkles, ChevronDown, ChevronUp, Loader2, GripVertical } from "lucide-react";
-import { Assessment, TopicConfig, DifficultyLevel, QuestionType } from "@/lib/api";
-import { useAssessmentTopics } from "@/hooks/useAssessments";
+import { Plus, Trash2, Sparkles, ChevronDown, ChevronUp, Loader2, GripVertical, Wand2, Eye, Check, X, AlertCircle } from "lucide-react";
+import { Assessment, TopicConfig, DifficultyLevel, QuestionType, AssessmentQuestion } from "@/lib/api";
+import { useAssessmentTopics, useAssessmentQuestions } from "@/hooks/useAssessments";
 
 const QUESTION_TYPES: { value: QuestionType; label: string; description: string }[] = [
   { value: "mcq", label: "MCQ", description: "Multiple choice questions" },
@@ -12,9 +12,9 @@ const QUESTION_TYPES: { value: QuestionType; label: string; description: string 
 ];
 
 const DIFFICULTY_LEVELS: { value: DifficultyLevel; label: string; color: string }[] = [
-  { value: "easy", label: "Easy", color: "bg-green-100 text-green-700" },
-  { value: "medium", label: "Medium", color: "bg-yellow-100 text-yellow-700" },
-  { value: "hard", label: "Hard", color: "bg-red-100 text-red-700" },
+  { value: "easy", label: "Easy", color: "bg-green-100 text-green-700 border-green-300" },
+  { value: "medium", label: "Medium", color: "bg-yellow-100 text-yellow-700 border-yellow-300" },
+  { value: "hard", label: "Hard", color: "bg-red-100 text-red-700 border-red-300" },
 ];
 
 interface Step2Props {
@@ -37,6 +37,17 @@ interface TopicRowState {
   isExpanded: boolean;
 }
 
+interface GeneratedQuestion {
+  id?: string;
+  title?: string;
+  problem_statement: string;
+  question_type: QuestionType;
+  difficulty: DifficultyLevel;
+  options?: { id: string; text: string; is_correct?: boolean }[];
+  topic_id: string;
+  selected: boolean;
+}
+
 export default function Step2TopicDistribution({
   assessment,
   assessmentId,
@@ -48,9 +59,13 @@ export default function Step2TopicDistribution({
   const [topics, setTopics] = useState<TopicRowState[]>([]);
   const [enableAIGeneration, setEnableAIGeneration] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [showSuggestModal, setShowSuggestModal] = useState(false);
+  const [generatingTopicId, setGeneratingTopicId] = useState<string | null>(null);
+  const [generatedQuestions, setGeneratedQuestions] = useState<Record<string, GeneratedQuestion[]>>({});
+  const [savingQuestions, setSavingQuestions] = useState(false);
+  const [reviewingTopicId, setReviewingTopicId] = useState<string | null>(null);
 
-  const { suggestTopics, isSuggesting, suggestedTopics } = useAssessmentTopics(assessmentId);
+  const { suggestTopics, isSuggesting } = useAssessmentTopics(assessmentId);
+  const { questions: existingQuestions, generateQuestions, createQuestion, isGenerating, refetch: refetchQuestions } = useAssessmentQuestions(assessmentId);
 
   useEffect(() => {
     if (assessment.topics && assessment.topics.length > 0) {
@@ -91,6 +106,12 @@ export default function Step2TopicDistribution({
 
   const handleRemoveTopic = (topicId: string) => {
     setTopics(topics.filter((t) => t.id !== topicId));
+    // Also remove any generated questions for this topic
+    setGeneratedQuestions((prev) => {
+      const newState = { ...prev };
+      delete newState[topicId];
+      return newState;
+    });
   };
 
   const handleTopicChange = (topicId: string, field: keyof TopicRowState, value: any) => {
@@ -144,7 +165,7 @@ export default function Step2TopicDistribution({
       });
 
       if (result?.topics) {
-        const newTopics: TopicRowState[] = result.topics.map((t: any, idx: number) => ({
+        const newTopics: TopicRowState[] = result.topics.map((t: any) => ({
           id: crypto.randomUUID(),
           topic: t.topic,
           subtopics: t.subtopics || [],
@@ -164,6 +185,92 @@ export default function Step2TopicDistribution({
       }
     } catch (error) {
       console.error("Failed to suggest topics:", error);
+    }
+  };
+
+  const handleGenerateQuestions = async (topic: TopicRowState) => {
+    setGeneratingTopicId(topic.id);
+    try {
+      const allQuestions: GeneratedQuestion[] = [];
+
+      // Generate questions for each selected question type
+      for (const qType of topic.question_types) {
+        const countPerType = Math.ceil(topic.question_count / topic.question_types.length);
+
+        const result = await generateQuestions({
+          topic_id: topic.id,
+          question_type: qType as QuestionType,
+          difficulty: topic.difficulty_level,
+          count: countPerType,
+        });
+
+        if (result?.questions) {
+          const questionsWithSelection = result.questions.map((q: any) => ({
+            ...q,
+            question_type: qType as QuestionType,
+            difficulty: topic.difficulty_level,
+            topic_id: topic.id,
+            selected: true,
+          }));
+          allQuestions.push(...questionsWithSelection);
+        }
+      }
+
+      setGeneratedQuestions((prev) => ({
+        ...prev,
+        [topic.id]: allQuestions,
+      }));
+
+      // Auto-expand to show review
+      setReviewingTopicId(topic.id);
+    } catch (error) {
+      console.error("Failed to generate questions:", error);
+    } finally {
+      setGeneratingTopicId(null);
+    }
+  };
+
+  const handleToggleQuestionSelection = (topicId: string, questionIndex: number) => {
+    setGeneratedQuestions((prev) => ({
+      ...prev,
+      [topicId]: prev[topicId].map((q, idx) =>
+        idx === questionIndex ? { ...q, selected: !q.selected } : q
+      ),
+    }));
+  };
+
+  const handleSaveGeneratedQuestions = async (topicId: string) => {
+    setSavingQuestions(true);
+    try {
+      const questionsToSave = generatedQuestions[topicId]?.filter((q) => q.selected) || [];
+
+      for (const q of questionsToSave) {
+        await createQuestion({
+          topic_id: topicId,
+          question_type: q.question_type,
+          difficulty: q.difficulty,
+          title: q.title || q.problem_statement?.substring(0, 100) || "Generated Question",
+          problem_statement: q.problem_statement,
+          options: q.options,
+          max_marks: q.question_type === "code" ? 20 : 10,
+          estimated_time_minutes: q.question_type === "code" ? 15 : 5,
+        });
+      }
+
+      // Clear generated questions for this topic after saving
+      setGeneratedQuestions((prev) => {
+        const newState = { ...prev };
+        delete newState[topicId];
+        return newState;
+      });
+      setReviewingTopicId(null);
+
+      // Refetch to show saved questions
+      refetchQuestions();
+    } catch (error) {
+      console.error("Failed to save questions:", error);
+    } finally {
+      setSavingQuestions(false);
     }
   };
 
@@ -203,15 +310,21 @@ export default function Step2TopicDistribution({
     }
   };
 
+  const getQuestionsForTopic = (topicId: string) => {
+    return existingQuestions?.filter((q) => q.topic_id === topicId) || [];
+  };
+
   const totalQuestions = topics.reduce((sum, t) => sum + (t.question_count || 0), 0);
   const totalDuration = topics.reduce((sum, t) => sum + (t.duration_minutes || 0), 0);
+  const totalGeneratedQuestions = existingQuestions?.length || 0;
   const isValid = topics.length > 0 && topics.every((t) => t.topic && t.question_types.length > 0);
+  const hasAllQuestionsGenerated = totalGeneratedQuestions >= totalQuestions;
 
   return (
     <div className="space-y-8">
       <div>
         <h2 className="text-xl font-semibold text-gray-900 mb-1">Topic Distribution</h2>
-        <p className="text-gray-500">Configure topics and question distribution for the assessment</p>
+        <p className="text-gray-500">Configure topics and generate questions for the assessment</p>
       </div>
 
       {/* Summary Bar */}
@@ -222,8 +335,14 @@ export default function Step2TopicDistribution({
             <p className="text-2xl font-bold text-blue-900">{topics.length}</p>
           </div>
           <div>
-            <p className="text-xs text-blue-600 font-medium">Total Questions</p>
+            <p className="text-xs text-blue-600 font-medium">Configured Questions</p>
             <p className="text-2xl font-bold text-blue-900">{totalQuestions}</p>
+          </div>
+          <div>
+            <p className="text-xs text-blue-600 font-medium">Generated Questions</p>
+            <p className={`text-2xl font-bold ${totalGeneratedQuestions >= totalQuestions ? 'text-green-600' : 'text-orange-600'}`}>
+              {totalGeneratedQuestions}
+            </p>
           </div>
           <div>
             <p className="text-xs text-blue-600 font-medium">Est. Duration</p>
@@ -244,162 +363,347 @@ export default function Step2TopicDistribution({
         </button>
       </div>
 
+      {/* Warning if questions not generated */}
+      {topics.length > 0 && totalGeneratedQuestions === 0 && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium text-yellow-800">Questions Required</p>
+            <p className="text-sm text-yellow-700 mt-1">
+              You must generate questions for each topic before publishing the assessment.
+              Click the &quot;Generate Questions&quot; button on each topic below.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Topics List */}
       <div className="space-y-4">
-        {topics.map((topic, index) => (
-          <div
-            key={topic.id}
-            className="bg-white rounded-lg border shadow-sm"
-          >
-            {/* Topic Header */}
-            <div className="p-4 flex items-center gap-4">
-              <GripVertical className="w-5 h-5 text-gray-400 cursor-grab" />
-              <span className="text-sm font-medium text-gray-400 w-6">{index + 1}</span>
-              <input
-                type="text"
-                value={topic.topic}
-                onChange={(e) => handleTopicChange(topic.id, "topic", e.target.value)}
-                placeholder="Topic name (e.g., Data Structures, React Hooks)"
-                className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
-              />
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <span>{topic.question_count} Q</span>
-                <span>|</span>
-                <span>{topic.duration_minutes} min</span>
-              </div>
-              <button
-                onClick={() => handleToggleExpand(topic.id)}
-                className="p-2 hover:bg-gray-100 rounded"
-              >
-                {topic.isExpanded ? (
-                  <ChevronUp className="w-5 h-5 text-gray-400" />
-                ) : (
-                  <ChevronDown className="w-5 h-5 text-gray-400" />
-                )}
-              </button>
-              <button
-                onClick={() => handleRemoveTopic(topic.id)}
-                className="p-2 hover:bg-red-50 rounded text-gray-400 hover:text-red-600"
-              >
-                <Trash2 className="w-5 h-5" />
-              </button>
-            </div>
+        {topics.map((topic, index) => {
+          const topicQuestions = getQuestionsForTopic(topic.id);
+          const pendingQuestions = generatedQuestions[topic.id] || [];
+          const isReviewing = reviewingTopicId === topic.id;
 
-            {/* Topic Details (Expanded) */}
-            {topic.isExpanded && (
-              <div className="px-4 pb-4 border-t pt-4 space-y-6">
-                {/* Subtopics */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Subtopics (comma-separated)
-                  </label>
-                  <input
-                    type="text"
-                    value={topic.subtopics?.join(", ") || ""}
-                    onChange={(e) =>
-                      handleTopicChange(
-                        topic.id,
-                        "subtopics",
-                        e.target.value.split(",").map((s) => s.trim()).filter(Boolean)
-                      )
-                    }
-                    placeholder="Arrays, Linked Lists, Trees, Graphs"
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
-                  />
+          return (
+            <div
+              key={topic.id}
+              className="bg-white rounded-lg border shadow-sm"
+            >
+              {/* Topic Header */}
+              <div className="p-4 flex items-center gap-4">
+                <GripVertical className="w-5 h-5 text-gray-400 cursor-grab" />
+                <span className="text-sm font-medium text-gray-500 w-6">{index + 1}</span>
+                <input
+                  type="text"
+                  value={topic.topic}
+                  onChange={(e) => handleTopicChange(topic.id, "topic", e.target.value)}
+                  placeholder="Topic name (e.g., Data Structures, React Hooks)"
+                  className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
+                />
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-gray-600">{topic.question_count} Q</span>
+                  <span className="text-gray-400">|</span>
+                  <span className="text-gray-600">{topic.duration_minutes} min</span>
+                  {topicQuestions.length > 0 && (
+                    <>
+                      <span className="text-gray-400">|</span>
+                      <span className="text-green-600 font-medium">{topicQuestions.length} generated</span>
+                    </>
+                  )}
                 </div>
+                <button
+                  onClick={() => handleToggleExpand(topic.id)}
+                  className="p-2 hover:bg-gray-100 rounded"
+                >
+                  {topic.isExpanded ? (
+                    <ChevronUp className="w-5 h-5 text-gray-500" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-gray-500" />
+                  )}
+                </button>
+                <button
+                  onClick={() => handleRemoveTopic(topic.id)}
+                  className="p-2 hover:bg-red-50 rounded text-gray-400 hover:text-red-600"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              </div>
 
-                {/* Question Types */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Question Types
-                  </label>
-                  <div className="flex gap-3">
-                    {QUESTION_TYPES.map((qt) => (
-                      <label
-                        key={qt.value}
-                        className={`flex items-center gap-2 px-4 py-2 border rounded-lg cursor-pointer transition-colors ${
-                          topic.question_types?.includes(qt.value)
-                            ? "border-blue-500 bg-blue-50"
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={topic.question_types?.includes(qt.value) || false}
-                          onChange={() => handleToggleQuestionType(topic.id, qt.value)}
-                          className="hidden"
-                        />
-                        <span className="text-sm font-medium">{qt.label}</span>
+              {/* Topic Details (Expanded) */}
+              {topic.isExpanded && (
+                <div className="px-4 pb-4 border-t pt-4 space-y-6">
+                  {/* Subtopics */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Subtopics (comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      value={topic.subtopics?.join(", ") || ""}
+                      onChange={(e) =>
+                        handleTopicChange(
+                          topic.id,
+                          "subtopics",
+                          e.target.value.split(",").map((s) => s.trim()).filter(Boolean)
+                        )
+                      }
+                      placeholder="Arrays, Linked Lists, Trees, Graphs"
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
+                    />
+                  </div>
+
+                  {/* Question Types */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Question Types
+                    </label>
+                    <div className="flex gap-3">
+                      {QUESTION_TYPES.map((qt) => {
+                        const isSelected = topic.question_types?.includes(qt.value);
+                        return (
+                          <label
+                            key={qt.value}
+                            className={`flex items-center gap-2 px-4 py-2 border rounded-lg cursor-pointer transition-colors ${
+                              isSelected
+                                ? "border-blue-500 bg-blue-50 text-blue-700"
+                                : "border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleQuestionType(topic.id, qt.value)}
+                              className="hidden"
+                            />
+                            <span className="text-sm font-medium">{qt.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Difficulty Level */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Difficulty Level
+                    </label>
+                    <div className="flex gap-3">
+                      {DIFFICULTY_LEVELS.map((level) => {
+                        const isSelected = topic.difficulty_level === level.value;
+                        return (
+                          <button
+                            key={level.value}
+                            type="button"
+                            onClick={() => handleDifficultyLevelChange(topic.id, level.value)}
+                            className={`px-4 py-2 rounded-lg border transition-colors ${
+                              isSelected
+                                ? `${level.color} border-current font-medium`
+                                : "border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+                            }`}
+                          >
+                            <span className="text-sm font-medium">{level.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Question Count & Duration */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Number of Questions
                       </label>
-                    ))}
+                      <input
+                        type="number"
+                        min={1}
+                        max={50}
+                        value={topic.question_count || 5}
+                        onChange={(e) =>
+                          handleTopicChange(topic.id, "question_count", parseInt(e.target.value))
+                        }
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Duration (minutes)
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={180}
+                        value={topic.duration_minutes || 10}
+                        onChange={(e) =>
+                          handleTopicChange(topic.id, "duration_minutes", parseInt(e.target.value))
+                        }
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                {/* Difficulty Level */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Difficulty Level
-                  </label>
-                  <div className="flex gap-3">
-                    {DIFFICULTY_LEVELS.map((level) => (
-                      <button
-                        key={level.value}
-                        type="button"
-                        onClick={() => handleDifficultyLevelChange(topic.id, level.value)}
-                        className={`px-4 py-2 rounded-lg border transition-colors ${
-                          topic.difficulty_level === level.value
-                            ? "border-blue-500 bg-blue-50 text-blue-700"
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        <span className={`text-sm font-medium`}>{level.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                  {/* Generate Questions Section */}
+                  <div className="border-t pt-4 mt-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h4 className="font-medium text-gray-900">Questions</h4>
+                        <p className="text-sm text-gray-500">
+                          {topicQuestions.length} questions generated for this topic
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {topicQuestions.length > 0 && (
+                          <button
+                            onClick={() => setReviewingTopicId(isReviewing ? null : topic.id)}
+                            className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                          >
+                            <Eye className="w-4 h-4" />
+                            {isReviewing ? "Hide" : "View"} Questions
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleGenerateQuestions(topic)}
+                          disabled={generatingTopicId === topic.id || !topic.topic || topic.question_types.length === 0}
+                          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {generatingTopicId === topic.id ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Generating...
+                            </>
+                          ) : (
+                            <>
+                              <Wand2 className="w-4 h-4" />
+                              Generate Questions
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
 
-                {/* Question Count & Duration */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Number of Questions
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={50}
-                      value={topic.question_count || 5}
-                      onChange={(e) =>
-                        handleTopicChange(topic.id, "question_count", parseInt(e.target.value))
-                      }
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Duration (minutes)
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={180}
-                      value={topic.duration_minutes || 10}
-                      onChange={(e) =>
-                        handleTopicChange(topic.id, "duration_minutes", parseInt(e.target.value))
-                      }
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
-                    />
+                    {/* Existing Questions Preview */}
+                    {isReviewing && topicQuestions.length > 0 && (
+                      <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                        <h5 className="text-sm font-medium text-gray-700 mb-2">Saved Questions</h5>
+                        {topicQuestions.map((q, idx) => (
+                          <div key={q.id} className="bg-white p-3 rounded border">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-xs font-medium text-gray-500">#{idx + 1}</span>
+                                  <span className={`text-xs px-2 py-0.5 rounded ${
+                                    q.question_type === 'mcq' ? 'bg-blue-100 text-blue-700' :
+                                    q.question_type === 'code' ? 'bg-purple-100 text-purple-700' :
+                                    'bg-gray-100 text-gray-700'
+                                  }`}>
+                                    {q.question_type.toUpperCase()}
+                                  </span>
+                                  <span className={`text-xs px-2 py-0.5 rounded ${
+                                    q.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
+                                    q.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                                    'bg-red-100 text-red-700'
+                                  }`}>
+                                    {q.difficulty}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-800 line-clamp-2">
+                                  {q.title || q.problem_statement?.substring(0, 150)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Pending Generated Questions for Review */}
+                    {pendingQuestions.length > 0 && (
+                      <div className="bg-purple-50 rounded-lg p-4 space-y-3 mt-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h5 className="text-sm font-medium text-purple-800">
+                            Review Generated Questions ({pendingQuestions.filter(q => q.selected).length}/{pendingQuestions.length} selected)
+                          </h5>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setGeneratedQuestions(prev => ({
+                                ...prev,
+                                [topic.id]: []
+                              }))}
+                              className="text-sm text-gray-600 hover:text-gray-800"
+                            >
+                              Discard All
+                            </button>
+                            <button
+                              onClick={() => handleSaveGeneratedQuestions(topic.id)}
+                              disabled={savingQuestions || pendingQuestions.filter(q => q.selected).length === 0}
+                              className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                            >
+                              {savingQuestions ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Check className="w-3 h-3" />
+                              )}
+                              Save Selected
+                            </button>
+                          </div>
+                        </div>
+
+                        {pendingQuestions.map((q, idx) => (
+                          <div
+                            key={idx}
+                            className={`bg-white p-3 rounded border cursor-pointer transition-colors ${
+                              q.selected ? 'border-purple-300 ring-1 ring-purple-200' : 'border-gray-200 opacity-60'
+                            }`}
+                            onClick={() => handleToggleQuestionSelection(topic.id, idx)}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className={`w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center mt-0.5 ${
+                                q.selected ? 'bg-purple-600 border-purple-600' : 'border-gray-300'
+                              }`}>
+                                {q.selected && <Check className="w-3 h-3 text-white" />}
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className={`text-xs px-2 py-0.5 rounded ${
+                                    q.question_type === 'mcq' ? 'bg-blue-100 text-blue-700' :
+                                    q.question_type === 'code' ? 'bg-purple-100 text-purple-700' :
+                                    'bg-gray-100 text-gray-700'
+                                  }`}>
+                                    {q.question_type.toUpperCase()}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-800">
+                                  {q.problem_statement?.substring(0, 200)}
+                                  {q.problem_statement && q.problem_statement.length > 200 && '...'}
+                                </p>
+                                {q.options && q.options.length > 0 && (
+                                  <div className="mt-2 space-y-1">
+                                    {q.options.map((opt, optIdx) => (
+                                      <div key={optIdx} className={`text-xs px-2 py-1 rounded ${
+                                        opt.is_correct ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-600'
+                                      }`}>
+                                        {opt.id}. {opt.text}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          );
+        })}
 
         {/* Add Topic Button */}
         <button
           onClick={handleAddTopic}
-          className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-500 hover:text-blue-600 flex items-center justify-center gap-2"
+          className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600 flex items-center justify-center gap-2"
         >
           <Plus className="w-5 h-5" />
           Add Topic
@@ -432,13 +736,20 @@ export default function Step2TopicDistribution({
         >
           Previous
         </button>
-        <button
-          onClick={handleSave}
-          disabled={!isValid || isSaving}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isSaving ? "Saving..." : "Save & Continue"}
-        </button>
+        <div className="flex items-center gap-3">
+          {!hasAllQuestionsGenerated && totalQuestions > 0 && (
+            <span className="text-sm text-orange-600">
+              Generate questions before continuing
+            </span>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={!isValid || isSaving}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSaving ? "Saving..." : "Save & Continue"}
+          </button>
+        </div>
       </div>
     </div>
   );
