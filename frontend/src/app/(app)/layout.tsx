@@ -3,18 +3,25 @@
 import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/layout/AppShell";
 import { redirect } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+    const [mounted, setMounted] = useState(false);
     const { user, logout, isLoading, isAuthenticated } = useAuth();
 
+    // Prevent hydration mismatch by only rendering after client mount
     useEffect(() => {
-        if (!isLoading && !isAuthenticated) {
+        setMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (mounted && !isLoading && !isAuthenticated) {
             redirect("/");
         }
-    }, [isLoading, isAuthenticated]);
+    }, [mounted, isLoading, isAuthenticated]);
 
-    if (isLoading) {
+    // Show loading state during SSR and initial client render
+    if (!mounted || isLoading) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">

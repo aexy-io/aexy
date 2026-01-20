@@ -10005,12 +10005,15 @@ export const bugsApi = {
       priority?: BugPriority;
       assignee_id?: string;
       is_regression?: boolean;
+      include_closed?: boolean;
       skip?: number;
       limit?: number;
     }
   ): Promise<{ items: Bug[]; total: number }> => {
     const response = await api.get(`/workspaces/${workspaceId}/bugs`, { params });
-    return response.data;
+    // Backend returns array directly, wrap it for frontend compatibility
+    const items = Array.isArray(response.data) ? response.data : response.data.items || [];
+    return { items, total: items.length };
   },
 
   get: async (workspaceId: string, bugId: string): Promise<Bug> => {
@@ -10038,8 +10041,12 @@ export const bugsApi = {
     return response.data;
   },
 
-  fix: async (workspaceId: string, bugId: string, fixedVersion?: string): Promise<Bug> => {
-    const response = await api.post(`/workspaces/${workspaceId}/bugs/${bugId}/fix`, { fixed_version: fixedVersion });
+  fix: async (workspaceId: string, bugId: string, data?: {
+    fixed_in_version?: string;
+    root_cause?: string;
+    resolution_notes?: string;
+  }): Promise<Bug> => {
+    const response = await api.post(`/workspaces/${workspaceId}/bugs/${bugId}/fix`, data || {});
     return response.data;
   },
 
@@ -10048,8 +10055,11 @@ export const bugsApi = {
     return response.data;
   },
 
-  close: async (workspaceId: string, bugId: string, resolution?: string): Promise<Bug> => {
-    const response = await api.post(`/workspaces/${workspaceId}/bugs/${bugId}/close`, { resolution });
+  close: async (workspaceId: string, bugId: string, resolution?: "fixed" | "wont_fix" | "duplicate" | "cannot_reproduce", notes?: string): Promise<Bug> => {
+    const response = await api.post(`/workspaces/${workspaceId}/bugs/${bugId}/close`, {
+      resolution: resolution || "fixed",
+      notes
+    });
     return response.data;
   },
 
@@ -10070,7 +10080,37 @@ export const bugsApi = {
     const response = await api.get(`/workspaces/${workspaceId}/bugs/stats`, {
       params: { project_id: projectId },
     });
-    return response.data;
+    // Map backend response to frontend expected format
+    const data = response.data;
+    return {
+      total: data.total_bugs || 0,
+      by_status: {
+        new: data.new_bugs || 0,
+        confirmed: data.confirmed_bugs || 0,
+        in_progress: data.in_progress_bugs || 0,
+        fixed: data.fixed_bugs || 0,
+        verified: data.verified_bugs || 0,
+        closed: data.closed_bugs || 0,
+        wont_fix: 0,
+        duplicate: 0,
+        cannot_reproduce: 0,
+      },
+      by_severity: {
+        blocker: data.blocker_bugs || 0,
+        critical: data.critical_bugs || 0,
+        major: data.major_bugs || 0,
+        minor: data.minor_bugs || 0,
+        trivial: data.trivial_bugs || 0,
+      },
+      by_priority: {
+        critical: 0,
+        high: 0,
+        medium: 0,
+        low: 0,
+      },
+      regressions: data.regression_count || 0,
+      avg_resolution_hours: data.avg_time_to_fix_hours,
+    };
   },
 };
 
