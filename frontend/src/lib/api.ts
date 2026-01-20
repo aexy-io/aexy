@@ -5666,6 +5666,88 @@ export interface SlackChannelConfigCreate {
   standup_format_hint?: string;
 }
 
+// ============ Analytics Types ============
+
+export interface TeamAnalytics {
+  team_id: string;
+  team_name: string;
+  date_range: { start_date: string; end_date: string };
+  metrics: {
+    total_standups: number;
+    standup_participation_rate: number;
+    total_time_logged: number;
+    avg_time_per_day: number;
+    total_blockers_reported: number;
+    total_blockers_resolved: number;
+    avg_blocker_resolution_hours: number;
+  };
+  trends: {
+    standups_by_day: Array<{ date: string; count: number }>;
+    time_by_day: Array<{ date: string; minutes: number }>;
+    blockers_by_day: Array<{ date: string; reported: number; resolved: number }>;
+  };
+  sentiment_analysis: {
+    average_score: number;
+    trend: number;
+    distribution: { positive: number; neutral: number; negative: number };
+  };
+  member_metrics: Array<{
+    developer_id: string;
+    name: string;
+    avatar_url?: string;
+    standups_submitted: number;
+    time_logged: number;
+    blockers_reported: number;
+    sentiment_avg: number;
+    streak_days: number;
+  }>;
+}
+
+export interface BlockerAnalytics {
+  team_id: string;
+  date_range: { start_date: string; end_date: string };
+  summary: {
+    total_reported: number;
+    total_resolved: number;
+    total_escalated: number;
+    currently_active: number;
+    avg_resolution_time_hours: number;
+    avg_escalation_time_hours: number;
+  };
+  by_severity: Record<string, number>;
+  by_category: Record<string, number>;
+  sla_metrics: {
+    within_sla: number;
+    breached_sla: number;
+    avg_time_to_first_response_hours: number;
+  };
+  trends: {
+    reported_by_day: Array<{ date: string; count: number }>;
+    resolved_by_day: Array<{ date: string; count: number }>;
+    avg_age_by_day: Array<{ date: string; hours: number }>;
+  };
+  top_contributors: Array<{
+    developer_id: string;
+    name: string;
+    reported: number;
+    resolved: number;
+  }>;
+}
+
+export interface TimeReport {
+  date_range: { start_date: string; end_date: string };
+  summary: {
+    total_minutes: number;
+    total_entries: number;
+    avg_per_day: number;
+    days_with_entries: number;
+  };
+  by_project: Array<{ project_id: string; project_name: string; minutes: number; percentage: number }>;
+  by_task: Array<{ task_id: string; task_title: string; minutes: number; percentage: number }>;
+  by_day: Array<{ date: string; minutes: number; entries: number }>;
+  by_week: Array<{ week_start: string; minutes: number; entries: number }>;
+}
+
 // ============ Tracking API ============
 
 export const trackingApi = {
@@ -5767,6 +5849,71 @@ export const trackingApi = {
 
   deleteChannelConfig: async (configId: string): Promise<void> => {
     await api.delete(`/tracking/channels/${configId}`);
+  },
+
+  // Analytics
+  getTeamAnalytics: async (
+    teamId: string,
+    options?: { start_date?: string; end_date?: string }
+  ): Promise<TeamAnalytics> => {
+    const response = await api.get(`/tracking/analytics/team/${teamId}`, { params: options });
+    return response.data;
+  },
+
+  getBlockerAnalytics: async (
+    teamId: string,
+    options?: { start_date?: string; end_date?: string }
+  ): Promise<BlockerAnalytics> => {
+    const response = await api.get(`/tracking/analytics/blockers/${teamId}`, { params: options });
+    return response.data;
+  },
+
+  getTimeReport: async (options?: {
+    start_date?: string;
+    end_date?: string;
+    group_by?: "day" | "week" | "project" | "task";
+  }): Promise<TimeReport> => {
+    const response = await api.get("/tracking/time/report", { params: options });
+    return response.data;
+  },
+
+  // Export endpoints
+  exportStandups: async (options: {
+    start_date: string;
+    end_date: string;
+    format: "csv" | "pdf" | "json";
+    team_id?: string;
+  }): Promise<Blob> => {
+    const response = await api.get("/tracking/export/standups", {
+      params: options,
+      responseType: "blob",
+    });
+    return response.data;
+  },
+
+  exportTimesheet: async (options: {
+    start_date: string;
+    end_date: string;
+    format: "csv" | "pdf" | "json";
+  }): Promise<Blob> => {
+    const response = await api.get("/tracking/export/timesheet", {
+      params: options,
+      responseType: "blob",
+    });
+    return response.data;
+  },
+
+  exportBlockers: async (options: {
+    start_date: string;
+    end_date: string;
+    format: "csv" | "pdf" | "json";
+    team_id?: string;
+  }): Promise<Blob> => {
+    const response = await api.get("/tracking/export/blockers", {
+      params: options,
+      responseType: "blob",
+    });
+    return response.data;
   },
 };
 
@@ -9761,7 +9908,7 @@ export const releasesApi = {
 // ============ OKR Goals Types ============
 
 export type OKRGoalType = "objective" | "key_result" | "initiative";
-export type OKRGoalStatus = "draft" | "active" | "on_track" | "at_risk" | "behind" | "achieved" | "cancelled";
+export type OKRGoalStatus = "not_started" | "draft" | "active" | "on_track" | "at_risk" | "behind" | "achieved" | "missed" | "cancelled";
 export type OKRPeriodType = "quarter" | "year" | "half_year" | "custom";
 export type OKRMetricType = "percentage" | "number" | "currency" | "boolean";
 
@@ -9796,8 +9943,8 @@ export interface OKRGoalCreate {
   parent_goal_id?: string;
   owner_id?: string;
   period_type?: OKRPeriodType;
-  period_start?: string;
-  period_end?: string;
+  start_date: string;  // Required: YYYY-MM-DD format
+  end_date: string;    // Required: YYYY-MM-DD format
   metric_type?: OKRMetricType;
   target_value?: number;
   starting_value?: number;
@@ -9808,12 +9955,13 @@ export interface OKRGoalUpdate {
   title?: string;
   description?: string;
   owner_id?: string;
-  period_start?: string;
-  period_end?: string;
+  start_date?: string;
+  end_date?: string;
   target_value?: number;
   unit?: string;
   status?: OKRGoalStatus;
   confidence_level?: number;
+  comment?: string;  // Optional comment for activity timeline
 }
 
 export interface OKRProgressUpdate {
@@ -9836,7 +9984,9 @@ export const okrGoalsApi = {
     }
   ): Promise<{ items: OKRGoal[]; total: number }> => {
     const response = await api.get(`/workspaces/${workspaceId}/goals`, { params });
-    return response.data;
+    // Backend returns an array, transform to expected format
+    const items = Array.isArray(response.data) ? response.data : response.data.items || [];
+    return { items, total: items.length };
   },
 
   get: async (workspaceId: string, goalId: string): Promise<OKRGoal> => {
@@ -9860,8 +10010,12 @@ export const okrGoalsApi = {
 
   // Key Results
   getKeyResults: async (workspaceId: string, goalId: string): Promise<{ items: OKRGoal[]; total: number }> => {
-    const response = await api.get(`/workspaces/${workspaceId}/goals/${goalId}/key-results`);
-    return response.data;
+    const response = await api.get(`/workspaces/${workspaceId}/goals`, {
+      params: { parent_goal_id: goalId, goal_type: 'key_result' }
+    });
+    // Backend returns an array, transform to expected format
+    const items = Array.isArray(response.data) ? response.data : response.data.items || [];
+    return { items, total: items.length };
   },
 
   addKeyResult: async (workspaceId: string, goalId: string, data: OKRGoalCreate): Promise<OKRGoal> => {
@@ -9905,7 +10059,130 @@ export const okrGoalsApi = {
     };
   }> => {
     const response = await api.get(`/workspaces/${workspaceId}/goals/dashboard`);
+    const data = response.data;
+    // Transform backend response to expected format
+    return {
+      objectives: data.objectives || [],
+      summary: {
+        total_objectives: data.total_objectives || 0,
+        on_track: data.on_track_count || 0,
+        at_risk: data.at_risk_count || 0,
+        behind: data.behind_count || 0,
+        achieved: data.achieved_count || 0,
+        average_progress: data.avg_progress || 0,
+      },
+    };
+  },
+};
+
+// ============ Entity Activity Types ============
+
+export type EntityActivityType = "goal" | "task" | "backlog" | "story" | "release" | "roadmap" | "epic" | "bug";
+export type ActivityActionType = "created" | "updated" | "comment" | "status_changed" | "assigned" | "progress_updated" | "linked" | "unlinked";
+
+export interface ActorInfo {
+  id: string;
+  name?: string;
+  email?: string;
+  avatar_url?: string;
+}
+
+export interface EntityActivity {
+  id: string;
+  workspace_id: string;
+  entity_type: EntityActivityType;
+  entity_id: string;
+  activity_type: ActivityActionType;
+  actor_id?: string;
+  actor_name?: string;
+  actor_email?: string;
+  actor_avatar_url?: string;
+  title?: string;
+  content?: string;
+  changes?: Record<string, { old?: string; new?: string }>;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface TimelineEntry {
+  id: string;
+  activity_type: ActivityActionType;
+  actor?: ActorInfo;
+  title?: string;
+  content?: string;
+  changes?: Record<string, { old?: string; new?: string }>;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  display_text?: string;
+  icon?: string;
+}
+
+export interface EntityActivityListResponse {
+  items: EntityActivity[];
+  total: number;
+  has_more: boolean;
+}
+
+export interface TimelineResponse {
+  entity_type: EntityActivityType;
+  entity_id: string;
+  entries: TimelineEntry[];
+  total: number;
+}
+
+export interface EntityCommentCreate {
+  content: string;
+}
+
+// Entity Activity API
+export const entityActivityApi = {
+  // List activities for a workspace
+  list: async (
+    workspaceId: string,
+    params?: {
+      entity_type?: EntityActivityType;
+      entity_id?: string;
+      activity_type?: ActivityActionType;
+      actor_id?: string;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<EntityActivityListResponse> => {
+    const response = await api.get(`/workspaces/${workspaceId}/activities`, { params });
     return response.data;
+  },
+
+  // Get timeline for a specific entity
+  getTimeline: async (
+    workspaceId: string,
+    entityType: EntityActivityType,
+    entityId: string,
+    params?: { limit?: number; offset?: number }
+  ): Promise<TimelineResponse> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/activities/timeline/${entityType}/${entityId}`,
+      { params }
+    );
+    return response.data;
+  },
+
+  // Add a comment to an entity
+  addComment: async (
+    workspaceId: string,
+    entityType: EntityActivityType,
+    entityId: string,
+    content: string
+  ): Promise<EntityActivity> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/activities/${entityType}/${entityId}/comment`,
+      { content }
+    );
+    return response.data;
+  },
+
+  // Delete a comment (only own comments)
+  deleteComment: async (workspaceId: string, activityId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/activities/${activityId}`);
   },
 };
 
