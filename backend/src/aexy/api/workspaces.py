@@ -298,6 +298,11 @@ async def invite_member(
     If the user exists, they are added as a pending member.
     If the user doesn't exist, a pending invitation is created.
     """
+    import logging
+    from aexy.services.email_service import EmailService
+    from aexy.core.config import settings
+
+    logger = logging.getLogger(__name__)
     service = WorkspaceService(db)
     dev_service = DeveloperService(db)
 
@@ -306,6 +311,10 @@ async def invite_member(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin permission required",
         )
+
+    # Get workspace name for email
+    workspace = await service.get_workspace(workspace_id)
+    workspace_name = workspace.name if workspace else "the workspace"
 
     # Find developer by email
     developer = await dev_service.get_by_email(data.email)
@@ -322,6 +331,52 @@ async def invite_member(
             )
             await db.commit()
             await db.refresh(member)
+
+            # Send email notification to existing user
+            try:
+                email_service = EmailService()
+                if email_service.is_configured:
+                    workspace_url = f"{settings.frontend_url}/dashboard"
+                    subject = f"You've been invited to join {workspace_name} on Aexy"
+                    body_text = f"""
+Hi,
+
+{current_user.name or current_user.email} has invited you to join {workspace_name} on Aexy.
+
+You can access the workspace from your dashboard:
+{workspace_url}
+
+Best,
+The Aexy Team
+                    """.strip()
+
+                    body_html = f"""
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #1f2937;">You've been invited to join {workspace_name}</h2>
+    <p style="color: #4b5563;">{current_user.name or current_user.email} has invited you to join {workspace_name} on Aexy.</p>
+    <p style="margin: 24px 0;">
+        <a href="{workspace_url}" style="background-color: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+            Go to Dashboard
+        </a>
+    </p>
+    <p style="color: #9ca3af; font-size: 12px; margin-top: 32px;">If you didn't expect this invitation, you can safely ignore this email.</p>
+</div>
+                    """.strip()
+
+                    await email_service.send_templated_email(
+                        db=db,
+                        recipient_email=data.email,
+                        subject=subject,
+                        body_text=body_text,
+                        body_html=body_html,
+                    )
+                    logger.info(f"Sent invite email to existing user {data.email} for workspace {workspace_id}")
+                else:
+                    logger.warning(f"Email service not configured, skipping invite email to {data.email}")
+            except Exception as e:
+                logger.error(f"Failed to send invite email to {data.email}: {e}")
+                # Don't fail the request if email fails
+
             return WorkspaceInviteResult(
                 type="member",
                 member=member_to_response(member),
@@ -343,10 +398,61 @@ async def invite_member(
             )
             await db.commit()
             await db.refresh(pending_invite)
+
+            # Send invite email
+            try:
+                email_service = EmailService()
+                if email_service.is_configured:
+                    invite_url = f"{settings.frontend_url}/invite/{pending_invite.token}"
+                    subject = f"You've been invited to join {workspace_name} on Aexy"
+                    body_text = f"""
+Hi,
+
+{current_user.name or current_user.email} has invited you to join {workspace_name} on Aexy.
+
+Click the link below to accept the invitation:
+{invite_url}
+
+This invitation will expire on {pending_invite.expires_at.strftime('%B %d, %Y')}.
+
+If you didn't expect this invitation, you can safely ignore this email.
+
+Best,
+The Aexy Team
+                    """.strip()
+
+                    body_html = f"""
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #1f2937;">You've been invited to join {workspace_name}</h2>
+    <p style="color: #4b5563;">{current_user.name or current_user.email} has invited you to join {workspace_name} on Aexy.</p>
+    <p style="margin: 24px 0;">
+        <a href="{invite_url}" style="background-color: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+            Accept Invitation
+        </a>
+    </p>
+    <p style="color: #6b7280; font-size: 14px;">This invitation will expire on {pending_invite.expires_at.strftime('%B %d, %Y')}.</p>
+    <p style="color: #9ca3af; font-size: 12px; margin-top: 32px;">If you didn't expect this invitation, you can safely ignore this email.</p>
+</div>
+                    """.strip()
+
+                    await email_service.send_templated_email(
+                        db=db,
+                        recipient_email=data.email,
+                        subject=subject,
+                        body_text=body_text,
+                        body_html=body_html,
+                    )
+                    logger.info(f"Sent invite email to {data.email} for workspace {workspace_id}")
+                else:
+                    logger.warning(f"Email service not configured, skipping invite email to {data.email}")
+            except Exception as e:
+                logger.error(f"Failed to send invite email to {data.email}: {e}")
+                # Don't fail the request if email fails
+
             return WorkspaceInviteResult(
                 type="pending_invite",
                 pending_invite=pending_invite_to_response(pending_invite),
-                message=f"Invitation created for {data.email}. They will be added when they sign up.",
+                message=f"Invitation sent to {data.email}. They will be added when they sign up.",
             )
         except ValueError as e:
             raise HTTPException(

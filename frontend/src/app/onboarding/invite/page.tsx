@@ -10,9 +10,11 @@ import {
   X,
   Plus,
   UserPlus,
+  Loader2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useOnboarding } from "../OnboardingContext";
+import { workspaceApi } from "@/lib/api";
 
 export default function InviteTeam() {
   const router = useRouter();
@@ -20,6 +22,8 @@ export default function InviteTeam() {
   const [email, setEmail] = useState("");
   const [emails, setEmails] = useState<string[]>(data.invitedEmails);
   const [error, setError] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
+  const [sentCount, setSentCount] = useState(0);
 
   useEffect(() => {
     setCurrentStep(6);
@@ -65,10 +69,25 @@ export default function InviteTeam() {
   const handleContinue = async () => {
     updateData({ invitedEmails: emails });
 
-    // TODO: Actually send invites via API
-    // for (const email of emails) {
-    //   await workspaceApi.inviteMember(email);
-    // }
+    // Send invites if we have a workspace and emails
+    if (data.workspace.id && emails.length > 0) {
+      setIsSending(true);
+      setSentCount(0);
+
+      try {
+        for (const inviteEmail of emails) {
+          try {
+            await workspaceApi.inviteMember(data.workspace.id, inviteEmail, "member");
+            setSentCount((prev) => prev + 1);
+          } catch {
+            // Continue with other emails even if one fails
+            console.error(`Failed to invite ${inviteEmail}`);
+          }
+        }
+      } finally {
+        setIsSending(false);
+      }
+    }
 
     router.push("/onboarding/complete");
   };
@@ -220,10 +239,25 @@ export default function InviteTeam() {
             </button>
             <button
               onClick={handleContinue}
-              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white font-medium hover:from-primary-600 hover:to-primary-700 transition-all shadow-lg shadow-primary-500/25"
+              disabled={isSending}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white font-medium hover:from-primary-600 hover:to-primary-700 transition-all shadow-lg shadow-primary-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {emails.length > 0 ? `Send ${emails.length} Invite${emails.length !== 1 ? "s" : ""}` : "Continue"}
-              <ArrowRight className="w-4 h-4" />
+              {isSending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Sending {sentCount}/{emails.length}...
+                </>
+              ) : emails.length > 0 ? (
+                <>
+                  Send {emails.length} Invite{emails.length !== 1 ? "s" : ""}
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              ) : (
+                <>
+                  Continue
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </div>
         </div>
