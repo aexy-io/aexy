@@ -12,8 +12,11 @@ import {
   Copy,
   CheckCircle2,
   Users,
+  Loader2,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { workspaceApi } from "@/lib/api";
+import { useWorkspace } from "@/hooks/useWorkspace";
 
 interface TeamMember {
   email: string;
@@ -22,12 +25,17 @@ interface TeamMember {
 
 export default function InviteTeam() {
   const router = useRouter();
+  const { currentWorkspace } = useWorkspace();
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
     { email: "", role: "member" },
   ]);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [sentCount, setSentCount] = useState(0);
 
-  const inviteLink = "https://aexy.app/invite/crm-abc123";
+  const inviteLink = currentWorkspace
+    ? `https://aexy.io/invite/${currentWorkspace.id}`
+    : "https://aexy.io/invite/...";
 
   const addMember = () => {
     setTeamMembers([...teamMembers, { email: "", role: "member" }]);
@@ -49,10 +57,31 @@ export default function InviteTeam() {
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     // Filter out empty emails
     const validMembers = teamMembers.filter(m => m.email.trim() !== "");
     localStorage.setItem("crm_onboarding_invites", JSON.stringify(validMembers));
+
+    // Send invites if we have a workspace and valid members
+    if (currentWorkspace && validMembers.length > 0) {
+      setIsSending(true);
+      setSentCount(0);
+
+      try {
+        for (const member of validMembers) {
+          try {
+            await workspaceApi.inviteMember(currentWorkspace.id, member.email, member.role);
+            setSentCount((prev) => prev + 1);
+          } catch {
+            // Continue with other emails even if one fails
+            console.error(`Failed to invite ${member.email}`);
+          }
+        }
+      } finally {
+        setIsSending(false);
+      }
+    }
+
     router.push("/crm/onboarding/complete");
   };
 
@@ -217,10 +246,25 @@ export default function InviteTeam() {
             </button>
             <button
               onClick={handleComplete}
-              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 text-white font-medium hover:from-purple-600 hover:to-purple-700 transition-all shadow-lg shadow-purple-500/25"
+              disabled={isSending}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 text-white font-medium hover:from-purple-600 hover:to-purple-700 transition-all shadow-lg shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {hasValidEmails ? "Send Invites & Finish" : "Finish Setup"}
-              <ArrowRight className="w-4 h-4" />
+              {isSending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Sending {sentCount}/{teamMembers.filter(m => m.email.trim() !== "").length}...
+                </>
+              ) : hasValidEmails ? (
+                <>
+                  Send Invites & Finish
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              ) : (
+                <>
+                  Finish Setup
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </div>
         </div>
