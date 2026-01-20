@@ -23,7 +23,7 @@ from aexy.api.slack import router as slack_router
 from aexy.api.repositories import router as repositories_router
 from aexy.api.billing import router as billing_router
 # Organization & Team Management
-from aexy.api.workspaces import router as workspaces_router
+from aexy.api.workspaces import router as workspaces_router, invites_router
 from aexy.api.workspace_teams import router as workspace_teams_router
 # Sprint Planning
 from aexy.api.sprints import router as sprints_router
@@ -135,6 +135,7 @@ api_router.include_router(repositories_router, tags=["repositories"])
 api_router.include_router(billing_router, tags=["billing"])
 # Organization & Team Management
 api_router.include_router(workspaces_router, tags=["workspaces"])
+api_router.include_router(invites_router, tags=["invites"])
 api_router.include_router(workspace_teams_router, tags=["workspace-teams"])
 # Sprint Planning
 api_router.include_router(sprints_router, tags=["sprints"])

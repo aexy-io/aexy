@@ -469,7 +469,10 @@ class WorkspaceService:
                 WorkspacePendingInvite.token == token,
                 WorkspacePendingInvite.status == "pending",
             )
-            .options(selectinload(WorkspacePendingInvite.workspace))
+            .options(
+                selectinload(WorkspacePendingInvite.workspace),
+                selectinload(WorkspacePendingInvite.invited_by),
+            )
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()

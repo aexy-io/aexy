@@ -132,6 +132,30 @@ class WorkspaceInviteResult(BaseModel):
     message: str | None = None
 
 
+class InviteInfoResponse(BaseModel):
+    """Public schema for invite info - returned without authentication."""
+
+    workspace_name: str
+    workspace_slug: str
+    invited_by_name: str | None = None
+    invited_by_email: str | None = None
+    email: str
+    role: str
+    expires_at: datetime | None = None
+    is_expired: bool = False
+    is_valid: bool = True
+
+
+class AcceptInviteResponse(BaseModel):
+    """Schema for accept invite response."""
+
+    success: bool
+    workspace_id: str
+    workspace_name: str
+    workspace_slug: str
+    message: str
+
+
 # App Permissions Schemas
 class WorkspaceAppSettings(BaseModel):
     """Schema for workspace-level app settings."""

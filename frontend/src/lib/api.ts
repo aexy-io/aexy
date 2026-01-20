@@ -1733,6 +1733,26 @@ export interface WorkspaceInviteResult {
   message: string | null;
 }
 
+export interface InviteInfo {
+  workspace_name: string;
+  workspace_slug: string;
+  invited_by_name: string | null;
+  invited_by_email: string | null;
+  email: string;
+  role: string;
+  expires_at: string | null;
+  is_expired: boolean;
+  is_valid: boolean;
+}
+
+export interface AcceptInviteResponse {
+  success: boolean;
+  workspace_id: string;
+  workspace_name: string;
+  workspace_slug: string;
+  message: string;
+}
+
 export interface WorkspaceAppSettings {
   hiring: boolean;
   tracking: boolean;
@@ -2169,6 +2189,17 @@ export const workspaceApi = {
 
   resendPendingInvite: async (workspaceId: string, inviteId: string): Promise<WorkspacePendingInvite> => {
     const response = await api.post(`/workspaces/${workspaceId}/invites/${inviteId}/resend`);
+    return response.data;
+  },
+
+  // Invite Token (for accepting invites via email link)
+  getInviteInfo: async (token: string): Promise<InviteInfo> => {
+    const response = await api.get(`/invites/${token}`);
+    return response.data;
+  },
+
+  acceptInvite: async (token: string): Promise<AcceptInviteResponse> => {
+    const response = await api.post(`/invites/${token}/accept`);
     return response.data;
   },
 

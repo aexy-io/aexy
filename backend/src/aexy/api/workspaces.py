@@ -1,5 +1,7 @@
 """Workspace API endpoints."""
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,11 +23,14 @@ from aexy.schemas.workspace import (
     WorkspaceAppSettingsUpdate,
     WorkspaceBillingStatus,
     GitHubOrgLink,
+    InviteInfoResponse,
+    AcceptInviteResponse,
 )
 from aexy.services.workspace_service import WorkspaceService
 from aexy.services.developer_service import DeveloperService
 
 router = APIRouter(prefix="/workspaces", tags=["Workspaces"])
+invites_router = APIRouter(prefix="/invites", tags=["Invites"])
 
 
 def workspace_to_response(workspace, member_count: int = 0, team_count: int = 0) -> WorkspaceResponse:
@@ -730,19 +735,10 @@ async def resend_pending_invite(
 ):
     """Resend a pending invite by extending its expiry date and sending email."""
     import logging
-    import os
     from aexy.services.email_service import EmailService
     from aexy.core.config import settings
 
     logger = logging.getLogger(__name__)
-
-    # Debug: Log the raw environment variable and settings value
-    env_provider = os.environ.get("EMAIL_PROVIDER", "NOT_SET")
-    settings_provider = settings.email_provider
-    print(f"DEBUG EMAIL: env EMAIL_PROVIDER={env_provider}, settings.email_provider={settings_provider}")
-    print(f"DEBUG SMTP: host={settings.smtp_host}, port={settings.smtp_port}, sender={settings.smtp_sender_email}")
-    logger.warning(f"EMAIL DEBUG: env={env_provider}, settings={settings_provider}, smtp_host={settings.smtp_host}")
-
     service = WorkspaceService(db)
 
     if not await service.check_permission(workspace_id, str(current_user.id), "admin"):
@@ -927,4 +923,102 @@ async def get_member_effective_permissions(
 
     return service.get_effective_app_permissions(
         workspace_settings, member.app_permissions
+    )
+
+
+# =============================================================================
+# Invite Token Endpoints (Public routes for accepting invites)
+# =============================================================================
+
+
+@invites_router.get("/{token}", response_model=InviteInfoResponse)
+async def get_invite_info(
+    token: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get invite information by token (public endpoint - no auth required)."""
+    service = WorkspaceService(db)
+    invite = await service.get_pending_invite_by_token(token)
+
+    if not invite:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invite not found or has already been used",
+        )
+
+    # Check if expired
+    is_expired = False
+    if invite.expires_at and invite.expires_at < datetime.now(timezone.utc):
+        is_expired = True
+
+    # Get inviter info
+    invited_by_name = None
+    invited_by_email = None
+    if invite.invited_by:
+        invited_by_name = invite.invited_by.name
+        invited_by_email = invite.invited_by.email
+
+    return InviteInfoResponse(
+        workspace_name=invite.workspace.name,
+        workspace_slug=invite.workspace.slug,
+        invited_by_name=invited_by_name,
+        invited_by_email=invited_by_email,
+        email=invite.email,
+        role=invite.role,
+        expires_at=invite.expires_at,
+        is_expired=is_expired,
+        is_valid=not is_expired,
+    )
+
+
+@invites_router.post("/{token}/accept", response_model=AcceptInviteResponse)
+async def accept_invite(
+    token: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Accept a workspace invite (requires authentication)."""
+    service = WorkspaceService(db)
+
+    # Get invite first to validate
+    invite = await service.get_pending_invite_by_token(token)
+    if not invite:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invite not found or has already been used",
+        )
+
+    # Check if the invite email matches the current user
+    if invite.email.lower() != current_user.email.lower():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"This invite was sent to {invite.email}. Please sign in with that email address.",
+        )
+
+    # Check if already a member
+    existing_member = await service.get_member(
+        str(invite.workspace_id), str(current_user.id)
+    )
+    if existing_member:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You are already a member of this workspace",
+        )
+
+    # Accept the invite
+    member = await service.accept_pending_invite(token, str(current_user.id))
+    if not member:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to accept invite. The invite may have expired.",
+        )
+
+    await db.commit()
+
+    return AcceptInviteResponse(
+        success=True,
+        workspace_id=str(invite.workspace_id),
+        workspace_name=invite.workspace.name,
+        workspace_slug=invite.workspace.slug,
+        message=f"Successfully joined {invite.workspace.name}",
     )
