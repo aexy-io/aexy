@@ -638,7 +638,7 @@ async def generate_questions(
         get_sample_questions,
     )
     from aexy.models.assessment import AssessmentTopic
-    from aexy.models.organization import Organization
+    from aexy.models.repository import Organization
 
     # Get topic information
     topic_stmt = select(AssessmentTopic).where(AssessmentTopic.id == data.topic_id)
