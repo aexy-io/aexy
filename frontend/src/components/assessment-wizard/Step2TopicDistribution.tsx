@@ -277,14 +277,60 @@ export default function Step2TopicDistribution({
     }
 
     setIsGeneratingAll(true);
-    setGenerationProgress({ current: 0, total: topicsToGenerate.length, currentTopic: "" });
+    setGenerationProgress({ current: 0, total: topicsToGenerate.length, currentTopic: "Saving topics..." });
 
     try {
-      for (let i = 0; i < topicsToGenerate.length; i++) {
-        const topic = topicsToGenerate[i];
-        setGenerationProgress({ current: i + 1, total: topicsToGenerate.length, currentTopic: topic.topic });
+      // First, save all topics to the database to get proper database IDs
+      const topicConfigs: TopicConfig[] = topics.map((t) => {
+        const questionTypesObj = {
+          code: t.question_types.includes("code") ? Math.ceil(t.question_count / t.question_types.length) : 0,
+          mcq: t.question_types.includes("mcq") ? Math.ceil(t.question_count / t.question_types.length) : 0,
+          subjective: t.question_types.includes("subjective") ? Math.ceil(t.question_count / t.question_types.length) : 0,
+          pseudo_code: t.question_types.includes("pseudo_code") ? Math.ceil(t.question_count / t.question_types.length) : 0,
+        };
 
-        // Generate and auto-save for each topic
+        return {
+          id: t.id,
+          topic: t.topic,
+          subtopics: t.subtopics,
+          difficulty_level: t.difficulty_level,
+          question_types: questionTypesObj,
+          estimated_time_minutes: t.duration_minutes,
+          max_score: t.question_count * 10,
+        };
+      });
+
+      // Save topics and get the updated assessment with database IDs
+      const updatedAssessment = await onSave({
+        topics: topicConfigs,
+        enable_ai_generation: enableAIGeneration,
+      });
+
+      // Map local topic names to database IDs
+      const topicNameToDbId: Record<string, string> = {};
+      if (updatedAssessment?.topics) {
+        for (const dbTopic of updatedAssessment.topics) {
+          topicNameToDbId[dbTopic.topic] = dbTopic.id;
+        }
+      }
+
+      // Update local topics with database IDs
+      setTopics(prev => prev.map(t => ({
+        ...t,
+        id: topicNameToDbId[t.topic] || t.id,
+      })));
+
+      // Filter again with updated IDs
+      const topicsWithDbIds = topicsToGenerate.map(t => ({
+        ...t,
+        id: topicNameToDbId[t.topic] || t.id,
+      }));
+
+      for (let i = 0; i < topicsWithDbIds.length; i++) {
+        const topic = topicsWithDbIds[i];
+        setGenerationProgress({ current: i + 1, total: topicsWithDbIds.length, currentTopic: topic.topic });
+
+        // Generate and auto-save for each topic using database ID
         await handleGenerateQuestions(topic, true);
       }
     } catch (error) {
