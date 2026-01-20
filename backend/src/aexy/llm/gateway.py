@@ -3,7 +3,7 @@
 import hashlib
 import logging
 from functools import lru_cache
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,29 +12,127 @@ from aexy.llm.base import (
     AnalysisResult,
     LLMConfig,
     LLMProvider,
+    LLMRateLimitError,
     MatchScore,
     TaskSignals,
 )
+
+if TYPE_CHECKING:
+    from aexy.services.llm_rate_limiter import LLMRateLimiter
 
 logger = logging.getLogger(__name__)
 
 
 class LLMGateway:
-    """Unified gateway for LLM operations with caching and provider abstraction."""
+    """Unified gateway for LLM operations with caching, rate limiting, and provider abstraction."""
 
     def __init__(
         self,
         provider: LLMProvider,
         cache: Any | None = None,  # Will be AnalysisCache when implemented
+        rate_limiter: "LLMRateLimiter | None" = None,
     ) -> None:
         """Initialize the gateway.
 
         Args:
             provider: The LLM provider to use.
             cache: Optional cache for analysis results.
+            rate_limiter: Optional rate limiter for API calls.
         """
         self.provider = provider
         self.cache = cache
+        self._rate_limiter = rate_limiter
+
+    @property
+    def rate_limiter(self) -> "LLMRateLimiter":
+        """Get rate limiter (lazy initialization)."""
+        if self._rate_limiter is None:
+            from aexy.services.llm_rate_limiter import get_llm_rate_limiter
+            self._rate_limiter = get_llm_rate_limiter()
+        return self._rate_limiter
+
+    async def _check_rate_limit(
+        self,
+        tokens_estimate: int = 1000,
+        workspace_id: str | None = None,
+        developer_id: str | None = None,
+    ) -> None:
+        """Check rate limit and raise if exceeded.
+
+        Args:
+            tokens_estimate: Estimated tokens for this request.
+            workspace_id: Optional workspace ID for workspace-level limits.
+            developer_id: Optional developer ID for developer-level limits.
+
+        Raises:
+            LLMRateLimitError: If rate limit is exceeded.
+        """
+        result = await self.rate_limiter.check_rate_limit(
+            self.provider.provider_name,
+            tokens_estimate=tokens_estimate,
+            workspace_id=workspace_id,
+            developer_id=developer_id,
+        )
+
+        if not result.allowed:
+            raise LLMRateLimitError(
+                message=result.reason or "Rate limit exceeded",
+                retry_after=result.retry_after,
+                wait_seconds=result.wait_seconds,
+            )
+
+    async def _record_rate_limit_usage(
+        self,
+        tokens_used: int,
+        workspace_id: str | None = None,
+        developer_id: str | None = None,
+    ) -> None:
+        """Record usage for rate limiting.
+
+        Args:
+            tokens_used: Number of tokens used.
+            workspace_id: Optional workspace ID for workspace-level tracking.
+            developer_id: Optional developer ID for developer-level tracking.
+        """
+        await self.rate_limiter.record_request(
+            self.provider.provider_name,
+            tokens_used=tokens_used,
+            workspace_id=workspace_id,
+            developer_id=developer_id,
+        )
+
+    async def get_rate_limit_status(
+        self,
+        workspace_id: str | None = None,
+        developer_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Get current rate limit status for the provider.
+
+        Args:
+            workspace_id: Optional workspace ID for workspace-level status.
+            developer_id: Optional developer ID for developer-level status.
+
+        Returns:
+            Dict with rate limit status information.
+        """
+        status = await self.rate_limiter.get_status(
+            self.provider.provider_name,
+            workspace_id=workspace_id,
+            developer_id=developer_id,
+        )
+        return {
+            "provider": status.provider,
+            "is_limited": status.is_limited,
+            "requests_remaining_minute": status.requests_remaining_minute,
+            "requests_remaining_day": status.requests_remaining_day,
+            "tokens_remaining_minute": status.tokens_remaining_minute,
+            "reset_at_minute": status.reset_at_minute.isoformat(),
+            "reset_at_day": status.reset_at_day.isoformat(),
+            "wait_seconds": status.wait_seconds,
+            "workspace_id": status.workspace_id,
+            "developer_id": status.developer_id,
+            "source": status.source,
+        }
 
     async def _record_usage(
         self,
@@ -92,8 +190,10 @@ class LLMGateway:
         cache_ttl: int = 86400,
         db: AsyncSession | None = None,
         developer_id: str | None = None,
+        skip_rate_limit: bool = False,
+        workspace_id: str | None = None,
     ) -> AnalysisResult:
-        """Analyze content with optional caching.
+        """Analyze content with optional caching and rate limiting.
 
         Args:
             request: The analysis request.
@@ -101,12 +201,18 @@ class LLMGateway:
             cache_ttl: Cache TTL in seconds (default 24 hours).
             db: Database session for usage tracking.
             developer_id: Developer ID for billing usage.
+            skip_rate_limit: Skip rate limit check (for internal/priority requests).
+            workspace_id: Optional workspace ID for workspace-level rate limiting.
 
         Returns:
             Analysis result.
+
+        Raises:
+            LLMRateLimitError: If rate limit is exceeded.
         """
         cache_key = None
 
+        # Check cache first (no rate limit cost)
         if use_cache and self.cache:
             cache_key = self._hash_content(
                 f"{request.analysis_type}:{request.content}"
@@ -116,7 +222,23 @@ class LLMGateway:
                 logger.debug(f"Cache hit for {cache_key[:16]}...")
                 return cached
 
+        # Check rate limit before making request
+        if not skip_rate_limit:
+            await self._check_rate_limit(
+                tokens_estimate=1000,
+                workspace_id=workspace_id,
+                developer_id=developer_id,
+            )
+
         result = await self.provider.analyze(request)
+
+        # Record usage for rate limiting
+        total_tokens = result.input_tokens + result.output_tokens
+        await self._record_rate_limit_usage(
+            total_tokens,
+            workspace_id=workspace_id,
+            developer_id=developer_id,
+        )
 
         # Track usage for billing
         await self._record_usage(
@@ -138,6 +260,7 @@ class LLMGateway:
         use_cache: bool = True,
         db: AsyncSession | None = None,
         developer_id: str | None = None,
+        workspace_id: str | None = None,
     ) -> list[AnalysisResult]:
         """Analyze multiple requests.
 
@@ -146,6 +269,7 @@ class LLMGateway:
             use_cache: Whether to use caching.
             db: Database session for usage tracking.
             developer_id: Developer ID for billing usage.
+            workspace_id: Optional workspace ID for workspace-level rate limiting.
 
         Returns:
             List of analysis results.
@@ -157,6 +281,7 @@ class LLMGateway:
                 use_cache=use_cache,
                 db=db,
                 developer_id=developer_id,
+                workspace_id=workspace_id,
             )
             results.append(result)
         return results
@@ -166,6 +291,9 @@ class LLMGateway:
         task_description: str,
         use_cache: bool = True,
         cache_ttl: int = 3600,
+        skip_rate_limit: bool = False,
+        workspace_id: str | None = None,
+        developer_id: str | None = None,
     ) -> TaskSignals:
         """Extract signals from a task description.
 
@@ -173,9 +301,15 @@ class LLMGateway:
             task_description: The task description.
             use_cache: Whether to use caching.
             cache_ttl: Cache TTL in seconds (default 1 hour).
+            skip_rate_limit: Skip rate limit check.
+            workspace_id: Optional workspace ID for workspace-level rate limiting.
+            developer_id: Optional developer ID for developer-level rate limiting.
 
         Returns:
             Extracted task signals.
+
+        Raises:
+            LLMRateLimitError: If rate limit is exceeded.
         """
         cache_key = None
 
@@ -185,10 +319,75 @@ class LLMGateway:
             if cached:
                 return cached
 
+        # Check rate limit
+        if not skip_rate_limit:
+            await self._check_rate_limit(
+                tokens_estimate=500,
+                workspace_id=workspace_id,
+                developer_id=developer_id,
+            )
+
         result = await self.provider.extract_task_signals(task_description)
+
+        # Record usage (estimate ~500 tokens)
+        await self._record_rate_limit_usage(
+            500,
+            workspace_id=workspace_id,
+            developer_id=developer_id,
+        )
 
         if use_cache and self.cache and cache_key:
             await self.cache.set(cache_key, result, ttl=cache_ttl)
+
+        return result
+
+    async def call_llm(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        tokens_estimate: int = 1000,
+        skip_rate_limit: bool = False,
+        workspace_id: str | None = None,
+        developer_id: str | None = None,
+    ) -> tuple[str, int, int, int]:
+        """Call LLM directly with custom prompts and rate limiting.
+
+        This method provides rate-limited access to the underlying provider
+        for use cases like question generation that need custom prompts.
+
+        Args:
+            system_prompt: System prompt for the LLM.
+            user_prompt: User prompt with the actual request.
+            tokens_estimate: Estimated tokens for pre-check.
+            skip_rate_limit: Skip rate limit check.
+            workspace_id: Optional workspace ID for workspace-level rate limiting.
+            developer_id: Optional developer ID for developer-level rate limiting.
+
+        Returns:
+            Tuple of (response_text, total_tokens, input_tokens, output_tokens).
+
+        Raises:
+            LLMRateLimitError: If rate limit is exceeded.
+        """
+        # Check rate limit
+        if not skip_rate_limit:
+            await self._check_rate_limit(
+                tokens_estimate=tokens_estimate,
+                workspace_id=workspace_id,
+                developer_id=developer_id,
+            )
+
+        # Call provider directly
+        result = await self.provider._call_api(system_prompt, user_prompt)
+
+        # Record usage for rate limiting
+        if isinstance(result, tuple) and len(result) >= 2:
+            total_tokens = result[1] if len(result) > 1 else 0
+            await self._record_rate_limit_usage(
+                total_tokens,
+                workspace_id=workspace_id,
+                developer_id=developer_id,
+            )
 
         return result
 

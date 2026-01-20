@@ -15,6 +15,33 @@ class ProcessingMode(str, Enum):
     ON_DEMAND = "on_demand"
 
 
+class ProviderRateLimitSettings(BaseSettings):
+    """Rate limit settings for a single LLM provider."""
+
+    model_config = SettingsConfigDict(extra="ignore")
+
+    requests_per_minute: int = Field(
+        default=60,
+        description="Maximum requests per minute (-1 for unlimited)",
+    )
+    requests_per_day: int = Field(
+        default=1500,
+        description="Maximum requests per day (-1 for unlimited)",
+    )
+    tokens_per_minute: int = Field(
+        default=-1,
+        description="Maximum tokens per minute (-1 for unlimited)",
+    )
+    burst_size: int = Field(
+        default=10,
+        description="Maximum burst requests allowed",
+    )
+    retry_after_seconds: int = Field(
+        default=60,
+        description="Default wait time when rate limited",
+    )
+
+
 class LLMSettings(BaseSettings):
     """LLM provider settings."""
 
@@ -105,6 +132,88 @@ class LLMSettings(BaseSettings):
         default=False,
         description="Enable task matching (Phase 2)",
     )
+
+    # Provider-specific rate limits
+    claude_requests_per_minute: int = Field(
+        default=60,
+        description="Claude requests per minute",
+        validation_alias="CLAUDE_REQUESTS_PER_MINUTE",
+    )
+    claude_requests_per_day: int = Field(
+        default=-1,
+        description="Claude requests per day (-1 = unlimited)",
+        validation_alias="CLAUDE_REQUESTS_PER_DAY",
+    )
+    claude_tokens_per_minute: int = Field(
+        default=100000,
+        description="Claude tokens per minute",
+        validation_alias="CLAUDE_TOKENS_PER_MINUTE",
+    )
+
+    gemini_requests_per_minute: int = Field(
+        default=60,
+        description="Gemini requests per minute",
+        validation_alias="GEMINI_REQUESTS_PER_MINUTE",
+    )
+    gemini_requests_per_day: int = Field(
+        default=1500,
+        description="Gemini requests per day (free tier)",
+        validation_alias="GEMINI_REQUESTS_PER_DAY",
+    )
+    gemini_tokens_per_minute: int = Field(
+        default=-1,
+        description="Gemini tokens per minute (-1 = unlimited)",
+        validation_alias="GEMINI_TOKENS_PER_MINUTE",
+    )
+
+    ollama_requests_per_minute: int = Field(
+        default=-1,
+        description="Ollama requests per minute (-1 = unlimited, self-hosted)",
+        validation_alias="OLLAMA_REQUESTS_PER_MINUTE",
+    )
+    ollama_requests_per_day: int = Field(
+        default=-1,
+        description="Ollama requests per day (-1 = unlimited)",
+        validation_alias="OLLAMA_REQUESTS_PER_DAY",
+    )
+    ollama_tokens_per_minute: int = Field(
+        default=-1,
+        description="Ollama tokens per minute (-1 = unlimited)",
+        validation_alias="OLLAMA_TOKENS_PER_MINUTE",
+    )
+
+    # Global rate limiting settings
+    rate_limit_enabled: bool = Field(
+        default=True,
+        description="Enable/disable rate limiting globally",
+        validation_alias="RATE_LIMIT_ENABLED",
+    )
+    rate_limit_redis_prefix: str = Field(
+        default="llm:ratelimit:",
+        description="Redis key prefix for rate limit data",
+        validation_alias="RATE_LIMIT_REDIS_PREFIX",
+    )
+
+    def get_provider_rate_limits(self, provider: str) -> ProviderRateLimitSettings:
+        """Get rate limit settings for a specific provider."""
+        limits_map = {
+            "claude": ProviderRateLimitSettings(
+                requests_per_minute=self.claude_requests_per_minute,
+                requests_per_day=self.claude_requests_per_day,
+                tokens_per_minute=self.claude_tokens_per_minute,
+            ),
+            "gemini": ProviderRateLimitSettings(
+                requests_per_minute=self.gemini_requests_per_minute,
+                requests_per_day=self.gemini_requests_per_day,
+                tokens_per_minute=self.gemini_tokens_per_minute,
+            ),
+            "ollama": ProviderRateLimitSettings(
+                requests_per_minute=self.ollama_requests_per_minute,
+                requests_per_day=self.ollama_requests_per_day,
+                tokens_per_minute=self.ollama_tokens_per_minute,
+            ),
+        }
+        return limits_map.get(provider, ProviderRateLimitSettings())
 
 
 class Settings(BaseSettings):

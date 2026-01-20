@@ -32,20 +32,29 @@ logger = logging.getLogger(__name__)
 class QuestionGenerationService:
     """Service for generating assessment questions using AI."""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(
+        self,
+        db: AsyncSession,
+        workspace_id: str | None = None,
+    ):
         self.db = db
         self.gateway = get_llm_gateway()
+        self.workspace_id = workspace_id
 
     async def _call_llm(
         self,
         system_prompt: str,
         user_prompt: str,
+        tokens_estimate: int = 2000,
+        workspace_id: str | None = None,
     ) -> dict[str, Any] | None:
         """Call LLM with prompts and parse JSON response.
 
         Args:
             system_prompt: System prompt for the LLM.
             user_prompt: User prompt with the actual request.
+            tokens_estimate: Estimated tokens for rate limiting.
+            workspace_id: Optional workspace ID for rate limiting (overrides instance default).
 
         Returns:
             Parsed JSON response or None if failed.
@@ -54,13 +63,17 @@ class QuestionGenerationService:
             logger.warning("LLM gateway not available for question generation")
             return None
 
-        try:
-            # Use the provider directly for custom prompts
-            provider = self.gateway.provider
+        # Use provided workspace_id or fall back to instance default
+        ws_id = workspace_id or self.workspace_id
 
-            # Call _call_api with system_prompt and user_prompt
-            # Returns tuple of (response_text, total_tokens, input_tokens, output_tokens)
-            result = await provider._call_api(system_prompt, user_prompt)
+        try:
+            # Use gateway's call_llm method with rate limiting
+            result = await self.gateway.call_llm(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                tokens_estimate=tokens_estimate,
+                workspace_id=ws_id,
+            )
             response_text = result[0] if isinstance(result, tuple) else result
 
             # Parse JSON response - try to extract JSON from the response
@@ -92,7 +105,7 @@ class QuestionGenerationService:
 
         except Exception as e:
             logger.error(f"LLM call failed: {e}")
-            return None
+            raise  # Re-raise to allow rate limit errors to propagate
 
     async def suggest_topics(
         self,
