@@ -205,7 +205,8 @@ async def get_invitation_or_assessment(
     assessment = await get_assessment_by_public_token_or_id(token, db)
     if assessment:
         # Check if public access is enabled
-        if assessment.public_token or assessment.status.value == "active":
+        status_val = assessment.status.value if hasattr(assessment.status, 'value') else assessment.status
+        if assessment.public_token or status_val == "active":
             return None, assessment
 
     raise HTTPException(
@@ -262,7 +263,8 @@ async def get_assessment_info(
     invitation, assessment = await get_invitation_or_assessment(token, db)
 
     # Check if assessment is active
-    if assessment.status.value != "active":
+    status_val = assessment.status.value if hasattr(assessment.status, 'value') else assessment.status
+    if status_val != "active":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="This assessment is not currently active",
@@ -682,10 +684,11 @@ async def complete_assessment(
         import logging
         logging.error(f"Evaluation error: {e}")
 
+    attempt_status = attempt.status.value if hasattr(attempt.status, 'value') else attempt.status
     return CompleteAssessmentResponse(
         attempt_id=str(attempt.id),
         completed_at=attempt.completed_at,
-        status=attempt.status.value,
+        status=attempt_status,
         message="Assessment completed successfully. Results will be available soon.",
     )
 
