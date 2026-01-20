@@ -62,6 +62,8 @@ def bug_to_response(bug: Bug) -> BugResponse:
     return BugResponse(
         id=str(bug.id),
         workspace_id=str(bug.workspace_id),
+        project_id=str(bug.project_id) if bug.project_id else None,
+        project_name=bug.project.name if bug.project else None,
         key=bug.key,
         title=bug.title,
         description=bug.description,
@@ -120,6 +122,8 @@ def bug_to_list_response(bug: Bug) -> BugListResponse:
     return BugListResponse(
         id=str(bug.id),
         workspace_id=str(bug.workspace_id),
+        project_id=str(bug.project_id) if bug.project_id else None,
+        project_name=bug.project.name if bug.project else None,
         key=bug.key,
         title=bug.title,
         severity=bug.severity,
@@ -144,6 +148,7 @@ def bug_to_list_response(bug: Bug) -> BugListResponse:
 @router.get("", response_model=list[BugListResponse])
 async def list_bugs(
     workspace_id: str,
+    project_id: str | None = None,
     status: str | None = None,
     severity: str | None = None,
     priority: str | None = None,
@@ -162,6 +167,9 @@ async def list_bugs(
     await check_workspace_permission(workspace_id, current_user, db, "viewer")
 
     query = select(Bug).where(Bug.workspace_id == workspace_id)
+
+    if project_id:
+        query = query.where(Bug.project_id == project_id)
 
     if status:
         query = query.where(Bug.status == status)
@@ -213,6 +221,7 @@ async def create_bug(
 
     bug = Bug(
         workspace_id=workspace_id,
+        project_id=data.project_id,
         key=key,
         title=data.title,
         description=data.description,
@@ -236,9 +245,11 @@ async def create_bug(
         source_type=data.source_type,
         source_id=data.source_id,
         source_url=data.source_url,
+        is_regression=data.is_regression,
     )
 
     db.add(bug)
+    await db.flush()  # Flush to get the bug.id assigned
 
     activity = BugActivity(
         bug_id=bug.id,
@@ -252,6 +263,98 @@ async def create_bug(
 
     return bug_to_response(bug)
 
+
+# ==================== Statistics (must be before /{bug_id} routes) ====================
+
+@router.get("/stats", response_model=BugStatsResponse)
+async def get_bug_stats(
+    workspace_id: str,
+    project_id: str | None = None,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get bug statistics for the workspace (optionally filtered by project)."""
+    await check_workspace_permission(workspace_id, current_user, db, "viewer")
+
+    # Build base filter
+    base_filter = [Bug.workspace_id == workspace_id]
+    if project_id:
+        base_filter.append(Bug.project_id == project_id)
+
+    # Total counts
+    total_result = await db.execute(
+        select(func.count(Bug.id)).where(*base_filter)
+    )
+    total_bugs = total_result.scalar() or 0
+
+    # By status
+    status_result = await db.execute(
+        select(Bug.status, func.count(Bug.id))
+        .where(*base_filter)
+        .group_by(Bug.status)
+    )
+    by_status = {row[0]: row[1] for row in status_result.all()}
+
+    open_statuses = ["new", "confirmed", "in_progress", "fixed"]
+    open_bugs = sum(by_status.get(s, 0) for s in open_statuses)
+    closed_bugs = by_status.get("closed", 0) + by_status.get("wont_fix", 0)
+
+    # By severity
+    severity_result = await db.execute(
+        select(Bug.severity, func.count(Bug.id))
+        .where(*base_filter, Bug.status.notin_(["closed", "wont_fix"]))
+        .group_by(Bug.severity)
+    )
+    by_severity = {row[0]: row[1] for row in severity_result.all()}
+
+    # By type
+    type_result = await db.execute(
+        select(Bug.bug_type, func.count(Bug.id))
+        .where(*base_filter)
+        .group_by(Bug.bug_type)
+    )
+    by_type = {row[0]: row[1] for row in type_result.all()}
+
+    # Regression count
+    regression_result = await db.execute(
+        select(func.count(Bug.id)).where(
+            *base_filter,
+            Bug.is_regression == True
+        )
+    )
+    regression_count = regression_result.scalar() or 0
+
+    # Average time to fix
+    avg_fix_result = await db.execute(
+        select(func.avg(Bug.time_to_fix_hours)).where(
+            *base_filter,
+            Bug.time_to_fix_hours != None
+        )
+    )
+    avg_time_to_fix = avg_fix_result.scalar()
+
+    return BugStatsResponse(
+        workspace_id=workspace_id,
+        total_bugs=total_bugs,
+        open_bugs=open_bugs,
+        closed_bugs=closed_bugs,
+        new_bugs=by_status.get("new", 0),
+        confirmed_bugs=by_status.get("confirmed", 0),
+        in_progress_bugs=by_status.get("in_progress", 0),
+        fixed_bugs=by_status.get("fixed", 0),
+        verified_bugs=by_status.get("verified", 0),
+        blocker_bugs=by_severity.get("blocker", 0),
+        critical_bugs=by_severity.get("critical", 0),
+        major_bugs=by_severity.get("major", 0),
+        minor_bugs=by_severity.get("minor", 0),
+        trivial_bugs=by_severity.get("trivial", 0),
+        bugs_by_type=by_type,
+        regression_count=regression_count,
+        avg_time_to_fix_hours=avg_time_to_fix,
+    )
+
+
+# ==================== Bug Detail Routes ====================
 
 @router.get("/{bug_id}", response_model=BugResponse)
 async def get_bug(
@@ -555,87 +658,3 @@ async def reopen_bug(
     await db.refresh(bug)
 
     return bug_to_response(bug)
-
-
-# ==================== Statistics ====================
-
-@router.get("/stats", response_model=BugStatsResponse)
-async def get_bug_stats(
-    workspace_id: str,
-    current_user: Developer = Depends(get_current_developer),
-    db: AsyncSession = Depends(get_db),
-):
-    """Get bug statistics for the workspace."""
-    await check_workspace_permission(workspace_id, current_user, db, "viewer")
-
-    # Total counts
-    total_result = await db.execute(
-        select(func.count(Bug.id)).where(Bug.workspace_id == workspace_id)
-    )
-    total_bugs = total_result.scalar() or 0
-
-    # By status
-    status_result = await db.execute(
-        select(Bug.status, func.count(Bug.id))
-        .where(Bug.workspace_id == workspace_id)
-        .group_by(Bug.status)
-    )
-    by_status = {row[0]: row[1] for row in status_result.all()}
-
-    open_statuses = ["new", "confirmed", "in_progress", "fixed"]
-    open_bugs = sum(by_status.get(s, 0) for s in open_statuses)
-    closed_bugs = by_status.get("closed", 0) + by_status.get("wont_fix", 0)
-
-    # By severity
-    severity_result = await db.execute(
-        select(Bug.severity, func.count(Bug.id))
-        .where(Bug.workspace_id == workspace_id, Bug.status.notin_(["closed", "wont_fix"]))
-        .group_by(Bug.severity)
-    )
-    by_severity = {row[0]: row[1] for row in severity_result.all()}
-
-    # By type
-    type_result = await db.execute(
-        select(Bug.bug_type, func.count(Bug.id))
-        .where(Bug.workspace_id == workspace_id)
-        .group_by(Bug.bug_type)
-    )
-    by_type = {row[0]: row[1] for row in type_result.all()}
-
-    # Regression count
-    regression_result = await db.execute(
-        select(func.count(Bug.id)).where(
-            Bug.workspace_id == workspace_id,
-            Bug.is_regression == True
-        )
-    )
-    regression_count = regression_result.scalar() or 0
-
-    # Average time to fix
-    avg_fix_result = await db.execute(
-        select(func.avg(Bug.time_to_fix_hours)).where(
-            Bug.workspace_id == workspace_id,
-            Bug.time_to_fix_hours != None
-        )
-    )
-    avg_time_to_fix = avg_fix_result.scalar()
-
-    return BugStatsResponse(
-        workspace_id=workspace_id,
-        total_bugs=total_bugs,
-        open_bugs=open_bugs,
-        closed_bugs=closed_bugs,
-        new_bugs=by_status.get("new", 0),
-        confirmed_bugs=by_status.get("confirmed", 0),
-        in_progress_bugs=by_status.get("in_progress", 0),
-        fixed_bugs=by_status.get("fixed", 0),
-        verified_bugs=by_status.get("verified", 0),
-        blocker_bugs=by_severity.get("blocker", 0),
-        critical_bugs=by_severity.get("critical", 0),
-        major_bugs=by_severity.get("major", 0),
-        minor_bugs=by_severity.get("minor", 0),
-        trivial_bugs=by_severity.get("trivial", 0),
-        bugs_by_type=by_type,
-        regression_count=regression_count,
-        avg_time_to_fix_hours=avg_time_to_fix,
-    )

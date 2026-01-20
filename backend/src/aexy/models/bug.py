@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from aexy.models.story import UserStory
     from aexy.models.release import Release
     from aexy.models.sprint import SprintTask
+    from aexy.models.project import Project
 
 
 class Bug(Base):
@@ -37,6 +38,12 @@ class Bug(Base):
         UUID(as_uuid=False),
         ForeignKey("workspaces.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
+    )
+    project_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("projects.id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
 
@@ -194,6 +201,11 @@ class Bug(Base):
     workspace: Mapped["Workspace"] = relationship(
         "Workspace",
         lazy="selectin",
+    )
+    project: Mapped["Project | None"] = relationship(
+        "Project",
+        lazy="selectin",
+        foreign_keys=[project_id],
     )
     story: Mapped["UserStory | None"] = relationship(
         "UserStory",

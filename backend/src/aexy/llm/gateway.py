@@ -500,13 +500,25 @@ def create_provider(config: LLMConfig) -> LLMProvider:
         raise ValueError(f"Unsupported LLM provider: {config.provider}")
 
 
-@lru_cache
+_llm_gateway_instance: LLMGateway | None = None
+_llm_gateway_initialized: bool = False
+
+
 def get_llm_gateway() -> LLMGateway | None:
-    """Get the cached LLM gateway instance.
+    """Get the LLM gateway instance.
+
+    Uses lazy initialization and caches successful results.
+    If gateway creation fails, it will retry on next call.
 
     Returns:
         LLM gateway if configured, None otherwise.
     """
+    global _llm_gateway_instance, _llm_gateway_initialized
+
+    # Return cached instance if available
+    if _llm_gateway_initialized and _llm_gateway_instance is not None:
+        return _llm_gateway_instance
+
     from aexy.core.config import get_settings
 
     settings = get_settings()
@@ -552,7 +564,9 @@ def get_llm_gateway() -> LLMGateway | None:
     try:
         provider = create_provider(config)
         # TODO: Add cache when implemented
-        return LLMGateway(provider=provider, cache=None)
+        _llm_gateway_instance = LLMGateway(provider=provider, cache=None)
+        _llm_gateway_initialized = True
+        return _llm_gateway_instance
     except Exception as e:
         logger.error(f"Failed to create LLM provider: {e}")
         return None

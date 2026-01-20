@@ -63,6 +63,7 @@ class BugCreate(BaseModel):
     browser: str | None = Field(default=None, max_length=100)
     os: str | None = Field(default=None, max_length=100)
     device: str | None = Field(default=None, max_length=100)
+    project_id: str | None = None
     story_id: str | None = None
     release_id: str | None = None
     assignee_id: str | None = None
@@ -70,6 +71,7 @@ class BugCreate(BaseModel):
     source_type: BugSourceType = "manual"
     source_id: str | None = None
     source_url: str | None = None
+    is_regression: bool = False
 
 
 class BugUpdate(BaseModel):
@@ -90,6 +92,7 @@ class BugUpdate(BaseModel):
     browser: str | None = Field(default=None, max_length=100)
     os: str | None = Field(default=None, max_length=100)
     device: str | None = Field(default=None, max_length=100)
+    project_id: str | None = None
     story_id: str | None = None
     release_id: str | None = None
     assignee_id: str | None = None
@@ -105,6 +108,8 @@ class BugResponse(BaseModel):
 
     id: str
     workspace_id: str
+    project_id: str | None = None
+    project_name: str | None = None
     key: str
     title: str
     description: str | None = None
@@ -175,6 +180,8 @@ class BugListResponse(BaseModel):
 
     id: str
     workspace_id: str
+    project_id: str | None = None
+    project_name: str | None = None
     key: str
     title: str
     severity: BugSeverity
