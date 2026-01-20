@@ -849,17 +849,30 @@ class AssessmentService:
         errors = []
         issues = []  # Step-specific issues for UI display
 
+        # Count actual questions in the database (not just the metadata field)
+        actual_question_count = await self.db.execute(
+            select(func.count(Question.id)).where(
+                and_(
+                    Question.assessment_id == assessment_id,
+                    Question.deleted_at.is_(None),  # Exclude soft-deleted questions
+                )
+            )
+        )
+        actual_questions = actual_question_count.scalar() or 0
+
         checklist = {
             "has_title": bool(assessment.title),
             "has_job_designation": bool(assessment.job_designation),
             "has_skills": bool(assessment.skills and len(assessment.skills) > 0),
             "has_topics": len(assessment.topics) > 0,
-            "has_questions": assessment.total_questions > 0,
+            "has_questions": actual_questions > 0,
             "has_candidates": len(assessment.invitations) > 0,
             "has_schedule": bool(assessment.schedule and assessment.schedule.get("start_date")),
             "all_steps_complete": all(
                 s == "complete" for s in assessment.wizard_step_status.values()
             ),
+            "actual_question_count": actual_questions,
+            "configured_question_count": assessment.total_questions or 0,
         }
 
         # Step 1: Assessment Details
@@ -878,8 +891,8 @@ class AssessmentService:
             errors.append("At least one topic is required")
             issues.append("[Step 2] Add at least one topic - click 'AI Suggest Topics' or add manually")
         if not checklist["has_questions"]:
-            warnings.append("No questions have been generated yet")
-            issues.append("[Step 2] Generate questions for your topics (optional - will be auto-generated)")
+            errors.append("No questions have been generated")
+            issues.append("[Step 2] Generate questions for your topics before publishing")
 
         # Step 3: Schedule
         if not checklist["has_schedule"]:
