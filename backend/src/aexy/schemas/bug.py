@@ -302,5 +302,38 @@ class BugsBySeverityResponse(BaseModel):
     bugs: list[BugListResponse] = Field(default_factory=list)
 
 
+# ==================== Bug Activity Schemas ====================
+
+BugActivityAction = Literal[
+    "created", "updated", "status_changed", "assigned",
+    "comment", "verified", "reopened"
+]
+
+
+class BugActivityResponse(BaseModel):
+    """Schema for bug activity response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    bug_id: str
+    action: BugActivityAction
+    actor_id: str | None = None
+    actor_name: str | None = None
+    actor_avatar_url: str | None = None
+    field_name: str | None = None
+    old_value: str | None = None
+    new_value: str | None = None
+    comment: str | None = None
+    activity_metadata: dict = Field(default_factory=dict)
+    created_at: datetime
+
+
+class BugCommentCreate(BaseModel):
+    """Schema for creating a comment on a bug."""
+
+    comment: str = Field(..., min_length=1, max_length=10000)
+
+
 # Rebuild model to resolve forward references
 BugDetailResponse.model_rebuild()

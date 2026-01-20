@@ -9992,6 +9992,30 @@ export interface BugUpdate {
   labels?: string[];
 }
 
+export type BugActivityAction =
+  | "created"
+  | "updated"
+  | "status_changed"
+  | "assigned"
+  | "comment"
+  | "verified"
+  | "reopened";
+
+export interface BugActivity {
+  id: string;
+  bug_id: string;
+  action: BugActivityAction;
+  actor_id?: string;
+  actor_name?: string;
+  actor_avatar_url?: string;
+  field_name?: string;
+  old_value?: string;
+  new_value?: string;
+  comment?: string;
+  activity_metadata?: Record<string, unknown>;
+  created_at: string;
+}
+
 // Bugs API
 export const bugsApi = {
   list: async (
@@ -10111,6 +10135,31 @@ export const bugsApi = {
       regressions: data.regression_count || 0,
       avg_resolution_hours: data.avg_time_to_fix_hours,
     };
+  },
+
+  // Activities / Timeline
+  getActivities: async (
+    workspaceId: string,
+    bugId: string,
+    params?: { limit?: number; offset?: number }
+  ): Promise<BugActivity[]> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/bugs/${bugId}/activities`,
+      { params }
+    );
+    return response.data;
+  },
+
+  addComment: async (
+    workspaceId: string,
+    bugId: string,
+    comment: string
+  ): Promise<BugActivity> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/bugs/${bugId}/comments`,
+      { comment }
+    );
+    return response.data;
   },
 };
 

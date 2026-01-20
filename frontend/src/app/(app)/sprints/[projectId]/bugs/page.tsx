@@ -24,6 +24,7 @@ import { useBugs, useBug, useBugStats } from "@/hooks/useBugs";
 import { BugCard } from "@/components/bugs/BugCard";
 import { SeverityBadge } from "@/components/bugs/SeverityBadge";
 import { BugActionDialog } from "@/components/bugs/BugActionDialog";
+import { BugTimeline } from "@/components/bugs/BugTimeline";
 import {
   Bug,
   BugStatus,
@@ -861,6 +862,13 @@ function BugDetailModal({ bug, workspaceId, onClose }: BugDetailModalProps) {
               <p className="text-sm text-white capitalize">{currentBug.priority}</p>
             </div>
           </div>
+
+          {/* Activity Timeline */}
+          {workspaceId && (
+            <div className="pt-4 border-t border-slate-700">
+              <BugTimeline workspaceId={workspaceId} bugId={currentBug.id} />
+            </div>
+          )}
         </div>
       </div>
 

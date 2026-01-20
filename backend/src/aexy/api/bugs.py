@@ -27,6 +27,8 @@ from aexy.schemas.bug import (
     BugsBySeverityResponse,
     ReproductionStep,
     BugAttachment,
+    BugActivityResponse,
+    BugCommentCreate,
 )
 from aexy.services.workspace_service import WorkspaceService
 
@@ -658,3 +660,87 @@ async def reopen_bug(
     await db.refresh(bug)
 
     return bug_to_response(bug)
+
+
+# ==================== Bug Activities ====================
+
+def activity_to_response(activity: BugActivity) -> BugActivityResponse:
+    """Convert BugActivity model to response schema."""
+    return BugActivityResponse(
+        id=str(activity.id),
+        bug_id=str(activity.bug_id),
+        action=activity.action,
+        actor_id=str(activity.actor_id) if activity.actor_id else None,
+        actor_name=activity.actor.name if activity.actor else None,
+        actor_avatar_url=activity.actor.avatar_url if activity.actor else None,
+        field_name=activity.field_name,
+        old_value=activity.old_value,
+        new_value=activity.new_value,
+        comment=activity.comment,
+        activity_metadata=activity.activity_metadata or {},
+        created_at=activity.created_at,
+    )
+
+
+@router.get("/{bug_id}/activities", response_model=list[BugActivityResponse])
+async def get_bug_activities(
+    workspace_id: str,
+    bug_id: str,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get activities (timeline) for a bug."""
+    await check_workspace_permission(workspace_id, current_user, db, "viewer")
+
+    # Verify bug exists and belongs to workspace
+    result = await db.execute(select(Bug).where(Bug.id == bug_id))
+    bug = result.scalar_one_or_none()
+
+    if not bug or str(bug.workspace_id) != workspace_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bug not found")
+
+    # Fetch activities
+    query = (
+        select(BugActivity)
+        .where(BugActivity.bug_id == bug_id)
+        .order_by(BugActivity.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    result = await db.execute(query)
+    activities = result.scalars().all()
+
+    return [activity_to_response(a) for a in activities]
+
+
+@router.post("/{bug_id}/comments", response_model=BugActivityResponse, status_code=status.HTTP_201_CREATED)
+async def add_bug_comment(
+    workspace_id: str,
+    bug_id: str,
+    data: BugCommentCreate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Add a comment to a bug."""
+    await check_workspace_permission(workspace_id, current_user, db, "member")
+
+    # Verify bug exists and belongs to workspace
+    result = await db.execute(select(Bug).where(Bug.id == bug_id))
+    bug = result.scalar_one_or_none()
+
+    if not bug or str(bug.workspace_id) != workspace_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bug not found")
+
+    activity = BugActivity(
+        bug_id=bug_id,
+        action="comment",
+        actor_id=str(current_user.id),
+        comment=data.comment,
+    )
+    db.add(activity)
+    await db.commit()
+    await db.refresh(activity)
+
+    return activity_to_response(activity)
