@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Plus, Trash2, Sparkles, ChevronDown, ChevronUp, Loader2, GripVertical, Wand2, Eye, Check, X, AlertCircle } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Plus, Trash2, Sparkles, ChevronDown, ChevronUp, Loader2, GripVertical, Wand2, Eye, Check, X, AlertCircle, Zap } from "lucide-react";
 import { Assessment, TopicConfig, DifficultyLevel, QuestionType, AssessmentQuestion } from "@/lib/api";
 import { useAssessmentTopics, useAssessmentQuestions } from "@/hooks/useAssessments";
 
@@ -63,9 +63,27 @@ export default function Step2TopicDistribution({
   const [generatedQuestions, setGeneratedQuestions] = useState<Record<string, GeneratedQuestion[]>>({});
   const [savingQuestions, setSavingQuestions] = useState(false);
   const [reviewingTopicId, setReviewingTopicId] = useState<string | null>(null);
+  const [isGeneratingAll, setIsGeneratingAll] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState({ current: 0, total: 0, currentTopic: "" });
 
   const { suggestTopics, isSuggesting } = useAssessmentTopics(assessmentId);
   const { questions: existingQuestions, generateQuestions, createQuestion, isGenerating, refetch: refetchQuestions } = useAssessmentQuestions(assessmentId);
+
+  // Helper to extract short title from generated question
+  const extractTitle = (q: any): string => {
+    // If title exists and is short (less than 60 chars), use it
+    if (q.title && q.title.length < 60) {
+      return q.title;
+    }
+    // Otherwise, extract a short title from problem_statement or question_text
+    const text = q.problem_statement || q.question_text || "";
+    // Take first sentence or first 50 chars
+    const firstSentence = text.split(/[.?!]/)[0];
+    if (firstSentence.length <= 60) {
+      return firstSentence.trim();
+    }
+    return text.substring(0, 50).trim() + "...";
+  };
 
   useEffect(() => {
     if (assessment.topics && assessment.topics.length > 0) {
@@ -188,7 +206,7 @@ export default function Step2TopicDistribution({
     }
   };
 
-  const handleGenerateQuestions = async (topic: TopicRowState) => {
+  const handleGenerateQuestions = async (topic: TopicRowState, autoSave: boolean = false) => {
     setGeneratingTopicId(topic.id);
     try {
       const allQuestions: GeneratedQuestion[] = [];
@@ -207,6 +225,7 @@ export default function Step2TopicDistribution({
         if (result?.questions) {
           const questionsWithSelection = result.questions.map((q: any) => ({
             ...q,
+            title: extractTitle(q),
             question_type: qType as QuestionType,
             difficulty: topic.difficulty_level,
             topic_id: topic.id,
@@ -216,17 +235,64 @@ export default function Step2TopicDistribution({
         }
       }
 
-      setGeneratedQuestions((prev) => ({
-        ...prev,
-        [topic.id]: allQuestions,
-      }));
-
-      // Auto-expand to show review
-      setReviewingTopicId(topic.id);
+      if (autoSave && allQuestions.length > 0) {
+        // Auto-save all questions without review
+        for (const q of allQuestions) {
+          await createQuestion({
+            topic_id: topic.id,
+            question_type: q.question_type,
+            difficulty: q.difficulty,
+            title: q.title || extractTitle(q),
+            problem_statement: q.problem_statement,
+            options: q.options,
+            max_marks: q.question_type === "code" ? 20 : 10,
+            estimated_time_minutes: q.question_type === "code" ? 15 : 5,
+          });
+        }
+        refetchQuestions();
+      } else {
+        setGeneratedQuestions((prev) => ({
+          ...prev,
+          [topic.id]: allQuestions,
+        }));
+        // Auto-expand to show review
+        setReviewingTopicId(topic.id);
+      }
     } catch (error) {
       console.error("Failed to generate questions:", error);
     } finally {
       setGeneratingTopicId(null);
+    }
+  };
+
+  const handleGenerateAllQuestions = async () => {
+    // Filter topics that need questions generated
+    const topicsToGenerate = topics.filter(t => {
+      const existingCount = getQuestionsForTopic(t.id).length;
+      return t.topic && t.question_types.length > 0 && existingCount < t.question_count;
+    });
+
+    if (topicsToGenerate.length === 0) {
+      return;
+    }
+
+    setIsGeneratingAll(true);
+    setGenerationProgress({ current: 0, total: topicsToGenerate.length, currentTopic: "" });
+
+    try {
+      for (let i = 0; i < topicsToGenerate.length; i++) {
+        const topic = topicsToGenerate[i];
+        setGenerationProgress({ current: i + 1, total: topicsToGenerate.length, currentTopic: topic.topic });
+
+        // Generate and auto-save for each topic
+        await handleGenerateQuestions(topic, true);
+      }
+    } catch (error) {
+      console.error("Failed to generate all questions:", error);
+    } finally {
+      setIsGeneratingAll(false);
+      setGenerationProgress({ current: 0, total: 0, currentTopic: "" });
+      refetchQuestions();
     }
   };
 
@@ -249,7 +315,7 @@ export default function Step2TopicDistribution({
           topic_id: topicId,
           question_type: q.question_type,
           difficulty: q.difficulty,
-          title: q.title || q.problem_statement?.substring(0, 100) || "Generated Question",
+          title: q.title || extractTitle(q),
           problem_statement: q.problem_statement,
           options: q.options,
           max_marks: q.question_type === "code" ? 20 : 10,
@@ -349,19 +415,61 @@ export default function Step2TopicDistribution({
             <p className="text-2xl font-bold text-blue-900">{totalDuration} min</p>
           </div>
         </div>
-        <button
-          onClick={handleSuggestTopics}
-          disabled={isSuggesting || !assessment.skills?.length}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-        >
-          {isSuggesting ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Sparkles className="w-4 h-4" />
-          )}
-          AI Suggest Topics
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSuggestTopics}
+            disabled={isSuggesting || !assessment.skills?.length}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {isSuggesting ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Sparkles className="w-4 h-4" />
+            )}
+            AI Suggest Topics
+          </button>
+          <button
+            onClick={handleGenerateAllQuestions}
+            disabled={isGeneratingAll || topics.length === 0 || !topics.some(t => t.topic && t.question_types.length > 0)}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+          >
+            {isGeneratingAll ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Zap className="w-4 h-4" />
+                Generate All Questions
+              </>
+            )}
+          </button>
+        </div>
       </div>
+
+      {/* Generation Progress */}
+      {isGeneratingAll && (
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="font-medium text-purple-800">Generating Questions...</p>
+            <span className="text-sm text-purple-600">
+              {generationProgress.current} / {generationProgress.total} topics
+            </span>
+          </div>
+          <div className="w-full bg-purple-200 rounded-full h-2 mb-2">
+            <div
+              className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${(generationProgress.current / generationProgress.total) * 100}%` }}
+            />
+          </div>
+          {generationProgress.currentTopic && (
+            <p className="text-sm text-purple-600">
+              Currently generating: {generationProgress.currentTopic}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Warning if questions not generated */}
       {topics.length > 0 && totalGeneratedQuestions === 0 && (
@@ -606,9 +714,14 @@ export default function Step2TopicDistribution({
                                     {q.difficulty}
                                   </span>
                                 </div>
-                                <p className="text-sm text-gray-800 line-clamp-2">
-                                  {q.title || q.problem_statement?.substring(0, 150)}
+                                <p className="text-sm font-medium text-gray-900">
+                                  {q.title && q.title.length < 60 ? q.title : extractTitle(q)}
                                 </p>
+                                {q.problem_statement && (
+                                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                    {q.problem_statement.substring(0, 120)}...
+                                  </p>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -671,10 +784,13 @@ export default function Step2TopicDistribution({
                                   }`}>
                                     {q.question_type.toUpperCase()}
                                   </span>
+                                  <span className="text-sm font-medium text-gray-900">
+                                    {q.title || extractTitle(q)}
+                                  </span>
                                 </div>
-                                <p className="text-sm text-gray-800">
-                                  {q.problem_statement?.substring(0, 200)}
-                                  {q.problem_statement && q.problem_statement.length > 200 && '...'}
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {q.problem_statement?.substring(0, 150)}
+                                  {q.problem_statement && q.problem_statement.length > 150 && '...'}
                                 </p>
                                 {q.options && q.options.length > 0 && (
                                   <div className="mt-2 space-y-1">
