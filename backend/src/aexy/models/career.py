@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,6 +12,7 @@ from aexy.core.database import Base
 
 if TYPE_CHECKING:
     from aexy.models.developer import Developer
+    from aexy.models.workspace import Workspace
 
 
 class CareerRole(Base):
@@ -315,10 +316,107 @@ class HiringRequirement(Base):
         onupdate=func.now(),
     )
 
-    # Relationship
+    # Relationships
     target_role: Mapped["CareerRole | None"] = relationship(
         "CareerRole",
         back_populates="hiring_requirements",
+    )
+    candidates: Mapped[list["HiringCandidate"]] = relationship(
+        "HiringCandidate",
+        back_populates="requirement",
+        cascade="all, delete-orphan",
+    )
+
+
+class HiringCandidate(Base):
+    """Candidate in the hiring pipeline."""
+
+    __tablename__ = "hiring_candidates"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        index=True,
+    )
+    requirement_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("hiring_requirements.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # Candidate info
+    name: Mapped[str] = mapped_column(String(255))
+    email: Mapped[str] = mapped_column(String(255), index=True)
+    phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # Role and pipeline
+    role: Mapped[str] = mapped_column(String(255))  # Position applying for
+    stage: Mapped[str] = mapped_column(
+        String(50),
+        default="applied",
+        index=True,
+    )  # applied, screening, assessment, interview, offer, hired, rejected
+
+    # Source tracking
+    source: Mapped[str | None] = mapped_column(String(100), nullable=True)  # LinkedIn, Referral, Direct, Job Board
+    source_details: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    # Evaluation
+    score: Mapped[int | None] = mapped_column(nullable=True)  # Overall score 0-100
+    tags: Mapped[list[str]] = mapped_column(JSONB, default=list)  # Skills, keywords
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Profile links
+    resume_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    linkedin_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    github_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    portfolio_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Additional info
+    current_company: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    current_role: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    experience_years: Mapped[int | None] = mapped_column(nullable=True)
+    location: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Assessment link (if any)
+    assessment_invitation_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        nullable=True,
+    )
+
+    # Custom fields
+    custom_fields: Mapped[dict] = mapped_column(JSONB, default=dict)
+
+    applied_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    # Relationships
+    workspace: Mapped["Workspace"] = relationship("Workspace")
+    requirement: Mapped["HiringRequirement | None"] = relationship(
+        "HiringRequirement",
+        back_populates="candidates",
+    )
+
+    __table_args__ = (
+        # Unique email per workspace
+        UniqueConstraint("workspace_id", "email", name="uq_hiring_candidate_workspace_email"),
     )
 
 

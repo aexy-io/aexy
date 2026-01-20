@@ -30,22 +30,23 @@ import {
   ExternalLink,
   Star,
   Tag,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAssessments } from "@/hooks/useAssessments";
+import { hiringApi, HiringCandidate, HiringCandidateStage } from "@/lib/api";
 
 // Candidate stages
-type CandidateStage = "applied" | "screening" | "assessment" | "interview" | "offer" | "hired" | "rejected";
+type CandidateStage = HiringCandidateStage;
 
 interface Candidate {
   id: string;
   name: string;
   email: string;
-  phone?: string;
+  phone?: string | null;
   role: string;
   stage: CandidateStage;
-  source: string;
-  score?: number;
+  source: string | null;
+  score?: number | null;
   appliedAt: string;
   tags: string[];
   avatarUrl?: string;
@@ -63,17 +64,19 @@ const STAGE_CONFIG: Record<CandidateStage, { label: string; color: string; bgCol
 
 const STAGES_ORDER: CandidateStage[] = ["applied", "screening", "assessment", "interview", "offer", "hired"];
 
-// Mock data - will be replaced with API
-const MOCK_CANDIDATES: Candidate[] = [
-  { id: "1", name: "Sarah Chen", email: "sarah@example.com", phone: "+1 234 567 8901", role: "Senior Frontend Engineer", stage: "interview", source: "LinkedIn", score: 85, appliedAt: "2024-01-10", tags: ["React", "TypeScript"] },
-  { id: "2", name: "Michael Rodriguez", email: "michael@example.com", role: "Backend Developer", stage: "assessment", source: "Referral", score: 72, appliedAt: "2024-01-12", tags: ["Go", "Python"] },
-  { id: "3", name: "Emily Watson", email: "emily@example.com", role: "Full Stack Developer", stage: "applied", source: "Direct", appliedAt: "2024-01-15", tags: ["Node.js", "React"] },
-  { id: "4", name: "David Kim", email: "david@example.com", role: "DevOps Engineer", stage: "screening", source: "Job Board", appliedAt: "2024-01-14", tags: ["AWS", "Kubernetes"] },
-  { id: "5", name: "Lisa Park", email: "lisa@example.com", role: "Senior Frontend Engineer", stage: "offer", source: "LinkedIn", score: 92, appliedAt: "2024-01-08", tags: ["Vue", "TypeScript"] },
-  { id: "6", name: "James Wilson", email: "james@example.com", role: "Backend Developer", stage: "applied", source: "Direct", appliedAt: "2024-01-16", tags: ["Java", "Spring"] },
-  { id: "7", name: "Anna Martinez", email: "anna@example.com", role: "Full Stack Developer", stage: "hired", source: "Referral", score: 88, appliedAt: "2024-01-05", tags: ["Python", "Django"] },
-  { id: "8", name: "Tom Brown", email: "tom@example.com", role: "Senior Frontend Engineer", stage: "assessment", source: "LinkedIn", appliedAt: "2024-01-13", tags: ["React", "Next.js"] },
-];
+// Helper to convert API response to local Candidate format
+const toCandidate = (c: HiringCandidate): Candidate => ({
+  id: c.id,
+  name: c.name,
+  email: c.email,
+  phone: c.phone,
+  role: c.role,
+  stage: c.stage,
+  source: c.source,
+  score: c.score,
+  appliedAt: c.applied_at,
+  tags: c.tags || [],
+});
 
 function CandidateCard({ candidate, onDragStart, onDragEnd }: { candidate: Candidate; onDragStart?: () => void; onDragEnd?: () => void }) {
   const [showMenu, setShowMenu] = useState(false);
@@ -284,12 +287,35 @@ function StageColumn({
 export default function CandidatesPage() {
   const { isLoading, isAuthenticated } = useAuth();
   const { currentWorkspaceId, currentWorkspace, workspacesLoading, hasWorkspaces } = useWorkspace();
-  const [candidates, setCandidates] = useState<Candidate[]>(MOCK_CANDIDATES);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStage, setFilterStage] = useState<CandidateStage | "all">("all");
   const [filterSource, setFilterSource] = useState<string>("all");
   const [showAddModal, setShowAddModal] = useState(false);
+
+  // Fetch candidates from API
+  useEffect(() => {
+    const fetchCandidates = async () => {
+      if (!currentWorkspaceId) return;
+
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await hiringApi.listCandidates(currentWorkspaceId);
+        setCandidates(data.map(toCandidate));
+      } catch (err) {
+        console.error("Failed to fetch candidates:", err);
+        setError("Failed to load candidates");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCandidates();
+  }, [currentWorkspaceId]);
 
   // Filter candidates
   const filteredCandidates = useMemo(() => {
@@ -326,18 +352,30 @@ export default function CandidatesPage() {
   }, [filteredCandidates]);
 
   // Handle drag and drop
-  const handleDrop = useCallback((stage: CandidateStage, candidateId: string) => {
+  const handleDrop = useCallback(async (stage: CandidateStage, candidateId: string) => {
+    // Optimistic update
     setCandidates((prev) =>
       prev.map((c) => (c.id === candidateId ? { ...c, stage } : c))
     );
-  }, []);
+
+    try {
+      await hiringApi.updateCandidateStage(candidateId, stage);
+    } catch (err) {
+      console.error("Failed to update candidate stage:", err);
+      // Revert on error - refetch candidates
+      if (currentWorkspaceId) {
+        const data = await hiringApi.listCandidates(currentWorkspaceId);
+        setCandidates(data.map(toCandidate));
+      }
+    }
+  }, [currentWorkspaceId]);
 
   // Get unique sources
   const sources = useMemo(() => {
     return Array.from(new Set(candidates.map((c) => c.source)));
   }, [candidates]);
 
-  if (isLoading || workspacesLoading) {
+  if (isLoading || workspacesLoading || (loading && currentWorkspaceId)) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -346,6 +384,26 @@ export default function CandidatesPage() {
             <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
           </div>
           <p className="text-slate-400 text-sm">Loading candidates...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div className="w-20 h-20 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <X className="h-10 w-10 text-red-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-2">Error Loading Candidates</h2>
+          <p className="text-slate-400 mb-6">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition font-medium"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     );

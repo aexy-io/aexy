@@ -17,6 +17,7 @@ from aexy.models.career import (
     LearningPath,
     LearningMilestone,
     HiringRequirement,
+    HiringCandidate,
     OrganizationSettings,
 )
 from aexy.models.analytics import (
@@ -307,6 +308,7 @@ __all__ = [
     "LearningPath",
     "LearningMilestone",
     "HiringRequirement",
+    "HiringCandidate",
     "OrganizationSettings",
     # Analytics (Phase 4)
     "CustomReport",

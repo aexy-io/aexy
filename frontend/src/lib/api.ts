@@ -665,6 +665,77 @@ export interface CandidateScorecard {
   recommendation: "strong_yes" | "yes" | "maybe" | "no";
 }
 
+export type HiringCandidateStage = "applied" | "screening" | "assessment" | "interview" | "offer" | "hired" | "rejected";
+
+export interface HiringCandidate {
+  id: string;
+  workspace_id: string;
+  requirement_id: string | null;
+  name: string;
+  email: string;
+  phone: string | null;
+  role: string;
+  stage: HiringCandidateStage;
+  source: string | null;
+  score: number | null;
+  tags: string[];
+  notes: string | null;
+  resume_url: string | null;
+  linkedin_url: string | null;
+  github_url: string | null;
+  portfolio_url: string | null;
+  current_company: string | null;
+  current_role: string | null;
+  experience_years: number | null;
+  location: string | null;
+  applied_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface HiringCandidateCreate {
+  name: string;
+  email: string;
+  phone?: string;
+  role: string;
+  stage?: HiringCandidateStage;
+  source?: string;
+  score?: number;
+  tags?: string[];
+  notes?: string;
+  resume_url?: string;
+  linkedin_url?: string;
+  github_url?: string;
+  portfolio_url?: string;
+  current_company?: string;
+  current_role?: string;
+  experience_years?: number;
+  location?: string;
+  requirement_id?: string;
+  applied_at?: string;
+}
+
+export interface HiringCandidateUpdate {
+  name?: string;
+  email?: string;
+  phone?: string;
+  role?: string;
+  stage?: HiringCandidateStage;
+  source?: string;
+  score?: number;
+  tags?: string[];
+  notes?: string;
+  resume_url?: string;
+  linkedin_url?: string;
+  github_url?: string;
+  portfolio_url?: string;
+  current_company?: string;
+  current_role?: string;
+  experience_years?: number;
+  location?: string;
+  requirement_id?: string;
+}
+
 // Career API
 export const careerApi = {
   listRoles: async (organizationId?: string): Promise<CareerRole[]> => {
@@ -1085,6 +1156,43 @@ export const hiringApi = {
       params: { new_status: status },
     });
     return response.data;
+  },
+
+  // Hiring Candidates Pipeline
+  listCandidates: async (
+    workspaceId: string,
+    filters?: { stage?: string; source?: string; role?: string; search?: string }
+  ): Promise<HiringCandidate[]> => {
+    const response = await api.get("/hiring/candidates", {
+      params: { workspace_id: workspaceId, ...filters },
+    });
+    return response.data;
+  },
+
+  createCandidate: async (workspaceId: string, data: HiringCandidateCreate): Promise<HiringCandidate> => {
+    const response = await api.post("/hiring/candidates", data, {
+      params: { workspace_id: workspaceId },
+    });
+    return response.data;
+  },
+
+  getCandidate: async (candidateId: string): Promise<HiringCandidate> => {
+    const response = await api.get(`/hiring/candidates/${candidateId}`);
+    return response.data;
+  },
+
+  updateCandidate: async (candidateId: string, data: HiringCandidateUpdate): Promise<HiringCandidate> => {
+    const response = await api.patch(`/hiring/candidates/${candidateId}`, data);
+    return response.data;
+  },
+
+  updateCandidateStage: async (candidateId: string, stage: HiringCandidateStage): Promise<HiringCandidate> => {
+    const response = await api.patch(`/hiring/candidates/${candidateId}/stage`, { stage });
+    return response.data;
+  },
+
+  deleteCandidate: async (candidateId: string): Promise<void> => {
+    await api.delete(`/hiring/candidates/${candidateId}`);
   },
 };
 

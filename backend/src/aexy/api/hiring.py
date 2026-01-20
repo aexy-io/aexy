@@ -710,3 +710,445 @@ async def update_requirement_status(
         )
 
     return {"status": new_status, "requirement_id": requirement_id}
+
+
+# =============================================================================
+# Hiring Candidates Pipeline
+# =============================================================================
+
+from datetime import datetime
+from pydantic import EmailStr, Field
+from aexy.models.career import HiringCandidate
+from aexy.api.developers import get_current_developer
+
+
+class HiringCandidateCreate(BaseModel):
+    """Create a hiring candidate."""
+    name: str = Field(..., min_length=1, max_length=255)
+    email: EmailStr
+    phone: str | None = None
+    role: str = Field(..., min_length=1, max_length=255)
+    stage: str = Field(default="applied")
+    source: str | None = None
+    score: int | None = Field(default=None, ge=0, le=100)
+    tags: list[str] = Field(default_factory=list)
+    notes: str | None = None
+    resume_url: str | None = None
+    linkedin_url: str | None = None
+    github_url: str | None = None
+    portfolio_url: str | None = None
+    current_company: str | None = None
+    current_role: str | None = None
+    experience_years: int | None = None
+    location: str | None = None
+    requirement_id: str | None = None
+    applied_at: datetime | None = None
+
+
+class HiringCandidateUpdate(BaseModel):
+    """Update a hiring candidate."""
+    name: str | None = None
+    email: EmailStr | None = None
+    phone: str | None = None
+    role: str | None = None
+    stage: str | None = None
+    source: str | None = None
+    score: int | None = Field(default=None, ge=0, le=100)
+    tags: list[str] | None = None
+    notes: str | None = None
+    resume_url: str | None = None
+    linkedin_url: str | None = None
+    github_url: str | None = None
+    portfolio_url: str | None = None
+    current_company: str | None = None
+    current_role: str | None = None
+    experience_years: int | None = None
+    location: str | None = None
+    requirement_id: str | None = None
+
+
+class HiringCandidateResponse(BaseModel):
+    """Hiring candidate response."""
+    id: str
+    workspace_id: str
+    requirement_id: str | None = None
+    name: str
+    email: str
+    phone: str | None = None
+    role: str
+    stage: str
+    source: str | None = None
+    score: int | None = None
+    tags: list[str]
+    notes: str | None = None
+    resume_url: str | None = None
+    linkedin_url: str | None = None
+    github_url: str | None = None
+    portfolio_url: str | None = None
+    current_company: str | None = None
+    current_role: str | None = None
+    experience_years: int | None = None
+    location: str | None = None
+    applied_at: datetime
+    created_at: datetime
+    updated_at: datetime
+
+
+class StageUpdateRequest(BaseModel):
+    """Update candidate stage (for drag-drop)."""
+    stage: str
+
+
+VALID_STAGES = ["applied", "screening", "assessment", "interview", "offer", "hired", "rejected"]
+
+
+def candidate_to_response(candidate: HiringCandidate) -> HiringCandidateResponse:
+    """Convert HiringCandidate model to response."""
+    return HiringCandidateResponse(
+        id=str(candidate.id),
+        workspace_id=str(candidate.workspace_id),
+        requirement_id=str(candidate.requirement_id) if candidate.requirement_id else None,
+        name=candidate.name,
+        email=candidate.email,
+        phone=candidate.phone,
+        role=candidate.role,
+        stage=candidate.stage,
+        source=candidate.source,
+        score=candidate.score,
+        tags=candidate.tags or [],
+        notes=candidate.notes,
+        resume_url=candidate.resume_url,
+        linkedin_url=candidate.linkedin_url,
+        github_url=candidate.github_url,
+        portfolio_url=candidate.portfolio_url,
+        current_company=candidate.current_company,
+        current_role=candidate.current_role,
+        experience_years=candidate.experience_years,
+        location=candidate.location,
+        applied_at=candidate.applied_at,
+        created_at=candidate.created_at,
+        updated_at=candidate.updated_at,
+    )
+
+
+@router.get("/candidates", response_model=list[HiringCandidateResponse])
+async def list_hiring_candidates(
+    workspace_id: str,
+    stage: str | None = None,
+    source: str | None = None,
+    role: str | None = None,
+    search: str | None = None,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """List all hiring candidates for a workspace.
+
+    Args:
+        workspace_id: Workspace UUID.
+        stage: Optional stage filter.
+        source: Optional source filter.
+        role: Optional role filter.
+        search: Optional search query (name/email).
+        current_user: Current authenticated user.
+        db: Database session.
+
+    Returns:
+        List of hiring candidates.
+    """
+    from aexy.services.workspace_service import WorkspaceService
+
+    # Verify workspace access
+    workspace_service = WorkspaceService(db)
+    if not await workspace_service.check_permission(workspace_id, str(current_user.id), "viewer"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a member of this workspace",
+        )
+
+    # Build query
+    query = select(HiringCandidate).where(HiringCandidate.workspace_id == workspace_id)
+
+    if stage:
+        query = query.where(HiringCandidate.stage == stage)
+    if source:
+        query = query.where(HiringCandidate.source == source)
+    if role:
+        query = query.where(HiringCandidate.role == role)
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.where(
+            (HiringCandidate.name.ilike(search_pattern)) |
+            (HiringCandidate.email.ilike(search_pattern))
+        )
+
+    query = query.order_by(HiringCandidate.applied_at.desc())
+
+    result = await db.execute(query)
+    candidates = result.scalars().all()
+
+    return [candidate_to_response(c) for c in candidates]
+
+
+@router.post("/candidates", response_model=HiringCandidateResponse, status_code=status.HTTP_201_CREATED)
+async def create_hiring_candidate(
+    workspace_id: str,
+    data: HiringCandidateCreate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new hiring candidate.
+
+    Args:
+        workspace_id: Workspace UUID.
+        data: Candidate data.
+        current_user: Current authenticated user.
+        db: Database session.
+
+    Returns:
+        Created candidate.
+    """
+    from aexy.services.workspace_service import WorkspaceService
+
+    # Verify workspace access (need admin to add candidates)
+    workspace_service = WorkspaceService(db)
+    if not await workspace_service.check_permission(workspace_id, str(current_user.id), "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin permission required to add candidates",
+        )
+
+    # Validate stage
+    if data.stage not in VALID_STAGES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid stage. Must be one of: {', '.join(VALID_STAGES)}",
+        )
+
+    # Check for duplicate email in workspace
+    existing = await db.execute(
+        select(HiringCandidate).where(
+            HiringCandidate.workspace_id == workspace_id,
+            HiringCandidate.email == data.email,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A candidate with this email already exists in this workspace",
+        )
+
+    candidate = HiringCandidate(
+        workspace_id=workspace_id,
+        requirement_id=data.requirement_id,
+        name=data.name,
+        email=data.email,
+        phone=data.phone,
+        role=data.role,
+        stage=data.stage,
+        source=data.source,
+        score=data.score,
+        tags=data.tags,
+        notes=data.notes,
+        resume_url=data.resume_url,
+        linkedin_url=data.linkedin_url,
+        github_url=data.github_url,
+        portfolio_url=data.portfolio_url,
+        current_company=data.current_company,
+        current_role=data.current_role,
+        experience_years=data.experience_years,
+        location=data.location,
+        applied_at=data.applied_at or datetime.utcnow(),
+    )
+
+    db.add(candidate)
+    await db.commit()
+    await db.refresh(candidate)
+
+    return candidate_to_response(candidate)
+
+
+@router.get("/candidates/{candidate_id}", response_model=HiringCandidateResponse)
+async def get_hiring_candidate(
+    candidate_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a hiring candidate by ID.
+
+    Args:
+        candidate_id: Candidate UUID.
+        current_user: Current authenticated user.
+        db: Database session.
+
+    Returns:
+        Hiring candidate.
+    """
+    from aexy.services.workspace_service import WorkspaceService
+
+    result = await db.execute(
+        select(HiringCandidate).where(HiringCandidate.id == candidate_id)
+    )
+    candidate = result.scalar_one_or_none()
+
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate not found",
+        )
+
+    # Verify workspace access
+    workspace_service = WorkspaceService(db)
+    if not await workspace_service.check_permission(str(candidate.workspace_id), str(current_user.id), "viewer"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a member of this workspace",
+        )
+
+    return candidate_to_response(candidate)
+
+
+@router.patch("/candidates/{candidate_id}", response_model=HiringCandidateResponse)
+async def update_hiring_candidate(
+    candidate_id: str,
+    data: HiringCandidateUpdate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a hiring candidate.
+
+    Args:
+        candidate_id: Candidate UUID.
+        data: Update data.
+        current_user: Current authenticated user.
+        db: Database session.
+
+    Returns:
+        Updated candidate.
+    """
+    from aexy.services.workspace_service import WorkspaceService
+
+    result = await db.execute(
+        select(HiringCandidate).where(HiringCandidate.id == candidate_id)
+    )
+    candidate = result.scalar_one_or_none()
+
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate not found",
+        )
+
+    # Verify workspace access
+    workspace_service = WorkspaceService(db)
+    if not await workspace_service.check_permission(str(candidate.workspace_id), str(current_user.id), "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin permission required to update candidates",
+        )
+
+    # Validate stage if provided
+    if data.stage and data.stage not in VALID_STAGES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid stage. Must be one of: {', '.join(VALID_STAGES)}",
+        )
+
+    # Update fields
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(candidate, field, value)
+
+    await db.commit()
+    await db.refresh(candidate)
+
+    return candidate_to_response(candidate)
+
+
+@router.patch("/candidates/{candidate_id}/stage", response_model=HiringCandidateResponse)
+async def update_candidate_stage(
+    candidate_id: str,
+    data: StageUpdateRequest,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a candidate's stage (for drag-drop in Kanban).
+
+    Args:
+        candidate_id: Candidate UUID.
+        data: New stage.
+        current_user: Current authenticated user.
+        db: Database session.
+
+    Returns:
+        Updated candidate.
+    """
+    from aexy.services.workspace_service import WorkspaceService
+
+    if data.stage not in VALID_STAGES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid stage. Must be one of: {', '.join(VALID_STAGES)}",
+        )
+
+    result = await db.execute(
+        select(HiringCandidate).where(HiringCandidate.id == candidate_id)
+    )
+    candidate = result.scalar_one_or_none()
+
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate not found",
+        )
+
+    # Verify workspace access
+    workspace_service = WorkspaceService(db)
+    if not await workspace_service.check_permission(str(candidate.workspace_id), str(current_user.id), "member"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Member permission required to update candidate stage",
+        )
+
+    candidate.stage = data.stage
+    await db.commit()
+    await db.refresh(candidate)
+
+    return candidate_to_response(candidate)
+
+
+@router.delete("/candidates/{candidate_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_hiring_candidate(
+    candidate_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a hiring candidate.
+
+    Args:
+        candidate_id: Candidate UUID.
+        current_user: Current authenticated user.
+        db: Database session.
+    """
+    from aexy.services.workspace_service import WorkspaceService
+
+    result = await db.execute(
+        select(HiringCandidate).where(HiringCandidate.id == candidate_id)
+    )
+    candidate = result.scalar_one_or_none()
+
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate not found",
+        )
+
+    # Verify workspace access
+    workspace_service = WorkspaceService(db)
+    if not await workspace_service.check_permission(str(candidate.workspace_id), str(current_user.id), "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin permission required to delete candidates",
+        )
+
+    await db.delete(candidate)
+    await db.commit()
