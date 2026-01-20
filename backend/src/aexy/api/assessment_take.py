@@ -306,15 +306,15 @@ async def get_assessment_info(
     # Get topics
     topics_query = select(AssessmentTopic).where(
         AssessmentTopic.assessment_id == assessment.id
-    ).order_by(AssessmentTopic.sequence)
+    ).order_by(AssessmentTopic.sequence_order)
     topics_result = await db.execute(topics_query)
     topics = topics_result.scalars().all()
 
     topics_data = [
         {
-            "name": t.name,
-            "duration_minutes": t.duration_minutes,
-            "question_count": t.question_count,
+            "name": t.topic,
+            "duration_minutes": t.estimated_time_minutes,
+            "question_count": sum((t.question_types or {}).values()) if t.question_types else 0,
         }
         for t in topics
     ]
@@ -494,7 +494,7 @@ async def get_questions(
     # Get questions
     questions_query = select(Question).where(
         Question.assessment_id == assessment.id
-    ).order_by(Question.sequence)
+    ).order_by(Question.sequence_order)
     questions_result = await db.execute(questions_query)
     questions = questions_result.scalars().all()
 
@@ -518,19 +518,23 @@ async def get_questions(
                 for opt in options
             ]
 
+        question_type_val = q.question_type.value if hasattr(q.question_type, 'value') else q.question_type
+        difficulty_val = q.difficulty.value if hasattr(q.difficulty, 'value') else q.difficulty
+        # Convert estimated_time_minutes to seconds for the response
+        time_limit_secs = (q.estimated_time_minutes or 10) * 60
         questions_data.append(
             QuestionResponse(
                 id=str(q.id),
-                sequence=q.sequence or 0,
-                question_type=q.question_type.value,
-                difficulty=q.difficulty.value,
+                sequence=q.sequence_order or 0,
+                question_type=question_type_val,
+                difficulty=difficulty_val,
                 problem_statement=q.problem_statement or "",
                 options=options,
                 starter_code=q.starter_code,
                 constraints=q.constraints,
                 examples=q.examples,
                 max_marks=q.max_marks or 0,
-                time_limit_seconds=q.time_limit_seconds,
+                time_limit_seconds=time_limit_secs,
             )
         )
 
