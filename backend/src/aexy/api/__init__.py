@@ -74,6 +74,8 @@ from aexy.api.forms import public_router as public_forms_new_router
 # Assessment Platform
 from aexy.api.assessments import router as assessments_router
 from aexy.api.assessment_take import router as assessment_take_router
+from aexy.api.questions import router as questions_router
+from aexy.api.question_bank import router as question_bank_router
 # CRM
 from aexy.api.crm import router as crm_router
 from aexy.api.crm_automation import router as crm_automation_router
@@ -186,6 +188,8 @@ api_router.include_router(public_forms_new_router, tags=["forms-public"])
 # Assessment Platform
 api_router.include_router(assessments_router, tags=["assessments"])
 api_router.include_router(assessment_take_router, tags=["assessment-take"])
+api_router.include_router(questions_router, tags=["questions"])
+api_router.include_router(question_bank_router, tags=["question-bank"])
 # CRM
 api_router.include_router(crm_router, tags=["crm"])
 api_router.include_router(crm_automation_router, tags=["crm-automation"])

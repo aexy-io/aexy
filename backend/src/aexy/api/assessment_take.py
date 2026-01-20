@@ -240,7 +240,7 @@ async def get_active_attempt(
     """Get any active attempt for this invitation."""
     query = select(AssessmentAttempt).where(
         AssessmentAttempt.invitation_id == invitation.id,
-        AssessmentAttempt.status.in_([AttemptStatus.IN_PROGRESS, AttemptStatus.STARTED]),
+        AssessmentAttempt.status.in_([AttemptStatus.STARTED, AttemptStatus.IN_PROGRESS]),
     )
     result = await db.execute(query)
     return result.scalar_one_or_none()
@@ -439,13 +439,13 @@ async def start_assessment(
     # Create new attempt
     attempt = AssessmentAttempt(
         invitation_id=invitation.id,
-        status=AttemptStatus.IN_PROGRESS,
+        status=AttemptStatus.STARTED,
         started_at=datetime.now(timezone.utc),
         attempt_number=existing_attempts + 1,
     )
 
     # Update invitation status
-    invitation.status = InvitationStatus.IN_PROGRESS
+    invitation.status = InvitationStatus.STARTED
 
     db.add(attempt)
     await db.commit()
@@ -566,6 +566,10 @@ async def submit_answer(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No active attempt found",
         )
+
+    # Transition from STARTED to IN_PROGRESS on first submission
+    if attempt.status == AttemptStatus.STARTED:
+        attempt.status = AttemptStatus.IN_PROGRESS
 
     # Check time
     if attempt.started_at:

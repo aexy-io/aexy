@@ -7245,6 +7245,272 @@ export const assessmentApi = {
 };
 
 // ============================================================================
+// Question Management API (across assessments)
+// ============================================================================
+
+export interface QuestionListItem {
+  id: string;
+  assessment_id: string;
+  assessment_title: string;
+  topic_id: string | null;
+  topic_name: string | null;
+  question_type: string;
+  difficulty: string;
+  title: string;
+  max_marks: number;
+  is_ai_generated: boolean;
+  created_at: string;
+  deleted_at: string | null;
+  total_attempts: number;
+  average_score_percent: number;
+  average_time_seconds: number;
+}
+
+export interface QuestionListResponse {
+  questions: QuestionListItem[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+}
+
+export interface QuestionAnalytics {
+  question_id: string;
+  total_attempts: number;
+  unique_candidates: number;
+  average_score_percent: number;
+  median_score_percent: number;
+  min_score_percent: number;
+  max_score_percent: number;
+  average_time_seconds: number;
+  median_time_seconds: number;
+  min_time_seconds: number;
+  max_time_seconds: number;
+  score_distribution: Record<string, number>;
+  time_distribution: Record<string, number>;
+  stated_difficulty: string | null;
+  calculated_difficulty: string | null;
+  difficulty_accuracy: number;
+  skip_rate: number;
+  completion_rate: number;
+  partial_credit_rate: number;
+  option_selection_distribution: Record<string, number> | null;
+  test_case_pass_rates: Array<{ test_id: string; pass_rate: number }> | null;
+  last_calculated_at: string | null;
+}
+
+export interface QuestionDetail {
+  id: string;
+  assessment_id: string;
+  assessment_title: string;
+  topic_id: string | null;
+  topic_name: string | null;
+  question_type: string;
+  difficulty: string;
+  title: string;
+  problem_statement: string;
+  options: MCQOption[] | null;
+  test_cases: TestCase[] | null;
+  starter_code: Record<string, string> | null;
+  constraints: string[] | null;
+  examples: QuestionExample[] | null;
+  hints: string[] | null;
+  sample_answer: string | null;
+  key_points: string[] | null;
+  evaluation_rubric: Record<string, unknown> | null;
+  max_marks: number;
+  estimated_time_minutes: number;
+  allowed_languages: string[] | null;
+  is_ai_generated: boolean;
+  tags: string[];
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  analytics: QuestionAnalytics | null;
+}
+
+export interface QuestionSubmissionItem {
+  submission_id: string;
+  candidate_id: string;
+  candidate_name: string;
+  candidate_email: string;
+  attempt_id: string;
+  submitted_at: string;
+  time_taken_seconds: number;
+  score_obtained: number | null;
+  max_score: number;
+  score_percent: number | null;
+  status: "evaluated" | "pending";
+}
+
+export interface QuestionSubmissionsResponse {
+  submissions: QuestionSubmissionItem[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+}
+
+export interface DeleteQuestionResponse {
+  deleted: boolean;
+  question_id: string;
+  action: string;
+  warnings: string[];
+  submissions_affected: number;
+}
+
+export interface BulkDeleteResponse {
+  deleted_count: number;
+  failed_count: number;
+  failed_ids: string[];
+  warnings: string[];
+}
+
+export interface QuestionCreateRequest {
+  assessment_id: string;
+  topic_id?: string;
+  question_type: string;
+  difficulty: string;
+  title: string;
+  problem_statement: string;
+  options?: MCQOption[];
+  test_cases?: TestCase[];
+  starter_code?: Record<string, string>;
+  constraints?: string[];
+  examples?: QuestionExample[];
+  hints?: string[];
+  sample_answer?: string;
+  key_points?: string[];
+  evaluation_rubric?: Record<string, unknown>;
+  max_marks?: number;
+  estimated_time_minutes?: number;
+  allowed_languages?: string[];
+  tags?: string[];
+  add_to_bank?: boolean;
+}
+
+export interface QuestionUpdateRequest {
+  topic_id?: string;
+  question_type?: string;
+  difficulty?: string;
+  title?: string;
+  problem_statement?: string;
+  options?: MCQOption[];
+  test_cases?: TestCase[];
+  starter_code?: Record<string, string>;
+  constraints?: string[];
+  examples?: QuestionExample[];
+  hints?: string[];
+  sample_answer?: string;
+  key_points?: string[];
+  evaluation_rubric?: Record<string, unknown>;
+  max_marks?: number;
+  estimated_time_minutes?: number;
+  allowed_languages?: string[];
+  tags?: string[];
+}
+
+export interface QuestionListFilters {
+  organization_id: string;
+  assessment_id?: string;
+  topic?: string;
+  question_type?: string;
+  difficulty?: string;
+  search?: string;
+  is_ai_generated?: boolean;
+  include_deleted?: boolean;
+  sort_by?: string;
+  sort_order?: "asc" | "desc";
+  page?: number;
+  per_page?: number;
+}
+
+export const questionsApi = {
+  list: async (filters: QuestionListFilters): Promise<QuestionListResponse> => {
+    const response = await api.get("/questions", { params: filters });
+    return response.data;
+  },
+
+  get: async (questionId: string, includeAnalytics = true): Promise<QuestionDetail> => {
+    const response = await api.get(`/questions/${questionId}`, {
+      params: { include_analytics: includeAnalytics },
+    });
+    return response.data;
+  },
+
+  getAnalytics: async (questionId: string): Promise<QuestionAnalytics> => {
+    const response = await api.get(`/questions/${questionId}/analytics`);
+    return response.data;
+  },
+
+  getSubmissions: async (
+    questionId: string,
+    options?: {
+      candidate_id?: string;
+      candidate_email?: string;
+      status?: "evaluated" | "pending";
+      min_score?: number;
+      max_score?: number;
+      page?: number;
+      per_page?: number;
+    }
+  ): Promise<QuestionSubmissionsResponse> => {
+    const response = await api.get(`/questions/${questionId}/submissions`, {
+      params: options,
+    });
+    return response.data;
+  },
+
+  create: async (data: QuestionCreateRequest): Promise<QuestionDetail> => {
+    const response = await api.post("/questions", data);
+    return response.data;
+  },
+
+  update: async (questionId: string, data: QuestionUpdateRequest): Promise<QuestionDetail> => {
+    const response = await api.put(`/questions/${questionId}`, data);
+    return response.data;
+  },
+
+  delete: async (
+    questionId: string,
+    options?: { force?: boolean; soft_delete?: boolean }
+  ): Promise<DeleteQuestionResponse> => {
+    const response = await api.delete(`/questions/${questionId}`, { params: options });
+    return response.data;
+  },
+
+  restore: async (questionId: string): Promise<QuestionDetail> => {
+    const response = await api.post(`/questions/${questionId}/restore`);
+    return response.data;
+  },
+
+  duplicate: async (
+    questionId: string,
+    options?: { target_assessment_id?: string; target_topic_id?: string }
+  ): Promise<QuestionDetail> => {
+    const response = await api.post(`/questions/${questionId}/duplicate`, null, {
+      params: options,
+    });
+    return response.data;
+  },
+
+  bulkDelete: async (
+    questionIds: string[],
+    options?: { force?: boolean; soft_delete?: boolean }
+  ): Promise<BulkDeleteResponse> => {
+    const response = await api.post("/questions/bulk/delete", questionIds, {
+      params: options,
+    });
+    return response.data;
+  },
+
+  recalculateAnalytics: async (questionId: string): Promise<QuestionAnalytics> => {
+    const response = await api.post(`/questions/${questionId}/recalculate-analytics`);
+    return response.data;
+  },
+};
+
+// ============================================================================
 // Jira Integration API
 // ============================================================================
 

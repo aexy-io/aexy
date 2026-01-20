@@ -69,10 +69,11 @@ class InvitationStatus(str, Enum):
 class AttemptStatus(str, Enum):
     """Assessment attempt status."""
 
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
-    TERMINATED = "terminated"
-    EVALUATED = "evaluated"
+    STARTED = "started"  # Attempt created, candidate hasn't answered yet
+    IN_PROGRESS = "in_progress"  # Candidate is actively answering questions
+    COMPLETED = "completed"  # Candidate finished or time ran out
+    TERMINATED = "terminated"  # Manually terminated (e.g., cheating detected)
+    EVALUATED = "evaluated"  # Grading completed
 
 
 class ProctoringEventSeverity(str, Enum):
@@ -367,6 +368,18 @@ class Question(Base):
         onupdate=func.now(),
     )
 
+    # Soft delete
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
+    deleted_by: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     # Relationships
     assessment: Mapped["Assessment"] = relationship(
         "Assessment",
@@ -379,6 +392,11 @@ class Question(Base):
     submissions: Mapped[list["QuestionSubmission"]] = relationship(
         "QuestionSubmission",
         back_populates="question",
+    )
+    analytics: Mapped["QuestionAnalytics | None"] = relationship(
+        "QuestionAnalytics",
+        back_populates="question",
+        uselist=False,
     )
 
 
@@ -865,4 +883,107 @@ class QuestionBank(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+
+class QuestionAnalytics(Base):
+    """Cached analytics for individual questions."""
+
+    __tablename__ = "question_analytics"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    question_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("assessment_questions.id", ondelete="CASCADE"),
+        unique=True,
+        index=True,
+    )
+
+    # Attempt metrics
+    total_attempts: Mapped[int] = mapped_column(Integer, default=0)
+    unique_candidates: Mapped[int] = mapped_column(Integer, default=0)
+    total_correct: Mapped[int] = mapped_column(Integer, default=0)  # For MCQ
+
+    # Score metrics
+    average_score_percent: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2),
+        default=0,
+    )
+    median_score_percent: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2),
+        default=0,
+    )
+    min_score_percent: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2),
+        default=0,
+    )
+    max_score_percent: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2),
+        default=0,
+    )
+
+    # Time metrics
+    average_time_seconds: Mapped[int] = mapped_column(Integer, default=0)
+    median_time_seconds: Mapped[int] = mapped_column(Integer, default=0)
+    min_time_seconds: Mapped[int] = mapped_column(Integer, default=0)
+    max_time_seconds: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Distribution data
+    score_distribution: Mapped[dict] = mapped_column(
+        JSONB,
+        default=dict,
+    )  # {"0-20": 5, "21-40": 10, ...}
+    time_distribution: Mapped[dict] = mapped_column(
+        JSONB,
+        default=dict,
+    )  # {"0-60": 3, "61-120": 8, ...}
+
+    # MCQ specific
+    option_selection_distribution: Mapped[dict | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )  # {"A": 10, "B": 25, "C": 5, "D": 60}
+
+    # Code specific
+    test_case_pass_rates: Mapped[list | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )  # [{"test_id": "1", "pass_rate": 0.85}, ...]
+
+    # Difficulty calibration
+    stated_difficulty: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    calculated_difficulty: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    difficulty_score: Mapped[Decimal | None] = mapped_column(
+        Numeric(3, 2),
+        nullable=True,
+    )  # 0.00 to 1.00 (1 = hardest)
+
+    # Quality indicators
+    skip_rate: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=0)
+    completion_rate: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=0)
+    partial_credit_rate: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=0)
+
+    # Timestamps
+    last_calculated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    # Relationships
+    question: Mapped["Question"] = relationship(
+        "Question",
+        back_populates="analytics",
     )
