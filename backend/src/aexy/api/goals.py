@@ -268,6 +268,7 @@ async def create_goal(
     _calculate_progress(goal)
 
     db.add(goal)
+    await db.flush()  # Flush to generate the goal ID
 
     # Create activity record for creation
     await create_entity_activity(
