@@ -205,24 +205,24 @@ export default function StandupsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => router.push("/tracking")}
-            className="flex items-center gap-2 text-slate-400 hover:text-white mb-4 transition"
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 transition"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Tracking
           </button>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-                <MessageSquare className="h-8 w-8 text-blue-400" />
+              <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
+                <MessageSquare className="h-8 w-8 text-info" />
                 Standups
               </h1>
-              <p className="text-slate-400 mt-2">
+              <p className="text-muted-foreground mt-2">
                 Your standup history and submissions
               </p>
             </div>
@@ -240,11 +240,11 @@ export default function StandupsPage() {
               {/* Team Selector */}
               {teams.length > 1 && (
                 <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-slate-400" />
+                  <Users className="h-4 w-4 text-muted-foreground" />
                   <select
                     value={selectedTeamId || ""}
                     onChange={(e) => setSelectedTeamId(e.target.value)}
-                    className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+                    className="px-3 py-2 bg-input border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-primary"
                   >
                     {teams.map((team) => (
                       <option key={team.id} value={team.id}>
@@ -258,7 +258,7 @@ export default function StandupsPage() {
                 onClick={() => setShowForm(!showForm)}
                 disabled={!selectedTeamId}
                 className={`flex items-center gap-2 px-4 py-2 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                  hasTodayStandup ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700"
+                  hasTodayStandup ? "bg-success hover:bg-success/90" : "bg-primary hover:bg-primary/90"
                 }`}
               >
                 <Plus className="h-4 w-4" />
@@ -282,8 +282,8 @@ export default function StandupsPage() {
 
         {/* No Team Warning */}
         {teams.length === 0 && !teamsLoading && (
-          <div className="mb-8 p-4 bg-amber-900/20 border border-amber-700/50 rounded-xl">
-            <p className="text-amber-400 text-sm">
+          <div className="mb-8 p-4 bg-warning/10 border border-warning/30 rounded-xl">
+            <p className="text-warning text-sm">
               You need to be part of a team to submit standups. Please contact your workspace admin to be added to a team.
             </p>
           </div>
@@ -300,8 +300,8 @@ export default function StandupsPage() {
             loading={isLoading}
           />
           <StandupStreak standups={filteredStandups} className="md:col-span-1" />
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-            <h4 className="text-sm text-slate-400 mb-3">Team Sentiment</h4>
+          <div className="bg-card rounded-xl border border-border p-6">
+            <h4 className="text-sm text-muted-foreground mb-3">Team Sentiment</h4>
             {stats.avgSentiment !== null ? (
               <SentimentIndicator
                 score={stats.avgSentiment}
@@ -310,7 +310,7 @@ export default function StandupsPage() {
                 size="lg"
               />
             ) : (
-              <p className="text-slate-500 text-sm">No sentiment data</p>
+              <p className="text-muted-foreground text-sm">No sentiment data</p>
             )}
           </div>
           <MetricCard
@@ -318,8 +318,8 @@ export default function StandupsPage() {
             value={stats.withBlockers}
             subtitle={`${Math.round((stats.withBlockers / Math.max(stats.total, 1)) * 100)}% of standups`}
             icon={Filter}
-            iconColor="text-amber-400"
-            iconBgColor="bg-amber-900/30"
+            iconColor="text-warning"
+            iconBgColor="bg-warning/10"
             loading={isLoading}
           />
         </div>
@@ -327,13 +327,13 @@ export default function StandupsPage() {
         {/* View Controls & Filters */}
         <div className="flex flex-col lg:flex-row gap-4 mb-6">
           {/* View Toggle */}
-          <div className="flex items-center gap-2 bg-slate-800 rounded-lg p-1">
+          <div className="flex items-center gap-2 bg-card rounded-lg p-1">
             <button
               onClick={() => setViewMode("list")}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition ${
                 viewMode === "list"
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <List className="h-4 w-4" />
@@ -343,8 +343,8 @@ export default function StandupsPage() {
               onClick={() => setViewMode("calendar")}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition ${
                 viewMode === "calendar"
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Calendar className="h-4 w-4" />
@@ -354,8 +354,8 @@ export default function StandupsPage() {
               onClick={() => setViewMode("heatmap")}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition ${
                 viewMode === "heatmap"
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Calendar className="h-4 w-4" />
@@ -365,18 +365,18 @@ export default function StandupsPage() {
 
           {/* Search */}
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search standups..."
-              className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              className="w-full pl-10 pr-4 py-2 bg-input border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -440,10 +440,10 @@ export default function StandupsPage() {
               {selectedStandup ? (
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white">Selected Standup</h3>
+                    <h3 className="text-lg font-semibold text-foreground">Selected Standup</h3>
                     <button
                       onClick={() => setSelectedStandup(null)}
-                      className="text-slate-400 hover:text-white"
+                      className="text-muted-foreground hover:text-foreground"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -451,8 +451,8 @@ export default function StandupsPage() {
                   <StandupCard standup={selectedStandup} />
                 </div>
               ) : (
-                <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 text-center">
-                  <p className="text-slate-500 text-sm">
+                <div className="bg-card rounded-xl border border-border p-6 text-center">
+                  <p className="text-muted-foreground text-sm">
                     Click on a day in the calendar to view the standup details
                   </p>
                 </div>
@@ -460,8 +460,8 @@ export default function StandupsPage() {
 
               {/* Sentiment Overview */}
               {stats.sentimentScores.length > 0 && (
-                <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Sentiment Overview</h3>
+                <div className="bg-card rounded-xl border border-border p-6">
+                  <h3 className="text-lg font-semibold text-foreground mb-4">Sentiment Overview</h3>
                   <TeamSentimentOverview scores={stats.sentimentScores} />
                 </div>
               )}

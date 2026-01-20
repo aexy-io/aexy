@@ -29,9 +29,9 @@ import { useAssessments } from "@/hooks/useAssessments";
 import { QuestionListItem } from "@/lib/api";
 
 const difficultyColors: Record<string, string> = {
-  easy: "bg-green-900/30 text-green-400",
-  medium: "bg-yellow-900/30 text-yellow-400",
-  hard: "bg-red-900/30 text-red-400",
+  easy: "bg-success/20 text-success",
+  medium: "bg-warning/20 text-warning",
+  hard: "bg-destructive/20 text-destructive",
 };
 
 const typeLabels: Record<string, string> = {
@@ -78,23 +78,23 @@ function QuestionRow({
   const isDeleted = !!question.deleted_at;
 
   return (
-    <tr className={`border-b border-slate-700 hover:bg-slate-700/50 ${isDeleted ? "bg-slate-800/50 opacity-60" : ""}`}>
+    <tr className={`border-b border-border hover:bg-accent/50 ${isDeleted ? "bg-muted/50 opacity-60" : ""}`}>
       <td className="px-4 py-3">
         <input
           type="checkbox"
           checked={isSelected}
           onChange={(e) => onSelect(e.target.checked)}
-          className="rounded border-slate-600 bg-slate-700"
+          className="rounded border-border bg-input"
         />
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-900/30 rounded flex items-center justify-center text-xs font-mono text-blue-400">
+          <div className="w-8 h-8 bg-primary/20 rounded flex items-center justify-center text-xs font-mono text-primary">
             {typeIcons[question.question_type] || "?"}
           </div>
           <div>
-            <p className="font-medium text-white line-clamp-1">{question.title}</p>
-            <p className="text-sm text-slate-400">
+            <p className="font-medium text-foreground line-clamp-1">{question.title}</p>
+            <p className="text-sm text-muted-foreground">
               {question.assessment_title}
               {question.topic_name && ` / ${question.topic_name}`}
             </p>
@@ -105,75 +105,75 @@ function QuestionRow({
             </span>
           )}
           {isDeleted && (
-            <span className="px-2 py-0.5 text-xs bg-red-900/30 text-red-400 rounded">Deleted</span>
+            <span className="px-2 py-0.5 text-xs bg-destructive/20 text-destructive rounded">Deleted</span>
           )}
         </div>
       </td>
       <td className="px-4 py-3">
-        <span className="text-sm text-slate-300">
+        <span className="text-sm text-foreground/80">
           {typeLabels[question.question_type] || question.question_type}
         </span>
       </td>
       <td className="px-4 py-3">
         <span
           className={`px-2 py-0.5 text-xs font-medium rounded-full capitalize ${
-            difficultyColors[question.difficulty] || "bg-slate-700 text-slate-300"
+            difficultyColors[question.difficulty] || "bg-muted text-muted-foreground"
           }`}
         >
           {question.difficulty}
         </span>
       </td>
       <td className="px-4 py-3 text-center">
-        <span className="text-sm text-slate-300">{question.total_attempts}</span>
+        <span className="text-sm text-foreground/80">{question.total_attempts}</span>
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-1">
           {question.total_attempts > 0 ? (
             <>
-              <span className="text-sm font-medium text-white">
+              <span className="text-sm font-medium text-foreground">
                 {question.average_score_percent.toFixed(0)}%
               </span>
-              <div className="w-16 h-2 bg-slate-700 rounded-full overflow-hidden">
+              <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
                 <div
                   className={`h-full ${
                     question.average_score_percent >= 70
-                      ? "bg-green-500"
+                      ? "bg-success"
                       : question.average_score_percent >= 40
-                      ? "bg-yellow-500"
-                      : "bg-red-500"
+                      ? "bg-warning"
+                      : "bg-destructive"
                   }`}
                   style={{ width: `${question.average_score_percent}%` }}
                 />
               </div>
             </>
           ) : (
-            <span className="text-sm text-slate-500">-</span>
+            <span className="text-sm text-muted-foreground">-</span>
           )}
         </div>
       </td>
       <td className="px-4 py-3">
         {question.total_attempts > 0 ? (
-          <span className="text-sm text-slate-300">{formatTime(question.average_time_seconds)}</span>
+          <span className="text-sm text-foreground/80">{formatTime(question.average_time_seconds)}</span>
         ) : (
-          <span className="text-sm text-slate-500">-</span>
+          <span className="text-sm text-muted-foreground">-</span>
         )}
       </td>
       <td className="px-4 py-3">
         <div className="relative">
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className="p-1 hover:bg-slate-700 rounded"
+            className="p-1 hover:bg-accent rounded"
           >
-            <MoreVertical className="h-5 w-5 text-slate-400" />
+            <MoreVertical className="h-5 w-5 text-muted-foreground" />
           </button>
           {showMenu && (
-            <div className="absolute right-0 mt-1 w-48 bg-slate-800 rounded-md shadow-lg border border-slate-700 py-1 z-10">
+            <div className="absolute right-0 mt-1 w-48 bg-popover rounded-md shadow-lg border border-border py-1 z-10">
               <button
                 onClick={() => {
                   setShowMenu(false);
                   onView();
                 }}
-                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-slate-300 hover:bg-slate-700"
+                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-popover-foreground hover:bg-accent"
               >
                 <Eye className="h-4 w-4" />
                 View Details
@@ -185,7 +185,7 @@ function QuestionRow({
                       setShowMenu(false);
                       onDuplicate();
                     }}
-                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-slate-300 hover:bg-slate-700"
+                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-popover-foreground hover:bg-accent"
                   >
                     <Copy className="h-4 w-4" />
                     Duplicate
@@ -195,7 +195,7 @@ function QuestionRow({
                       setShowMenu(false);
                       onDelete();
                     }}
-                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-400 hover:bg-red-900/20"
+                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-destructive hover:bg-destructive/10"
                   >
                     <Trash2 className="h-4 w-4" />
                     Delete
@@ -208,7 +208,7 @@ function QuestionRow({
                     setShowMenu(false);
                     onRestore();
                   }}
-                  className="flex items-center gap-2 w-full px-4 py-2 text-sm text-green-400 hover:bg-green-900/20"
+                  className="flex items-center gap-2 w-full px-4 py-2 text-sm text-success hover:bg-success/10"
                 >
                   <RotateCcw className="h-4 w-4" />
                   Restore
@@ -348,26 +348,26 @@ export default function QuestionsPage() {
 
   if (authLoading || workspacesLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
 <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-white">Question Bank</h1>
-            <p className="text-slate-400 mt-1">
+            <h1 className="text-2xl font-bold text-foreground">Question Bank</h1>
+            <p className="text-muted-foreground mt-1">
               View and manage all assessment questions across your organization
             </p>
           </div>
           <Link
             href="/hiring/assessments"
-            className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1"
+            className="text-sm text-primary hover:text-primary/80 flex items-center gap-1"
           >
             Back to Assessments
           </Link>
@@ -375,57 +375,57 @@ export default function QuestionsPage() {
 
         {/* Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-slate-800 rounded-lg border border-slate-700 p-4">
+          <div className="bg-card rounded-lg border border-border p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-400">Total Questions</p>
-                <p className="text-2xl font-bold text-white mt-1">{metrics.total}</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Questions</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{metrics.total}</p>
               </div>
-              <div className="bg-blue-900/30 p-3 rounded-full">
-                <FileText className="h-5 w-5 text-blue-400" />
+              <div className="bg-primary/10 p-3 rounded-full">
+                <FileText className="h-5 w-5 text-primary" />
               </div>
             </div>
           </div>
-          <div className="bg-slate-800 rounded-lg border border-slate-700 p-4">
+          <div className="bg-card rounded-lg border border-border p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-400">Avg Score</p>
-                <p className="text-2xl font-bold text-white mt-1">{metrics.avgScore.toFixed(0)}%</p>
+                <p className="text-sm font-medium text-muted-foreground">Avg Score</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{metrics.avgScore.toFixed(0)}%</p>
               </div>
-              <div className="bg-green-900/30 p-3 rounded-full">
-                <TrendingUp className="h-5 w-5 text-green-400" />
+              <div className="bg-success/10 p-3 rounded-full">
+                <TrendingUp className="h-5 w-5 text-success" />
               </div>
             </div>
           </div>
-          <div className="bg-slate-800 rounded-lg border border-slate-700 p-4">
+          <div className="bg-card rounded-lg border border-border p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-400">Avg Time</p>
-                <p className="text-2xl font-bold text-white mt-1">{formatTime(Math.round(metrics.avgTime))}</p>
+                <p className="text-sm font-medium text-muted-foreground">Avg Time</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{formatTime(Math.round(metrics.avgTime))}</p>
               </div>
-              <div className="bg-yellow-900/30 p-3 rounded-full">
-                <Clock className="h-5 w-5 text-yellow-400" />
+              <div className="bg-warning/10 p-3 rounded-full">
+                <Clock className="h-5 w-5 text-warning" />
               </div>
             </div>
           </div>
-          <div className="bg-slate-800 rounded-lg border border-slate-700 p-4">
+          <div className="bg-card rounded-lg border border-border p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-400">AI Generated</p>
-                <p className="text-2xl font-bold text-white mt-1">{metrics.aiGenerated}</p>
+                <p className="text-sm font-medium text-muted-foreground">AI Generated</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{metrics.aiGenerated}</p>
               </div>
-              <div className="bg-purple-900/30 p-3 rounded-full">
-                <Sparkles className="h-5 w-5 text-purple-400" />
+              <div className="bg-purple-500/10 p-3 rounded-full">
+                <Sparkles className="h-5 w-5 text-purple-500" />
               </div>
             </div>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-slate-800 rounded-lg border border-slate-700 mb-6">
+        <div className="bg-card rounded-lg border border-border mb-6">
           <div className="p-4 flex flex-wrap items-center gap-4">
             <div className="flex-1 min-w-[200px] relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Search questions..."
@@ -434,7 +434,7 @@ export default function QuestionsPage() {
                   setSearchQuery(e.target.value);
                   setPage(1);
                 }}
-                className="w-full pl-10 pr-4 py-2 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-700 text-white placeholder-slate-400"
+                className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground placeholder:text-muted-foreground"
               />
             </div>
             <select
@@ -443,7 +443,7 @@ export default function QuestionsPage() {
                 setAssessmentFilter(e.target.value);
                 setPage(1);
               }}
-              className="px-4 py-2 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-700 text-white"
+              className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground"
             >
               <option value="">All Assessments</option>
               {assessments.map((a) => (
@@ -458,7 +458,7 @@ export default function QuestionsPage() {
                 setTypeFilter(e.target.value);
                 setPage(1);
               }}
-              className="px-4 py-2 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-700 text-white"
+              className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground"
             >
               <option value="">All Types</option>
               <option value="mcq">Multiple Choice</option>
@@ -473,14 +473,14 @@ export default function QuestionsPage() {
                 setDifficultyFilter(e.target.value);
                 setPage(1);
               }}
-              className="px-4 py-2 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-700 text-white"
+              className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground"
             >
               <option value="">All Difficulties</option>
               <option value="easy">Easy</option>
               <option value="medium">Medium</option>
               <option value="hard">Hard</option>
             </select>
-            <label className="flex items-center gap-2 text-sm text-slate-400">
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
               <input
                 type="checkbox"
                 checked={showDeleted}
@@ -488,7 +488,7 @@ export default function QuestionsPage() {
                   setShowDeleted(e.target.checked);
                   setPage(1);
                 }}
-                className="rounded border-slate-600 bg-slate-700"
+                className="rounded border-border bg-input"
               />
               Show Deleted
             </label>
@@ -496,21 +496,21 @@ export default function QuestionsPage() {
 
           {/* Bulk Actions */}
           {selectedIds.size > 0 && (
-            <div className="px-4 py-3 bg-blue-900/20 border-t border-slate-700 flex items-center justify-between">
-              <span className="text-sm text-blue-400">
+            <div className="px-4 py-3 bg-primary/10 border-t border-border flex items-center justify-between">
+              <span className="text-sm text-primary">
                 {selectedIds.size} question{selectedIds.size > 1 ? "s" : ""} selected
               </span>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setSelectedIds(new Set())}
-                  className="px-3 py-1 text-sm text-slate-400 hover:bg-slate-700 rounded"
+                  className="px-3 py-1 text-sm text-muted-foreground hover:bg-accent rounded"
                 >
                   Clear
                 </button>
                 <button
                   onClick={() => handleBulkDelete(false)}
                   disabled={isBulkDeleting}
-                  className="px-3 py-1 text-sm text-red-400 hover:bg-red-900/20 rounded flex items-center gap-1"
+                  className="px-3 py-1 text-sm text-destructive hover:bg-destructive/10 rounded flex items-center gap-1"
                 >
                   <Trash2 className="h-4 w-4" />
                   Delete Selected
@@ -521,16 +521,16 @@ export default function QuestionsPage() {
         </div>
 
         {/* Questions Table */}
-        <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+        <div className="bg-card rounded-lg border border-border overflow-hidden">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : questions.length === 0 ? (
             <div className="text-center py-12">
-              <FileText className="h-12 w-12 text-slate-500 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-white mb-2">No questions found</h3>
-              <p className="text-slate-400 mb-4">
+              <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">No questions found</h3>
+              <p className="text-muted-foreground mb-4">
                 {searchQuery || typeFilter || difficultyFilter || assessmentFilter
                   ? "Try adjusting your filters"
                   : "Create an assessment to add questions"}
@@ -538,35 +538,35 @@ export default function QuestionsPage() {
             </div>
           ) : (
             <table className="w-full">
-              <thead className="bg-slate-900/50 border-b border-slate-700">
+              <thead className="bg-muted/50 border-b border-border">
                 <tr>
                   <th className="px-4 py-3 text-left">
                     <input
                       type="checkbox"
                       checked={allSelected}
                       onChange={(e) => handleSelectAll(e.target.checked)}
-                      className="rounded border-slate-600 bg-slate-700"
+                      className="rounded border-border bg-input"
                     />
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Question
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Type
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Difficulty
                   </th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Attempts
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Avg Score
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Avg Time
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -590,25 +590,25 @@ export default function QuestionsPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="px-4 py-3 border-t border-slate-700 flex items-center justify-between">
-              <span className="text-sm text-slate-400">
+            <div className="px-4 py-3 border-t border-border flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">
                 Showing {(page - 1) * 20 + 1} to {Math.min(page * 20, total)} of {total} questions
               </span>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="p-2 border border-slate-600 rounded hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300"
+                  className="p-2 border border-border rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed text-foreground/80"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
-                <span className="text-sm text-slate-300">
+                <span className="text-sm text-foreground/80">
                   Page {page} of {totalPages}
                 </span>
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="p-2 border border-slate-600 rounded hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300"
+                  className="p-2 border border-border rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed text-foreground/80"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
@@ -621,14 +621,14 @@ export default function QuestionsPage() {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-slate-800 rounded-lg shadow-xl border border-slate-700 w-full max-w-md p-6">
+          <div className="bg-card rounded-lg shadow-xl border border-border w-full max-w-md p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="bg-yellow-900/30 p-2 rounded-full">
-                <AlertTriangle className="h-6 w-6 text-yellow-400" />
+              <div className="bg-warning/10 p-2 rounded-full">
+                <AlertTriangle className="h-6 w-6 text-warning" />
               </div>
-              <h2 className="text-lg font-semibold text-white">Question Has Submissions</h2>
+              <h2 className="text-lg font-semibold text-foreground">Question Has Submissions</h2>
             </div>
-            <p className="text-slate-400 mb-6">
+            <p className="text-muted-foreground mb-6">
               This question has existing submissions from candidates. Deleting it will affect their assessment records.
               Are you sure you want to proceed?
             </p>
@@ -638,14 +638,14 @@ export default function QuestionsPage() {
                   setShowDeleteModal(false);
                   setDeleteTarget(null);
                 }}
-                className="px-4 py-2 text-slate-400 hover:bg-slate-700 rounded-lg"
+                className="px-4 py-2 text-muted-foreground hover:bg-accent rounded-lg"
               >
                 Cancel
               </button>
               <button
                 onClick={() => deleteTarget && handleDelete(deleteTarget, true)}
                 disabled={isDeleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                className="px-4 py-2 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 disabled:opacity-50"
               >
                 {isDeleting ? "Deleting..." : "Delete Anyway"}
               </button>

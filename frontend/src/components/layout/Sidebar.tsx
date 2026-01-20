@@ -108,7 +108,7 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                     {!isCollapsed && hasSubmenu && (
                         <button
                             onClick={(e) => toggleExpand(item.href, e)}
-                            className="p-0.5 hover:bg-slate-700/50 rounded"
+                            className="p-0.5 hover:bg-accent/50 rounded"
                         >
                             <motion.div
                                 animate={{ rotate: isExpanded ? 90 : 0 }}
@@ -134,7 +134,7 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                             transition={{ duration: 0.2, ease: "easeInOut" }}
                             className="overflow-hidden"
                         >
-                            <div className="ml-4 mt-1 border-l border-slate-800/50 pl-2 space-y-1">
+                            <div className="ml-4 mt-1 border-l border-border/50 pl-2 space-y-1">
                                 {item.items?.map(subItem => renderItem(subItem, depth + 1))}
                             </div>
                         </motion.div>
@@ -162,7 +162,7 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                     {hasChildren ? (
                         <button
                             onClick={(e) => { e.preventDefault(); toggleExpand(`doc-${doc.id}`, e); }}
-                            className="p-0.5 hover:bg-white/10 rounded mr-1"
+                            className="p-0.5 hover:bg-accent/50 rounded mr-1"
                         >
                             {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                         </button>
@@ -225,7 +225,7 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                             transition={{ duration: 0.2, ease: "easeInOut" }}
                             className="overflow-hidden"
                         >
-                            <div className="ml-4 mt-1 border-l border-slate-800/50 pl-2 space-y-2">
+                            <div className="ml-4 mt-1 border-l border-border/50 pl-2 space-y-2">
                                 {isLoadingDocs ? (
                                     <div className="text-xs text-muted-foreground px-2 py-1">Loading...</div>
                                 ) : (

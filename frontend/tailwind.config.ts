@@ -59,6 +59,46 @@ const config: Config = {
             DEFAULT: "hsl(var(--card))",
             foreground: "hsl(var(--card-foreground))",
           },
+          // Extended semantic colors
+          surface: {
+            DEFAULT: "hsl(var(--surface))",
+            hover: "hsl(var(--surface-hover))",
+            active: "hsl(var(--surface-active))",
+            elevated: "hsl(var(--surface-elevated))",
+          },
+          "text-theme": {
+            primary: "hsl(var(--text-primary))",
+            secondary: "hsl(var(--text-secondary))",
+            muted: "hsl(var(--text-muted))",
+            inverted: "hsl(var(--text-inverted))",
+          },
+          "border-theme": {
+            DEFAULT: "hsl(var(--border-default))",
+            muted: "hsl(var(--border-muted))",
+            strong: "hsl(var(--border-strong))",
+          },
+          sidebar: {
+            DEFAULT: "hsl(var(--sidebar-bg))",
+            hover: "hsl(var(--sidebar-hover))",
+            active: "hsl(var(--sidebar-active))",
+          },
+          "input-theme": {
+            DEFAULT: "hsl(var(--input-bg))",
+            border: "hsl(var(--input-border))",
+            focus: "hsl(var(--input-focus))",
+          },
+          success: {
+            DEFAULT: "hsl(var(--success))",
+            foreground: "hsl(var(--success-foreground))",
+          },
+          warning: {
+            DEFAULT: "hsl(var(--warning))",
+            foreground: "hsl(var(--warning-foreground))",
+          },
+          info: {
+            DEFAULT: "hsl(var(--info))",
+            foreground: "hsl(var(--info-foreground))",
+          },
         },
         borderRadius: {
           lg: "var(--radius)",

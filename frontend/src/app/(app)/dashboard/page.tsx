@@ -109,13 +109,13 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
-            <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
-            <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+            <div className="w-12 h-12 border-4 border-primary/20 rounded-full"></div>
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
           </div>
-          <p className="text-slate-400 text-sm">Loading your profile...</p>
+          <p className="text-muted-foreground text-sm">Loading your profile...</p>
         </div>
       </div>
     );
@@ -147,19 +147,19 @@ export default function DashboardPage() {
                   alt={user.name || "User"}
                   width={56}
                   height={56}
-                  className="rounded-full ring-2 ring-slate-700"
+                  className="rounded-full ring-2 ring-border"
                 />
-                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-slate-950"></div>
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-success rounded-full border-2 border-background"></div>
               </div>
             )}
             <div>
-              <h1 className="text-2xl font-bold text-white">
+              <h1 className="text-2xl font-bold text-foreground">
                 Welcome back, {user?.name?.split(" ")[0] || "Developer"}
               </h1>
-              <p className="text-slate-400 text-sm">
+              <p className="text-muted-foreground text-sm">
                 {user?.github_connection ? (
                   <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                    <span className="w-2 h-2 bg-success rounded-full"></span>
                     Connected as @{user.github_connection.github_username}
                   </span>
                 ) : (
@@ -172,21 +172,21 @@ export default function DashboardPage() {
             <CustomizeButton onClick={() => setModalOpen(true)} />
             <Link
               href="/reviews"
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-sm font-medium transition flex items-center gap-2"
+              className="px-4 py-2 bg-card hover:bg-accent text-muted-foreground hover:text-foreground rounded-lg text-sm font-medium transition flex items-center gap-2"
             >
               <ClipboardCheck className="w-4 h-4" />
               Reviews
             </Link>
             <Link
               href="/learning"
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-sm font-medium transition flex items-center gap-2"
+              className="px-4 py-2 bg-card hover:bg-accent text-muted-foreground hover:text-foreground rounded-lg text-sm font-medium transition flex items-center gap-2"
             >
               <Target className="w-4 h-4" />
               Learning Path
             </Link>
             <Link
               href="/sprints"
-              className="px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg text-sm font-medium transition flex items-center gap-2"
+              className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-sm font-medium transition flex items-center gap-2"
             >
               <Calendar className="w-4 h-4" />
               Sprint Planning
@@ -198,47 +198,47 @@ export default function DashboardPage() {
       {/* Quick Stats */}
       {showWidget("quickStats") && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">
+          <div className="bg-card border border-border rounded-xl p-4 hover:border-border-strong transition">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-blue-500/10 rounded-lg">
-                <Code className="w-5 h-5 text-blue-400" />
+              <div className="p-2 bg-info/10 rounded-lg">
+                <Code className="w-5 h-5 text-info" />
               </div>
-              <span className="text-slate-400 text-sm">Languages</span>
+              <span className="text-muted-foreground text-sm">Languages</span>
             </div>
-            <p className="text-2xl font-bold text-white">{totalLanguages}</p>
-            <p className="text-xs text-slate-500 mt-1">Top: {topLanguage}</p>
+            <p className="text-2xl font-bold text-foreground">{totalLanguages}</p>
+            <p className="text-xs text-muted-foreground mt-1">Top: {topLanguage}</p>
           </div>
-          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">
+          <div className="bg-card border border-border rounded-xl p-4 hover:border-border-strong transition">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-purple-500/10 rounded-lg">
-                <Zap className="w-5 h-5 text-purple-400" />
+                <Zap className="w-5 h-5 text-purple-500" />
               </div>
-              <span className="text-slate-400 text-sm">Frameworks</span>
+              <span className="text-muted-foreground text-sm">Frameworks</span>
             </div>
-            <p className="text-2xl font-bold text-white">{totalFrameworks}</p>
-            <p className="text-xs text-slate-500 mt-1">Active technologies</p>
+            <p className="text-2xl font-bold text-foreground">{totalFrameworks}</p>
+            <p className="text-xs text-muted-foreground mt-1">Active technologies</p>
           </div>
-          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">
+          <div className="bg-card border border-border rounded-xl p-4 hover:border-border-strong transition">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-green-500/10 rounded-lg">
-                <GitPullRequest className="w-5 h-5 text-green-400" />
+              <div className="p-2 bg-success/10 rounded-lg">
+                <GitPullRequest className="w-5 h-5 text-success" />
               </div>
-              <span className="text-slate-400 text-sm">Avg PR Size</span>
+              <span className="text-muted-foreground text-sm">Avg PR Size</span>
             </div>
-            <p className="text-2xl font-bold text-white">{avgPRSize.toFixed(0)}</p>
-            <p className="text-xs text-slate-500 mt-1">lines per PR</p>
+            <p className="text-2xl font-bold text-foreground">{avgPRSize.toFixed(0)}</p>
+            <p className="text-xs text-muted-foreground mt-1">lines per PR</p>
           </div>
-          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">
+          <div className="bg-card border border-border rounded-xl p-4 hover:border-border-strong transition">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-orange-500/10 rounded-lg">
-                <Activity className="w-5 h-5 text-orange-400" />
+              <div className="p-2 bg-warning/10 rounded-lg">
+                <Activity className="w-5 h-5 text-warning" />
               </div>
-              <span className="text-slate-400 text-sm">Work Style</span>
+              <span className="text-muted-foreground text-sm">Work Style</span>
             </div>
-            <p className="text-lg font-bold text-white capitalize">
+            <p className="text-lg font-bold text-foreground capitalize">
               {workPatterns?.collaboration_style || "N/A"}
             </p>
-            <p className="text-xs text-slate-500 mt-1">Collaboration type</p>
+            <p className="text-xs text-muted-foreground mt-1">Collaboration type</p>
           </div>
         </div>
       )}
@@ -248,13 +248,13 @@ export default function DashboardPage() {
         <div className="grid lg:grid-cols-3 gap-6 mb-10">
           {/* Languages Card */}
           {showWidget("languageProficiency") && (
-            <div className="lg:col-span-2 bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+            <div className="lg:col-span-2 bg-card border border-border rounded-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-primary-500/10 rounded-lg">
                     <Code className="h-5 w-5 text-primary-400" />
                   </div>
-                  <h3 className="text-lg font-semibold text-white">Language Proficiency</h3>
+                  <h3 className="text-lg font-semibold text-foreground">Language Proficiency</h3>
                 </div>
                 <Link href="/profile" className="text-primary-400 hover:text-primary-300 text-sm flex items-center gap-1 transition">
                   View all <ChevronRight className="w-4 h-4" />
@@ -267,22 +267,22 @@ export default function DashboardPage() {
                       <div key={lang.name} className="group">
                         <div className="flex justify-between items-center mb-2">
                           <div className="flex items-center gap-2">
-                            <span className="text-slate-500 text-xs font-mono">#{index + 1}</span>
-                            <span className="text-white font-medium">{lang.name}</span>
+                            <span className="text-muted-foreground/70 text-xs font-mono">#{index + 1}</span>
+                            <span className="text-foreground font-medium">{lang.name}</span>
                           </div>
                           <Tooltip content={`Score: ${lang.proficiency_score}/100 based on commits & lines of code`}>
-                            <span className="text-slate-400 text-sm cursor-help tabular-nums">
+                            <span className="text-muted-foreground text-sm cursor-help tabular-nums">
                               {lang.proficiency_score}%
                             </span>
                           </Tooltip>
                         </div>
-                        <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                        <div className="h-2 bg-muted rounded-full overflow-hidden">
                           <div
                             className="h-full bg-gradient-to-r from-primary-600 to-primary-400 rounded-full transition-all duration-500 group-hover:from-primary-500 group-hover:to-primary-300"
                             style={{ width: `${lang.proficiency_score}%` }}
                           />
                         </div>
-                        <div className="flex justify-between items-center text-xs text-slate-500 mt-1.5">
+                        <div className="flex justify-between items-center text-xs text-muted-foreground/70 mt-1.5">
                           <span>{lang.commits_count.toLocaleString()} commits</span>
                           <span className={`flex items-center gap-1 ${getTrendColor(lang.trend)}`}>
                             {lang.trend === "growing" && <TrendingUp className="w-3 h-3" />}
@@ -294,10 +294,10 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <div className="text-center py-8">
-                    <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Code className="w-8 h-8 text-slate-600" />
+                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Code className="w-8 h-8 text-muted-foreground/50" />
                     </div>
-                    <p className="text-slate-400 text-sm">
+                    <p className="text-muted-foreground text-sm">
                       No language data yet. Connect your GitHub to analyze your contributions.
                     </p>
                   </div>
@@ -308,51 +308,51 @@ export default function DashboardPage() {
 
           {/* Work Patterns Card */}
           {showWidget("workPatterns") && (
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-800">
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-border">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-emerald-500/10 rounded-lg">
                     <BarChart3 className="h-5 w-5 text-emerald-400" />
                   </div>
-                  <h3 className="text-lg font-semibold text-white">Work Patterns</h3>
+                  <h3 className="text-lg font-semibold text-foreground">Work Patterns</h3>
                 </div>
               </div>
               <div className="p-6">
                 {workPatterns ? (
                   <div className="space-y-5">
-                    <div className="p-3 bg-slate-800/50 rounded-lg">
+                    <div className="p-3 bg-muted rounded-lg">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-slate-400 text-sm">Complexity Preference</span>
+                        <span className="text-muted-foreground text-sm">Complexity Preference</span>
                       </div>
-                      <p className="text-white font-medium capitalize">
+                      <p className="text-foreground font-medium capitalize">
                         {workPatterns.preferred_complexity || "Balanced"}
                       </p>
                     </div>
-                    <div className="p-3 bg-slate-800/50 rounded-lg">
+                    <div className="p-3 bg-muted rounded-lg">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-slate-400 text-sm">Peak Hours</span>
+                        <span className="text-muted-foreground text-sm">Peak Hours</span>
                       </div>
-                      <p className="text-white font-medium">
+                      <p className="text-foreground font-medium">
                         {workPatterns.peak_productivity_hours?.length > 0
                           ? workPatterns.peak_productivity_hours.slice(0, 3).map(h => `${h}:00`).join(", ")
                           : "Not analyzed"}
                       </p>
                     </div>
-                    <div className="p-3 bg-slate-800/50 rounded-lg">
+                    <div className="p-3 bg-muted rounded-lg">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-slate-400 text-sm">Review Turnaround</span>
+                        <span className="text-muted-foreground text-sm">Review Turnaround</span>
                       </div>
-                      <p className="text-white font-medium">
+                      <p className="text-foreground font-medium">
                         {workPatterns.average_review_turnaround_hours
                           ? `${workPatterns.average_review_turnaround_hours.toFixed(1)} hours`
                           : "N/A"}
                       </p>
                     </div>
-                    <div className="p-3 bg-slate-800/50 rounded-lg">
+                    <div className="p-3 bg-muted rounded-lg">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-slate-400 text-sm">PR Efficiency</span>
+                        <span className="text-muted-foreground text-sm">PR Efficiency</span>
                       </div>
-                      <p className="text-white font-medium">
+                      <p className="text-foreground font-medium">
                         {workPatterns.average_pr_size > 200 ? "Large PRs" :
                           workPatterns.average_pr_size > 50 ? "Medium PRs" : "Small PRs"}
                       </p>
@@ -360,10 +360,10 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <div className="text-center py-8">
-                    <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <BarChart3 className="w-8 h-8 text-slate-600" />
+                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                      <BarChart3 className="w-8 h-8 text-muted-foreground/50" />
                     </div>
-                    <p className="text-slate-400 text-sm">
+                    <p className="text-muted-foreground text-sm">
                       Work patterns will appear after more activity is analyzed.
                     </p>
                   </div>
@@ -379,13 +379,13 @@ export default function DashboardPage() {
         <div className="grid lg:grid-cols-2 gap-6 mb-10">
           {/* Domain Expertise */}
           {showWidget("domainExpertise") && (
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-800">
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-border">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-amber-500/10 rounded-lg">
                     <TrendingUp className="h-5 w-5 text-amber-400" />
                   </div>
-                  <h3 className="text-lg font-semibold text-white">Domain Expertise</h3>
+                  <h3 className="text-lg font-semibold text-foreground">Domain Expertise</h3>
                 </div>
               </div>
               <div className="p-6">
@@ -396,9 +396,9 @@ export default function DashboardPage() {
                         key={domain.name}
                         content={`Confidence: ${domain.confidence_score}% based on file types & commits`}
                       >
-                        <span className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg text-sm cursor-help transition">
+                        <span className="inline-flex items-center gap-2 bg-muted hover:bg-accent text-slate-300 px-4 py-2 rounded-lg text-sm cursor-help transition">
                           {domain.name.replace("_", " ")}
-                          <span className="text-xs text-slate-500 bg-slate-900 px-2 py-0.5 rounded-full">
+                          <span className="text-xs text-muted-foreground/70 bg-muted px-2 py-0.5 rounded-full">
                             {domain.confidence_score}%
                           </span>
                         </span>
@@ -407,7 +407,7 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <div className="text-center py-6">
-                    <p className="text-slate-400 text-sm">No domains detected yet.</p>
+                    <p className="text-muted-foreground text-sm">No domains detected yet.</p>
                   </div>
                 )}
               </div>
@@ -416,13 +416,13 @@ export default function DashboardPage() {
 
           {/* Frameworks */}
           {showWidget("frameworksTools") && (
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-800">
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-border">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-cyan-500/10 rounded-lg">
                     <Clock className="h-5 w-5 text-cyan-400" />
                   </div>
-                  <h3 className="text-lg font-semibold text-white">Frameworks & Tools</h3>
+                  <h3 className="text-lg font-semibold text-foreground">Frameworks & Tools</h3>
                 </div>
               </div>
               <div className="p-6">
@@ -444,7 +444,7 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <div className="text-center py-6">
-                    <p className="text-slate-400 text-sm">No frameworks detected yet.</p>
+                    <p className="text-muted-foreground text-sm">No frameworks detected yet.</p>
                   </div>
                 )}
               </div>
@@ -460,7 +460,7 @@ export default function DashboardPage() {
             <div className="p-2 bg-gradient-to-br from-primary-500/20 to-purple-500/20 rounded-lg">
               <Sparkles className="h-5 w-5 text-primary-400" />
             </div>
-            <h2 className="text-xl font-bold text-white">AI-Powered Insights</h2>
+            <h2 className="text-xl font-bold text-foreground">AI-Powered Insights</h2>
           </div>
           {(showWidget("aiInsights") || showWidget("softSkills")) && (
             <div className="grid lg:grid-cols-2 gap-6 mb-6">
@@ -498,17 +498,17 @@ export default function DashboardPage() {
             <div className="p-2 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-lg">
               <Target className="h-5 w-5 text-green-400" />
             </div>
-            <h2 className="text-xl font-bold text-white">Task Matching</h2>
+            <h2 className="text-xl font-bold text-foreground">Task Matching</h2>
           </div>
           <div className="grid lg:grid-cols-2 gap-6">
             <TaskMatcherCard />
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-800">
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-border">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-slate-800 rounded-lg">
-                    <Users className="h-5 w-5 text-slate-400" />
+                  <div className="p-2 bg-muted rounded-lg">
+                    <Users className="h-5 w-5 text-muted-foreground" />
                   </div>
-                  <h3 className="text-lg font-semibold text-white">How Task Matching Works</h3>
+                  <h3 className="text-lg font-semibold text-foreground">How Task Matching Works</h3>
                 </div>
               </div>
               <div className="p-6 space-y-4">
@@ -517,8 +517,8 @@ export default function DashboardPage() {
                     1
                   </div>
                   <div>
-                    <h4 className="text-white font-medium mb-1">Signal Extraction</h4>
-                    <p className="text-slate-400 text-sm">
+                    <h4 className="text-foreground font-medium mb-1">Signal Extraction</h4>
+                    <p className="text-muted-foreground text-sm">
                       AI identifies programming languages, frameworks, and expertise required.
                     </p>
                   </div>
@@ -528,8 +528,8 @@ export default function DashboardPage() {
                     2
                   </div>
                   <div>
-                    <h4 className="text-white font-medium mb-1">Skill Matching</h4>
-                    <p className="text-slate-400 text-sm">
+                    <h4 className="text-foreground font-medium mb-1">Skill Matching</h4>
+                    <p className="text-muted-foreground text-sm">
                       Compares task requirements against developer profiles.
                     </p>
                   </div>
@@ -539,15 +539,15 @@ export default function DashboardPage() {
                     3
                   </div>
                   <div>
-                    <h4 className="text-white font-medium mb-1">Growth Opportunity</h4>
-                    <p className="text-slate-400 text-sm">
+                    <h4 className="text-foreground font-medium mb-1">Growth Opportunity</h4>
+                    <p className="text-muted-foreground text-sm">
                       Considers tasks that help developers grow while ensuring capability.
                     </p>
                   </div>
                 </div>
-                <div className="mt-4 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-                  <p className="text-slate-400 text-sm">
-                    Connect your <span className="text-white">Jira</span>, <span className="text-white">Linear</span>, or <span className="text-white">GitHub Issues</span> for automatic task imports.
+                <div className="mt-4 p-3 bg-muted rounded-lg border border-border">
+                  <p className="text-muted-foreground text-sm">
+                    Connect your <span className="text-foreground">Jira</span>, <span className="text-foreground">Linear</span>, or <span className="text-foreground">GitHub Issues</span> for automatic task imports.
                   </p>
                 </div>
               </div>
@@ -579,18 +579,18 @@ export default function DashboardPage() {
             <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-teal-500/20 rounded-lg">
               <ClipboardCheck className="h-5 w-5 text-cyan-400" />
             </div>
-            <h2 className="text-xl font-bold text-white">Reviews & Goals</h2>
+            <h2 className="text-xl font-bold text-foreground">Reviews & Goals</h2>
           </div>
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Goals Overview Card */}
             {showWidget("myGoals") && (
-              <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+              <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="px-6 py-4 border-b border-border flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-cyan-500/10 rounded-lg">
                       <Target className="h-5 w-5 text-cyan-400" />
                     </div>
-                    <h3 className="text-lg font-semibold text-white">My Goals</h3>
+                    <h3 className="text-lg font-semibold text-foreground">My Goals</h3>
                   </div>
                   <Link href="/reviews/goals" className="text-cyan-400 hover:text-cyan-300 text-sm flex items-center gap-1 transition">
                     View all <ChevronRight className="w-4 h-4" />
@@ -598,15 +598,15 @@ export default function DashboardPage() {
                 </div>
                 <div className="p-6">
                   <div className="text-center py-6">
-                    <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Target className="w-8 h-8 text-slate-600" />
+                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Target className="w-8 h-8 text-muted-foreground/50" />
                     </div>
-                    <p className="text-slate-400 text-sm mb-4">
+                    <p className="text-muted-foreground text-sm mb-4">
                       Set SMART goals to track your progress and contributions.
                     </p>
                     <Link
                       href="/reviews/goals/new"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-sm font-medium transition"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-foreground rounded-lg text-sm font-medium transition"
                     >
                       Create Your First Goal
                     </Link>
@@ -617,34 +617,34 @@ export default function DashboardPage() {
 
             {/* Reviews Overview Card */}
             {showWidget("performanceReviews") && (
-              <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+              <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="px-6 py-4 border-b border-border flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-teal-500/10 rounded-lg">
                       <ClipboardCheck className="h-5 w-5 text-teal-400" />
                     </div>
-                    <h3 className="text-lg font-semibold text-white">Performance Reviews</h3>
+                    <h3 className="text-lg font-semibold text-foreground">Performance Reviews</h3>
                   </div>
                   <Link href="/reviews" className="text-teal-400 hover:text-teal-300 text-sm flex items-center gap-1 transition">
                     View all <ChevronRight className="w-4 h-4" />
                   </Link>
                 </div>
                 <div className="p-6 space-y-4">
-                  <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                  <div className="p-4 bg-muted rounded-lg border border-border">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                      <span className="text-white font-medium text-sm">360° Feedback</span>
+                      <span className="text-foreground font-medium text-sm">360° Feedback</span>
                     </div>
-                    <p className="text-slate-400 text-sm">
+                    <p className="text-muted-foreground text-sm">
                       Request anonymous feedback from peers and managers with the COIN framework.
                     </p>
                   </div>
-                  <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                  <div className="p-4 bg-muted rounded-lg border border-border">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      <span className="text-white font-medium text-sm">Auto-Contributions</span>
+                      <span className="text-foreground font-medium text-sm">Auto-Contributions</span>
                     </div>
-                    <p className="text-slate-400 text-sm">
+                    <p className="text-muted-foreground text-sm">
                       GitHub activity automatically linked to your review summaries.
                     </p>
                   </div>
@@ -677,6 +677,6 @@ function getTrendColor(trend: string): string {
     case "declining":
       return "text-red-400";
     default:
-      return "text-slate-500";
+      return "text-muted-foreground/70";
   }
 }
