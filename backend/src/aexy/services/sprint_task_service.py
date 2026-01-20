@@ -61,9 +61,16 @@ class SprintTaskService:
         if source_type == "manual" and not source_id:
             source_id = str(uuid4())
 
+        # Get workspace_id from sprint
+        sprint_stmt = select(Sprint).where(Sprint.id == sprint_id)
+        sprint_result = await self.db.execute(sprint_stmt)
+        sprint = sprint_result.scalar_one_or_none()
+        workspace_id = sprint.workspace_id if sprint else None
+
         task = SprintTask(
             id=str(uuid4()),
             sprint_id=sprint_id,
+            workspace_id=workspace_id,
             source_type=source_type,
             source_id=source_id,
             source_url=source_url,
@@ -79,15 +86,28 @@ class SprintTaskService:
         )
         self.db.add(task)
         await self.db.flush()
-        await self.db.refresh(task)
-        return task
+
+        # Re-fetch with relationships loaded to avoid lazy loading issues
+        stmt = (
+            select(SprintTask)
+            .where(SprintTask.id == task.id)
+            .options(
+                selectinload(SprintTask.assignee),
+                selectinload(SprintTask.subtasks),
+            )
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one()
 
     async def get_task(self, task_id: str) -> SprintTask | None:
         """Get a task by ID."""
         stmt = (
             select(SprintTask)
             .where(SprintTask.id == task_id)
-            .options(selectinload(SprintTask.assignee))
+            .options(
+                selectinload(SprintTask.assignee),
+                selectinload(SprintTask.subtasks),
+            )
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
@@ -111,7 +131,10 @@ class SprintTaskService:
         stmt = (
             select(SprintTask)
             .where(SprintTask.sprint_id == sprint_id)
-            .options(selectinload(SprintTask.assignee))
+            .options(
+                selectinload(SprintTask.assignee),
+                selectinload(SprintTask.subtasks),
+            )
         )
 
         if status:
@@ -161,8 +184,9 @@ class SprintTaskService:
             task.epic_id = epic_id
 
         await self.db.flush()
-        await self.db.refresh(task)
-        return task
+
+        # Re-fetch with relationships loaded
+        return await self.get_task(task_id)
 
     async def remove_task(self, task_id: str) -> bool:
         """Remove a task from a sprint."""
@@ -202,8 +226,9 @@ class SprintTaskService:
         task.assignment_confidence = confidence
 
         await self.db.flush()
-        await self.db.refresh(task)
-        return task
+
+        # Re-fetch with relationships loaded
+        return await self.get_task(task_id)
 
     async def unassign_task(self, task_id: str) -> SprintTask | None:
         """Remove assignment from a task."""
@@ -216,8 +241,9 @@ class SprintTaskService:
         task.assignment_confidence = None
 
         await self.db.flush()
-        await self.db.refresh(task)
-        return task
+
+        # Re-fetch with relationships loaded
+        return await self.get_task(task_id)
 
     async def bulk_assign_tasks(
         self,
@@ -275,8 +301,9 @@ class SprintTaskService:
             task.completed_at = now
 
         await self.db.flush()
-        await self.db.refresh(task)
-        return task
+
+        # Re-fetch with relationships loaded
+        return await self.get_task(task_id)
 
     # Activity Logging
     async def log_activity(
