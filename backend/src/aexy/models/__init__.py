@@ -343,6 +343,31 @@ from aexy.models.learning_integrations import (
     XAPIVerbType,
     CalendarProviderType,
 )
+from aexy.models.knowledge_graph import (
+    KnowledgeEntity,
+    KnowledgeEntityMention,
+    KnowledgeRelationship,
+    KnowledgeDocumentRelationship,
+    KnowledgeExtractionJob,
+    KnowledgeEntityType,
+    KnowledgeRelationType,
+    KnowledgeExtractionStatus,
+    KnowledgeExtractionJobType,
+)
+from aexy.models.booking import (
+    EventType,
+    LocationType,
+    UserAvailability,
+    AvailabilityOverride,
+    Booking,
+    BookingStatus,
+    PaymentStatus,
+    CalendarConnection,
+    CalendarProvider,
+    TeamEventMember,
+    AssignmentType,
+    BookingWebhook,
+)
 
 __all__ = [
     # Plan
@@ -683,4 +708,27 @@ __all__ = [
     "SCORMCompletionStatus",
     "XAPIVerbType",
     "CalendarProviderType",
+    # Knowledge Graph
+    "KnowledgeEntity",
+    "KnowledgeEntityMention",
+    "KnowledgeRelationship",
+    "KnowledgeDocumentRelationship",
+    "KnowledgeExtractionJob",
+    "KnowledgeEntityType",
+    "KnowledgeRelationType",
+    "KnowledgeExtractionStatus",
+    "KnowledgeExtractionJobType",
+    # Booking/Calendar
+    "EventType",
+    "LocationType",
+    "UserAvailability",
+    "AvailabilityOverride",
+    "Booking",
+    "BookingStatus",
+    "PaymentStatus",
+    "CalendarConnection",
+    "CalendarProvider",
+    "TeamEventMember",
+    "AssignmentType",
+    "BookingWebhook",
 ]
