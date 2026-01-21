@@ -20,6 +20,12 @@ class PlanResponse(BaseModel):
     sync_history_days: int
     llm_requests_per_day: int
     llm_provider_access: list[str]
+    # Token allocation and pricing
+    free_llm_tokens_per_month: int = 100000
+    llm_input_cost_per_1k_cents: int = 30
+    llm_output_cost_per_1k_cents: int = 60
+    enable_overage_billing: bool = True
+    # Feature flags
     enable_real_time_sync: bool
     enable_advanced_analytics: bool
     enable_exports: bool
@@ -179,3 +185,66 @@ class WebhookResponse(BaseModel):
     status: str
     event_type: str | None = None
     message: str | None = None
+
+
+class LimitsUsagePlan(BaseModel):
+    """Plan information for limits."""
+
+    id: str
+    name: str
+    tier: str
+
+
+class LimitsUsageRepos(BaseModel):
+    """Repository usage details."""
+
+    used: int
+    limit: int
+    unlimited: bool
+
+
+class LimitsUsageLLM(BaseModel):
+    """LLM usage details."""
+
+    used_today: int
+    limit_per_day: int
+    unlimited: bool
+    providers: list[str]
+    reset_at: datetime | None = None
+
+
+class LimitsUsageFeatures(BaseModel):
+    """Feature availability."""
+
+    real_time_sync: bool
+    webhooks: bool
+    advanced_analytics: bool
+    exports: bool
+    team_features: bool
+
+
+class LimitsUsageTokens(BaseModel):
+    """Token usage for pay-per-use billing."""
+
+    free_tokens_per_month: int
+    tokens_used_this_month: int
+    input_tokens_this_month: int
+    output_tokens_this_month: int
+    tokens_remaining_free: int
+    is_in_overage: bool
+    overage_tokens: int
+    overage_cost_cents: int
+    input_cost_per_1k_cents: int
+    output_cost_per_1k_cents: int
+    enable_overage_billing: bool
+    reset_at: datetime | None = None
+
+
+class LimitsUsageResponse(BaseModel):
+    """Complete limits and usage information."""
+
+    plan: LimitsUsagePlan
+    repos: LimitsUsageRepos
+    llm: LimitsUsageLLM
+    tokens: LimitsUsageTokens
+    features: LimitsUsageFeatures

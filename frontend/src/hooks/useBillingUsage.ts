@@ -184,11 +184,94 @@ export function getUsageWarning(
   return null;
 }
 
+// Token usage specific warning
+export interface TokenUsageWarning extends UsageWarning {
+  isOverage: boolean;
+  overageTokens: number;
+  overageCostCents: number;
+  freeTokensRemaining: number;
+}
+
+// Get token usage warning with overage info
+export function getTokenUsageWarning(
+  tokensUsed: number,
+  freeTokensAllowed: number,
+  overageTokens: number,
+  overageCostCents: number,
+  enableOverageBilling: boolean
+): TokenUsageWarning | null {
+  const freeTokensRemaining = Math.max(0, freeTokensAllowed - tokensUsed);
+  const isOverage = tokensUsed > freeTokensAllowed;
+  const percentage = freeTokensAllowed > 0
+    ? (Math.min(tokensUsed, freeTokensAllowed) / freeTokensAllowed) * 100
+    : 0;
+
+  // If in overage and billing enabled, show overage warning
+  if (isOverage && enableOverageBilling) {
+    return {
+      severity: "warning",
+      percentage: 100,
+      resourceName: "free tokens",
+      message: `You've used all your free tokens. Additional usage: ${formatNumber(overageTokens)} tokens (${formatCurrency(overageCostCents)}).`,
+      ctaText: "View Usage",
+      isOverage: true,
+      overageTokens,
+      overageCostCents,
+      freeTokensRemaining: 0,
+    };
+  }
+
+  // If in overage but billing disabled (free plan), show limit reached
+  if (isOverage && !enableOverageBilling) {
+    return {
+      severity: "limit_reached",
+      percentage: 100,
+      resourceName: "monthly tokens",
+      message: `You've reached your monthly token limit. Upgrade to continue using AI features.`,
+      ctaText: "Upgrade Now",
+      isOverage: true,
+      overageTokens: 0,
+      overageCostCents: 0,
+      freeTokensRemaining: 0,
+    };
+  }
+
+  // Standard threshold warnings for free tokens
+  if (percentage >= 90) {
+    return {
+      severity: "critical",
+      percentage,
+      resourceName: "free tokens",
+      message: `You've used ${Math.round(percentage)}% of your free monthly tokens. ${formatNumber(freeTokensRemaining)} tokens remaining.`,
+      ctaText: enableOverageBilling ? "View Pricing" : "Upgrade Plan",
+      isOverage: false,
+      overageTokens: 0,
+      overageCostCents: 0,
+      freeTokensRemaining,
+    };
+  } else if (percentage >= 80) {
+    return {
+      severity: "warning",
+      percentage,
+      resourceName: "free tokens",
+      message: `You've used ${Math.round(percentage)}% of your free monthly tokens.`,
+      ctaText: "View Usage",
+      isOverage: false,
+      overageTokens: 0,
+      overageCostCents: 0,
+      freeTokensRemaining,
+    };
+  }
+
+  return null;
+}
+
 // Combined hook for all usage warnings
 export function useUsageWarnings() {
   const { data: limitsData, isLoading } = useLimitsUsage();
 
   const warnings: UsageWarning[] = [];
+  let tokenWarning: TokenUsageWarning | null = null;
 
   if (limitsData && !limitsData.llm.unlimited) {
     const llmPercentage = (limitsData.llm.used_today / limitsData.llm.limit_per_day) * 100;
@@ -206,7 +289,22 @@ export function useUsageWarnings() {
     }
   }
 
-  return { warnings, isLoading };
+  // Check token usage (free tier + overage)
+  if (limitsData?.tokens) {
+    const tokens = limitsData.tokens;
+    tokenWarning = getTokenUsageWarning(
+      tokens.tokens_used_this_month,
+      tokens.free_tokens_per_month,
+      tokens.overage_tokens,
+      tokens.overage_cost_cents,
+      tokens.enable_overage_billing
+    );
+    if (tokenWarning) {
+      warnings.push(tokenWarning);
+    }
+  }
+
+  return { warnings, tokenWarning, isLoading };
 }
 
 // Format currency helper

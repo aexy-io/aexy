@@ -21,6 +21,12 @@ from aexy.schemas.billing import (
     CreatePortalSessionResponse,
     CustomerBillingResponse,
     InvoiceResponse,
+    LimitsUsageFeatures,
+    LimitsUsageLLM,
+    LimitsUsagePlan,
+    LimitsUsageRepos,
+    LimitsUsageResponse,
+    LimitsUsageTokens,
     PlanResponse,
     SubscriptionResponse,
     SubscriptionStatusResponse,
@@ -340,6 +346,82 @@ async def get_billing_history(
     usage_service = UsageService(db)
     history = await usage_service.get_billing_history(developer_id, months=months)
     return [BillingHistoryEntry(**entry) for entry in history]
+
+
+@router.get("/limits", response_model=LimitsUsageResponse)
+async def get_limits_usage(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    developer_id: Annotated[str, Depends(get_current_developer_id)],
+) -> LimitsUsageResponse:
+    """Get current plan limits and usage."""
+    from aexy.services.limits_service import LimitsService
+
+    limits_service = LimitsService(db)
+
+    # Get developer with plan
+    developer = await limits_service.get_developer_with_plan(developer_id)
+    if not developer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Developer not found",
+        )
+
+    plan = developer.plan or await limits_service.get_or_create_free_plan()
+
+    # Get repos count
+    repos_count = await limits_service.get_enabled_repos_count(developer_id)
+
+    # Check resets (daily and monthly)
+    await limits_service._maybe_reset_llm_usage(developer)
+    await limits_service._maybe_reset_monthly_tokens(developer)
+
+    # Calculate token usage info
+    free_tokens = getattr(plan, "free_llm_tokens_per_month", 100000)
+    tokens_used = developer.llm_tokens_used_this_month or 0
+    tokens_remaining = max(0, free_tokens - tokens_used) if free_tokens > 0 else 0
+    is_in_overage = tokens_used > free_tokens if free_tokens > 0 else False
+    overage_tokens = max(0, tokens_used - free_tokens) if free_tokens > 0 else 0
+
+    return LimitsUsageResponse(
+        plan=LimitsUsagePlan(
+            id=plan.id,
+            name=plan.name,
+            tier=plan.tier.value if hasattr(plan.tier, "value") else str(plan.tier),
+        ),
+        repos=LimitsUsageRepos(
+            used=repos_count,
+            limit=plan.max_repos,
+            unlimited=plan.max_repos == -1,
+        ),
+        llm=LimitsUsageLLM(
+            used_today=developer.llm_requests_today,
+            limit_per_day=plan.llm_requests_per_day,
+            unlimited=plan.llm_requests_per_day == -1,
+            providers=plan.llm_provider_access or [],
+            reset_at=developer.llm_requests_reset_at,
+        ),
+        tokens=LimitsUsageTokens(
+            free_tokens_per_month=free_tokens,
+            tokens_used_this_month=tokens_used,
+            input_tokens_this_month=developer.llm_input_tokens_this_month or 0,
+            output_tokens_this_month=developer.llm_output_tokens_this_month or 0,
+            tokens_remaining_free=tokens_remaining,
+            is_in_overage=is_in_overage,
+            overage_tokens=overage_tokens,
+            overage_cost_cents=developer.llm_overage_cost_cents or 0,
+            input_cost_per_1k_cents=getattr(plan, "llm_input_cost_per_1k_cents", 30),
+            output_cost_per_1k_cents=getattr(plan, "llm_output_cost_per_1k_cents", 60),
+            enable_overage_billing=getattr(plan, "enable_overage_billing", True),
+            reset_at=developer.llm_tokens_reset_at,
+        ),
+        features=LimitsUsageFeatures(
+            real_time_sync=plan.enable_real_time_sync,
+            webhooks=plan.enable_webhooks,
+            advanced_analytics=plan.enable_advanced_analytics,
+            exports=plan.enable_exports,
+            team_features=plan.enable_team_features,
+        ),
+    )
 
 
 @router.post("/webhook", response_model=WebhookResponse)
