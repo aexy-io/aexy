@@ -100,8 +100,8 @@ class KnowledgeEntity(Base):
         ARRAY(String), default=list, nullable=False
     )
 
-    # Additional metadata (URLs, external IDs, etc.)
-    metadata: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    # Additional data (URLs, external IDs, etc.)
+    extra_data: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
     # Quality metrics
     confidence_score: Mapped[float] = mapped_column(
@@ -244,8 +244,8 @@ class KnowledgeRelationship(Base):
     strength: Mapped[float] = mapped_column(Float, default=0.5, nullable=False)
     bidirectional: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
-    # Additional context or metadata
-    metadata: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    # Additional context or data
+    extra_data: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -324,8 +324,8 @@ class KnowledgeDocumentRelationship(Base):
     # Connection strength based on shared entities and other factors
     strength: Mapped[float] = mapped_column(Float, default=0.5, nullable=False)
 
-    # Additional metadata
-    metadata: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    # Additional data
+    extra_data: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
