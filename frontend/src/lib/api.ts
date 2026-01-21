@@ -11424,3 +11424,1686 @@ export const visualBuilderApi = {
     },
   },
 };
+
+// ==================== Compliance & Certifications API ====================
+
+// Types
+export type AssignmentStatus = "pending" | "in_progress" | "completed" | "overdue" | "waived";
+export type CertificationStatus = "active" | "expired" | "expiring_soon" | "revoked";
+export type AppliesTo = "all" | "team" | "role" | "individual";
+export type AuditActionType =
+  | "training_created" | "training_updated" | "training_deleted" | "training_assigned"
+  | "training_completed" | "training_waived" | "training_acknowledged"
+  | "certification_added" | "certification_updated" | "certification_expired"
+  | "certification_renewed" | "certification_revoked"
+  | "goal_created" | "goal_updated" | "goal_completed"
+  | "approval_requested" | "approval_approved" | "approval_rejected";
+
+export interface MandatoryTraining {
+  id: string;
+  workspace_id: string;
+  learning_path_id: string | null;
+  name: string;
+  description: string | null;
+  applies_to_type: AppliesTo;
+  applies_to_ids: string[];
+  due_days_after_assignment: number;
+  recurring_months: number | null;
+  fixed_due_date: string | null;
+  is_active: boolean;
+  extra_data: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  created_by_id: string | null;
+}
+
+export interface MandatoryTrainingWithStats extends MandatoryTraining {
+  total_assignments: number;
+  completed_assignments: number;
+  overdue_assignments: number;
+  in_progress_assignments: number;
+  completion_rate: number;
+}
+
+export interface TrainingAssignment {
+  id: string;
+  mandatory_training_id: string;
+  developer_id: string;
+  workspace_id: string;
+  due_date: string;
+  status: AssignmentStatus;
+  progress_percentage: number;
+  started_at: string | null;
+  completed_at: string | null;
+  acknowledged_at: string | null;
+  waived_by_id: string | null;
+  waived_at: string | null;
+  waiver_reason: string | null;
+  extra_data: Record<string, unknown>;
+  reminder_sent_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TrainingAssignmentWithDetails extends TrainingAssignment {
+  training_name: string;
+  training_description: string | null;
+  developer_name: string;
+  developer_email: string;
+  learning_path_id: string | null;
+  days_until_due: number | null;
+  is_overdue: boolean;
+}
+
+export interface Certification {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description: string | null;
+  issuing_authority: string;
+  validity_months: number | null;
+  renewal_required: boolean;
+  category: string | null;
+  skill_tags: string[];
+  prerequisites: string[];
+  is_required: boolean;
+  external_url: string | null;
+  logo_url: string | null;
+  extra_data: Record<string, unknown>;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by_id: string | null;
+}
+
+export interface CertificationWithStats extends Certification {
+  total_holders: number;
+  active_holders: number;
+  expiring_soon_count: number;
+  expired_count: number;
+}
+
+export interface DeveloperCertification {
+  id: string;
+  developer_id: string;
+  certification_id: string;
+  workspace_id: string;
+  issued_date: string;
+  expiry_date: string | null;
+  status: CertificationStatus;
+  credential_id: string | null;
+  verification_url: string | null;
+  certificate_url: string | null;
+  verified_at: string | null;
+  verified_by_id: string | null;
+  score: number | null;
+  extra_data: Record<string, unknown>;
+  notes: string | null;
+  renewal_reminder_sent_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DeveloperCertificationWithDetails extends DeveloperCertification {
+  certification_name: string;
+  certification_issuing_authority: string;
+  developer_name: string;
+  developer_email: string;
+  days_until_expiry: number | null;
+  is_expired: boolean;
+  is_expiring_soon: boolean;
+}
+
+export interface ComplianceOverview {
+  total_mandatory_trainings: number;
+  active_mandatory_trainings: number;
+  total_assignments: number;
+  completed_assignments: number;
+  overdue_assignments: number;
+  in_progress_assignments: number;
+  pending_assignments: number;
+  waived_assignments: number;
+  overall_completion_rate: number;
+  total_certifications: number;
+  active_certifications: number;
+  expired_certifications: number;
+  expiring_soon_certifications: number;
+}
+
+export interface DeveloperComplianceStatus {
+  developer_id: string;
+  developer_name: string;
+  developer_email: string;
+  total_assignments: number;
+  completed_assignments: number;
+  overdue_assignments: number;
+  in_progress_assignments: number;
+  pending_assignments: number;
+  completion_rate: number;
+  total_certifications: number;
+  active_certifications: number;
+  expired_certifications: number;
+  expiring_soon_certifications: number;
+  is_compliant: boolean;
+}
+
+export interface LearningAuditLog {
+  id: string;
+  workspace_id: string;
+  actor_id: string;
+  action_type: AuditActionType;
+  target_type: string;
+  target_id: string;
+  old_value: Record<string, unknown> | null;
+  new_value: Record<string, unknown> | null;
+  description: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  extra_data: Record<string, unknown>;
+  created_at: string;
+  actor_name?: string;
+  actor_email?: string;
+}
+
+export interface OverdueReport {
+  assignments: TrainingAssignmentWithDetails[];
+  total: number;
+  by_training: Record<string, number>;
+  by_team: Record<string, number>;
+}
+
+export interface ExpiringCertificationsReport {
+  certifications: DeveloperCertificationWithDetails[];
+  total: number;
+  by_certification: Record<string, number>;
+  by_days_until_expiry: Record<string, number>;
+}
+
+export interface PaginatedList<T> {
+  items: T[];
+  total: number;
+  page: number;
+  page_size: number;
+  has_more: boolean;
+}
+
+export const complianceApi = {
+  // Mandatory Training
+  training: {
+    list: async (workspaceId: string, options?: {
+      is_active?: boolean;
+      page?: number;
+      page_size?: number;
+    }): Promise<PaginatedList<MandatoryTrainingWithStats>> => {
+      const response = await api.get("/compliance/mandatory-training", {
+        params: { workspace_id: workspaceId, ...options },
+      });
+      return response.data;
+    },
+
+    get: async (trainingId: string, workspaceId: string): Promise<MandatoryTrainingWithStats> => {
+      const response = await api.get(`/compliance/mandatory-training/${trainingId}`, {
+        params: { workspace_id: workspaceId },
+      });
+      return response.data;
+    },
+
+    create: async (workspaceId: string, developerId: string, data: {
+      name: string;
+      description?: string;
+      learning_path_id?: string;
+      applies_to_type?: AppliesTo;
+      applies_to_ids?: string[];
+      due_days_after_assignment?: number;
+      recurring_months?: number;
+      fixed_due_date?: string;
+      extra_data?: Record<string, unknown>;
+    }): Promise<MandatoryTraining> => {
+      const response = await api.post("/compliance/mandatory-training", data, {
+        params: { workspace_id: workspaceId, developer_id: developerId },
+      });
+      return response.data;
+    },
+
+    update: async (trainingId: string, workspaceId: string, developerId: string, data: {
+      name?: string;
+      description?: string;
+      applies_to_type?: AppliesTo;
+      applies_to_ids?: string[];
+      due_days_after_assignment?: number;
+      recurring_months?: number;
+      fixed_due_date?: string;
+      learning_path_id?: string;
+      is_active?: boolean;
+      extra_data?: Record<string, unknown>;
+    }): Promise<MandatoryTraining> => {
+      const response = await api.patch(`/compliance/mandatory-training/${trainingId}`, data, {
+        params: { workspace_id: workspaceId, developer_id: developerId },
+      });
+      return response.data;
+    },
+
+    delete: async (trainingId: string, workspaceId: string, developerId: string): Promise<void> => {
+      await api.delete(`/compliance/mandatory-training/${trainingId}`, {
+        params: { workspace_id: workspaceId, developer_id: developerId },
+      });
+    },
+  },
+
+  // Training Assignments
+  assignments: {
+    list: async (workspaceId: string, options?: {
+      mandatory_training_id?: string;
+      developer_id?: string;
+      status?: AssignmentStatus;
+      is_overdue?: boolean;
+      page?: number;
+      page_size?: number;
+    }): Promise<PaginatedList<TrainingAssignmentWithDetails>> => {
+      const response = await api.get("/compliance/assignments", {
+        params: { workspace_id: workspaceId, ...options },
+      });
+      return response.data;
+    },
+
+    get: async (assignmentId: string, workspaceId: string): Promise<TrainingAssignmentWithDetails> => {
+      const response = await api.get(`/compliance/assignments/${assignmentId}`, {
+        params: { workspace_id: workspaceId },
+      });
+      return response.data;
+    },
+
+    create: async (workspaceId: string, developerId: string, data: {
+      mandatory_training_id: string;
+      developer_id: string;
+      due_date: string;
+      extra_data?: Record<string, unknown>;
+    }): Promise<TrainingAssignment> => {
+      const response = await api.post("/compliance/assignments", data, {
+        params: { workspace_id: workspaceId, developer_id: developerId },
+      });
+      return response.data;
+    },
+
+    bulkCreate: async (workspaceId: string, actorId: string, data: {
+      mandatory_training_id: string;
+      developer_ids: string[];
+      due_date?: string;
+    }): Promise<TrainingAssignment[]> => {
+      const response = await api.post("/compliance/assignments/bulk", data, {
+        params: { workspace_id: workspaceId, developer_id: actorId },
+      });
+      return response.data;
+    },
+
+    update: async (assignmentId: string, workspaceId: string, developerId: string, data: {
+      due_date?: string;
+      status?: AssignmentStatus;
+      progress_percentage?: number;
+      extra_data?: Record<string, unknown>;
+    }): Promise<TrainingAssignment> => {
+      const response = await api.patch(`/compliance/assignments/${assignmentId}`, data, {
+        params: { workspace_id: workspaceId, developer_id: developerId },
+      });
+      return response.data;
+    },
+
+    acknowledge: async (assignmentId: string, workspaceId: string, developerId: string): Promise<TrainingAssignment> => {
+      const response = await api.post(`/compliance/assignments/${assignmentId}/acknowledge`, {}, {
+        params: { workspace_id: workspaceId, developer_id: developerId },
+      });
+      return response.data;
+    },
+
+    start: async (assignmentId: string, workspaceId: string, developerId: string): Promise<TrainingAssignment> => {
+      const response = await api.post(`/compliance/assignments/${assignmentId}/start`, {}, {
+        params: { workspace_id: workspaceId, developer_id: developerId },
+      });
+      return response.data;
+    },
+
+    complete: async (assignmentId: string, workspaceId: string, developerId: string): Promise<TrainingAssignment> => {
+      const response = await api.post(`/compliance/assignments/${assignmentId}/complete`, {}, {
+        params: { workspace_id: workspaceId, developer_id: developerId },
+      });
+      return response.data;
+    },
+
+    waive: async (assignmentId: string, workspaceId: string, managerId: string, reason: string): Promise<TrainingAssignment> => {
+      const response = await api.post(`/compliance/assignments/${assignmentId}/waive`, { reason }, {
+        params: { workspace_id: workspaceId, developer_id: managerId },
+      });
+      return response.data;
+    },
+  },
+
+  // Certifications
+  certifications: {
+    list: async (workspaceId: string, options?: {
+      is_active?: boolean;
+      category?: string;
+      page?: number;
+      page_size?: number;
+    }): Promise<PaginatedList<CertificationWithStats>> => {
+      const response = await api.get("/compliance/certifications", {
+        params: { workspace_id: workspaceId, ...options },
+      });
+      return response.data;
+    },
+
+    get: async (certificationId: string, workspaceId: string): Promise<CertificationWithStats> => {
+      const response = await api.get(`/compliance/certifications/${certificationId}`, {
+        params: { workspace_id: workspaceId },
+      });
+      return response.data;
+    },
+
+    create: async (workspaceId: string, developerId: string, data: {
+      name: string;
+      description?: string;
+      issuing_authority: string;
+      validity_months?: number;
+      renewal_required?: boolean;
+      category?: string;
+      skill_tags?: string[];
+      prerequisites?: string[];
+      is_required?: boolean;
+      external_url?: string;
+      logo_url?: string;
+      extra_data?: Record<string, unknown>;
+    }): Promise<Certification> => {
+      const response = await api.post("/compliance/certifications", data, {
+        params: { workspace_id: workspaceId, developer_id: developerId },
+      });
+      return response.data;
+    },
+
+    update: async (certificationId: string, workspaceId: string, data: {
+      name?: string;
+      description?: string;
+      issuing_authority?: string;
+      validity_months?: number;
+      renewal_required?: boolean;
+      category?: string;
+      skill_tags?: string[];
+      prerequisites?: string[];
+      is_required?: boolean;
+      external_url?: string;
+      logo_url?: string;
+      is_active?: boolean;
+      extra_data?: Record<string, unknown>;
+    }): Promise<Certification> => {
+      const response = await api.patch(`/compliance/certifications/${certificationId}`, data, {
+        params: { workspace_id: workspaceId },
+      });
+      return response.data;
+    },
+  },
+
+  // Developer Certifications
+  developerCertifications: {
+    list: async (workspaceId: string, options?: {
+      certification_id?: string;
+      developer_id?: string;
+      status?: CertificationStatus;
+      is_expiring_soon?: boolean;
+      is_expired?: boolean;
+      page?: number;
+      page_size?: number;
+    }): Promise<PaginatedList<DeveloperCertificationWithDetails>> => {
+      const response = await api.get("/compliance/developer-certifications", {
+        params: { workspace_id: workspaceId, ...options },
+      });
+      return response.data;
+    },
+
+    get: async (devCertId: string, workspaceId: string): Promise<DeveloperCertificationWithDetails> => {
+      const response = await api.get(`/compliance/developer-certifications/${devCertId}`, {
+        params: { workspace_id: workspaceId },
+      });
+      return response.data;
+    },
+
+    add: async (workspaceId: string, actorId: string, data: {
+      certification_id: string;
+      developer_id: string;
+      issued_date: string;
+      expiry_date?: string;
+      credential_id?: string;
+      verification_url?: string;
+      certificate_url?: string;
+      score?: number;
+      notes?: string;
+      extra_data?: Record<string, unknown>;
+    }): Promise<DeveloperCertification> => {
+      const response = await api.post("/compliance/developer-certifications", data, {
+        params: { workspace_id: workspaceId, actor_id: actorId },
+      });
+      return response.data;
+    },
+
+    update: async (devCertId: string, workspaceId: string, actorId: string, data: {
+      issued_date?: string;
+      expiry_date?: string;
+      credential_id?: string;
+      verification_url?: string;
+      certificate_url?: string;
+      status?: CertificationStatus;
+      score?: number;
+      notes?: string;
+      extra_data?: Record<string, unknown>;
+    }): Promise<DeveloperCertification> => {
+      const response = await api.patch(`/compliance/developer-certifications/${devCertId}`, data, {
+        params: { workspace_id: workspaceId, actor_id: actorId },
+      });
+      return response.data;
+    },
+
+    verify: async (devCertId: string, workspaceId: string, developerId: string, verificationUrl?: string): Promise<DeveloperCertification> => {
+      const response = await api.post(`/compliance/developer-certifications/${devCertId}/verify`,
+        verificationUrl ? { verification_url: verificationUrl } : {},
+        { params: { workspace_id: workspaceId, developer_id: developerId } }
+      );
+      return response.data;
+    },
+
+    renew: async (devCertId: string, workspaceId: string, actorId: string, data: {
+      new_issued_date: string;
+      new_expiry_date?: string;
+      new_credential_id?: string;
+      new_verification_url?: string;
+      new_certificate_url?: string;
+      score?: number;
+    }): Promise<DeveloperCertification> => {
+      const response = await api.post(`/compliance/developer-certifications/${devCertId}/renew`, data, {
+        params: { workspace_id: workspaceId, actor_id: actorId },
+      });
+      return response.data;
+    },
+
+    revoke: async (devCertId: string, workspaceId: string, actorId: string, reason?: string): Promise<DeveloperCertification> => {
+      const response = await api.post(`/compliance/developer-certifications/${devCertId}/revoke`, {}, {
+        params: { workspace_id: workspaceId, actor_id: actorId, reason },
+      });
+      return response.data;
+    },
+  },
+
+  // Reports
+  reports: {
+    getOverview: async (workspaceId: string): Promise<ComplianceOverview> => {
+      const response = await api.get("/compliance/reports/overview", {
+        params: { workspace_id: workspaceId },
+      });
+      return response.data;
+    },
+
+    getDeveloperStatus: async (developerId: string, workspaceId: string): Promise<DeveloperComplianceStatus> => {
+      const response = await api.get(`/compliance/reports/developer/${developerId}`, {
+        params: { workspace_id: workspaceId },
+      });
+      return response.data;
+    },
+
+    getOverdue: async (workspaceId: string): Promise<OverdueReport> => {
+      const response = await api.get("/compliance/reports/overdue", {
+        params: { workspace_id: workspaceId },
+      });
+      return response.data;
+    },
+
+    getExpiringCertifications: async (workspaceId: string, daysAhead?: number): Promise<ExpiringCertificationsReport> => {
+      const response = await api.get("/compliance/reports/expiring-certifications", {
+        params: { workspace_id: workspaceId, days_ahead: daysAhead },
+      });
+      return response.data;
+    },
+  },
+
+  // Audit Logs
+  auditLogs: {
+    list: async (workspaceId: string, options?: {
+      action_type?: AuditActionType;
+      target_type?: string;
+      target_id?: string;
+      actor_id?: string;
+      from_date?: string;
+      to_date?: string;
+      page?: number;
+      page_size?: number;
+    }): Promise<PaginatedList<LearningAuditLog>> => {
+      const response = await api.get("/compliance/audit-logs", {
+        params: { workspace_id: workspaceId, ...options },
+      });
+      return response.data;
+    },
+  },
+};
+
+// ==================== Learning Management (Manager Controls) ====================
+
+// Enums
+export type LearningGoalStatus = "pending" | "in_progress" | "completed" | "cancelled" | "overdue";
+export type LearningGoalType = "course_completion" | "hours_spent" | "skill_acquisition" | "certification" | "path_completion" | "custom";
+export type ApprovalStatus = "pending" | "approved" | "rejected" | "cancelled";
+export type ApprovalRequestType = "course" | "certification" | "conference" | "training" | "other";
+export type TransactionType = "allocation" | "adjustment" | "expense" | "refund" | "transfer_in" | "transfer_out";
+
+// Learning Goal Types
+export interface LearningGoal {
+  id: string;
+  workspace_id: string;
+  developer_id: string;
+  set_by_id: string;
+  title: string;
+  description: string | null;
+  goal_type: LearningGoalType;
+  target_config: Record<string, unknown>;
+  progress_percentage: number;
+  progress_data: Record<string, unknown>;
+  current_value: number;
+  target_value: number;
+  due_date: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  status: LearningGoalStatus;
+  priority: number;
+  is_visible_to_developer: boolean;
+  notes: string | null;
+  extra_data: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LearningGoalWithDetails extends LearningGoal {
+  developer_name: string;
+  developer_email: string;
+  set_by_name: string;
+  set_by_email: string;
+  days_until_due: number | null;
+  is_overdue: boolean;
+}
+
+export interface LearningGoalCreate {
+  developer_id: string;
+  title: string;
+  description?: string;
+  goal_type?: LearningGoalType;
+  target_config?: Record<string, unknown>;
+  target_value?: number;
+  due_date?: string;
+  priority?: number;
+  is_visible_to_developer?: boolean;
+  notes?: string;
+  extra_data?: Record<string, unknown>;
+}
+
+export interface LearningGoalUpdate {
+  title?: string;
+  description?: string;
+  goal_type?: LearningGoalType;
+  target_config?: Record<string, unknown>;
+  target_value?: number;
+  due_date?: string;
+  priority?: number;
+  is_visible_to_developer?: boolean;
+  status?: LearningGoalStatus;
+  notes?: string;
+  extra_data?: Record<string, unknown>;
+}
+
+export interface LearningGoalProgressUpdate {
+  current_value: number;
+  progress_data?: Record<string, unknown>;
+  notes?: string;
+}
+
+// Course Approval Request Types
+export interface CourseApprovalRequest {
+  id: string;
+  workspace_id: string;
+  requester_id: string;
+  approver_id: string | null;
+  request_type: ApprovalRequestType;
+  course_title: string;
+  course_provider: string | null;
+  course_url: string | null;
+  course_description: string | null;
+  estimated_cost_cents: number;
+  currency: string;
+  estimated_hours: number | null;
+  justification: string | null;
+  skills_to_gain: string[];
+  status: ApprovalStatus;
+  approved_at: string | null;
+  rejected_at: string | null;
+  decision_reason: string | null;
+  decided_by_id: string | null;
+  actual_cost_cents: number | null;
+  linked_goal_id: string | null;
+  budget_transaction_id: string | null;
+  extra_data: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CourseApprovalRequestWithDetails extends CourseApprovalRequest {
+  requester_name: string;
+  requester_email: string;
+  approver_name: string | null;
+  approver_email: string | null;
+  decided_by_name: string | null;
+  decided_by_email: string | null;
+  linked_goal_title: string | null;
+  days_pending: number | null;
+}
+
+export interface CourseApprovalRequestCreate {
+  request_type?: ApprovalRequestType;
+  course_title: string;
+  course_provider?: string;
+  course_url?: string;
+  course_description?: string;
+  estimated_cost_cents?: number;
+  currency?: string;
+  estimated_hours?: number;
+  justification?: string;
+  skills_to_gain?: string[];
+  approver_id?: string;
+  linked_goal_id?: string;
+  extra_data?: Record<string, unknown>;
+}
+
+export interface CourseApprovalDecision {
+  approved: boolean;
+  reason?: string;
+  actual_cost_cents?: number;
+}
+
+export interface ApprovalQueueItem {
+  request: CourseApprovalRequestWithDetails;
+  budget_available: boolean;
+  budget_remaining_cents: number | null;
+  auto_approve_eligible: boolean;
+}
+
+export interface ApprovalQueue {
+  items: ApprovalQueueItem[];
+  total: number;
+  total_pending_cost_cents: number;
+}
+
+// Learning Budget Types
+export interface LearningBudget {
+  id: string;
+  workspace_id: string;
+  developer_id: string | null;
+  team_id: string | null;
+  name: string;
+  description: string | null;
+  fiscal_year: number;
+  fiscal_quarter: number | null;
+  budget_cents: number;
+  spent_cents: number;
+  reserved_cents: number;
+  currency: string;
+  allow_overspend: boolean;
+  overspend_limit_cents: number | null;
+  auto_approve_under_cents: number | null;
+  requires_manager_approval: boolean;
+  is_active: boolean;
+  extra_data: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  created_by_id: string | null;
+}
+
+export interface LearningBudgetWithDetails extends LearningBudget {
+  remaining_cents: number;
+  utilization_percentage: number;
+  developer_name: string | null;
+  developer_email: string | null;
+  team_name: string | null;
+  created_by_name: string | null;
+  total_transactions: number;
+  pending_approvals_count: number;
+  pending_approvals_total_cents: number;
+}
+
+export interface LearningBudgetCreate {
+  name: string;
+  description?: string;
+  developer_id?: string;
+  team_id?: string;
+  fiscal_year: number;
+  fiscal_quarter?: number;
+  budget_cents: number;
+  currency?: string;
+  allow_overspend?: boolean;
+  overspend_limit_cents?: number;
+  auto_approve_under_cents?: number;
+  requires_manager_approval?: boolean;
+  extra_data?: Record<string, unknown>;
+}
+
+export interface LearningBudgetUpdate {
+  name?: string;
+  description?: string;
+  budget_cents?: number;
+  allow_overspend?: boolean;
+  overspend_limit_cents?: number;
+  auto_approve_under_cents?: number;
+  requires_manager_approval?: boolean;
+  is_active?: boolean;
+  extra_data?: Record<string, unknown>;
+}
+
+export interface LearningBudgetAdjustment {
+  amount_cents: number;
+  reason: string;
+}
+
+export interface LearningBudgetTransfer {
+  source_budget_id: string;
+  target_budget_id: string;
+  amount_cents: number;
+  reason: string;
+}
+
+export interface LearningBudgetTransaction {
+  id: string;
+  budget_id: string;
+  workspace_id: string;
+  transaction_type: TransactionType;
+  amount_cents: number;
+  currency: string;
+  description: string | null;
+  approval_request_id: string | null;
+  related_transaction_id: string | null;
+  created_by_id: string | null;
+  balance_after_cents: number;
+  extra_data: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface LearningBudgetTransactionWithDetails extends LearningBudgetTransaction {
+  created_by_name: string | null;
+  created_by_email: string | null;
+  approval_request_title: string | null;
+}
+
+// Manager Dashboard Types
+export interface TeamLearningProgress {
+  team_id: string;
+  team_name: string;
+  total_members: number;
+  members_with_goals: number;
+  total_goals: number;
+  completed_goals: number;
+  in_progress_goals: number;
+  overdue_goals: number;
+  goal_completion_rate: number;
+  total_hours_spent: number;
+  avg_hours_per_member: number;
+  total_certifications_earned: number;
+  compliance_rate: number;
+}
+
+export interface DeveloperLearningProgress {
+  developer_id: string;
+  developer_name: string;
+  developer_email: string;
+  total_goals: number;
+  completed_goals: number;
+  in_progress_goals: number;
+  overdue_goals: number;
+  goal_completion_rate: number;
+  hours_spent_this_period: number;
+  certifications_earned: number;
+  active_certifications: number;
+  pending_approval_requests: number;
+  budget_utilization_percentage: number;
+  is_compliant: boolean;
+}
+
+export interface ManagerDashboardOverview {
+  total_team_members: number;
+  total_active_goals: number;
+  goals_completed_this_period: number;
+  goals_overdue: number;
+  overall_goal_completion_rate: number;
+  pending_approval_requests: number;
+  total_budget_cents: number;
+  spent_budget_cents: number;
+  reserved_budget_cents: number;
+  budget_utilization_percentage: number;
+  team_compliance_rate: number;
+  certifications_expiring_soon: number;
+}
+
+// Learning Management API
+export const learningManagementApi = {
+  // Learning Goals
+  goals: {
+    list: async (options?: {
+      developer_id?: string;
+      set_by_id?: string;
+      goal_type?: LearningGoalType;
+      status?: LearningGoalStatus;
+      is_overdue?: boolean;
+      page?: number;
+      page_size?: number;
+    }): Promise<PaginatedList<LearningGoalWithDetails>> => {
+      const response = await api.get("/learning/manager/goals", { params: options });
+      return response.data;
+    },
+
+    get: async (goalId: string): Promise<LearningGoalWithDetails> => {
+      const response = await api.get(`/learning/manager/goals/${goalId}`);
+      return response.data;
+    },
+
+    create: async (data: LearningGoalCreate): Promise<LearningGoal> => {
+      const response = await api.post("/learning/manager/goals", data);
+      return response.data;
+    },
+
+    update: async (goalId: string, data: LearningGoalUpdate): Promise<LearningGoal> => {
+      const response = await api.put(`/learning/manager/goals/${goalId}`, data);
+      return response.data;
+    },
+
+    updateProgress: async (goalId: string, data: LearningGoalProgressUpdate): Promise<LearningGoal> => {
+      const response = await api.put(`/learning/manager/goals/${goalId}/progress`, data);
+      return response.data;
+    },
+
+    delete: async (goalId: string): Promise<void> => {
+      await api.delete(`/learning/manager/goals/${goalId}`);
+    },
+  },
+
+  // Course Approval Requests
+  approvals: {
+    list: async (options?: {
+      requester_id?: string;
+      approver_id?: string;
+      status?: ApprovalStatus;
+      page?: number;
+      page_size?: number;
+    }): Promise<PaginatedList<CourseApprovalRequestWithDetails>> => {
+      const response = await api.get("/learning/manager/approvals", { params: options });
+      return response.data;
+    },
+
+    getQueue: async (options?: {
+      page?: number;
+      page_size?: number;
+    }): Promise<ApprovalQueue> => {
+      const response = await api.get("/learning/manager/approvals/queue", { params: options });
+      return response.data;
+    },
+
+    get: async (requestId: string): Promise<CourseApprovalRequestWithDetails> => {
+      const response = await api.get(`/learning/manager/approvals/${requestId}`);
+      return response.data;
+    },
+
+    create: async (data: CourseApprovalRequestCreate): Promise<CourseApprovalRequest> => {
+      const response = await api.post("/learning/manager/approvals", data);
+      return response.data;
+    },
+
+    update: async (requestId: string, data: Partial<CourseApprovalRequestCreate>): Promise<CourseApprovalRequest> => {
+      const response = await api.put(`/learning/manager/approvals/${requestId}`, data);
+      return response.data;
+    },
+
+    decide: async (requestId: string, data: CourseApprovalDecision): Promise<CourseApprovalRequest> => {
+      const response = await api.post(`/learning/manager/approvals/${requestId}/decide`, data);
+      return response.data;
+    },
+
+    cancel: async (requestId: string): Promise<CourseApprovalRequest> => {
+      const response = await api.post(`/learning/manager/approvals/${requestId}/cancel`);
+      return response.data;
+    },
+  },
+
+  // Learning Budgets
+  budgets: {
+    list: async (options?: {
+      developer_id?: string;
+      team_id?: string;
+      fiscal_year?: number;
+      is_active?: boolean;
+      page?: number;
+      page_size?: number;
+    }): Promise<PaginatedList<LearningBudgetWithDetails>> => {
+      const response = await api.get("/learning/manager/budgets", { params: options });
+      return response.data;
+    },
+
+    get: async (budgetId: string): Promise<LearningBudgetWithDetails> => {
+      const response = await api.get(`/learning/manager/budgets/${budgetId}`);
+      return response.data;
+    },
+
+    create: async (data: LearningBudgetCreate): Promise<LearningBudget> => {
+      const response = await api.post("/learning/manager/budgets", data);
+      return response.data;
+    },
+
+    update: async (budgetId: string, data: LearningBudgetUpdate): Promise<LearningBudget> => {
+      const response = await api.put(`/learning/manager/budgets/${budgetId}`, data);
+      return response.data;
+    },
+
+    adjust: async (budgetId: string, data: LearningBudgetAdjustment): Promise<LearningBudget> => {
+      const response = await api.post(`/learning/manager/budgets/${budgetId}/adjust`, data);
+      return response.data;
+    },
+
+    transfer: async (data: LearningBudgetTransfer): Promise<{ source: LearningBudget; target: LearningBudget }> => {
+      const response = await api.post("/learning/manager/budgets/transfer", data);
+      return response.data;
+    },
+
+    listTransactions: async (budgetId: string, options?: {
+      transaction_type?: TransactionType;
+      page?: number;
+      page_size?: number;
+    }): Promise<PaginatedList<LearningBudgetTransactionWithDetails>> => {
+      const response = await api.get(`/learning/manager/budgets/${budgetId}/transactions`, { params: options });
+      return response.data;
+    },
+  },
+
+  // Manager Dashboard
+  dashboard: {
+    getOverview: async (teamIds?: string[]): Promise<ManagerDashboardOverview> => {
+      const response = await api.get("/learning/manager/dashboard", {
+        params: teamIds ? { team_ids: teamIds } : undefined,
+      });
+      return response.data;
+    },
+
+    getTeamProgress: async (teamId: string): Promise<TeamLearningProgress> => {
+      const response = await api.get(`/learning/manager/team/${teamId}/progress`);
+      return response.data;
+    },
+
+    getDeveloperProgress: async (developerId: string): Promise<DeveloperLearningProgress> => {
+      const response = await api.get(`/learning/manager/developer/${developerId}/progress`);
+      return response.data;
+    },
+  },
+};
+
+// ========================
+// Learning Analytics Types
+// ========================
+
+export type ReportType =
+  | "executive_summary"
+  | "team_progress"
+  | "individual_progress"
+  | "compliance_status"
+  | "budget_utilization"
+  | "skill_gap_analysis"
+  | "roi_analysis"
+  | "certification_tracking"
+  | "custom";
+
+export type ReportScheduleFrequency =
+  | "daily"
+  | "weekly"
+  | "biweekly"
+  | "monthly"
+  | "quarterly";
+
+export type ReportRunStatus = "pending" | "running" | "completed" | "failed";
+
+export type ExportFormat = "pdf" | "csv" | "xlsx";
+
+// Executive Dashboard
+export interface ExecutiveDashboardMetrics {
+  total_learning_hours: number;
+  learning_hours_change: number;
+  active_learners: number;
+  active_learners_change: number;
+  courses_completed: number;
+  courses_completed_change: number;
+  certifications_earned: number;
+  certifications_earned_change: number;
+  total_goals: number;
+  completed_goals: number;
+  goal_completion_rate: number;
+  overdue_goals: number;
+  compliance_rate: number;
+  compliance_rate_change: number;
+  non_compliant_count: number;
+  total_budget_cents: number;
+  spent_budget_cents: number;
+  budget_utilization: number;
+}
+
+export interface TrendDataPoint {
+  date: string;
+  value: number;
+}
+
+export interface LearningTrends {
+  learning_hours: TrendDataPoint[];
+  courses_completed: TrendDataPoint[];
+  active_learners: TrendDataPoint[];
+  goal_completion_rate: TrendDataPoint[];
+}
+
+export interface SkillGapEntry {
+  skill_name: string;
+  required_count: number;
+  current_count: number;
+  gap_percentage: number;
+  in_progress_count: number;
+}
+
+export interface SkillGapAnalysis {
+  skills: SkillGapEntry[];
+  total_gaps: number;
+  critical_gaps: number;
+}
+
+export interface TeamPerformanceEntry {
+  team_id: string;
+  team_name: string;
+  learning_hours: number;
+  courses_completed: number;
+  goal_completion_rate: number;
+  compliance_rate: number;
+  budget_utilization: number;
+}
+
+export interface TeamPerformanceComparison {
+  teams: TeamPerformanceEntry[];
+  workspace_average: Record<string, number>;
+}
+
+export interface ROIMetrics {
+  total_investment_cents: number;
+  total_courses_completed: number;
+  total_certifications_earned: number;
+  cost_per_course_cents: number;
+  cost_per_certification_cents: number;
+  estimated_value_generated_cents: number;
+  roi_percentage: number;
+}
+
+export interface ExecutiveDashboard {
+  metrics: ExecutiveDashboardMetrics;
+  trends: LearningTrends;
+  skill_gaps: SkillGapAnalysis;
+  team_comparison: TeamPerformanceComparison;
+  roi: ROIMetrics;
+  period_start: string;
+  period_end: string;
+}
+
+// Completion Rates
+export interface CompletionRateEntry {
+  period: string;
+  total: number;
+  completed: number;
+  rate: number;
+}
+
+export interface CompletionRateReport {
+  entries: CompletionRateEntry[];
+  overall_rate: number;
+  period_type: string;
+}
+
+// Report Definition Types
+export interface ReportDateRange {
+  type: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+export interface LearningReportFilters {
+  team_ids: string[];
+  developer_ids: string[];
+  goal_types: string[];
+  include_inactive: boolean;
+}
+
+export interface ReportConfig {
+  date_range: ReportDateRange;
+  filters: LearningReportFilters;
+  metrics: string[];
+  group_by?: string;
+  include_charts: boolean;
+  include_raw_data: boolean;
+}
+
+export interface ReportDefinition {
+  id: string;
+  workspace_id: string;
+  created_by_id: string | null;
+  name: string;
+  description: string | null;
+  report_type: ReportType;
+  config: Record<string, unknown>;
+  is_scheduled: boolean;
+  schedule_frequency: ReportScheduleFrequency | null;
+  schedule_day: number | null;
+  schedule_time: string | null;
+  next_run_at: string | null;
+  recipients: string[];
+  export_format: string;
+  is_active: boolean;
+  extra_data: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReportDefinitionWithDetails extends ReportDefinition {
+  created_by_name: string | null;
+  created_by_email: string | null;
+  last_run_at: string | null;
+  last_run_status: ReportRunStatus | null;
+  total_runs: number;
+}
+
+export interface ReportDefinitionCreate {
+  name: string;
+  description?: string;
+  report_type: ReportType;
+  config?: Partial<ReportConfig>;
+  is_scheduled?: boolean;
+  schedule_frequency?: ReportScheduleFrequency;
+  schedule_day?: number;
+  schedule_time?: string;
+  recipients?: string[];
+  export_format?: ExportFormat;
+  extra_data?: Record<string, unknown>;
+}
+
+export interface ReportDefinitionUpdate {
+  name?: string;
+  description?: string;
+  report_type?: ReportType;
+  config?: Partial<ReportConfig>;
+  is_scheduled?: boolean;
+  schedule_frequency?: ReportScheduleFrequency;
+  schedule_day?: number;
+  schedule_time?: string;
+  recipients?: string[];
+  export_format?: ExportFormat;
+  is_active?: boolean;
+  extra_data?: Record<string, unknown>;
+}
+
+// Report Run Types
+export interface ReportRun {
+  id: string;
+  report_definition_id: string;
+  workspace_id: string;
+  status: ReportRunStatus;
+  triggered_by: string;
+  started_at: string | null;
+  completed_at: string | null;
+  result_file_path: string | null;
+  result_file_size_bytes: number | null;
+  result_file_format: string | null;
+  metrics_summary: Record<string, unknown> | null;
+  error_message: string | null;
+  extra_data: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface ReportRunWithDetails extends ReportRun {
+  report_name: string;
+  report_type: ReportType | null;
+  duration_seconds: number | null;
+}
+
+// Learning Analytics API
+export const learningAnalyticsApi = {
+  // Executive Dashboard
+  getExecutiveDashboard: async (options?: {
+    period_days?: number;
+    team_ids?: string[];
+  }): Promise<ExecutiveDashboard> => {
+    const response = await api.get("/learning/analytics/executive-dashboard", {
+      params: options,
+    });
+    return response.data;
+  },
+
+  // Completion Rates
+  getCompletionRates: async (options?: {
+    period_type?: "daily" | "weekly" | "monthly";
+    periods?: number;
+  }): Promise<CompletionRateReport> => {
+    const response = await api.get("/learning/analytics/completion-rates", {
+      params: options,
+    });
+    return response.data;
+  },
+
+  // Report Definitions
+  reports: {
+    list: async (options?: {
+      report_type?: ReportType;
+      is_scheduled?: boolean;
+      is_active?: boolean;
+      page?: number;
+      page_size?: number;
+    }): Promise<PaginatedList<ReportDefinitionWithDetails>> => {
+      const response = await api.get("/learning/analytics/reports", { params: options });
+      return response.data;
+    },
+
+    get: async (definitionId: string): Promise<ReportDefinitionWithDetails> => {
+      const response = await api.get(`/learning/analytics/reports/${definitionId}`);
+      return response.data;
+    },
+
+    create: async (data: ReportDefinitionCreate): Promise<ReportDefinition> => {
+      const response = await api.post("/learning/analytics/reports", data);
+      return response.data;
+    },
+
+    update: async (definitionId: string, data: ReportDefinitionUpdate): Promise<ReportDefinition> => {
+      const response = await api.put(`/learning/analytics/reports/${definitionId}`, data);
+      return response.data;
+    },
+
+    delete: async (definitionId: string): Promise<void> => {
+      await api.delete(`/learning/analytics/reports/${definitionId}`);
+    },
+
+    triggerRun: async (definitionId: string): Promise<ReportRun> => {
+      const response = await api.post(`/learning/analytics/reports/${definitionId}/run`);
+      return response.data;
+    },
+  },
+
+  // Report Runs
+  runs: {
+    list: async (options?: {
+      report_definition_id?: string;
+      status?: ReportRunStatus;
+      page?: number;
+      page_size?: number;
+    }): Promise<PaginatedList<ReportRunWithDetails>> => {
+      const response = await api.get("/learning/analytics/runs", { params: options });
+      return response.data;
+    },
+  },
+};
+
+// ============================
+// Learning Integrations Types
+// ============================
+
+export type HRProviderType = "workday" | "bamboohr" | "sap_successfactors" | "adp" | "custom_api";
+export type LMSProviderType = "scorm_cloud" | "cornerstone" | "linkedin_learning" | "udemy_business" | "coursera" | "custom";
+export type IntegrationStatus = "active" | "inactive" | "error" | "pending_setup";
+export type SyncStatus = "pending" | "in_progress" | "completed" | "failed" | "partial";
+export type SCORMVersion = "scorm_1.2" | "scorm_2004_2nd" | "scorm_2004_3rd" | "scorm_2004_4th";
+export type SCORMCompletionStatus = "not_attempted" | "incomplete" | "completed" | "passed" | "failed" | "unknown";
+export type CalendarProviderType = "google_calendar" | "outlook" | "apple";
+
+// HR Integration Types
+export interface HRIntegration {
+  id: string;
+  workspace_id: string;
+  provider: HRProviderType;
+  name: string;
+  description: string | null;
+  api_base_url: string | null;
+  sync_employees: boolean;
+  sync_departments: boolean;
+  sync_managers: boolean;
+  sync_terminations: boolean;
+  sync_frequency_hours: number;
+  field_mappings: Record<string, string>;
+  status: IntegrationStatus;
+  last_sync_at: string | null;
+  last_sync_status: SyncStatus | null;
+  last_sync_error: string | null;
+  last_sync_stats: Record<string, number>;
+  is_active: boolean;
+  extra_data: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  created_by_id: string | null;
+}
+
+export interface HRIntegrationCreate {
+  provider: HRProviderType;
+  name: string;
+  description?: string;
+  api_base_url?: string;
+  api_key?: string;
+  sync_employees?: boolean;
+  sync_departments?: boolean;
+  sync_managers?: boolean;
+  sync_terminations?: boolean;
+  sync_frequency_hours?: number;
+  field_mappings?: Record<string, string>;
+}
+
+export interface HRSyncLog {
+  id: string;
+  integration_id: string;
+  workspace_id: string;
+  status: SyncStatus;
+  started_at: string;
+  completed_at: string | null;
+  employees_created: number;
+  employees_updated: number;
+  employees_deactivated: number;
+  errors_count: number;
+  error_details: unknown[];
+}
+
+// LMS Integration Types
+export interface LMSIntegration {
+  id: string;
+  workspace_id: string;
+  provider: LMSProviderType;
+  name: string;
+  description: string | null;
+  api_base_url: string | null;
+  scorm_support: boolean;
+  scorm_versions: string[];
+  xapi_support: boolean;
+  xapi_endpoint: string | null;
+  sync_completions: boolean;
+  sync_progress: boolean;
+  sync_frequency_hours: number;
+  status: IntegrationStatus;
+  last_sync_at: string | null;
+  last_sync_error: string | null;
+  is_active: boolean;
+  extra_data: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  created_by_id: string | null;
+}
+
+export interface LMSIntegrationCreate {
+  provider: LMSProviderType;
+  name: string;
+  description?: string;
+  api_base_url?: string;
+  api_key?: string;
+  scorm_support?: boolean;
+  scorm_versions?: string[];
+  xapi_support?: boolean;
+  xapi_endpoint?: string;
+  sync_completions?: boolean;
+  sync_progress?: boolean;
+  sync_frequency_hours?: number;
+}
+
+// SCORM Package Types
+export interface SCORMPackage {
+  id: string;
+  workspace_id: string;
+  integration_id: string | null;
+  title: string;
+  description: string | null;
+  version: SCORMVersion;
+  package_url: string | null;
+  package_size_bytes: number | null;
+  launch_url: string | null;
+  manifest_data: Record<string, unknown>;
+  passing_score: number | null;
+  max_attempts: number | null;
+  time_limit_minutes: number | null;
+  learning_path_id: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SCORMPackageWithStats extends SCORMPackage {
+  total_enrollments: number;
+  completed_count: number;
+  passed_count: number;
+  failed_count: number;
+  in_progress_count: number;
+  average_score: number | null;
+  average_time_seconds: number | null;
+}
+
+export interface SCORMPackageCreate {
+  title: string;
+  description?: string;
+  version?: SCORMVersion;
+  package_url?: string;
+  launch_url?: string;
+  passing_score?: number;
+  max_attempts?: number;
+  time_limit_minutes?: number;
+  integration_id?: string;
+  learning_path_id?: string;
+}
+
+// SCORM Tracking Types
+export interface SCORMTracking {
+  id: string;
+  package_id: string;
+  developer_id: string;
+  workspace_id: string;
+  cmi_data: Record<string, unknown>;
+  completion_status: SCORMCompletionStatus;
+  success_status: string | null;
+  score_raw: number | null;
+  score_min: number | null;
+  score_max: number | null;
+  score_scaled: number | null;
+  total_time_seconds: number;
+  session_time_seconds: number;
+  progress_measure: number | null;
+  attempt_number: number;
+  first_accessed_at: string | null;
+  last_accessed_at: string | null;
+  completed_at: string | null;
+  suspend_data: string | null;
+  location: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SCORMTrackingWithDetails extends SCORMTracking {
+  package_title: string;
+  developer_name: string | null;
+  developer_email: string | null;
+}
+
+// Calendar Integration Types
+export interface CalendarIntegration {
+  id: string;
+  workspace_id: string;
+  developer_id: string;
+  provider: CalendarProviderType;
+  calendar_id: string | null;
+  sync_learning_sessions: boolean;
+  sync_deadlines: boolean;
+  sync_certifications: boolean;
+  status: IntegrationStatus;
+  last_sync_at: string | null;
+  last_sync_error: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CalendarIntegrationCreate {
+  provider: CalendarProviderType;
+  calendar_id?: string;
+  sync_learning_sessions?: boolean;
+  sync_deadlines?: boolean;
+  sync_certifications?: boolean;
+}
+
+// Integrations Overview
+export interface IntegrationsOverview {
+  hr_integrations_count: number;
+  hr_integrations_active: number;
+  lms_integrations_count: number;
+  lms_integrations_active: number;
+  scorm_packages_count: number;
+  scorm_packages_active: number;
+  calendar_integrations_count: number;
+  calendar_integrations_active: number;
+  total_xapi_statements: number;
+  last_hr_sync_at: string | null;
+  last_lms_sync_at: string | null;
+}
+
+// Learning Integrations API
+export const learningIntegrationsApi = {
+  // Overview
+  getOverview: async (): Promise<IntegrationsOverview> => {
+    const response = await api.get("/learning/integrations/overview");
+    return response.data;
+  },
+
+  // HR Integrations
+  hr: {
+    list: async (options?: {
+      provider?: HRProviderType;
+      status?: IntegrationStatus;
+      is_active?: boolean;
+      page?: number;
+      page_size?: number;
+    }): Promise<PaginatedList<HRIntegration>> => {
+      const response = await api.get("/learning/integrations/hr", { params: options });
+      return response.data;
+    },
+
+    create: async (data: HRIntegrationCreate): Promise<HRIntegration> => {
+      const response = await api.post("/learning/integrations/hr", data);
+      return response.data;
+    },
+
+    update: async (integrationId: string, data: Partial<HRIntegrationCreate>): Promise<HRIntegration> => {
+      const response = await api.put(`/learning/integrations/hr/${integrationId}`, data);
+      return response.data;
+    },
+
+    delete: async (integrationId: string): Promise<void> => {
+      await api.delete(`/learning/integrations/hr/${integrationId}`);
+    },
+
+    triggerSync: async (integrationId: string): Promise<HRSyncLog> => {
+      const response = await api.post(`/learning/integrations/hr/${integrationId}/sync`);
+      return response.data;
+    },
+  },
+
+  // LMS Integrations
+  lms: {
+    list: async (options?: {
+      provider?: LMSProviderType;
+      scorm_support?: boolean;
+      xapi_support?: boolean;
+      status?: IntegrationStatus;
+      is_active?: boolean;
+      page?: number;
+      page_size?: number;
+    }): Promise<PaginatedList<LMSIntegration>> => {
+      const response = await api.get("/learning/integrations/lms", { params: options });
+      return response.data;
+    },
+
+    create: async (data: LMSIntegrationCreate): Promise<LMSIntegration> => {
+      const response = await api.post("/learning/integrations/lms", data);
+      return response.data;
+    },
+
+    update: async (integrationId: string, data: Partial<LMSIntegrationCreate>): Promise<LMSIntegration> => {
+      const response = await api.put(`/learning/integrations/lms/${integrationId}`, data);
+      return response.data;
+    },
+
+    delete: async (integrationId: string): Promise<void> => {
+      await api.delete(`/learning/integrations/lms/${integrationId}`);
+    },
+  },
+
+  // SCORM Packages
+  scorm: {
+    listPackages: async (options?: {
+      integration_id?: string;
+      version?: SCORMVersion;
+      is_active?: boolean;
+      page?: number;
+      page_size?: number;
+    }): Promise<PaginatedList<SCORMPackageWithStats>> => {
+      const response = await api.get("/learning/integrations/scorm/packages", { params: options });
+      return response.data;
+    },
+
+    createPackage: async (data: SCORMPackageCreate): Promise<SCORMPackage> => {
+      const response = await api.post("/learning/integrations/scorm/packages", data);
+      return response.data;
+    },
+
+    updatePackage: async (packageId: string, data: Partial<SCORMPackageCreate>): Promise<SCORMPackage> => {
+      const response = await api.put(`/learning/integrations/scorm/packages/${packageId}`, data);
+      return response.data;
+    },
+
+    deletePackage: async (packageId: string): Promise<void> => {
+      await api.delete(`/learning/integrations/scorm/packages/${packageId}`);
+    },
+
+    launchPackage: async (packageId: string): Promise<SCORMTracking> => {
+      const response = await api.post(`/learning/integrations/scorm/packages/${packageId}/launch`);
+      return response.data;
+    },
+
+    listTracking: async (options?: {
+      package_id?: string;
+      developer_id?: string;
+      completion_status?: SCORMCompletionStatus;
+      page?: number;
+      page_size?: number;
+    }): Promise<PaginatedList<SCORMTrackingWithDetails>> => {
+      const response = await api.get("/learning/integrations/scorm/tracking", { params: options });
+      return response.data;
+    },
+  },
+
+  // Calendar Integrations
+  calendar: {
+    list: async (options?: {
+      page?: number;
+      page_size?: number;
+    }): Promise<PaginatedList<CalendarIntegration>> => {
+      const response = await api.get("/learning/integrations/calendar", { params: options });
+      return response.data;
+    },
+
+    create: async (data: CalendarIntegrationCreate): Promise<CalendarIntegration> => {
+      const response = await api.post("/learning/integrations/calendar", data);
+      return response.data;
+    },
+
+    update: async (integrationId: string, data: Partial<CalendarIntegrationCreate>): Promise<CalendarIntegration> => {
+      const response = await api.put(`/learning/integrations/calendar/${integrationId}`, data);
+      return response.data;
+    },
+
+    delete: async (integrationId: string): Promise<void> => {
+      await api.delete(`/learning/integrations/calendar/${integrationId}`);
+    },
+  },
+};
