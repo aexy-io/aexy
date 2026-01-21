@@ -13,6 +13,10 @@ from aexy.api.hiring import router as hiring_router
 from aexy.api.learning import router as learning_router
 from aexy.api.learning_activities import router as learning_activities_router
 from aexy.api.gamification import router as gamification_router
+from aexy.api.compliance import router as compliance_router
+from aexy.api.manager_learning import router as manager_learning_router
+from aexy.api.learning_analytics import router as learning_analytics_router
+from aexy.api.learning_integrations import router as learning_integrations_router
 from aexy.api.teams import router as teams_router
 from aexy.api.webhooks import router as webhooks_router
 # Phase 4: Advanced Analytics
@@ -128,6 +132,10 @@ api_router.include_router(career_router, tags=["career"])
 api_router.include_router(learning_router, tags=["learning"])
 api_router.include_router(learning_activities_router, tags=["learning-activities"])
 api_router.include_router(gamification_router, tags=["gamification"])
+api_router.include_router(compliance_router, tags=["compliance"])
+api_router.include_router(manager_learning_router, tags=["learning-manager"])
+api_router.include_router(learning_analytics_router, tags=["learning-analytics"])
+api_router.include_router(learning_integrations_router, tags=["learning-integrations"])
 api_router.include_router(hiring_router, tags=["hiring"])
 # Phase 4: Advanced Analytics
 api_router.include_router(analytics_router, tags=["analytics"])
