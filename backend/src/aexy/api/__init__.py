@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from aexy.api.admin import router as admin_router
+from aexy.api.platform_admin import router as platform_admin_router
 from aexy.api.admin_rate_limits import router as admin_rate_limits_router
 from aexy.api.analysis import router as analysis_router
 from aexy.api.auth import router as auth_router
@@ -126,6 +127,7 @@ api_router.include_router(webhooks_router, prefix="/webhooks", tags=["webhooks"]
 api_router.include_router(teams_router, prefix="/teams", tags=["teams"])
 api_router.include_router(analysis_router, tags=["analysis"])
 api_router.include_router(admin_router, tags=["admin"])
+api_router.include_router(platform_admin_router, tags=["platform-admin"])
 api_router.include_router(admin_rate_limits_router, tags=["admin-rate-limits"])
 # Phase 3: Career Intelligence
 api_router.include_router(career_router, tags=["career"])
