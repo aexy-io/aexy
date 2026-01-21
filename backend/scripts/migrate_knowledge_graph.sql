@@ -18,8 +18,8 @@ CREATE TABLE IF NOT EXISTS knowledge_entities (
     -- Aliases for the same entity (e.g., "React", "ReactJS", "React.js")
     aliases TEXT[] DEFAULT '{}',
 
-    -- Additional metadata (URLs, external IDs, etc.)
-    metadata JSONB DEFAULT '{}',
+    -- Additional data (URLs, external IDs, etc.)
+    extra_data JSONB DEFAULT '{}',
 
     -- Quality metrics
     confidence_score FLOAT DEFAULT 0.5,
@@ -83,13 +83,13 @@ CREATE TABLE IF NOT EXISTS knowledge_relationships (
     source_entity_id UUID NOT NULL REFERENCES knowledge_entities(id) ON DELETE CASCADE,
     target_entity_id UUID NOT NULL REFERENCES knowledge_entities(id) ON DELETE CASCADE,
 
-    -- Relationship metadata
+    -- Relationship properties
     relationship_type VARCHAR(50) NOT NULL DEFAULT 'related_to',
     strength FLOAT DEFAULT 0.5,
     bidirectional BOOLEAN DEFAULT FALSE,
 
-    -- Additional context or metadata
-    metadata JSONB DEFAULT '{}',
+    -- Additional context data
+    extra_data JSONB DEFAULT '{}',
 
     -- Timestamps
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS knowledge_document_relationships (
     source_document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
     target_document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
 
-    -- Relationship metadata
+    -- Relationship properties
     relationship_type VARCHAR(50) NOT NULL DEFAULT 'related_to',
 
     -- Shared entities between documents (entity IDs as text array)
@@ -126,8 +126,8 @@ CREATE TABLE IF NOT EXISTS knowledge_document_relationships (
     -- Connection strength based on shared entities and other factors
     strength FLOAT DEFAULT 0.5,
 
-    -- Additional metadata
-    metadata JSONB DEFAULT '{}',
+    -- Additional data
+    extra_data JSONB DEFAULT '{}',
 
     -- Timestamps
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS knowledge_extraction_jobs (
     document_id UUID REFERENCES documents(id) ON DELETE CASCADE,
     triggered_by_id UUID REFERENCES developers(id) ON DELETE SET NULL,
 
-    -- Job metadata
+    -- Job properties
     job_type VARCHAR(50) NOT NULL DEFAULT 'single_document',
     status VARCHAR(50) NOT NULL DEFAULT 'pending',
 
