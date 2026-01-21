@@ -16,7 +16,7 @@ from aexy.services.ticket_service import TicketService
 
 
 router = APIRouter(
-    prefix="/forms",
+    prefix="/public/forms",
     tags=["Public Forms"],
 )
 

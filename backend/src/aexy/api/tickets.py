@@ -357,3 +357,123 @@ async def add_response(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
+
+
+# ==================== Task Creation from Ticket ====================
+
+from pydantic import BaseModel, Field
+
+
+class CreateTaskFromTicketRequest(BaseModel):
+    """Request to create a sprint task from a ticket."""
+    sprint_id: str | None = None  # Optional: assign to specific sprint
+    project_id: str  # Required: project for the task
+    title: str | None = None  # Override title (defaults to ticket summary)
+    priority: str = "medium"
+
+
+class TaskFromTicketResponse(BaseModel):
+    """Response after creating task from ticket."""
+    task_id: str
+    task_title: str
+    linked: bool
+
+
+@router.post("/{ticket_id}/create-task", response_model=TaskFromTicketResponse)
+async def create_task_from_ticket(
+    workspace_id: str,
+    ticket_id: str,
+    request_data: CreateTaskFromTicketRequest,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a sprint task from a ticket and link them."""
+    await check_workspace_permission(workspace_id, current_user, db)
+
+    ticket_service = TicketService(db)
+    ticket = await ticket_service.get_ticket(ticket_id)
+
+    if not ticket or str(ticket.workspace_id) != workspace_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ticket not found",
+        )
+
+    # Check if ticket already has a linked task
+    if ticket.linked_task_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ticket already has a linked task",
+        )
+
+    # Import here to avoid circular imports
+    from uuid import uuid4
+    from aexy.models.sprint import SprintTask
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    # Build title from ticket data
+    task_title = request_data.title
+    if not task_title:
+        # Try to get title from field_values
+        field_values = ticket.field_values or {}
+        task_title = (
+            field_values.get("title")
+            or field_values.get("subject")
+            or field_values.get("summary")
+            or f"Ticket #{ticket.ticket_number}"
+        )
+
+    # Build description from ticket data
+    field_values = ticket.field_values or {}
+    description_parts = []
+    if ticket.submitter_email:
+        description_parts.append(f"**From:** {ticket.submitter_name or ticket.submitter_email}")
+    description_parts.append(f"**Ticket:** TKT-{ticket.ticket_number}")
+    if field_values.get("description"):
+        description_parts.append(f"\n{field_values.get('description')}")
+    elif field_values.get("details"):
+        description_parts.append(f"\n{field_values.get('details')}")
+
+    description = "\n".join(description_parts)
+
+    # Create the task directly
+    task = SprintTask(
+        id=str(uuid4()),
+        sprint_id=request_data.sprint_id,  # Can be None for project-level tasks
+        workspace_id=workspace_id,
+        source_type="ticket",
+        source_id=str(ticket.id),
+        title=task_title,
+        description=description,
+        priority=request_data.priority,
+        labels=[],
+        status="backlog",
+    )
+    db.add(task)
+    await db.flush()
+
+    # Re-fetch with relationships
+    stmt = (
+        select(SprintTask)
+        .where(SprintTask.id == task.id)
+        .options(selectinload(SprintTask.assignee))
+    )
+    result = await db.execute(stmt)
+    task = result.scalar_one()
+
+    # Link the ticket to the task
+    from aexy.schemas.ticketing import TicketUpdate
+    await ticket_service.update_ticket(
+        ticket_id=ticket_id,
+        update_data=TicketUpdate(linked_task_id=str(task.id)),
+        updated_by_id=str(current_user.id),
+    )
+
+    await db.commit()
+
+    return TaskFromTicketResponse(
+        task_id=str(task.id),
+        task_title=task.title,
+        linked=True,
+    )

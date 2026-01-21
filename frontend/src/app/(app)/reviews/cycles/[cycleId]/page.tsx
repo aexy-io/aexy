@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -10,13 +10,11 @@ import {
   Users,
   Clock,
   CheckCircle,
-  AlertCircle,
   UserCheck,
   MessageSquare,
   Settings,
   Play,
   Pause,
-  RotateCcw,
   Loader2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -43,9 +41,8 @@ const cycleTypeLabels: Record<string, string> = {
 
 export default function CycleDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const cycleId = params.cycleId as string;
-  const { user, isLoading: authLoading } = useAuth();
+  const { isLoading: authLoading } = useAuth();
   const { cycle, isLoading, error, refetch } = useReviewCycle(cycleId);
 
   const [isActivating, setIsActivating] = useState(false);

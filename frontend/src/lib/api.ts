@@ -6771,6 +6771,24 @@ export const ticketsApi = {
     const response = await api.post(`/workspaces/${workspaceId}/tickets/${ticketId}/responses`, data);
     return response.data;
   },
+
+  // Create task from ticket
+  createTaskFromTicket: async (
+    workspaceId: string,
+    ticketId: string,
+    data: {
+      project_id: string;
+      sprint_id?: string;
+      title?: string;
+      priority?: string;
+    }
+  ): Promise<{ task_id: string; task_title: string; linked: boolean }> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/tickets/${ticketId}/create-task`,
+      data
+    );
+    return response.data;
+  },
 };
 
 export const publicFormsApi = {
@@ -6805,11 +6823,11 @@ export const publicFormsApi = {
     redirect_url?: string;
     requires_email_verification: boolean;
   }> => {
-    // Transform field names to match backend schema
+    // Send data with correct field names matching backend schema
     const payload = {
-      email: data.submitter_email,
-      name: data.submitter_name,
-      data: data.field_values,
+      submitter_email: data.submitter_email,
+      submitter_name: data.submitter_name,
+      field_values: data.field_values,
     };
     const response = await api.post(`/public/forms/${publicToken}/submit`, payload);
     return response.data;
