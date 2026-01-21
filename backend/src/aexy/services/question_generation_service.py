@@ -16,6 +16,12 @@ from aexy.llm.prompts import (
     MCQ_QUESTION_PROMPT,
     SUBJECTIVE_QUESTION_SYSTEM_PROMPT,
     SUBJECTIVE_QUESTION_PROMPT,
+    MCQ_BATCH_QUESTION_SYSTEM_PROMPT,
+    MCQ_BATCH_QUESTION_PROMPT,
+    CODE_BATCH_QUESTION_SYSTEM_PROMPT,
+    CODE_BATCH_QUESTION_PROMPT,
+    SUBJECTIVE_BATCH_QUESTION_SYSTEM_PROMPT,
+    SUBJECTIVE_BATCH_QUESTION_PROMPT,
 )
 from aexy.models.assessment import Question, DifficultyLevel, QuestionType
 from aexy.schemas.assessment import TopicSuggestionResponse
@@ -26,20 +32,29 @@ logger = logging.getLogger(__name__)
 class QuestionGenerationService:
     """Service for generating assessment questions using AI."""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(
+        self,
+        db: AsyncSession,
+        workspace_id: str | None = None,
+    ):
         self.db = db
         self.gateway = get_llm_gateway()
+        self.workspace_id = workspace_id
 
     async def _call_llm(
         self,
         system_prompt: str,
         user_prompt: str,
+        tokens_estimate: int = 2000,
+        workspace_id: str | None = None,
     ) -> dict[str, Any] | None:
         """Call LLM with prompts and parse JSON response.
 
         Args:
             system_prompt: System prompt for the LLM.
             user_prompt: User prompt with the actual request.
+            tokens_estimate: Estimated tokens for rate limiting.
+            workspace_id: Optional workspace ID for rate limiting (overrides instance default).
 
         Returns:
             Parsed JSON response or None if failed.
@@ -48,13 +63,17 @@ class QuestionGenerationService:
             logger.warning("LLM gateway not available for question generation")
             return None
 
-        try:
-            # Use the provider directly for custom prompts
-            provider = self.gateway.provider
+        # Use provided workspace_id or fall back to instance default
+        ws_id = workspace_id or self.workspace_id
 
-            # Call _call_api with system_prompt and user_prompt
-            # Returns tuple of (response_text, total_tokens, input_tokens, output_tokens)
-            result = await provider._call_api(system_prompt, user_prompt)
+        try:
+            # Use gateway's call_llm method with rate limiting
+            result = await self.gateway.call_llm(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                tokens_estimate=tokens_estimate,
+                workspace_id=ws_id,
+            )
             response_text = result[0] if isinstance(result, tuple) else result
 
             # Parse JSON response - try to extract JSON from the response
@@ -86,7 +105,7 @@ class QuestionGenerationService:
 
         except Exception as e:
             logger.error(f"LLM call failed: {e}")
-            return None
+            raise  # Re-raise to allow rate limit errors to propagate
 
     async def suggest_topics(
         self,
@@ -228,6 +247,111 @@ class QuestionGenerationService:
 
         return None
 
+    async def generate_batch_mcq_questions(
+        self,
+        topic: str,
+        count: int,
+        subtopics: list[str] | None = None,
+        difficulty: DifficultyLevel = DifficultyLevel.MEDIUM,
+        experience_level: str = "mid",
+        job_designation: str = "",
+        skills: list[str] | None = None,
+        experience_years: str = "",
+        organization_name: str = "",
+        assessment_description: str = "",
+        context: str = "",
+    ) -> list[dict[str, Any]]:
+        """Generate multiple MCQ questions in a single LLM call."""
+        prompt = MCQ_BATCH_QUESTION_PROMPT.format(
+            topic=topic,
+            subtopics=", ".join(subtopics or []),
+            difficulty=difficulty.value if hasattr(difficulty, 'value') else difficulty,
+            experience_level=experience_level,
+            experience_years=experience_years or "Not specified",
+            job_designation=job_designation or "Software Engineer",
+            skills=", ".join(skills or []) or "Not specified",
+            organization_name=organization_name or "Not specified",
+            assessment_description=assessment_description or "Technical assessment",
+            context=context or "None",
+            count=count,
+        )
+
+        result = await self._call_llm(MCQ_BATCH_QUESTION_SYSTEM_PROMPT, prompt)
+
+        if result and "questions" in result:
+            return result["questions"]
+        return []
+
+    async def generate_batch_code_questions(
+        self,
+        topic: str,
+        count: int,
+        subtopics: list[str] | None = None,
+        difficulty: DifficultyLevel = DifficultyLevel.MEDIUM,
+        experience_level: str = "mid",
+        job_designation: str = "",
+        skills: list[str] | None = None,
+        experience_years: str = "",
+        organization_name: str = "",
+        assessment_description: str = "",
+        context: str = "",
+    ) -> list[dict[str, Any]]:
+        """Generate multiple coding questions in a single LLM call."""
+        prompt = CODE_BATCH_QUESTION_PROMPT.format(
+            topic=topic,
+            subtopics=", ".join(subtopics or []),
+            difficulty=difficulty.value if hasattr(difficulty, 'value') else difficulty,
+            experience_level=experience_level,
+            experience_years=experience_years or "Not specified",
+            job_designation=job_designation or "Software Engineer",
+            skills=", ".join(skills or []) or "Not specified",
+            organization_name=organization_name or "Not specified",
+            assessment_description=assessment_description or "Technical assessment",
+            context=context or "None",
+            count=count,
+        )
+
+        result = await self._call_llm(CODE_BATCH_QUESTION_SYSTEM_PROMPT, prompt)
+
+        if result and "questions" in result:
+            return result["questions"]
+        return []
+
+    async def generate_batch_subjective_questions(
+        self,
+        topic: str,
+        count: int,
+        subtopics: list[str] | None = None,
+        difficulty: DifficultyLevel = DifficultyLevel.MEDIUM,
+        experience_level: str = "mid",
+        job_designation: str = "",
+        skills: list[str] | None = None,
+        experience_years: str = "",
+        organization_name: str = "",
+        assessment_description: str = "",
+        context: str = "",
+    ) -> list[dict[str, Any]]:
+        """Generate multiple subjective questions in a single LLM call."""
+        prompt = SUBJECTIVE_BATCH_QUESTION_PROMPT.format(
+            topic=topic,
+            subtopics=", ".join(subtopics or []),
+            difficulty=difficulty.value if hasattr(difficulty, 'value') else difficulty,
+            experience_level=experience_level,
+            experience_years=experience_years or "Not specified",
+            job_designation=job_designation or "Software Engineer",
+            skills=", ".join(skills or []) or "Not specified",
+            organization_name=organization_name or "Not specified",
+            assessment_description=assessment_description or "Technical assessment",
+            context=context or "None",
+            count=count,
+        )
+
+        result = await self._call_llm(SUBJECTIVE_BATCH_QUESTION_SYSTEM_PROMPT, prompt)
+
+        if result and "questions" in result:
+            return result["questions"]
+        return []
+
     async def generate_questions(
         self,
         topic: str,
@@ -236,6 +360,13 @@ class QuestionGenerationService:
         count: int = 1,
         subtopics: list[str] | None = None,
         context: str | None = None,
+        # Assessment context
+        job_designation: str = "",
+        skills: list[str] | None = None,
+        experience_level: str = "mid",
+        experience_years: str = "",
+        organization_name: str = "",
+        assessment_description: str = "",
     ) -> list[dict[str, Any]]:
         """Generate multiple questions of a specific type.
 
@@ -246,26 +377,73 @@ class QuestionGenerationService:
             count: Number of questions to generate.
             subtopics: Specific subtopics to cover.
             context: Additional context for generation.
+            job_designation: Target job role for the assessment.
+            skills: Required skills for the role.
+            experience_level: junior/mid/senior.
+            experience_years: Years of experience (e.g., "2-4 years").
+            organization_name: Name of the hiring organization.
+            assessment_description: Description of the assessment.
 
         Returns:
             List of generated questions.
         """
-        questions = []
+        # Convert question_type to string if it's an enum
+        qt_value = question_type.value if hasattr(question_type, 'value') else question_type
 
-        for _ in range(count):
-            if question_type == QuestionType.CODE:
-                question = await self.generate_code_question(
+        # Common context params
+        ctx_params = {
+            "job_designation": job_designation,
+            "skills": skills,
+            "experience_level": experience_level,
+            "experience_years": experience_years,
+            "organization_name": organization_name,
+            "assessment_description": assessment_description,
+            "context": context or "",
+        }
+
+        # Use batch generation for efficiency when count > 1
+        if count > 1:
+            if qt_value == "mcq" or question_type == QuestionType.MCQ:
+                return await self.generate_batch_mcq_questions(
                     topic=topic,
+                    count=count,
                     subtopics=subtopics,
                     difficulty=difficulty,
+                    **ctx_params,
                 )
-            elif question_type == QuestionType.MCQ:
+            elif qt_value == "code" or question_type == QuestionType.CODE:
+                return await self.generate_batch_code_questions(
+                    topic=topic,
+                    count=count,
+                    subtopics=subtopics,
+                    difficulty=difficulty,
+                    **ctx_params,
+                )
+            elif qt_value == "subjective" or question_type == QuestionType.SUBJECTIVE:
+                return await self.generate_batch_subjective_questions(
+                    topic=topic,
+                    count=count,
+                    subtopics=subtopics,
+                    difficulty=difficulty,
+                    **ctx_params,
+                )
+
+        # Fall back to single question generation (for count=1)
+        questions = []
+        for _ in range(count):
+            if qt_value == "mcq" or question_type == QuestionType.MCQ:
                 question = await self.generate_mcq_question(
                     topic=topic,
                     subtopics=subtopics,
                     difficulty=difficulty,
                 )
-            elif question_type == QuestionType.SUBJECTIVE:
+            elif qt_value == "code" or question_type == QuestionType.CODE:
+                question = await self.generate_code_question(
+                    topic=topic,
+                    subtopics=subtopics,
+                    difficulty=difficulty,
+                )
+            elif qt_value == "subjective" or question_type == QuestionType.SUBJECTIVE:
                 question = await self.generate_subjective_question(
                     topic=topic,
                     subtopics=subtopics,

@@ -10,17 +10,21 @@ import {
   User,
   Calendar,
   ChevronRight,
+  Edit,
+  Trash2,
 } from "lucide-react";
 import { OKRGoal, OKRGoalStatus, OKRGoalType } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const STATUS_CONFIG: Record<OKRGoalStatus, { label: string; color: string; bgColor: string }> = {
+  not_started: { label: "Not Started", color: "text-slate-400", bgColor: "bg-slate-500" },
   draft: { label: "Draft", color: "text-slate-400", bgColor: "bg-slate-500" },
   active: { label: "Active", color: "text-blue-400", bgColor: "bg-blue-500" },
   on_track: { label: "On Track", color: "text-green-400", bgColor: "bg-green-500" },
   at_risk: { label: "At Risk", color: "text-amber-400", bgColor: "bg-amber-500" },
   behind: { label: "Behind", color: "text-red-400", bgColor: "bg-red-500" },
   achieved: { label: "Achieved", color: "text-green-400", bgColor: "bg-green-600" },
+  missed: { label: "Missed", color: "text-red-400", bgColor: "bg-red-600" },
   cancelled: { label: "Cancelled", color: "text-slate-500", bgColor: "bg-slate-600" },
 };
 
@@ -33,6 +37,7 @@ const TYPE_CONFIG: Record<OKRGoalType, { label: string; icon: React.ReactNode }>
 interface GoalCardProps {
   goal: OKRGoal;
   onClick?: (goal: OKRGoal) => void;
+  onEdit?: (goal: OKRGoal) => void;
   onDelete?: (goalId: string) => void;
   showKeyResults?: boolean;
   keyResults?: OKRGoal[];
@@ -42,14 +47,29 @@ interface GoalCardProps {
 export function GoalCard({
   goal,
   onClick,
+  onEdit,
   onDelete,
   showKeyResults = false,
   keyResults = [],
   className,
 }: GoalCardProps) {
   const [showMenu, setShowMenu] = React.useState(false);
-  const statusConfig = STATUS_CONFIG[goal.status];
-  const typeConfig = TYPE_CONFIG[goal.goal_type];
+  const menuRef = React.useRef<HTMLDivElement>(null);
+  const statusConfig = STATUS_CONFIG[goal.status] || STATUS_CONFIG.not_started;
+  const typeConfig = TYPE_CONFIG[goal.goal_type] || TYPE_CONFIG.objective;
+
+  // Close menu when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    if (showMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showMenu]);
 
   const getTrendIcon = () => {
     if (goal.progress_percentage >= 70) return <TrendingUp className="h-4 w-4 text-green-400" />;
@@ -76,15 +96,47 @@ export function GoalCard({
             {statusConfig.label}
           </span>
         </div>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowMenu(!showMenu);
-          }}
-          className="p-1 rounded hover:bg-slate-700/50 opacity-0 group-hover:opacity-100 transition-opacity"
-        >
-          <MoreVertical className="h-4 w-4 text-slate-400" />
-        </button>
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowMenu(!showMenu);
+            }}
+            className="p-1 rounded hover:bg-slate-700/50 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <MoreVertical className="h-4 w-4 text-slate-400" />
+          </button>
+          {showMenu && (
+            <div className="absolute right-0 top-full mt-1 w-36 bg-slate-800 border border-slate-700 rounded-lg shadow-lg py-1 z-10">
+              {onEdit && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowMenu(false);
+                    onEdit(goal);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700/50 transition-colors"
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowMenu(false);
+                    onDelete(goal.id);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-slate-700/50 transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Title */}
@@ -137,7 +189,7 @@ export function GoalCard({
             {keyResults.slice(0, 3).map((kr) => (
               <div key={kr.id} className="flex items-center justify-between text-xs">
                 <span className="text-slate-300 truncate flex-1">{kr.title}</span>
-                <span className={cn("ml-2", STATUS_CONFIG[kr.status].color)}>
+                <span className={cn("ml-2", (STATUS_CONFIG[kr.status] || STATUS_CONFIG.not_started).color)}>
                   {kr.progress_percentage.toFixed(0)}%
                 </span>
               </div>

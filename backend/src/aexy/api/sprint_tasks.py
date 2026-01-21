@@ -12,6 +12,9 @@ from aexy.schemas.sprint import (
     SprintTaskStatusUpdate,
     SprintTaskAssign,
     SprintTaskBulkAssign,
+    SprintTaskBulkStatusUpdate,
+    SprintTaskBulkMove,
+    SprintTaskReorder,
     SprintTaskResponse,
     TaskImportRequest,
     TaskImportResponse,
@@ -161,6 +164,57 @@ async def bulk_assign_tasks(
 
     task_service = SprintTaskService(db)
     tasks = await task_service.bulk_assign_tasks(data.assignments)
+
+    await db.commit()
+    return [task_to_response(t) for t in tasks]
+
+
+@router.post("/bulk-status", response_model=list[SprintTaskResponse])
+async def bulk_update_status(
+    sprint_id: str,
+    data: SprintTaskBulkStatusUpdate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bulk update status for multiple tasks."""
+    await get_sprint_and_check_permission(sprint_id, current_user, db, "member")
+
+    task_service = SprintTaskService(db)
+    tasks = await task_service.bulk_update_status(data.task_ids, data.status)
+
+    await db.commit()
+    return [task_to_response(t) for t in tasks]
+
+
+@router.post("/bulk-move", response_model=list[SprintTaskResponse])
+async def bulk_move_tasks(
+    sprint_id: str,
+    data: SprintTaskBulkMove,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bulk move tasks to another sprint."""
+    await get_sprint_and_check_permission(sprint_id, current_user, db, "member")
+
+    task_service = SprintTaskService(db)
+    tasks = await task_service.bulk_move_to_sprint(data.task_ids, data.target_sprint_id)
+
+    await db.commit()
+    return [task_to_response(t) for t in tasks]
+
+
+@router.post("/reorder", response_model=list[SprintTaskResponse])
+async def reorder_tasks(
+    sprint_id: str,
+    data: SprintTaskReorder,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Reorder tasks within a sprint (drag-and-drop prioritization)."""
+    await get_sprint_and_check_permission(sprint_id, current_user, db, "member")
+
+    task_service = SprintTaskService(db)
+    tasks = await task_service.reorder_tasks(data.task_ids, sprint_id)
 
     await db.commit()
     return [task_to_response(t) for t in tasks]
@@ -619,3 +673,133 @@ async def add_comment(
     await db.commit()
     await db.refresh(activity)
     return activity_to_response(activity)
+
+
+# ============================================================================
+# Export Endpoints
+# ============================================================================
+
+from fastapi.responses import StreamingResponse
+from aexy.schemas.analytics import ExportFormat
+from aexy.services.export_service import ExportService
+import io
+
+
+@router.get("/export/{format}")
+async def export_sprint_tasks(
+    sprint_id: str,
+    format: ExportFormat,
+    db: AsyncSession = Depends(get_db),
+    current_user: Developer = Depends(get_current_developer),
+):
+    """Export sprint tasks in specified format (csv, xlsx, pdf, json)."""
+    task_service = SprintTaskService(db)
+    sprint_service = SprintService(db)
+
+    # Get sprint info
+    sprint = await sprint_service.get_sprint(sprint_id)
+    if not sprint:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Sprint not found",
+        )
+
+    # Check workspace permission
+    workspace_service = WorkspaceService(db)
+    if not await workspace_service.check_permission(str(sprint.workspace_id), str(current_user.id), "viewer"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to access this sprint",
+        )
+
+    # Get all tasks for the sprint
+    tasks = await task_service.get_sprint_tasks(sprint_id)
+
+    # Calculate stats
+    stats = {
+        "total": len(tasks),
+        "completed": len([t for t in tasks if t.status == "done"]),
+        "in_progress": len([t for t in tasks if t.status == "in_progress"]),
+        "todo": len([t for t in tasks if t.status in ["todo", "backlog"]]),
+        "review": len([t for t in tasks if t.status == "review"]),
+        "total_points": sum(t.story_points or 0 for t in tasks),
+        "completed_points": sum(t.story_points or 0 for t in tasks if t.status == "done"),
+    }
+
+    # Convert tasks to export format
+    export_tasks = []
+    for task in tasks:
+        assignee = task.assignee
+        epic = task.epic if hasattr(task, "epic") else None
+        export_tasks.append({
+            "id": str(task.id),
+            "title": task.title,
+            "description": task.description or "",
+            "status": task.status,
+            "priority": task.priority,
+            "story_points": task.story_points,
+            "labels": task.labels or [],
+            "assignee_id": str(task.assignee_id) if task.assignee_id else None,
+            "assignee_name": assignee.name if assignee else None,
+            "epic_id": str(task.epic_id) if task.epic_id else None,
+            "epic_title": epic.title if epic else None,
+            "created_at": task.created_at.isoformat() if task.created_at else None,
+            "updated_at": task.updated_at.isoformat() if task.updated_at else None,
+        })
+
+    data = {
+        "title": f"Sprint: {sprint.name}",
+        "sprint_name": sprint.name,
+        "sprint_id": str(sprint.id),
+        "stats": stats,
+        "tasks": export_tasks,
+    }
+
+    # Use export service
+    from aexy.schemas.analytics import ExportRequest, ExportType
+    export_service = ExportService()
+    request = ExportRequest(
+        export_type=ExportType.SPRINT_TASKS,
+        format=format,
+        config={"sprint_id": sprint_id},
+    )
+
+    job = await export_service.create_export_job(request, str(current_user.id), db)
+    await db.commit()
+
+    completed_job = await export_service.process_export(job.id, db, data)
+    await db.commit()
+
+    if not completed_job or not completed_job.file_path:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate export",
+        )
+
+    # Return the file
+    from pathlib import Path
+    file_path = Path(completed_job.file_path)
+
+    content_types = {
+        ExportFormat.CSV: "text/csv",
+        ExportFormat.JSON: "application/json",
+        ExportFormat.PDF: "application/pdf",
+        ExportFormat.XLSX: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }
+    extensions = {
+        ExportFormat.CSV: "csv",
+        ExportFormat.JSON: "json",
+        ExportFormat.PDF: "pdf",
+        ExportFormat.XLSX: "xlsx",
+    }
+
+    filename = f"{sprint.name.replace(' ', '_')}_tasks.{extensions[format]}"
+
+    with open(file_path, "rb") as f:
+        content = f.read()
+
+    return StreamingResponse(
+        io.BytesIO(content),
+        media_type=content_types[format],
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

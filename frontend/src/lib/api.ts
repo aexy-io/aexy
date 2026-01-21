@@ -2072,6 +2072,50 @@ export interface SprintTask {
   updated_at: string;
 }
 
+export interface TaskTemplate {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  is_active: boolean;
+  title_template: string;
+  description_template: string | null;
+  default_priority: TaskPriority;
+  default_story_points: number | null;
+  default_labels: string[];
+  subtasks: string[];
+  checklist: string[];
+  usage_count: number;
+  created_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TaskTemplateCreate {
+  name: string;
+  description?: string;
+  category?: string;
+  title_template: string;
+  description_template?: string;
+  default_priority?: TaskPriority;
+  default_story_points?: number;
+  default_labels?: string[];
+  subtasks?: string[];
+  checklist?: string[];
+}
+
+export interface TaskFromTemplateCreate {
+  template_id: string;
+  title_variables?: Record<string, string>;
+  sprint_id?: string;
+  assignee_id?: string;
+  override_priority?: TaskPriority;
+  override_story_points?: number;
+  additional_labels?: string[];
+  create_subtasks?: boolean;
+}
+
 export interface SprintStats {
   total_tasks: number;
   completed_tasks: number;
@@ -2707,6 +2751,28 @@ export const sprintApi = {
     return response.data;
   },
 
+  bulkUpdateStatus: async (sprintId: string, taskIds: string[], status: TaskStatus): Promise<SprintTask[]> => {
+    const response = await api.post(`/sprints/${sprintId}/tasks/bulk-status`, { task_ids: taskIds, status });
+    return response.data;
+  },
+
+  bulkMoveTasks: async (sprintId: string, taskIds: string[], targetSprintId: string): Promise<SprintTask[]> => {
+    const response = await api.post(`/sprints/${sprintId}/tasks/bulk-move`, { task_ids: taskIds, target_sprint_id: targetSprintId });
+    return response.data;
+  },
+
+  exportTasks: async (sprintId: string, format: 'csv' | 'xlsx' | 'pdf' | 'json'): Promise<Blob> => {
+    const response = await api.get(`/sprints/${sprintId}/tasks/export/${format}`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  reorderTasks: async (sprintId: string, taskIds: string[]): Promise<SprintTask[]> => {
+    const response = await api.post(`/sprints/${sprintId}/tasks/reorder`, { task_ids: taskIds });
+    return response.data;
+  },
+
   importTasks: async (sprintId: string, source: TaskSourceType, config: {
     github?: { owner: string; repo: string; api_token?: string; labels?: string[]; limit?: number };
     jira?: { api_url: string; api_key: string; project_key: string; jql_filter?: string; limit?: number };
@@ -2841,6 +2907,65 @@ export const sprintApi = {
       `/workspaces/${workspaceId}/teams/${teamId}/sprints/${fromSprintId}/carry-over/${toSprintId}`,
       { task_ids: taskIds }
     );
+    return response.data;
+  },
+};
+
+// ============================================================================
+// Task Templates API (workspace-scoped task templates)
+// ============================================================================
+
+export interface TaskTemplateListResponse {
+  items: TaskTemplate[];
+  total: number;
+}
+
+export const taskTemplatesApi = {
+  list: async (workspaceId: string, options?: {
+    category?: string;
+    is_active?: boolean;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<TaskTemplateListResponse> => {
+    const response = await api.get(`/workspaces/${workspaceId}/task-templates`, { params: options });
+    return response.data;
+  },
+
+  get: async (workspaceId: string, templateId: string): Promise<TaskTemplate> => {
+    const response = await api.get(`/workspaces/${workspaceId}/task-templates/${templateId}`);
+    return response.data;
+  },
+
+  create: async (workspaceId: string, data: TaskTemplateCreate): Promise<TaskTemplate> => {
+    const response = await api.post(`/workspaces/${workspaceId}/task-templates`, data);
+    return response.data;
+  },
+
+  update: async (workspaceId: string, templateId: string, data: Partial<TaskTemplateCreate> & { is_active?: boolean }): Promise<TaskTemplate> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/task-templates/${templateId}`, data);
+    return response.data;
+  },
+
+  delete: async (workspaceId: string, templateId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/task-templates/${templateId}`);
+  },
+
+  useTemplate: async (workspaceId: string, templateId: string, data: {
+    sprint_id: string;
+    title_variables?: Record<string, string>;
+    assignee_id?: string;
+    override_priority?: TaskPriority;
+    override_story_points?: number;
+    additional_labels?: string[];
+    create_subtasks?: boolean;
+  }): Promise<SprintTask> => {
+    const response = await api.post(`/workspaces/${workspaceId}/task-templates/${templateId}/use`, data);
+    return response.data;
+  },
+
+  listCategories: async (workspaceId: string): Promise<string[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/task-templates/categories/list`);
     return response.data;
   },
 };
@@ -5666,6 +5791,88 @@ export interface SlackChannelConfigCreate {
   standup_format_hint?: string;
 }
 
+// ============ Analytics Types ============
+
+export interface TeamAnalytics {
+  team_id: string;
+  team_name: string;
+  date_range: { start_date: string; end_date: string };
+  metrics: {
+    total_standups: number;
+    standup_participation_rate: number;
+    total_time_logged: number;
+    avg_time_per_day: number;
+    total_blockers_reported: number;
+    total_blockers_resolved: number;
+    avg_blocker_resolution_hours: number;
+  };
+  trends: {
+    standups_by_day: Array<{ date: string; count: number }>;
+    time_by_day: Array<{ date: string; minutes: number }>;
+    blockers_by_day: Array<{ date: string; reported: number; resolved: number }>;
+  };
+  sentiment_analysis: {
+    average_score: number;
+    trend: number;
+    distribution: { positive: number; neutral: number; negative: number };
+  };
+  member_metrics: Array<{
+    developer_id: string;
+    name: string;
+    avatar_url?: string;
+    standups_submitted: number;
+    time_logged: number;
+    blockers_reported: number;
+    sentiment_avg: number;
+    streak_days: number;
+  }>;
+}
+
+export interface BlockerAnalytics {
+  team_id: string;
+  date_range: { start_date: string; end_date: string };
+  summary: {
+    total_reported: number;
+    total_resolved: number;
+    total_escalated: number;
+    currently_active: number;
+    avg_resolution_time_hours: number;
+    avg_escalation_time_hours: number;
+  };
+  by_severity: Record<string, number>;
+  by_category: Record<string, number>;
+  sla_metrics: {
+    within_sla: number;
+    breached_sla: number;
+    avg_time_to_first_response_hours: number;
+  };
+  trends: {
+    reported_by_day: Array<{ date: string; count: number }>;
+    resolved_by_day: Array<{ date: string; count: number }>;
+    avg_age_by_day: Array<{ date: string; hours: number }>;
+  };
+  top_contributors: Array<{
+    developer_id: string;
+    name: string;
+    reported: number;
+    resolved: number;
+  }>;
+}
+
+export interface TimeReport {
+  date_range: { start_date: string; end_date: string };
+  summary: {
+    total_minutes: number;
+    total_entries: number;
+    avg_per_day: number;
+    days_with_entries: number;
+  };
+  by_project: Array<{ project_id: string; project_name: string; minutes: number; percentage: number }>;
+  by_task: Array<{ task_id: string; task_title: string; minutes: number; percentage: number }>;
+  by_day: Array<{ date: string; minutes: number; entries: number }>;
+  by_week: Array<{ week_start: string; minutes: number; entries: number }>;
+}
+
 // ============ Tracking API ============
 
 export const trackingApi = {
@@ -5767,6 +5974,71 @@ export const trackingApi = {
 
   deleteChannelConfig: async (configId: string): Promise<void> => {
     await api.delete(`/tracking/channels/${configId}`);
+  },
+
+  // Analytics
+  getTeamAnalytics: async (
+    teamId: string,
+    options?: { start_date?: string; end_date?: string }
+  ): Promise<TeamAnalytics> => {
+    const response = await api.get(`/tracking/analytics/team/${teamId}`, { params: options });
+    return response.data;
+  },
+
+  getBlockerAnalytics: async (
+    teamId: string,
+    options?: { start_date?: string; end_date?: string }
+  ): Promise<BlockerAnalytics> => {
+    const response = await api.get(`/tracking/analytics/blockers/${teamId}`, { params: options });
+    return response.data;
+  },
+
+  getTimeReport: async (options?: {
+    start_date?: string;
+    end_date?: string;
+    group_by?: "day" | "week" | "project" | "task";
+  }): Promise<TimeReport> => {
+    const response = await api.get("/tracking/time/report", { params: options });
+    return response.data;
+  },
+
+  // Export endpoints
+  exportStandups: async (options: {
+    start_date: string;
+    end_date: string;
+    format: "csv" | "pdf" | "json";
+    team_id?: string;
+  }): Promise<Blob> => {
+    const response = await api.get("/tracking/export/standups", {
+      params: options,
+      responseType: "blob",
+    });
+    return response.data;
+  },
+
+  exportTimesheet: async (options: {
+    start_date: string;
+    end_date: string;
+    format: "csv" | "pdf" | "json";
+  }): Promise<Blob> => {
+    const response = await api.get("/tracking/export/timesheet", {
+      params: options,
+      responseType: "blob",
+    });
+    return response.data;
+  },
+
+  exportBlockers: async (options: {
+    start_date: string;
+    end_date: string;
+    format: "csv" | "pdf" | "json";
+    team_id?: string;
+  }): Promise<Blob> => {
+    const response = await api.get("/tracking/export/blockers", {
+      params: options,
+      responseType: "blob",
+    });
+    return response.data;
   },
 };
 
@@ -9761,7 +10033,7 @@ export const releasesApi = {
 // ============ OKR Goals Types ============
 
 export type OKRGoalType = "objective" | "key_result" | "initiative";
-export type OKRGoalStatus = "draft" | "active" | "on_track" | "at_risk" | "behind" | "achieved" | "cancelled";
+export type OKRGoalStatus = "not_started" | "draft" | "active" | "on_track" | "at_risk" | "behind" | "achieved" | "missed" | "cancelled";
 export type OKRPeriodType = "quarter" | "year" | "half_year" | "custom";
 export type OKRMetricType = "percentage" | "number" | "currency" | "boolean";
 
@@ -9796,8 +10068,8 @@ export interface OKRGoalCreate {
   parent_goal_id?: string;
   owner_id?: string;
   period_type?: OKRPeriodType;
-  period_start?: string;
-  period_end?: string;
+  start_date: string;  // Required: YYYY-MM-DD format
+  end_date: string;    // Required: YYYY-MM-DD format
   metric_type?: OKRMetricType;
   target_value?: number;
   starting_value?: number;
@@ -9808,12 +10080,13 @@ export interface OKRGoalUpdate {
   title?: string;
   description?: string;
   owner_id?: string;
-  period_start?: string;
-  period_end?: string;
+  start_date?: string;
+  end_date?: string;
   target_value?: number;
   unit?: string;
   status?: OKRGoalStatus;
   confidence_level?: number;
+  comment?: string;  // Optional comment for activity timeline
 }
 
 export interface OKRProgressUpdate {
@@ -9836,7 +10109,9 @@ export const okrGoalsApi = {
     }
   ): Promise<{ items: OKRGoal[]; total: number }> => {
     const response = await api.get(`/workspaces/${workspaceId}/goals`, { params });
-    return response.data;
+    // Backend returns an array, transform to expected format
+    const items = Array.isArray(response.data) ? response.data : response.data.items || [];
+    return { items, total: items.length };
   },
 
   get: async (workspaceId: string, goalId: string): Promise<OKRGoal> => {
@@ -9860,8 +10135,12 @@ export const okrGoalsApi = {
 
   // Key Results
   getKeyResults: async (workspaceId: string, goalId: string): Promise<{ items: OKRGoal[]; total: number }> => {
-    const response = await api.get(`/workspaces/${workspaceId}/goals/${goalId}/key-results`);
-    return response.data;
+    const response = await api.get(`/workspaces/${workspaceId}/goals`, {
+      params: { parent_goal_id: goalId, goal_type: 'key_result' }
+    });
+    // Backend returns an array, transform to expected format
+    const items = Array.isArray(response.data) ? response.data : response.data.items || [];
+    return { items, total: items.length };
   },
 
   addKeyResult: async (workspaceId: string, goalId: string, data: OKRGoalCreate): Promise<OKRGoal> => {
@@ -9905,7 +10184,130 @@ export const okrGoalsApi = {
     };
   }> => {
     const response = await api.get(`/workspaces/${workspaceId}/goals/dashboard`);
+    const data = response.data;
+    // Transform backend response to expected format
+    return {
+      objectives: data.objectives || [],
+      summary: {
+        total_objectives: data.total_objectives || 0,
+        on_track: data.on_track_count || 0,
+        at_risk: data.at_risk_count || 0,
+        behind: data.behind_count || 0,
+        achieved: data.achieved_count || 0,
+        average_progress: data.avg_progress || 0,
+      },
+    };
+  },
+};
+
+// ============ Entity Activity Types ============
+
+export type EntityActivityType = "goal" | "task" | "backlog" | "story" | "release" | "roadmap" | "epic" | "bug";
+export type ActivityActionType = "created" | "updated" | "comment" | "status_changed" | "assigned" | "progress_updated" | "linked" | "unlinked";
+
+export interface ActorInfo {
+  id: string;
+  name?: string;
+  email?: string;
+  avatar_url?: string;
+}
+
+export interface EntityActivity {
+  id: string;
+  workspace_id: string;
+  entity_type: EntityActivityType;
+  entity_id: string;
+  activity_type: ActivityActionType;
+  actor_id?: string;
+  actor_name?: string;
+  actor_email?: string;
+  actor_avatar_url?: string;
+  title?: string;
+  content?: string;
+  changes?: Record<string, { old?: string; new?: string }>;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface TimelineEntry {
+  id: string;
+  activity_type: ActivityActionType;
+  actor?: ActorInfo;
+  title?: string;
+  content?: string;
+  changes?: Record<string, { old?: string; new?: string }>;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  display_text?: string;
+  icon?: string;
+}
+
+export interface EntityActivityListResponse {
+  items: EntityActivity[];
+  total: number;
+  has_more: boolean;
+}
+
+export interface TimelineResponse {
+  entity_type: EntityActivityType;
+  entity_id: string;
+  entries: TimelineEntry[];
+  total: number;
+}
+
+export interface EntityCommentCreate {
+  content: string;
+}
+
+// Entity Activity API
+export const entityActivityApi = {
+  // List activities for a workspace
+  list: async (
+    workspaceId: string,
+    params?: {
+      entity_type?: EntityActivityType;
+      entity_id?: string;
+      activity_type?: ActivityActionType;
+      actor_id?: string;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<EntityActivityListResponse> => {
+    const response = await api.get(`/workspaces/${workspaceId}/activities`, { params });
     return response.data;
+  },
+
+  // Get timeline for a specific entity
+  getTimeline: async (
+    workspaceId: string,
+    entityType: EntityActivityType,
+    entityId: string,
+    params?: { limit?: number; offset?: number }
+  ): Promise<TimelineResponse> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/activities/timeline/${entityType}/${entityId}`,
+      { params }
+    );
+    return response.data;
+  },
+
+  // Add a comment to an entity
+  addComment: async (
+    workspaceId: string,
+    entityType: EntityActivityType,
+    entityId: string,
+    content: string
+  ): Promise<EntityActivity> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/activities/${entityType}/${entityId}/comment`,
+      { content }
+    );
+    return response.data;
+  },
+
+  // Delete a comment (only own comments)
+  deleteComment: async (workspaceId: string, activityId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/activities/${activityId}`);
   },
 };
 
@@ -9992,6 +10394,30 @@ export interface BugUpdate {
   labels?: string[];
 }
 
+export type BugActivityAction =
+  | "created"
+  | "updated"
+  | "status_changed"
+  | "assigned"
+  | "comment"
+  | "verified"
+  | "reopened";
+
+export interface BugActivity {
+  id: string;
+  bug_id: string;
+  action: BugActivityAction;
+  actor_id?: string;
+  actor_name?: string;
+  actor_avatar_url?: string;
+  field_name?: string;
+  old_value?: string;
+  new_value?: string;
+  comment?: string;
+  activity_metadata?: Record<string, unknown>;
+  created_at: string;
+}
+
 // Bugs API
 export const bugsApi = {
   list: async (
@@ -10005,12 +10431,15 @@ export const bugsApi = {
       priority?: BugPriority;
       assignee_id?: string;
       is_regression?: boolean;
+      include_closed?: boolean;
       skip?: number;
       limit?: number;
     }
   ): Promise<{ items: Bug[]; total: number }> => {
     const response = await api.get(`/workspaces/${workspaceId}/bugs`, { params });
-    return response.data;
+    // Backend returns array directly, wrap it for frontend compatibility
+    const items = Array.isArray(response.data) ? response.data : response.data.items || [];
+    return { items, total: items.length };
   },
 
   get: async (workspaceId: string, bugId: string): Promise<Bug> => {
@@ -10038,8 +10467,12 @@ export const bugsApi = {
     return response.data;
   },
 
-  fix: async (workspaceId: string, bugId: string, fixedVersion?: string): Promise<Bug> => {
-    const response = await api.post(`/workspaces/${workspaceId}/bugs/${bugId}/fix`, { fixed_version: fixedVersion });
+  fix: async (workspaceId: string, bugId: string, data?: {
+    fixed_in_version?: string;
+    root_cause?: string;
+    resolution_notes?: string;
+  }): Promise<Bug> => {
+    const response = await api.post(`/workspaces/${workspaceId}/bugs/${bugId}/fix`, data || {});
     return response.data;
   },
 
@@ -10048,8 +10481,11 @@ export const bugsApi = {
     return response.data;
   },
 
-  close: async (workspaceId: string, bugId: string, resolution?: string): Promise<Bug> => {
-    const response = await api.post(`/workspaces/${workspaceId}/bugs/${bugId}/close`, { resolution });
+  close: async (workspaceId: string, bugId: string, resolution?: "fixed" | "wont_fix" | "duplicate" | "cannot_reproduce", notes?: string): Promise<Bug> => {
+    const response = await api.post(`/workspaces/${workspaceId}/bugs/${bugId}/close`, {
+      resolution: resolution || "fixed",
+      notes
+    });
     return response.data;
   },
 
@@ -10070,6 +10506,61 @@ export const bugsApi = {
     const response = await api.get(`/workspaces/${workspaceId}/bugs/stats`, {
       params: { project_id: projectId },
     });
+    // Map backend response to frontend expected format
+    const data = response.data;
+    return {
+      total: data.total_bugs || 0,
+      by_status: {
+        new: data.new_bugs || 0,
+        confirmed: data.confirmed_bugs || 0,
+        in_progress: data.in_progress_bugs || 0,
+        fixed: data.fixed_bugs || 0,
+        verified: data.verified_bugs || 0,
+        closed: data.closed_bugs || 0,
+        wont_fix: 0,
+        duplicate: 0,
+        cannot_reproduce: 0,
+      },
+      by_severity: {
+        blocker: data.blocker_bugs || 0,
+        critical: data.critical_bugs || 0,
+        major: data.major_bugs || 0,
+        minor: data.minor_bugs || 0,
+        trivial: data.trivial_bugs || 0,
+      },
+      by_priority: {
+        critical: 0,
+        high: 0,
+        medium: 0,
+        low: 0,
+      },
+      regressions: data.regression_count || 0,
+      avg_resolution_hours: data.avg_time_to_fix_hours,
+    };
+  },
+
+  // Activities / Timeline
+  getActivities: async (
+    workspaceId: string,
+    bugId: string,
+    params?: { limit?: number; offset?: number }
+  ): Promise<BugActivity[]> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/bugs/${bugId}/activities`,
+      { params }
+    );
+    return response.data;
+  },
+
+  addComment: async (
+    workspaceId: string,
+    bugId: string,
+    comment: string
+  ): Promise<BugActivity> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/bugs/${bugId}/comments`,
+      { comment }
+    );
     return response.data;
   },
 };

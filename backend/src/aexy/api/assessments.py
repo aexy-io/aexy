@@ -631,12 +631,14 @@ async def generate_questions(
 
     Uses the LLM gateway to generate assessment questions based on the topic,
     question type, difficulty level, and optional context.
+    Includes assessment context (job role, skills, experience) for better relevance.
     """
     from aexy.services.question_generation_service import (
         QuestionGenerationService,
         get_sample_questions,
     )
     from aexy.models.assessment import AssessmentTopic
+    from aexy.models.repository import Organization
 
     # Get topic information
     topic_stmt = select(AssessmentTopic).where(AssessmentTopic.id == data.topic_id)
@@ -649,7 +651,48 @@ async def generate_questions(
             detail="Topic not found",
         )
 
-    # Initialize service and generate questions
+    # Get assessment information for context
+    assessment_stmt = select(Assessment).where(Assessment.id == assessment_id)
+    assessment_result = await db.execute(assessment_stmt)
+    assessment = assessment_result.scalar_one_or_none()
+
+    # Get organization name
+    organization_name = ""
+    if assessment and assessment.organization_id:
+        org_stmt = select(Organization).where(Organization.id == assessment.organization_id)
+        org_result = await db.execute(org_stmt)
+        org = org_result.scalar_one_or_none()
+        if org:
+            organization_name = org.name or ""
+
+    # Build context from assessment
+    job_designation = assessment.job_designation if assessment else ""
+    skills = [s.get("name", s) if isinstance(s, dict) else s for s in (assessment.skills or [])] if assessment else []
+    experience_min = assessment.experience_min if assessment else None
+    experience_max = assessment.experience_max if assessment else None
+
+    # Determine experience level
+    if experience_min is not None:
+        if experience_min < 2:
+            experience_level = "junior"
+        elif experience_min < 5:
+            experience_level = "mid"
+        else:
+            experience_level = "senior"
+    else:
+        experience_level = "mid"
+
+    # Format experience years
+    if experience_min is not None and experience_max is not None:
+        experience_years = f"{experience_min}-{experience_max} years"
+    elif experience_min is not None:
+        experience_years = f"{experience_min}+ years"
+    else:
+        experience_years = "Not specified"
+
+    assessment_description = assessment.description if assessment else ""
+
+    # Initialize service and generate questions with full context
     service = QuestionGenerationService(db)
     generated = await service.generate_questions(
         topic=topic.topic,
@@ -658,6 +701,13 @@ async def generate_questions(
         count=data.count,
         subtopics=topic.subtopics,
         context=data.context,
+        # Assessment context for better question relevance
+        job_designation=job_designation,
+        skills=skills,
+        experience_level=experience_level,
+        experience_years=experience_years,
+        organization_name=organization_name,
+        assessment_description=assessment_description,
     )
 
     # If LLM failed, fall back to sample questions

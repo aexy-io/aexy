@@ -148,23 +148,15 @@ export function IndividualTrackingDashboard({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column - Standup */}
         <div className="space-y-6">
-          {/* Standup Form or Today's Standup */}
-          {dashboard?.has_standup_today && dashboard?.todays_standup ? (
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-green-400" />
-                Today's Standup
-              </h3>
-              <StandupCard standup={dashboard.todays_standup} />
-            </div>
-          ) : (
-            <StandupForm
-              onSubmit={onSubmitStandup}
-              isSubmitting={isSubmittingStandup}
-              sprintId={sprintId}
-              teamId={teamId}
-            />
-          )}
+          {/* Standup Form - supports both create and edit modes */}
+          <StandupForm
+            onSubmit={onSubmitStandup}
+            isSubmitting={isSubmittingStandup}
+            sprintId={sprintId}
+            teamId={teamId}
+            initialData={dashboard?.todays_standup}
+            editMode={true}
+          />
 
           {/* Recent Standups */}
           {dashboard?.recent_standups && dashboard.recent_standups.length > 0 && (

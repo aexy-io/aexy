@@ -262,6 +262,41 @@ class SprintTaskBulkAssign(BaseModel):
     )
 
 
+class SprintTaskBulkStatusUpdate(BaseModel):
+    """Schema for bulk task status update."""
+
+    task_ids: list[str] = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="List of task IDs to update",
+    )
+    status: TaskStatus = Field(..., description="New status for all tasks")
+
+
+class SprintTaskBulkMove(BaseModel):
+    """Schema for bulk moving tasks to another sprint."""
+
+    task_ids: list[str] = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="List of task IDs to move",
+    )
+    target_sprint_id: str = Field(..., description="Target sprint ID")
+
+
+class SprintTaskReorder(BaseModel):
+    """Schema for reordering tasks (drag-and-drop)."""
+
+    task_ids: list[str] = Field(
+        ...,
+        min_length=1,
+        max_length=200,
+        description="List of task IDs in the desired order",
+    )
+
+
 class SprintTaskResponse(BaseModel):
     """Schema for sprint task response."""
 
@@ -533,3 +568,80 @@ class TaskActivityListResponse(BaseModel):
 
     activities: list[TaskActivityResponse]
     total: int
+
+
+# ==================== Task Template Schemas ====================
+
+class TaskTemplateCreate(BaseModel):
+    """Schema for creating a task template."""
+
+    name: str = Field(..., min_length=1, max_length=200)
+    description: str | None = None
+    category: str | None = Field(default=None, max_length=100)
+    title_template: str = Field(..., min_length=1, max_length=500)
+    description_template: str | None = None
+    default_priority: TaskPriority = "medium"
+    default_story_points: int | None = Field(default=None, ge=0, le=100)
+    default_labels: list[str] = Field(default_factory=list)
+    subtasks: list[str] = Field(default_factory=list)
+    checklist: list[str] = Field(default_factory=list)
+
+
+class TaskTemplateUpdate(BaseModel):
+    """Schema for updating a task template."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = None
+    category: str | None = Field(default=None, max_length=100)
+    title_template: str | None = Field(default=None, min_length=1, max_length=500)
+    description_template: str | None = None
+    default_priority: TaskPriority | None = None
+    default_story_points: int | None = Field(default=None, ge=0, le=100)
+    default_labels: list[str] | None = None
+    subtasks: list[str] | None = None
+    checklist: list[str] | None = None
+    is_active: bool | None = None
+
+
+class TaskTemplateResponse(BaseModel):
+    """Schema for task template response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    workspace_id: str
+    name: str
+    description: str | None = None
+    category: str | None = None
+    is_active: bool
+    title_template: str
+    description_template: str | None = None
+    default_priority: str
+    default_story_points: int | None = None
+    default_labels: list[str] = Field(default_factory=list)
+    subtasks: list[str] = Field(default_factory=list)
+    checklist: list[str] = Field(default_factory=list)
+    usage_count: int
+    created_by_id: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class TaskTemplateListResponse(BaseModel):
+    """Schema for task template list."""
+
+    items: list[TaskTemplateResponse]
+    total: int
+
+
+class TaskFromTemplateCreate(BaseModel):
+    """Schema for creating a task from a template."""
+
+    template_id: str
+    title_variables: dict[str, str] = Field(default_factory=dict)  # Variables to substitute in title
+    sprint_id: str | None = None
+    assignee_id: str | None = None
+    override_priority: TaskPriority | None = None
+    override_story_points: int | None = None
+    additional_labels: list[str] = Field(default_factory=list)
+    create_subtasks: bool = True

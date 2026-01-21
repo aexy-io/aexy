@@ -136,7 +136,30 @@ class GeminiProvider(LLMProvider):
 
         except httpx.HTTPStatusError as e:
             logger.error(f"Gemini API error: {e.response.status_code} - {e.response.text}")
-            raise
+            # Handle rate limit errors (429)
+            if e.response.status_code == 429:
+                # Try to extract retry delay from response
+                wait_seconds = 60.0  # Default to 60 seconds
+                try:
+                    error_data = e.response.json()
+                    details = error_data.get("error", {}).get("details", [])
+                    for detail in details:
+                        if detail.get("@type") == "type.googleapis.com/google.rpc.RetryInfo":
+                            retry_delay = detail.get("retryDelay", "60s")
+                            # Parse delay like "28.843768509s" or "28s"
+                            if retry_delay.endswith("s"):
+                                wait_seconds = float(retry_delay[:-1])
+                            break
+                except Exception:
+                    pass
+                raise LLMRateLimitError(
+                    message="Gemini API rate limit exceeded",
+                    wait_seconds=wait_seconds,
+                )
+            raise LLMAPIError(
+                f"Gemini API error: {e.response.status_code}",
+                status_code=e.response.status_code,
+            )
         except Exception as e:
             logger.error(f"Gemini API call failed: {e}")
             raise

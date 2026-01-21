@@ -614,6 +614,7 @@ async def submit_answer(
         submission = QuestionSubmission(
             attempt_id=attempt.id,
             question_id=question_id,
+            submission_type=question.question_type.value if hasattr(question.question_type, 'value') else str(question.question_type),
             content=request.content,
             language=request.language,
             submitted_at=datetime.now(timezone.utc),

@@ -6,6 +6,9 @@ from typing import Any
 
 from celery import shared_task
 
+from aexy.llm.base import LLMRateLimitError
+from aexy.processing.rate_limited_task import RateLimitedTask
+
 logger = logging.getLogger(__name__)
 
 
@@ -38,7 +41,7 @@ def run_async(coro):
         loop.close()
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+@shared_task(bind=True, base=RateLimitedTask, max_retries=5)
 def analyze_commit_task(self, developer_id: str, commit_id: str) -> dict[str, Any]:
     """Analyze a commit with LLM.
 
@@ -54,6 +57,9 @@ def analyze_commit_task(self, developer_id: str, commit_id: str) -> dict[str, An
     try:
         result = run_async(_analyze_commit(developer_id, commit_id))
         return result
+    except LLMRateLimitError as exc:
+        logger.warning(f"Rate limit hit for commit analysis: {exc.message}")
+        raise self.retry(exc=exc, countdown=exc.wait_seconds)
     except Exception as exc:
         logger.error(f"Commit analysis failed: {exc}")
         raise self.retry(exc=exc)
@@ -105,7 +111,7 @@ async def _analyze_commit(developer_id: str, commit_id: str) -> dict[str, Any]:
         }
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+@shared_task(bind=True, base=RateLimitedTask, max_retries=5)
 def analyze_pr_task(self, developer_id: str, pr_id: str) -> dict[str, Any]:
     """Analyze a pull request with LLM.
 
@@ -121,6 +127,9 @@ def analyze_pr_task(self, developer_id: str, pr_id: str) -> dict[str, Any]:
     try:
         result = run_async(_analyze_pr(developer_id, pr_id))
         return result
+    except LLMRateLimitError as exc:
+        logger.warning(f"Rate limit hit for PR analysis: {exc.message}")
+        raise self.retry(exc=exc, countdown=exc.wait_seconds)
     except Exception as exc:
         logger.error(f"PR analysis failed: {exc}")
         raise self.retry(exc=exc)
@@ -186,7 +195,7 @@ async def _analyze_pr(developer_id: str, pr_id: str) -> dict[str, Any]:
         }
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=120)
+@shared_task(bind=True, base=RateLimitedTask, max_retries=5)
 def analyze_developer_task(self, developer_id: str) -> dict[str, Any]:
     """Full LLM analysis for a developer's activity.
 
@@ -201,6 +210,9 @@ def analyze_developer_task(self, developer_id: str) -> dict[str, Any]:
     try:
         result = run_async(_analyze_developer(developer_id))
         return result
+    except LLMRateLimitError as exc:
+        logger.warning(f"Rate limit hit for developer analysis: {exc.message}")
+        raise self.retry(exc=exc, countdown=exc.wait_seconds)
     except Exception as exc:
         logger.error(f"Developer analysis failed: {exc}")
         raise self.retry(exc=exc)
@@ -674,7 +686,7 @@ async def _process_document_sync_queue() -> dict[str, Any]:
         }
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+@shared_task(bind=True, base=RateLimitedTask, max_retries=5)
 def regenerate_document_task(
     self, document_id: str, developer_id: str
 ) -> dict[str, Any]:
@@ -692,6 +704,9 @@ def regenerate_document_task(
     try:
         result = run_async(_regenerate_document(document_id, developer_id))
         return result
+    except LLMRateLimitError as exc:
+        logger.warning(f"Rate limit hit for document regeneration: {exc.message}")
+        raise self.retry(exc=exc, countdown=exc.wait_seconds)
     except Exception as exc:
         logger.error(f"Document regeneration failed: {exc}")
         raise self.retry(exc=exc)

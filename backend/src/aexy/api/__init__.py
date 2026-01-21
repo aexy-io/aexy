@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from aexy.api.admin import router as admin_router
+from aexy.api.admin_rate_limits import router as admin_rate_limits_router
 from aexy.api.analysis import router as analysis_router
 from aexy.api.auth import router as auth_router
 from aexy.api.career import router as career_router
@@ -31,6 +32,7 @@ from aexy.api.sprint_tasks import router as sprint_tasks_router
 from aexy.api.sprint_analytics import router as sprint_analytics_router
 from aexy.api.retrospectives import router as retrospectives_router
 from aexy.api.project_tasks import router as project_tasks_router
+from aexy.api.task_templates import router as task_templates_router
 # Task Configuration
 from aexy.api.task_config import router as task_config_router
 # External Integrations
@@ -44,6 +46,8 @@ from aexy.api.stories import router as stories_router
 from aexy.api.releases import router as releases_router
 # Goals/OKRs
 from aexy.api.goals import router as goals_router
+# Entity Activities (Timeline)
+from aexy.api.entity_activity import router as entity_activity_router
 # Bugs
 from aexy.api.bugs import router as bugs_router
 # Dependencies
@@ -118,6 +122,7 @@ api_router.include_router(webhooks_router, prefix="/webhooks", tags=["webhooks"]
 api_router.include_router(teams_router, prefix="/teams", tags=["teams"])
 api_router.include_router(analysis_router, tags=["analysis"])
 api_router.include_router(admin_router, tags=["admin"])
+api_router.include_router(admin_rate_limits_router, tags=["admin-rate-limits"])
 # Phase 3: Career Intelligence
 api_router.include_router(career_router, tags=["career"])
 api_router.include_router(learning_router, tags=["learning"])
@@ -145,6 +150,7 @@ api_router.include_router(sprint_tasks_router, tags=["sprint-tasks"])
 api_router.include_router(sprint_analytics_router, tags=["sprint-analytics"])
 api_router.include_router(retrospectives_router, tags=["retrospectives"])
 api_router.include_router(project_tasks_router, tags=["project-tasks"])
+api_router.include_router(task_templates_router, tags=["task-templates"])
 # Task Configuration
 api_router.include_router(task_config_router, tags=["task-config"])
 # External Integrations
@@ -158,6 +164,8 @@ api_router.include_router(stories_router, tags=["stories"])
 api_router.include_router(releases_router, tags=["releases"])
 # Goals/OKRs
 api_router.include_router(goals_router, tags=["goals"])
+# Entity Activities (Timeline)
+api_router.include_router(entity_activity_router, tags=["entity-activities"])
 # Bugs
 api_router.include_router(bugs_router, tags=["bugs"])
 # Dependencies

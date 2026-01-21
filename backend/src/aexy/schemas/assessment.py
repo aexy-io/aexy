@@ -990,4 +990,4 @@ class PrePublishCheckResponse(BaseModel):
     warnings: list[str] = []
     errors: list[str] = []
     issues: list[str] = []  # Step-specific issues with step references for UI display
-    checklist: dict[str, bool] = {}  # {has_questions, has_candidates, ...}
+    checklist: dict[str, bool | int] = {}  # {has_questions, has_candidates, actual_question_count, ...}

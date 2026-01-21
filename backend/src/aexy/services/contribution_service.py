@@ -6,7 +6,7 @@ from datetime import date, datetime
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import select, func, and_, case
+from sqlalchemy import select, func, and_, case, text, literal_column
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.llm.gateway import LLMGateway
@@ -277,9 +277,10 @@ class ContributionService:
         commits_by_repo = {row.repository: row.count for row in commits_by_repo_result}
 
         # Commits by month
+        month_col = func.to_char(Commit.committed_at, 'YYYY-MM').label("month")
         commits_by_month_stmt = (
             select(
-                func.to_char(Commit.committed_at, 'YYYY-MM').label("month"),
+                month_col,
                 func.count(Commit.id).label("count"),
             )
             .where(
@@ -289,8 +290,8 @@ class ContributionService:
                     Commit.committed_at <= end_dt,
                 )
             )
-            .group_by(func.to_char(Commit.committed_at, 'YYYY-MM'))
-            .order_by(func.to_char(Commit.committed_at, 'YYYY-MM'))
+            .group_by(month_col)
+            .order_by(month_col)
         )
         commits_by_month_result = await self.db.execute(commits_by_month_stmt)
         commits_by_month = {row.month: row.count for row in commits_by_month_result}

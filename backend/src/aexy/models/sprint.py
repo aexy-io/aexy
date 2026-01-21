@@ -832,3 +832,73 @@ class TaskActivity(Base):
         "Developer",
         lazy="selectin",
     )
+
+
+class TaskTemplate(Base):
+    """Task template model - reusable templates for creating tasks."""
+
+    __tablename__ = "task_templates"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Template metadata
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    category: Mapped[str | None] = mapped_column(String(100), nullable=True)  # e.g., "Bug Fix", "Feature", "Chore"
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Task defaults
+    title_template: Mapped[str] = mapped_column(String(500), nullable=False)  # Can include {{variables}}
+    description_template: Mapped[str | None] = mapped_column(Text, nullable=True)
+    default_priority: Mapped[str] = mapped_column(String(50), default="medium", nullable=False)
+    default_story_points: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    default_labels: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
+
+    # Subtasks template (list of subtask titles to create with the main task)
+    subtasks: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
+
+    # Checklist items (for internal task checklist)
+    checklist: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
+
+    # Usage count for popularity sorting
+    usage_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # Creator info
+    created_by_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    # Relationships
+    workspace: Mapped["Workspace"] = relationship(
+        "Workspace",
+        lazy="selectin",
+    )
+    created_by: Mapped["Developer | None"] = relationship(
+        "Developer",
+        lazy="selectin",
+    )

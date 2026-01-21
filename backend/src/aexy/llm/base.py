@@ -1,6 +1,7 @@
 """Base interfaces and types for LLM providers."""
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 from enum import Enum
 from typing import Any
 
@@ -16,8 +17,15 @@ class LLMError(Exception):
 class LLMRateLimitError(LLMError):
     """Raised when the LLM API rate limit is exceeded."""
 
-    def __init__(self, message: str = "API rate limit exceeded. Please try again later."):
+    def __init__(
+        self,
+        message: str = "API rate limit exceeded. Please try again later.",
+        retry_after: datetime | None = None,
+        wait_seconds: float = 60,
+    ):
         self.message = message
+        self.retry_after = retry_after
+        self.wait_seconds = wait_seconds
         super().__init__(self.message)
 
 

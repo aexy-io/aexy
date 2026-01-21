@@ -52,6 +52,17 @@ export function useOKRGoals(
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ goalId, data }: { goalId: string; data: OKRGoalUpdate }) =>
+      okrGoalsApi.update(workspaceId!, goalId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["okrGoals", workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["okrDashboard", workspaceId] });
+      // Invalidate timeline to show update activity
+      queryClient.invalidateQueries({ queryKey: ["entityTimeline", workspaceId, "goal", variables.goalId] });
+    },
+  });
+
   return {
     goals: data?.items || [],
     total: data?.total || 0,
@@ -59,8 +70,10 @@ export function useOKRGoals(
     error,
     refetch,
     createGoal: createMutation.mutateAsync,
+    updateGoal: updateMutation.mutateAsync,
     deleteGoal: deleteMutation.mutateAsync,
     isCreating: createMutation.isPending,
+    isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
   };
 }
@@ -86,6 +99,8 @@ export function useOKRGoal(workspaceId: string | null, goalId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["okrGoal", workspaceId, goalId] });
       queryClient.invalidateQueries({ queryKey: ["okrGoals", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["okrDashboard", workspaceId] });
+      // Invalidate timeline to show update activity
+      queryClient.invalidateQueries({ queryKey: ["entityTimeline", workspaceId, "goal", goalId] });
     },
   });
 
@@ -95,6 +110,8 @@ export function useOKRGoal(workspaceId: string | null, goalId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["okrGoal", workspaceId, goalId] });
       queryClient.invalidateQueries({ queryKey: ["okrGoals", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["okrDashboard", workspaceId] });
+      // Invalidate timeline to show new progress update activity
+      queryClient.invalidateQueries({ queryKey: ["entityTimeline", workspaceId, "goal", goalId] });
     },
   });
 

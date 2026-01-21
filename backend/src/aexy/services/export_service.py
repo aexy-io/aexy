@@ -254,6 +254,25 @@ class ExportService:
                 for row in data["rows"]:
                     writer.writerow(row)
 
+            elif "tasks" in data:
+                # Sprint tasks export
+                headers = ["ID", "Title", "Status", "Priority", "Story Points", "Assignee", "Epic", "Labels", "Created At", "Updated At"]
+                writer.writerow(headers)
+                for task in data["tasks"]:
+                    labels = ", ".join(task.get("labels", []))
+                    writer.writerow([
+                        task.get("id", ""),
+                        task.get("title", ""),
+                        task.get("status", ""),
+                        task.get("priority", ""),
+                        task.get("story_points", ""),
+                        task.get("assignee_name", ""),
+                        task.get("epic_title", ""),
+                        labels,
+                        task.get("created_at", ""),
+                        task.get("updated_at", ""),
+                    ])
+
             elif "developers" in data:
                 # Developer list export
                 headers = ["ID", "Username", "Email", "GitHub URL", "Skills", "Created At"]
@@ -427,6 +446,56 @@ class ExportService:
 
                 elements.append(Spacer(1, 20))
 
+        elif "tasks" in data:
+            # Sprint tasks export
+            sprint_name = data.get("sprint_name", "Tasks")
+            elements.append(Paragraph(f"Sprint: {sprint_name}", heading_style))
+
+            # Summary stats if available
+            if "stats" in data:
+                stats = data["stats"]
+                elements.append(Paragraph(
+                    f"Total: {stats.get('total', 0)} | "
+                    f"Completed: {stats.get('completed', 0)} | "
+                    f"In Progress: {stats.get('in_progress', 0)} | "
+                    f"To Do: {stats.get('todo', 0)}",
+                    body_style,
+                ))
+                elements.append(Spacer(1, 10))
+
+            # Tasks table
+            table_data = [["Title", "Status", "Priority", "Points", "Assignee"]]
+            for task in data["tasks"][:50]:  # Limit for PDF
+                table_data.append([
+                    task.get("title", "")[:40],  # Truncate long titles
+                    task.get("status", "").replace("_", " ").title(),
+                    task.get("priority", "").title(),
+                    str(task.get("story_points", "")),
+                    task.get("assignee_name", "Unassigned"),
+                ])
+
+            if len(table_data) > 1:
+                table = Table(table_data, colWidths=[3*inch, 0.8*inch, 0.7*inch, 0.5*inch, 1.2*inch])
+                table.setStyle(TableStyle([
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#4472C4")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                    ("ALIGN", (2, 0), (3, -1), "CENTER"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 10),
+                    ("TOPPADDING", (0, 0), (-1, 0), 10),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F0F0F0")]),
+                ]))
+                elements.append(table)
+
+            if len(data["tasks"]) > 50:
+                elements.append(Paragraph(
+                    f"... and {len(data['tasks']) - 50} more tasks",
+                    body_style,
+                ))
+
         elif "developers" in data:
             # Developer profile(s)
             elements.append(Paragraph("Developer Profiles", heading_style))
@@ -577,6 +646,52 @@ class ExportService:
                 if "error" not in widget_content:
                     row_num = self._write_data_to_sheet(ws, widget_content, row_num, header_font, header_fill, header_alignment, border)
 
+                row_num += 1
+
+        elif "tasks" in data:
+            # Sprint tasks table
+            ws.title = data.get("sprint_name", "Tasks")
+            headers = ["Title", "Status", "Priority", "Story Points", "Assignee", "Epic", "Labels", "Created At"]
+            for col, header in enumerate(headers, 1):
+                cell = ws.cell(row=row_num, column=col, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_alignment
+                cell.border = border
+            row_num += 1
+
+            # Status colors
+            status_colors = {
+                "done": "00B050",
+                "in_progress": "FFEB9C",
+                "review": "BDD7EE",
+                "todo": "F8CBAD",
+                "backlog": "E0E0E0",
+            }
+            priority_colors = {
+                "critical": "FF6B6B",
+                "high": "FFA500",
+                "medium": "FFD93D",
+                "low": "87CEEB",
+            }
+
+            for task in data["tasks"]:
+                ws.cell(row=row_num, column=1, value=task.get("title", "")).border = border
+                status_cell = ws.cell(row=row_num, column=2, value=task.get("status", "").replace("_", " ").title())
+                status_cell.border = border
+                if task.get("status") in status_colors:
+                    status_cell.fill = PatternFill(start_color=status_colors[task["status"]], end_color=status_colors[task["status"]], fill_type="solid")
+
+                priority_cell = ws.cell(row=row_num, column=3, value=task.get("priority", "").title())
+                priority_cell.border = border
+                if task.get("priority") in priority_colors:
+                    priority_cell.fill = PatternFill(start_color=priority_colors[task["priority"]], end_color=priority_colors[task["priority"]], fill_type="solid")
+
+                ws.cell(row=row_num, column=4, value=task.get("story_points", "")).border = border
+                ws.cell(row=row_num, column=5, value=task.get("assignee_name", "")).border = border
+                ws.cell(row=row_num, column=6, value=task.get("epic_title", "")).border = border
+                ws.cell(row=row_num, column=7, value=", ".join(task.get("labels", []))).border = border
+                ws.cell(row=row_num, column=8, value=task.get("created_at", "")).border = border
                 row_num += 1
 
         elif "developers" in data:

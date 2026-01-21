@@ -61,9 +61,16 @@ class SprintTaskService:
         if source_type == "manual" and not source_id:
             source_id = str(uuid4())
 
+        # Get workspace_id from sprint
+        sprint_stmt = select(Sprint).where(Sprint.id == sprint_id)
+        sprint_result = await self.db.execute(sprint_stmt)
+        sprint = sprint_result.scalar_one_or_none()
+        workspace_id = sprint.workspace_id if sprint else None
+
         task = SprintTask(
             id=str(uuid4()),
             sprint_id=sprint_id,
+            workspace_id=workspace_id,
             source_type=source_type,
             source_id=source_id,
             source_url=source_url,
@@ -79,15 +86,28 @@ class SprintTaskService:
         )
         self.db.add(task)
         await self.db.flush()
-        await self.db.refresh(task)
-        return task
+
+        # Re-fetch with relationships loaded to avoid lazy loading issues
+        stmt = (
+            select(SprintTask)
+            .where(SprintTask.id == task.id)
+            .options(
+                selectinload(SprintTask.assignee),
+                selectinload(SprintTask.subtasks),
+            )
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one()
 
     async def get_task(self, task_id: str) -> SprintTask | None:
         """Get a task by ID."""
         stmt = (
             select(SprintTask)
             .where(SprintTask.id == task_id)
-            .options(selectinload(SprintTask.assignee))
+            .options(
+                selectinload(SprintTask.assignee),
+                selectinload(SprintTask.subtasks),
+            )
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
@@ -111,7 +131,10 @@ class SprintTaskService:
         stmt = (
             select(SprintTask)
             .where(SprintTask.sprint_id == sprint_id)
-            .options(selectinload(SprintTask.assignee))
+            .options(
+                selectinload(SprintTask.assignee),
+                selectinload(SprintTask.subtasks),
+            )
         )
 
         if status:
@@ -161,8 +184,9 @@ class SprintTaskService:
             task.epic_id = epic_id
 
         await self.db.flush()
-        await self.db.refresh(task)
-        return task
+
+        # Re-fetch with relationships loaded
+        return await self.get_task(task_id)
 
     async def remove_task(self, task_id: str) -> bool:
         """Remove a task from a sprint."""
@@ -202,8 +226,9 @@ class SprintTaskService:
         task.assignment_confidence = confidence
 
         await self.db.flush()
-        await self.db.refresh(task)
-        return task
+
+        # Re-fetch with relationships loaded
+        return await self.get_task(task_id)
 
     async def unassign_task(self, task_id: str) -> SprintTask | None:
         """Remove assignment from a task."""
@@ -216,8 +241,9 @@ class SprintTaskService:
         task.assignment_confidence = None
 
         await self.db.flush()
-        await self.db.refresh(task)
-        return task
+
+        # Re-fetch with relationships loaded
+        return await self.get_task(task_id)
 
     async def bulk_assign_tasks(
         self,
@@ -242,6 +268,65 @@ class SprintTaskService:
             )
             if task:
                 updated_tasks.append(task)
+
+        return updated_tasks
+
+    async def bulk_update_status(
+        self,
+        task_ids: list[str],
+        new_status: str,
+    ) -> list[SprintTask]:
+        """Bulk update status for multiple tasks.
+
+        Args:
+            task_ids: List of task IDs to update.
+            new_status: New status value for all tasks.
+
+        Returns:
+            List of updated SprintTasks.
+        """
+        updated_tasks = []
+
+        for task_id in task_ids:
+            task = await self.update_task_status(task_id, new_status)
+            if task:
+                updated_tasks.append(task)
+
+        return updated_tasks
+
+    async def bulk_move_to_sprint(
+        self,
+        task_ids: list[str],
+        target_sprint_id: str,
+    ) -> list[SprintTask]:
+        """Bulk move tasks to another sprint.
+
+        Args:
+            task_ids: List of task IDs to move.
+            target_sprint_id: Target sprint ID.
+
+        Returns:
+            List of updated SprintTasks.
+        """
+        # Get workspace_id from target sprint
+        sprint_stmt = select(Sprint).where(Sprint.id == target_sprint_id)
+        sprint_result = await self.db.execute(sprint_stmt)
+        target_sprint = sprint_result.scalar_one_or_none()
+
+        if not target_sprint:
+            return []
+
+        updated_tasks = []
+
+        for task_id in task_ids:
+            task = await self.get_task(task_id)
+            if task:
+                task.sprint_id = target_sprint_id
+                task.workspace_id = target_sprint.workspace_id
+                await self.db.flush()
+                updated_task = await self.get_task(task_id)
+                if updated_task:
+                    updated_tasks.append(updated_task)
 
         return updated_tasks
 
@@ -275,8 +360,9 @@ class SprintTaskService:
             task.completed_at = now
 
         await self.db.flush()
-        await self.db.refresh(task)
-        return task
+
+        # Re-fetch with relationships loaded
+        return await self.get_task(task_id)
 
     # Activity Logging
     async def log_activity(
@@ -624,3 +710,36 @@ class SprintTaskService:
         # For now, return None - full implementation would require
         # storing source config with the sprint/workspace
         return None
+
+    async def reorder_tasks(
+        self,
+        task_ids: list[str],
+        sprint_id: str | None = None,
+    ) -> list[SprintTask]:
+        """Reorder tasks by updating their positions.
+
+        Args:
+            task_ids: List of task IDs in the desired order.
+            sprint_id: Optional sprint ID to filter tasks.
+
+        Returns:
+            List of updated tasks.
+        """
+        updated_tasks = []
+
+        for index, task_id in enumerate(task_ids):
+            stmt = select(SprintTask).where(SprintTask.id == task_id)
+            if sprint_id:
+                stmt = stmt.where(SprintTask.sprint_id == sprint_id)
+            stmt = stmt.options(selectinload(SprintTask.assignee))
+
+            result = await self.db.execute(stmt)
+            task = result.scalar_one_or_none()
+
+            if task:
+                task.position = index
+                await self.db.flush()
+                await self.db.refresh(task)
+                updated_tasks.append(task)
+
+        return updated_tasks

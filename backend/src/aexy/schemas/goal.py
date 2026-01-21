@@ -82,6 +82,8 @@ class GoalUpdate(BaseModel):
     is_public: bool | None = None
     weight: float | None = Field(default=None, ge=0)
     labels: list[str] | None = None
+    # Optional comment for the activity timeline
+    comment: str | None = Field(default=None, max_length=10000)
 
 
 class GoalResponse(BaseModel):

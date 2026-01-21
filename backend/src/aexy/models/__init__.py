@@ -58,11 +58,13 @@ from aexy.models.sprint import (
     WorkspaceCustomField,
     TaskGitHubLink,
     TaskActivity,
+    TaskTemplate,
 )
 from aexy.models.epic import Epic
 from aexy.models.story import UserStory, StoryActivity
 from aexy.models.release import Release, ReleaseSprint
 from aexy.models.goal import Goal, GoalProject, GoalEpic
+from aexy.models.entity_activity import EntityActivity
 from aexy.models.bug import Bug, BugActivity
 from aexy.models.dependency import StoryDependency, TaskDependency
 from aexy.models.metrics import (
@@ -357,6 +359,8 @@ __all__ = [
     "Goal",
     "GoalProject",
     "GoalEpic",
+    # Entity Activity/Timeline
+    "EntityActivity",
     # Bug
     "Bug",
     "BugActivity",

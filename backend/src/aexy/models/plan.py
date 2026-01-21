@@ -42,6 +42,8 @@ class Plan(Base):
 
     # LLM limits
     llm_requests_per_day: Mapped[int] = mapped_column(Integer, default=50)
+    llm_requests_per_minute: Mapped[int] = mapped_column(Integer, default=10)
+    llm_tokens_per_minute: Mapped[int] = mapped_column(Integer, default=50000)
     llm_provider_access: Mapped[list[str]] = mapped_column(
         ARRAY(String),
         default=["ollama"],
@@ -105,6 +107,8 @@ DEFAULT_PLANS = [
         "max_prs_per_repo": 100,
         "sync_history_days": 90,
         "llm_requests_per_day": 50,
+        "llm_requests_per_minute": 5,
+        "llm_tokens_per_minute": 20000,
         "llm_provider_access": ["ollama"],
         "enable_real_time_sync": False,
         "enable_advanced_analytics": False,
@@ -123,6 +127,8 @@ DEFAULT_PLANS = [
         "max_prs_per_repo": 1000,
         "sync_history_days": 365,
         "llm_requests_per_day": 500,
+        "llm_requests_per_minute": 20,
+        "llm_tokens_per_minute": 100000,
         "llm_provider_access": ["claude", "gemini", "ollama"],
         "enable_real_time_sync": True,
         "enable_advanced_analytics": True,
@@ -141,6 +147,8 @@ DEFAULT_PLANS = [
         "max_prs_per_repo": -1,
         "sync_history_days": -1,  # All history
         "llm_requests_per_day": -1,
+        "llm_requests_per_minute": 60,
+        "llm_tokens_per_minute": -1,  # Unlimited
         "llm_provider_access": ["claude", "gemini", "ollama"],
         "enable_real_time_sync": True,
         "enable_advanced_analytics": True,

@@ -4,10 +4,12 @@ from datetime import date, datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from uuid import uuid4
 
 from aexy.core.database import get_db
 from aexy.api.developers import get_current_developer
+from aexy.api.entity_activity import create_entity_activity
 from aexy.models.developer import Developer
 from aexy.models.goal import Goal, GoalProject, GoalEpic
 from aexy.models.epic import Epic
@@ -140,7 +142,10 @@ async def list_goals(
     """List goals for a workspace."""
     await check_workspace_permission(workspace_id, current_user, db, "viewer")
 
-    query = select(Goal).where(Goal.workspace_id == workspace_id)
+    query = select(Goal).where(Goal.workspace_id == workspace_id).options(
+        selectinload(Goal.owner),
+        selectinload(Goal.key_results),
+    )
 
     if goal_type:
         query = query.where(Goal.goal_type == goal_type)
@@ -161,10 +166,65 @@ async def list_goals(
     query = query.limit(limit).offset(offset)
 
     result = await db.execute(query)
-    goals = result.scalars().all()
+    goals = result.scalars().unique().all()
 
     return [goal_to_list_response(goal) for goal in goals]
 
+
+# ==================== Dashboard ====================
+
+@router.get("/dashboard", response_model=GoalDashboardResponse)
+async def get_goal_dashboard(
+    workspace_id: str,
+    period_label: str | None = None,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get goal dashboard overview."""
+    await check_workspace_permission(workspace_id, current_user, db, "viewer")
+
+    query = select(Goal).where(
+        Goal.workspace_id == workspace_id,
+        Goal.is_archived == False
+    ).options(
+        selectinload(Goal.owner),
+        selectinload(Goal.key_results),
+    )
+
+    if period_label:
+        query = query.where(Goal.period_label == period_label)
+
+    result = await db.execute(query)
+    goals = result.scalars().unique().all()
+
+    objectives = [g for g in goals if g.goal_type == "objective"]
+    key_results = [g for g in goals if g.goal_type == "key_result"]
+
+    on_track = sum(1 for g in goals if g.status == "on_track")
+    at_risk = sum(1 for g in goals if g.status == "at_risk")
+    behind = sum(1 for g in goals if g.status == "behind")
+    achieved = sum(1 for g in goals if g.status == "achieved")
+
+    avg_progress = sum(g.progress_percentage for g in goals) / len(goals) if goals else 0
+    confidences = [g.confidence_level for g in goals if g.confidence_level]
+    avg_confidence = sum(confidences) / len(confidences) if confidences else None
+
+    return GoalDashboardResponse(
+        workspace_id=workspace_id,
+        period_label=period_label,
+        total_objectives=len(objectives),
+        total_key_results=len(key_results),
+        on_track_count=on_track,
+        at_risk_count=at_risk,
+        behind_count=behind,
+        achieved_count=achieved,
+        avg_progress=avg_progress,
+        avg_confidence=avg_confidence,
+        objectives=[goal_to_list_response(o) for o in objectives],
+    )
+
+
+# ==================== Goal CRUD (continued) ====================
 
 @router.post("", response_model=GoalResponse, status_code=status.HTTP_201_CREATED)
 async def create_goal(
@@ -208,6 +268,19 @@ async def create_goal(
     _calculate_progress(goal)
 
     db.add(goal)
+    await db.flush()  # Flush to generate the goal ID
+
+    # Create activity record for creation
+    await create_entity_activity(
+        db=db,
+        workspace_id=workspace_id,
+        entity_type="goal",
+        entity_id=str(goal.id),
+        activity_type="created",
+        actor_id=str(current_user.id),
+        title=f"Created {goal.goal_type} '{goal.title}'",
+    )
+
     await db.commit()
     await db.refresh(goal)
 
@@ -224,7 +297,15 @@ async def get_goal(
     """Get a goal by ID."""
     await check_workspace_permission(workspace_id, current_user, db, "viewer")
 
-    result = await db.execute(select(Goal).where(Goal.id == goal_id))
+    result = await db.execute(
+        select(Goal).where(Goal.id == goal_id).options(
+            selectinload(Goal.owner),
+            selectinload(Goal.parent_goal),
+            selectinload(Goal.key_results),
+            selectinload(Goal.linked_projects),
+            selectinload(Goal.linked_epics),
+        )
+    )
     goal = result.scalar_one_or_none()
 
     if not goal or str(goal.workspace_id) != workspace_id:
@@ -248,7 +329,15 @@ async def get_goal_detail(
     """Get goal with key results and links."""
     await check_workspace_permission(workspace_id, current_user, db, "viewer")
 
-    result = await db.execute(select(Goal).where(Goal.id == goal_id))
+    result = await db.execute(
+        select(Goal).where(Goal.id == goal_id).options(
+            selectinload(Goal.owner),
+            selectinload(Goal.parent_goal),
+            selectinload(Goal.key_results).selectinload(Goal.owner),
+            selectinload(Goal.linked_projects).selectinload(GoalProject.project),
+            selectinload(Goal.linked_epics).selectinload(GoalEpic.epic),
+        )
+    )
     goal = result.scalar_one_or_none()
 
     if not goal or str(goal.workspace_id) != workspace_id:
@@ -312,13 +401,55 @@ async def update_goal(
     if not goal or str(goal.workspace_id) != workspace_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Goal not found")
 
-    update_data = data.model_dump(exclude_unset=True)
+    # Extract comment before processing update
+    comment = data.comment
+    update_data = data.model_dump(exclude_unset=True, exclude={"comment"})
+
+    # Track changes for activity
+    changes = {}
+    old_status = goal.status
+
     for field, value in update_data.items():
+        old_value = getattr(goal, field, None)
+        if old_value != value:
+            # Convert to string for JSON storage
+            changes[field] = {
+                "old": str(old_value) if old_value is not None else None,
+                "new": str(value) if value is not None else None,
+            }
         setattr(goal, field, value)
 
     # Recalculate progress if values changed
     if any(k in update_data for k in ["current_value", "target_value", "starting_value"]):
         _calculate_progress(goal)
+
+    # Determine activity type
+    activity_type = "updated"
+    activity_title = None
+
+    if "status" in changes and old_status != goal.status:
+        activity_type = "status_changed"
+        activity_title = f"Changed status from {old_status} to {goal.status}"
+    elif "owner_id" in changes:
+        activity_type = "assigned"
+        activity_title = "Reassigned goal"
+    elif "current_value" in changes or "progress_percentage" in changes:
+        activity_type = "progress_updated"
+        activity_title = f"Updated progress to {goal.progress_percentage:.0f}%"
+
+    # Create activity record if there are changes or a comment
+    if changes or comment:
+        await create_entity_activity(
+            db=db,
+            workspace_id=workspace_id,
+            entity_type="goal",
+            entity_id=goal_id,
+            activity_type=activity_type,
+            actor_id=str(current_user.id),
+            title=activity_title,
+            content=comment,
+            changes=changes if changes else None,
+        )
 
     await db.commit()
     await db.refresh(goal)
@@ -419,6 +550,10 @@ async def update_progress(
     if not goal or str(goal.workspace_id) != workspace_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Goal not found")
 
+    # Track old values
+    old_value = goal.current_value
+    old_progress = goal.progress_percentage
+
     # Update current value
     goal.current_value = data.current_value
     _calculate_progress(goal)
@@ -437,6 +572,28 @@ async def update_progress(
 
     # Update status based on progress
     _update_status_from_progress(goal)
+
+    # Create activity record
+    await create_entity_activity(
+        db=db,
+        workspace_id=workspace_id,
+        entity_type="goal",
+        entity_id=goal_id,
+        activity_type="progress_updated",
+        actor_id=str(current_user.id),
+        title=f"Updated progress to {goal.progress_percentage:.0f}%",
+        content=data.notes,
+        changes={
+            "current_value": {
+                "old": str(old_value) if old_value is not None else None,
+                "new": str(data.current_value),
+            },
+            "progress_percentage": {
+                "old": f"{old_progress:.0f}%",
+                "new": f"{goal.progress_percentage:.0f}%",
+            },
+        },
+    )
 
     await db.commit()
     await db.refresh(goal)
@@ -563,56 +720,6 @@ async def unlink_epic(
 
     await db.delete(link)
     await db.commit()
-
-
-# ==================== Dashboard ====================
-
-@router.get("/dashboard", response_model=GoalDashboardResponse)
-async def get_goal_dashboard(
-    workspace_id: str,
-    period_label: str | None = None,
-    current_user: Developer = Depends(get_current_developer),
-    db: AsyncSession = Depends(get_db),
-):
-    """Get goal dashboard overview."""
-    await check_workspace_permission(workspace_id, current_user, db, "viewer")
-
-    query = select(Goal).where(
-        Goal.workspace_id == workspace_id,
-        Goal.is_archived == False
-    )
-
-    if period_label:
-        query = query.where(Goal.period_label == period_label)
-
-    result = await db.execute(query)
-    goals = result.scalars().all()
-
-    objectives = [g for g in goals if g.goal_type == "objective"]
-    key_results = [g for g in goals if g.goal_type == "key_result"]
-
-    on_track = sum(1 for g in goals if g.status == "on_track")
-    at_risk = sum(1 for g in goals if g.status == "at_risk")
-    behind = sum(1 for g in goals if g.status == "behind")
-    achieved = sum(1 for g in goals if g.status == "achieved")
-
-    avg_progress = sum(g.progress_percentage for g in goals) / len(goals) if goals else 0
-    confidences = [g.confidence_level for g in goals if g.confidence_level]
-    avg_confidence = sum(confidences) / len(confidences) if confidences else None
-
-    return GoalDashboardResponse(
-        workspace_id=workspace_id,
-        period_label=period_label,
-        total_objectives=len(objectives),
-        total_key_results=len(key_results),
-        on_track_count=on_track,
-        at_risk_count=at_risk,
-        behind_count=behind,
-        achieved_count=achieved,
-        avg_progress=avg_progress,
-        avg_confidence=avg_confidence,
-        objectives=[goal_to_list_response(o) for o in objectives],
-    )
 
 
 # ==================== Helper Functions ====================

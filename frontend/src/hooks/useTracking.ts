@@ -19,6 +19,9 @@ import {
   TeamDashboard,
   SlackChannelConfig,
   SlackChannelConfigCreate,
+  TeamAnalytics,
+  BlockerAnalytics,
+  TimeReport,
 } from "@/lib/api";
 
 // ==================== Standup Hooks ====================
@@ -224,6 +227,134 @@ export function useDeleteChannelConfig() {
     mutationFn: (configId: string) => trackingApi.deleteChannelConfig(configId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["channelConfigs"] });
+    },
+  });
+}
+
+// ==================== Analytics Hooks ====================
+
+export interface DateRangeParams {
+  startDate?: string;
+  endDate?: string;
+}
+
+export function useTeamAnalytics(teamId: string, dateRange?: DateRangeParams) {
+  return useQuery<TeamAnalytics>({
+    queryKey: ["tracking", "analytics", "team", teamId, dateRange],
+    queryFn: () =>
+      trackingApi.getTeamAnalytics(teamId, {
+        start_date: dateRange?.startDate,
+        end_date: dateRange?.endDate,
+      }),
+    enabled: !!teamId,
+  });
+}
+
+export function useBlockerAnalytics(teamId: string, dateRange?: DateRangeParams) {
+  return useQuery<BlockerAnalytics>({
+    queryKey: ["tracking", "analytics", "blockers", teamId, dateRange],
+    queryFn: () =>
+      trackingApi.getBlockerAnalytics(teamId, {
+        start_date: dateRange?.startDate,
+        end_date: dateRange?.endDate,
+      }),
+    enabled: !!teamId,
+  });
+}
+
+export function useTimeReport(
+  dateRange?: DateRangeParams,
+  groupBy?: "day" | "week" | "project" | "task"
+) {
+  return useQuery<TimeReport>({
+    queryKey: ["tracking", "analytics", "time", dateRange, groupBy],
+    queryFn: () =>
+      trackingApi.getTimeReport({
+        start_date: dateRange?.startDate,
+        end_date: dateRange?.endDate,
+        group_by: groupBy,
+      }),
+  });
+}
+
+// ==================== Export Hooks ====================
+
+export function useExportStandups() {
+  return useMutation({
+    mutationFn: (options: {
+      startDate: string;
+      endDate: string;
+      format: "csv" | "pdf" | "json";
+      teamId?: string;
+    }) =>
+      trackingApi.exportStandups({
+        start_date: options.startDate,
+        end_date: options.endDate,
+        format: options.format,
+        team_id: options.teamId,
+      }),
+    onSuccess: (blob, variables) => {
+      // Trigger download
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `standups_${variables.startDate}_${variables.endDate}.${variables.format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },
+  });
+}
+
+export function useExportTimesheet() {
+  return useMutation({
+    mutationFn: (options: {
+      startDate: string;
+      endDate: string;
+      format: "csv" | "pdf" | "json";
+    }) =>
+      trackingApi.exportTimesheet({
+        start_date: options.startDate,
+        end_date: options.endDate,
+        format: options.format,
+      }),
+    onSuccess: (blob, variables) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `timesheet_${variables.startDate}_${variables.endDate}.${variables.format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },
+  });
+}
+
+export function useExportBlockers() {
+  return useMutation({
+    mutationFn: (options: {
+      startDate: string;
+      endDate: string;
+      format: "csv" | "pdf" | "json";
+      teamId?: string;
+    }) =>
+      trackingApi.exportBlockers({
+        start_date: options.startDate,
+        end_date: options.endDate,
+        format: options.format,
+        team_id: options.teamId,
+      }),
+    onSuccess: (blob, variables) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `blockers_${variables.startDate}_${variables.endDate}.${variables.format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     },
   });
 }

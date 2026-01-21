@@ -1162,6 +1162,7 @@ Create an MCQ that:
 Respond with JSON:
 {{
   "question": {{
+    "title": "Short descriptive title (3-6 words, e.g., 'Python List Type Check')",
     "question_text": "The question text in markdown",
     "question_type": "single_choice",
     "options": [
@@ -1197,7 +1198,186 @@ Respond with JSON:
     "tags": ["concept", "practical"],
     "common_misconception": "What misconception this question tests"
   }}
-}}"""
+}}
+
+IMPORTANT: The "title" field must be a SHORT descriptive name (3-6 words), NOT the full question text.
+Good example: "Python List Type Check"
+Bad example: "What is the output of print(type([]) is list)"
+"""
+
+MCQ_BATCH_QUESTION_SYSTEM_PROMPT = """You are an expert at creating multiple choice questions for technical assessments.
+Create diverse questions that test conceptual understanding with well-crafted distractors.
+Ensure questions are unambiguous with exactly one correct answer.
+Generate MULTIPLE unique questions covering different aspects of the topic.
+Tailor questions to the specific job role, required skills, and experience level.
+Respond ONLY with valid JSON."""
+
+MCQ_BATCH_QUESTION_PROMPT = """Generate {count} multiple choice questions for a technical assessment.
+
+=== ASSESSMENT CONTEXT ===
+Job Role: {job_designation}
+Required Skills: {skills}
+Experience Level: {experience_level} ({experience_years})
+Organization: {organization_name}
+Assessment Description: {assessment_description}
+
+=== TOPIC DETAILS ===
+Topic: {topic}
+Subtopics: {subtopics}
+Difficulty: {difficulty}
+
+=== ADDITIONAL CONTEXT ===
+{context}
+
+Create {count} UNIQUE MCQs that:
+1. Are directly relevant to the job role and required skills
+2. Match the expected experience level (junior=basics, mid=application, senior=advanced concepts)
+3. Cover different aspects of the topic and subtopics
+4. Test understanding, not just memorization
+5. Have plausible but clearly wrong distractors
+6. Have one unambiguous correct answer each
+7. Avoid "all of the above" or "none of the above"
+8. Test practical knowledge relevant to real work scenarios
+9. Are diverse - don't repeat similar questions
+
+Respond with JSON:
+{{
+  "questions": [
+    {{
+      "title": "Short descriptive title (3-6 words)",
+      "problem_statement": "The question text in markdown",
+      "options": [
+        {{"id": "A", "text": "Option text", "is_correct": true}},
+        {{"id": "B", "text": "Option text", "is_correct": false}},
+        {{"id": "C", "text": "Option text", "is_correct": false}},
+        {{"id": "D", "text": "Option text", "is_correct": false}}
+      ],
+      "explanation": "Brief explanation of correct answer",
+      "max_marks": 10,
+      "time_estimate_minutes": 2
+    }}
+  ]
+}}
+
+IMPORTANT:
+- Generate exactly {count} questions
+- Each "title" must be SHORT (3-6 words), NOT the full question
+- Questions should reflect real scenarios a {job_designation} would encounter
+- Difficulty should match: {difficulty} level for {experience_level} candidates
+- Cover different subtopics if provided"""
+
+CODE_BATCH_QUESTION_SYSTEM_PROMPT = """You are an expert at creating coding assessment questions.
+Create practical, well-structured coding problems that test real-world programming skills.
+Generate MULTIPLE unique questions covering different aspects of the topic.
+Tailor problems to the specific job role and experience level.
+Respond ONLY with valid JSON."""
+
+CODE_BATCH_QUESTION_PROMPT = """Generate {count} coding questions for a technical assessment.
+
+=== ASSESSMENT CONTEXT ===
+Job Role: {job_designation}
+Required Skills: {skills}
+Experience Level: {experience_level} ({experience_years})
+Organization: {organization_name}
+Assessment Description: {assessment_description}
+
+=== TOPIC DETAILS ===
+Topic: {topic}
+Subtopics: {subtopics}
+Difficulty: {difficulty}
+
+=== ADDITIONAL CONTEXT ===
+{context}
+
+Create {count} UNIQUE coding questions that:
+1. Reflect real problems a {job_designation} would solve
+2. Match the experience level complexity expectations
+3. Cover different aspects of the topic
+4. Test practical programming skills
+5. Have clear, unambiguous requirements
+6. Include comprehensive test cases
+7. Are diverse in problem type
+
+Respond with JSON:
+{{
+  "questions": [
+    {{
+      "title": "Short descriptive title (3-6 words)",
+      "problem_statement": "Detailed problem description in markdown",
+      "constraints": ["constraint 1", "constraint 2"],
+      "examples": [
+        {{"input": "example input", "output": "expected output", "explanation": "why"}}
+      ],
+      "starter_code": {{
+        "python": "def solution():\\n    pass",
+        "javascript": "function solution() {{\\n}}"
+      }},
+      "test_cases": [
+        {{"input": "test input", "expected_output": "output", "is_hidden": false, "points": 25}}
+      ],
+      "max_marks": 100,
+      "time_estimate_minutes": 15,
+      "hints": ["hint if stuck"]
+    }}
+  ]
+}}
+
+IMPORTANT:
+- Generate exactly {count} questions
+- Each "title" must be SHORT (3-6 words)
+- Problems should be relevant to {job_designation} work
+- Complexity should match {difficulty} for {experience_level} level"""
+
+SUBJECTIVE_BATCH_QUESTION_SYSTEM_PROMPT = """You are an expert at creating subjective/open-ended assessment questions.
+Create questions that assess deep understanding, critical thinking, and communication skills.
+Generate MULTIPLE unique questions covering different aspects.
+Tailor questions to the job role and industry context.
+Respond ONLY with valid JSON."""
+
+SUBJECTIVE_BATCH_QUESTION_PROMPT = """Generate {count} subjective questions for a technical assessment.
+
+=== ASSESSMENT CONTEXT ===
+Job Role: {job_designation}
+Required Skills: {skills}
+Experience Level: {experience_level} ({experience_years})
+Organization: {organization_name}
+Assessment Description: {assessment_description}
+
+=== TOPIC DETAILS ===
+Topic: {topic}
+Subtopics: {subtopics}
+Difficulty: {difficulty}
+
+=== ADDITIONAL CONTEXT ===
+{context}
+
+Create {count} UNIQUE subjective questions that:
+1. Are relevant to a {job_designation} role
+2. Match the expected depth for {experience_level} candidates
+3. Cover different aspects of the topic
+4. Require thoughtful, detailed responses
+5. Test understanding and analysis skills
+6. Have clear evaluation criteria
+
+Respond with JSON:
+{{
+  "questions": [
+    {{
+      "title": "Short descriptive title (3-6 words)",
+      "problem_statement": "The question in markdown format",
+      "key_points": ["point 1 to cover", "point 2 to cover"],
+      "sample_answer": "Brief outline of ideal answer",
+      "max_marks": 20,
+      "time_estimate_minutes": 10
+    }}
+  ]
+}}
+
+IMPORTANT:
+- Generate exactly {count} questions
+- Each "title" must be SHORT (3-6 words)
+- Questions should reflect real scenarios for {job_designation}
+- Cover different subtopics"""
 
 SUBJECTIVE_QUESTION_SYSTEM_PROMPT = """You are an expert at creating subjective/open-ended assessment questions.
 Create questions that assess deep understanding, critical thinking, and communication skills.

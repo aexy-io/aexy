@@ -58,12 +58,12 @@ export function StandupCard({ standup, showAuthor = false, compact = false }: St
       <div className="p-4 border-b border-slate-700">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {showAuthor && standup.developer && (
+            {showAuthor && (standup.developer_name || standup.developer_avatar) ? (
               <div className="flex items-center gap-2">
-                {standup.developer.avatar_url ? (
+                {standup.developer_avatar ? (
                   <img
-                    src={standup.developer.avatar_url}
-                    alt={standup.developer.name || ""}
+                    src={standup.developer_avatar}
+                    alt={standup.developer_name || ""}
                     className="w-8 h-8 rounded-full"
                   />
                 ) : (
@@ -72,11 +72,10 @@ export function StandupCard({ standup, showAuthor = false, compact = false }: St
                   </div>
                 )}
                 <span className="font-medium text-white">
-                  {standup.developer.name || standup.developer.email}
+                  {standup.developer_name || "Unknown"}
                 </span>
               </div>
-            )}
-            {!showAuthor && (
+            ) : (
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5 text-blue-400" />
                 <span className="font-medium text-white">Daily Standup</span>
