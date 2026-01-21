@@ -1,0 +1,349 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  FileText,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  Shield,
+  AlertCircle,
+  Crown,
+  Filter,
+  RefreshCw,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useWorkspace } from "@/hooks/useWorkspace";
+import { useSubscription } from "@/hooks/useSubscription";
+import { useAppAccessLogs, useAppAccessLogsSummary } from "@/hooks/useAppAccess";
+import { formatDistanceToNow } from "date-fns";
+
+const ACTION_LABELS: Record<string, string> = {
+  template_created: "Template Created",
+  template_updated: "Template Updated",
+  template_deleted: "Template Deleted",
+  access_updated: "Access Updated",
+  template_applied: "Template Applied",
+  access_reset: "Access Reset",
+  bulk_template_applied: "Bulk Template Applied",
+  app_access_granted: "App Access Granted",
+  app_access_revoked: "App Access Revoked",
+  module_access_granted: "Module Access Granted",
+  module_access_revoked: "Module Access Revoked",
+  access_denied: "Access Denied",
+};
+
+const ACTION_COLORS: Record<string, string> = {
+  template_created: "bg-green-500/20 text-green-400",
+  template_updated: "bg-blue-500/20 text-blue-400",
+  template_deleted: "bg-red-500/20 text-red-400",
+  access_updated: "bg-violet-500/20 text-violet-400",
+  template_applied: "bg-cyan-500/20 text-cyan-400",
+  access_reset: "bg-amber-500/20 text-amber-400",
+  bulk_template_applied: "bg-purple-500/20 text-purple-400",
+  app_access_granted: "bg-green-500/20 text-green-400",
+  app_access_revoked: "bg-red-500/20 text-red-400",
+  module_access_granted: "bg-green-500/20 text-green-400",
+  module_access_revoked: "bg-red-500/20 text-red-400",
+  access_denied: "bg-red-500/20 text-red-400 border border-red-500/30",
+};
+
+export default function AccessLogsPage() {
+  const { currentWorkspaceId } = useWorkspace();
+  const workspaceId = currentWorkspaceId || "";
+  const { isEnterprise, isLoading: subscriptionLoading } = useSubscription(currentWorkspaceId);
+
+  const [page, setPage] = useState(0);
+  const [actionFilter, setActionFilter] = useState<string>("");
+  const pageSize = 20;
+
+  const { logs, total, isLoading, error, refetch } = useAppAccessLogs(workspaceId, {
+    action: actionFilter || undefined,
+    limit: pageSize,
+    offset: page * pageSize,
+  });
+
+  const { summary, isLoading: summaryLoading } = useAppAccessLogsSummary(workspaceId, 30);
+
+  const totalPages = Math.ceil(total / pageSize);
+
+  if (subscriptionLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+      </div>
+    );
+  }
+
+  if (!isEnterprise) {
+    return (
+      <div className="min-h-screen bg-slate-900">
+        <header className="border-b border-slate-700 bg-slate-800/50">
+          <div className="max-w-5xl mx-auto px-4 py-4">
+            <div className="flex items-center gap-4">
+              <Link
+                href="/settings/access"
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-slate-700 rounded-lg">
+                  <FileText className="h-5 w-5 text-violet-400" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-semibold text-white">Access Logs</h1>
+                  <p className="text-slate-400 text-sm">
+                    View access control audit logs
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-5xl mx-auto px-4 py-16">
+          <div className="text-center">
+            <div className="mx-auto w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center mb-6">
+              <Crown className="h-10 w-10 text-amber-400" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">Enterprise Feature</h2>
+            <p className="text-slate-400 mb-6 max-w-md mx-auto">
+              Access logs are available on the Enterprise plan. Upgrade to track
+              all access control changes and security events.
+            </p>
+            <Link href="/settings/plans">
+              <Button>View Plans</Button>
+            </Link>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-900">
+      {/* Header */}
+      <header className="border-b border-slate-700 bg-slate-800/50 sticky top-0 z-10">
+        <div className="max-w-5xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link
+                href="/settings/access"
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-slate-700 rounded-lg">
+                  <FileText className="h-5 w-5 text-violet-400" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-semibold text-white">Access Logs</h1>
+                  <p className="text-slate-400 text-sm">
+                    Track all access control changes
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetch()}
+                disabled={isLoading}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+                Refresh
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-5xl mx-auto px-4 py-6">
+        {/* Summary Cards */}
+        {summary && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+              <p className="text-sm text-slate-400">Total Events (30 days)</p>
+              <p className="text-2xl font-bold text-white">
+                {summary.total_events.toLocaleString()}
+              </p>
+            </div>
+            <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+              <p className="text-sm text-slate-400">Access Updates</p>
+              <p className="text-2xl font-bold text-violet-400">
+                {(
+                  (summary.action_counts["access_updated"] || 0) +
+                  (summary.action_counts["template_applied"] || 0)
+                ).toLocaleString()}
+              </p>
+            </div>
+            <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+              <p className="text-sm text-slate-400">Template Changes</p>
+              <p className="text-2xl font-bold text-blue-400">
+                {(
+                  (summary.action_counts["template_created"] || 0) +
+                  (summary.action_counts["template_updated"] || 0) +
+                  (summary.action_counts["template_deleted"] || 0)
+                ).toLocaleString()}
+              </p>
+            </div>
+            <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+              <p className="text-sm text-slate-400">Access Denials</p>
+              <p className="text-2xl font-bold text-red-400">
+                {(summary.action_counts["access_denied"] || 0).toLocaleString()}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Filters */}
+        <div className="flex items-center gap-4 mb-4">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-slate-400" />
+            <select
+              value={actionFilter}
+              onChange={(e) => {
+                setActionFilter(e.target.value);
+                setPage(0);
+              }}
+              className="rounded-md border border-slate-600 bg-slate-700 px-3 py-1.5 text-sm text-white"
+            >
+              <option value="">All Actions</option>
+              {Object.entries(ACTION_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex-1" />
+
+          <p className="text-sm text-slate-400">
+            {total.toLocaleString()} total events
+          </p>
+        </div>
+
+        {/* Logs Table */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+          </div>
+        ) : error ? (
+          <div className="text-center py-20">
+            <AlertCircle className="h-8 w-8 text-red-400 mx-auto mb-2" />
+            <p className="text-red-400">Failed to load access logs</p>
+          </div>
+        ) : logs.length === 0 ? (
+          <div className="text-center py-20 bg-slate-800 border border-slate-700 border-dashed rounded-lg">
+            <FileText className="h-8 w-8 text-slate-500 mx-auto mb-2" />
+            <p className="text-slate-400">No access logs found</p>
+            <p className="text-sm text-slate-500">
+              Logs will appear here when access control changes are made
+            </p>
+          </div>
+        ) : (
+          <div className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-700">
+                  <th className="px-4 py-3 text-left text-sm font-medium text-slate-400">
+                    Action
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-slate-400">
+                    Target
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-slate-400">
+                    Description
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-slate-400">
+                    Time
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map((log) => (
+                  <tr
+                    key={log.id}
+                    className="border-b border-slate-700/50 hover:bg-slate-700/30"
+                  >
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+                          ACTION_COLORS[log.action] || "bg-slate-600 text-slate-300"
+                        }`}
+                      >
+                        {ACTION_LABELS[log.action] || log.action}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-sm">
+                        <span className="text-slate-300">{log.target_type}</span>
+                        {log.target_id && (
+                          <span className="text-slate-500 ml-1">
+                            #{log.target_id.slice(0, 8)}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="text-sm text-slate-300 truncate max-w-[300px]">
+                        {log.description || "-"}
+                      </p>
+                      {log.extra_data && Object.keys(log.extra_data).length > 0 && (
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {Object.entries(log.extra_data)
+                            .slice(0, 2)
+                            .map(([k, v]) => `${k}: ${v}`)
+                            .join(", ")}
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-400">
+                      {formatDistanceToNow(new Date(log.created_at), {
+                        addSuffix: true,
+                      })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-slate-700">
+                <p className="text-sm text-slate-400">
+                  Page {page + 1} of {totalPages}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                    disabled={page >= totalPages - 1}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

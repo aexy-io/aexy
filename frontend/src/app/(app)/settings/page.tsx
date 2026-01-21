@@ -19,6 +19,7 @@ import {
   Crown,
   Send,
   Sparkles,
+  Shield,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -116,6 +117,15 @@ export default function SettingsPage() {
             title="Organization"
             description="Manage your organization settings and preferences"
           />
+
+          {isWorkspaceAdmin && (
+            <SettingsSection
+              href="/settings/access"
+              icon={<Shield className="h-5 w-5 text-violet-400" />}
+              title="Access Control"
+              description="Manage which apps and modules each member can access"
+            />
+          )}
 
           <SettingsSection
             href="/crm/settings"
