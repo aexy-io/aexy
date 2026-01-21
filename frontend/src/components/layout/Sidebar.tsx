@@ -24,6 +24,7 @@ import { useDocumentSpaces } from "@/hooks/useDocumentSpaces";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useSidebarLayout } from "@/hooks/useSidebarLayout";
 import { SidebarItemConfig, SidebarSectionConfig } from "@/config/sidebarLayouts";
+import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 
 interface SidebarProps {
     className?: string;
@@ -360,7 +361,7 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                         isCollapsed ? "w-16" : "w-64"
                     )}
                 >
-                    <div className="flex h-16 items-center justify-between border-b px-4">
+                    <div className="flex h-14 items-center justify-between border-b px-4">
                         {!isCollapsed && (
                             <Link href="/dashboard" className="flex items-center gap-2 font-bold text-xl">
                                 <span className="text-primary">Aexy</span>
@@ -389,6 +390,11 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                                 </Button>
                             )}
                         </div>
+                    </div>
+
+                    {/* Workspace Switcher */}
+                    <div className={cn("border-b px-2 py-2", isCollapsed && "px-1")}>
+                        <WorkspaceSwitcher collapsed={isCollapsed} />
                     </div>
 
                     <div className="flex-1 overflow-y-auto py-4">
