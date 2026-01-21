@@ -1953,6 +1953,85 @@ export interface SubscriptionStatus {
   } | null;
 }
 
+// Usage and Billing Types
+export interface UsageSummary {
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_tokens: number;
+  total_base_cost_cents: number;
+  total_cost_cents: number;
+  margin_percent: number;
+  by_provider: Record<string, {
+    input_tokens: number;
+    output_tokens: number;
+    cost_cents: number;
+  }>;
+  period_start: string | null;
+  period_end: string | null;
+}
+
+export interface UsageEstimate {
+  current_month_cost_cents: number;
+  projected_month_cost_cents: number;
+  daily_average_cost_cents: number;
+  days_elapsed: number;
+  days_remaining: number;
+}
+
+export interface BillingHistoryEntry {
+  period_start: string;
+  period_end: string;
+  total_tokens: number;
+  total_cost_cents: number;
+  total_requests: number;
+  by_provider: Record<string, {
+    input_tokens: number;
+    output_tokens: number;
+  }>;
+}
+
+export interface Invoice {
+  id: string;
+  number: string | null;
+  status: string;
+  amount_due: number;
+  amount_paid: number;
+  currency: string;
+  period_start: string | null;
+  period_end: string | null;
+  created_at: string | null;
+  paid_at: string | null;
+  invoice_pdf: string | null;
+  hosted_invoice_url: string | null;
+}
+
+export interface LimitsUsageSummary {
+  plan: {
+    id: string;
+    name: string;
+    tier: string;
+  };
+  repos: {
+    used: number;
+    limit: number;
+    unlimited: boolean;
+  };
+  llm: {
+    used_today: number;
+    limit_per_day: number;
+    unlimited: boolean;
+    providers: string[];
+    reset_at: string | null;
+  };
+  features: {
+    real_time_sync: boolean;
+    webhooks: boolean;
+    advanced_analytics: boolean;
+    exports: boolean;
+    team_features: boolean;
+  };
+}
+
 export interface Team {
   id: string;
   workspace_id: string;
@@ -3843,6 +3922,36 @@ export const billingApi = {
     plan_tier: string;
   }): Promise<{ success: boolean; message: string }> => {
     const response = await api.post("/billing/change-plan", data);
+    return response.data;
+  },
+
+  // Usage tracking
+  getUsageSummary: async (): Promise<UsageSummary> => {
+    const response = await api.get("/billing/usage");
+    return response.data;
+  },
+
+  getUsageEstimate: async (): Promise<UsageEstimate> => {
+    const response = await api.get("/billing/usage/estimate");
+    return response.data;
+  },
+
+  getBillingHistory: async (months: number = 6): Promise<BillingHistoryEntry[]> => {
+    const response = await api.get("/billing/usage/history", {
+      params: { months },
+    });
+    return response.data;
+  },
+
+  getInvoices: async (limit: number = 10): Promise<Invoice[]> => {
+    const response = await api.get("/billing/invoices", {
+      params: { limit },
+    });
+    return response.data;
+  },
+
+  getLimitsUsage: async (): Promise<LimitsUsageSummary> => {
+    const response = await api.get("/billing/limits");
     return response.data;
   },
 };
@@ -13382,3 +13491,310 @@ export const workspaceEmailApi = {
     return response.data;
   },
 };
+
+// ============================================================================
+// App Access Control API
+// ============================================================================
+
+export interface AppModuleInfo {
+  id: string;
+  name: string;
+  description: string;
+  route: string;
+}
+
+export interface AppInfo {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  category: string;
+  base_route: string;
+  required_permission: string | null;
+  modules: AppModuleInfo[];
+}
+
+export interface AppAccessTemplate {
+  id: string;
+  workspace_id: string | null;
+  name: string;
+  slug: string;
+  description: string | null;
+  icon: string;
+  color: string;
+  app_config: Record<string, AppAccessConfig>;
+  is_system: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AppAccessConfig {
+  enabled: boolean;
+  modules?: Record<string, boolean>;
+}
+
+export interface EffectiveAppAccess {
+  app_id: string;
+  enabled: boolean;
+  modules: Record<string, boolean>;
+}
+
+export interface MemberEffectiveAccess {
+  apps: Record<string, EffectiveAppAccess>;
+  applied_template_id: string | null;
+  applied_template_name: string | null;
+  has_custom_overrides: boolean;
+  is_admin: boolean;
+}
+
+export interface MemberAccessMatrixEntry {
+  developer_id: string;
+  developer_name: string | null;
+  developer_email: string | null;
+  role_name: string | null;
+  applied_template_id: string | null;
+  applied_template_name: string | null;
+  has_custom_overrides: boolean;
+  is_admin: boolean;
+  apps: Record<string, "full" | "partial" | "none">;
+}
+
+export interface AccessMatrixResponse {
+  members: MemberAccessMatrixEntry[];
+  apps: AppInfo[];
+}
+
+export interface SystemBundleInfo {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  app_config: Record<string, AppAccessConfig>;
+}
+
+export interface AccessCheckResponse {
+  allowed: boolean;
+  app_id: string;
+  module_id: string | null;
+  reason: string | null;
+}
+
+export const appAccessApi = {
+  // App catalog
+  getCatalog: async (workspaceId: string): Promise<{ apps: AppInfo[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/app-access/catalog`);
+    return response.data;
+  },
+
+  // System bundles
+  getBundles: async (workspaceId: string): Promise<{ bundles: SystemBundleInfo[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/app-access/bundles`);
+    return response.data;
+  },
+
+  // Templates
+  listTemplates: async (
+    workspaceId: string,
+    includeSystem = true
+  ): Promise<{ templates: AppAccessTemplate[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/app-access/templates`, {
+      params: { include_system: includeSystem },
+    });
+    return response.data;
+  },
+
+  getTemplate: async (workspaceId: string, templateId: string): Promise<AppAccessTemplate> => {
+    const response = await api.get(`/workspaces/${workspaceId}/app-access/templates/${templateId}`);
+    return response.data;
+  },
+
+  createTemplate: async (
+    workspaceId: string,
+    data: {
+      name: string;
+      description?: string;
+      icon?: string;
+      color?: string;
+      app_config: Record<string, AppAccessConfig>;
+    }
+  ): Promise<AppAccessTemplate> => {
+    const response = await api.post(`/workspaces/${workspaceId}/app-access/templates`, data);
+    return response.data;
+  },
+
+  updateTemplate: async (
+    workspaceId: string,
+    templateId: string,
+    data: {
+      name?: string;
+      description?: string;
+      icon?: string;
+      color?: string;
+      app_config?: Record<string, AppAccessConfig>;
+    }
+  ): Promise<AppAccessTemplate> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/app-access/templates/${templateId}`,
+      data
+    );
+    return response.data;
+  },
+
+  deleteTemplate: async (workspaceId: string, templateId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/app-access/templates/${templateId}`);
+  },
+
+  // Member access
+  getMemberEffectiveAccess: async (
+    workspaceId: string,
+    developerId: string
+  ): Promise<MemberEffectiveAccess> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/app-access/members/${developerId}/effective`
+    );
+    return response.data;
+  },
+
+  updateMemberAccess: async (
+    workspaceId: string,
+    developerId: string,
+    data: {
+      app_config: Record<string, AppAccessConfig>;
+      applied_template_id?: string | null;
+    }
+  ): Promise<{ success: boolean; developer_id: string }> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/app-access/members/${developerId}`,
+      data
+    );
+    return response.data;
+  },
+
+  applyTemplateToMember: async (
+    workspaceId: string,
+    developerId: string,
+    templateId: string
+  ): Promise<{ success: boolean; developer_id: string }> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/app-access/members/${developerId}/apply-template`,
+      { template_id: templateId }
+    );
+    return response.data;
+  },
+
+  resetMemberToDefaults: async (
+    workspaceId: string,
+    developerId: string
+  ): Promise<{ success: boolean; developer_id: string }> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/app-access/members/${developerId}/reset`
+    );
+    return response.data;
+  },
+
+  bulkApplyTemplate: async (
+    workspaceId: string,
+    developerIds: string[],
+    templateId: string
+  ): Promise<{
+    success_count: number;
+    failed_count: number;
+    applied_developer_ids: string[];
+  }> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/app-access/members/bulk-apply-template`,
+      {
+        developer_ids: developerIds,
+        template_id: templateId,
+      }
+    );
+    return response.data;
+  },
+
+  // Access matrix
+  getAccessMatrix: async (workspaceId: string): Promise<AccessMatrixResponse> => {
+    const response = await api.get(`/workspaces/${workspaceId}/app-access/matrix`);
+    return response.data;
+  },
+
+  // Access check
+  checkAccess: async (
+    workspaceId: string,
+    appId: string,
+    moduleId?: string
+  ): Promise<AccessCheckResponse> => {
+    const response = await api.post(`/workspaces/${workspaceId}/app-access/check`, {
+      app_id: appId,
+      module_id: moduleId,
+    });
+    return response.data;
+  },
+
+  // Access logs (Enterprise feature)
+  getAccessLogs: async (
+    workspaceId: string,
+    params?: {
+      action?: string;
+      target_type?: string;
+      target_id?: string;
+      actor_id?: string;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<AppAccessLogsResponse> => {
+    const response = await api.get(`/workspaces/${workspaceId}/app-access/logs`, {
+      params,
+    });
+    return response.data;
+  },
+
+  getAccessLogsSummary: async (
+    workspaceId: string,
+    days?: number
+  ): Promise<AppAccessLogsSummary> => {
+    const response = await api.get(`/workspaces/${workspaceId}/app-access/logs/summary`, {
+      params: { days },
+    });
+    return response.data;
+  },
+};
+
+// Access Log types
+export interface AppAccessLog {
+  id: string;
+  workspace_id: string;
+  actor_id: string | null;
+  action: string;
+  target_type: string;
+  target_id: string | null;
+  description: string | null;
+  old_value: Record<string, unknown> | null;
+  new_value: Record<string, unknown> | null;
+  extra_data: Record<string, unknown>;
+  ip_address: string | null;
+  user_agent: string | null;
+  created_at: string;
+}
+
+export interface AppAccessLogsResponse {
+  logs: AppAccessLog[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface AppAccessLogsSummary {
+  action_counts: Record<string, number>;
+  daily_counts: Array<{ date: string; count: number }>;
+  recent_denials: Array<{
+    id: string;
+    actor_id: string | null;
+    target_id: string | null;
+    extra_data: Record<string, unknown>;
+    created_at: string;
+  }>;
+  total_events: number;
+  period_days: number;
+}
