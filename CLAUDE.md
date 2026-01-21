@@ -28,6 +28,49 @@ Services:
 - Backend: `backend/.env`
 - Frontend: `frontend/.env`
 
+## Running Database Migrations
+
+Use the migration runner script to apply all pending database migrations.
+
+### List Migration Status
+```bash
+# Via docker (recommended)
+docker exec aexy-backend python scripts/run_migrations.py --list
+
+# Locally (requires asyncpg installed)
+cd backend && python scripts/run_migrations.py --list
+```
+
+### Run All Pending Migrations
+```bash
+# Via docker
+docker exec aexy-backend python scripts/run_migrations.py
+
+# Dry-run first to see what will be executed
+docker exec aexy-backend python scripts/run_migrations.py --dry-run
+```
+
+### Run Specific Migration
+```bash
+# Run a specific migration file
+docker exec aexy-backend python scripts/run_migrations.py --file migrate_knowledge_graph.sql
+
+# Force re-run (use with caution)
+docker exec aexy-backend python scripts/run_migrations.py --file migrate_knowledge_graph.sql --force
+```
+
+### Custom Database URL
+```bash
+# Use custom database URL
+docker exec aexy-backend python scripts/run_migrations.py --database-url postgresql://user:pass@host:5432/db
+```
+
+The migration runner:
+- Tracks applied migrations in `schema_migrations` table
+- Detects changed migrations (checksum mismatch)
+- Runs migrations in alphabetical order
+- Shows execution time for each migration
+
 ## Testing LLM Rate Limiting
 
 ### 1. Verify Redis Connection
