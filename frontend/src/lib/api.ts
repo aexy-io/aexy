@@ -3838,6 +3838,13 @@ export const billingApi = {
     const response = await api.post("/billing/portal", data);
     return response.data;
   },
+
+  changePlan: async (data: {
+    plan_tier: string;
+  }): Promise<{ success: boolean; message: string }> => {
+    const response = await api.post("/billing/change-plan", data);
+    return response.data;
+  },
 };
 
 // ============ Reviews & Goals API Types ============

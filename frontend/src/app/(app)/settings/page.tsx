@@ -18,6 +18,7 @@ import {
   Palette,
   Crown,
   Send,
+  Sparkles,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -173,6 +174,13 @@ export default function SettingsPage() {
             icon={<Link2 className="h-5 w-5 text-orange-400" />}
             title="Integrations"
             description="Connect Jira, Linear, and other external tools"
+          />
+
+          <SettingsSection
+            href="/settings/plans"
+            icon={<Sparkles className="h-5 w-5 text-amber-400" />}
+            title="Subscription Plans"
+            description="Compare plans and upgrade or downgrade your subscription"
           />
 
           <SettingsSection

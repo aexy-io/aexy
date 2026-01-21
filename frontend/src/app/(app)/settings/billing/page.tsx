@@ -5,12 +5,14 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
+  ArrowRight,
   Check,
   CreditCard,
   Crown,
   ExternalLink,
   Loader2,
   Receipt,
+  RefreshCw,
   Settings,
   Sparkles,
   Zap,
@@ -191,17 +193,45 @@ function BillingContent() {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-4">
-                <p className="text-slate-400 mb-4">
-                  You're on the free plan. Upgrade to unlock more features.
-                </p>
-                <Link
-                  href="/pricing"
-                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition font-medium"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  View Plans
-                </Link>
+              <div className="py-4">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div>
+                    <p className="text-slate-400">
+                      You're on the free plan. Upgrade to unlock more features.
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <Link
+                      href="/settings/plans"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition font-medium"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      Upgrade to Pro
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Quick upgrade card */}
+                <div className="mt-6 p-4 bg-gradient-to-r from-primary-500/10 to-primary-600/10 border border-primary-500/30 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-primary-500/20 rounded-lg">
+                        <Sparkles className="h-5 w-5 text-primary-400" />
+                      </div>
+                      <div>
+                        <p className="text-white font-medium">Upgrade to Pro for $29/mo</p>
+                        <p className="text-slate-400 text-sm">Get AI insights, advanced analytics, and more</p>
+                      </div>
+                    </div>
+                    <Link
+                      href="/settings/plans"
+                      className="text-primary-400 hover:text-primary-300 text-sm font-medium transition"
+                    >
+                      Compare plans
+                    </Link>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -311,37 +341,40 @@ function BillingContent() {
         {/* Actions */}
         <div className="flex flex-wrap gap-4">
           {tier !== "free" && (
-            <button
-              onClick={handleManageBilling}
-              disabled={portalLoading}
-              className="flex items-center gap-2 px-6 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-lg transition disabled:opacity-50"
-            >
-              {portalLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Settings className="h-4 w-4" />
-              )}
-              Manage Billing
-              <ExternalLink className="h-4 w-4" />
-            </button>
+            <>
+              <button
+                onClick={handleManageBilling}
+                disabled={portalLoading}
+                className="flex items-center gap-2 px-6 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-lg transition disabled:opacity-50"
+              >
+                {portalLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Settings className="h-4 w-4" />
+                )}
+                Manage Billing
+                <ExternalLink className="h-4 w-4" />
+              </button>
+
+              <Link
+                href="/settings/plans"
+                className="flex items-center gap-2 px-6 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-lg transition"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Change Plan
+              </Link>
+            </>
           )}
 
-          <Link
-            href="/pricing"
-            className="flex items-center gap-2 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition"
-          >
-            {tier === "free" ? (
-              <>
-                <Sparkles className="h-4 w-4" />
-                Upgrade Plan
-              </>
-            ) : (
-              <>
-                <Receipt className="h-4 w-4" />
-                View Plans
-              </>
-            )}
-          </Link>
+          {tier === "free" && (
+            <Link
+              href="/settings/plans"
+              className="flex items-center gap-2 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition"
+            >
+              <Sparkles className="h-4 w-4" />
+              Upgrade Plan
+            </Link>
+          )}
         </div>
 
         {/* Help Text */}
