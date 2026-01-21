@@ -12,9 +12,9 @@ const QUESTION_TYPES: { value: QuestionType; label: string; description: string 
 ];
 
 const DIFFICULTY_LEVELS: { value: DifficultyLevel; label: string; color: string }[] = [
-  { value: "easy", label: "Easy", color: "bg-green-100 text-green-700 border-green-300" },
-  { value: "medium", label: "Medium", color: "bg-yellow-100 text-yellow-700 border-yellow-300" },
-  { value: "hard", label: "Hard", color: "bg-red-100 text-red-700 border-red-300" },
+  { value: "easy", label: "Easy", color: "bg-success/20 text-success border-success/30" },
+  { value: "medium", label: "Medium", color: "bg-warning/20 text-warning border-warning/30" },
+  { value: "hard", label: "Hard", color: "bg-destructive/20 text-destructive border-destructive/30" },
 ];
 
 interface Step2Props {
@@ -435,37 +435,37 @@ export default function Step2TopicDistribution({
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">Topic Distribution</h2>
-        <p className="text-gray-500">Configure topics and generate questions for the assessment</p>
+        <h2 className="text-xl font-semibold text-foreground mb-1">Topic Distribution</h2>
+        <p className="text-muted-foreground">Configure topics and generate questions for the assessment</p>
       </div>
 
       {/* Summary Bar */}
-      <div className="bg-blue-50 rounded-lg p-4 flex items-center justify-between">
+      <div className="bg-info/10 rounded-lg p-4 flex items-center justify-between">
         <div className="flex items-center gap-8">
           <div>
-            <p className="text-xs text-blue-600 font-medium">Total Topics</p>
-            <p className="text-2xl font-bold text-blue-900">{topics.length}</p>
+            <p className="text-xs text-info font-medium">Total Topics</p>
+            <p className="text-2xl font-bold text-foreground">{topics.length}</p>
           </div>
           <div>
-            <p className="text-xs text-blue-600 font-medium">Configured Questions</p>
-            <p className="text-2xl font-bold text-blue-900">{totalQuestions}</p>
+            <p className="text-xs text-info font-medium">Configured Questions</p>
+            <p className="text-2xl font-bold text-foreground">{totalQuestions}</p>
           </div>
           <div>
-            <p className="text-xs text-blue-600 font-medium">Generated Questions</p>
-            <p className={`text-2xl font-bold ${totalGeneratedQuestions >= totalQuestions ? 'text-green-600' : 'text-orange-600'}`}>
+            <p className="text-xs text-info font-medium">Generated Questions</p>
+            <p className={`text-2xl font-bold ${totalGeneratedQuestions >= totalQuestions ? 'text-success' : 'text-warning'}`}>
               {totalGeneratedQuestions}
             </p>
           </div>
           <div>
-            <p className="text-xs text-blue-600 font-medium">Est. Duration</p>
-            <p className="text-2xl font-bold text-blue-900">{totalDuration} min</p>
+            <p className="text-xs text-info font-medium">Est. Duration</p>
+            <p className="text-2xl font-bold text-foreground">{totalDuration} min</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={handleSuggestTopics}
             disabled={isSuggesting || !assessment.skills?.length}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50"
           >
             {isSuggesting ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -477,7 +477,7 @@ export default function Step2TopicDistribution({
           <button
             onClick={handleGenerateAllQuestions}
             disabled={isGeneratingAll || topics.length === 0 || !topics.some(t => t.topic && t.question_types.length > 0)}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50"
           >
             {isGeneratingAll ? (
               <>
@@ -496,21 +496,21 @@ export default function Step2TopicDistribution({
 
       {/* Generation Progress */}
       {isGeneratingAll && (
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+        <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="font-medium text-purple-800">Generating Questions...</p>
-            <span className="text-sm text-purple-600">
+            <p className="font-medium text-foreground">Generating Questions...</p>
+            <span className="text-sm text-purple-500">
               {generationProgress.current} / {generationProgress.total} topics
             </span>
           </div>
-          <div className="w-full bg-purple-200 rounded-full h-2 mb-2">
+          <div className="w-full bg-purple-500/20 rounded-full h-2 mb-2">
             <div
-              className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+              className="bg-purple-500 h-2 rounded-full transition-all duration-300"
               style={{ width: `${(generationProgress.current / generationProgress.total) * 100}%` }}
             />
           </div>
           {generationProgress.currentTopic && (
-            <p className="text-sm text-purple-600">
+            <p className="text-sm text-purple-500">
               Currently generating: {generationProgress.currentTopic}
             </p>
           )}
@@ -519,11 +519,11 @@ export default function Step2TopicDistribution({
 
       {/* Warning if questions not generated */}
       {topics.length > 0 && totalGeneratedQuestions === 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+        <div className="bg-warning/10 border border-warning/30 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
           <div>
-            <p className="font-medium text-yellow-800">Questions Required</p>
-            <p className="text-sm text-yellow-700 mt-1">
+            <p className="font-medium text-foreground">Questions Required</p>
+            <p className="text-sm text-muted-foreground mt-1">
               You must generate questions for each topic before publishing the assessment.
               Click the &quot;Generate Questions&quot; button on each topic below.
             </p>
@@ -541,43 +541,43 @@ export default function Step2TopicDistribution({
           return (
             <div
               key={topic.id}
-              className="bg-white rounded-lg border shadow-sm"
+              className="bg-card rounded-lg border border-border shadow-sm"
             >
               {/* Topic Header */}
               <div className="p-4 flex items-center gap-4">
-                <GripVertical className="w-5 h-5 text-gray-400 cursor-grab" />
-                <span className="text-sm font-medium text-gray-500 w-6">{index + 1}</span>
+                <GripVertical className="w-5 h-5 text-muted-foreground cursor-grab" />
+                <span className="text-sm font-medium text-muted-foreground w-6">{index + 1}</span>
                 <input
                   type="text"
                   value={topic.topic}
                   onChange={(e) => handleTopicChange(topic.id, "topic", e.target.value)}
                   placeholder="Topic name (e.g., Data Structures, React Hooks)"
-                  className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
+                  className="flex-1 px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground placeholder:text-muted-foreground"
                 />
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="text-gray-600">{topic.question_count} Q</span>
-                  <span className="text-gray-400">|</span>
-                  <span className="text-gray-600">{topic.duration_minutes} min</span>
+                  <span className="text-muted-foreground">{topic.question_count} Q</span>
+                  <span className="text-muted-foreground/50">|</span>
+                  <span className="text-muted-foreground">{topic.duration_minutes} min</span>
                   {topicQuestions.length > 0 && (
                     <>
-                      <span className="text-gray-400">|</span>
-                      <span className="text-green-600 font-medium">{topicQuestions.length} generated</span>
+                      <span className="text-muted-foreground/50">|</span>
+                      <span className="text-success font-medium">{topicQuestions.length} generated</span>
                     </>
                   )}
                 </div>
                 <button
                   onClick={() => handleToggleExpand(topic.id)}
-                  className="p-2 hover:bg-gray-100 rounded"
+                  className="p-2 hover:bg-accent rounded"
                 >
                   {topic.isExpanded ? (
-                    <ChevronUp className="w-5 h-5 text-gray-500" />
+                    <ChevronUp className="w-5 h-5 text-muted-foreground" />
                   ) : (
-                    <ChevronDown className="w-5 h-5 text-gray-500" />
+                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
                   )}
                 </button>
                 <button
                   onClick={() => handleRemoveTopic(topic.id)}
-                  className="p-2 hover:bg-red-50 rounded text-gray-400 hover:text-red-600"
+                  className="p-2 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive"
                 >
                   <Trash2 className="w-5 h-5" />
                 </button>
@@ -585,10 +585,10 @@ export default function Step2TopicDistribution({
 
               {/* Topic Details (Expanded) */}
               {topic.isExpanded && (
-                <div className="px-4 pb-4 border-t pt-4 space-y-6">
+                <div className="px-4 pb-4 border-t border-border pt-4 space-y-6">
                   {/* Subtopics */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-foreground mb-2">
                       Subtopics (comma-separated)
                     </label>
                     <input
@@ -602,13 +602,13 @@ export default function Step2TopicDistribution({
                         )
                       }
                       placeholder="Arrays, Linked Lists, Trees, Graphs"
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
+                      className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground placeholder:text-muted-foreground"
                     />
                   </div>
 
                   {/* Question Types */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-foreground mb-2">
                       Question Types
                     </label>
                     <div className="flex gap-3">
@@ -619,8 +619,8 @@ export default function Step2TopicDistribution({
                             key={qt.value}
                             className={`flex items-center gap-2 px-4 py-2 border rounded-lg cursor-pointer transition-colors ${
                               isSelected
-                                ? "border-blue-500 bg-blue-50 text-blue-700"
-                                : "border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border bg-card text-foreground hover:border-border-strong hover:bg-accent"
                             }`}
                           >
                             <input
@@ -638,7 +638,7 @@ export default function Step2TopicDistribution({
 
                   {/* Difficulty Level */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-foreground mb-2">
                       Difficulty Level
                     </label>
                     <div className="flex gap-3">
@@ -652,7 +652,7 @@ export default function Step2TopicDistribution({
                             className={`px-4 py-2 rounded-lg border transition-colors ${
                               isSelected
                                 ? `${level.color} border-current font-medium`
-                                : "border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+                                : "border-border bg-card text-foreground hover:border-border-strong hover:bg-accent"
                             }`}
                           >
                             <span className="text-sm font-medium">{level.label}</span>
@@ -665,7 +665,7 @@ export default function Step2TopicDistribution({
                   {/* Question Count & Duration */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-foreground mb-1">
                         Number of Questions
                       </label>
                       <input
@@ -676,11 +676,11 @@ export default function Step2TopicDistribution({
                         onChange={(e) =>
                           handleTopicChange(topic.id, "question_count", parseInt(e.target.value))
                         }
-                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                        className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-foreground mb-1">
                         Duration (minutes)
                       </label>
                       <input
@@ -691,17 +691,17 @@ export default function Step2TopicDistribution({
                         onChange={(e) =>
                           handleTopicChange(topic.id, "duration_minutes", parseInt(e.target.value))
                         }
-                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                        className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground"
                       />
                     </div>
                   </div>
 
                   {/* Generate Questions Section */}
-                  <div className="border-t pt-4 mt-4">
+                  <div className="border-t border-border pt-4 mt-4">
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <h4 className="font-medium text-gray-900">Questions</h4>
-                        <p className="text-sm text-gray-500">
+                        <h4 className="font-medium text-foreground">Questions</h4>
+                        <p className="text-sm text-muted-foreground">
                           {topicQuestions.length} questions generated for this topic
                         </p>
                       </div>
@@ -709,7 +709,7 @@ export default function Step2TopicDistribution({
                         {topicQuestions.length > 0 && (
                           <button
                             onClick={() => setReviewingTopicId(isReviewing ? null : topic.id)}
-                            className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                            className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg text-foreground hover:bg-accent"
                           >
                             <Eye className="w-4 h-4" />
                             {isReviewing ? "Hide" : "View"} Questions
@@ -718,7 +718,7 @@ export default function Step2TopicDistribution({
                         <button
                           onClick={() => handleGenerateQuestions(topic)}
                           disabled={generatingTopicId === topic.id || !topic.topic || topic.question_types.length === 0}
-                          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {generatingTopicId === topic.id ? (
                             <>
@@ -737,35 +737,35 @@ export default function Step2TopicDistribution({
 
                     {/* Existing Questions Preview */}
                     {isReviewing && topicQuestions.length > 0 && (
-                      <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                        <h5 className="text-sm font-medium text-gray-700 mb-2">Saved Questions</h5>
+                      <div className="bg-muted rounded-lg p-4 space-y-3">
+                        <h5 className="text-sm font-medium text-foreground mb-2">Saved Questions</h5>
                         {topicQuestions.map((q, idx) => (
-                          <div key={q.id} className="bg-white p-3 rounded border">
+                          <div key={q.id} className="bg-card p-3 rounded border border-border">
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-xs font-medium text-gray-500">#{idx + 1}</span>
+                                  <span className="text-xs font-medium text-muted-foreground">#{idx + 1}</span>
                                   <span className={`text-xs px-2 py-0.5 rounded ${
-                                    q.question_type === 'mcq' ? 'bg-blue-100 text-blue-700' :
-                                    q.question_type === 'code' ? 'bg-purple-100 text-purple-700' :
-                                    'bg-gray-100 text-gray-700'
+                                    q.question_type === 'mcq' ? 'bg-info/20 text-info' :
+                                    q.question_type === 'code' ? 'bg-purple-500/20 text-purple-500' :
+                                    'bg-muted text-muted-foreground'
                                   }`}>
                                     {q.question_type.toUpperCase()}
                                   </span>
                                   <span className={`text-xs px-2 py-0.5 rounded ${
-                                    q.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
-                                    q.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                                    'bg-red-100 text-red-700'
+                                    q.difficulty === 'easy' ? 'bg-success/20 text-success' :
+                                    q.difficulty === 'medium' ? 'bg-warning/20 text-warning' :
+                                    'bg-destructive/20 text-destructive'
                                   }`}>
                                     {q.difficulty}
                                   </span>
                                 </div>
-                                <p className="text-sm font-medium text-gray-900">
+                                <p className="text-sm font-medium text-foreground">
                                   {q.title && q.title.length < 60 ? q.title : extractTitle(q)}
                                 </p>
                                 {q.problem_statement && (
-                                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                                    {q.problem_statement.substring(0, 120)}...
+                                  <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">
+                                    {q.problem_statement}
                                   </p>
                                 )}
                               </div>
@@ -777,9 +777,9 @@ export default function Step2TopicDistribution({
 
                     {/* Pending Generated Questions for Review */}
                     {pendingQuestions.length > 0 && (
-                      <div className="bg-purple-50 rounded-lg p-4 space-y-3 mt-4">
+                      <div className="bg-purple-500/10 rounded-lg p-4 space-y-3 mt-4">
                         <div className="flex items-center justify-between mb-2">
-                          <h5 className="text-sm font-medium text-purple-800">
+                          <h5 className="text-sm font-medium text-foreground">
                             Review Generated Questions ({pendingQuestions.filter(q => q.selected).length}/{pendingQuestions.length} selected)
                           </h5>
                           <div className="flex items-center gap-2">
@@ -788,14 +788,14 @@ export default function Step2TopicDistribution({
                                 ...prev,
                                 [topic.id]: []
                               }))}
-                              className="text-sm text-gray-600 hover:text-gray-800"
+                              className="text-sm text-muted-foreground hover:text-foreground"
                             >
                               Discard All
                             </button>
                             <button
                               onClick={() => handleSaveGeneratedQuestions(topic.id)}
                               disabled={savingQuestions || pendingQuestions.filter(q => q.selected).length === 0}
-                              className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                              className="flex items-center gap-2 px-3 py-1.5 bg-purple-500 text-white text-sm rounded-lg hover:bg-purple-600 disabled:opacity-50"
                             >
                               {savingQuestions ? (
                                 <Loader2 className="w-3 h-3 animate-spin" />
@@ -810,39 +810,38 @@ export default function Step2TopicDistribution({
                         {pendingQuestions.map((q, idx) => (
                           <div
                             key={idx}
-                            className={`bg-white p-3 rounded border cursor-pointer transition-colors ${
-                              q.selected ? 'border-purple-300 ring-1 ring-purple-200' : 'border-gray-200 opacity-60'
+                            className={`bg-card p-3 rounded border cursor-pointer transition-colors ${
+                              q.selected ? 'border-purple-500/50 ring-1 ring-purple-500/30' : 'border-border opacity-60'
                             }`}
                             onClick={() => handleToggleQuestionSelection(topic.id, idx)}
                           >
                             <div className="flex items-start gap-3">
                               <div className={`w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center mt-0.5 ${
-                                q.selected ? 'bg-purple-600 border-purple-600' : 'border-gray-300'
+                                q.selected ? 'bg-purple-500 border-purple-500' : 'border-border'
                               }`}>
                                 {q.selected && <Check className="w-3 h-3 text-white" />}
                               </div>
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
                                   <span className={`text-xs px-2 py-0.5 rounded ${
-                                    q.question_type === 'mcq' ? 'bg-blue-100 text-blue-700' :
-                                    q.question_type === 'code' ? 'bg-purple-100 text-purple-700' :
-                                    'bg-gray-100 text-gray-700'
+                                    q.question_type === 'mcq' ? 'bg-info/20 text-info' :
+                                    q.question_type === 'code' ? 'bg-purple-500/20 text-purple-500' :
+                                    'bg-muted text-muted-foreground'
                                   }`}>
                                     {q.question_type.toUpperCase()}
                                   </span>
-                                  <span className="text-sm font-medium text-gray-900">
+                                  <span className="text-sm font-medium text-foreground">
                                     {q.title || extractTitle(q)}
                                   </span>
                                 </div>
-                                <p className="text-sm text-gray-600 mt-1">
-                                  {q.problem_statement?.substring(0, 150)}
-                                  {q.problem_statement && q.problem_statement.length > 150 && '...'}
+                                <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">
+                                  {q.problem_statement}
                                 </p>
                                 {q.options && q.options.length > 0 && (
                                   <div className="mt-2 space-y-1">
                                     {q.options.map((opt, optIdx) => (
                                       <div key={optIdx} className={`text-xs px-2 py-1 rounded ${
-                                        opt.is_correct ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-600'
+                                        opt.is_correct ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'
                                       }`}>
                                         {opt.id}. {opt.text}
                                       </div>
@@ -865,7 +864,7 @@ export default function Step2TopicDistribution({
         {/* Add Topic Button */}
         <button
           onClick={handleAddTopic}
-          className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600 flex items-center justify-center gap-2"
+          className="w-full py-3 border-2 border-dashed border-border rounded-lg text-muted-foreground hover:border-primary hover:text-primary flex items-center justify-center gap-2"
         >
           <Plus className="w-5 h-5" />
           Add Topic
@@ -873,17 +872,17 @@ export default function Step2TopicDistribution({
       </div>
 
       {/* AI Generation Toggle */}
-      <div className="bg-white rounded-lg border p-4">
+      <div className="bg-card rounded-lg border border-border p-4">
         <label className="flex items-center gap-3 cursor-pointer">
           <input
             type="checkbox"
             checked={enableAIGeneration}
             onChange={(e) => setEnableAIGeneration(e.target.checked)}
-            className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            className="w-5 h-5 rounded border-border text-primary focus:ring-primary"
           />
           <div>
-            <p className="font-medium text-gray-900">Enable AI Question Generation</p>
-            <p className="text-sm text-gray-500">
+            <p className="font-medium text-foreground">Enable AI Question Generation</p>
+            <p className="text-sm text-muted-foreground">
               Let AI generate questions based on topics and difficulty settings
             </p>
           </div>
@@ -891,23 +890,23 @@ export default function Step2TopicDistribution({
       </div>
 
       {/* Actions */}
-      <div className="flex justify-between pt-4 border-t">
+      <div className="flex justify-between pt-4 border-t border-border">
         <button
           onClick={onPrev}
-          className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+          className="px-4 py-2 text-foreground hover:bg-accent rounded-lg"
         >
           Previous
         </button>
         <div className="flex items-center gap-3">
           {!hasAllQuestionsGenerated && totalQuestions > 0 && (
-            <span className="text-sm text-orange-600">
+            <span className="text-sm text-warning">
               Generate questions before continuing
             </span>
           )}
           <button
             onClick={handleSave}
             disabled={!isValid || isSaving}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSaving ? "Saving..." : "Save & Continue"}
           </button>

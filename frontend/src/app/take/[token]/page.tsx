@@ -640,8 +640,8 @@ export default function AssessmentTakePage() {
 
               {/* Question Content */}
               <div className="bg-white rounded-lg shadow-sm p-6">
-                <div className="prose max-w-none mb-6">
-                  <p className="whitespace-pre-wrap">{currentQuestion.problem_statement}</p>
+                <div className="max-w-none mb-6">
+                  <p className="whitespace-pre-wrap text-gray-900">{currentQuestion.problem_statement}</p>
                 </div>
 
                 {/* MCQ Options */}

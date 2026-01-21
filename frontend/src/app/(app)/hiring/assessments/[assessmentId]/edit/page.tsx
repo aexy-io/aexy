@@ -36,28 +36,28 @@ function StepIndicator({
   const getStatusIcon = () => {
     if (status === "complete") {
       return (
-        <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center">
-          <Check className="w-5 h-5 text-white" />
+        <div className="w-10 h-10 rounded-full bg-success flex items-center justify-center">
+          <Check className="w-5 h-5 text-success-foreground" />
         </div>
       );
     }
     if (status === "error") {
       return (
-        <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center">
-          <AlertCircle className="w-5 h-5 text-white" />
+        <div className="w-10 h-10 rounded-full bg-destructive flex items-center justify-center">
+          <AlertCircle className="w-5 h-5 text-destructive-foreground" />
         </div>
       );
     }
     if (isCurrent) {
       return (
-        <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
-          <span className="text-white font-semibold">{step.number}</span>
+        <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
+          <span className="text-primary-foreground font-semibold">{step.number}</span>
         </div>
       );
     }
     return (
-      <div className="w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center">
-        <span className="text-gray-500 font-semibold">{step.number}</span>
+      <div className="w-10 h-10 rounded-full border-2 border-border flex items-center justify-center">
+        <span className="text-muted-foreground font-semibold">{step.number}</span>
       </div>
     );
   };
@@ -76,12 +76,12 @@ function StepIndicator({
       <div className="text-left hidden md:block">
         <p
           className={`text-sm font-medium ${
-            isCurrent ? "text-blue-600" : "text-gray-900"
+            isCurrent ? "text-primary" : "text-foreground"
           }`}
         >
           {step.name}
         </p>
-        <p className="text-xs text-gray-500">{step.description}</p>
+        <p className="text-xs text-muted-foreground">{step.description}</p>
       </div>
     </button>
   );
@@ -97,7 +97,7 @@ function WizardProgress({
   onStepClick: (step: number) => void;
 }) {
   return (
-    <div className="bg-white border-b px-6 py-4">
+    <div className="bg-card border-b border-border px-6 py-4">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between">
           {steps.map((step, index) => (
@@ -112,8 +112,8 @@ function WizardProgress({
                 <div
                   className={`hidden md:block w-16 lg:w-24 h-0.5 mx-4 ${
                     stepStatus[`step${step.number}`] === "complete"
-                      ? "bg-green-600"
-                      : "bg-gray-200"
+                      ? "bg-success"
+                      : "bg-border"
                   }`}
                 />
               )}
@@ -195,22 +195,22 @@ export default function AssessmentWizardPage() {
 
   if (authLoading || workspacesLoading || assessmentLoading || isLoadingStatus) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   if (!assessment) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+          <h2 className="text-xl font-semibold text-foreground mb-2">
             Assessment not found
           </h2>
           <Link
             href="/hiring/assessments"
-            className="text-blue-600 hover:text-blue-700"
+            className="text-primary hover:text-primary/80"
           >
             Back to assessments
           </Link>
@@ -228,28 +228,28 @@ export default function AssessmentWizardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <div className="bg-white border-b">
+      <div className="bg-card border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
               <Link
                 href="/hiring/assessments"
-                className="text-gray-500 hover:text-gray-700"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Link>
               <div>
-                <h1 className="text-lg font-semibold text-gray-900">
+                <h1 className="text-lg font-semibold text-foreground">
                   {assessment.title || "Untitled Assessment"}
                 </h1>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
+                  <span className="text-xs px-2 py-0.5 bg-muted text-muted-foreground rounded">
                     Draft
                   </span>
                   {autoSaveStatus && (
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-muted-foreground">
                       {autoSaveStatus === "saving" ? (
                         <span className="flex items-center gap-1">
                           <Loader2 className="h-3 w-3 animate-spin" />
@@ -269,14 +269,14 @@ export default function AssessmentWizardPage() {
               <button
                 onClick={handlePrevStep}
                 disabled={currentStep === 1}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-foreground hover:bg-accent rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Previous
               </button>
               {currentStep < 5 ? (
                 <button
                   onClick={handleNextStep}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
                 >
                   Next Step
                 </button>
@@ -284,7 +284,7 @@ export default function AssessmentWizardPage() {
                 <button
                   onClick={() => router.push(`/hiring/assessments/${assessmentId}/publish`)}
                   disabled={!wizardStatus?.can_publish}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 bg-success text-success-foreground rounded-lg hover:bg-success/90 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Publish Assessment
                 </button>
@@ -303,7 +303,7 @@ export default function AssessmentWizardPage() {
 
       {/* Step Content */}
       <div className="flex-1 overflow-auto">
-        <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="w-full px-6 py-8">
           {currentStep === 1 && (
             <Step1AssessmentDetails
               assessment={assessment}

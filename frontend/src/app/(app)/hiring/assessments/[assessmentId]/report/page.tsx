@@ -52,22 +52,22 @@ function MetricCard({
   color?: string;
 }) {
   const colorClasses: Record<string, string> = {
-    blue: "bg-blue-50 text-blue-600",
-    green: "bg-green-50 text-green-600",
-    yellow: "bg-yellow-50 text-yellow-600",
-    purple: "bg-purple-50 text-purple-600",
+    blue: "bg-info/10 text-info",
+    green: "bg-success/10 text-success",
+    yellow: "bg-warning/10 text-warning",
+    purple: "bg-purple-500/10 text-purple-500",
   };
 
   return (
-    <div className="bg-white rounded-lg border p-6 shadow-sm">
+    <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <p className="text-3xl font-bold text-gray-900 mt-1">{value}</p>
+          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <p className="text-3xl font-bold text-foreground mt-1">{value}</p>
           {trend && (
             <p
               className={`text-sm mt-1 ${
-                trend.isPositive ? "text-green-600" : "text-red-600"
+                trend.isPositive ? "text-success" : "text-destructive"
               }`}
             >
               {trend.isPositive ? "+" : "-"}
@@ -99,17 +99,17 @@ function ScoreDistributionChart({ data }: { data: number[] }) {
   const max = Math.max(...counts, 1);
 
   return (
-    <div className="bg-white rounded-lg border p-6">
-      <h3 className="font-semibold text-gray-900 mb-4">Score Distribution</h3>
+    <div className="bg-card rounded-lg border border-border p-6">
+      <h3 className="font-semibold text-foreground mb-4">Score Distribution</h3>
       <div className="flex items-end justify-between h-40 gap-2">
         {ranges.map((range, idx) => (
           <div key={range} className="flex-1 flex flex-col items-center">
             <div
-              className="w-full bg-blue-500 rounded-t"
+              className="w-full bg-primary rounded-t"
               style={{ height: `${(counts[idx] / max) * 100}%`, minHeight: counts[idx] > 0 ? "8px" : "0" }}
             />
-            <p className="text-xs text-gray-500 mt-2">{range}</p>
-            <p className="text-xs font-medium text-gray-700">{counts[idx]}</p>
+            <p className="text-xs text-muted-foreground mt-2">{range}</p>
+            <p className="text-xs font-medium text-foreground">{counts[idx]}</p>
           </div>
         ))}
       </div>
@@ -130,10 +130,10 @@ function CandidateRow({
 
   const getStatusBadge = (status: string) => {
     const badges: Record<string, { icon: React.ElementType; color: string; label: string }> = {
-      completed: { icon: CheckCircle, color: "bg-green-100 text-green-700", label: "Completed" },
-      in_progress: { icon: Clock, color: "bg-blue-100 text-blue-700", label: "In Progress" },
-      invited: { icon: Mail, color: "bg-yellow-100 text-yellow-700", label: "Invited" },
-      expired: { icon: XCircle, color: "bg-gray-100 text-gray-700", label: "Expired" },
+      completed: { icon: CheckCircle, color: "bg-success/20 text-success", label: "Completed" },
+      in_progress: { icon: Clock, color: "bg-info/20 text-info", label: "In Progress" },
+      invited: { icon: Mail, color: "bg-warning/20 text-warning", label: "Invited" },
+      expired: { icon: XCircle, color: "bg-muted text-muted-foreground", label: "Expired" },
     };
     const badge = badges[status] || badges.invited;
     const Icon = badge.icon;
@@ -149,9 +149,9 @@ function CandidateRow({
   const getTrustScoreBadge = (score: number | null) => {
     if (score === null) return null;
 
-    let color = "bg-green-100 text-green-700";
-    if (score < 50) color = "bg-red-100 text-red-700";
-    else if (score < 70) color = "bg-yellow-100 text-yellow-700";
+    let color = "bg-success/20 text-success";
+    if (score < 50) color = "bg-destructive/20 text-destructive";
+    else if (score < 70) color = "bg-warning/20 text-warning";
 
     return (
       <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full ${color}`}>
@@ -162,54 +162,54 @@ function CandidateRow({
   };
 
   return (
-    <tr className="hover:bg-gray-50">
+    <tr className="hover:bg-accent">
       <td className="px-4 py-3">
         <div>
-          <p className="font-medium text-gray-900">{candidate.candidate_name}</p>
-          <p className="text-sm text-gray-500">{candidate.candidate_email}</p>
+          <p className="font-medium text-foreground">{candidate.candidate_name}</p>
+          <p className="text-sm text-muted-foreground">{candidate.candidate_email}</p>
         </div>
       </td>
       <td className="px-4 py-3">{getStatusBadge(candidate.status)}</td>
       <td className="px-4 py-3">
         {candidate.score !== null ? (
-          <span className="font-semibold text-gray-900">{candidate.score}%</span>
+          <span className="font-semibold text-foreground">{candidate.score}%</span>
         ) : (
-          <span className="text-gray-400">-</span>
+          <span className="text-muted-foreground">-</span>
         )}
       </td>
       <td className="px-4 py-3">{getTrustScoreBadge(candidate.trust_score)}</td>
       <td className="px-4 py-3">
         {candidate.time_taken_minutes !== null ? (
-          <span className="text-gray-700">{candidate.time_taken_minutes} min</span>
+          <span className="text-foreground">{candidate.time_taken_minutes} min</span>
         ) : (
-          <span className="text-gray-400">-</span>
+          <span className="text-muted-foreground">-</span>
         )}
       </td>
       <td className="px-4 py-3">
         {candidate.completed_at ? (
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-muted-foreground">
             {new Date(candidate.completed_at).toLocaleDateString()}
           </span>
         ) : (
-          <span className="text-gray-400">-</span>
+          <span className="text-muted-foreground">-</span>
         )}
       </td>
       <td className="px-4 py-3">
         <div className="relative">
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className="p-1 hover:bg-gray-100 rounded"
+            className="p-1 hover:bg-accent rounded"
           >
-            <MoreVertical className="h-5 w-5 text-gray-400" />
+            <MoreVertical className="h-5 w-5 text-muted-foreground" />
           </button>
           {showMenu && (
-            <div className="absolute right-0 mt-1 w-40 bg-white rounded-md shadow-lg border py-1 z-10">
+            <div className="absolute right-0 mt-1 w-40 bg-popover rounded-md shadow-lg border border-border py-1 z-10">
               <button
                 onClick={() => {
                   setShowMenu(false);
                   onView();
                 }}
-                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-popover-foreground hover:bg-accent"
               >
                 <Eye className="h-4 w-4" />
                 View Details
@@ -220,7 +220,7 @@ function CandidateRow({
                     setShowMenu(false);
                     onResend();
                   }}
-                  className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  className="flex items-center gap-2 w-full px-4 py-2 text-sm text-popover-foreground hover:bg-accent"
                 >
                   <Mail className="h-4 w-4" />
                   Resend Invite
@@ -331,18 +331,18 @@ export default function AssessmentReportPage() {
 
   if (authLoading || workspacesLoading || assessmentLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   if (!assessment) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Assessment not found</h2>
-          <Link href="/hiring/assessments" className="text-blue-600 hover:text-blue-700">
+          <h2 className="text-xl font-semibold text-foreground mb-2">Assessment not found</h2>
+          <Link href="/hiring/assessments" className="text-primary hover:text-primary/80">
             Back to assessments
           </Link>
         </div>
@@ -351,23 +351,23 @@ export default function AssessmentReportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-<main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-background">
+      <main className="w-full px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <Link
               href="/hiring/assessments"
-              className="p-2 hover:bg-gray-100 rounded-lg"
+              className="p-2 hover:bg-accent rounded-lg"
             >
-              <ArrowLeft className="h-5 w-5 text-gray-500" />
+              <ArrowLeft className="h-5 w-5 text-muted-foreground" />
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{assessment.title}</h1>
-              <p className="text-gray-500">{assessment.job_designation}</p>
+              <h1 className="text-2xl font-bold text-foreground">{assessment.title}</h1>
+              <p className="text-muted-foreground">{assessment.job_designation}</p>
             </div>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 bg-white border rounded-lg hover:bg-gray-50">
+          <button className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-lg hover:bg-accent text-foreground">
             <Download className="h-4 w-4" />
             Export Report
           </button>
@@ -413,24 +413,24 @@ export default function AssessmentReportPage() {
           <ScoreDistributionChart data={scores} />
 
           {/* Quick Stats */}
-          <div className="bg-white rounded-lg border p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Quick Stats</h3>
+          <div className="bg-card rounded-lg border border-border p-6">
+            <h3 className="font-semibold text-foreground mb-4">Quick Stats</h3>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-gray-600">Highest Score</span>
-                <span className="font-semibold text-green-600">
+                <span className="text-muted-foreground">Highest Score</span>
+                <span className="font-semibold text-success">
                   {scores.length > 0 ? Math.max(...scores) : 0}%
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-600">Lowest Score</span>
-                <span className="font-semibold text-red-600">
+                <span className="text-muted-foreground">Lowest Score</span>
+                <span className="font-semibold text-destructive">
                   {scores.length > 0 ? Math.min(...scores) : 0}%
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-600">Passing Rate (60%+)</span>
-                <span className="font-semibold text-blue-600">
+                <span className="text-muted-foreground">Passing Rate (60%+)</span>
+                <span className="font-semibold text-info">
                   {scores.length > 0
                     ? Math.round((scores.filter((s) => s >= 60).length / scores.length) * 100)
                     : 0}
@@ -438,8 +438,8 @@ export default function AssessmentReportPage() {
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-600">Completion Rate</span>
-                <span className="font-semibold text-purple-600">
+                <span className="text-muted-foreground">Completion Rate</span>
+                <span className="font-semibold text-purple-500">
                   {candidates.length > 0
                     ? Math.round((completedCandidates.length / candidates.length) * 100)
                     : 0}
@@ -451,24 +451,24 @@ export default function AssessmentReportPage() {
         </div>
 
         {/* Candidates Table */}
-        <div className="bg-white rounded-lg border shadow-sm">
-          <div className="p-4 border-b flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">Candidates</h3>
+        <div className="bg-card rounded-lg border border-border shadow-sm">
+          <div className="p-4 border-b border-border flex items-center justify-between">
+            <h3 className="font-semibold text-foreground">Candidates</h3>
             <div className="flex items-center gap-4">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
                   type="text"
                   placeholder="Search candidates..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
+                  className="pl-9 pr-4 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground placeholder:text-muted-foreground"
                 />
               </div>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                className="px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground"
               >
                 <option value="">All Status</option>
                 <option value="completed">Completed</option>
@@ -479,7 +479,7 @@ export default function AssessmentReportPage() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as "score" | "date" | "name")}
-                className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                className="px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground"
               >
                 <option value="date">Sort by Date</option>
                 <option value="score">Sort by Score</option>
@@ -490,41 +490,41 @@ export default function AssessmentReportPage() {
 
           {candidatesLoading ? (
             <div className="p-8 text-center">
-              <Loader2 className="h-8 w-8 animate-spin text-gray-400 mx-auto" />
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto" />
             </div>
           ) : filteredCandidates.length === 0 ? (
             <div className="p-8 text-center">
-              <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">No candidates found</p>
+              <Users className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+              <p className="text-muted-foreground">No candidates found</p>
             </div>
           ) : (
             <table className="w-full">
-              <thead className="bg-gray-50 border-b">
+              <thead className="bg-muted border-b border-border">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Candidate
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Score
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Trust Score
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Time
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Completed
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody className="divide-y divide-border">
                 {filteredCandidates.map((candidate) => (
                   <CandidateRow
                     key={candidate.id}

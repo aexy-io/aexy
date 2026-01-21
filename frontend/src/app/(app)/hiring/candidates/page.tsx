@@ -437,7 +437,7 @@ export default function CandidatesPage() {
   }
 
   return (
-    <main className="max-w-[1800px] mx-auto px-4 py-6">
+    <main className="w-full px-6 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">

@@ -188,22 +188,22 @@ export default function Step5ReviewConfirm({
   const getStatusIcon = (status: ReviewSection["status"]) => {
     switch (status) {
       case "complete":
-        return <CheckCircle className="w-5 h-5 text-green-600" />;
+        return <CheckCircle className="w-5 h-5 text-success" />;
       case "incomplete":
-        return <AlertCircle className="w-5 h-5 text-red-600" />;
+        return <AlertCircle className="w-5 h-5 text-destructive" />;
       case "warning":
-        return <AlertCircle className="w-5 h-5 text-yellow-600" />;
+        return <AlertCircle className="w-5 h-5 text-warning" />;
     }
   };
 
   const getStatusColor = (status: ReviewSection["status"]) => {
     switch (status) {
       case "complete":
-        return "border-green-200 bg-green-50";
+        return "border-success/30 bg-success/10";
       case "incomplete":
-        return "border-red-200 bg-red-50";
+        return "border-destructive/30 bg-destructive/10";
       case "warning":
-        return "border-yellow-200 bg-yellow-50";
+        return "border-warning/30 bg-warning/10";
     }
   };
 
@@ -212,33 +212,33 @@ export default function Step5ReviewConfirm({
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">Review & Confirm</h2>
-        <p className="text-gray-500">Review all settings before publishing the assessment</p>
+        <h2 className="text-xl font-semibold text-foreground mb-1">Review & Confirm</h2>
+        <p className="text-muted-foreground">Review all settings before publishing the assessment</p>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-4 gap-4">
-        <div className="bg-blue-50 rounded-lg p-4 text-center">
-          <FileText className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-          <p className="text-2xl font-bold text-blue-900">{totalQuestions}</p>
-          <p className="text-xs text-blue-600">Questions</p>
+        <div className="bg-primary/10 rounded-lg p-4 text-center">
+          <FileText className="w-6 h-6 text-primary mx-auto mb-2" />
+          <p className="text-2xl font-bold text-foreground">{totalQuestions}</p>
+          <p className="text-xs text-primary">Questions</p>
         </div>
-        <div className="bg-purple-50 rounded-lg p-4 text-center">
-          <Clock className="w-6 h-6 text-purple-600 mx-auto mb-2" />
-          <p className="text-2xl font-bold text-purple-900">{totalDuration}</p>
-          <p className="text-xs text-purple-600">Minutes</p>
+        <div className="bg-purple-500/10 rounded-lg p-4 text-center">
+          <Clock className="w-6 h-6 text-purple-500 mx-auto mb-2" />
+          <p className="text-2xl font-bold text-foreground">{totalDuration}</p>
+          <p className="text-xs text-purple-500">Minutes</p>
         </div>
-        <div className="bg-green-50 rounded-lg p-4 text-center">
-          <Users className="w-6 h-6 text-green-600 mx-auto mb-2" />
-          <p className="text-2xl font-bold text-green-900">{candidateCount}</p>
-          <p className="text-xs text-green-600">Candidates</p>
+        <div className="bg-success/10 rounded-lg p-4 text-center">
+          <Users className="w-6 h-6 text-success mx-auto mb-2" />
+          <p className="text-2xl font-bold text-foreground">{candidateCount}</p>
+          <p className="text-xs text-success">Candidates</p>
         </div>
-        <div className="bg-orange-50 rounded-lg p-4 text-center">
-          <Shield className="w-6 h-6 text-orange-600 mx-auto mb-2" />
-          <p className="text-2xl font-bold text-orange-900">
+        <div className="bg-warning/10 rounded-lg p-4 text-center">
+          <Shield className="w-6 h-6 text-warning mx-auto mb-2" />
+          <p className="text-2xl font-bold text-foreground">
             {assessment.proctoring_settings?.enabled === true ? "On" : "Off"}
           </p>
-          <p className="text-xs text-orange-600">Proctoring</p>
+          <p className="text-xs text-warning">Proctoring</p>
         </div>
       </div>
 
@@ -248,26 +248,26 @@ export default function Step5ReviewConfirm({
           <div
             className={`rounded-lg border p-4 ${
               publishCheck.can_publish
-                ? "bg-green-50 border-green-200"
-                : "bg-red-50 border-red-200"
+                ? "bg-success/10 border-success/30"
+                : "bg-destructive/10 border-destructive/30"
             }`}
           >
             <div className="flex items-center gap-2 mb-2">
               {publishCheck.can_publish ? (
-                <CheckCircle className="w-5 h-5 text-green-600" />
+                <CheckCircle className="w-5 h-5 text-success" />
               ) : (
-                <AlertCircle className="w-5 h-5 text-red-600" />
+                <AlertCircle className="w-5 h-5 text-destructive" />
               )}
               <span
                 className={`font-medium ${
-                  publishCheck.can_publish ? "text-green-900" : "text-red-900"
+                  publishCheck.can_publish ? "text-success" : "text-destructive"
                 }`}
               >
                 {publishCheck.can_publish ? "Ready to Publish" : "Cannot Publish Yet"}
               </span>
             </div>
             {!publishCheck.can_publish && publishCheck.issues && publishCheck.issues.length > 0 && (
-              <ul className="text-sm text-red-700 list-disc list-inside space-y-1">
+              <ul className="text-sm text-destructive list-disc list-inside space-y-1">
                 {publishCheck.issues.map((issue, idx) => (
                   <li key={idx}>{issue}</li>
                 ))}
@@ -275,12 +275,12 @@ export default function Step5ReviewConfirm({
             )}
           </div>
           {publishCheck.warnings && publishCheck.warnings.length > 0 && (
-            <div className="rounded-lg border p-4 bg-yellow-50 border-yellow-200">
+            <div className="rounded-lg border p-4 bg-warning/10 border-warning/30">
               <div className="flex items-center gap-2 mb-2">
-                <AlertCircle className="w-5 h-5 text-yellow-600" />
-                <span className="font-medium text-yellow-900">Warnings</span>
+                <AlertCircle className="w-5 h-5 text-warning" />
+                <span className="font-medium text-warning">Warnings</span>
               </div>
-              <ul className="text-sm text-yellow-700 list-disc list-inside space-y-1">
+              <ul className="text-sm text-warning list-disc list-inside space-y-1">
                 {publishCheck.warnings.map((warning, idx) => (
                   <li key={idx}>{warning}</li>
                 ))}
@@ -299,14 +299,14 @@ export default function Step5ReviewConfirm({
           >
             <div className="p-4 flex items-center gap-3 border-b border-inherit">
               {getStatusIcon(section.status)}
-              <section.icon className="w-5 h-5 text-gray-600" />
-              <span className="font-medium text-gray-900">{section.title}</span>
+              <section.icon className="w-5 h-5 text-muted-foreground" />
+              <span className="font-medium text-foreground">{section.title}</span>
             </div>
             <div className="p-4 grid grid-cols-2 gap-4">
               {section.items.map((item) => (
                 <div key={item.label}>
-                  <p className="text-xs text-gray-500">{item.label}</p>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-xs text-muted-foreground">{item.label}</p>
+                  <p className="text-sm font-medium text-foreground">
                     {item.value === undefined || item.value === ""
                       ? "Not set"
                       : typeof item.value === "boolean"
@@ -323,19 +323,19 @@ export default function Step5ReviewConfirm({
       </div>
 
       {/* Confirmation */}
-      <div className="bg-white rounded-lg border p-6">
+      <div className="bg-card rounded-lg border border-border p-6">
         <label className="flex items-start gap-3 cursor-pointer">
           <input
             type="checkbox"
             checked={confirmed}
             onChange={(e) => setConfirmed(e.target.checked)}
-            className="w-5 h-5 mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            className="w-5 h-5 mt-0.5 rounded border-border text-primary focus:ring-primary"
           />
           <div>
-            <p className="font-medium text-gray-900">
+            <p className="font-medium text-foreground">
               I confirm that all settings are correct
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               By publishing this assessment, invitation emails will be sent to all added
               candidates. This action cannot be undone.
             </p>
@@ -344,10 +344,10 @@ export default function Step5ReviewConfirm({
       </div>
 
       {/* Actions */}
-      <div className="flex justify-between pt-4 border-t">
+      <div className="flex justify-between pt-4 border-t border-border">
         <button
           onClick={onPrev}
-          className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+          className="px-4 py-2 text-foreground hover:bg-muted rounded-lg"
         >
           Previous
         </button>
@@ -362,14 +362,14 @@ export default function Step5ReviewConfirm({
               }
             }}
             disabled={isSaving}
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+            className="px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted"
           >
             Save as Draft
           </button>
           <button
             onClick={handleConfirmAndPublish}
             disabled={!allComplete || !confirmed || isSaving || isPublishing}
-            className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-6 py-2 bg-success text-success-foreground rounded-lg hover:bg-success/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isPublishing || isSaving ? (
               <>

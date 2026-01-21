@@ -127,35 +127,35 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">Assessment Details</h2>
-        <p className="text-gray-500">Configure the basic information for this assessment</p>
+        <h2 className="text-xl font-semibold text-foreground mb-1">Assessment Details</h2>
+        <p className="text-muted-foreground">Configure the basic information for this assessment</p>
       </div>
 
       {/* Basic Information */}
-      <div className="bg-white rounded-lg border p-6 space-y-6">
-        <h3 className="font-medium text-gray-900 border-b pb-3">Basic Information</h3>
+      <div className="bg-card rounded-lg border border-border p-6 space-y-6">
+        <h3 className="font-medium text-foreground border-b border-border pb-3">Basic Information</h3>
 
         {/* Title */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Title of Assessment <span className="text-red-500">*</span>
+          <label className="block text-sm font-medium text-foreground mb-1">
+            Title of Assessment <span className="text-destructive">*</span>
           </label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Senior Software Engineer Assessment"
-            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
+            className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground placeholder:text-muted-foreground"
             maxLength={100}
           />
-          <p className="text-xs text-gray-400 mt-1">{title.length}/100 characters</p>
+          <p className="text-xs text-muted-foreground mt-1">{title.length}/100 characters</p>
         </div>
 
         {/* Job Designation & Department */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Job Designation <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Job Designation <span className="text-destructive">*</span>
             </label>
             <select
               value={isCustomDesignation ? "custom" : jobDesignation}
@@ -167,7 +167,7 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
                   setCustomDesignation("");
                 }
               }}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground"
             >
               <option value="">Select designation...</option>
               {JOB_DESIGNATIONS.map((d) => (
@@ -181,18 +181,18 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
                 value={customDesignation}
                 onChange={(e) => setCustomDesignation(e.target.value)}
                 placeholder="Enter custom designation"
-                className="w-full mt-2 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full mt-2 px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground placeholder:text-muted-foreground"
               />
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Department (Optional)
             </label>
             <select
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground"
             >
               <option value="">Select department...</option>
               {DEPARTMENTS.map((d) => (
@@ -204,12 +204,12 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
       </div>
 
       {/* Experience Requirements */}
-      <div className="bg-white rounded-lg border p-6 space-y-6">
-        <h3 className="font-medium text-gray-900 border-b pb-3">Experience Requirements</h3>
+      <div className="bg-card rounded-lg border border-border p-6 space-y-6">
+        <h3 className="font-medium text-foreground border-b border-border pb-3">Experience Requirements</h3>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">
-            Experience Range (Years) <span className="text-red-500">*</span>
+          <label className="block text-sm font-medium text-foreground mb-3">
+            Experience Range (Years) <span className="text-destructive">*</span>
           </label>
           <div className="flex items-center gap-4">
             <div className="flex-1">
@@ -226,7 +226,7 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
                 className="w-full"
               />
             </div>
-            <span className="text-sm text-gray-600 w-20 text-center">
+            <span className="text-sm text-muted-foreground w-20 text-center">
               {experienceMin} - {experienceMax} years
             </span>
             <div className="flex-1">
@@ -251,19 +251,19 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
             type="checkbox"
             checked={includeFreshers}
             onChange={(e) => setIncludeFreshers(e.target.checked)}
-            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
           />
-          <span className="text-sm text-gray-700">Include freshers (0 experience)</span>
+          <span className="text-sm text-foreground">Include freshers (0 experience)</span>
         </label>
       </div>
 
       {/* Skills to Assess */}
-      <div className="bg-white rounded-lg border p-6 space-y-6">
-        <h3 className="font-medium text-gray-900 border-b pb-3">Skills to Assess</h3>
+      <div className="bg-card rounded-lg border border-border p-6 space-y-6">
+        <h3 className="font-medium text-foreground border-b border-border pb-3">Skills to Assess</h3>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Select the technical skills you want to evaluate <span className="text-red-500">*</span>
+          <label className="block text-sm font-medium text-foreground mb-1">
+            Select the technical skills you want to evaluate <span className="text-destructive">*</span>
           </label>
 
           {/* Search Input */}
@@ -277,18 +277,18 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
               }}
               onFocus={() => setShowSkillDropdown(true)}
               placeholder="Search skills..."
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground placeholder:text-muted-foreground"
             />
             {showSkillDropdown && skillSearch && filteredSkills.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-auto">
+              <div className="absolute z-10 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-60 overflow-auto">
                 {filteredSkills.slice(0, 10).map(({ skill, category }) => (
                   <button
                     key={skill}
                     onClick={() => handleAddSkill(skill, category)}
-                    className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center justify-between"
+                    className="w-full px-4 py-2 text-left hover:bg-accent flex items-center justify-between text-popover-foreground"
                   >
                     <span>{skill}</span>
-                    <span className="text-xs text-gray-400">{category}</span>
+                    <span className="text-xs text-muted-foreground">{category}</span>
                   </button>
                 ))}
               </div>
@@ -301,12 +301,12 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
               {skills.map((skill) => (
                 <span
                   key={skill.id}
-                  className="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm"
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm"
                 >
                   {skill.name}
                   <button
                     onClick={() => handleRemoveSkill(skill.id)}
-                    className="hover:text-blue-900"
+                    className="hover:text-primary/70"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -314,17 +314,17 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
               ))}
             </div>
           )}
-          <p className="text-xs text-gray-400 mt-2">
+          <p className="text-xs text-muted-foreground mt-2">
             Minimum 1 skill required, Maximum 15 skills
           </p>
         </div>
 
         {/* AI Suggestions */}
         {jobDesignation && (
-          <div className="bg-blue-50 rounded-lg p-4">
+          <div className="bg-info/10 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-4 h-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-900">AI-Suggested Skills</span>
+              <Sparkles className="w-4 h-4 text-info" />
+              <span className="text-sm font-medium text-foreground">AI-Suggested Skills</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {["PostgreSQL", "Redis", "Docker", "AWS", "TypeScript", "GraphQL", "REST APIs", "Git", "CI/CD"]
@@ -334,7 +334,7 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
                   <button
                     key={skill}
                     onClick={() => handleAddSkill(skill, "Suggested")}
-                    className="inline-flex items-center gap-1 px-3 py-1 bg-white border border-blue-200 text-blue-700 rounded-full text-sm hover:bg-blue-100"
+                    className="inline-flex items-center gap-1 px-3 py-1 bg-card border border-info/30 text-info rounded-full text-sm hover:bg-info/20"
                   >
                     <Plus className="w-3 h-3" />
                     {skill}
@@ -351,16 +351,16 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
               type="checkbox"
               checked={enableSkillWeights}
               onChange={(e) => setEnableSkillWeights(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
             />
-            <span className="text-sm text-gray-700">Enable custom skill weights</span>
+            <span className="text-sm text-foreground">Enable custom skill weights</span>
           </label>
 
           {enableSkillWeights && skills.length > 0 && (
             <div className="space-y-3 pl-6">
               {skills.map((skill) => (
                 <div key={skill.id} className="flex items-center gap-4">
-                  <span className="text-sm text-gray-700 w-32">{skill.name}</span>
+                  <span className="text-sm text-foreground w-32">{skill.name}</span>
                   <input
                     type="range"
                     min={10}
@@ -369,7 +369,7 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
                     onChange={(e) => handleSkillWeightChange(skill.id, parseInt(e.target.value))}
                     className="flex-1"
                   />
-                  <span className="text-sm text-gray-500 w-12">{skill.weight || 50}%</span>
+                  <span className="text-sm text-muted-foreground w-12">{skill.weight || 50}%</span>
                 </div>
               ))}
             </div>
@@ -378,31 +378,31 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
       </div>
 
       {/* Description */}
-      <div className="bg-white rounded-lg border p-6 space-y-4">
-        <h3 className="font-medium text-gray-900 border-b pb-3">Assessment Description (Optional)</h3>
+      <div className="bg-card rounded-lg border border-border p-6 space-y-4">
+        <h3 className="font-medium text-foreground border-b border-border pb-3">Assessment Description (Optional)</h3>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Describe the assessment objectives, expectations, and any special instructions for candidates..."
           rows={4}
-          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white text-gray-900 placeholder-gray-400"
+          className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none bg-input text-foreground placeholder:text-muted-foreground"
           maxLength={2000}
         />
-        <p className="text-xs text-gray-400">{description.length}/2000 characters</p>
+        <p className="text-xs text-muted-foreground">{description.length}/2000 characters</p>
       </div>
 
       {/* Actions */}
-      <div className="flex justify-between pt-4 border-t">
+      <div className="flex justify-between pt-4 border-t border-border">
         <button
           disabled
-          className="px-4 py-2 text-gray-400 cursor-not-allowed"
+          className="px-4 py-2 text-muted-foreground cursor-not-allowed"
         >
           Previous
         </button>
         <button
           onClick={handleSave}
           disabled={!isValid || isSaving}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSaving ? "Saving..." : "Save & Continue"}
         </button>

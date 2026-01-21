@@ -275,25 +275,25 @@ export default function Step4AddCandidates({
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">Add Candidates</h2>
-        <p className="text-gray-500">Invite candidates to take this assessment</p>
+        <h2 className="text-xl font-semibold text-foreground mb-1">Add Candidates</h2>
+        <p className="text-muted-foreground">Invite candidates to take this assessment</p>
       </div>
 
       {/* Summary Bar */}
-      <div className="bg-blue-50 rounded-lg p-4 flex items-center justify-between">
+      <div className="bg-primary/10 rounded-lg p-4 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <div>
-            <p className="text-xs text-blue-600 font-medium">Total Candidates</p>
-            <p className="text-2xl font-bold text-blue-900">{candidates.length}</p>
+            <p className="text-xs text-primary font-medium">Total Candidates</p>
+            <p className="text-2xl font-bold text-foreground">{candidates.length}</p>
           </div>
           <div>
-            <p className="text-xs text-blue-600 font-medium">Valid</p>
-            <p className="text-2xl font-bold text-green-600">{validCandidatesCount}</p>
+            <p className="text-xs text-primary font-medium">Valid</p>
+            <p className="text-2xl font-bold text-success">{validCandidatesCount}</p>
           </div>
           {candidates.length - validCandidatesCount > 0 && (
             <div>
-              <p className="text-xs text-blue-600 font-medium">Invalid</p>
-              <p className="text-2xl font-bold text-red-600">
+              <p className="text-xs text-primary font-medium">Invalid</p>
+              <p className="text-2xl font-bold text-destructive">
                 {candidates.length - validCandidatesCount}
               </p>
             </div>
@@ -302,14 +302,14 @@ export default function Step4AddCandidates({
         <div className="flex gap-3">
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50"
+            className="flex items-center gap-2 px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary/10"
           >
             <Upload className="w-4 h-4" />
             Import CSV
           </button>
           <button
             onClick={handleAddCandidate}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
           >
             <Plus className="w-4 h-4" />
             Add Candidate
@@ -326,60 +326,60 @@ export default function Step4AddCandidates({
 
       {/* Import Messages */}
       {importError && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-red-700 whitespace-pre-line">{importError}</div>
+        <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-destructive whitespace-pre-line">{importError}</div>
           <button onClick={() => setImportError(null)} className="ml-auto">
-            <X className="w-4 h-4 text-red-600" />
+            <X className="w-4 h-4 text-destructive" />
           </button>
         </div>
       )}
 
       {importSuccess && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
-          <CheckCircle className="w-5 h-5 text-green-600" />
-          <div className="text-sm text-green-700">{importSuccess}</div>
+        <div className="bg-success/10 border border-success/30 rounded-lg p-4 flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-success" />
+          <div className="text-sm text-success">{importSuccess}</div>
           <button onClick={() => setImportSuccess(null)} className="ml-auto">
-            <X className="w-4 h-4 text-green-600" />
+            <X className="w-4 h-4 text-success" />
           </button>
         </div>
       )}
 
       {/* CSV Format Help */}
-      <div className="bg-gray-50 rounded-lg p-4">
+      <div className="bg-muted rounded-lg p-4">
         <div className="flex items-center gap-2 mb-2">
-          <FileSpreadsheet className="w-4 h-4 text-gray-500" />
-          <span className="text-sm font-medium text-gray-700">CSV Format</span>
+          <FileSpreadsheet className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-medium text-foreground">CSV Format</span>
         </div>
-        <p className="text-xs text-gray-500 mb-2">
+        <p className="text-xs text-muted-foreground mb-2">
           Upload a CSV file with the following columns (header required):
         </p>
-        <code className="text-xs bg-white px-2 py-1 rounded border">
+        <code className="text-xs bg-card px-2 py-1 rounded border border-border text-foreground">
           email,name,phone
         </code>
       </div>
 
       {/* Candidates List */}
-      <div className="bg-white rounded-lg border">
+      <div className="bg-card rounded-lg border border-border">
         {candidates.length === 0 ? (
           <div className="p-12 text-center">
-            <User className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No candidates added</h3>
-            <p className="text-gray-500 mb-4">
+            <User className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">No candidates added</h3>
+            <p className="text-muted-foreground mb-4">
               Add candidates manually or import from a CSV file
             </p>
             <button
               onClick={handleAddCandidate}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
             >
               <Plus className="w-4 h-4" />
               Add First Candidate
             </button>
           </div>
         ) : (
-          <div className="divide-y">
+          <div className="divide-y divide-border">
             {/* Header */}
-            <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-muted text-xs font-medium text-muted-foreground uppercase tracking-wider">
               <div className="col-span-4">Email</div>
               <div className="col-span-3">Name</div>
               <div className="col-span-2">Phone</div>
@@ -392,47 +392,47 @@ export default function Step4AddCandidates({
               <div
                 key={candidate.id}
                 className={`grid grid-cols-12 gap-4 px-4 py-3 items-center ${
-                  !candidate.isValid && candidate.email ? "bg-red-50" : ""
+                  !candidate.isValid && candidate.email ? "bg-destructive/5" : ""
                 }`}
               >
                 <div className="col-span-4">
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
                       type="email"
                       value={candidate.email}
                       onChange={(e) => handleCandidateChange(candidate.id, "email", e.target.value)}
                       placeholder="email@example.com"
-                      className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-900 placeholder-gray-400 ${
-                        candidate.error ? "border-red-300" : ""
+                      className={`w-full pl-10 pr-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm bg-input text-foreground placeholder:text-muted-foreground ${
+                        candidate.error ? "border-destructive" : ""
                       }`}
                     />
                   </div>
                   {candidate.error && (
-                    <p className="text-xs text-red-600 mt-1">{candidate.error}</p>
+                    <p className="text-xs text-destructive mt-1">{candidate.error}</p>
                   )}
                 </div>
                 <div className="col-span-3">
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
                       type="text"
                       value={candidate.name}
                       onChange={(e) => handleCandidateChange(candidate.id, "name", e.target.value)}
                       placeholder="Full Name"
-                      className="w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-900 placeholder-gray-400"
+                      className="w-full pl-10 pr-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm bg-input text-foreground placeholder:text-muted-foreground"
                     />
                   </div>
                 </div>
                 <div className="col-span-2">
                   <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
                       type="tel"
                       value={candidate.phone}
                       onChange={(e) => handleCandidateChange(candidate.id, "phone", e.target.value)}
                       placeholder="Optional"
-                      className="w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-900 placeholder-gray-400"
+                      className="w-full pl-10 pr-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm bg-input text-foreground placeholder:text-muted-foreground"
                     />
                   </div>
                 </div>
@@ -440,8 +440,8 @@ export default function Step4AddCandidates({
                   <span
                     className={`inline-flex px-2 py-1 text-xs rounded-full ${
                       candidate.source === "csv_import"
-                        ? "bg-purple-100 text-purple-700"
-                        : "bg-gray-100 text-gray-700"
+                        ? "bg-purple-500/20 text-purple-400"
+                        : "bg-muted text-muted-foreground"
                     }`}
                   >
                     {candidate.source === "csv_import" ? "CSV Import" : "Manual"}
@@ -450,7 +450,7 @@ export default function Step4AddCandidates({
                 <div className="col-span-1 flex justify-end">
                   <button
                     onClick={() => handleRemoveCandidate(candidate.id)}
-                    className="p-2 hover:bg-red-50 rounded text-gray-400 hover:text-red-600"
+                    className="p-2 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -462,15 +462,15 @@ export default function Step4AddCandidates({
       </div>
 
       {/* Email Template */}
-      <div className="bg-white rounded-lg border p-6 space-y-4">
-        <div className="flex items-center justify-between border-b pb-3">
-          <h3 className="font-medium text-gray-900 flex items-center gap-2">
-            <Mail className="w-5 h-5 text-blue-600" />
+      <div className="bg-card rounded-lg border border-border p-6 space-y-4">
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <h3 className="font-medium text-foreground flex items-center gap-2">
+            <Mail className="w-5 h-5 text-primary" />
             Invitation Email Template
           </h3>
           <button
             onClick={() => setShowEmailEditor(!showEmailEditor)}
-            className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700"
+            className="flex items-center gap-2 text-sm text-primary hover:text-primary/80"
           >
             <Edit2 className="w-4 h-4" />
             {showEmailEditor ? "Hide Editor" : "Customize"}
@@ -480,25 +480,25 @@ export default function Step4AddCandidates({
         {showEmailEditor && (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+              <label className="block text-sm font-medium text-foreground mb-1">Subject</label>
               <input
                 type="text"
                 value={emailTemplate.subject}
                 onChange={(e) =>
                   setEmailTemplate({ ...emailTemplate, subject: e.target.value })
                 }
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground placeholder:text-muted-foreground"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Body</label>
+              <label className="block text-sm font-medium text-foreground mb-1">Body</label>
               <textarea
                 value={emailTemplate.body}
                 onChange={(e) => setEmailTemplate({ ...emailTemplate, body: e.target.value })}
                 rows={10}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm bg-white text-gray-900 placeholder-gray-400"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm bg-input text-foreground placeholder:text-muted-foreground"
               />
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Available variables: {"{{candidate_name}}"}, {"{{assessment_title}}"},{" "}
                 {"{{assessment_link}}"}, {"{{start_date}}"}, {"{{end_date}}"}, {"{{company_name}}"}
               </p>
@@ -514,9 +514,9 @@ export default function Step4AddCandidates({
                       include_instructions: e.target.checked,
                     })
                   }
-                  className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                 />
-                <span className="text-sm text-gray-700">Include instructions</span>
+                <span className="text-sm text-foreground">Include instructions</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -525,9 +525,9 @@ export default function Step4AddCandidates({
                   onChange={(e) =>
                     setEmailTemplate({ ...emailTemplate, include_deadline: e.target.checked })
                   }
-                  className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                 />
-                <span className="text-sm text-gray-700">Include deadline</span>
+                <span className="text-sm text-foreground">Include deadline</span>
               </label>
             </div>
           </div>
@@ -538,26 +538,26 @@ export default function Step4AddCandidates({
             type="checkbox"
             checked={sendImmediately}
             onChange={(e) => setSendImmediately(e.target.checked)}
-            className="w-4 h-4 rounded border-gray-300 text-blue-600"
+            className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
           />
-          <span className="text-sm text-gray-700">
+          <span className="text-sm text-foreground">
             Send invitations immediately after publishing
           </span>
         </label>
       </div>
 
       {/* Actions */}
-      <div className="flex justify-between pt-4 border-t">
+      <div className="flex justify-between pt-4 border-t border-border">
         <button
           onClick={onPrev}
-          className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+          className="px-4 py-2 text-foreground hover:bg-muted rounded-lg"
         >
           Previous
         </button>
         <button
           onClick={handleSave}
           disabled={!isValid || isSaving}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSaving ? "Saving..." : "Save & Continue"}
         </button>

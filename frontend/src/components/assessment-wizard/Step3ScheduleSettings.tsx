@@ -167,24 +167,24 @@ export default function Step3ScheduleSettings({
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">Schedule & Settings</h2>
-        <p className="text-gray-500">Configure when and how candidates can take the assessment</p>
+        <h2 className="text-xl font-semibold text-foreground mb-1">Schedule & Settings</h2>
+        <p className="text-muted-foreground">Configure when and how candidates can take the assessment</p>
       </div>
 
       {/* Schedule Settings */}
-      <div className="bg-white rounded-lg border p-6 space-y-6">
-        <h3 className="font-medium text-gray-900 border-b pb-3 flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-blue-600" />
+      <div className="bg-card rounded-lg border border-border p-6 space-y-6">
+        <h3 className="font-medium text-foreground border-b border-border pb-3 flex items-center gap-2">
+          <Calendar className="w-5 h-5 text-primary" />
           Schedule Configuration
         </h3>
 
         {/* Schedule Type */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">Schedule Type</label>
+          <label className="block text-sm font-medium text-foreground mb-3">Schedule Type</label>
           <div className="grid grid-cols-2 gap-4">
             <label
               className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer ${
-                scheduleType === "flexible" ? "border-blue-500 bg-blue-50" : ""
+                scheduleType === "flexible" ? "border-primary bg-primary/10" : "border-border"
               }`}
             >
               <input
@@ -194,15 +194,15 @@ export default function Step3ScheduleSettings({
                 className="mt-1"
               />
               <div>
-                <p className="font-medium text-gray-900">Flexible Window</p>
-                <p className="text-sm text-gray-500">
+                <p className="font-medium text-foreground">Flexible Window</p>
+                <p className="text-sm text-muted-foreground">
                   Candidates can take the test anytime within the date range
                 </p>
               </div>
             </label>
             <label
               className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer ${
-                scheduleType === "fixed" ? "border-blue-500 bg-blue-50" : ""
+                scheduleType === "fixed" ? "border-primary bg-primary/10" : "border-border"
               }`}
             >
               <input
@@ -212,8 +212,8 @@ export default function Step3ScheduleSettings({
                 className="mt-1"
               />
               <div>
-                <p className="font-medium text-gray-900">Fixed Time Slot</p>
-                <p className="text-sm text-gray-500">
+                <p className="font-medium text-foreground">Fixed Time Slot</p>
+                <p className="text-sm text-muted-foreground">
                   All candidates must take the test at a specific time
                 </p>
               </div>
@@ -224,27 +224,27 @@ export default function Step3ScheduleSettings({
         {/* Date Range */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Start Date <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Start Date <span className="text-destructive">*</span>
             </label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
               min={new Date().toISOString().split("T")[0]}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              End Date <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              End Date <span className="text-destructive">*</span>
             </label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               min={startDate || new Date().toISOString().split("T")[0]}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground"
             />
           </div>
         </div>
@@ -253,21 +253,21 @@ export default function Step3ScheduleSettings({
         {scheduleType === "fixed" && (
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+              <label className="block text-sm font-medium text-foreground mb-1">Start Time</label>
               <input
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+              <label className="block text-sm font-medium text-foreground mb-1">End Time</label>
               <input
                 type="time"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground"
               />
             </div>
           </div>
@@ -275,11 +275,11 @@ export default function Step3ScheduleSettings({
 
         {/* Timezone */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
+          <label className="block text-sm font-medium text-foreground mb-1">Timezone</label>
           <select
             value={timezone}
             onChange={(e) => setTimezone(e.target.value)}
-            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+            className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground"
           >
             <option value="Asia/Kolkata">India (IST)</option>
             <option value="America/New_York">Eastern Time (ET)</option>
@@ -296,9 +296,9 @@ export default function Step3ScheduleSettings({
               type="checkbox"
               checked={allowLateSubmission}
               onChange={(e) => setAllowLateSubmission(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600"
+              className="w-4 h-4 rounded border-border text-primary"
             />
-            <span className="text-sm text-gray-700">Allow late submission with grace period</span>
+            <span className="text-sm text-foreground">Allow late submission with grace period</span>
           </label>
           {allowLateSubmission && (
             <input
@@ -307,18 +307,18 @@ export default function Step3ScheduleSettings({
               max={30}
               value={gracePeriodMinutes}
               onChange={(e) => setGracePeriodMinutes(parseInt(e.target.value))}
-              className="w-20 px-2 py-1 border rounded text-sm bg-white text-gray-900"
+              className="w-20 px-2 py-1 border border-border rounded text-sm bg-input text-foreground"
             />
           )}
-          {allowLateSubmission && <span className="text-sm text-gray-500">minutes</span>}
+          {allowLateSubmission && <span className="text-sm text-muted-foreground">minutes</span>}
         </div>
       </div>
 
       {/* Proctoring Settings */}
-      <div className="bg-white rounded-lg border p-6 space-y-6">
-        <div className="flex items-center justify-between border-b pb-3">
-          <h3 className="font-medium text-gray-900 flex items-center gap-2">
-            <Camera className="w-5 h-5 text-blue-600" />
+      <div className="bg-card rounded-lg border border-border p-6 space-y-6">
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <h3 className="font-medium text-foreground flex items-center gap-2">
+            <Camera className="w-5 h-5 text-primary" />
             Proctoring Settings
           </h3>
           <label className="flex items-center gap-2 cursor-pointer">
@@ -326,72 +326,72 @@ export default function Step3ScheduleSettings({
               type="checkbox"
               checked={enableProctoring}
               onChange={(e) => setEnableProctoring(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600"
+              className="w-4 h-4 rounded border-border text-primary"
             />
-            <span className="text-sm font-medium text-gray-700">Enable Proctoring</span>
+            <span className="text-sm font-medium text-foreground">Enable Proctoring</span>
           </label>
         </div>
 
         {enableProctoring && (
           <div className="grid grid-cols-2 gap-4">
-            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+            <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-accent">
               <input
                 type="checkbox"
                 checked={webcamRequired}
                 onChange={(e) => setWebcamRequired(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                className="w-4 h-4 rounded border-border text-primary"
               />
               <div>
-                <p className="text-sm font-medium text-gray-900">Webcam Required</p>
-                <p className="text-xs text-gray-500">Candidates must enable webcam</p>
+                <p className="text-sm font-medium text-foreground">Webcam Required</p>
+                <p className="text-xs text-muted-foreground">Candidates must enable webcam</p>
               </div>
             </label>
-            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+            <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-accent">
               <input
                 type="checkbox"
                 checked={screenRecording}
                 onChange={(e) => setScreenRecording(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                className="w-4 h-4 rounded border-border text-primary"
               />
               <div>
-                <p className="text-sm font-medium text-gray-900">Screen Recording</p>
-                <p className="text-xs text-gray-500">Record candidate's screen</p>
+                <p className="text-sm font-medium text-foreground">Screen Recording</p>
+                <p className="text-xs text-muted-foreground">Record candidate's screen</p>
               </div>
             </label>
-            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+            <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-accent">
               <input
                 type="checkbox"
                 checked={fullscreenRequired}
                 onChange={(e) => setFullscreenRequired(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                className="w-4 h-4 rounded border-border text-primary"
               />
               <div>
-                <p className="text-sm font-medium text-gray-900">Fullscreen Mode</p>
-                <p className="text-xs text-gray-500">Force fullscreen during test</p>
+                <p className="text-sm font-medium text-foreground">Fullscreen Mode</p>
+                <p className="text-xs text-muted-foreground">Force fullscreen during test</p>
               </div>
             </label>
-            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+            <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-accent">
               <input
                 type="checkbox"
                 checked={faceDetection}
                 onChange={(e) => setFaceDetection(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                className="w-4 h-4 rounded border-border text-primary"
               />
               <div>
-                <p className="text-sm font-medium text-gray-900">Face Detection</p>
-                <p className="text-xs text-gray-500">Detect face presence and multiple faces</p>
+                <p className="text-sm font-medium text-foreground">Face Detection</p>
+                <p className="text-xs text-muted-foreground">Detect face presence and multiple faces</p>
               </div>
             </label>
-            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+            <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-accent">
               <input
                 type="checkbox"
                 checked={tabSwitchDetection}
                 onChange={(e) => setTabSwitchDetection(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                className="w-4 h-4 rounded border-border text-primary"
               />
               <div>
-                <p className="text-sm font-medium text-gray-900">Tab Switch Detection</p>
-                <p className="text-xs text-gray-500">Detect when candidate switches tabs</p>
+                <p className="text-sm font-medium text-foreground">Tab Switch Detection</p>
+                <p className="text-xs text-muted-foreground">Detect when candidate switches tabs</p>
               </div>
             </label>
           </div>
@@ -399,101 +399,101 @@ export default function Step3ScheduleSettings({
       </div>
 
       {/* Security Settings */}
-      <div className="bg-white rounded-lg border p-6 space-y-6">
-        <h3 className="font-medium text-gray-900 border-b pb-3 flex items-center gap-2">
-          <Shield className="w-5 h-5 text-blue-600" />
+      <div className="bg-card rounded-lg border border-border p-6 space-y-6">
+        <h3 className="font-medium text-foreground border-b border-border pb-3 flex items-center gap-2">
+          <Shield className="w-5 h-5 text-primary" />
           Security Settings
         </h3>
 
         <div className="grid grid-cols-2 gap-4">
-          <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+          <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-accent">
             <input
               type="checkbox"
               checked={disableCopyPaste}
               onChange={(e) => setDisableCopyPaste(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600"
+              className="w-4 h-4 rounded border-border text-primary"
             />
             <div>
-              <p className="text-sm font-medium text-gray-900">Disable Copy/Paste</p>
-              <p className="text-xs text-gray-500">Prevent copying question text</p>
+              <p className="text-sm font-medium text-foreground">Disable Copy/Paste</p>
+              <p className="text-xs text-muted-foreground">Prevent copying question text</p>
             </div>
           </label>
-          <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+          <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-accent">
             <input
               type="checkbox"
               checked={disableRightClick}
               onChange={(e) => setDisableRightClick(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600"
+              className="w-4 h-4 rounded border-border text-primary"
             />
             <div>
-              <p className="text-sm font-medium text-gray-900">Disable Right Click</p>
-              <p className="text-xs text-gray-500">Prevent context menu access</p>
+              <p className="text-sm font-medium text-foreground">Disable Right Click</p>
+              <p className="text-xs text-muted-foreground">Prevent context menu access</p>
             </div>
           </label>
-          <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+          <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-accent">
             <input
               type="checkbox"
               checked={shuffleQuestions}
               onChange={(e) => setShuffleQuestions(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600"
+              className="w-4 h-4 rounded border-border text-primary"
             />
             <div>
-              <p className="text-sm font-medium text-gray-900">Shuffle Questions</p>
-              <p className="text-xs text-gray-500">Randomize question order</p>
+              <p className="text-sm font-medium text-foreground">Shuffle Questions</p>
+              <p className="text-xs text-muted-foreground">Randomize question order</p>
             </div>
           </label>
-          <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+          <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-accent">
             <input
               type="checkbox"
               checked={shuffleOptions}
               onChange={(e) => setShuffleOptions(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600"
+              className="w-4 h-4 rounded border-border text-primary"
             />
             <div>
-              <p className="text-sm font-medium text-gray-900">Shuffle Options</p>
-              <p className="text-xs text-gray-500">Randomize MCQ option order</p>
+              <p className="text-sm font-medium text-foreground">Shuffle Options</p>
+              <p className="text-xs text-muted-foreground">Randomize MCQ option order</p>
             </div>
           </label>
-          <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+          <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-accent">
             <input
               type="checkbox"
               checked={showOneQuestionAtTime}
               onChange={(e) => setShowOneQuestionAtTime(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600"
+              className="w-4 h-4 rounded border-border text-primary"
             />
             <div>
-              <p className="text-sm font-medium text-gray-900">One Question at a Time</p>
-              <p className="text-xs text-gray-500">Show questions sequentially</p>
+              <p className="text-sm font-medium text-foreground">One Question at a Time</p>
+              <p className="text-xs text-muted-foreground">Show questions sequentially</p>
             </div>
           </label>
-          <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+          <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-accent">
             <input
               type="checkbox"
               checked={preventBackNavigation}
               onChange={(e) => setPreventBackNavigation(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600"
+              className="w-4 h-4 rounded border-border text-primary"
             />
             <div>
-              <p className="text-sm font-medium text-gray-900">Prevent Back Navigation</p>
-              <p className="text-xs text-gray-500">No going back to previous questions</p>
+              <p className="text-sm font-medium text-foreground">Prevent Back Navigation</p>
+              <p className="text-xs text-muted-foreground">No going back to previous questions</p>
             </div>
           </label>
         </div>
       </div>
 
       {/* Attempt & Score Settings */}
-      <div className="bg-white rounded-lg border p-6 space-y-6">
-        <h3 className="font-medium text-gray-900 border-b pb-3">Attempt & Score Settings</h3>
+      <div className="bg-card rounded-lg border border-border p-6 space-y-6">
+        <h3 className="font-medium text-foreground border-b border-border pb-3">Attempt & Score Settings</h3>
 
         <div className="grid grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Maximum Attempts
             </label>
             <select
               value={maxAttempts}
               onChange={(e) => setMaxAttempts(parseInt(e.target.value))}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground"
             >
               <option value={1}>1 attempt</option>
               <option value={2}>2 attempts</option>
@@ -501,7 +501,7 @@ export default function Step3ScheduleSettings({
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Passing Score (%)
             </label>
             <input
@@ -510,18 +510,18 @@ export default function Step3ScheduleSettings({
               max={100}
               value={passingScore}
               onChange={(e) => setPassingScore(parseInt(e.target.value))}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground"
             />
           </div>
         </div>
       </div>
 
       {/* Candidate Field Requirements */}
-      <div className="bg-white rounded-lg border p-6 space-y-6">
-        <h3 className="font-medium text-gray-900 border-b pb-3">
+      <div className="bg-card rounded-lg border border-border p-6 space-y-6">
+        <h3 className="font-medium text-foreground border-b border-border pb-3">
           Required Candidate Information
         </h3>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-muted-foreground">
           Select which fields are required when candidates register
         </p>
 
@@ -531,52 +531,52 @@ export default function Step3ScheduleSettings({
               type="checkbox"
               checked={requirePhone}
               onChange={(e) => setRequirePhone(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600"
+              className="w-4 h-4 rounded border-border text-primary"
             />
-            <span className="text-sm text-gray-700">Phone Number</span>
+            <span className="text-sm text-foreground">Phone Number</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
               checked={requireResume}
               onChange={(e) => setRequireResume(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600"
+              className="w-4 h-4 rounded border-border text-primary"
             />
-            <span className="text-sm text-gray-700">Resume Upload</span>
+            <span className="text-sm text-foreground">Resume Upload</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
               checked={requireLinkedIn}
               onChange={(e) => setRequireLinkedIn(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600"
+              className="w-4 h-4 rounded border-border text-primary"
             />
-            <span className="text-sm text-gray-700">LinkedIn Profile</span>
+            <span className="text-sm text-foreground">LinkedIn Profile</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
               checked={requireGitHub}
               onChange={(e) => setRequireGitHub(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600"
+              className="w-4 h-4 rounded border-border text-primary"
             />
-            <span className="text-sm text-gray-700">GitHub Profile</span>
+            <span className="text-sm text-foreground">GitHub Profile</span>
           </label>
         </div>
       </div>
 
       {/* Actions */}
-      <div className="flex justify-between pt-4 border-t">
+      <div className="flex justify-between pt-4 border-t border-border">
         <button
           onClick={onPrev}
-          className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+          className="px-4 py-2 text-foreground hover:bg-accent rounded-lg"
         >
           Previous
         </button>
         <button
           onClick={handleSave}
           disabled={!isValid || isSaving}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSaving ? "Saving..." : "Save & Continue"}
         </button>

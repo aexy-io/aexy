@@ -41,18 +41,18 @@ export default function AssessmentPublishSuccessPage() {
 
   if (authLoading || workspacesLoading || assessmentLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   if (!assessment) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Assessment not found</h2>
-          <Link href="/hiring/assessments" className="text-blue-600 hover:text-blue-700">
+          <h2 className="text-xl font-semibold text-foreground mb-2">Assessment not found</h2>
+          <Link href="/hiring/assessments" className="text-primary hover:text-primary/80">
             Back to assessments
           </Link>
         </div>
@@ -64,53 +64,53 @@ export default function AssessmentPublishSuccessPage() {
   const totalDuration = assessment.total_duration_minutes || 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
 <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Success Header */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-            <CheckCircle className="h-8 w-8 text-green-600" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-success/20 rounded-full mb-4">
+            <CheckCircle className="h-8 w-8 text-success" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
             Assessment Published Successfully!
           </h1>
-          <p className="text-lg text-gray-600">
+          <p className="text-lg text-muted-foreground">
             Your assessment is now live and invitations have been sent to candidates.
           </p>
         </div>
 
         {/* Assessment Summary Card */}
-        <div className="bg-white rounded-lg border shadow-sm p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">{assessment.title}</h2>
+        <div className="bg-card rounded-lg border border-border shadow-sm p-6 mb-6">
+          <h2 className="text-xl font-semibold text-foreground mb-4">{assessment.title}</h2>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <FileText className="h-5 w-5 text-blue-600 mx-auto mb-1" />
-              <p className="text-xl font-bold text-gray-900">{totalQuestions}</p>
-              <p className="text-xs text-gray-500">Questions</p>
+            <div className="text-center p-3 bg-muted rounded-lg">
+              <FileText className="h-5 w-5 text-info mx-auto mb-1" />
+              <p className="text-xl font-bold text-foreground">{totalQuestions}</p>
+              <p className="text-xs text-muted-foreground">Questions</p>
             </div>
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <Clock className="h-5 w-5 text-purple-600 mx-auto mb-1" />
-              <p className="text-xl font-bold text-gray-900">{totalDuration}</p>
-              <p className="text-xs text-gray-500">Minutes</p>
+            <div className="text-center p-3 bg-muted rounded-lg">
+              <Clock className="h-5 w-5 text-purple-500 mx-auto mb-1" />
+              <p className="text-xl font-bold text-foreground">{totalDuration}</p>
+              <p className="text-xs text-muted-foreground">Minutes</p>
             </div>
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <Users className="h-5 w-5 text-green-600 mx-auto mb-1" />
-              <p className="text-xl font-bold text-gray-900">0</p>
-              <p className="text-xs text-gray-500">Candidates</p>
+            <div className="text-center p-3 bg-muted rounded-lg">
+              <Users className="h-5 w-5 text-success mx-auto mb-1" />
+              <p className="text-xl font-bold text-foreground">0</p>
+              <p className="text-xs text-muted-foreground">Candidates</p>
             </div>
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <Mail className="h-5 w-5 text-orange-600 mx-auto mb-1" />
-              <p className="text-xl font-bold text-gray-900">0</p>
-              <p className="text-xs text-gray-500">Invites Sent</p>
+            <div className="text-center p-3 bg-muted rounded-lg">
+              <Mail className="h-5 w-5 text-warning mx-auto mb-1" />
+              <p className="text-xl font-bold text-foreground">0</p>
+              <p className="text-xs text-muted-foreground">Invites Sent</p>
             </div>
           </div>
 
           {/* Schedule Info */}
           {assessment.schedule && (
-            <div className="border-t pt-4">
-              <p className="text-sm text-gray-600">
-                <span className="font-medium">Assessment Window:</span>{" "}
+            <div className="border-t border-border pt-4">
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">Assessment Window:</span>{" "}
                 {assessment.schedule.start_date
                   ? new Date(assessment.schedule.start_date).toLocaleDateString()
                   : "Not set"}{" "}
@@ -124,12 +124,12 @@ export default function AssessmentPublishSuccessPage() {
         </div>
 
         {/* Assessment Link */}
-        <div className="bg-blue-50 rounded-lg border border-blue-200 p-6 mb-6">
+        <div className="bg-info/10 rounded-lg border border-info/30 p-6 mb-6">
           <div className="flex items-center gap-2 mb-3">
-            <ExternalLink className="h-5 w-5 text-blue-600" />
-            <h3 className="font-semibold text-blue-900">Assessment Link</h3>
+            <ExternalLink className="h-5 w-5 text-info" />
+            <h3 className="font-semibold text-foreground">Assessment Link</h3>
           </div>
-          <p className="text-sm text-blue-700 mb-3">
+          <p className="text-sm text-muted-foreground mb-3">
             Share this link with candidates who haven't received an invitation email:
           </p>
           <div className="flex items-center gap-2">
@@ -137,11 +137,11 @@ export default function AssessmentPublishSuccessPage() {
               type="text"
               readOnly
               value={assessmentUrl}
-              className="flex-1 px-3 py-2 bg-white border border-blue-200 rounded-lg text-sm text-gray-700"
+              className="flex-1 px-3 py-2 bg-card border border-border rounded-lg text-sm text-foreground"
             />
             <button
               onClick={handleCopyLink}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
             >
               <Copy className="h-4 w-4" />
               Copy
@@ -150,38 +150,38 @@ export default function AssessmentPublishSuccessPage() {
         </div>
 
         {/* What's Next */}
-        <div className="bg-white rounded-lg border shadow-sm p-6 mb-8">
-          <h3 className="font-semibold text-gray-900 mb-4">What happens next?</h3>
+        <div className="bg-card rounded-lg border border-border shadow-sm p-6 mb-8">
+          <h3 className="font-semibold text-foreground mb-4">What happens next?</h3>
           <div className="space-y-4">
             <div className="flex items-start gap-3">
-              <div className="flex items-center justify-center w-6 h-6 bg-green-100 rounded-full text-green-600 text-sm font-medium shrink-0">
+              <div className="flex items-center justify-center w-6 h-6 bg-success/20 rounded-full text-success text-sm font-medium shrink-0">
                 1
               </div>
               <div>
-                <p className="font-medium text-gray-900">Invitations Sent</p>
-                <p className="text-sm text-gray-500">
+                <p className="font-medium text-foreground">Invitations Sent</p>
+                <p className="text-sm text-muted-foreground">
                   All candidates have received email invitations with their unique assessment links.
                 </p>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <div className="flex items-center justify-center w-6 h-6 bg-blue-100 rounded-full text-blue-600 text-sm font-medium shrink-0">
+              <div className="flex items-center justify-center w-6 h-6 bg-info/20 rounded-full text-info text-sm font-medium shrink-0">
                 2
               </div>
               <div>
-                <p className="font-medium text-gray-900">Candidates Take Assessment</p>
-                <p className="text-sm text-gray-500">
+                <p className="font-medium text-foreground">Candidates Take Assessment</p>
+                <p className="text-sm text-muted-foreground">
                   Candidates can start the assessment anytime within the scheduled window.
                 </p>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <div className="flex items-center justify-center w-6 h-6 bg-purple-100 rounded-full text-purple-600 text-sm font-medium shrink-0">
+              <div className="flex items-center justify-center w-6 h-6 bg-purple-500/20 rounded-full text-purple-500 text-sm font-medium shrink-0">
                 3
               </div>
               <div>
-                <p className="font-medium text-gray-900">View Results</p>
-                <p className="text-sm text-gray-500">
+                <p className="font-medium text-foreground">View Results</p>
+                <p className="text-sm text-muted-foreground">
                   Track progress and view detailed reports as candidates complete the assessment.
                 </p>
               </div>
@@ -193,14 +193,14 @@ export default function AssessmentPublishSuccessPage() {
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link
             href={`/hiring/assessments/${assessmentId}/report`}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium"
           >
             View Report Dashboard
             <ArrowRight className="h-4 w-4" />
           </Link>
           <Link
             href="/hiring/assessments"
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-card border border-border text-foreground rounded-lg hover:bg-accent font-medium"
           >
             Back to Assessments
           </Link>

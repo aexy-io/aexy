@@ -102,7 +102,7 @@ export default function HiringDashboardPage() {
   const attemptRate = assessmentMetrics?.attempt_rate ?? 0;
 
   return (
-    <main className="max-w-7xl mx-auto px-4 py-8">
+    <main className="w-full px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">

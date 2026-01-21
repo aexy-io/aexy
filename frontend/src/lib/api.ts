@@ -756,6 +756,12 @@ export interface HiringCandidateUpdate {
   requirement_id?: string;
 }
 
+export interface PipelineMetrics {
+  total: number;
+  by_stage: Record<string, number>;
+  conversion_rates: Record<string, number>;
+}
+
 // Career API
 export const careerApi = {
   listRoles: async (organizationId?: string): Promise<CareerRole[]> => {
@@ -1213,6 +1219,13 @@ export const hiringApi = {
 
   deleteCandidate: async (candidateId: string): Promise<void> => {
     await api.delete(`/hiring/candidates/${candidateId}`);
+  },
+
+  getPipelineMetrics: async (workspaceId: string): Promise<PipelineMetrics> => {
+    const response = await api.get("/hiring/candidates/pipeline-metrics", {
+      params: { workspace_id: workspaceId },
+    });
+    return response.data;
   },
 };
 

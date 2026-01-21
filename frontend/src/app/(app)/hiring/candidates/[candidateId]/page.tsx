@@ -203,7 +203,7 @@ export default function CandidateDetailPage() {
   const stageConfig = STAGE_CONFIG[candidate.stage];
 
   return (
-    <main className="max-w-7xl mx-auto px-4 py-6">
+    <main className="w-full px-6 py-6">
         {/* Back Button */}
         <Link
           href="/hiring/candidates"

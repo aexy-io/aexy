@@ -238,7 +238,7 @@ export default function QuestionDetailPage() {
   if (error || !question) {
     return (
       <div className="min-h-screen bg-gray-50">
-<main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<main className="w-full px-6 py-8">
           <div className="text-center py-12">
             <h2 className="text-xl font-semibold text-gray-900">Question not found</h2>
             <Link href="/hiring/questions" className="text-blue-600 hover:text-blue-700 mt-4 inline-block">
@@ -255,7 +255,7 @@ export default function QuestionDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-<main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<main className="w-full px-6 py-8">
         {/* Header */}
         <div className="mb-6">
           <Link
