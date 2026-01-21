@@ -271,6 +271,65 @@ class SprintTaskService:
 
         return updated_tasks
 
+    async def bulk_update_status(
+        self,
+        task_ids: list[str],
+        new_status: str,
+    ) -> list[SprintTask]:
+        """Bulk update status for multiple tasks.
+
+        Args:
+            task_ids: List of task IDs to update.
+            new_status: New status value for all tasks.
+
+        Returns:
+            List of updated SprintTasks.
+        """
+        updated_tasks = []
+
+        for task_id in task_ids:
+            task = await self.update_task_status(task_id, new_status)
+            if task:
+                updated_tasks.append(task)
+
+        return updated_tasks
+
+    async def bulk_move_to_sprint(
+        self,
+        task_ids: list[str],
+        target_sprint_id: str,
+    ) -> list[SprintTask]:
+        """Bulk move tasks to another sprint.
+
+        Args:
+            task_ids: List of task IDs to move.
+            target_sprint_id: Target sprint ID.
+
+        Returns:
+            List of updated SprintTasks.
+        """
+        # Get workspace_id from target sprint
+        sprint_stmt = select(Sprint).where(Sprint.id == target_sprint_id)
+        sprint_result = await self.db.execute(sprint_stmt)
+        target_sprint = sprint_result.scalar_one_or_none()
+
+        if not target_sprint:
+            return []
+
+        updated_tasks = []
+
+        for task_id in task_ids:
+            task = await self.get_task(task_id)
+            if task:
+                task.sprint_id = target_sprint_id
+                task.workspace_id = target_sprint.workspace_id
+                await self.db.flush()
+                updated_task = await self.get_task(task_id)
+                if updated_task:
+                    updated_tasks.append(updated_task)
+
+        return updated_tasks
+
     # Status management
     async def update_task_status(
         self,
@@ -651,3 +710,36 @@ class SprintTaskService:
         # For now, return None - full implementation would require
         # storing source config with the sprint/workspace
         return None
+
+    async def reorder_tasks(
+        self,
+        task_ids: list[str],
+        sprint_id: str | None = None,
+    ) -> list[SprintTask]:
+        """Reorder tasks by updating their positions.
+
+        Args:
+            task_ids: List of task IDs in the desired order.
+            sprint_id: Optional sprint ID to filter tasks.
+
+        Returns:
+            List of updated tasks.
+        """
+        updated_tasks = []
+
+        for index, task_id in enumerate(task_ids):
+            stmt = select(SprintTask).where(SprintTask.id == task_id)
+            if sprint_id:
+                stmt = stmt.where(SprintTask.sprint_id == sprint_id)
+            stmt = stmt.options(selectinload(SprintTask.assignee))
+
+            result = await self.db.execute(stmt)
+            task = result.scalar_one_or_none()
+
+            if task:
+                task.position = index
+                await self.db.flush()
+                await self.db.refresh(task)
+                updated_tasks.append(task)
+
+        return updated_tasks

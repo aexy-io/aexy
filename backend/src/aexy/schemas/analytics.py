@@ -77,6 +77,9 @@ class ExportType(str, Enum):
     REPORT = "report"
     DEVELOPER_PROFILE = "developer_profile"
     TEAM_ANALYTICS = "team_analytics"
+    SPRINT_TASKS = "sprint_tasks"
+    SPRINT_REPORT = "sprint_report"
+    PROJECT_BACKLOG = "project_backlog"
 
 
 class ExportStatus(str, Enum):

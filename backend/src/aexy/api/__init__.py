@@ -32,6 +32,7 @@ from aexy.api.sprint_tasks import router as sprint_tasks_router
 from aexy.api.sprint_analytics import router as sprint_analytics_router
 from aexy.api.retrospectives import router as retrospectives_router
 from aexy.api.project_tasks import router as project_tasks_router
+from aexy.api.task_templates import router as task_templates_router
 # Task Configuration
 from aexy.api.task_config import router as task_config_router
 # External Integrations
@@ -149,6 +150,7 @@ api_router.include_router(sprint_tasks_router, tags=["sprint-tasks"])
 api_router.include_router(sprint_analytics_router, tags=["sprint-analytics"])
 api_router.include_router(retrospectives_router, tags=["retrospectives"])
 api_router.include_router(project_tasks_router, tags=["project-tasks"])
+api_router.include_router(task_templates_router, tags=["task-templates"])
 # Task Configuration
 api_router.include_router(task_config_router, tags=["task-config"])
 # External Integrations

@@ -15,6 +15,15 @@ import {
   Sparkles,
   RefreshCw,
   MoreVertical,
+  Check,
+  User,
+  UserX,
+  Download,
+  FileSpreadsheet,
+  FileJson,
+  FileType,
+  Keyboard,
+  Command,
 } from "lucide-react";
 import {
   DndContext,
@@ -32,11 +41,13 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useProjectBoard, BoardViewMode, useBoardSelection } from "@/hooks/useProjectBoard";
 import { useEpics } from "@/hooks/useEpics";
-import { SprintTask, TaskStatus, TaskPriority, SprintListItem, EpicListItem } from "@/lib/api";
+import { SprintTask, TaskStatus, TaskPriority, SprintListItem, EpicListItem, sprintApi, TaskTemplate, taskTemplatesApi } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
 import { TaskCardPremium, TaskCardSkeleton } from "@/components/planning/TaskCardPremium";
 import { FilterBar } from "@/components/planning/FilterBar";
 import { CommandPalette } from "@/components/CommandPalette";
@@ -44,7 +55,7 @@ import { TaskDescriptionEditor, TaskDescriptionEditorRef, MentionUser } from "@/
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Badge, PremiumCard, Skeleton } from "@/components/ui/premium-card";
-import { X, Loader2 } from "lucide-react";
+import { X, Loader2, FileText, Zap } from "lucide-react";
 
 // Status column configuration
 const STATUS_CONFIG: Record<TaskStatus, { label: string; color: string; bgColor: string }> = {
@@ -279,6 +290,143 @@ const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string }> = 
   low: { label: "Low", color: "text-blue-400" },
 };
 
+// Keyboard Shortcuts Modal
+interface KeyboardShortcutsModalProps {
+  onClose: () => void;
+}
+
+const KEYBOARD_SHORTCUTS = [
+  { category: "Navigation", shortcuts: [
+    { keys: ["?"], description: "Show keyboard shortcuts" },
+    { keys: ["Esc"], description: "Close modal / Cancel" },
+    { keys: ["g", "b"], description: "Go to Board" },
+    { keys: ["g", "l"], description: "Go to Backlog" },
+    { keys: ["g", "r"], description: "Go to Roadmap" },
+  ]},
+  { category: "Task Actions", shortcuts: [
+    { keys: ["n"], description: "Create new task" },
+    { keys: ["e"], description: "Edit selected task" },
+    { keys: ["Enter"], description: "Open task details" },
+    { keys: ["Delete"], description: "Delete selected task" },
+  ]},
+  { category: "Selection", shortcuts: [
+    { keys: ["Click"], description: "Select task" },
+    { keys: ["Shift", "Click"], description: "Multi-select tasks" },
+    { keys: ["⌘", "a"], description: "Select all visible tasks" },
+    { keys: ["Esc"], description: "Clear selection" },
+  ]},
+  { category: "Quick Status", shortcuts: [
+    { keys: ["1"], description: "Set status to Backlog" },
+    { keys: ["2"], description: "Set status to To Do" },
+    { keys: ["3"], description: "Set status to In Progress" },
+    { keys: ["4"], description: "Set status to Review" },
+    { keys: ["5"], description: "Set status to Done" },
+  ]},
+  { category: "View", shortcuts: [
+    { keys: ["v", "s"], description: "Switch to Sprint view" },
+    { keys: ["v", "b"], description: "Switch to Status (Board) view" },
+    { keys: ["f"], description: "Focus search / filters" },
+  ]},
+];
+
+function KeyboardShortcutsModal({ onClose }: KeyboardShortcutsModalProps) {
+  // Close on escape key
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-2xl max-h-[80vh] overflow-hidden shadow-2xl"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-slate-700">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary-500/20 rounded-lg">
+              <Keyboard className="h-5 w-5 text-primary-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white">Keyboard Shortcuts</h3>
+              <p className="text-sm text-slate-400">Navigate faster with these shortcuts</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="p-4 overflow-y-auto max-h-[calc(80vh-80px)]">
+          <div className="grid grid-cols-2 gap-6">
+            {KEYBOARD_SHORTCUTS.map((section) => (
+              <div key={section.category}>
+                <h4 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
+                  <Command className="h-3.5 w-3.5" />
+                  {section.category}
+                </h4>
+                <div className="space-y-2">
+                  {section.shortcuts.map((shortcut, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between py-1.5"
+                    >
+                      <span className="text-sm text-slate-400">{shortcut.description}</span>
+                      <div className="flex items-center gap-1">
+                        {shortcut.keys.map((key, keyIdx) => (
+                          <span key={keyIdx}>
+                            <kbd className="px-2 py-1 bg-slate-900 border border-slate-600 rounded text-xs text-slate-300 font-mono shadow-sm">
+                              {key}
+                            </kbd>
+                            {keyIdx < shortcut.keys.length - 1 && (
+                              <span className="text-slate-600 mx-0.5">+</span>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-4 border-t border-slate-700 bg-slate-800/80">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-slate-500">
+              Press <kbd className="px-1.5 py-0.5 bg-slate-700 border border-slate-600 rounded text-xs">?</kbd> anytime to show this panel
+            </p>
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// Need to import React for useEffect
+import React from "react";
+
 interface AddTaskModalProps {
   onClose: () => void;
   onAdd: (data: {
@@ -301,9 +449,13 @@ interface AddTaskModalProps {
   epics: EpicListItem[];
   defaultStatus?: TaskStatus;
   users?: MentionUser[];
+  templates?: TaskTemplate[];
+  workspaceId?: string;
 }
 
-function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus = "todo", users = [] }: AddTaskModalProps) {
+function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus = "todo", users = [], templates = [], workspaceId }: AddTaskModalProps) {
+  const [mode, setMode] = useState<"select" | "form">(templates.length > 0 ? "select" : "form");
+  const [selectedTemplate, setSelectedTemplate] = useState<TaskTemplate | null>(null);
   const [title, setTitle] = useState("");
   const [descriptionJson, setDescriptionJson] = useState<Record<string, unknown> | null>(null);
   const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([]);
@@ -316,6 +468,17 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
   const [assigneeId, setAssigneeId] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const editorRef = useRef<TaskDescriptionEditorRef>(null);
+
+  // Apply template when selected
+  const applyTemplate = (template: TaskTemplate) => {
+    setSelectedTemplate(template);
+    setTitle(template.title_template);
+    setPriority(template.default_priority as TaskPriority);
+    if (template.default_story_points !== null) {
+      setStoryPoints(template.default_story_points.toString());
+    }
+    setMode("form");
+  };
 
   // Get default sprint (active or first non-completed)
   const defaultSprint = sprints.find((s) => s.status === "active") ||
@@ -398,7 +561,9 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
         className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-lg p-6 shadow-2xl"
       >
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-semibold text-white">Create Task</h3>
+          <h3 className="text-xl font-semibold text-white">
+            {mode === "select" ? "Create Task" : selectedTemplate ? `New Task from "${selectedTemplate.name}"` : "Create Task"}
+          </h3>
           <button
             onClick={onClose}
             className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
@@ -407,6 +572,63 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
           </button>
         </div>
 
+        {/* Template Selection Mode */}
+        {mode === "select" && (
+          <div className="space-y-4">
+            {/* Start from scratch option */}
+            <button
+              type="button"
+              onClick={() => setMode("form")}
+              className="w-full flex items-center gap-3 p-4 bg-slate-900/50 hover:bg-slate-700/50 border border-slate-700 hover:border-primary-500/50 rounded-xl transition text-left group"
+            >
+              <div className="p-2 bg-primary-500/20 rounded-lg group-hover:bg-primary-500/30 transition">
+                <Plus className="h-5 w-5 text-primary-400" />
+              </div>
+              <div>
+                <span className="text-white font-medium">Start from scratch</span>
+                <p className="text-sm text-slate-400">Create a blank task</p>
+              </div>
+            </button>
+
+            {/* Templates */}
+            {templates.length > 0 && (
+              <>
+                <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
+                  <Zap className="h-3.5 w-3.5" />
+                  Templates
+                </div>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {templates.filter(t => t.is_active).map((template) => (
+                    <button
+                      key={template.id}
+                      type="button"
+                      onClick={() => applyTemplate(template)}
+                      className="w-full flex items-center gap-3 p-3 bg-slate-900/30 hover:bg-slate-700/50 border border-slate-700/50 hover:border-primary-500/50 rounded-lg transition text-left group"
+                    >
+                      <div className="p-1.5 bg-slate-700/50 rounded group-hover:bg-slate-600/50 transition">
+                        <FileText className="h-4 w-4 text-slate-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-white font-medium truncate block">{template.name}</span>
+                        {template.description && (
+                          <p className="text-xs text-slate-500 truncate">{template.description}</p>
+                        )}
+                      </div>
+                      {template.category && (
+                        <Badge variant="default" size="sm" className="shrink-0">
+                          {template.category}
+                        </Badge>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Task Form Mode */}
+        {mode === "form" && (
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             {/* Title */}
@@ -555,31 +777,51 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 mt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition"
-            >
-              Cancel
-            </button>
-            <div className="relative group">
-              <button
-                type="submit"
-                disabled={isAdding || !title.trim()}
-                className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
-              >
-                {isAdding && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isAdding ? "Creating..." : "Create Task"}
-              </button>
-              {!title.trim() && !isAdding && (
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-700 text-xs text-slate-300 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                  Enter a task title to create
-                </div>
+          <div className="flex justify-between gap-3 mt-6">
+            <div>
+              {templates.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("select");
+                    setSelectedTemplate(null);
+                    setTitle("");
+                    setPriority("medium");
+                    setStoryPoints("");
+                  }}
+                  className="px-4 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition text-sm"
+                >
+                  ← Back to templates
+                </button>
               )}
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition"
+              >
+                Cancel
+              </button>
+              <div className="relative group">
+                <button
+                  type="submit"
+                  disabled={isAdding || !title.trim()}
+                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  {isAdding && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {isAdding ? "Creating..." : "Create Task"}
+                </button>
+                {!title.trim() && !isAdding && (
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-700 text-xs text-slate-300 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    Enter a task title to create
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </form>
+        )}
       </motion.div>
     </motion.div>
   );
@@ -1013,6 +1255,14 @@ export default function ProjectBoardPage({
   const { epics } = useEpics(currentWorkspaceId);
   const { members } = useWorkspaceMembers(currentWorkspaceId);
 
+  // Fetch task templates for the workspace
+  const { data: templatesData } = useQuery({
+    queryKey: ["taskTemplates", currentWorkspaceId],
+    queryFn: () => taskTemplatesApi.list(currentWorkspaceId!, { is_active: true, limit: 50 }),
+    enabled: !!currentWorkspaceId,
+  });
+  const templates = templatesData?.items || [];
+
   // Convert members to MentionUser format
   const mentionUsers: MentionUser[] = useMemo(() => {
     return (members || [])
@@ -1029,6 +1279,178 @@ export default function ProjectBoardPage({
   const [collapsedSprints, setCollapsedSprints] = useState<Set<string>>(new Set());
   const [showAddTask, setShowAddTask] = useState(false);
   const [overId, setOverId] = useState<string | null>(null);
+
+  // Bulk action dropdown state
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [showSprintDropdown, setShowSprintDropdown] = useState(false);
+  const [showAssignDropdown, setShowAssignDropdown] = useState(false);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+
+  const queryClient = useQueryClient();
+
+  // Get the first selected task's sprint ID for bulk operations
+  const getSourceSprintId = useCallback(() => {
+    const firstTaskId = Array.from(selectedTasks)[0];
+    const firstTask = filteredTasks.find((t) => t.id === firstTaskId);
+    return firstTask?.sprint_id || null;
+  }, [selectedTasks, filteredTasks]);
+
+  // Bulk status update mutation
+  const bulkStatusMutation = useMutation({
+    mutationFn: async ({ status }: { status: TaskStatus }) => {
+      const sprintId = getSourceSprintId();
+      if (!sprintId) {
+        throw new Error("No sprint ID found for selected tasks");
+      }
+      return sprintApi.bulkUpdateStatus(sprintId, Array.from(selectedTasks), status);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projectTasks", currentWorkspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ["sprintTasks"] });
+      clearSelection();
+      setShowStatusDropdown(false);
+    },
+  });
+
+  // Bulk move to sprint mutation
+  const bulkMoveMutation = useMutation({
+    mutationFn: async ({ targetSprintId }: { targetSprintId: string }) => {
+      const sprintId = getSourceSprintId();
+      if (!sprintId) {
+        throw new Error("No sprint ID found for selected tasks");
+      }
+      return sprintApi.bulkMoveTasks(sprintId, Array.from(selectedTasks), targetSprintId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projectTasks", currentWorkspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ["sprintTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["sprintStats"] });
+      clearSelection();
+      setShowSprintDropdown(false);
+    },
+  });
+
+  // Bulk assign mutation
+  const bulkAssignMutation = useMutation({
+    mutationFn: async ({ developerId }: { developerId: string | null }) => {
+      const sprintId = getSourceSprintId();
+      if (!sprintId) {
+        throw new Error("No sprint ID found for selected tasks");
+      }
+      if (developerId) {
+        const assignments = Array.from(selectedTasks).map((taskId) => ({
+          task_id: taskId,
+          developer_id: developerId,
+        }));
+        return sprintApi.bulkAssignTasks(sprintId, assignments);
+      }
+      // Unassign: update each task individually
+      return Promise.all(
+        Array.from(selectedTasks).map((taskId) =>
+          sprintApi.unassignTask(sprintId, taskId)
+        )
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projectTasks", currentWorkspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ["sprintTasks"] });
+      clearSelection();
+      setShowAssignDropdown(false);
+    },
+  });
+
+  // Export handler
+  const handleExport = useCallback(async (format: 'csv' | 'xlsx' | 'pdf' | 'json') => {
+    // Get the active sprint or first non-completed sprint
+    const activeSprint = sprints.find((s) => s.status === "active") || sprints.find((s) => s.status !== "completed");
+    if (!activeSprint) {
+      alert("No active sprint to export");
+      return;
+    }
+
+    setIsExporting(true);
+    setShowExportDropdown(false);
+
+    try {
+      const blob = await sprintApi.exportTasks(activeSprint.id, format);
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${activeSprint.name.replace(/\s+/g, "_")}_tasks.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Export failed:", error);
+      alert("Failed to export tasks. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
+  }, [sprints]);
+
+  // Keyboard shortcuts listener
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target as HTMLElement).isContentEditable
+      ) {
+        return;
+      }
+
+      // ? - Show keyboard shortcuts
+      if (e.key === "?" && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setShowKeyboardShortcuts(true);
+        return;
+      }
+
+      // n - New task
+      if (e.key === "n" && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setShowAddTask(true);
+        return;
+      }
+
+      // Escape - Clear selection or close modals
+      if (e.key === "Escape") {
+        if (showAddTask || selectedTask || showKeyboardShortcuts) {
+          // Modal will handle its own escape
+          return;
+        }
+        if (hasSelection) {
+          clearSelection();
+        }
+        return;
+      }
+
+      // Quick status changes for selected tasks (1-5)
+      if (hasSelection && ["1", "2", "3", "4", "5"].includes(e.key)) {
+        const statusMap: Record<string, TaskStatus> = {
+          "1": "backlog",
+          "2": "todo",
+          "3": "in_progress",
+          "4": "review",
+          "5": "done",
+        };
+        const newStatus = statusMap[e.key];
+        if (newStatus) {
+          bulkStatusMutation.mutate({ status: newStatus });
+        }
+        return;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showAddTask, selectedTask, showKeyboardShortcuts, hasSelection, clearSelection, bulkStatusMutation]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -1248,6 +1670,81 @@ export default function ProjectBoardPage({
                 Add Task
               </button>
 
+              {/* Templates */}
+              <Link
+                href={`/sprints/${projectId}/templates`}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm transition"
+                title="Task Templates"
+              >
+                <FileText className="h-4 w-4" />
+                Templates
+              </Link>
+
+              {/* Export Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowExportDropdown(!showExportDropdown)}
+                  disabled={isExporting}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm transition disabled:opacity-50"
+                  title="Export Tasks"
+                >
+                  {isExporting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  Export
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+                {showExportDropdown && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowExportDropdown(false)}
+                    />
+                    <div className="absolute right-0 top-full mt-1 w-44 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1 z-20">
+                      <button
+                        onClick={() => handleExport("csv")}
+                        className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                      >
+                        <FileSpreadsheet className="h-4 w-4 text-green-400" />
+                        Export as CSV
+                      </button>
+                      <button
+                        onClick={() => handleExport("xlsx")}
+                        className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                      >
+                        <FileSpreadsheet className="h-4 w-4 text-emerald-400" />
+                        Export as Excel
+                      </button>
+                      <button
+                        onClick={() => handleExport("pdf")}
+                        className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                      >
+                        <FileType className="h-4 w-4 text-red-400" />
+                        Export as PDF
+                      </button>
+                      <button
+                        onClick={() => handleExport("json")}
+                        className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                      >
+                        <FileJson className="h-4 w-4 text-yellow-400" />
+                        Export as JSON
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Keyboard Shortcuts */}
+              <button
+                onClick={() => setShowKeyboardShortcuts(true)}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                title="Keyboard shortcuts (?)"
+              >
+                <Keyboard className="h-5 w-5" />
+              </button>
+
               {/* Settings */}
               <button className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition">
                 <Settings2 className="h-5 w-5" />
@@ -1275,11 +1772,11 @@ export default function ProjectBoardPage({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="border-b border-slate-700 bg-primary-900/30 overflow-hidden"
+            className="border-b border-slate-700 bg-primary-900/30 overflow-hidden z-50 relative"
           >
             <div className="max-w-[1800px] mx-auto px-4 py-2 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="text-sm text-white">
+                <span className="text-sm text-white font-medium">
                   {selectedCount} task{selectedCount > 1 ? "s" : ""} selected
                 </span>
                 <button
@@ -1290,20 +1787,154 @@ export default function ProjectBoardPage({
                 </button>
               </div>
               <div className="flex items-center gap-2">
-                <button className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition">
-                  Move to Sprint
-                </button>
-                <button className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition">
-                  Change Status
-                </button>
-                <button className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition">
-                  Assign
-                </button>
+                {/* Move to Sprint Dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      setShowSprintDropdown(!showSprintDropdown);
+                      setShowStatusDropdown(false);
+                      setShowAssignDropdown(false);
+                    }}
+                    disabled={bulkMoveMutation.isPending}
+                    className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {bulkMoveMutation.isPending ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : null}
+                    Move to Sprint
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                  {showSprintDropdown && (
+                    <div className="absolute top-full right-0 mt-1 w-56 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1 z-50">
+                      {sprints
+                        .filter((s) => s.status !== "completed")
+                        .map((sprint) => (
+                          <button
+                            key={sprint.id}
+                            onClick={() => bulkMoveMutation.mutate({ targetSprintId: sprint.id })}
+                            className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                          >
+                            <span
+                              className={cn(
+                                "w-2 h-2 rounded-full",
+                                SPRINT_STATUS_COLORS[sprint.status] || "bg-slate-500"
+                              )}
+                            />
+                            {sprint.name}
+                          </button>
+                        ))}
+                      {sprints.filter((s) => s.status !== "completed").length === 0 && (
+                        <div className="px-3 py-2 text-sm text-slate-500">No active sprints</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Change Status Dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      setShowStatusDropdown(!showStatusDropdown);
+                      setShowSprintDropdown(false);
+                      setShowAssignDropdown(false);
+                    }}
+                    disabled={bulkStatusMutation.isPending}
+                    className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {bulkStatusMutation.isPending ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : null}
+                    Change Status
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                  {showStatusDropdown && (
+                    <div className="absolute top-full right-0 mt-1 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1 z-50">
+                      {(Object.entries(STATUS_CONFIG) as [TaskStatus, typeof STATUS_CONFIG[TaskStatus]][]).map(
+                        ([status, config]) => (
+                          <button
+                            key={status}
+                            onClick={() => bulkStatusMutation.mutate({ status })}
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-slate-700 flex items-center gap-2"
+                          >
+                            <span className={cn("w-2 h-2 rounded-full", config.bgColor, config.color)} />
+                            <span className="text-slate-200">{config.label}</span>
+                          </button>
+                        )
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Assign Dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      setShowAssignDropdown(!showAssignDropdown);
+                      setShowSprintDropdown(false);
+                      setShowStatusDropdown(false);
+                    }}
+                    disabled={bulkAssignMutation.isPending}
+                    className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {bulkAssignMutation.isPending ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : null}
+                    Assign
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                  {showAssignDropdown && (
+                    <div className="absolute top-full right-0 mt-1 w-56 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1 z-50 max-h-64 overflow-y-auto">
+                      <button
+                        onClick={() => bulkAssignMutation.mutate({ developerId: null })}
+                        className="w-full px-3 py-2 text-left text-sm text-slate-400 hover:bg-slate-700 flex items-center gap-2"
+                      >
+                        <UserX className="w-4 h-4" />
+                        Unassign
+                      </button>
+                      <div className="border-t border-slate-700 my-1" />
+                      {mentionUsers.map((user) => (
+                        <button
+                          key={user.id}
+                          onClick={() => bulkAssignMutation.mutate({ developerId: user.id })}
+                          className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                        >
+                          {user.avatar_url ? (
+                            <img
+                              src={user.avatar_url}
+                              alt={user.name}
+                              className="w-5 h-5 rounded-full"
+                            />
+                          ) : (
+                            <div className="w-5 h-5 rounded-full bg-slate-600 flex items-center justify-center">
+                              <User className="w-3 h-3 text-slate-400" />
+                            </div>
+                          )}
+                          {user.name}
+                        </button>
+                      ))}
+                      {mentionUsers.length === 0 && (
+                        <div className="px-3 py-2 text-sm text-slate-500">No team members</div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Click outside handler for dropdowns */}
+      {(showStatusDropdown || showSprintDropdown || showAssignDropdown) && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => {
+            setShowStatusDropdown(false);
+            setShowSprintDropdown(false);
+            setShowAssignDropdown(false);
+          }}
+        />
+      )}
 
       {/* Board Content */}
       <main className="flex-1 overflow-hidden">
@@ -1443,6 +2074,8 @@ export default function ProjectBoardPage({
             sprints={sprints}
             epics={epics || []}
             users={mentionUsers}
+            templates={templates}
+            workspaceId={currentWorkspaceId || undefined}
           />
         )}
       </AnimatePresence>
@@ -1460,6 +2093,13 @@ export default function ProjectBoardPage({
             epics={epics || []}
             users={mentionUsers}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Keyboard Shortcuts Modal */}
+      <AnimatePresence>
+        {showKeyboardShortcuts && (
+          <KeyboardShortcutsModal onClose={() => setShowKeyboardShortcuts(false)} />
         )}
       </AnimatePresence>
     </div>

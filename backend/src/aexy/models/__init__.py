@@ -58,6 +58,7 @@ from aexy.models.sprint import (
     WorkspaceCustomField,
     TaskGitHubLink,
     TaskActivity,
+    TaskTemplate,
 )
 from aexy.models.epic import Epic
 from aexy.models.story import UserStory, StoryActivity

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
@@ -23,11 +23,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useProjectBoard } from "@/hooks/useProjectBoard";
 import { useEpics } from "@/hooks/useEpics";
-import { SprintTask, SprintListItem, TaskPriority, TaskStatus, EpicListItem } from "@/lib/api";
+import { SprintTask, SprintListItem, TaskPriority, TaskStatus, EpicListItem, sprintApi } from "@/lib/api";
 import { CommandPalette } from "@/components/CommandPalette";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Badge, PremiumCard, Skeleton } from "@/components/ui/premium-card";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string; bgColor: string }> = {
   critical: { label: "Critical", color: "text-red-400", bgColor: "bg-red-900/30" },
@@ -63,11 +64,17 @@ function BacklogItemRow({
   const priorityConfig = PRIORITY_CONFIG[task.priority];
 
   return (
-    <motion.div
-      layout
+    <Reorder.Item
+      value={task}
+      id={task.id}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
+      whileDrag={{
+        scale: 1.02,
+        boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
+        zIndex: 50,
+      }}
       className={cn(
         "group flex items-center gap-3 px-4 py-3 bg-slate-800/60 border border-slate-700/50 rounded-lg",
         "hover:border-slate-600 hover:bg-slate-800/80 transition-all duration-200",
@@ -215,7 +222,7 @@ function BacklogItemRow({
           </>
         )}
       </div>
-    </motion.div>
+    </Reorder.Item>
   );
 }
 
@@ -498,6 +505,9 @@ export default function BacklogPage({
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | null>(null);
   const [showAddTask, setShowAddTask] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
+  const [orderedItems, setOrderedItems] = useState<BacklogItem[]>([]);
+
+  const queryClient = useQueryClient();
 
   // Get backlog items from tasksByStatus
   const backlogItems: BacklogItem[] = useMemo(() => {
@@ -520,6 +530,44 @@ export default function BacklogPage({
       return true;
     });
   }, [backlogItems, searchQuery, priorityFilter]);
+
+  // Sync orderedItems with filteredItems when data changes
+  useEffect(() => {
+    setOrderedItems(filteredItems);
+  }, [filteredItems]);
+
+  // Reorder mutation for drag-and-drop
+  const reorderMutation = useMutation({
+    mutationFn: async (newOrder: BacklogItem[]) => {
+      // Group tasks by sprint_id for reordering
+      const tasksBySprint = new Map<string, string[]>();
+      newOrder.forEach((task) => {
+        if (task.sprint_id) {
+          const existing = tasksBySprint.get(task.sprint_id) || [];
+          existing.push(task.id);
+          tasksBySprint.set(task.sprint_id, existing);
+        }
+      });
+
+      // Reorder tasks for each sprint
+      const promises: Promise<SprintTask[]>[] = [];
+      tasksBySprint.forEach((taskIds, sprintId) => {
+        promises.push(sprintApi.reorderTasks(sprintId, taskIds));
+      });
+
+      await Promise.all(promises);
+    },
+    onSuccess: () => {
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["project-board"] });
+    },
+  });
+
+  const handleReorder = useCallback((newOrder: BacklogItem[]) => {
+    setOrderedItems(newOrder);
+    // Debounce the API call - only call when drag ends (framer-motion handles this)
+    reorderMutation.mutate(newOrder);
+  }, [reorderMutation]);
 
   const toggleSelect = useCallback((taskId: string) => {
     setSelectedTasks((prev) => {
@@ -781,25 +829,32 @@ export default function BacklogPage({
               </div>
             ) : (
               <>
-                {/* Backlog list */}
-                <div className="space-y-2">
-                  <AnimatePresence mode="popLayout">
-                    {filteredItems.map((item, index) => (
-                      <BacklogItemRow
-                        key={item.id}
-                        task={item}
-                        index={index}
-                        isSelected={selectedTasks.has(item.id)}
-                        onSelect={toggleSelect}
-                        onMoveToTodo={handleMoveToTodo}
-                        onDelete={handleDelete}
-                        sprints={sprints || []}
-                      />
-                    ))}
-                  </AnimatePresence>
-                </div>
+                {/* Backlog list with drag-and-drop */}
+                {orderedItems.length > 0 ? (
+                  <Reorder.Group
+                    axis="y"
+                    values={orderedItems}
+                    onReorder={handleReorder}
+                    className="space-y-2"
+                  >
+                    <AnimatePresence mode="popLayout">
+                      {orderedItems.map((item, index) => (
+                        <BacklogItemRow
+                          key={item.id}
+                          task={item}
+                          index={index}
+                          isSelected={selectedTasks.has(item.id)}
+                          onSelect={toggleSelect}
+                          onMoveToTodo={handleMoveToTodo}
+                          onDelete={handleDelete}
+                          sprints={sprints || []}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </Reorder.Group>
+                ) : null}
 
-                {filteredItems.length === 0 && (
+                {orderedItems.length === 0 && (
                   <div className="text-center py-12">
                     <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800 flex items-center justify-center">
                       <Target className="h-8 w-8 text-slate-600" />

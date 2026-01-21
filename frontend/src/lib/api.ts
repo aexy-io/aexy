@@ -2072,6 +2072,50 @@ export interface SprintTask {
   updated_at: string;
 }
 
+export interface TaskTemplate {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  is_active: boolean;
+  title_template: string;
+  description_template: string | null;
+  default_priority: TaskPriority;
+  default_story_points: number | null;
+  default_labels: string[];
+  subtasks: string[];
+  checklist: string[];
+  usage_count: number;
+  created_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TaskTemplateCreate {
+  name: string;
+  description?: string;
+  category?: string;
+  title_template: string;
+  description_template?: string;
+  default_priority?: TaskPriority;
+  default_story_points?: number;
+  default_labels?: string[];
+  subtasks?: string[];
+  checklist?: string[];
+}
+
+export interface TaskFromTemplateCreate {
+  template_id: string;
+  title_variables?: Record<string, string>;
+  sprint_id?: string;
+  assignee_id?: string;
+  override_priority?: TaskPriority;
+  override_story_points?: number;
+  additional_labels?: string[];
+  create_subtasks?: boolean;
+}
+
 export interface SprintStats {
   total_tasks: number;
   completed_tasks: number;
@@ -2707,6 +2751,28 @@ export const sprintApi = {
     return response.data;
   },
 
+  bulkUpdateStatus: async (sprintId: string, taskIds: string[], status: TaskStatus): Promise<SprintTask[]> => {
+    const response = await api.post(`/sprints/${sprintId}/tasks/bulk-status`, { task_ids: taskIds, status });
+    return response.data;
+  },
+
+  bulkMoveTasks: async (sprintId: string, taskIds: string[], targetSprintId: string): Promise<SprintTask[]> => {
+    const response = await api.post(`/sprints/${sprintId}/tasks/bulk-move`, { task_ids: taskIds, target_sprint_id: targetSprintId });
+    return response.data;
+  },
+
+  exportTasks: async (sprintId: string, format: 'csv' | 'xlsx' | 'pdf' | 'json'): Promise<Blob> => {
+    const response = await api.get(`/sprints/${sprintId}/tasks/export/${format}`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  reorderTasks: async (sprintId: string, taskIds: string[]): Promise<SprintTask[]> => {
+    const response = await api.post(`/sprints/${sprintId}/tasks/reorder`, { task_ids: taskIds });
+    return response.data;
+  },
+
   importTasks: async (sprintId: string, source: TaskSourceType, config: {
     github?: { owner: string; repo: string; api_token?: string; labels?: string[]; limit?: number };
     jira?: { api_url: string; api_key: string; project_key: string; jql_filter?: string; limit?: number };
@@ -2841,6 +2907,65 @@ export const sprintApi = {
       `/workspaces/${workspaceId}/teams/${teamId}/sprints/${fromSprintId}/carry-over/${toSprintId}`,
       { task_ids: taskIds }
     );
+    return response.data;
+  },
+};
+
+// ============================================================================
+// Task Templates API (workspace-scoped task templates)
+// ============================================================================
+
+export interface TaskTemplateListResponse {
+  items: TaskTemplate[];
+  total: number;
+}
+
+export const taskTemplatesApi = {
+  list: async (workspaceId: string, options?: {
+    category?: string;
+    is_active?: boolean;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<TaskTemplateListResponse> => {
+    const response = await api.get(`/workspaces/${workspaceId}/task-templates`, { params: options });
+    return response.data;
+  },
+
+  get: async (workspaceId: string, templateId: string): Promise<TaskTemplate> => {
+    const response = await api.get(`/workspaces/${workspaceId}/task-templates/${templateId}`);
+    return response.data;
+  },
+
+  create: async (workspaceId: string, data: TaskTemplateCreate): Promise<TaskTemplate> => {
+    const response = await api.post(`/workspaces/${workspaceId}/task-templates`, data);
+    return response.data;
+  },
+
+  update: async (workspaceId: string, templateId: string, data: Partial<TaskTemplateCreate> & { is_active?: boolean }): Promise<TaskTemplate> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/task-templates/${templateId}`, data);
+    return response.data;
+  },
+
+  delete: async (workspaceId: string, templateId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/task-templates/${templateId}`);
+  },
+
+  useTemplate: async (workspaceId: string, templateId: string, data: {
+    sprint_id: string;
+    title_variables?: Record<string, string>;
+    assignee_id?: string;
+    override_priority?: TaskPriority;
+    override_story_points?: number;
+    additional_labels?: string[];
+    create_subtasks?: boolean;
+  }): Promise<SprintTask> => {
+    const response = await api.post(`/workspaces/${workspaceId}/task-templates/${templateId}/use`, data);
+    return response.data;
+  },
+
+  listCategories: async (workspaceId: string): Promise<string[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/task-templates/categories/list`);
     return response.data;
   },
 };
