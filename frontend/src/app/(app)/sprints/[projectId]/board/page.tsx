@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -856,26 +856,83 @@ interface EditTaskModalProps {
 }
 
 function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints, epics, users }: EditTaskModalProps) {
-  const [title, setTitle] = useState(task.title);
+  const CACHE_KEY = `task_draft_${task.id}`;
+
+  // Try to restore cached state
+  const getCachedState = useCallback(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch {
+      // Ignore parse errors
+    }
+    return null;
+  }, [CACHE_KEY]);
+
+  const cachedState = getCachedState();
+
+  const [title, setTitle] = useState(cachedState?.title ?? task.title);
   const [descriptionJson, setDescriptionJson] = useState<Record<string, unknown> | null>(
-    (task as any).description_json || null
+    cachedState?.descriptionJson ?? (task as any).description_json ?? null
   );
   const [mentionedUserIds, setMentionedUserIds] = useState<string[]>(
-    (task as any).mentioned_user_ids || []
+    cachedState?.mentionedUserIds ?? (task as any).mentioned_user_ids ?? []
   );
   const [mentionedFilePaths, setMentionedFilePaths] = useState<string[]>(
-    (task as any).mentioned_file_paths || []
+    cachedState?.mentionedFilePaths ?? (task as any).mentioned_file_paths ?? []
   );
-  const [storyPoints, setStoryPoints] = useState(task.story_points?.toString() || "");
-  const [priority, setPriority] = useState<TaskPriority>(task.priority);
-  const [status, setStatus] = useState<TaskStatus>(task.status);
-  const [epicId, setEpicId] = useState<string>(task.epic_id || "");
-  const [sprintId, setSprintId] = useState<string>(task.sprint_id || "");
-  const [assigneeId, setAssigneeId] = useState<string>(task.assignee_id || "");
+  const [storyPoints, setStoryPoints] = useState(cachedState?.storyPoints ?? task.story_points?.toString() ?? "");
+  const [priority, setPriority] = useState<TaskPriority>(cachedState?.priority ?? task.priority);
+  const [status, setStatus] = useState<TaskStatus>(cachedState?.status ?? task.status);
+  const [epicId, setEpicId] = useState<string>(cachedState?.epicId ?? task.epic_id ?? "");
+  const [sprintId, setSprintId] = useState<string>(cachedState?.sprintId ?? task.sprint_id ?? "");
+  const [assigneeId, setAssigneeId] = useState<string>(cachedState?.assigneeId ?? task.assignee_id ?? "");
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showRestoredNotice, setShowRestoredNotice] = useState(!!cachedState);
   const editorRef = useRef<TaskDescriptionEditorRef>(null);
+
+  // Cache form state when values change
+  useEffect(() => {
+    const currentState = {
+      title,
+      descriptionJson,
+      mentionedUserIds,
+      mentionedFilePaths,
+      storyPoints,
+      priority,
+      status,
+      epicId,
+      sprintId,
+      assigneeId,
+    };
+
+    // Only cache if there are actual changes from original task
+    const hasLocalChanges =
+      title !== task.title ||
+      JSON.stringify(descriptionJson) !== JSON.stringify((task as any).description_json || null) ||
+      storyPoints !== (task.story_points?.toString() || "") ||
+      priority !== task.priority ||
+      status !== task.status ||
+      epicId !== (task.epic_id || "") ||
+      sprintId !== (task.sprint_id || "") ||
+      assigneeId !== (task.assignee_id || "");
+
+    if (hasLocalChanges) {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(currentState));
+    } else {
+      localStorage.removeItem(CACHE_KEY);
+    }
+  }, [CACHE_KEY, title, descriptionJson, mentionedUserIds, mentionedFilePaths, storyPoints, priority, status, epicId, sprintId, assigneeId, task]);
+
+  // Clear cache helper
+  const clearCache = useCallback(() => {
+    localStorage.removeItem(CACHE_KEY);
+  }, [CACHE_KEY]);
 
   const handleDescriptionChange = useCallback((content: Record<string, unknown>, mentions: { user_ids: string[]; file_paths: string[] }) => {
     setDescriptionJson(content);
@@ -936,11 +993,18 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
           mentioned_file_paths: mentionedFilePaths.length > 0 ? mentionedFilePaths : undefined,
         },
       });
+      clearCache();
       onClose();
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to update task";
       setError(errorMessage);
     }
+  };
+
+  // Handle discard - clear cache and close
+  const handleDiscard = () => {
+    clearCache();
+    onClose();
   };
 
   const handleDelete = async () => {
@@ -949,6 +1013,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
         sprintId: task.sprint_id || null,
         taskId: task.id,
       });
+      clearCache();
       onClose();
     } catch (err) {
       console.error("Failed to delete:", err);
@@ -981,6 +1046,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-2xl shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-start justify-between p-4 border-b border-slate-700">
@@ -1184,11 +1250,24 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
           </div>
         </div>
 
+        {/* Restored from draft notice */}
+        {showRestoredNotice && (
+          <div className="flex items-center justify-between px-4 py-2 bg-blue-500/10 border-t border-blue-500/30 text-sm">
+            <span className="text-blue-400">Draft restored from previous session</span>
+            <button
+              onClick={() => setShowRestoredNotice(false)}
+              className="text-blue-400 hover:text-blue-300 text-xs"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {/* Footer */}
         {hasChanges && (
           <div className="flex justify-end gap-3 p-4 border-t border-slate-700 bg-slate-800/80">
             <button
-              onClick={onClose}
+              onClick={handleDiscard}
               className="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition"
             >
               Discard
