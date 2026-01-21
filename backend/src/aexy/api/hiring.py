@@ -889,6 +889,82 @@ async def list_hiring_candidates(
     return [candidate_to_response(c) for c in candidates]
 
 
+class PipelineMetricsResponse(BaseModel):
+    """Pipeline metrics response."""
+    total: int
+    by_stage: dict[str, int]
+    conversion_rates: dict[str, float]
+
+
+@router.get("/candidates/pipeline-metrics", response_model=PipelineMetricsResponse)
+async def get_pipeline_metrics(
+    workspace_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get hiring pipeline metrics by stage.
+
+    Args:
+        workspace_id: Workspace UUID.
+        current_user: Current authenticated user.
+        db: Database session.
+
+    Returns:
+        Pipeline metrics with counts by stage and conversion rates.
+    """
+    from sqlalchemy import func
+    from aexy.services.workspace_service import WorkspaceService
+
+    # Verify workspace access
+    workspace_service = WorkspaceService(db)
+    if not await workspace_service.check_permission(workspace_id, str(current_user.id), "viewer"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a member of this workspace",
+        )
+
+    # Get counts by stage
+    stage_counts_query = (
+        select(
+            HiringCandidate.stage,
+            func.count(HiringCandidate.id).label("count")
+        )
+        .where(HiringCandidate.workspace_id == workspace_id)
+        .group_by(HiringCandidate.stage)
+    )
+    result = await db.execute(stage_counts_query)
+    stage_counts = {row[0]: row[1] for row in result.all()}
+
+    # Initialize all stages with 0
+    by_stage = {stage: stage_counts.get(stage, 0) for stage in VALID_STAGES if stage != "rejected"}
+
+    # Calculate total (excluding rejected)
+    total = sum(by_stage.values())
+
+    # Calculate conversion rates (from one stage to the next)
+    stages_order = ["applied", "screening", "assessment", "interview", "offer", "hired"]
+    conversion_rates = {}
+    for i in range(len(stages_order) - 1):
+        from_stage = stages_order[i]
+        to_stage = stages_order[i + 1]
+        from_count = by_stage.get(from_stage, 0)
+        to_count = by_stage.get(to_stage, 0)
+        # Conversion rate = (people who moved to next stage) / (people in current stage)
+        # We use cumulative counts for a more accurate picture
+        cumulative_from = sum(by_stage.get(s, 0) for s in stages_order[i:])
+        cumulative_to = sum(by_stage.get(s, 0) for s in stages_order[i+1:])
+        if cumulative_from > 0:
+            conversion_rates[f"{from_stage}_to_{to_stage}"] = round((cumulative_to / cumulative_from) * 100, 1)
+        else:
+            conversion_rates[f"{from_stage}_to_{to_stage}"] = 0.0
+
+    return PipelineMetricsResponse(
+        total=total,
+        by_stage=by_stage,
+        conversion_rates=conversion_rates,
+    )
+
+
 @router.post("/candidates", response_model=HiringCandidateResponse, status_code=status.HTTP_201_CREATED)
 async def create_hiring_candidate(
     workspace_id: str,

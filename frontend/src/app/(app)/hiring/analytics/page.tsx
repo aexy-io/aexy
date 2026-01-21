@@ -62,6 +62,7 @@ export default function HiringAnalyticsPage() {
     funnel: true,
     performance: true,
   });
+  const [pipelineMetrics, setPipelineMetrics] = useState<PipelineMetrics | null>(null);
 
   // Assessment metrics
   const { metrics: assessmentMetrics } = useOrganizationAssessmentMetrics(currentWorkspaceId);
@@ -74,20 +75,24 @@ export default function HiringAnalyticsPage() {
 
       if (currentWorkspaceId) {
         try {
-          const [teamsList, reqs] = await Promise.all([
+          const [teamsList, reqs, metrics] = await Promise.all([
             teamApi.list(currentWorkspaceId),
             hiringApi.listRequirements(currentWorkspaceId, undefined, selectedTeamId || undefined),
+            hiringApi.getPipelineMetrics(currentWorkspaceId),
           ]);
           setTeams(teamsList);
           setRequirements(reqs);
+          setPipelineMetrics(metrics);
         } catch (error) {
           console.error("Failed to fetch requirements:", error);
           setTeams([]);
           setRequirements([]);
+          setPipelineMetrics(null);
         }
       } else {
         setTeams([]);
         setRequirements([]);
+        setPipelineMetrics(null);
       }
     } catch (error) {
       console.error("Failed to fetch hiring data:", error);
@@ -647,48 +652,65 @@ export default function HiringAnalyticsPage() {
 
           {expandedSections.funnel && (
             <div className="bg-slate-900/50 rounded-xl border border-slate-800 p-6">
-              <div className="grid grid-cols-6 gap-4 mb-6">
-                {[
-                  { stage: "Applied", count: totalCandidates, percent: 100, color: "bg-blue-500" },
-                  { stage: "Screening", count: Math.round(totalCandidates * 0.7), percent: 70, color: "bg-cyan-500" },
-                  { stage: "Assessment", count: completedAssessments, percent: Math.round((completedAssessments / Math.max(totalCandidates, 1)) * 100), color: "bg-primary-500" },
-                  { stage: "Interview", count: Math.round(completedAssessments * 0.5), percent: Math.round((completedAssessments * 0.5 / Math.max(totalCandidates, 1)) * 100), color: "bg-purple-500" },
-                  { stage: "Offer", count: Math.round(completedAssessments * 0.2), percent: Math.round((completedAssessments * 0.2 / Math.max(totalCandidates, 1)) * 100), color: "bg-orange-500" },
-                  { stage: "Hired", count: Math.round(completedAssessments * 0.1), percent: Math.round((completedAssessments * 0.1 / Math.max(totalCandidates, 1)) * 100), color: "bg-green-500" },
-                ].map((item, idx) => (
-                  <div key={item.stage} className="text-center">
-                    <div className="relative h-32 flex items-end justify-center mb-3">
-                      <div
-                        className={`w-full ${item.color} rounded-t-lg transition-all`}
-                        style={{
-                          height: `${Math.max(15, item.percent)}%`,
-                        }}
-                      />
-                    </div>
-                    <p className="text-2xl font-bold text-white">{item.count}</p>
-                    <p className="text-sm text-slate-400">{item.stage}</p>
-                    <p className="text-xs text-slate-500">{item.percent}%</p>
+              {pipelineMetrics ? (
+                <>
+                  <div className="grid grid-cols-6 gap-4 mb-6">
+                    {[
+                      { stage: "applied", label: "Applied", color: "bg-blue-500" },
+                      { stage: "screening", label: "Screening", color: "bg-cyan-500" },
+                      { stage: "assessment", label: "Assessment", color: "bg-primary-500" },
+                      { stage: "interview", label: "Interview", color: "bg-purple-500" },
+                      { stage: "offer", label: "Offer", color: "bg-orange-500" },
+                      { stage: "hired", label: "Hired", color: "bg-green-500" },
+                    ].map((item) => {
+                      const count = pipelineMetrics.by_stage[item.stage] || 0;
+                      const total = pipelineMetrics.total || 1;
+                      const percent = Math.round((count / total) * 100);
+                      return (
+                        <div key={item.stage} className="text-center">
+                          <div className="relative h-32 flex items-end justify-center mb-3">
+                            <div
+                              className={`w-full ${item.color} rounded-t-lg transition-all`}
+                              style={{
+                                height: `${Math.max(15, percent)}%`,
+                              }}
+                            />
+                          </div>
+                          <p className="text-2xl font-bold text-white">{count}</p>
+                          <p className="text-sm text-slate-400">{item.label}</p>
+                          <p className="text-xs text-slate-500">{percent}%</p>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
 
-              {/* Conversion Rates */}
-              <div className="grid grid-cols-5 gap-4 pt-4 border-t border-slate-700">
-                {[
-                  { from: "Applied", to: "Screening", rate: 70 },
-                  { from: "Screening", to: "Assessment", rate: Math.round((completedAssessments / Math.max(totalCandidates * 0.7, 1)) * 100) },
-                  { from: "Assessment", to: "Interview", rate: 50 },
-                  { from: "Interview", to: "Offer", rate: 40 },
-                  { from: "Offer", to: "Hired", rate: 50 },
-                ].map((conv) => (
-                  <div key={`${conv.from}-${conv.to}`} className="text-center">
-                    <p className="text-xs text-slate-500 mb-1">{conv.from} → {conv.to}</p>
-                    <p className={`text-lg font-bold ${conv.rate >= 50 ? 'text-green-400' : conv.rate >= 30 ? 'text-yellow-400' : 'text-red-400'}`}>
-                      {conv.rate}%
-                    </p>
+                  {/* Conversion Rates */}
+                  <div className="grid grid-cols-5 gap-4 pt-4 border-t border-slate-700">
+                    {[
+                      { from: "applied", to: "screening", fromLabel: "Applied", toLabel: "Screening" },
+                      { from: "screening", to: "assessment", fromLabel: "Screening", toLabel: "Assessment" },
+                      { from: "assessment", to: "interview", fromLabel: "Assessment", toLabel: "Interview" },
+                      { from: "interview", to: "offer", fromLabel: "Interview", toLabel: "Offer" },
+                      { from: "offer", to: "hired", fromLabel: "Offer", toLabel: "Hired" },
+                    ].map((conv) => {
+                      const rate = pipelineMetrics.conversion_rates[`${conv.from}_to_${conv.to}`] || 0;
+                      return (
+                        <div key={`${conv.from}-${conv.to}`} className="text-center">
+                          <p className="text-xs text-slate-500 mb-1">{conv.fromLabel} → {conv.toLabel}</p>
+                          <p className={`text-lg font-bold ${rate >= 50 ? 'text-green-400' : rate >= 30 ? 'text-yellow-400' : 'text-red-400'}`}>
+                            {rate}%
+                          </p>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
+                </>
+              ) : (
+                <div className="text-center py-8 text-slate-400">
+                  <p>No pipeline data available</p>
+                  <p className="text-sm mt-2">Add candidates to see funnel analytics</p>
+                </div>
+              )}
             </div>
           )}
         </div>

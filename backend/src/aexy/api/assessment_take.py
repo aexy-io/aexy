@@ -201,17 +201,23 @@ async def get_invitation_or_assessment(
             )
         return invitation, assessment
 
-    # Try public_token or assessment ID
+    # Try public_token or assessment ID - but only if public access is enabled
     assessment = await get_assessment_by_public_token_or_id(token, db)
     if assessment:
-        # Check if public access is enabled
+        # Check if public access is enabled via is_public flag in schedule
+        is_public = False
+        if assessment.schedule and isinstance(assessment.schedule, dict):
+            is_public = assessment.schedule.get("is_public", False)
+
         status_val = assessment.status.value if hasattr(assessment.status, 'value') else assessment.status
-        if assessment.public_token or status_val == "active":
+
+        # Only allow public access if is_public is True AND assessment is active
+        if is_public and assessment.public_token and status_val == "active":
             return None, assessment
 
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
-        detail="Invalid assessment link",
+        detail="Invalid assessment link. Please use the invitation link sent to your email.",
     )
 
 

@@ -34,6 +34,9 @@ class NotificationEventType(str, Enum):
     WORKSPACE_JOIN_APPROVED = "workspace_join_approved"
     WORKSPACE_JOIN_REJECTED = "workspace_join_rejected"
 
+    # Assessment invitations
+    ASSESSMENT_INVITATION = "assessment_invitation"
+
 
 class NotificationContext(BaseModel):
     """Context for notification rendering and navigation."""
@@ -254,5 +257,10 @@ NOTIFICATION_TEMPLATES = {
         "title": "Join Request Declined",
         "body_template": "Your request to join {workspace_name} was not approved",
         "email_subject": "Update on Your Join Request for {workspace_name}",
+    },
+    NotificationEventType.ASSESSMENT_INVITATION: {
+        "title": "Assessment Invitation",
+        "body_template": "You have been invited to take the assessment: {assessment_title}. Please complete it by {deadline}.",
+        "email_subject": "You're Invited: {assessment_title} Assessment",
     },
 }

@@ -10,6 +10,7 @@ from sqlalchemy import func, select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from aexy.core.config import settings
 from aexy.models.assessment import (
     Assessment,
     AssessmentTopic,
@@ -37,6 +38,7 @@ from aexy.schemas.assessment import (
     WizardStepStatus,
     StepStatus,
 )
+from aexy.services.email_service import email_service
 
 logger = logging.getLogger(__name__)
 
@@ -948,21 +950,142 @@ class AssessmentService:
         assessment.published_at = datetime.utcnow()
         assessment.updated_at = datetime.utcnow()
 
-        # Generate public token if not already set
-        if not assessment.public_token:
+        # Generate public token if not already set (only if is_public is True)
+        is_public = assessment.schedule.get("is_public", False) if assessment.schedule else False
+        if is_public and not assessment.public_token:
             assessment.public_token = secrets.token_urlsafe(32)
+        elif not is_public:
+            # Clear public token if not public
+            assessment.public_token = None
 
-        # Mark invitations as sent if sending
+        # Send invitations if requested
         if send_invitations:
             invitations = await self.get_candidates(assessment_id)
             for invitation in invitations:
                 if invitation.status == InvitationStatus.PENDING.value:
-                    invitation.status = InvitationStatus.SENT.value
-                    invitation.email_sent_at = datetime.utcnow()
+                    # Send the actual email
+                    email_sent = await self._send_invitation_email(
+                        invitation=invitation,
+                        assessment=assessment,
+                    )
+                    if email_sent:
+                        invitation.status = InvitationStatus.SENT.value
+                        invitation.email_sent_at = datetime.utcnow()
 
         await self.db.flush()
         await self.db.refresh(assessment)
         return assessment
+
+    async def _send_invitation_email(
+        self,
+        invitation: AssessmentInvitation,
+        assessment: Assessment,
+    ) -> bool:
+        """Send invitation email to a candidate."""
+        try:
+            # Get candidate email
+            candidate_result = await self.db.execute(
+                select(Candidate).where(Candidate.id == invitation.candidate_id)
+            )
+            candidate = candidate_result.scalar_one_or_none()
+            if not candidate or not candidate.email:
+                logger.warning(f"No email for candidate {invitation.candidate_id}")
+                return False
+
+            # Build invitation URL
+            frontend_url = getattr(settings, "frontend_url", "http://localhost:3000")
+            invitation_url = f"{frontend_url}/take/{invitation.invitation_token}"
+
+            # Build deadline string
+            deadline_str = "No specific deadline"
+            if invitation.deadline:
+                deadline_str = invitation.deadline.strftime("%B %d, %Y at %I:%M %p")
+            elif assessment.schedule and assessment.schedule.get("end_date"):
+                try:
+                    end_date = datetime.fromisoformat(assessment.schedule["end_date"].replace("Z", "+00:00"))
+                    deadline_str = end_date.strftime("%B %d, %Y at %I:%M %p")
+                except (ValueError, TypeError):
+                    pass
+
+            # Build email content
+            subject = f"You're Invited: {assessment.title} Assessment"
+
+            body_text = f"""Hello {candidate.name or 'Candidate'},
+
+You have been invited to complete an assessment: {assessment.title}
+
+Assessment Details:
+- Duration: {assessment.total_duration_minutes} minutes
+- Questions: {assessment.total_questions}
+- Deadline: {deadline_str}
+
+Click the link below to start your assessment:
+{invitation_url}
+
+Important Notes:
+- Make sure you have a stable internet connection
+- Find a quiet place where you won't be disturbed
+- Complete the assessment in one sitting
+
+Good luck!
+
+Best regards,
+The Hiring Team"""
+
+            # Create HTML body
+            body_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6; margin: 0; padding: 20px;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="background-color: #0f172a; padding: 20px; text-align: center;">
+                        <h1 style="color: white; margin: 0; font-size: 24px;">Assessment Invitation</h1>
+                    </div>
+                    <div style="padding: 30px;">
+                        <p style="color: #4b5563; font-size: 16px;">Hello {candidate.name or 'Candidate'},</p>
+                        <p style="color: #4b5563; line-height: 1.6;">You have been invited to complete an assessment:</p>
+                        <h2 style="color: #1f2937; margin: 20px 0;">{assessment.title}</h2>
+                        <div style="background-color: #f9fafb; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                            <p style="margin: 5px 0; color: #4b5563;"><strong>Duration:</strong> {assessment.total_duration_minutes} minutes</p>
+                            <p style="margin: 5px 0; color: #4b5563;"><strong>Questions:</strong> {assessment.total_questions}</p>
+                            <p style="margin: 5px 0; color: #4b5563;"><strong>Deadline:</strong> {deadline_str}</p>
+                        </div>
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="{invitation_url}" style="background-color: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Start Assessment</a>
+                        </div>
+                        <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
+                            <strong>Important Notes:</strong><br>
+                            • Make sure you have a stable internet connection<br>
+                            • Find a quiet place where you won't be disturbed<br>
+                            • Complete the assessment in one sitting
+                        </p>
+                    </div>
+                    <div style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
+                        <p style="color: #9ca3af; font-size: 12px; margin: 0;">Good luck with your assessment!</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            # Send the email
+            result = await email_service.send_templated_email(
+                db=self.db,
+                recipient_email=candidate.email,
+                subject=subject,
+                body_text=body_text,
+                body_html=body_html,
+            )
+
+            return result.status == "sent"
+
+        except Exception as e:
+            logger.error(f"Failed to send invitation email: {e}")
+            return False
 
     # =========================================================================
     # METRICS
