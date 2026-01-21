@@ -2,13 +2,13 @@ import { Metadata } from "next";
 import { AppAccessGuard } from "@/components/guards/AppAccessGuard";
 
 export const metadata: Metadata = {
-  title: "Sprints",
+  title: "Forms",
 };
 
-export default function SprintsLayout({
+export default function FormsLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <AppAccessGuard appId="sprints">{children}</AppAccessGuard>;
+  return <AppAccessGuard appId="forms">{children}</AppAccessGuard>;
 }

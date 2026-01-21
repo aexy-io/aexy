@@ -11,7 +11,6 @@ import {
   Crown,
   ExternalLink,
   Loader2,
-  Receipt,
   RefreshCw,
   Settings,
   Sparkles,
@@ -21,6 +20,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useSubscription } from "@/hooks/useSubscription";
 import { billingApi } from "@/lib/api";
+
+// New billing components
+import { UsageAlerts } from "@/components/billing/UsageAlert";
+import { UsageStatsCards } from "@/components/billing/UsageStatsCards";
+import { UsageTrendChart } from "@/components/billing/UsageTrendChart";
+import { InvoiceList } from "@/components/billing/InvoiceList";
 
 function BillingContent() {
   const searchParams = useSearchParams();
@@ -106,7 +111,7 @@ function BillingContent() {
     <div className="min-h-screen bg-slate-900">
       {/* Header */}
       <header className="border-b border-slate-700 bg-slate-800/50">
-        <div className="max-w-5xl mx-auto px-4 py-4">
+        <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
             <Link
               href="/settings"
@@ -119,9 +124,9 @@ function BillingContent() {
                 <CreditCard className="h-5 w-5 text-slate-300" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-white">Billing & Subscription</h1>
+                <h1 className="text-xl font-semibold text-white">Billing & Usage</h1>
                 <p className="text-slate-400 text-sm">
-                  Manage your subscription and billing details
+                  Manage your subscription, track usage, and view invoices
                 </p>
               </div>
             </div>
@@ -129,10 +134,10 @@ function BillingContent() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-4 py-8 space-y-8">
         {/* Success Message */}
         {showSuccess && (
-          <div className="mb-6 p-4 bg-green-900/30 border border-green-700 rounded-lg flex items-center gap-3">
+          <div className="p-4 bg-green-900/30 border border-green-700 rounded-lg flex items-center gap-3">
             <Check className="h-5 w-5 text-green-400" />
             <p className="text-green-400">
               Subscription activated successfully! Thank you for upgrading.
@@ -140,8 +145,11 @@ function BillingContent() {
           </div>
         )}
 
+        {/* Usage Alerts */}
+        <UsageAlerts />
+
         {/* Current Plan Card */}
-        <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden mb-8">
+        <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
           <div className={`p-6 bg-gradient-to-r ${getTierColor(tier)}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -237,86 +245,101 @@ function BillingContent() {
           </div>
         </div>
 
-        {/* Plan Features */}
-        {plan && (
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 mb-8">
-            <h3 className="text-lg font-semibold text-white mb-4">Plan Features</h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="flex items-center gap-3">
-                <Check className={`h-5 w-5 ${plan.max_repos === -1 ? "text-green-400" : "text-primary-400"}`} />
-                <span className="text-slate-300">
-                  {plan.max_repos === -1 ? "Unlimited" : plan.max_repos} repositories
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Check className={`h-5 w-5 ${plan.sync_history_days === -1 ? "text-green-400" : "text-primary-400"}`} />
-                <span className="text-slate-300">
-                  {plan.sync_history_days === -1 ? "Unlimited" : `${plan.sync_history_days} days`} sync history
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Check className={`h-5 w-5 ${plan.llm_requests_per_day === -1 ? "text-green-400" : "text-primary-400"}`} />
-                <span className="text-slate-300">
-                  {plan.llm_requests_per_day === -1 ? "Unlimited" : plan.llm_requests_per_day} AI requests/day
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                {plan.enable_real_time_sync ? (
-                  <Check className="h-5 w-5 text-green-400" />
-                ) : (
-                  <span className="h-5 w-5 text-slate-600">-</span>
-                )}
-                <span className={plan.enable_real_time_sync ? "text-slate-300" : "text-slate-500"}>
-                  Real-time sync
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                {plan.enable_advanced_analytics ? (
-                  <Check className="h-5 w-5 text-green-400" />
-                ) : (
-                  <span className="h-5 w-5 text-slate-600">-</span>
-                )}
-                <span className={plan.enable_advanced_analytics ? "text-slate-300" : "text-slate-500"}>
-                  Advanced analytics
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                {plan.enable_team_features ? (
-                  <Check className="h-5 w-5 text-green-400" />
-                ) : (
-                  <span className="h-5 w-5 text-slate-600">-</span>
-                )}
-                <span className={plan.enable_team_features ? "text-slate-300" : "text-slate-500"}>
-                  Team features
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                {plan.enable_exports ? (
-                  <Check className="h-5 w-5 text-green-400" />
-                ) : (
-                  <span className="h-5 w-5 text-slate-600">-</span>
-                )}
-                <span className={plan.enable_exports ? "text-slate-300" : "text-slate-500"}>
-                  Data exports
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                {plan.enable_webhooks ? (
-                  <Check className="h-5 w-5 text-green-400" />
-                ) : (
-                  <span className="h-5 w-5 text-slate-600">-</span>
-                )}
-                <span className={plan.enable_webhooks ? "text-slate-300" : "text-slate-500"}>
-                  Webhooks
-                </span>
+        {/* Usage Stats Cards */}
+        <div>
+          <h3 className="text-lg font-semibold text-white mb-4">Current Usage</h3>
+          <UsageStatsCards />
+        </div>
+
+        {/* Usage Trend Chart */}
+        <UsageTrendChart months={6} />
+
+        {/* Two Column Layout: Plan Features and Invoice History */}
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Plan Features */}
+          {plan && (
+            <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Plan Features</h3>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <Check className={`h-5 w-5 ${plan.max_repos === -1 ? "text-green-400" : "text-primary-400"}`} />
+                  <span className="text-slate-300">
+                    {plan.max_repos === -1 ? "Unlimited" : plan.max_repos} repositories
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className={`h-5 w-5 ${plan.sync_history_days === -1 ? "text-green-400" : "text-primary-400"}`} />
+                  <span className="text-slate-300">
+                    {plan.sync_history_days === -1 ? "Unlimited" : `${plan.sync_history_days} days`} sync history
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className={`h-5 w-5 ${plan.llm_requests_per_day === -1 ? "text-green-400" : "text-primary-400"}`} />
+                  <span className="text-slate-300">
+                    {plan.llm_requests_per_day === -1 ? "Unlimited" : plan.llm_requests_per_day} AI requests/day
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  {plan.enable_real_time_sync ? (
+                    <Check className="h-5 w-5 text-green-400" />
+                  ) : (
+                    <span className="h-5 w-5 text-slate-600">-</span>
+                  )}
+                  <span className={plan.enable_real_time_sync ? "text-slate-300" : "text-slate-500"}>
+                    Real-time sync
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  {plan.enable_advanced_analytics ? (
+                    <Check className="h-5 w-5 text-green-400" />
+                  ) : (
+                    <span className="h-5 w-5 text-slate-600">-</span>
+                  )}
+                  <span className={plan.enable_advanced_analytics ? "text-slate-300" : "text-slate-500"}>
+                    Advanced analytics
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  {plan.enable_team_features ? (
+                    <Check className="h-5 w-5 text-green-400" />
+                  ) : (
+                    <span className="h-5 w-5 text-slate-600">-</span>
+                  )}
+                  <span className={plan.enable_team_features ? "text-slate-300" : "text-slate-500"}>
+                    Team features
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  {plan.enable_exports ? (
+                    <Check className="h-5 w-5 text-green-400" />
+                  ) : (
+                    <span className="h-5 w-5 text-slate-600">-</span>
+                  )}
+                  <span className={plan.enable_exports ? "text-slate-300" : "text-slate-500"}>
+                    Data exports
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  {plan.enable_webhooks ? (
+                    <Check className="h-5 w-5 text-green-400" />
+                  ) : (
+                    <span className="h-5 w-5 text-slate-600">-</span>
+                  )}
+                  <span className={plan.enable_webhooks ? "text-slate-300" : "text-slate-500"}>
+                    Webhooks
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Payment Method & Actions */}
+          {/* Invoice List (compact version) */}
+          <InvoiceList limit={5} />
+        </div>
+
+        {/* Payment Method */}
         {subscriptionStatus?.customer && (
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 mb-8">
+          <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
             <h3 className="text-lg font-semibold text-white mb-4">Payment Method</h3>
             {subscriptionStatus.customer.stripe_customer_id ? (
               <div className="flex items-center justify-between">
@@ -378,7 +401,7 @@ function BillingContent() {
         </div>
 
         {/* Help Text */}
-        <div className="mt-8 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+        <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
           <p className="text-slate-400 text-sm">
             Need help with billing?{" "}
             <a

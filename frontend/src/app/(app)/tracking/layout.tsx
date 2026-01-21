@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { AppAccessGuard } from "@/components/guards/AppAccessGuard";
 
 export const metadata: Metadata = {
   title: "Tracking",
@@ -10,5 +11,5 @@ export default function TrackingLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return <AppAccessGuard appId="tracking">{children}</AppAccessGuard>;
 }

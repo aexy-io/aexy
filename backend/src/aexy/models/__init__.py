@@ -225,6 +225,17 @@ from aexy.models.permissions import (
     WIDGET_PERMISSIONS,
     PermissionCategory,
 )
+from aexy.models.app_definitions import (
+    APP_CATALOG,
+    SYSTEM_APP_BUNDLES,
+    ROLE_DEFAULT_APP_ACCESS,
+    AppCategory,
+    get_app_list,
+    get_bundle_list,
+    get_default_app_access_for_role,
+    validate_app_access_config,
+)
+from aexy.models.app_access import AppAccessTemplate, AppAccessLog, AppAccessLogAction
 from aexy.models.email_marketing import (
     EmailTemplate,
     EmailCampaign,
@@ -561,6 +572,18 @@ __all__ = [
     "ROLE_TEMPLATES",
     "WIDGET_PERMISSIONS",
     "PermissionCategory",
+    # App Access
+    "AppAccessTemplate",
+    "AppAccessLog",
+    "AppAccessLogAction",
+    "APP_CATALOG",
+    "SYSTEM_APP_BUNDLES",
+    "ROLE_DEFAULT_APP_ACCESS",
+    "AppCategory",
+    "get_app_list",
+    "get_bundle_list",
+    "get_default_app_access_for_role",
+    "validate_app_access_config",
     # Projects
     "Project",
     "ProjectMember",

@@ -55,6 +55,11 @@ class NotificationEventType(str, Enum):
     # Task mentions
     TASK_MENTIONED = "task_mentioned"  # User was mentioned in a task description with @
 
+    # Usage alerts (billing)
+    USAGE_ALERT_80 = "usage_alert_80"  # 80% of limit reached
+    USAGE_ALERT_90 = "usage_alert_90"  # 90% of limit reached (critical)
+    USAGE_ALERT_100 = "usage_alert_100"  # Limit reached
+
 
 class Notification(Base):
     """In-app notification for a user.

@@ -511,3 +511,177 @@ class UsageService:
             "days_elapsed": days_elapsed,
             "days_remaining": days_remaining,
         }
+
+    async def record_api_call(
+        self,
+        developer_id: str,
+        endpoint: str,
+        method: str,
+        status_code: int,
+    ) -> UsageRecord | None:
+        """Record an API call for usage tracking.
+
+        This creates a UsageRecord with type API_CALLS for billing purposes.
+        """
+        # Get customer billing
+        stmt = select(CustomerBilling).where(
+            CustomerBilling.developer_id == developer_id
+        )
+        result = await self.db.execute(stmt)
+        customer_billing = result.scalar_one_or_none()
+
+        if not customer_billing:
+            logger.debug(
+                f"No billing setup for developer {developer_id}, skipping API call record"
+            )
+            return None
+
+        # Get active subscription for billing period
+        stmt = select(Subscription).where(
+            Subscription.customer_id == customer_billing.id,
+            Subscription.status.in_([
+                SubscriptionStatus.ACTIVE.value,
+                SubscriptionStatus.TRIALING.value,
+            ]),
+        )
+        result = await self.db.execute(stmt)
+        subscription = result.scalar_one_or_none()
+
+        billing_period_start = None
+        billing_period_end = None
+        if subscription:
+            billing_period_start = subscription.current_period_start
+            billing_period_end = subscription.current_period_end
+
+        # Create usage record for API call
+        usage_record = UsageRecord(
+            customer_id=customer_billing.id,
+            usage_type=UsageType.API_CALLS.value,
+            provider="api",
+            model=f"{method}:{endpoint}",
+            input_tokens=0,
+            output_tokens=0,
+            total_tokens=0,
+            base_cost_cents=0.0,  # API calls may be free or metered separately
+            margin_percent=0,
+            total_cost_cents=0.0,
+            billing_period_start=billing_period_start,
+            billing_period_end=billing_period_end,
+            analysis_type="api_call",
+            request_id=f"{method}:{endpoint}:{status_code}",
+        )
+
+        self.db.add(usage_record)
+        await self.db.commit()
+        await self.db.refresh(usage_record)
+
+        return usage_record
+
+    async def record_sync_operation(
+        self,
+        developer_id: str,
+        operation_type: str,
+        entity_count: int,
+    ) -> UsageRecord | None:
+        """Record a sync operation for usage tracking.
+
+        This creates a UsageRecord with type SYNC_OPERATIONS for billing purposes.
+        """
+        # Get customer billing
+        stmt = select(CustomerBilling).where(
+            CustomerBilling.developer_id == developer_id
+        )
+        result = await self.db.execute(stmt)
+        customer_billing = result.scalar_one_or_none()
+
+        if not customer_billing:
+            logger.debug(
+                f"No billing setup for developer {developer_id}, skipping sync operation record"
+            )
+            return None
+
+        # Get active subscription for billing period
+        stmt = select(Subscription).where(
+            Subscription.customer_id == customer_billing.id,
+            Subscription.status.in_([
+                SubscriptionStatus.ACTIVE.value,
+                SubscriptionStatus.TRIALING.value,
+            ]),
+        )
+        result = await self.db.execute(stmt)
+        subscription = result.scalar_one_or_none()
+
+        billing_period_start = None
+        billing_period_end = None
+        if subscription:
+            billing_period_start = subscription.current_period_start
+            billing_period_end = subscription.current_period_end
+
+        # Create usage record for sync operation
+        usage_record = UsageRecord(
+            customer_id=customer_billing.id,
+            usage_type=UsageType.SYNC_OPERATIONS.value,
+            provider="sync",
+            model=operation_type,
+            input_tokens=entity_count,  # Use input_tokens to store entity count
+            output_tokens=0,
+            total_tokens=entity_count,
+            base_cost_cents=0.0,  # Sync ops may be free or metered separately
+            margin_percent=0,
+            total_cost_cents=0.0,
+            billing_period_start=billing_period_start,
+            billing_period_end=billing_period_end,
+            analysis_type="sync_operation",
+            request_id=f"sync:{operation_type}:{entity_count}",
+        )
+
+        self.db.add(usage_record)
+        await self.db.commit()
+        await self.db.refresh(usage_record)
+
+        return usage_record
+
+    async def get_invoices(
+        self,
+        developer_id: str,
+        limit: int = 10,
+    ) -> list[dict[str, Any]]:
+        """Get invoices from Stripe for a developer."""
+        # Get customer billing
+        stmt = select(CustomerBilling).where(
+            CustomerBilling.developer_id == developer_id
+        )
+        result = await self.db.execute(stmt)
+        customer_billing = result.scalar_one_or_none()
+
+        if not customer_billing or not customer_billing.stripe_customer_id:
+            return []
+
+        try:
+            # Fetch invoices from Stripe
+            invoices = stripe.Invoice.list(
+                customer=customer_billing.stripe_customer_id,
+                limit=limit,
+            )
+
+            return [
+                {
+                    "id": inv.id,
+                    "number": inv.number,
+                    "status": inv.status,
+                    "amount_due": inv.amount_due,
+                    "amount_paid": inv.amount_paid,
+                    "currency": inv.currency,
+                    "period_start": datetime.fromtimestamp(inv.period_start).isoformat() if inv.period_start else None,
+                    "period_end": datetime.fromtimestamp(inv.period_end).isoformat() if inv.period_end else None,
+                    "created_at": datetime.fromtimestamp(inv.created).isoformat() if inv.created else None,
+                    "paid_at": datetime.fromtimestamp(inv.status_transitions.paid_at).isoformat() if inv.status_transitions and inv.status_transitions.paid_at else None,
+                    "invoice_pdf": inv.invoice_pdf,
+                    "hosted_invoice_url": inv.hosted_invoice_url,
+                }
+                for inv in invoices.data
+            ]
+
+        except stripe.error.StripeError as e:
+            logger.error(f"Failed to fetch invoices from Stripe: {e}")
+            return []

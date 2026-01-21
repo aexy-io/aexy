@@ -14,6 +14,38 @@ from aexy.models.repository import DeveloperRepository
 
 
 @dataclass
+class LimitCheckResult:
+    """Result of a limit check for billing enforcement."""
+
+    allowed: bool
+    limit_type: str  # "llm_requests", "api_calls", "repos"
+    current: int
+    limit: int
+    percent_used: float
+    retry_after_seconds: float | None
+    message: str | None
+
+    @property
+    def is_near_limit(self) -> bool:
+        """Check if usage is approaching the limit (>= 80%)."""
+        return self.percent_used >= 80.0
+
+    @property
+    def is_critical(self) -> bool:
+        """Check if usage is critical (>= 90%)."""
+        return self.percent_used >= 90.0
+
+
+@dataclass
+class UsageThresholds:
+    """Usage thresholds for alerts."""
+
+    llm_requests: float  # Percentage used
+    repos: float  # Percentage used
+    api_calls: float  # Percentage used (if tracked)
+
+
+@dataclass
 class SyncLimits:
     """Sync limits for a developer based on their plan."""
 
@@ -193,8 +225,121 @@ class LimitsService:
 
         return True, None
 
+    async def check_llm_limit_for_billing(
+        self, developer_id: str, provider: str | None = None
+    ) -> LimitCheckResult:
+        """Check LLM limits for billing enforcement with detailed result.
+
+        Returns a LimitCheckResult with full details for billing and alerts.
+        """
+        developer = await self.get_developer_with_plan(developer_id)
+        if not developer:
+            return LimitCheckResult(
+                allowed=False,
+                limit_type="llm_requests",
+                current=0,
+                limit=0,
+                percent_used=0.0,
+                retry_after_seconds=None,
+                message="Developer not found",
+            )
+
+        plan = developer.plan or await self.get_or_create_free_plan()
+
+        # Check provider access
+        if provider and provider not in (plan.llm_provider_access or []):
+            return LimitCheckResult(
+                allowed=False,
+                limit_type="llm_requests",
+                current=developer.llm_requests_today,
+                limit=plan.llm_requests_per_day,
+                percent_used=0.0,
+                retry_after_seconds=None,
+                message=f"Provider '{provider}' not available on {plan.name} plan. Upgrade to access this provider.",
+            )
+
+        # Unlimited plan
+        if plan.llm_requests_per_day == -1:
+            return LimitCheckResult(
+                allowed=True,
+                limit_type="llm_requests",
+                current=developer.llm_requests_today,
+                limit=-1,
+                percent_used=0.0,
+                retry_after_seconds=None,
+                message=None,
+            )
+
+        # Check if reset needed
+        await self._maybe_reset_llm_usage(developer)
+
+        current = developer.llm_requests_today
+        limit = plan.llm_requests_per_day
+        percent_used = (current / limit * 100) if limit > 0 else 0.0
+
+        # Calculate retry_after_seconds if at limit
+        retry_after_seconds = None
+        if current >= limit and developer.llm_requests_reset_at:
+            now = datetime.now(timezone.utc)
+            remaining = (developer.llm_requests_reset_at - now).total_seconds()
+            retry_after_seconds = max(0, remaining)
+
+        if current >= limit:
+            return LimitCheckResult(
+                allowed=False,
+                limit_type="llm_requests",
+                current=current,
+                limit=limit,
+                percent_used=100.0,
+                retry_after_seconds=retry_after_seconds,
+                message=f"Daily LLM request limit reached ({limit} requests for {plan.name} plan). Upgrade your plan for more requests.",
+            )
+
+        return LimitCheckResult(
+            allowed=True,
+            limit_type="llm_requests",
+            current=current,
+            limit=limit,
+            percent_used=percent_used,
+            retry_after_seconds=None,
+            message=None,
+        )
+
+    async def get_usage_thresholds(self, developer_id: str) -> UsageThresholds:
+        """Get current usage percentages for all tracked limits."""
+        developer = await self.get_developer_with_plan(developer_id)
+        if not developer:
+            return UsageThresholds(
+                llm_requests=0.0,
+                repos=0.0,
+                api_calls=0.0,
+            )
+
+        plan = developer.plan or await self.get_or_create_free_plan()
+        await self._maybe_reset_llm_usage(developer)
+
+        # LLM requests percentage
+        llm_percent = 0.0
+        if plan.llm_requests_per_day > 0:
+            llm_percent = (developer.llm_requests_today / plan.llm_requests_per_day) * 100
+
+        # Repos percentage
+        repos_count = await self.get_enabled_repos_count(developer_id)
+        repos_percent = 0.0
+        if plan.max_repos > 0:
+            repos_percent = (repos_count / plan.max_repos) * 100
+
+        return UsageThresholds(
+            llm_requests=llm_percent,
+            repos=repos_percent,
+            api_calls=0.0,  # TODO: Implement API call tracking
+        )
+
     async def increment_llm_usage(self, developer_id: str) -> None:
-        """Increment the LLM usage counter for a developer."""
+        """Increment the LLM usage counter for a developer.
+
+        Also checks usage thresholds and sends alerts if needed.
+        """
         developer = await self.get_developer_with_plan(developer_id)
         if not developer:
             return
@@ -202,6 +347,17 @@ class LimitsService:
         await self._maybe_reset_llm_usage(developer)
         developer.llm_requests_today += 1
         await self.db.flush()
+
+        # Check and send usage alerts (non-blocking)
+        try:
+            from aexy.services.usage_alerts_service import UsageAlertsService
+            alerts_service = UsageAlertsService(self.db)
+            await alerts_service.check_and_send_alerts(developer_id)
+        except Exception as e:
+            # Don't fail the increment if alerts fail
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to check usage alerts: {e}")
 
     async def _maybe_reset_llm_usage(self, developer: Developer) -> None:
         """Reset LLM usage if it's a new day."""

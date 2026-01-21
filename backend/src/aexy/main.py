@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from aexy.api import api_router
 from aexy.core.config import get_settings
 from aexy.core.database import engine, Base
+from aexy.middleware import UsageTrackingMiddleware
 
 settings = get_settings()
 
@@ -52,6 +53,14 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+    )
+
+    # Usage tracking middleware for API call metering
+    app.add_middleware(
+        UsageTrackingMiddleware,
+        redis_url=settings.redis_url,
+        secret_key=settings.secret_key,
+        algorithm=settings.algorithm,
     )
 
     # Include API routes
