@@ -6,7 +6,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aexy.api.dependencies import get_current_developer_id, get_db
+from aexy.api.developers import get_current_developer_id
+from aexy.core.database import get_db
 from aexy.models.plan import PlanTier
 from aexy.schemas.knowledge_graph import (
     DocumentConnectionsResponse,
