@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import {
+  ArrowLeft,
   Plus,
   Search,
   Target,
@@ -271,24 +273,36 @@ export default function GoalsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Target className="h-6 w-6 text-purple-400" />
-            Goals & OKRs
-          </h1>
-          <p className="text-slate-400 mt-1">
-            {total} {total === 1 ? "goal" : "goals"} in workspace
-          </p>
+      <header className="flex-shrink-0 border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm sticky top-0 z-30 -mx-4 -mt-2 mb-6 sm:-mx-6 lg:-mx-8">
+        <div className="max-w-7xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link
+                href={`/sprints/${projectId}`}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+              <div>
+                <h1 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Target className="h-5 w-5 text-purple-400" />
+                  Goals & OKRs
+                </h1>
+                <p className="text-xs text-slate-500">
+                  {total} {total === 1 ? "goal" : "goals"} in workspace
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              New Goal
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          New Goal
-        </button>
-      </div>
+      </header>
 
       {/* Dashboard Summary */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -713,15 +727,14 @@ function GoalDetailModal({ goal, workspaceId, onClose }: GoalDetailModalProps) {
             </div>
             <div className="h-3 bg-slate-700 rounded-full overflow-hidden mb-3">
               <div
-                className={`h-full transition-all duration-300 ${
-                  currentGoal.progress_percentage >= 100
+                className={`h-full transition-all duration-300 ${currentGoal.progress_percentage >= 100
                     ? "bg-green-500"
                     : currentGoal.progress_percentage >= 70
-                    ? "bg-blue-500"
-                    : currentGoal.progress_percentage >= 30
-                    ? "bg-amber-500"
-                    : "bg-red-500"
-                }`}
+                      ? "bg-blue-500"
+                      : currentGoal.progress_percentage >= 30
+                        ? "bg-amber-500"
+                        : "bg-red-500"
+                  }`}
                 style={{ width: `${Math.min(currentGoal.progress_percentage, 100)}%` }}
               />
             </div>
@@ -819,15 +832,14 @@ function GoalDetailModal({ goal, workspaceId, onClose }: GoalDetailModalProps) {
                 {Array.from({ length: 10 }).map((_, i) => (
                   <div
                     key={i}
-                    className={`h-2 flex-1 rounded ${
-                      i < currentGoal.confidence_level
+                    className={`h-2 flex-1 rounded ${i < currentGoal.confidence_level
                         ? currentGoal.confidence_level >= 7
                           ? "bg-green-500"
                           : currentGoal.confidence_level >= 4
-                          ? "bg-amber-500"
-                          : "bg-red-500"
+                            ? "bg-amber-500"
+                            : "bg-red-500"
                         : "bg-slate-700"
-                    }`}
+                      }`}
                   />
                 ))}
               </div>

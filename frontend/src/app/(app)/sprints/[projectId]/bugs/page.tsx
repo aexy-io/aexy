@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import {
+  ArrowLeft,
   Plus,
   Search,
   Bug as BugIcon,
@@ -213,24 +215,36 @@ export default function BugsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <BugIcon className="h-6 w-6 text-red-400" />
-            Bug Tracker
-          </h1>
-          <p className="text-slate-400 mt-1">
-            {total} {total === 1 ? "bug" : "bugs"} in this project
-          </p>
+      <header className="flex-shrink-0 border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm sticky top-0 z-30">
+        <div className="max-w-[1800px] mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link
+                href={`/sprints/${projectId}`}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+              <div>
+                <h1 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <BugIcon className="h-5 w-5 text-red-400" />
+                  Bug Tracker
+                </h1>
+                <p className="text-xs text-slate-500">
+                  {total} {total === 1 ? "bug" : "bugs"} in this project
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              Report Bug
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          Report Bug
-        </button>
-      </div>
+      </header>
 
       {/* Stats Summary */}
       {stats && (

@@ -400,8 +400,8 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
   return (
     <div className="min-h-screen bg-slate-900">
       {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800/50">
-        <div className="max-w-6xl mx-auto px-4 py-4">
+      <header className="flex-shrink-0 border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm sticky top-0 z-30">
+        <div className="max-w-[1800px] mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link
