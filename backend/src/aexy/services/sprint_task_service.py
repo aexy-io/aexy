@@ -146,6 +146,42 @@ class SprintTaskService:
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_tasks_by_assignee(
+        self,
+        assignee_id: str,
+        status: str | None = None,
+        include_done: bool = False,
+    ) -> list[SprintTask]:
+        """Get all tasks assigned to a developer across all sprints.
+
+        Args:
+            assignee_id: Developer ID.
+            status: Optional status filter.
+            include_done: Whether to include completed tasks (default: False).
+
+        Returns:
+            List of SprintTasks assigned to the developer.
+        """
+        stmt = (
+            select(SprintTask)
+            .where(SprintTask.assignee_id == assignee_id)
+            .options(
+                selectinload(SprintTask.assignee),
+                selectinload(SprintTask.subtasks),
+                selectinload(SprintTask.sprint),
+            )
+        )
+
+        if status:
+            stmt = stmt.where(SprintTask.status == status)
+        elif not include_done:
+            # Exclude completed tasks by default
+            stmt = stmt.where(SprintTask.status != "done")
+
+        stmt = stmt.order_by(SprintTask.priority.desc(), SprintTask.created_at.desc())
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
     async def update_task(
         self,
         task_id: str,
