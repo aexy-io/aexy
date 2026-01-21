@@ -150,3 +150,53 @@ RATE_LIMIT_ENABLED=true
 ### Redis Connection Issues
 - Ensure Redis container is running: `docker-compose ps`
 - Check Redis URL in environment: `REDIS_URL=redis://localhost:6379/0`
+
+## Generating Test Tokens for API Testing
+
+When testing authenticated API endpoints, you need a valid JWT token. Use the test token generator script:
+
+### Prerequisites
+- At least one developer account must exist (sign in via web app first)
+- Backend services must be running
+
+### Generate a Test Token
+
+```bash
+# List available developers
+cd backend && python scripts/generate_test_token.py --list
+
+# Generate token for first developer (most common)
+cd backend && python scripts/generate_test_token.py --first
+
+# Generate token for specific developer ID
+cd backend && python scripts/generate_test_token.py <developer-uuid>
+
+# Generate token with custom expiration (default: 30 days)
+cd backend && python scripts/generate_test_token.py --first --days 7
+```
+
+### Using the Token
+
+```bash
+# Set as environment variable
+export AEXY_TEST_TOKEN="<generated-token>"
+
+# Test authenticated endpoint
+curl -H "Authorization: Bearer $AEXY_TEST_TOKEN" \
+  http://localhost:8000/api/v1/developers/me
+
+# Test with specific endpoint
+curl -H "Authorization: Bearer $AEXY_TEST_TOKEN" \
+  "http://localhost:8000/api/v1/workspaces/<workspace-id>/knowledge-graph/statistics"
+```
+
+### Quick One-Liner (for scripts)
+```bash
+# Generate and export token in one command
+export AEXY_TEST_TOKEN=$(cd backend && python scripts/generate_test_token.py --first 2>/dev/null | grep -A1 "Token:" | tail -1)
+```
+
+### Token Details
+- Algorithm: HS256
+- Default expiration: 30 days
+- Secret key: Uses `SECRET_KEY` from backend/.env (default: `dev-secret-key-change-in-production`)
