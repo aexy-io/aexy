@@ -12,7 +12,9 @@ from aexy.core.config import get_settings
 from aexy.core.database import get_db
 from aexy.models.developer import GoogleConnection
 from aexy.schemas.developer import DeveloperResponse, DeveloperUpdate
+from aexy.schemas.sprint import SprintTaskResponse
 from aexy.services.developer_service import DeveloperNotFoundError, DeveloperService
+from aexy.services.sprint_task_service import SprintTaskService
 
 
 class GoogleConnectionStatus(BaseModel):
@@ -85,6 +87,54 @@ async def get_google_connection_status(
         )
 
     return GoogleConnectionStatus(is_connected=False)
+
+
+class MyTaskResponse(BaseModel):
+    """Response for a task assigned to the current user."""
+    id: str
+    sprint_id: str | None
+    sprint_name: str | None
+    title: str
+    description: str | None
+    status: str
+    priority: str
+    story_points: int | None
+    labels: list[str]
+    created_at: str
+    updated_at: str
+
+
+@router.get("/me/assigned-tasks", response_model=list[MyTaskResponse])
+async def get_my_assigned_tasks(
+    status_filter: str | None = None,
+    include_done: bool = False,
+    developer_id: str = Depends(get_current_developer_id),
+    db: AsyncSession = Depends(get_db),
+) -> list[MyTaskResponse]:
+    """Get all sprint tasks assigned to the current developer."""
+    task_service = SprintTaskService(db)
+    tasks = await task_service.get_tasks_by_assignee(
+        assignee_id=developer_id,
+        status=status_filter,
+        include_done=include_done,
+    )
+
+    return [
+        MyTaskResponse(
+            id=str(task.id),
+            sprint_id=str(task.sprint_id) if task.sprint_id else None,
+            sprint_name=task.sprint.name if task.sprint else None,
+            title=task.title,
+            description=task.description,
+            status=task.status,
+            priority=task.priority,
+            story_points=task.story_points,
+            labels=task.labels or [],
+            created_at=task.created_at.isoformat() if task.created_at else "",
+            updated_at=task.updated_at.isoformat() if task.updated_at else "",
+        )
+        for task in tasks
+    ]
 
 
 @router.patch("/me", response_model=DeveloperResponse)

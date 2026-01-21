@@ -293,6 +293,7 @@ class TicketUpdate(BaseModel):
     severity: TicketSeverity | None = None
     assignee_id: str | None = None
     team_id: str | None = None
+    linked_task_id: str | None = None
 
 
 class TicketAssign(BaseModel):

@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 SprintStatus = Literal["planning", "active", "review", "retrospective", "completed"]
 TaskStatus = Literal["backlog", "todo", "in_progress", "review", "done"]
 TaskPriority = Literal["critical", "high", "medium", "low"]
-TaskSourceType = Literal["github_issue", "jira", "linear", "manual"]
+TaskSourceType = Literal["github_issue", "jira", "linear", "manual", "ticket"]
 StatusCategory = Literal["todo", "in_progress", "done"]
 CustomFieldType = Literal["text", "number", "select", "multiselect", "date", "url"]
 

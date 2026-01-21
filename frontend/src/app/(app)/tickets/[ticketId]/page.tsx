@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   ArrowLeft,
-  Clock,
   User,
   Users,
   Mail,
@@ -18,12 +17,16 @@ import {
   Link2,
   Zap,
   UserCircle,
+  Plus,
+  X,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useTicket, useTicketResponses } from "@/hooks/useTicketing";
 import { useTeams } from "@/hooks/useTeams";
-import { TicketStatus, TicketPriority, TicketSeverity } from "@/lib/api";
+import { useProjects } from "@/hooks/useProjects";
+import { TicketStatus, TicketPriority, TicketSeverity, ticketsApi } from "@/lib/api";
 
 const STATUS_OPTIONS: { value: TicketStatus; label: string; color: string }[] = [
   { value: "new", label: "New", color: "text-blue-400" },
@@ -53,7 +56,7 @@ export default function TicketDetailPage() {
   const params = useParams();
   const ticketId = params.ticketId as string;
 
-  const { user, logout } = useAuth();
+  useAuth();
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
 
@@ -65,6 +68,38 @@ export default function TicketDetailPage() {
   const [newResponse, setNewResponse] = useState("");
   const [isInternal, setIsInternal] = useState(false);
   const [newStatus, setNewStatus] = useState<TicketStatus | undefined>();
+
+  // Create task modal state
+  const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskPriority, setTaskPriority] = useState("medium");
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [createTaskError, setCreateTaskError] = useState<string | null>(null);
+
+  const { projects } = useProjects(workspaceId);
+
+  const handleCreateTask = async () => {
+    if (!workspaceId || !ticketId || !selectedProjectId) return;
+
+    setIsCreatingTask(true);
+    setCreateTaskError(null);
+
+    try {
+      await ticketsApi.createTaskFromTicket(workspaceId, ticketId, {
+        project_id: selectedProjectId,
+        title: taskTitle || undefined,
+        priority: taskPriority,
+      });
+
+      // Refresh ticket data to show linked task
+      window.location.reload();
+    } catch (err: any) {
+      setCreateTaskError(err?.response?.data?.detail || "Failed to create task");
+    } finally {
+      setIsCreatingTask(false);
+    }
+  };
 
   const handleSubmitResponse = async () => {
     if (!newResponse.trim()) return;
@@ -458,9 +493,12 @@ export default function TicketDetailPage() {
             )}
 
             {/* Linked Task */}
-            {ticket.linked_task_id && (
-              <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-                <h3 className="text-sm font-medium text-slate-400 mb-3">Linked Task</h3>
+            <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+              <h3 className="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2">
+                <Link2 className="h-4 w-4" />
+                Linked Task
+              </h3>
+              {ticket.linked_task_id ? (
                 <button
                   onClick={() => router.push(`/sprints?task=${ticket.linked_task_id}`)}
                   className="w-full flex items-center justify-between p-2 bg-slate-900 rounded-lg hover:bg-slate-700 transition"
@@ -468,10 +506,120 @@ export default function TicketDetailPage() {
                   <span className="text-white">View Sprint Task</span>
                   <ExternalLink className="h-4 w-4 text-slate-400" />
                 </button>
-              </div>
-            )}
+              ) : (
+                <button
+                  onClick={() => setShowCreateTaskModal(true)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create Task
+                </button>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Create Task Modal */}
+        {showCreateTaskModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 w-full max-w-md mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-white">Create Sprint Task</h2>
+                <button
+                  onClick={() => setShowCreateTaskModal(false)}
+                  className="text-slate-400 hover:text-white transition"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {createTaskError && (
+                <div className="mb-4 p-3 bg-red-900/30 border border-red-800 rounded-lg text-red-400 text-sm">
+                  {createTaskError}
+                </div>
+              )}
+
+              <div className="space-y-4">
+                {/* Project Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">
+                    Project <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    value={selectedProjectId}
+                    onChange={(e) => setSelectedProjectId(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">Select a project...</option>
+                    {projects.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Task Title (optional override) */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">
+                    Task Title
+                    <span className="text-slate-500 ml-1">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={taskTitle}
+                    onChange={(e) => setTaskTitle(e.target.value)}
+                    placeholder="Auto-generated from ticket"
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                {/* Priority */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">
+                    Priority
+                  </label>
+                  <select
+                    value={taskPriority}
+                    onChange={(e) => setTaskPriority(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowCreateTaskModal(false)}
+                  className="flex-1 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateTask}
+                  disabled={!selectedProjectId || isCreatingTask}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isCreatingTask ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4" />
+                      Create Task
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
