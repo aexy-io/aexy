@@ -34,6 +34,35 @@ CREATE TABLE IF NOT EXISTS email_providers (
     CONSTRAINT uq_email_provider_workspace_name UNIQUE (workspace_id, name)
 );
 
+-- Add missing columns if table already exists (for migrations on existing databases)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'email_providers' AND column_name = 'status') THEN
+        ALTER TABLE email_providers ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'email_providers' AND column_name = 'provider_type') THEN
+        ALTER TABLE email_providers ADD COLUMN provider_type VARCHAR(20) NOT NULL DEFAULT 'smtp';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'email_providers' AND column_name = 'credentials') THEN
+        ALTER TABLE email_providers ADD COLUMN credentials JSONB NOT NULL DEFAULT '{}'::jsonb;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'email_providers' AND column_name = 'max_sends_per_second') THEN
+        ALTER TABLE email_providers ADD COLUMN max_sends_per_second INTEGER DEFAULT 10;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'email_providers' AND column_name = 'max_daily_sends') THEN
+        ALTER TABLE email_providers ADD COLUMN max_daily_sends INTEGER DEFAULT 100000;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'email_providers' AND column_name = 'current_daily_sends') THEN
+        ALTER TABLE email_providers ADD COLUMN current_daily_sends INTEGER NOT NULL DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'email_providers' AND column_name = 'daily_sends_reset_at') THEN
+        ALTER TABLE email_providers ADD COLUMN daily_sends_reset_at TIMESTAMPTZ;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'email_providers' AND column_name = 'priority') THEN
+        ALTER TABLE email_providers ADD COLUMN priority INTEGER NOT NULL DEFAULT 1;
+    END IF;
+END $$;
+
 CREATE INDEX IF NOT EXISTS ix_email_provider_workspace ON email_providers(workspace_id);
 CREATE INDEX IF NOT EXISTS ix_email_provider_status ON email_providers(workspace_id, status);
 
