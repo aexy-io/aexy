@@ -235,6 +235,7 @@ class SprintTaskUpdate(BaseModel):
     labels: list[str] | None = None
     epic_id: str | None = None
     sprint_id: str | None = None  # For moving tasks between sprints
+    assignee_id: str | None = None  # For reassigning tasks
     mentioned_user_ids: list[str] | None = None  # @mentions
     mentioned_file_paths: list[str] | None = None  # #mentions
 

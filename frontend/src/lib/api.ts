@@ -2718,6 +2718,7 @@ export const sprintApi = {
     labels?: string[];
     epic_id?: string | null;
     sprint_id?: string | null;
+    assignee_id?: string | null;
     mentioned_user_ids?: string[];
     mentioned_file_paths?: string[];
   }): Promise<SprintTask> => {
@@ -3056,6 +3057,7 @@ export const projectTasksApi = {
     labels?: string[];
     epic_id?: string | null;
     sprint_id?: string | null;
+    assignee_id?: string | null;
     mentioned_user_ids?: string[];
     mentioned_file_paths?: string[];
   }): Promise<SprintTask> => {

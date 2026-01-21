@@ -414,7 +414,7 @@ async def update_task(
 
     task_service = SprintTaskService(db)
 
-    # Build kwargs, handling epic_id specially to allow setting to None
+    # Build kwargs, handling epic_id and assignee_id specially to allow setting to None
     update_kwargs = {
         "task_id": task_id,
         "title": data.title,
@@ -427,6 +427,9 @@ async def update_task(
     # Only pass epic_id if it was explicitly provided in the request
     if data.epic_id is not None or "epic_id" in data.model_fields_set:
         update_kwargs["epic_id"] = data.epic_id
+    # Only pass assignee_id if it was explicitly provided in the request
+    if data.assignee_id is not None or "assignee_id" in data.model_fields_set:
+        update_kwargs["assignee_id"] = data.assignee_id
 
     task = await task_service.update_task(**update_kwargs)
 

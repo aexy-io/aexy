@@ -286,6 +286,8 @@ async def update_task(
         task.epic_id = data.epic_id
     if data.sprint_id is not None or "sprint_id" in data.model_fields_set:
         task.sprint_id = data.sprint_id
+    if data.assignee_id is not None or "assignee_id" in data.model_fields_set:
+        task.assignee_id = data.assignee_id
     if data.mentioned_user_ids is not None:
         task.mentioned_user_ids = data.mentioned_user_ids
     if data.mentioned_file_paths is not None:

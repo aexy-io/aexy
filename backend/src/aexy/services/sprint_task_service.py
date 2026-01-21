@@ -192,6 +192,7 @@ class SprintTaskService:
         status: str | None = None,
         labels: list[str] | None = None,
         epic_id: str | None = ...,  # Use sentinel to distinguish from None
+        assignee_id: str | None = ...,  # Use sentinel to distinguish from None
     ) -> SprintTask | None:
         """Update task details."""
         task = await self.get_task(task_id)
@@ -218,6 +219,8 @@ class SprintTaskService:
             task.labels = labels
         if epic_id is not ...:  # Only update if explicitly passed (including None)
             task.epic_id = epic_id
+        if assignee_id is not ...:  # Only update if explicitly passed (including None)
+            task.assignee_id = assignee_id
 
         await self.db.flush()
 
