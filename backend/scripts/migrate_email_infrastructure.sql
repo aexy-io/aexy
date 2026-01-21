@@ -7,17 +7,17 @@
 -- Drop in reverse dependency order to handle foreign keys
 -- =============================================================================
 
-DROP TABLE IF EXISTS provider_event_logs CASCADE;
-DROP TABLE IF EXISTS sending_pool_members CASCADE;
-DROP TABLE IF EXISTS sending_pools CASCADE;
-DROP TABLE IF EXISTS isp_metrics CASCADE;
-DROP TABLE IF EXISTS domain_health CASCADE;
-DROP TABLE IF EXISTS warming_progress CASCADE;
-DROP TABLE IF EXISTS dedicated_ips CASCADE;
-DROP TABLE IF EXISTS sending_identities CASCADE;
-DROP TABLE IF EXISTS sending_domains CASCADE;
-DROP TABLE IF EXISTS warming_schedules CASCADE;
-DROP TABLE IF EXISTS email_providers CASCADE;
+-- DROP TABLE IF EXISTS provider_event_logs CASCADE;
+-- DROP TABLE IF EXISTS sending_pool_members CASCADE;
+-- DROP TABLE IF EXISTS sending_pools CASCADE;
+-- DROP TABLE IF EXISTS isp_metrics CASCADE;
+-- DROP TABLE IF EXISTS domain_health CASCADE;
+-- DROP TABLE IF EXISTS warming_progress CASCADE;
+-- DROP TABLE IF EXISTS dedicated_ips CASCADE;
+-- DROP TABLE IF EXISTS sending_identities CASCADE;
+-- DROP TABLE IF EXISTS sending_domains CASCADE;
+-- DROP TABLE IF EXISTS warming_schedules CASCADE;
+-- DROP TABLE IF EXISTS email_providers CASCADE;
 
 -- =============================================================================
 -- EMAIL PROVIDERS
