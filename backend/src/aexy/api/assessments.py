@@ -633,10 +633,7 @@ async def generate_questions(
     question type, difficulty level, and optional context.
     Includes assessment context (job role, skills, experience) for better relevance.
     """
-    from aexy.services.question_generation_service import (
-        QuestionGenerationService,
-        get_sample_questions,
-    )
+    from aexy.services.question_generation_service import QuestionGenerationService
     from aexy.models.assessment import AssessmentTopic
     from aexy.models.repository import Organization
 
@@ -694,28 +691,42 @@ async def generate_questions(
 
     # Initialize service and generate questions with full context
     service = QuestionGenerationService(db)
-    generated = await service.generate_questions(
-        topic=topic.topic,
-        question_type=data.question_type,
-        difficulty=data.difficulty,
-        count=data.count,
-        subtopics=topic.subtopics,
-        context=data.context,
-        # Assessment context for better question relevance
-        job_designation=job_designation,
-        skills=skills,
-        experience_level=experience_level,
-        experience_years=experience_years,
-        organization_name=organization_name,
-        assessment_description=assessment_description,
-    )
 
-    # If LLM failed, fall back to sample questions
-    if not generated:
-        generated = await get_sample_questions(
-            question_type=data.question_type,
+    # Check if LLM gateway is available
+    if not service.gateway:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI question generation is not available. Please configure LLM provider (GEMINI_API_KEY or ANTHROPIC_API_KEY) in environment settings.",
+        )
+
+    try:
+        generated = await service.generate_questions(
             topic=topic.topic,
+            question_type=data.question_type,
+            difficulty=data.difficulty,
             count=data.count,
+            subtopics=topic.subtopics,
+            context=data.context,
+            # Assessment context for better question relevance
+            job_designation=job_designation,
+            skills=skills,
+            experience_level=experience_level,
+            experience_years=experience_years,
+            organization_name=organization_name,
+            assessment_description=assessment_description,
+        )
+    except Exception as e:
+        logger.error(f"Question generation failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"AI question generation failed: {str(e)}",
+        )
+
+    # If no questions were generated, throw an error
+    if not generated:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI failed to generate questions. Please try again or check LLM configuration.",
         )
 
     # Convert generated data to QuestionCreate schemas
