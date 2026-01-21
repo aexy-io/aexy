@@ -119,6 +119,11 @@ from aexy.api.preferences import public_router as preferences_public_router
 from aexy.api.preferences import admin_router as subscriptions_router
 # Visual Email Builder
 from aexy.api.visual_builder import router as visual_builder_router
+# Knowledge Graph (Enterprise)
+from aexy.api.knowledge_graph import router as knowledge_graph_router
+# Calendar Booking
+from aexy.api.booking import router as booking_router
+from aexy.api.booking import public_booking_router
 
 api_router = APIRouter()
 
@@ -244,3 +249,8 @@ api_router.include_router(preferences_public_router, tags=["preferences-public"]
 api_router.include_router(subscriptions_router, tags=["subscriptions"])
 # Visual Email Builder
 api_router.include_router(visual_builder_router, tags=["visual-builder"])
+# Knowledge Graph (Enterprise)
+api_router.include_router(knowledge_graph_router, tags=["knowledge-graph"])
+# Calendar Booking
+api_router.include_router(booking_router, tags=["booking"])
+api_router.include_router(public_booking_router, tags=["booking-public"])

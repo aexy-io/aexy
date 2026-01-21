@@ -17,6 +17,7 @@ import {
   FileText,
   ClipboardList,
   Phone,
+  CalendarCheck,
   LucideIcon,
 } from "lucide-react";
 
@@ -223,6 +224,20 @@ export const APP_CATALOG: Record<string, AppDefinition> = {
     requiredPermission: "can_view_oncall",
     modules: [],
   },
+  booking: {
+    id: "booking",
+    name: "Booking",
+    description: "Calendar booking and scheduling",
+    icon: CalendarCheck,
+    category: "business",
+    baseRoute: "/booking",
+    requiredPermission: "can_view_booking",
+    modules: [
+      { id: "event_types", name: "Event Types", description: "Manage bookable event types", route: "/event-types" },
+      { id: "availability", name: "Availability", description: "Set your availability schedule", route: "/availability" },
+      { id: "calendars", name: "Calendars", description: "Connect external calendars", route: "/calendars" },
+    ],
+  },
 };
 
 // Get app definition by ID
@@ -291,6 +306,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       crm: { enabled: false },
       email_marketing: { enabled: false },
       forms: { enabled: false },
+      booking: { enabled: false },
     },
   },
   {
@@ -316,6 +332,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       crm: { enabled: false },
       email_marketing: { enabled: false },
       oncall: { enabled: false },
+      booking: { enabled: false },
     },
   },
   {
@@ -341,6 +358,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       hiring: { enabled: false },
       learning: { enabled: false },
       oncall: { enabled: false },
+      booking: { enabled: true, modules: { event_types: true, availability: true, calendars: true } },
     },
   },
   {
@@ -369,6 +387,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       docs: { enabled: true },
       forms: { enabled: true },
       oncall: { enabled: true },
+      booking: { enabled: true, modules: { event_types: true, availability: true, calendars: true } },
     },
   },
 ];
@@ -413,6 +432,10 @@ export const SIDEBAR_TO_APP_MAP: Record<string, string> = {
   "/docs": "docs",
   "/forms": "forms",
   "/oncall": "oncall",
+  "/booking": "booking",
+  "/booking/event-types": "booking",
+  "/booking/availability": "booking",
+  "/booking/calendars": "booking",
 };
 
 // Get app ID from pathname

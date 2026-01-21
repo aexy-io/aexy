@@ -13812,3 +13812,335 @@ export interface AppAccessLogsSummary {
   total_events: number;
   period_days: number;
 }
+
+// ============================================================================
+// Knowledge Graph Types
+// ============================================================================
+
+export type KnowledgeEntityType =
+  | "person"
+  | "concept"
+  | "technology"
+  | "project"
+  | "organization"
+  | "code"
+  | "external";
+
+export type KnowledgeRelationType =
+  | "mentions"
+  | "related_to"
+  | "depends_on"
+  | "authored_by"
+  | "implements"
+  | "references"
+  | "links_to"
+  | "shares_entity"
+  | "mentioned_in";
+
+export type KnowledgeExtractionStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export interface KnowledgeGraphFilters {
+  entity_types?: KnowledgeEntityType[];
+  relationship_types?: KnowledgeRelationType[];
+  space_ids?: string[];
+  date_from?: string;
+  date_to?: string;
+  min_confidence?: number;
+  include_documents?: boolean;
+  include_entities?: boolean;
+  max_nodes?: number;
+}
+
+export interface KnowledgeGraphNode {
+  id: string;
+  label: string;
+  node_type: string;
+  metadata: {
+    created_at?: string;
+    updated_at?: string;
+    activity_score?: number;
+    occurrence_count?: number;
+    confidence_score?: number;
+    description?: string;
+    aliases?: string[];
+    first_seen_at?: string;
+    last_seen_at?: string;
+  };
+  color: string;
+}
+
+export interface KnowledgeGraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  relationship_type: string;
+  strength: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface KnowledgeGraphStatistics {
+  total_entities: number;
+  total_documents: number;
+  total_relationships: number;
+  entity_type_counts: Record<string, number>;
+  relationship_type_counts?: Record<string, number>;
+}
+
+export interface KnowledgeGraphTemporalData {
+  activity_heatmap: Array<{
+    date: string;
+    count: number;
+  }>;
+  entity_timeline: Array<{
+    entity_id: string;
+    first_seen: string;
+    last_seen: string;
+  }>;
+}
+
+export interface KnowledgeGraphData {
+  nodes: KnowledgeGraphNode[];
+  edges: KnowledgeGraphEdge[];
+  statistics: KnowledgeGraphStatistics;
+  temporal?: KnowledgeGraphTemporalData;
+}
+
+export interface KnowledgeEntity {
+  id: string;
+  workspace_id: string;
+  name: string;
+  entity_type: KnowledgeEntityType;
+  description: string | null;
+  aliases: string[];
+  metadata: Record<string, unknown>;
+  confidence_score: number;
+  occurrence_count: number;
+  first_seen_at: string | null;
+  last_seen_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface KnowledgeEntityDetails extends KnowledgeEntity {
+  documents: Array<{
+    id: string;
+    title: string;
+    updated_at?: string;
+  }>;
+  related_entities: Array<{
+    id: string;
+    name: string;
+    entity_type: string;
+    relationship_type: string;
+    strength: number;
+  }>;
+}
+
+export interface KnowledgeDocumentConnections {
+  document: {
+    id: string;
+    title: string;
+  } | null;
+  entities: Array<{
+    id: string;
+    name: string;
+    type: string;
+    confidence: number;
+    context?: string;
+  }>;
+  related_documents: Array<{
+    id: string;
+    title: string;
+    strength: number;
+    updated_at?: string;
+  }>;
+}
+
+export interface KnowledgeExtractionJob {
+  id: string;
+  workspace_id: string;
+  document_id: string | null;
+  status: KnowledgeExtractionStatus;
+  job_type: string;
+  entities_found: number;
+  relationships_found: number;
+  error_message: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface KnowledgeSearchResult {
+  id: string;
+  name: string;
+  type: string;
+  description?: string;
+  occurrence_count: number;
+}
+
+export interface KnowledgePathNode {
+  id: string;
+  name: string;
+  node_type: string;
+  relationship_to_next?: string;
+}
+
+// ============================================================================
+// Knowledge Graph API
+// ============================================================================
+
+export const knowledgeGraphApi = {
+  // Graph data
+  getGraph: async (
+    workspaceId: string,
+    filters?: KnowledgeGraphFilters
+  ): Promise<KnowledgeGraphData> => {
+    const response = await api.get(`/workspaces/${workspaceId}/knowledge-graph/graph`, {
+      params: filters,
+    });
+    return response.data;
+  },
+
+  getDocumentGraph: async (
+    workspaceId: string,
+    documentId: string,
+    depth?: number
+  ): Promise<KnowledgeGraphData> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/knowledge-graph/graph/document/${documentId}`,
+      { params: { depth } }
+    );
+    return response.data;
+  },
+
+  getEntityNeighborhood: async (
+    workspaceId: string,
+    entityId: string,
+    depth?: number
+  ): Promise<KnowledgeGraphData> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/knowledge-graph/graph/entity/${entityId}`,
+      { params: { depth } }
+    );
+    return response.data;
+  },
+
+  // Entities
+  listEntities: async (
+    workspaceId: string,
+    params?: {
+      entity_type?: KnowledgeEntityType;
+      search?: string;
+      min_confidence?: number;
+      skip?: number;
+      limit?: number;
+    }
+  ): Promise<{ entities: KnowledgeEntity[]; total: number }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/knowledge-graph/entities`, {
+      params,
+    });
+    return response.data;
+  },
+
+  getEntity: async (workspaceId: string, entityId: string): Promise<KnowledgeEntityDetails> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/knowledge-graph/entities/${entityId}`
+    );
+    return response.data;
+  },
+
+  getDocumentConnections: async (
+    workspaceId: string,
+    documentId: string
+  ): Promise<KnowledgeDocumentConnections> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/knowledge-graph/graph/document/${documentId}`
+    );
+    return response.data;
+  },
+
+  // Search and path finding
+  searchEntities: async (
+    workspaceId: string,
+    query: string,
+    entityType?: KnowledgeEntityType
+  ): Promise<KnowledgeSearchResult[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/knowledge-graph/entities`, {
+      params: { search: query, entity_type: entityType, limit: 20 },
+    });
+    return response.data.entities.map((e: KnowledgeEntity) => ({
+      id: e.id,
+      name: e.name,
+      type: e.entity_type,
+      description: e.description,
+      occurrence_count: e.occurrence_count,
+    }));
+  },
+
+  findPath: async (
+    workspaceId: string,
+    sourceId: string,
+    targetId: string,
+    maxDepth?: number
+  ): Promise<{ path: KnowledgePathNode[]; found: boolean }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/knowledge-graph/path`, {
+      params: { source_id: sourceId, target_id: targetId, max_depth: maxDepth },
+    });
+    return response.data;
+  },
+
+  // Statistics and temporal
+  getStatistics: async (workspaceId: string): Promise<KnowledgeGraphStatistics> => {
+    const response = await api.get(`/workspaces/${workspaceId}/knowledge-graph/statistics`);
+    return response.data;
+  },
+
+  getTemporalData: async (
+    workspaceId: string,
+    dateFrom?: string,
+    dateTo?: string
+  ): Promise<KnowledgeGraphTemporalData> => {
+    const response = await api.get(`/workspaces/${workspaceId}/knowledge-graph/temporal`, {
+      params: { date_from: dateFrom, date_to: dateTo },
+    });
+    return response.data;
+  },
+
+  // Extraction
+  triggerExtraction: async (
+    workspaceId: string,
+    documentId?: string
+  ): Promise<KnowledgeExtractionJob> => {
+    if (documentId) {
+      const response = await api.post(
+        `/workspaces/${workspaceId}/knowledge-graph/extract/document/${documentId}`
+      );
+      return response.data;
+    }
+    const response = await api.post(`/workspaces/${workspaceId}/knowledge-graph/extract`);
+    return response.data;
+  },
+
+  getExtractionJobs: async (
+    workspaceId: string,
+    params?: { status?: KnowledgeExtractionStatus; skip?: number; limit?: number }
+  ): Promise<{ jobs: KnowledgeExtractionJob[]; total: number }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/knowledge-graph/jobs`, {
+      params,
+    });
+    return response.data;
+  },
+
+  getExtractionJob: async (
+    workspaceId: string,
+    jobId: string
+  ): Promise<KnowledgeExtractionJob> => {
+    const response = await api.get(`/workspaces/${workspaceId}/knowledge-graph/jobs/${jobId}`);
+    return response.data;
+  },
+};
