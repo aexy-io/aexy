@@ -106,7 +106,7 @@ VALUES (
     TRUE,
     TRUE
 )
-ON CONFLICT (workspace_id, slug) DO UPDATE SET
+ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     description = EXCLUDED.description,
     icon = EXCLUDED.icon,
@@ -141,7 +141,7 @@ VALUES (
     TRUE,
     TRUE
 )
-ON CONFLICT (workspace_id, slug) DO UPDATE SET
+ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     description = EXCLUDED.description,
     icon = EXCLUDED.icon,
@@ -176,7 +176,7 @@ VALUES (
     TRUE,
     TRUE
 )
-ON CONFLICT (workspace_id, slug) DO UPDATE SET
+ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     description = EXCLUDED.description,
     icon = EXCLUDED.icon,
@@ -211,7 +211,7 @@ VALUES (
     TRUE,
     TRUE
 )
-ON CONFLICT (workspace_id, slug) DO UPDATE SET
+ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     description = EXCLUDED.description,
     icon = EXCLUDED.icon,
