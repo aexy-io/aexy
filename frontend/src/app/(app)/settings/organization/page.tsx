@@ -72,12 +72,25 @@ interface MemberRowProps {
   isCurrentUserAdmin: boolean;
   onUpdateRole: (developerId: string, role: string) => void;
   onRemove: (developerId: string) => void;
+  onResendInvite: (developerId: string) => Promise<void>;
 }
 
-function MemberRow({ member, currentUserId, isCurrentUserAdmin, onUpdateRole, onRemove }: MemberRowProps) {
+function MemberRow({ member, currentUserId, isCurrentUserAdmin, onUpdateRole, onRemove, onResendInvite }: MemberRowProps) {
   const [showMenu, setShowMenu] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const isCurrentUser = member.developer_id === currentUserId;
   const canModify = isCurrentUserAdmin && member.role !== "owner" && !isCurrentUser;
+  const isPending = member.status === "pending";
+
+  const handleResendInvite = async () => {
+    setIsResending(true);
+    try {
+      await onResendInvite(member.developer_id);
+    } finally {
+      setIsResending(false);
+      setShowMenu(false);
+    }
+  };
 
   return (
     <div className="p-4 flex items-center justify-between hover:bg-slate-700/30 transition">
@@ -149,6 +162,16 @@ function MemberRow({ member, currentUserId, isCurrentUserAdmin, onUpdateRole, on
                     </button>
                   ))}
                   <div className="border-t border-slate-600 mt-1 pt-1">
+                    {isPending && (
+                      <button
+                        onClick={handleResendInvite}
+                        disabled={isResending}
+                        className="w-full px-3 py-2 text-left text-sm text-blue-400 hover:bg-slate-600 flex items-center gap-2 disabled:opacity-50"
+                      >
+                        <RefreshCw className={`h-4 w-4 ${isResending ? 'animate-spin' : ''}`} />
+                        {isResending ? 'Resending...' : 'Resend Invite'}
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         onRemove(member.developer_id);
@@ -602,6 +625,7 @@ export default function OrganizationSettingsPage() {
     inviteMember,
     updateMemberRole,
     removeMember,
+    resendMemberInvite,
     isInviting,
   } = useWorkspaceMembers(currentWorkspaceId);
 
@@ -649,6 +673,13 @@ export default function OrganizationSettingsPage() {
     if (confirm("Are you sure you want to remove this member from the workspace?")) {
       await removeMember(developerId);
     }
+  };
+
+  const handleResendMemberInvite = async (developerId: string) => {
+    const member = members.find(m => m.developer_id === developerId);
+    await resendMemberInvite(developerId);
+    setSuccessMessage(`Invitation resent to ${member?.developer_email || member?.developer_name || 'member'}`);
+    setTimeout(() => setSuccessMessage(null), 3000);
   };
 
   const handleRevokeInvite = async (inviteId: string) => {
@@ -877,6 +908,7 @@ export default function OrganizationSettingsPage() {
                       isCurrentUserAdmin={isAdmin}
                       onUpdateRole={handleUpdateRole}
                       onRemove={handleRemove}
+                      onResendInvite={handleResendMemberInvite}
                     />
                   ))
                 ) : (

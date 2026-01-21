@@ -2364,6 +2364,11 @@ export const workspaceApi = {
     return response.data;
   },
 
+  resendMemberInvite: async (workspaceId: string, developerId: string): Promise<WorkspaceMember> => {
+    const response = await api.post(`/workspaces/${workspaceId}/members/${developerId}/resend-invite`);
+    return response.data;
+  },
+
   // Invite Token (for accepting invites via email link)
   getInviteInfo: async (token: string): Promise<InviteInfo> => {
     const response = await api.get(`/invites/${token}`);

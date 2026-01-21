@@ -531,6 +531,102 @@ async def remove_member(
         )
 
 
+@router.post("/{workspace_id}/members/{developer_id}/resend-invite", response_model=WorkspaceMemberResponse)
+async def resend_member_invite(
+    workspace_id: str,
+    developer_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Resend invite email to a pending member (existing user)."""
+    import logging
+    from aexy.services.email_service import EmailService
+    from aexy.core.config import settings
+
+    logger = logging.getLogger(__name__)
+    service = WorkspaceService(db)
+
+    if not await service.check_permission(workspace_id, str(current_user.id), "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin permission required",
+        )
+
+    # Get the member
+    member = await service.get_member(workspace_id, developer_id)
+    if not member:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Member not found",
+        )
+
+    if member.status != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Can only resend invites to pending members",
+        )
+
+    # Get the developer's email
+    dev_service = DeveloperService(db)
+    developer = await dev_service.get_by_id(developer_id)
+    if not developer or not developer.email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Developer email not found",
+        )
+
+    # Get workspace name for email
+    workspace = await service.get_workspace(workspace_id)
+    workspace_name = workspace.name if workspace else "the workspace"
+
+    # Send invite email
+    try:
+        email_service = EmailService()
+        logger.info(f"Email provider: {email_service.provider}, configured: {email_service.is_configured}")
+        if email_service.is_configured:
+            workspace_url = f"{settings.frontend_url}/dashboard"
+            subject = f"Reminder: You've been invited to join {workspace_name} on Aexy"
+            body_text = f"""
+Hi,
+
+This is a reminder that {current_user.name or current_user.email} has invited you to join {workspace_name} on Aexy.
+
+You can access the workspace from your dashboard:
+{workspace_url}
+
+Best,
+The Aexy Team
+            """.strip()
+
+            body_html = f"""
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #1f2937;">Reminder: You've been invited to join {workspace_name}</h2>
+    <p style="color: #4b5563;">{current_user.name or current_user.email} has invited you to join {workspace_name} on Aexy.</p>
+    <p style="margin: 24px 0;">
+        <a href="{workspace_url}" style="background-color: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+            Go to Dashboard
+        </a>
+    </p>
+    <p style="color: #9ca3af; font-size: 12px; margin-top: 32px;">If you didn't expect this invitation, you can safely ignore this email.</p>
+</div>
+            """.strip()
+
+            await email_service.send_templated_email(
+                db=db,
+                recipient_email=developer.email,
+                subject=subject,
+                body_text=body_text,
+                body_html=body_html,
+            )
+            logger.info(f"Resent invite email to {developer.email} for workspace {workspace_id}")
+        else:
+            logger.warning(f"Email service not configured, skipping resend invite email to {developer.email}")
+    except Exception as e:
+        logger.error(f"Failed to send resend invite email to {developer.email}: {e}")
+
+    return member_to_response(member)
+
+
 # Join Request
 @router.post("/{workspace_id}/join-request")
 async def request_to_join(

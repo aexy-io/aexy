@@ -186,6 +186,13 @@ export function useWorkspaceMembers(workspaceId: string | null) {
     },
   });
 
+  const resendInviteMutation = useMutation({
+    mutationFn: (developerId: string) => workspaceApi.resendMemberInvite(workspaceId!, developerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspaceId] });
+    },
+  });
+
   return {
     members: members || [],
     isLoading,
@@ -194,9 +201,11 @@ export function useWorkspaceMembers(workspaceId: string | null) {
     inviteMember: inviteMutation.mutateAsync,
     updateMemberRole: updateRoleMutation.mutateAsync,
     removeMember: removeMutation.mutateAsync,
+    resendMemberInvite: resendInviteMutation.mutateAsync,
     isInviting: inviteMutation.isPending,
     isUpdatingRole: updateRoleMutation.isPending,
     isRemoving: removeMutation.isPending,
+    isResendingInvite: resendInviteMutation.isPending,
   };
 }
 
