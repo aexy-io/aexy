@@ -2023,6 +2023,20 @@ export interface LimitsUsageSummary {
     providers: string[];
     reset_at: string | null;
   };
+  tokens: {
+    free_tokens_per_month: number;
+    tokens_used_this_month: number;
+    input_tokens_this_month: number;
+    output_tokens_this_month: number;
+    tokens_remaining_free: number;
+    is_in_overage: boolean;
+    overage_tokens: number;
+    overage_cost_cents: number;
+    input_cost_per_1k_cents: number;
+    output_cost_per_1k_cents: number;
+    enable_overage_billing: boolean;
+    reset_at: string | null;
+  };
   features: {
     real_time_sync: boolean;
     webhooks: boolean;

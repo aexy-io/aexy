@@ -370,6 +370,156 @@ class LimitsService:
             developer.llm_requests_today = 0
             developer.llm_requests_reset_at = now + timedelta(days=1)
 
+    async def _maybe_reset_monthly_tokens(self, developer: Developer) -> None:
+        """Reset monthly token usage if it's a new billing month."""
+        now = datetime.now(timezone.utc)
+
+        # Initialize if not set
+        if not hasattr(developer, 'llm_tokens_reset_at') or developer.llm_tokens_reset_at is None:
+            # Set reset to first of next month
+            next_month = (now.replace(day=1) + timedelta(days=32)).replace(day=1)
+            developer.llm_tokens_used_this_month = 0
+            developer.llm_input_tokens_this_month = 0
+            developer.llm_output_tokens_this_month = 0
+            developer.llm_overage_cost_cents = 0
+            developer.llm_tokens_reset_at = next_month
+        elif now >= developer.llm_tokens_reset_at:
+            # Reset and set next reset date
+            next_month = (now.replace(day=1) + timedelta(days=32)).replace(day=1)
+            developer.llm_tokens_used_this_month = 0
+            developer.llm_input_tokens_this_month = 0
+            developer.llm_output_tokens_this_month = 0
+            developer.llm_overage_cost_cents = 0
+            developer.llm_tokens_reset_at = next_month
+
+    async def record_token_usage(
+        self,
+        developer_id: str,
+        input_tokens: int,
+        output_tokens: int,
+    ) -> dict[str, Any]:
+        """Record token usage and calculate any overage costs.
+
+        Returns a dict with usage info and overage details.
+        """
+        developer = await self.get_developer_with_plan(developer_id)
+        if not developer:
+            return {"error": "Developer not found"}
+
+        plan = developer.plan or await self.get_or_create_free_plan()
+        await self._maybe_reset_monthly_tokens(developer)
+
+        total_tokens = input_tokens + output_tokens
+        free_tokens = getattr(plan, "free_llm_tokens_per_month", 100000)
+        enable_overage = getattr(plan, "enable_overage_billing", True)
+
+        # Track tokens
+        old_total = developer.llm_tokens_used_this_month or 0
+        developer.llm_tokens_used_this_month = old_total + total_tokens
+        developer.llm_input_tokens_this_month = (
+            (developer.llm_input_tokens_this_month or 0) + input_tokens
+        )
+        developer.llm_output_tokens_this_month = (
+            (developer.llm_output_tokens_this_month or 0) + output_tokens
+        )
+
+        # Calculate overage if applicable
+        overage_cost = 0
+        is_overage = False
+
+        if free_tokens > 0:  # Not unlimited
+            new_total = developer.llm_tokens_used_this_month
+
+            if new_total > free_tokens:
+                is_overage = True
+
+                if enable_overage:
+                    # Calculate overage tokens for this request
+                    if old_total >= free_tokens:
+                        # Already in overage, all new tokens are overage
+                        overage_input = input_tokens
+                        overage_output = output_tokens
+                    else:
+                        # Partially in overage
+                        tokens_into_overage = new_total - free_tokens
+                        # Proportional split (simplified)
+                        ratio = tokens_into_overage / total_tokens if total_tokens > 0 else 0
+                        overage_input = int(input_tokens * ratio)
+                        overage_output = int(output_tokens * ratio)
+
+                    # Calculate cost
+                    input_cost_per_1k = getattr(plan, "llm_input_cost_per_1k_cents", 30)
+                    output_cost_per_1k = getattr(plan, "llm_output_cost_per_1k_cents", 60)
+
+                    overage_cost = (
+                        (overage_input * input_cost_per_1k // 1000) +
+                        (overage_output * output_cost_per_1k // 1000)
+                    )
+
+                    developer.llm_overage_cost_cents = (
+                        (developer.llm_overage_cost_cents or 0) + overage_cost
+                    )
+
+        await self.db.flush()
+
+        return {
+            "tokens_used": total_tokens,
+            "total_this_month": developer.llm_tokens_used_this_month,
+            "free_tokens": free_tokens,
+            "is_overage": is_overage,
+            "overage_cost_cents": overage_cost,
+            "total_overage_cost_cents": developer.llm_overage_cost_cents or 0,
+        }
+
+    async def check_token_limit(
+        self,
+        developer_id: str,
+        estimated_tokens: int = 0,
+    ) -> dict[str, Any]:
+        """Check if the developer can use more tokens.
+
+        Returns dict with allowed status and details.
+        """
+        developer = await self.get_developer_with_plan(developer_id)
+        if not developer:
+            return {"allowed": False, "reason": "Developer not found"}
+
+        plan = developer.plan or await self.get_or_create_free_plan()
+        await self._maybe_reset_monthly_tokens(developer)
+
+        free_tokens = getattr(plan, "free_llm_tokens_per_month", 100000)
+        enable_overage = getattr(plan, "enable_overage_billing", True)
+
+        # Unlimited plan
+        if free_tokens == -1:
+            return {"allowed": True, "reason": None, "unlimited": True}
+
+        tokens_used = developer.llm_tokens_used_this_month or 0
+        tokens_remaining = max(0, free_tokens - tokens_used)
+
+        # If overage is enabled, always allow
+        if enable_overage:
+            return {
+                "allowed": True,
+                "reason": None,
+                "tokens_remaining_free": tokens_remaining,
+                "will_incur_overage": tokens_used + estimated_tokens > free_tokens,
+            }
+
+        # If overage not enabled, check limit
+        if tokens_used >= free_tokens:
+            return {
+                "allowed": False,
+                "reason": f"Monthly token limit reached ({free_tokens:,} tokens). Upgrade your plan to continue.",
+                "tokens_remaining_free": 0,
+            }
+
+        return {
+            "allowed": True,
+            "reason": None,
+            "tokens_remaining_free": tokens_remaining,
+        }
+
     async def get_enabled_repos_count(self, developer_id: str) -> int:
         """Get the count of enabled repositories for a developer."""
         stmt = (

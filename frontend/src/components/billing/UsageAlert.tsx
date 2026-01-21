@@ -2,8 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, X, TrendingUp, Zap } from "lucide-react";
-import { useUsageWarnings, UsageWarning } from "@/hooks/useBillingUsage";
+import { AlertTriangle, X, TrendingUp, Zap, Coins } from "lucide-react";
+import { useUsageWarnings, UsageWarning, TokenUsageWarning, formatCurrency, formatNumber } from "@/hooks/useBillingUsage";
+
+// Type guard for TokenUsageWarning
+function isTokenUsageWarning(warning: UsageWarning): warning is TokenUsageWarning {
+  return "isOverage" in warning;
+}
 
 interface UsageAlertBannerProps {
   warning: UsageWarning;
@@ -11,12 +16,15 @@ interface UsageAlertBannerProps {
 }
 
 function UsageAlertBanner({ warning, onDismiss }: UsageAlertBannerProps) {
+  const isTokenWarning = isTokenUsageWarning(warning);
+  const isOverage = isTokenWarning && warning.isOverage;
+
   const severityStyles = {
     warning: {
-      bg: "bg-amber-900/30",
+      bg: isOverage ? "bg-amber-900/40" : "bg-amber-900/30",
       border: "border-amber-700",
       text: "text-amber-400",
-      icon: <AlertTriangle className="h-5 w-5 text-amber-400" />,
+      icon: isOverage ? <Coins className="h-5 w-5 text-amber-400" /> : <AlertTriangle className="h-5 w-5 text-amber-400" />,
       progressBg: "bg-amber-900/50",
       progressBar: "bg-amber-500",
     },
@@ -58,16 +66,35 @@ function UsageAlertBanner({ warning, onDismiss }: UsageAlertBannerProps) {
             )}
           </div>
 
-          {/* Progress bar */}
-          <div className={`mt-3 h-2 ${styles.progressBg} rounded-full overflow-hidden`}>
-            <div
-              className={`h-full ${styles.progressBar} rounded-full transition-all duration-500`}
-              style={{ width: `${percentage}%` }}
-            />
-          </div>
-          <p className="text-slate-400 text-sm mt-1">
-            {Math.round(percentage)}% used
-          </p>
+          {/* Overage details for token warnings */}
+          {isTokenWarning && warning.isOverage && warning.overageCostCents > 0 && (
+            <div className="mt-2 flex items-center gap-4 text-sm">
+              <span className="text-slate-400">
+                Overage: <span className="text-white font-medium">{formatNumber(warning.overageTokens)} tokens</span>
+              </span>
+              <span className="text-amber-400 font-medium">
+                {formatCurrency(warning.overageCostCents)} charged
+              </span>
+            </div>
+          )}
+
+          {/* Progress bar - only show if not in overage */}
+          {!isOverage && (
+            <>
+              <div className={`mt-3 h-2 ${styles.progressBg} rounded-full overflow-hidden`}>
+                <div
+                  className={`h-full ${styles.progressBar} rounded-full transition-all duration-500`}
+                  style={{ width: `${percentage}%` }}
+                />
+              </div>
+              <p className="text-slate-400 text-sm mt-1">
+                {Math.round(percentage)}% used
+                {isTokenWarning && warning.freeTokensRemaining > 0 && (
+                  <span> - {formatNumber(warning.freeTokensRemaining)} free tokens remaining</span>
+                )}
+              </p>
+            </>
+          )}
 
           {/* CTA button */}
           <Link
