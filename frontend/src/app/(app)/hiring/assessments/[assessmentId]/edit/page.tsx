@@ -303,7 +303,7 @@ export default function AssessmentWizardPage() {
 
       {/* Step Content */}
       <div className="flex-1 overflow-auto">
-        <div className="w-full px-6 py-8">
+        <div className="max-w-5xl mx-auto px-6 py-8">
           {currentStep === 1 && (
             <Step1AssessmentDetails
               assessment={assessment}

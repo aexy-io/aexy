@@ -64,16 +64,16 @@ export default function NewAssessmentPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center max-w-md p-6">
-          <div className="w-16 h-16 bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="h-8 w-8 text-red-400" />
+          <div className="w-16 h-16 bg-destructive/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
-          <h2 className="text-xl font-semibold text-white mb-2">Unable to Create Assessment</h2>
-          <p className="text-slate-400 mb-6">{error}</p>
+          <h2 className="text-xl font-semibold text-foreground mb-2">Unable to Create Assessment</h2>
+          <p className="text-muted-foreground mb-6">{error}</p>
           <button
             onClick={() => router.push("/hiring/assessments")}
-            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+            className="px-4 py-2 bg-muted hover:bg-accent text-foreground rounded-lg transition"
           >
             Back to Assessments
           </button>
@@ -83,10 +83,10 @@ export default function NewAssessmentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+    <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="text-center">
-        <Loader2 className="h-10 w-10 animate-spin text-primary-500 mx-auto mb-4" />
-        <p className="text-slate-400">Creating assessment...</p>
+        <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
+        <p className="text-muted-foreground">Creating assessment...</p>
       </div>
     </div>
   );
