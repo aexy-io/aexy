@@ -452,6 +452,20 @@ class Settings(BaseSettings):
         description="Anthropic API key for Claude (used by AI agents)",
     )
 
+    # Platform Admin Configuration
+    admin_emails: str = Field(
+        default="",
+        description="Comma-separated list of platform admin emails",
+        validation_alias="ADMIN_EMAILS",
+    )
+
+    @property
+    def admin_email_list(self) -> list[str]:
+        """Parse admin emails from comma-separated string."""
+        if not self.admin_emails:
+            return []
+        return [e.strip().lower() for e in self.admin_emails.split(",") if e.strip()]
+
     # Email Tracking
     email_tracking_enabled: bool = Field(
         default=True,

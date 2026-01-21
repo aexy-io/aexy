@@ -13125,3 +13125,253 @@ export const learningIntegrationsApi = {
     },
   },
 };
+
+// ============================================================================
+// Platform Admin API
+// ============================================================================
+
+export interface AdminCheckResponse {
+  is_admin: boolean;
+}
+
+export interface AdminDashboardStats {
+  total_workspaces: number;
+  total_users: number;
+  total_emails_sent: number;
+  total_notifications: number;
+  active_workspaces_30d: number;
+  email_delivery_rate: number;
+  emails_sent_today: number;
+  emails_sent_this_week: number;
+  emails_failed_today: number;
+}
+
+export interface AdminEmailLog {
+  id: string;
+  notification_id: string | null;
+  recipient_email: string;
+  subject: string;
+  template_name: string | null;
+  body_preview: string | null;
+  ses_message_id: string | null;
+  status: string;
+  error_message: string | null;
+  sent_at: string | null;
+  created_at: string;
+  workspace_id: string | null;
+  workspace_name: string | null;
+  notification_type: string | null;
+}
+
+export interface PaginatedAdminEmailLogs {
+  items: AdminEmailLog[];
+  total: number;
+  page: number;
+  per_page: number;
+  has_next: boolean;
+}
+
+export interface AdminNotification {
+  id: string;
+  recipient_id: string;
+  recipient_email: string | null;
+  recipient_name: string | null;
+  event_type: string;
+  title: string;
+  body: string;
+  context: Record<string, unknown>;
+  is_read: boolean;
+  email_sent: boolean;
+  created_at: string;
+}
+
+export interface PaginatedAdminNotifications {
+  items: AdminNotification[];
+  total: number;
+  page: number;
+  per_page: number;
+  has_next: boolean;
+}
+
+export interface AdminWorkspace {
+  id: string;
+  name: string;
+  slug: string;
+  type: string;
+  description: string | null;
+  owner_id: string;
+  owner_email: string | null;
+  owner_name: string | null;
+  plan_tier: string | null;
+  member_count: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface PaginatedAdminWorkspaces {
+  items: AdminWorkspace[];
+  total: number;
+  page: number;
+  per_page: number;
+  has_next: boolean;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string | null;
+  avatar_url: string | null;
+  has_github: boolean;
+  has_google: boolean;
+  workspace_count: number;
+  created_at: string;
+}
+
+export interface PaginatedAdminUsers {
+  items: AdminUser[];
+  total: number;
+  page: number;
+  per_page: number;
+  has_next: boolean;
+}
+
+export interface ResendEmailResponse {
+  success: boolean;
+  message: string;
+  new_email_log_id: string | null;
+}
+
+export interface EmailListParams {
+  page?: number;
+  per_page?: number;
+  status_filter?: string;
+  search?: string;
+  date_from?: string;
+  date_to?: string;
+}
+
+export const platformAdminApi = {
+  checkAdmin: async (): Promise<AdminCheckResponse> => {
+    const response = await api.get("/platform-admin/check");
+    return response.data;
+  },
+
+  getDashboardStats: async (): Promise<AdminDashboardStats> => {
+    const response = await api.get("/platform-admin/dashboard/stats");
+    return response.data;
+  },
+
+  // Email Logs
+  getEmailLogs: async (params?: EmailListParams): Promise<PaginatedAdminEmailLogs> => {
+    const response = await api.get("/platform-admin/emails", { params });
+    return response.data;
+  },
+
+  getEmailLog: async (emailId: string): Promise<AdminEmailLog> => {
+    const response = await api.get(`/platform-admin/emails/${emailId}`);
+    return response.data;
+  },
+
+  resendEmail: async (emailId: string): Promise<ResendEmailResponse> => {
+    const response = await api.post(`/platform-admin/emails/${emailId}/resend`);
+    return response.data;
+  },
+
+  // Notifications
+  getNotifications: async (params?: {
+    page?: number;
+    per_page?: number;
+    event_type?: string;
+    search?: string;
+  }): Promise<PaginatedAdminNotifications> => {
+    const response = await api.get("/platform-admin/notifications", { params });
+    return response.data;
+  },
+
+  // Workspaces
+  getWorkspaces: async (params?: {
+    page?: number;
+    per_page?: number;
+    search?: string;
+    plan_tier?: string;
+  }): Promise<PaginatedAdminWorkspaces> => {
+    const response = await api.get("/platform-admin/workspaces", { params });
+    return response.data;
+  },
+
+  // Users
+  getUsers: async (params?: {
+    page?: number;
+    per_page?: number;
+    search?: string;
+  }): Promise<PaginatedAdminUsers> => {
+    const response = await api.get("/platform-admin/users", { params });
+    return response.data;
+  },
+};
+
+// ============================================================================
+// Workspace Email Delivery API (Enterprise Only)
+// ============================================================================
+
+export interface WorkspaceEmailStats {
+  total_sent: number;
+  total_delivered: number;
+  total_failed: number;
+  total_bounced: number;
+  total_pending: number;
+  delivery_rate: number;
+  bounce_rate: number;
+  sent_today: number;
+  sent_this_week: number;
+  sent_this_month: number;
+}
+
+export interface WorkspaceEmailLog {
+  id: string;
+  notification_id: string | null;
+  recipient_email: string;
+  subject: string;
+  template_name: string | null;
+  ses_message_id: string | null;
+  status: string;
+  error_message: string | null;
+  sent_at: string | null;
+  created_at: string;
+  notification_type: string | null;
+}
+
+export interface PaginatedWorkspaceEmailLogs {
+  items: WorkspaceEmailLog[];
+  total: number;
+  page: number;
+  per_page: number;
+  has_next: boolean;
+}
+
+export const workspaceEmailApi = {
+  getEmailLogs: async (
+    workspaceId: string,
+    developerId: string,
+    params?: {
+      page?: number;
+      per_page?: number;
+      status_filter?: string;
+    }
+  ): Promise<PaginatedWorkspaceEmailLogs> => {
+    const response = await api.get(`/notifications/workspace/${workspaceId}/emails`, {
+      params: { developer_id: developerId, ...params },
+    });
+    return response.data;
+  },
+
+  getEmailStats: async (
+    workspaceId: string,
+    developerId: string
+  ): Promise<WorkspaceEmailStats> => {
+    const response = await api.get(`/notifications/workspace/${workspaceId}/email-stats`, {
+      params: { developer_id: developerId },
+    });
+    return response.data;
+  },
+};
