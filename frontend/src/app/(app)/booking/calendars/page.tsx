@@ -46,17 +46,32 @@ export default function CalendarsPage() {
     const success = searchParams.get("success");
     const error = searchParams.get("error");
     const provider = searchParams.get("provider");
+    const providerName = provider === "microsoft" ? "Microsoft Outlook" : "Google Calendar";
 
     if (success === "true") {
-      toast.success(`${provider === "microsoft" ? "Microsoft" : "Google"} Calendar connected successfully!`);
+      toast.success(`${providerName} connected successfully!`);
+      // Reload connections to show the new one
+      if (currentWorkspace?.id) {
+        loadConnections();
+      }
       // Clear URL params
       router.replace("/booking/calendars", { scroll: false });
     } else if (error) {
-      toast.error(`Failed to connect calendar: ${decodeURIComponent(error)}`);
+      const decodedError = decodeURIComponent(error);
+      // Format error message for better readability
+      if (decodedError.includes("not configured")) {
+        toast.error(`${providerName} integration is not configured. Please contact your administrator.`);
+      } else if (decodedError.includes("access_denied")) {
+        toast.error(`Authorization was denied. Please try again and grant the required permissions.`);
+      } else if (decodedError.includes("invalid_grant")) {
+        toast.error(`Authorization expired. Please try connecting again.`);
+      } else {
+        toast.error(`Failed to connect ${providerName}: ${decodedError}`);
+      }
       // Clear URL params
       router.replace("/booking/calendars", { scroll: false });
     }
-  }, [searchParams, router]);
+  }, [searchParams, router, currentWorkspace?.id]);
 
   useEffect(() => {
     if (currentWorkspace?.id) {
@@ -70,9 +85,10 @@ export default function CalendarsPage() {
     try {
       const data = await bookingApi.calendars.list(currentWorkspace.id);
       setConnections(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to load calendar connections:", error);
-      toast.error("Failed to load calendar connections");
+      const errorMessage = error.response?.data?.detail || "Failed to load calendar connections";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -81,15 +97,28 @@ export default function CalendarsPage() {
   const connectCalendar = async (provider: string) => {
     if (!currentWorkspace?.id) return;
 
+    const providerName = provider === "microsoft" ? "Microsoft Outlook" : "Google Calendar";
     setConnecting(provider);
 
     try {
       const { auth_url } = await bookingApi.calendars.connect(currentWorkspace.id, provider);
       // Redirect to OAuth flow
       window.location.href = auth_url;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to connect calendar:", error);
-      toast.error("Failed to connect calendar");
+
+      // Extract error message from API response
+      const errorMessage = error.response?.data?.detail
+        || error.message
+        || `Failed to connect ${providerName}`;
+
+      // Check for specific error types
+      if (errorMessage.includes("not configured")) {
+        toast.error(`${providerName} integration is not configured. Please contact your administrator.`);
+      } else {
+        toast.error(errorMessage);
+      }
+
       setConnecting(null);
     }
   };
@@ -102,8 +131,9 @@ export default function CalendarsPage() {
       await bookingApi.calendars.disconnect(currentWorkspace.id, connectionId);
       await loadConnections();
       toast.success("Calendar disconnected");
-    } catch (error) {
-      toast.error("Failed to disconnect calendar");
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.detail || "Failed to disconnect calendar";
+      toast.error(errorMessage);
     }
   };
 
@@ -116,8 +146,13 @@ export default function CalendarsPage() {
       await bookingApi.calendars.sync(currentWorkspace.id, connectionId);
       await loadConnections();
       toast.success("Calendar synced successfully");
-    } catch (error) {
-      toast.error("Failed to sync calendar");
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.detail || "Failed to sync calendar";
+      if (errorMessage.includes("token") || errorMessage.includes("expired")) {
+        toast.error("Calendar authorization expired. Please reconnect your calendar.");
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setSyncing(null);
     }
@@ -130,8 +165,9 @@ export default function CalendarsPage() {
       await bookingApi.calendars.setPrimary(currentWorkspace.id, connectionId);
       await loadConnections();
       toast.success("Primary calendar updated");
-    } catch (error) {
-      toast.error("Failed to set primary calendar");
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.detail || "Failed to set primary calendar";
+      toast.error(errorMessage);
     }
   };
 
