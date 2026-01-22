@@ -1,8 +1,13 @@
 """Calendar connections API endpoints for booking module."""
 
-from urllib.parse import urlencode
+import base64
+import json
+import hmac
+import hashlib
+from urllib.parse import urlencode, quote
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.core.database import get_db
@@ -23,17 +28,66 @@ router = APIRouter(
     tags=["Booking - Calendars"],
 )
 
+# Separate router for callbacks (no workspace prefix, no auth required)
+callback_router = APIRouter(
+    prefix="/booking/calendars",
+    tags=["Booking - Calendar Callbacks"],
+)
+
 
 # OAuth scopes for calendar access
 GOOGLE_CALENDAR_SCOPES = [
     "https://www.googleapis.com/auth/calendar.readonly",
     "https://www.googleapis.com/auth/calendar.events",
+    "https://www.googleapis.com/auth/userinfo.email",
 ]
 
 MICROSOFT_CALENDAR_SCOPES = [
     "Calendars.ReadWrite",
     "User.Read",
 ]
+
+
+def _create_oauth_state(user_id: str, workspace_id: str, provider: str, frontend_url: str) -> str:
+    """Create a signed OAuth state parameter."""
+    state_data = {
+        "user_id": user_id,
+        "workspace_id": workspace_id,
+        "provider": provider,
+        "frontend_url": frontend_url,
+    }
+    state_json = json.dumps(state_data)
+    state_bytes = state_json.encode("utf-8")
+
+    # Sign the state with HMAC
+    secret = (settings.secret_key or "dev-secret").encode("utf-8")
+    signature = hmac.new(secret, state_bytes, hashlib.sha256).hexdigest()[:16]
+
+    # Encode state + signature
+    state_with_sig = f"{base64.urlsafe_b64encode(state_bytes).decode('utf-8')}.{signature}"
+    return state_with_sig
+
+
+def _verify_oauth_state(state: str) -> dict:
+    """Verify and decode OAuth state parameter."""
+    try:
+        parts = state.rsplit(".", 1)
+        if len(parts) != 2:
+            raise ValueError("Invalid state format")
+
+        state_b64, signature = parts
+        state_bytes = base64.urlsafe_b64decode(state_b64)
+
+        # Verify signature
+        secret = (settings.secret_key or "dev-secret").encode("utf-8")
+        expected_sig = hmac.new(secret, state_bytes, hashlib.sha256).hexdigest()[:16]
+
+        if not hmac.compare_digest(signature, expected_sig):
+            raise ValueError("Invalid state signature")
+
+        return json.loads(state_bytes.decode("utf-8"))
+    except Exception as e:
+        raise ValueError(f"Failed to verify OAuth state: {e}")
 
 
 def connection_to_response(connection) -> CalendarConnectionResponse:
@@ -85,9 +139,9 @@ async def get_calendar_oauth_url(
 ):
     """Get OAuth authorization URL for calendar provider.
 
-    Returns the URL to redirect the user to for OAuth authorization.
-    After authorization, the user will be redirected back to the callback URL
-    with an authorization code that should be sent to POST /connect/{provider}.
+    Redirects the user to the OAuth provider. After authorization,
+    the user will be redirected back to the backend callback endpoint,
+    which exchanges the code for tokens and redirects to the frontend.
     """
     if provider not in ["google", "microsoft"]:
         raise HTTPException(
@@ -95,10 +149,21 @@ async def get_calendar_oauth_url(
             detail=f"Unsupported calendar provider: {provider}",
         )
 
-    # Build the callback URL - use the frontend URL for the redirect
-    # The frontend will capture the code and POST it to the backend
+    # Get frontend URL for final redirect after OAuth completes
     frontend_url = str(request.headers.get("origin", "http://localhost:3000"))
-    callback_url = f"{frontend_url}/booking/calendars/callback"
+
+    # Build the callback URL - use the backend URL for OAuth redirect
+    # The backend will then redirect to frontend after processing
+    backend_url = str(request.base_url).rstrip("/")
+    callback_url = f"{backend_url}api/v1/booking/calendars/callback/{provider}"
+
+    # Create signed state with user info
+    state = _create_oauth_state(
+        user_id=str(current_user.id),
+        workspace_id=workspace_id,
+        provider=provider,
+        frontend_url=frontend_url,
+    )
 
     if provider == "google":
         if not settings.google_client_id:
@@ -115,7 +180,7 @@ async def get_calendar_oauth_url(
             "scope": " ".join(GOOGLE_CALENDAR_SCOPES),
             "access_type": "offline",
             "prompt": "consent",
-            "state": f"{workspace_id}:google",  # Pass workspace ID and provider in state
+            "state": state,
         }
         auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}"
 
@@ -133,208 +198,233 @@ async def get_calendar_oauth_url(
             "redirect_uri": callback_url,
             "response_type": "code",
             "scope": " ".join(MICROSOFT_CALENDAR_SCOPES) + " offline_access",
-            "state": f"{workspace_id}:microsoft",
+            "state": state,
         }
         auth_url = f"https://login.microsoftonline.com/common/oauth2/v2.0/authorize?{urlencode(params)}"
 
     return {"auth_url": auth_url}
 
 
-@router.post("/connect/google", response_model=CalendarConnectionResponse, status_code=status.HTTP_201_CREATED)
-async def connect_google_calendar(
-    workspace_id: str,
-    data: CalendarConnectRequest,
+@callback_router.get("/callback/{provider}")
+async def calendar_oauth_callback(
+    provider: str,
     request: Request,
-    current_user: Developer = Depends(get_current_developer),
+    code: str = None,
+    state: str = None,
+    error: str = None,
+    error_description: str = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """Connect a Google Calendar.
+    """OAuth callback endpoint for calendar providers.
 
-    This endpoint receives the OAuth authorization code and exchanges it
-    for access tokens.
+    This endpoint receives the OAuth redirect from Google/Microsoft,
+    exchanges the authorization code for tokens, creates the calendar
+    connection, and redirects the user back to the frontend.
     """
     import httpx
     from datetime import datetime, timedelta
     from zoneinfo import ZoneInfo
 
-    if not settings.google_client_id or not settings.google_client_secret:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Google Calendar integration is not configured",
+    # Default frontend URL for error redirects
+    default_frontend = "http://localhost:3000"
+
+    # Handle OAuth error
+    if error:
+        error_msg = error_description or error
+        return RedirectResponse(
+            url=f"{default_frontend}/booking/calendars?error={quote(error_msg)}",
+            status_code=status.HTTP_302_FOUND
         )
 
-    # Build callback URL (same as in GET endpoint)
-    frontend_url = str(request.headers.get("origin", "http://localhost:3000"))
-    callback_url = f"{frontend_url}/booking/calendars/callback"
+    if not code or not state:
+        return RedirectResponse(
+            url=f"{default_frontend}/booking/calendars?error=Missing+authorization+code",
+            status_code=status.HTTP_302_FOUND
+        )
 
-    # Exchange authorization code for tokens
-    token_url = "https://oauth2.googleapis.com/token"
-    token_data = {
-        "client_id": settings.google_client_id,
-        "client_secret": settings.google_client_secret,
-        "code": data.auth_code,
-        "grant_type": "authorization_code",
-        "redirect_uri": callback_url,
-    }
+    # Verify and decode state
+    try:
+        state_data = _verify_oauth_state(state)
+        user_id = state_data["user_id"]
+        workspace_id = state_data["workspace_id"]
+        frontend_url = state_data.get("frontend_url", default_frontend)
+    except ValueError as e:
+        return RedirectResponse(
+            url=f"{default_frontend}/booking/calendars?error=Invalid+OAuth+state",
+            status_code=status.HTTP_302_FOUND
+        )
+
+    # Build callback URL (must match what was used in authorization request)
+    backend_url = str(request.base_url).rstrip("/")
+    callback_url = f"{backend_url}api/v1/booking/calendars/callback/{provider}"
+
+    success_redirect = f"{frontend_url}/booking/calendars?success=true&provider={provider}"
+    error_redirect = f"{frontend_url}/booking/calendars?error="
 
     try:
-        async with httpx.AsyncClient() as client:
-            token_response = await client.post(token_url, data=token_data)
-            token_response.raise_for_status()
-            tokens = token_response.json()
+        if provider == "google":
+            if not settings.google_client_id or not settings.google_client_secret:
+                return RedirectResponse(
+                    url=f"{error_redirect}Google+Calendar+not+configured",
+                    status_code=status.HTTP_302_FOUND
+                )
 
-            access_token = tokens.get("access_token")
-            refresh_token = tokens.get("refresh_token")
-            expires_in = tokens.get("expires_in", 3600)
-            token_expires_at = datetime.now(ZoneInfo("UTC")) + timedelta(seconds=expires_in)
+            # Exchange authorization code for tokens
+            token_url = "https://oauth2.googleapis.com/token"
+            token_data = {
+                "client_id": settings.google_client_id,
+                "client_secret": settings.google_client_secret,
+                "code": code,
+                "grant_type": "authorization_code",
+                "redirect_uri": callback_url,
+            }
 
-            # Fetch user info to get email
-            userinfo_response = await client.get(
-                "https://www.googleapis.com/oauth2/v2/userinfo",
-                headers={"Authorization": f"Bearer {access_token}"},
+            async with httpx.AsyncClient() as client:
+                token_response = await client.post(token_url, data=token_data)
+
+                if token_response.status_code != 200:
+                    error_data = token_response.json()
+                    error_msg = error_data.get("error_description", error_data.get("error", "Token exchange failed"))
+                    return RedirectResponse(
+                        url=f"{error_redirect}{quote(error_msg)}",
+                        status_code=status.HTTP_302_FOUND
+                    )
+
+                tokens = token_response.json()
+                access_token = tokens.get("access_token")
+                refresh_token = tokens.get("refresh_token")
+                expires_in = tokens.get("expires_in", 3600)
+                token_expires_at = datetime.now(ZoneInfo("UTC")) + timedelta(seconds=expires_in)
+
+                # Fetch user info to get email
+                userinfo_response = await client.get(
+                    "https://www.googleapis.com/oauth2/v2/userinfo",
+                    headers={"Authorization": f"Bearer {access_token}"},
+                )
+                if userinfo_response.status_code == 200:
+                    userinfo = userinfo_response.json()
+                    account_email = userinfo.get("email", "")
+                else:
+                    account_email = ""
+
+                # Fetch primary calendar info
+                calendar_response = await client.get(
+                    "https://www.googleapis.com/calendar/v3/calendars/primary",
+                    headers={"Authorization": f"Bearer {access_token}"},
+                )
+                if calendar_response.status_code == 200:
+                    calendar_info = calendar_response.json()
+                    calendar_name = calendar_info.get("summary", "Primary Calendar")
+                else:
+                    calendar_name = "Primary Calendar"
+
+            # Create calendar connection
+            service = CalendarSyncService(db)
+            await service.connect_google_calendar(
+                user_id=user_id,
+                workspace_id=workspace_id,
+                access_token=access_token,
+                refresh_token=refresh_token,
+                token_expires_at=token_expires_at,
+                calendar_id="primary",
+                calendar_name=calendar_name,
+                account_email=account_email,
             )
-            userinfo_response.raise_for_status()
-            userinfo = userinfo_response.json()
-            account_email = userinfo.get("email", current_user.email)
+            await db.commit()
 
-            # Fetch primary calendar info
-            calendar_response = await client.get(
-                "https://www.googleapis.com/calendar/v3/calendars/primary",
-                headers={"Authorization": f"Bearer {access_token}"},
+        elif provider == "microsoft":
+            microsoft_client_id = getattr(settings, "microsoft_client_id", None)
+            microsoft_client_secret = getattr(settings, "microsoft_client_secret", None)
+
+            if not microsoft_client_id or not microsoft_client_secret:
+                return RedirectResponse(
+                    url=f"{error_redirect}Microsoft+Calendar+not+configured",
+                    status_code=status.HTTP_302_FOUND
+                )
+
+            # Exchange authorization code for tokens
+            token_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+            token_data = {
+                "client_id": microsoft_client_id,
+                "client_secret": microsoft_client_secret,
+                "code": code,
+                "grant_type": "authorization_code",
+                "redirect_uri": callback_url,
+                "scope": " ".join(MICROSOFT_CALENDAR_SCOPES) + " offline_access",
+            }
+
+            async with httpx.AsyncClient() as client:
+                token_response = await client.post(token_url, data=token_data)
+
+                if token_response.status_code != 200:
+                    error_data = token_response.json()
+                    error_msg = error_data.get("error_description", error_data.get("error", "Token exchange failed"))
+                    return RedirectResponse(
+                        url=f"{error_redirect}{quote(error_msg)}",
+                        status_code=status.HTTP_302_FOUND
+                    )
+
+                tokens = token_response.json()
+                access_token = tokens.get("access_token")
+                refresh_token = tokens.get("refresh_token")
+                expires_in = tokens.get("expires_in", 3600)
+                token_expires_at = datetime.now(ZoneInfo("UTC")) + timedelta(seconds=expires_in)
+
+                # Fetch user info
+                user_response = await client.get(
+                    "https://graph.microsoft.com/v1.0/me",
+                    headers={"Authorization": f"Bearer {access_token}"},
+                )
+                if user_response.status_code == 200:
+                    user_info = user_response.json()
+                    account_email = user_info.get("mail") or user_info.get("userPrincipalName", "")
+                else:
+                    account_email = ""
+
+                # Get default calendar
+                calendar_response = await client.get(
+                    "https://graph.microsoft.com/v1.0/me/calendar",
+                    headers={"Authorization": f"Bearer {access_token}"},
+                )
+                if calendar_response.status_code == 200:
+                    calendar_info = calendar_response.json()
+                    calendar_id = calendar_info.get("id", "primary")
+                    calendar_name = calendar_info.get("name", "Outlook Calendar")
+                else:
+                    calendar_id = "primary"
+                    calendar_name = "Outlook Calendar"
+
+            # Create calendar connection
+            service = CalendarSyncService(db)
+            await service.connect_microsoft_calendar(
+                user_id=user_id,
+                workspace_id=workspace_id,
+                access_token=access_token,
+                refresh_token=refresh_token,
+                token_expires_at=token_expires_at,
+                calendar_id=calendar_id,
+                calendar_name=calendar_name,
+                account_email=account_email,
             )
-            calendar_response.raise_for_status()
-            calendar_info = calendar_response.json()
-            calendar_name = calendar_info.get("summary", "Primary Calendar")
+            await db.commit()
 
-    except httpx.HTTPStatusError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to exchange authorization code: {e.response.text}",
+        else:
+            return RedirectResponse(
+                url=f"{error_redirect}Unsupported+provider",
+                status_code=status.HTTP_302_FOUND
+            )
+
+        # Success - redirect to frontend
+        return RedirectResponse(
+            url=success_redirect,
+            status_code=status.HTTP_302_FOUND
         )
+
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to connect Google Calendar: {str(e)}",
+        return RedirectResponse(
+            url=f"{error_redirect}{quote(str(e))}",
+            status_code=status.HTTP_302_FOUND
         )
-
-    service = CalendarSyncService(db)
-
-    connection = await service.connect_google_calendar(
-        user_id=str(current_user.id),
-        workspace_id=workspace_id,
-        access_token=access_token,
-        refresh_token=refresh_token,
-        token_expires_at=token_expires_at,
-        calendar_id="primary",
-        calendar_name=calendar_name,
-        account_email=account_email,
-    )
-
-    await db.commit()
-    await db.refresh(connection)
-
-    return connection_to_response(connection)
-
-
-@router.post("/connect/microsoft", response_model=CalendarConnectionResponse, status_code=status.HTTP_201_CREATED)
-async def connect_microsoft_calendar(
-    workspace_id: str,
-    data: CalendarConnectRequest,
-    request: Request,
-    current_user: Developer = Depends(get_current_developer),
-    db: AsyncSession = Depends(get_db),
-):
-    """Connect a Microsoft Calendar.
-
-    This endpoint receives the OAuth authorization code and exchanges it
-    for access tokens.
-    """
-    import httpx
-    from datetime import datetime, timedelta
-    from zoneinfo import ZoneInfo
-
-    microsoft_client_id = getattr(settings, "microsoft_client_id", None)
-    microsoft_client_secret = getattr(settings, "microsoft_client_secret", None)
-
-    if not microsoft_client_id or not microsoft_client_secret:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Microsoft Calendar integration is not configured",
-        )
-
-    # Build callback URL
-    frontend_url = str(request.headers.get("origin", "http://localhost:3000"))
-    callback_url = f"{frontend_url}/booking/calendars/callback"
-
-    # Exchange authorization code for tokens
-    token_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
-    token_data = {
-        "client_id": microsoft_client_id,
-        "client_secret": microsoft_client_secret,
-        "code": data.auth_code,
-        "grant_type": "authorization_code",
-        "redirect_uri": callback_url,
-        "scope": " ".join(MICROSOFT_CALENDAR_SCOPES) + " offline_access",
-    }
-
-    try:
-        async with httpx.AsyncClient() as client:
-            token_response = await client.post(token_url, data=token_data)
-            token_response.raise_for_status()
-            tokens = token_response.json()
-
-            access_token = tokens.get("access_token")
-            refresh_token = tokens.get("refresh_token")
-            expires_in = tokens.get("expires_in", 3600)
-            token_expires_at = datetime.now(ZoneInfo("UTC")) + timedelta(seconds=expires_in)
-
-            # Fetch user info
-            user_response = await client.get(
-                "https://graph.microsoft.com/v1.0/me",
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
-            user_response.raise_for_status()
-            user_info = user_response.json()
-            account_email = user_info.get("mail") or user_info.get("userPrincipalName", current_user.email)
-
-            # Get default calendar
-            calendar_response = await client.get(
-                "https://graph.microsoft.com/v1.0/me/calendar",
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
-            calendar_response.raise_for_status()
-            calendar_info = calendar_response.json()
-            calendar_id = calendar_info.get("id", "primary")
-            calendar_name = calendar_info.get("name", "Outlook Calendar")
-
-    except httpx.HTTPStatusError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to exchange authorization code: {e.response.text}",
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to connect Microsoft Calendar: {str(e)}",
-        )
-
-    service = CalendarSyncService(db)
-
-    connection = await service.connect_microsoft_calendar(
-        user_id=str(current_user.id),
-        workspace_id=workspace_id,
-        access_token=access_token,
-        refresh_token=refresh_token,
-        token_expires_at=token_expires_at,
-        calendar_id=calendar_id,
-        calendar_name=calendar_name,
-        account_email=account_email,
-    )
-
-    await db.commit()
-    await db.refresh(connection)
-
-    return connection_to_response(connection)
 
 
 @router.get("/{calendar_id}", response_model=CalendarConnectionResponse)

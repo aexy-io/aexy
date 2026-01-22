@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { useSearchParams, useRouter } from "next/navigation";
 import { bookingApi, CalendarConnection } from "@/lib/booking-api";
 import { toast } from "sonner";
 import {
@@ -33,10 +34,29 @@ const CALENDAR_PROVIDERS = [
 
 export default function CalendarsPage() {
   const { currentWorkspace } = useWorkspace();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [connections, setConnections] = useState<CalendarConnection[]>([]);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState<string | null>(null);
   const [syncing, setSyncing] = useState<string | null>(null);
+
+  // Handle OAuth callback results from URL params
+  useEffect(() => {
+    const success = searchParams.get("success");
+    const error = searchParams.get("error");
+    const provider = searchParams.get("provider");
+
+    if (success === "true") {
+      toast.success(`${provider === "microsoft" ? "Microsoft" : "Google"} Calendar connected successfully!`);
+      // Clear URL params
+      router.replace("/booking/calendars", { scroll: false });
+    } else if (error) {
+      toast.error(`Failed to connect calendar: ${decodeURIComponent(error)}`);
+      // Clear URL params
+      router.replace("/booking/calendars", { scroll: false });
+    }
+  }, [searchParams, router]);
 
   useEffect(() => {
     if (currentWorkspace?.id) {

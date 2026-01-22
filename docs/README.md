@@ -25,6 +25,7 @@ We're on a mission to bring positive change by building world-class tools actual
 - [VS Code Extension](./guides/vscode-extension.md) - IDE extension guide
 - [Deployment](./guides/deployment.md) - Production deployment guide
 - [Email Marketing](./email-marketing.md) - Campaigns, automation & infrastructure
+- [Booking](./booking.md) - Calendar scheduling, team bookings & RSVP
 
 ### Testing
 - [Testing Strategy](./testing/testing-strategy.md) - Overall testing approach
@@ -46,6 +47,7 @@ Aexy is a complete Engineering OS with 10 integrated products:
 | **Technical Hiring** | AI-powered assessments |
 | **CRM** | Relationship management for teams |
 | **Email Marketing** | Campaigns, automation & multi-domain infrastructure |
+| **Booking** | Calendar scheduling with team support |
 
 ## For Different Personas
 
