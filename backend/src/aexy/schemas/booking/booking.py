@@ -64,6 +64,18 @@ class HostBrief(BaseModel):
     avatar_url: str | None = None
 
 
+class AttendeeResponse(BaseModel):
+    """Attendee info for booking response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    user_id: str
+    status: str  # pending, confirmed, declined
+    responded_at: datetime | None = None
+    user: HostBrief | None = None
+
+
 class EventTypeBrief(BaseModel):
     """Brief event type info for booking response."""
 
@@ -89,6 +101,7 @@ class BookingResponse(BaseModel):
 
     event_type: EventTypeBrief | None = None
     host: HostBrief | None = None
+    attendees: list[AttendeeResponse] = Field(default_factory=list)
 
     invitee_email: str
     invitee_name: str

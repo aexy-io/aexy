@@ -15,6 +15,8 @@ from aexy.models.booking import (
     EventType,
     TeamEventMember,
     AssignmentType,
+    BookingAttendee,
+    AttendeeStatus,
 )
 
 
@@ -73,10 +75,22 @@ class BookingService:
         if not event_type:
             raise BookingServiceError("Event type not found")
 
+        # Track if this is an ALL_HANDS team event for attendee creation
+        is_all_hands = False
+        team_member_ids: list[str] = []
+
         # If no host specified and it's a team event, assign one
         if not host_id:
             if event_type.is_team_event:
-                host_id = await self._assign_team_member(event_type_id, start_time)
+                # Check assignment type
+                assignment_type = await self._get_team_assignment_type(event_type_id)
+                if assignment_type == AssignmentType.ALL_HANDS.value:
+                    # For ALL_HANDS, owner is primary host, all members are attendees
+                    host_id = event_type.owner_id
+                    is_all_hands = True
+                    team_member_ids = await self._get_team_member_ids(event_type_id)
+                else:
+                    host_id = await self._assign_team_member(event_type_id, start_time)
             else:
                 host_id = event_type.owner_id
 
@@ -117,6 +131,19 @@ class BookingService:
 
         self.db.add(booking)
         await self.db.flush()
+
+        # Create attendee records for ALL_HANDS team events
+        if is_all_hands and team_member_ids:
+            for member_id in team_member_ids:
+                attendee = BookingAttendee(
+                    booking_id=booking.id,
+                    user_id=member_id,
+                    status=AttendeeStatus.PENDING.value,
+                    response_token=secrets.token_urlsafe(32),
+                )
+                self.db.add(attendee)
+            await self.db.flush()
+
         return booking
 
     async def get_booking(self, booking_id: str) -> Booking | None:
@@ -420,6 +447,91 @@ class BookingService:
 
         await self.db.flush()
         return selected_member.user_id
+
+    async def _get_team_assignment_type(
+        self,
+        event_type_id: str,
+    ) -> str:
+        """Get the assignment type for a team event."""
+        stmt = (
+            select(TeamEventMember.assignment_type)
+            .where(
+                and_(
+                    TeamEventMember.event_type_id == event_type_id,
+                    TeamEventMember.is_active == True,
+                )
+            )
+            .limit(1)
+        )
+        result = await self.db.execute(stmt)
+        row = result.first()
+        return row[0] if row else AssignmentType.ROUND_ROBIN.value
+
+    async def _get_team_member_ids(
+        self,
+        event_type_id: str,
+    ) -> list[str]:
+        """Get active team member IDs for an event type."""
+        stmt = select(TeamEventMember.user_id).where(
+            and_(
+                TeamEventMember.event_type_id == event_type_id,
+                TeamEventMember.is_active == True,
+            )
+        )
+        result = await self.db.execute(stmt)
+        return [row[0] for row in result.all()]
+
+    # RSVP methods
+
+    async def get_attendee_by_token(self, response_token: str) -> BookingAttendee | None:
+        """Get a booking attendee by their RSVP token."""
+        stmt = select(BookingAttendee).where(
+            BookingAttendee.response_token == response_token
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def respond_to_rsvp(
+        self,
+        response_token: str,
+        accept: bool,
+    ) -> BookingAttendee:
+        """Process an RSVP response from an attendee."""
+        attendee = await self.get_attendee_by_token(response_token)
+        if not attendee:
+            raise BookingNotFoundError("RSVP token not found or invalid")
+
+        # Get the associated booking
+        booking = await self.get_booking(attendee.booking_id)
+        if not booking:
+            raise BookingNotFoundError("Booking not found")
+
+        # Check booking status
+        if booking.status in [BookingStatus.CANCELLED.value, BookingStatus.COMPLETED.value]:
+            raise InvalidBookingStateError(
+                f"Cannot respond to booking in {booking.status} state"
+            )
+
+        # Update attendee status
+        attendee.status = AttendeeStatus.CONFIRMED.value if accept else AttendeeStatus.DECLINED.value
+        attendee.responded_at = datetime.now(ZoneInfo("UTC"))
+
+        await self.db.flush()
+        await self.db.refresh(attendee)
+        return attendee
+
+    async def get_booking_attendees(
+        self,
+        booking_id: str,
+    ) -> list[BookingAttendee]:
+        """Get all attendees for a booking."""
+        stmt = (
+            select(BookingAttendee)
+            .where(BookingAttendee.booking_id == booking_id)
+            .order_by(BookingAttendee.created_at)
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
 
     # Statistics
 

@@ -124,6 +124,19 @@ export interface AvailabilityOverride {
   updated_at: string;
 }
 
+export interface BookingAttendee {
+  id: string;
+  user_id: string;
+  status: "pending" | "confirmed" | "declined";
+  responded_at: string | null;
+  user?: {
+    id: string;
+    name: string | null;
+    email: string | null;
+    avatar_url: string | null;
+  };
+}
+
 export interface Booking {
   id: string;
   event_type_id: string;
@@ -143,6 +156,7 @@ export interface Booking {
     email: string | null;
     avatar_url: string | null;
   };
+  attendees?: BookingAttendee[];
   invitee_email: string;
   invitee_name: string;
   invitee_phone: string | null;
@@ -186,6 +200,86 @@ export interface CalendarConnection {
   last_synced_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+// Team Availability Types
+export interface TimeWindow {
+  start: string; // HH:MM format
+  end: string; // HH:MM format
+}
+
+export interface BusyTime {
+  start: string;
+  end: string;
+  title?: string;
+}
+
+export interface DayMemberAvailability {
+  date: string; // YYYY-MM-DD format
+  windows: TimeWindow[];
+  busy_times: BusyTime[];
+}
+
+export interface TeamMemberAvailability {
+  user_id: string;
+  user: {
+    id: string;
+    name: string | null;
+    email: string | null;
+    avatar_url: string | null;
+  };
+  availability: DayMemberAvailability[];
+}
+
+export interface OverlappingSlot {
+  date: string; // YYYY-MM-DD format
+  windows: TimeWindow[];
+}
+
+export interface TeamBookingBrief {
+  id: string;
+  event_type_id: string;
+  event_name: string | null;
+  host_id: string | null;
+  host_name: string | null;
+  invitee_name: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+}
+
+export interface TeamAvailability {
+  event_type_id: string | null;
+  team_id: string | null;
+  start_date: string;
+  end_date: string;
+  timezone: string;
+  members: TeamMemberAvailability[];
+  overlapping_slots: OverlappingSlot[];
+  bookings: TeamBookingBrief[];
+}
+
+// RSVP Types
+export interface RSVPBookingDetails {
+  booking_id: string;
+  event_name: string | null;
+  host_name: string | null;
+  invitee_name: string;
+  invitee_email: string;
+  start_time: string;
+  end_time: string;
+  timezone: string;
+  status: string;
+  location: string | null;
+  meeting_link: string | null;
+  attendee_status: string;
+  attendee_name: string | null;
+}
+
+export interface RSVPResponse {
+  success: boolean;
+  message: string;
+  attendee_status: string;
 }
 
 // API functions
@@ -300,6 +394,36 @@ export const bookingApi = {
     getStats: async (workspaceId: string, params?: { start_date?: string; end_date?: string }) => {
       const response = await api.get(`/workspaces/${workspaceId}/booking/bookings/stats`, { params });
       return response.data;
+    },
+  },
+
+  // Team Availability
+  teamAvailability: {
+    get: async (
+      workspaceId: string,
+      params: {
+        start_date: string;
+        end_date: string;
+        timezone?: string;
+        event_type_id?: string;
+        team_id?: string;
+        user_ids?: string[];
+      }
+    ) => {
+      const queryParams: Record<string, string> = {
+        start_date: params.start_date,
+        end_date: params.end_date,
+        timezone: params.timezone || "UTC",
+      };
+      if (params.event_type_id) queryParams.event_type_id = params.event_type_id;
+      if (params.team_id) queryParams.team_id = params.team_id;
+      if (params.user_ids && params.user_ids.length > 0) {
+        queryParams.user_ids = params.user_ids.join(",");
+      }
+      const response = await api.get(`/workspaces/${workspaceId}/booking/availability/team-calendar`, {
+        params: queryParams,
+      });
+      return response.data as TeamAvailability;
     },
   },
 
@@ -451,5 +575,16 @@ export const publicBookingApi = {
       { params: { token } }
     );
     return response.data;
+  },
+
+  // RSVP
+  getRSVPDetails: async (token: string) => {
+    const response = await api.get(`/booking/rsvp/${token}`);
+    return response.data as RSVPBookingDetails;
+  },
+
+  respondToRSVP: async (token: string, accept: boolean) => {
+    const response = await api.post(`/booking/rsvp/${token}/respond`, { accept });
+    return response.data as RSVPResponse;
   },
 };

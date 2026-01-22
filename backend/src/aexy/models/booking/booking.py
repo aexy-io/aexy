@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from aexy.models.workspace import Workspace
     from aexy.models.developer import Developer
     from aexy.models.booking.event_type import EventType
+    from aexy.models.booking.booking_attendee import BookingAttendee
 
 
 class BookingStatus(str, Enum):
@@ -150,3 +151,9 @@ class Booking(Base):
     )
     workspace: Mapped["Workspace"] = relationship("Workspace", lazy="selectin")
     host: Mapped["Developer | None"] = relationship("Developer", lazy="selectin")
+    attendees: Mapped[list["BookingAttendee"]] = relationship(
+        "BookingAttendee",
+        back_populates="booking",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )

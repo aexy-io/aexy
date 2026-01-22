@@ -21,6 +21,7 @@ class AssignmentType(str, Enum):
 
     ROUND_ROBIN = "round_robin"  # Rotate through team members
     COLLECTIVE = "collective"  # All members must be available
+    ALL_HANDS = "all_hands"  # All team members attend the meeting together
 
 
 class TeamEventMember(Base):

@@ -13,6 +13,7 @@ from aexy.schemas.booking import (
     AvailabilityScheduleResponse,
     AvailabilityOverrideCreate,
     AvailabilityOverrideResponse,
+    TeamAvailabilityResponse,
 )
 from aexy.schemas.booking.availability import DayAvailability, BulkAvailabilityUpdate
 from aexy.services.booking import AvailabilityService
@@ -290,3 +291,79 @@ async def delete_override(
         )
 
     await db.commit()
+
+
+# Team Calendar Availability
+
+
+@router.get("/team-calendar", response_model=TeamAvailabilityResponse)
+async def get_team_availability(
+    workspace_id: str,
+    start_date: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    end_date: str = Query(..., description="End date in YYYY-MM-DD format"),
+    timezone: str = Query(default="UTC", description="Timezone for the response"),
+    event_type_id: str | None = Query(default=None, description="Event type ID to get team members from"),
+    team_id: str | None = Query(default=None, description="Team ID to get members from"),
+    user_ids: str | None = Query(default=None, description="Comma-separated list of user IDs"),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get team availability for a date range.
+
+    Returns availability windows, busy times, and existing bookings
+    for multiple team members, suitable for a team calendar view.
+
+    You must provide at least one of: event_type_id, team_id, or user_ids.
+    """
+    from datetime import date as date_type
+
+    # Validate that at least one source is provided
+    if not event_type_id and not team_id and not user_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Must provide event_type_id, team_id, or user_ids",
+        )
+
+    # Parse dates
+    try:
+        start = date_type.fromisoformat(start_date)
+        end = date_type.fromisoformat(end_date)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid date format. Use YYYY-MM-DD.",
+        )
+
+    if end < start:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="End date must be after start date",
+        )
+
+    # Parse user_ids if provided
+    user_ids_list = None
+    if user_ids:
+        user_ids_list = [uid.strip() for uid in user_ids.split(",") if uid.strip()]
+
+    service = AvailabilityService(db)
+
+    result = await service.get_team_availability(
+        workspace_id=workspace_id,
+        start_date=start,
+        end_date=end,
+        timezone=timezone,
+        event_type_id=event_type_id,
+        team_id=team_id,
+        user_ids=user_ids_list,
+    )
+
+    return TeamAvailabilityResponse(
+        event_type_id=event_type_id,
+        team_id=team_id,
+        start_date=start_date,
+        end_date=end_date,
+        timezone=timezone,
+        members=result["members"],
+        overlapping_slots=result["overlapping_slots"],
+        bookings=result["bookings"],
+    )

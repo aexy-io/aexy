@@ -124,6 +124,7 @@ from aexy.api.knowledge_graph import router as knowledge_graph_router
 # Calendar Booking
 from aexy.api.booking import router as booking_router
 from aexy.api.booking import public_booking_router
+from aexy.api.booking import rsvp_booking_router
 
 api_router = APIRouter()
 
@@ -254,3 +255,4 @@ api_router.include_router(knowledge_graph_router, tags=["knowledge-graph"])
 # Calendar Booking
 api_router.include_router(booking_router, tags=["booking"])
 api_router.include_router(public_booking_router, tags=["booking-public"])
+api_router.include_router(rsvp_booking_router, tags=["booking-rsvp"])

@@ -161,7 +161,7 @@ export default function EventTypesPage() {
           {eventTypes.map((eventType) => (
             <div
               key={eventType.id}
-              className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden ${
+              className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 ${
                 !eventType.is_active ? "opacity-60" : ""
               }`}
             >

@@ -15,6 +15,7 @@ from aexy.schemas.booking import (
     BookingListResponse,
     BookingCancelRequest,
     BookingRescheduleRequest,
+    AttendeeResponse,
 )
 from aexy.schemas.booking.booking import HostBrief, EventTypeBrief
 from aexy.services.booking import BookingService
@@ -47,6 +48,28 @@ def booking_to_response(booking) -> BookingResponse:
             avatar_url=booking.host.avatar_url,
         )
 
+    # Convert attendees to response format
+    attendees_data = []
+    if hasattr(booking, 'attendees') and booking.attendees:
+        for attendee in booking.attendees:
+            user_data = None
+            if attendee.user:
+                user_data = HostBrief(
+                    id=attendee.user.id,
+                    name=attendee.user.name,
+                    email=attendee.user.email,
+                    avatar_url=attendee.user.avatar_url,
+                )
+            attendees_data.append(
+                AttendeeResponse(
+                    id=attendee.id,
+                    user_id=attendee.user_id,
+                    status=attendee.status,
+                    responded_at=attendee.responded_at,
+                    user=user_data,
+                )
+            )
+
     return BookingResponse(
         id=booking.id,
         event_type_id=booking.event_type_id,
@@ -54,6 +77,7 @@ def booking_to_response(booking) -> BookingResponse:
         host_id=booking.host_id,
         event_type=event_type_data,
         host=host_data,
+        attendees=attendees_data,
         invitee_email=booking.invitee_email,
         invitee_name=booking.invitee_name,
         invitee_phone=booking.invitee_phone,

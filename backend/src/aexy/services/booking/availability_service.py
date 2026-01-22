@@ -621,3 +621,226 @@ class AvailabilityService:
             timezone=timezone,
             min_booking_datetime=min_booking_datetime,
         )
+
+    # Team availability for calendar view
+
+    async def get_team_availability(
+        self,
+        workspace_id: str,
+        start_date: date,
+        end_date: date,
+        timezone: str = "UTC",
+        event_type_id: str | None = None,
+        team_id: str | None = None,
+        user_ids: list[str] | None = None,
+        calendar_service: "CalendarSyncService | None" = None,
+    ) -> dict:
+        """Get team availability for a date range.
+
+        Returns availability windows, busy times, and existing bookings
+        for multiple team members, suitable for a team calendar view.
+
+        Args:
+            workspace_id: The workspace ID
+            start_date: Start of date range
+            end_date: End of date range
+            timezone: Timezone for the response
+            event_type_id: Optional event type ID to get members from
+            team_id: Optional team ID to get members from
+            user_ids: Optional explicit list of user IDs
+            calendar_service: Optional calendar sync service for external calendars
+
+        Returns:
+            Dict with members, overlapping_slots, and bookings
+        """
+        from aexy.models.team import Team, TeamMember
+        from aexy.models.developer import Developer
+
+        # Determine which users to include
+        member_ids: list[str] = []
+
+        if user_ids:
+            # Use explicit user list
+            member_ids = user_ids
+        elif event_type_id:
+            # Get members from event type
+            member_ids = await self._get_team_member_ids(event_type_id)
+        elif team_id:
+            # Get members from workspace team
+            stmt = select(TeamMember.user_id).where(
+                TeamMember.team_id == team_id
+            )
+            result = await self.db.execute(stmt)
+            member_ids = [row[0] for row in result.all()]
+
+        if not member_ids:
+            return {
+                "members": [],
+                "overlapping_slots": [],
+                "bookings": [],
+            }
+
+        # Get user details
+        user_stmt = select(Developer).where(Developer.id.in_(member_ids))
+        user_result = await self.db.execute(user_stmt)
+        users = {u.id: u for u in user_result.scalars().all()}
+
+        # Build response structure
+        members_data = []
+        all_available_times: dict[str, list[set]] = {}  # date -> list of time sets per user
+
+        # Process each day in the range
+        current_date = start_date
+        while current_date <= end_date:
+            date_str = current_date.isoformat()
+            all_available_times[date_str] = []
+
+            for user_id in member_ids:
+                # Initialize member data on first iteration
+                member_entry = next(
+                    (m for m in members_data if m["user_id"] == user_id), None
+                )
+                if not member_entry:
+                    user = users.get(user_id)
+                    member_entry = {
+                        "user_id": user_id,
+                        "user": {
+                            "id": user_id,
+                            "name": user.name if user else None,
+                            "email": user.email if user else None,
+                            "avatar_url": user.avatar_url if user else None,
+                        },
+                        "availability": [],
+                    }
+                    members_data.append(member_entry)
+
+                # Get day's availability
+                day_of_week = current_date.weekday()
+                windows = await self._get_day_availability(
+                    [user_id], workspace_id, day_of_week, current_date
+                )
+
+                # Get busy times from bookings
+                busy_times = await self._get_busy_times([user_id], current_date, timezone)
+
+                # Get calendar busy times if available
+                if calendar_service:
+                    calendar_busy = await calendar_service.get_busy_times(
+                        user_id, current_date, current_date
+                    )
+                    busy_times.extend(calendar_busy)
+
+                # Format windows
+                formatted_windows = []
+                available_minutes = set()
+
+                for window in windows:
+                    formatted_windows.append({
+                        "start": window["start_time"].strftime("%H:%M"),
+                        "end": window["end_time"].strftime("%H:%M"),
+                    })
+
+                    # Track available times (in 15-min increments)
+                    start_minutes = window["start_time"].hour * 60 + window["start_time"].minute
+                    end_minutes = window["end_time"].hour * 60 + window["end_time"].minute
+                    for m in range(start_minutes, end_minutes, 15):
+                        available_minutes.add(m)
+
+                # Remove busy times from available minutes
+                for busy in busy_times:
+                    busy_start = busy["start"]
+                    busy_end = busy["end"]
+                    if busy_start.date() == current_date:
+                        start_m = busy_start.hour * 60 + busy_start.minute
+                        end_m = busy_end.hour * 60 + busy_end.minute
+                        for m in range(start_m, end_m, 15):
+                            available_minutes.discard(m)
+
+                all_available_times[date_str].append(available_minutes)
+
+                # Format busy times
+                formatted_busy = [
+                    {
+                        "start": bt["start"].isoformat(),
+                        "end": bt["end"].isoformat(),
+                        "title": None,
+                    }
+                    for bt in busy_times
+                ]
+
+                member_entry["availability"].append({
+                    "date": date_str,
+                    "windows": formatted_windows,
+                    "busy_times": formatted_busy,
+                })
+
+            current_date += timedelta(days=1)
+
+        # Calculate overlapping slots (times when ALL members are free)
+        overlapping_slots = []
+        for date_str, time_sets in all_available_times.items():
+            if time_sets:
+                common_times = time_sets[0]
+                for ts in time_sets[1:]:
+                    common_times = common_times.intersection(ts)
+
+                if common_times:
+                    # Convert back to windows
+                    sorted_times = sorted(common_times)
+                    windows = []
+                    if sorted_times:
+                        window_start = sorted_times[0]
+                        prev = sorted_times[0]
+                        for t in sorted_times[1:] + [sorted_times[-1] + 15]:
+                            if t - prev > 15:
+                                # End of window
+                                windows.append({
+                                    "start": f"{window_start // 60:02d}:{window_start % 60:02d}",
+                                    "end": f"{prev // 60 + (1 if prev % 60 == 45 else 0):02d}:{(prev % 60 + 15) % 60:02d}",
+                                })
+                                window_start = t
+                            prev = t
+
+                    overlapping_slots.append({
+                        "date": date_str,
+                        "windows": windows,
+                    })
+
+        # Get existing bookings for the team in this range
+        tz = ZoneInfo(timezone)
+        range_start = datetime.combine(start_date, time.min, tzinfo=tz)
+        range_end = datetime.combine(end_date, time.max, tzinfo=tz)
+
+        booking_stmt = select(Booking).where(
+            and_(
+                Booking.host_id.in_(member_ids),
+                Booking.start_time >= range_start,
+                Booking.end_time <= range_end,
+                Booking.status.in_([
+                    BookingStatus.PENDING.value,
+                    BookingStatus.CONFIRMED.value,
+                ]),
+            )
+        )
+        booking_result = await self.db.execute(booking_stmt)
+        bookings = booking_result.scalars().all()
+
+        bookings_data = []
+        for b in bookings:
+            bookings_data.append({
+                "id": b.id,
+                "event_type_id": b.event_type_id,
+                "event_name": b.event_type.name if b.event_type else None,
+                "host_id": b.host_id,
+                "host_name": users.get(b.host_id).name if b.host_id and b.host_id in users else None,
+                "invitee_name": b.invitee_name,
+                "start_time": b.start_time.isoformat(),
+                "end_time": b.end_time.isoformat(),
+                "status": b.status,
+            })
+
+        return {
+            "members": members_data,
+            "overlapping_slots": overlapping_slots,
+            "bookings": bookings_data,
+        }

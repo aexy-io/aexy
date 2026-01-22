@@ -27,6 +27,7 @@ from aexy.schemas.booking.booking import (
     BookingRescheduleRequest,
     BookingPublicCreate,
     BookingConfirmationResponse,
+    AttendeeResponse,
 )
 from aexy.schemas.booking.calendar import (
     CalendarConnectionResponse,
@@ -44,6 +45,13 @@ from aexy.schemas.booking.team import (
     TeamEventMemberCreate,
     TeamEventMemberResponse,
     TeamEventMembersUpdate,
+)
+from aexy.schemas.booking.team_availability import (
+    TeamAvailabilityResponse,
+    TeamAvailabilityRequest,
+    MemberAvailability,
+    OverlappingSlot,
+    TeamBookingBrief,
 )
 
 __all__ = [
@@ -72,6 +80,7 @@ __all__ = [
     "BookingRescheduleRequest",
     "BookingPublicCreate",
     "BookingConfirmationResponse",
+    "AttendeeResponse",
     # Calendar
     "CalendarConnectionResponse",
     "CalendarListResponse",
@@ -86,4 +95,10 @@ __all__ = [
     "TeamEventMemberCreate",
     "TeamEventMemberResponse",
     "TeamEventMembersUpdate",
+    # Team Availability
+    "TeamAvailabilityResponse",
+    "TeamAvailabilityRequest",
+    "MemberAvailability",
+    "OverlappingSlot",
+    "TeamBookingBrief",
 ]

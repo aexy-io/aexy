@@ -7,6 +7,7 @@ from aexy.models.booking.booking import Booking, BookingStatus, PaymentStatus
 from aexy.models.booking.calendar_connection import CalendarConnection, CalendarProvider
 from aexy.models.booking.team_event_member import TeamEventMember, AssignmentType
 from aexy.models.booking.booking_webhook import BookingWebhook
+from aexy.models.booking.booking_attendee import BookingAttendee, AttendeeStatus
 
 __all__ = [
     "EventType",
@@ -21,4 +22,6 @@ __all__ = [
     "TeamEventMember",
     "AssignmentType",
     "BookingWebhook",
+    "BookingAttendee",
+    "AttendeeStatus",
 ]

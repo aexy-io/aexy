@@ -2,8 +2,8 @@
 
 import { format, parseISO, isToday, isTomorrow, isPast } from "date-fns";
 import Link from "next/link";
-import { Video, MapPin, Phone, User, Clock, Calendar } from "lucide-react";
-import { Booking } from "@/lib/booking-api";
+import { Video, MapPin, Phone, User, Clock, Calendar, Users, CheckCircle, XCircle, HelpCircle } from "lucide-react";
+import { Booking, BookingAttendee } from "@/lib/booking-api";
 
 interface BookingCardProps {
   booking: Booking;
@@ -84,7 +84,7 @@ export function BookingCard({
 
   return (
     <div
-      className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden ${
+      className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 ${
         isPastBooking ? "opacity-60" : ""
       } ${className}`}
     >
@@ -143,6 +143,40 @@ export function BookingCard({
                   ) : (
                     <span className="truncate">{booking.location}</span>
                   )}
+                </div>
+              )}
+
+              {/* Attendees (for team meetings) */}
+              {booking.attendees && booking.attendees.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                  <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
+                    <Users className="h-4 w-4" />
+                    <span>Team Attendees</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {booking.attendees.map((attendee) => (
+                      <div
+                        key={attendee.id}
+                        className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs ${
+                          attendee.status === "confirmed"
+                            ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                            : attendee.status === "declined"
+                            ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
+                            : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
+                        }`}
+                        title={`${attendee.user?.name || "Unknown"}: ${attendee.status}`}
+                      >
+                        {attendee.status === "confirmed" ? (
+                          <CheckCircle className="h-3 w-3" />
+                        ) : attendee.status === "declined" ? (
+                          <XCircle className="h-3 w-3" />
+                        ) : (
+                          <HelpCircle className="h-3 w-3" />
+                        )}
+                        <span>{attendee.user?.name || attendee.user?.email || "Unknown"}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
