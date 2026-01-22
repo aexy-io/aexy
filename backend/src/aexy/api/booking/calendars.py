@@ -154,8 +154,10 @@ async def get_calendar_oauth_url(
 
     # Build the callback URL - use the backend URL for OAuth redirect
     # The backend will then redirect to frontend after processing
-    backend_url = str(request.base_url).rstrip("/")
-    callback_url = f"{backend_url}/api/v1/booking/calendars/callback/{provider}"
+    # Check X-Forwarded-Proto header for proper scheme behind reverse proxy
+    scheme = request.headers.get("x-forwarded-proto", request.url.scheme)
+    host = request.headers.get("x-forwarded-host", request.url.netloc)
+    callback_url = f"{scheme}://{host}/api/v1/booking/calendars/callback/{provider}"
 
     # Create signed state with user info
     state = _create_oauth_state(
@@ -255,8 +257,10 @@ async def calendar_oauth_callback(
         )
 
     # Build callback URL (must match what was used in authorization request)
-    backend_url = str(request.base_url).rstrip("/")
-    callback_url = f"{backend_url}/api/v1/booking/calendars/callback/{provider}"
+    # Check X-Forwarded-Proto header for proper scheme behind reverse proxy
+    scheme = request.headers.get("x-forwarded-proto", request.url.scheme)
+    host = request.headers.get("x-forwarded-host", request.url.netloc)
+    callback_url = f"{scheme}://{host}/api/v1/booking/calendars/callback/{provider}"
 
     success_redirect = f"{frontend_url}/booking/calendars?success=true&provider={provider}"
     error_redirect = f"{frontend_url}/booking/calendars?error="
