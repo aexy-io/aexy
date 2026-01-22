@@ -33,6 +33,85 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   return { value: time, label };
 });
 
+const TIMEZONE_OPTIONS = [
+  // UTC
+  { value: "UTC", label: "UTC (Coordinated Universal Time)", group: "UTC" },
+
+  // Americas
+  { value: "America/New_York", label: "Eastern Time (ET) - New York", group: "Americas" },
+  { value: "America/Chicago", label: "Central Time (CT) - Chicago", group: "Americas" },
+  { value: "America/Denver", label: "Mountain Time (MT) - Denver", group: "Americas" },
+  { value: "America/Phoenix", label: "Arizona Time - Phoenix (No DST)", group: "Americas" },
+  { value: "America/Los_Angeles", label: "Pacific Time (PT) - Los Angeles", group: "Americas" },
+  { value: "America/Anchorage", label: "Alaska Time - Anchorage", group: "Americas" },
+  { value: "Pacific/Honolulu", label: "Hawaii Time - Honolulu (No DST)", group: "Americas" },
+  { value: "America/Toronto", label: "Eastern Time - Toronto", group: "Americas" },
+  { value: "America/Vancouver", label: "Pacific Time - Vancouver", group: "Americas" },
+  { value: "America/Mexico_City", label: "Central Time - Mexico City", group: "Americas" },
+  { value: "America/Sao_Paulo", label: "Brasília Time - São Paulo", group: "Americas" },
+  { value: "America/Buenos_Aires", label: "Argentina Time - Buenos Aires", group: "Americas" },
+  { value: "America/Santiago", label: "Chile Time - Santiago", group: "Americas" },
+  { value: "America/Bogota", label: "Colombia Time - Bogotá", group: "Americas" },
+  { value: "America/Lima", label: "Peru Time - Lima", group: "Americas" },
+
+  // Europe
+  { value: "Europe/London", label: "GMT/BST - London", group: "Europe" },
+  { value: "Europe/Dublin", label: "GMT/IST - Dublin", group: "Europe" },
+  { value: "Europe/Paris", label: "CET/CEST - Paris", group: "Europe" },
+  { value: "Europe/Berlin", label: "CET/CEST - Berlin", group: "Europe" },
+  { value: "Europe/Amsterdam", label: "CET/CEST - Amsterdam", group: "Europe" },
+  { value: "Europe/Brussels", label: "CET/CEST - Brussels", group: "Europe" },
+  { value: "Europe/Madrid", label: "CET/CEST - Madrid", group: "Europe" },
+  { value: "Europe/Rome", label: "CET/CEST - Rome", group: "Europe" },
+  { value: "Europe/Zurich", label: "CET/CEST - Zurich", group: "Europe" },
+  { value: "Europe/Vienna", label: "CET/CEST - Vienna", group: "Europe" },
+  { value: "Europe/Stockholm", label: "CET/CEST - Stockholm", group: "Europe" },
+  { value: "Europe/Oslo", label: "CET/CEST - Oslo", group: "Europe" },
+  { value: "Europe/Copenhagen", label: "CET/CEST - Copenhagen", group: "Europe" },
+  { value: "Europe/Helsinki", label: "EET/EEST - Helsinki", group: "Europe" },
+  { value: "Europe/Athens", label: "EET/EEST - Athens", group: "Europe" },
+  { value: "Europe/Warsaw", label: "CET/CEST - Warsaw", group: "Europe" },
+  { value: "Europe/Prague", label: "CET/CEST - Prague", group: "Europe" },
+  { value: "Europe/Lisbon", label: "WET/WEST - Lisbon", group: "Europe" },
+  { value: "Europe/Moscow", label: "Moscow Time - Moscow", group: "Europe" },
+  { value: "Europe/Istanbul", label: "Turkey Time - Istanbul", group: "Europe" },
+
+  // Asia
+  { value: "Asia/Dubai", label: "Gulf Time - Dubai", group: "Asia" },
+  { value: "Asia/Kolkata", label: "India Time (IST) - Mumbai/Delhi", group: "Asia" },
+  { value: "Asia/Dhaka", label: "Bangladesh Time - Dhaka", group: "Asia" },
+  { value: "Asia/Bangkok", label: "Indochina Time - Bangkok", group: "Asia" },
+  { value: "Asia/Ho_Chi_Minh", label: "Indochina Time - Ho Chi Minh", group: "Asia" },
+  { value: "Asia/Jakarta", label: "Western Indonesia Time - Jakarta", group: "Asia" },
+  { value: "Asia/Singapore", label: "Singapore Time - Singapore", group: "Asia" },
+  { value: "Asia/Kuala_Lumpur", label: "Malaysia Time - Kuala Lumpur", group: "Asia" },
+  { value: "Asia/Manila", label: "Philippine Time - Manila", group: "Asia" },
+  { value: "Asia/Hong_Kong", label: "Hong Kong Time - Hong Kong", group: "Asia" },
+  { value: "Asia/Shanghai", label: "China Time (CST) - Shanghai/Beijing", group: "Asia" },
+  { value: "Asia/Taipei", label: "Taiwan Time - Taipei", group: "Asia" },
+  { value: "Asia/Seoul", label: "Korea Time (KST) - Seoul", group: "Asia" },
+  { value: "Asia/Tokyo", label: "Japan Time (JST) - Tokyo", group: "Asia" },
+  { value: "Asia/Riyadh", label: "Arabia Time - Riyadh", group: "Asia" },
+  { value: "Asia/Jerusalem", label: "Israel Time - Jerusalem", group: "Asia" },
+  { value: "Asia/Karachi", label: "Pakistan Time - Karachi", group: "Asia" },
+
+  // Australia & Pacific
+  { value: "Australia/Perth", label: "Western Australia - Perth", group: "Australia & Pacific" },
+  { value: "Australia/Adelaide", label: "Central Australia - Adelaide", group: "Australia & Pacific" },
+  { value: "Australia/Sydney", label: "Eastern Australia - Sydney", group: "Australia & Pacific" },
+  { value: "Australia/Melbourne", label: "Eastern Australia - Melbourne", group: "Australia & Pacific" },
+  { value: "Australia/Brisbane", label: "Queensland - Brisbane (No DST)", group: "Australia & Pacific" },
+  { value: "Pacific/Auckland", label: "New Zealand Time - Auckland", group: "Australia & Pacific" },
+  { value: "Pacific/Fiji", label: "Fiji Time - Suva", group: "Australia & Pacific" },
+
+  // Africa
+  { value: "Africa/Cairo", label: "Eastern European Time - Cairo", group: "Africa" },
+  { value: "Africa/Johannesburg", label: "South Africa Time - Johannesburg", group: "Africa" },
+  { value: "Africa/Lagos", label: "West Africa Time - Lagos", group: "Africa" },
+  { value: "Africa/Nairobi", label: "East Africa Time - Nairobi", group: "Africa" },
+  { value: "Africa/Casablanca", label: "Western European Time - Casablanca", group: "Africa" },
+];
+
 interface ScheduleSlot {
   day_of_week: number;
   start_time: string;
@@ -214,15 +293,19 @@ export default function AvailabilityPage() {
           onChange={(e) => setTimezone(e.target.value)}
           className="w-full max-w-md px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
         >
-          <option value="UTC">UTC</option>
-          <option value="America/New_York">Eastern Time (ET)</option>
-          <option value="America/Chicago">Central Time (CT)</option>
-          <option value="America/Denver">Mountain Time (MT)</option>
-          <option value="America/Los_Angeles">Pacific Time (PT)</option>
-          <option value="Europe/London">London (GMT)</option>
-          <option value="Europe/Paris">Paris (CET)</option>
-          <option value="Asia/Tokyo">Tokyo (JST)</option>
+          {["UTC", "Americas", "Europe", "Asia", "Australia & Pacific", "Africa"].map((group) => (
+            <optgroup key={group} label={group}>
+              {TIMEZONE_OPTIONS.filter((tz) => tz.group === group).map((tz) => (
+                <option key={tz.value} value={tz.value}>
+                  {tz.label}
+                </option>
+              ))}
+            </optgroup>
+          ))}
         </select>
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          Times shown to invitees will be converted to their local timezone
+        </p>
       </div>
 
       {/* Weekly Schedule */}
