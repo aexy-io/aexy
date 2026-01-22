@@ -319,13 +319,15 @@ async def get_available_slots(
         if team:
             user_ids = [m.developer_id for m in team.members]
 
-    # Get available slots
+    # Get available slots (including calendar busy times check)
     availability_service = AvailabilityService(db)
+    calendar_service = CalendarSyncService(db)
 
     slots = await availability_service.get_available_slots(
         event_type_id=event_type.id,
         target_date=target_date,
         timezone=timezone,
+        calendar_service=calendar_service,
         user_ids=user_ids,
     )
 

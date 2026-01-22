@@ -414,6 +414,24 @@ class Settings(BaseSettings):
         description="Google OAuth redirect URI for Google integration",
     )
 
+    # Microsoft OAuth (for calendar integration)
+    microsoft_client_id: str = Field(
+        default="",
+        description="Microsoft Azure AD App Client ID",
+    )
+    microsoft_client_secret: str = Field(
+        default="",
+        description="Microsoft Azure AD App Client Secret",
+    )
+    microsoft_tenant_id: str = Field(
+        default="common",
+        description="Microsoft Azure AD Tenant ID (use 'common' for multi-tenant)",
+    )
+    microsoft_redirect_uri: str = Field(
+        default="http://localhost:8000/api/v1/integrations/microsoft/callback",
+        description="Microsoft OAuth redirect URI for calendar integration",
+    )
+
     # Slack Integration
     slack_client_id: str = Field(
         default="",

@@ -1,13 +1,30 @@
-"""Calendar sync service for booking module."""
+"""Calendar sync service for booking module.
 
+Provides actual integration with Google Calendar and Microsoft Graph APIs
+for busy time checking and event creation.
+"""
+
+import logging
 from datetime import date, datetime, timedelta
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
+import httpx
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from aexy.core.config import get_settings
 from aexy.models.booking import CalendarConnection, CalendarProvider, Booking
+
+logger = logging.getLogger(__name__)
+
+# Google Calendar API endpoints
+GOOGLE_CALENDAR_API = "https://www.googleapis.com/calendar/v3"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+
+# Microsoft Graph API endpoints
+MICROSOFT_GRAPH_API = "https://graph.microsoft.com/v1.0"
+MICROSOFT_TOKEN_URL = "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token"
 
 
 class CalendarSyncServiceError(Exception):
@@ -18,6 +35,12 @@ class CalendarSyncServiceError(Exception):
 
 class CalendarConnectionNotFoundError(CalendarSyncServiceError):
     """Calendar connection not found."""
+
+    pass
+
+
+class CalendarTokenRefreshError(CalendarSyncServiceError):
+    """Token refresh failed."""
 
     pass
 
@@ -239,8 +262,11 @@ class CalendarSyncService:
     ) -> list[dict]:
         """Get busy times from connected calendars.
 
-        This would integrate with the actual calendar APIs.
-        For now, returns an empty list as a placeholder.
+        Queries Google Calendar freeBusy API and Microsoft Graph schedule API
+        to get actual busy times from connected calendars.
+
+        Returns:
+            List of dicts with 'start' and 'end' datetime objects for busy periods.
         """
         # Get connections that check conflicts
         stmt = select(CalendarConnection).where(
@@ -251,17 +277,155 @@ class CalendarSyncService:
             )
         )
         result = await self.db.execute(stmt)
-        connections = result.scalars().all()
+        connections = list(result.scalars().all())
 
         busy_times = []
 
-        for connection in connections:
-            # This would call the actual calendar API
-            # For Google: Google Calendar API freeBusy query
-            # For Microsoft: Microsoft Graph API schedule/getSchedule
+        # Convert dates to datetime for API calls
+        start_dt = datetime.combine(start_date, datetime.min.time()).replace(tzinfo=ZoneInfo("UTC"))
+        end_dt = datetime.combine(end_date + timedelta(days=1), datetime.min.time()).replace(tzinfo=ZoneInfo("UTC"))
 
-            # Placeholder - would be replaced with actual API calls
-            pass
+        for connection in connections:
+            try:
+                # Refresh token if needed
+                connection = await self._refresh_token_if_needed(connection)
+
+                if connection.provider == CalendarProvider.GOOGLE.value:
+                    google_busy = await self._get_google_busy_times(
+                        connection, start_dt, end_dt
+                    )
+                    busy_times.extend(google_busy)
+                elif connection.provider == CalendarProvider.MICROSOFT.value:
+                    microsoft_busy = await self._get_microsoft_busy_times(
+                        connection, start_dt, end_dt
+                    )
+                    busy_times.extend(microsoft_busy)
+            except Exception as e:
+                logger.error(
+                    f"Failed to get busy times from {connection.provider} "
+                    f"calendar {connection.calendar_id}: {e}"
+                )
+                # Continue with other calendars
+                continue
+
+        return busy_times
+
+    async def _get_google_busy_times(
+        self,
+        connection: CalendarConnection,
+        start_dt: datetime,
+        end_dt: datetime,
+    ) -> list[dict]:
+        """Get busy times from Google Calendar using freeBusy API."""
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{GOOGLE_CALENDAR_API}/freeBusy",
+                headers={
+                    "Authorization": f"Bearer {connection.access_token}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "timeMin": start_dt.isoformat(),
+                    "timeMax": end_dt.isoformat(),
+                    "items": [{"id": connection.calendar_id}],
+                },
+                timeout=30.0,
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Google freeBusy API error: {response.status_code} - {response.text}")
+                return []
+
+            data = response.json()
+
+        busy_times = []
+        calendars = data.get("calendars", {})
+        calendar_data = calendars.get(connection.calendar_id, {})
+
+        for busy_period in calendar_data.get("busy", []):
+            start_str = busy_period.get("start")
+            end_str = busy_period.get("end")
+
+            if start_str and end_str:
+                busy_times.append({
+                    "start": datetime.fromisoformat(start_str.replace("Z", "+00:00")),
+                    "end": datetime.fromisoformat(end_str.replace("Z", "+00:00")),
+                    "calendar_id": connection.calendar_id,
+                    "provider": CalendarProvider.GOOGLE.value,
+                })
+
+        return busy_times
+
+    async def _get_microsoft_busy_times(
+        self,
+        connection: CalendarConnection,
+        start_dt: datetime,
+        end_dt: datetime,
+    ) -> list[dict]:
+        """Get busy times from Microsoft Graph using calendarView API."""
+        async with httpx.AsyncClient() as client:
+            # Use calendarView to get events in the time range
+            # This is more reliable than getSchedule for personal calendars
+            params = {
+                "startDateTime": start_dt.isoformat(),
+                "endDateTime": end_dt.isoformat(),
+                "$select": "start,end,showAs",
+                "$filter": "showAs ne 'free'",  # Only get busy/tentative/oof events
+            }
+
+            # Construct URL based on calendar_id
+            if connection.calendar_id == "primary":
+                url = f"{MICROSOFT_GRAPH_API}/me/calendar/calendarView"
+            else:
+                url = f"{MICROSOFT_GRAPH_API}/me/calendars/{connection.calendar_id}/calendarView"
+
+            response = await client.get(
+                url,
+                headers={
+                    "Authorization": f"Bearer {connection.access_token}",
+                    "Content-Type": "application/json",
+                },
+                params=params,
+                timeout=30.0,
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Microsoft Graph API error: {response.status_code} - {response.text}")
+                return []
+
+            data = response.json()
+
+        busy_times = []
+        for event in data.get("value", []):
+            start_info = event.get("start", {})
+            end_info = event.get("end", {})
+
+            start_str = start_info.get("dateTime")
+            end_str = end_info.get("dateTime")
+            timezone_str = start_info.get("timeZone", "UTC")
+
+            if start_str and end_str:
+                # Microsoft returns datetime without timezone info, need to add it
+                try:
+                    # Try parsing with timezone
+                    if "Z" in start_str or "+" in start_str or "-" in start_str[10:]:
+                        start = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
+                        end = datetime.fromisoformat(end_str.replace("Z", "+00:00"))
+                    else:
+                        # Add timezone from the response
+                        tz = ZoneInfo(timezone_str) if timezone_str else ZoneInfo("UTC")
+                        start = datetime.fromisoformat(start_str).replace(tzinfo=tz)
+                        end = datetime.fromisoformat(end_str).replace(tzinfo=tz)
+
+                    busy_times.append({
+                        "start": start,
+                        "end": end,
+                        "calendar_id": connection.calendar_id,
+                        "provider": CalendarProvider.MICROSOFT.value,
+                    })
+                except Exception as e:
+                    logger.warning(f"Failed to parse Microsoft event times: {e}")
+                    continue
 
         return busy_times
 
@@ -274,7 +438,7 @@ class CalendarSyncService:
     ) -> dict | None:
         """Create a calendar event for a booking.
 
-        This would integrate with the actual calendar APIs.
+        Creates events on Google Calendar or Microsoft Outlook.
         """
         if not booking.host_id:
             return None
@@ -296,16 +460,165 @@ class CalendarSyncService:
         if not connection:
             return None
 
-        # This would call the actual calendar API to create the event
-        # For Google: Google Calendar API events.insert
-        # For Microsoft: Microsoft Graph API events
+        try:
+            # Refresh token if needed
+            connection = await self._refresh_token_if_needed(connection)
 
-        # Placeholder response
-        return {
-            "calendar_event_id": f"placeholder_{booking.id}",
-            "calendar_provider": connection.provider,
-            "connection_id": connection.id,
+            # Get event type details for the title
+            event_type = booking.event_type
+            event_title = f"{event_type.name if event_type else 'Meeting'} with {booking.guest_name}"
+            event_description = self._build_event_description(booking)
+
+            if connection.provider == CalendarProvider.GOOGLE.value:
+                event_id = await self._create_google_event(
+                    connection, booking, event_title, event_description
+                )
+            elif connection.provider == CalendarProvider.MICROSOFT.value:
+                event_id = await self._create_microsoft_event(
+                    connection, booking, event_title, event_description
+                )
+            else:
+                logger.warning(f"Unknown calendar provider: {connection.provider}")
+                return None
+
+            return {
+                "calendar_event_id": event_id,
+                "calendar_provider": connection.provider,
+                "connection_id": connection.id,
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to create calendar event: {e}")
+            return None
+
+    def _build_event_description(self, booking: Booking) -> str:
+        """Build event description from booking details."""
+        lines = [
+            f"Guest: {booking.guest_name}",
+            f"Email: {booking.guest_email}",
+        ]
+
+        if booking.guest_notes:
+            lines.append(f"\nNotes: {booking.guest_notes}")
+
+        if booking.meeting_url:
+            lines.append(f"\nMeeting URL: {booking.meeting_url}")
+
+        lines.append("\n---")
+        lines.append("Created via Aexy Booking")
+
+        return "\n".join(lines)
+
+    async def _create_google_event(
+        self,
+        connection: CalendarConnection,
+        booking: Booking,
+        title: str,
+        description: str,
+    ) -> str:
+        """Create event on Google Calendar."""
+        event_body = {
+            "summary": title,
+            "description": description,
+            "start": {
+                "dateTime": booking.start_time.isoformat(),
+                "timeZone": booking.timezone or "UTC",
+            },
+            "end": {
+                "dateTime": booking.end_time.isoformat(),
+                "timeZone": booking.timezone or "UTC",
+            },
+            "attendees": [
+                {"email": booking.guest_email, "displayName": booking.guest_name},
+            ],
         }
+
+        if booking.meeting_url:
+            event_body["conferenceData"] = {
+                "entryPoints": [{"entryPointType": "video", "uri": booking.meeting_url}]
+            }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{GOOGLE_CALENDAR_API}/calendars/{connection.calendar_id}/events",
+                headers={
+                    "Authorization": f"Bearer {connection.access_token}",
+                    "Content-Type": "application/json",
+                },
+                json=event_body,
+                timeout=30.0,
+            )
+
+            if response.status_code not in (200, 201):
+                logger.error(f"Google Calendar event creation failed: {response.text}")
+                raise CalendarSyncServiceError("Failed to create Google Calendar event")
+
+            event = response.json()
+
+        return event["id"]
+
+    async def _create_microsoft_event(
+        self,
+        connection: CalendarConnection,
+        booking: Booking,
+        title: str,
+        description: str,
+    ) -> str:
+        """Create event on Microsoft Outlook Calendar."""
+        event_body = {
+            "subject": title,
+            "body": {
+                "contentType": "text",
+                "content": description,
+            },
+            "start": {
+                "dateTime": booking.start_time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "timeZone": booking.timezone or "UTC",
+            },
+            "end": {
+                "dateTime": booking.end_time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "timeZone": booking.timezone or "UTC",
+            },
+            "attendees": [
+                {
+                    "emailAddress": {
+                        "address": booking.guest_email,
+                        "name": booking.guest_name,
+                    },
+                    "type": "required",
+                }
+            ],
+        }
+
+        if booking.meeting_url:
+            event_body["onlineMeeting"] = {
+                "joinUrl": booking.meeting_url,
+            }
+
+        # Construct URL based on calendar_id
+        if connection.calendar_id == "primary":
+            url = f"{MICROSOFT_GRAPH_API}/me/calendar/events"
+        else:
+            url = f"{MICROSOFT_GRAPH_API}/me/calendars/{connection.calendar_id}/events"
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                url,
+                headers={
+                    "Authorization": f"Bearer {connection.access_token}",
+                    "Content-Type": "application/json",
+                },
+                json=event_body,
+                timeout=30.0,
+            )
+
+            if response.status_code not in (200, 201):
+                logger.error(f"Microsoft Calendar event creation failed: {response.text}")
+                raise CalendarSyncServiceError("Failed to create Microsoft Calendar event")
+
+            event = response.json()
+
+        return event["id"]
 
     async def create_calendar_events_for_team(
         self,
@@ -328,6 +641,11 @@ class CalendarSyncService:
                     **host_result,
                 })
 
+        # Get event details for attendee events
+        event_type = booking.event_type
+        event_title = f"{event_type.name if event_type else 'Meeting'} with {booking.guest_name}"
+        event_description = self._build_event_description(booking)
+
         # Create events for each attendee
         for user_id in attendee_user_ids:
             # Skip if user is the host (already created)
@@ -345,18 +663,34 @@ class CalendarSyncService:
             result = await self.db.execute(stmt)
             connection = result.scalar_one_or_none()
 
-            if connection:
-                # This would call the actual calendar API to create the event
-                # For Google: Google Calendar API events.insert
-                # For Microsoft: Microsoft Graph API events
+            if not connection:
+                continue
+
+            try:
+                connection = await self._refresh_token_if_needed(connection)
+
+                if connection.provider == CalendarProvider.GOOGLE.value:
+                    event_id = await self._create_google_event(
+                        connection, booking, event_title, event_description
+                    )
+                elif connection.provider == CalendarProvider.MICROSOFT.value:
+                    event_id = await self._create_microsoft_event(
+                        connection, booking, event_title, event_description
+                    )
+                else:
+                    continue
 
                 results.append({
                     "user_id": user_id,
                     "role": "attendee",
-                    "calendar_event_id": f"placeholder_{booking.id}_{user_id}",
+                    "calendar_event_id": event_id,
                     "calendar_provider": connection.provider,
                     "connection_id": connection.id,
                 })
+
+            except Exception as e:
+                logger.error(f"Failed to create calendar event for attendee {user_id}: {e}")
+                continue
 
         return results
 
@@ -382,11 +716,113 @@ class CalendarSyncService:
         if not connection:
             return None
 
-        # This would call the actual calendar API to update the event
-        return {
-            "calendar_event_id": booking.calendar_event_id,
-            "updated": True,
+        try:
+            connection = await self._refresh_token_if_needed(connection)
+
+            event_type = booking.event_type
+            event_title = f"{event_type.name if event_type else 'Meeting'} with {booking.guest_name}"
+            event_description = self._build_event_description(booking)
+
+            if connection.provider == CalendarProvider.GOOGLE.value:
+                await self._update_google_event(
+                    connection, booking.calendar_event_id, booking, event_title, event_description
+                )
+            elif connection.provider == CalendarProvider.MICROSOFT.value:
+                await self._update_microsoft_event(
+                    connection, booking.calendar_event_id, booking, event_title, event_description
+                )
+
+            return {
+                "calendar_event_id": booking.calendar_event_id,
+                "updated": True,
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to update calendar event: {e}")
+            return None
+
+    async def _update_google_event(
+        self,
+        connection: CalendarConnection,
+        event_id: str,
+        booking: Booking,
+        title: str,
+        description: str,
+    ) -> None:
+        """Update event on Google Calendar."""
+        event_body = {
+            "summary": title,
+            "description": description,
+            "start": {
+                "dateTime": booking.start_time.isoformat(),
+                "timeZone": booking.timezone or "UTC",
+            },
+            "end": {
+                "dateTime": booking.end_time.isoformat(),
+                "timeZone": booking.timezone or "UTC",
+            },
         }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.patch(
+                f"{GOOGLE_CALENDAR_API}/calendars/{connection.calendar_id}/events/{event_id}",
+                headers={
+                    "Authorization": f"Bearer {connection.access_token}",
+                    "Content-Type": "application/json",
+                },
+                json=event_body,
+                timeout=30.0,
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Google Calendar event update failed: {response.text}")
+                raise CalendarSyncServiceError("Failed to update Google Calendar event")
+
+    async def _update_microsoft_event(
+        self,
+        connection: CalendarConnection,
+        event_id: str,
+        booking: Booking,
+        title: str,
+        description: str,
+    ) -> None:
+        """Update event on Microsoft Outlook Calendar."""
+        event_body = {
+            "subject": title,
+            "body": {
+                "contentType": "text",
+                "content": description,
+            },
+            "start": {
+                "dateTime": booking.start_time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "timeZone": booking.timezone or "UTC",
+            },
+            "end": {
+                "dateTime": booking.end_time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "timeZone": booking.timezone or "UTC",
+            },
+        }
+
+        # Construct URL based on calendar_id
+        if connection.calendar_id == "primary":
+            url = f"{MICROSOFT_GRAPH_API}/me/calendar/events/{event_id}"
+        else:
+            url = f"{MICROSOFT_GRAPH_API}/me/calendars/{connection.calendar_id}/events/{event_id}"
+
+        async with httpx.AsyncClient() as client:
+            response = await client.patch(
+                url,
+                headers={
+                    "Authorization": f"Bearer {connection.access_token}",
+                    "Content-Type": "application/json",
+                },
+                json=event_body,
+                timeout=30.0,
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Microsoft Calendar event update failed: {response.text}")
+                raise CalendarSyncServiceError("Failed to update Microsoft Calendar event")
 
     async def delete_calendar_event(
         self,
@@ -409,8 +845,65 @@ class CalendarSyncService:
         if not connection:
             return False
 
-        # This would call the actual calendar API to delete the event
-        return True
+        try:
+            connection = await self._refresh_token_if_needed(connection)
+
+            if connection.provider == CalendarProvider.GOOGLE.value:
+                await self._delete_google_event(connection, booking.calendar_event_id)
+            elif connection.provider == CalendarProvider.MICROSOFT.value:
+                await self._delete_microsoft_event(connection, booking.calendar_event_id)
+
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to delete calendar event: {e}")
+            return False
+
+    async def _delete_google_event(
+        self,
+        connection: CalendarConnection,
+        event_id: str,
+    ) -> None:
+        """Delete event from Google Calendar."""
+        async with httpx.AsyncClient() as client:
+            response = await client.delete(
+                f"{GOOGLE_CALENDAR_API}/calendars/{connection.calendar_id}/events/{event_id}",
+                headers={
+                    "Authorization": f"Bearer {connection.access_token}",
+                },
+                timeout=30.0,
+            )
+
+            # 204 = success, 404 = already deleted (ok), 410 = gone (ok)
+            if response.status_code not in (204, 404, 410):
+                logger.error(f"Google Calendar event deletion failed: {response.text}")
+                raise CalendarSyncServiceError("Failed to delete Google Calendar event")
+
+    async def _delete_microsoft_event(
+        self,
+        connection: CalendarConnection,
+        event_id: str,
+    ) -> None:
+        """Delete event from Microsoft Outlook Calendar."""
+        # Construct URL based on calendar_id
+        if connection.calendar_id == "primary":
+            url = f"{MICROSOFT_GRAPH_API}/me/calendar/events/{event_id}"
+        else:
+            url = f"{MICROSOFT_GRAPH_API}/me/calendars/{connection.calendar_id}/events/{event_id}"
+
+        async with httpx.AsyncClient() as client:
+            response = await client.delete(
+                url,
+                headers={
+                    "Authorization": f"Bearer {connection.access_token}",
+                },
+                timeout=30.0,
+            )
+
+            # 204 = success, 404 = already deleted (ok)
+            if response.status_code not in (204, 404):
+                logger.error(f"Microsoft Calendar event deletion failed: {response.text}")
+                raise CalendarSyncServiceError("Failed to delete Microsoft Calendar event")
 
     # Token management
 
@@ -418,11 +911,18 @@ class CalendarSyncService:
         self,
         connection_id: str,
     ) -> CalendarConnection:
-        """Refresh OAuth token if expired or about to expire."""
+        """Refresh OAuth token if expired or about to expire (public API)."""
         connection = await self.get_connection(connection_id)
         if not connection:
             raise CalendarConnectionNotFoundError(f"Connection {connection_id} not found")
 
+        return await self._refresh_token_if_needed(connection)
+
+    async def _refresh_token_if_needed(
+        self,
+        connection: CalendarConnection,
+    ) -> CalendarConnection:
+        """Refresh OAuth token if expired or about to expire (internal)."""
         if not connection.token_expires_at:
             return connection
 
@@ -430,15 +930,96 @@ class CalendarSyncService:
         now = datetime.now(ZoneInfo("UTC"))
         expires_soon = connection.token_expires_at <= now + timedelta(minutes=5)
 
-        if expires_soon and connection.refresh_token:
-            # This would call the OAuth provider to refresh the token
-            # For Google: POST to https://oauth2.googleapis.com/token
-            # For Microsoft: POST to https://login.microsoftonline.com/token
+        if not expires_soon:
+            return connection
 
-            # Placeholder - would be replaced with actual refresh logic
-            pass
+        if not connection.refresh_token:
+            logger.warning(f"No refresh token for connection {connection.id}")
+            return connection
+
+        settings = get_settings()
+
+        try:
+            if connection.provider == CalendarProvider.GOOGLE.value:
+                await self._refresh_google_token(connection, settings)
+            elif connection.provider == CalendarProvider.MICROSOFT.value:
+                await self._refresh_microsoft_token(connection, settings)
+
+            await self.db.flush()
+            await self.db.refresh(connection)
+        except Exception as e:
+            logger.error(f"Failed to refresh token for connection {connection.id}: {e}")
+            raise CalendarTokenRefreshError(f"Token refresh failed: {e}")
 
         return connection
+
+    async def _refresh_google_token(
+        self,
+        connection: CalendarConnection,
+        settings,
+    ) -> None:
+        """Refresh Google OAuth token."""
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                GOOGLE_TOKEN_URL,
+                data={
+                    "client_id": settings.google_client_id,
+                    "client_secret": settings.google_client_secret,
+                    "refresh_token": connection.refresh_token,
+                    "grant_type": "refresh_token",
+                },
+                timeout=30.0,
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Google token refresh failed: {response.text}")
+                raise CalendarTokenRefreshError("Google token refresh failed")
+
+            token_data = response.json()
+
+        connection.access_token = token_data["access_token"]
+        connection.token_expires_at = datetime.now(ZoneInfo("UTC")) + timedelta(
+            seconds=token_data.get("expires_in", 3600)
+        )
+        # Google may return a new refresh token
+        if "refresh_token" in token_data:
+            connection.refresh_token = token_data["refresh_token"]
+
+    async def _refresh_microsoft_token(
+        self,
+        connection: CalendarConnection,
+        settings,
+    ) -> None:
+        """Refresh Microsoft OAuth token."""
+        tenant = settings.microsoft_tenant_id or "common"
+        token_url = MICROSOFT_TOKEN_URL.format(tenant=tenant)
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                token_url,
+                data={
+                    "client_id": settings.microsoft_client_id,
+                    "client_secret": settings.microsoft_client_secret,
+                    "refresh_token": connection.refresh_token,
+                    "grant_type": "refresh_token",
+                    "scope": "https://graph.microsoft.com/Calendars.ReadWrite offline_access",
+                },
+                timeout=30.0,
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Microsoft token refresh failed: {response.text}")
+                raise CalendarTokenRefreshError("Microsoft token refresh failed")
+
+            token_data = response.json()
+
+        connection.access_token = token_data["access_token"]
+        connection.token_expires_at = datetime.now(ZoneInfo("UTC")) + timedelta(
+            seconds=token_data.get("expires_in", 3600)
+        )
+        # Microsoft always returns a new refresh token
+        if "refresh_token" in token_data:
+            connection.refresh_token = token_data["refresh_token"]
 
     async def get_connections_needing_sync(
         self,

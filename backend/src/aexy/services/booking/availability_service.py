@@ -292,6 +292,9 @@ class AvailabilityService:
             host_ids = user_ids
         elif event_type.is_team_event:
             host_ids = await self._get_team_member_ids(event_type_id)
+            # Fall back to owner if no team members configured
+            if not host_ids:
+                host_ids = [event_type.owner_id]
         else:
             host_ids = [event_type.owner_id]
 

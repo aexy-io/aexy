@@ -117,7 +117,9 @@ class BookingService:
                     create_attendees = True
                     attendee_member_ids = await self._get_team_member_ids(event_type_id)
                 else:
-                    host_id = await self._assign_team_member(event_type_id, start_time)
+                    host_id = await self._assign_team_member(
+                        event_type_id, start_time, fallback_owner_id=event_type.owner_id
+                    )
             else:
                 host_id = event_type.owner_id
 
@@ -442,8 +444,13 @@ class BookingService:
         self,
         event_type_id: str,
         start_time: datetime,
+        fallback_owner_id: str | None = None,
     ) -> str:
-        """Assign a team member for round-robin booking."""
+        """Assign a team member for round-robin booking.
+
+        If no team members are configured and fallback_owner_id is provided,
+        returns the fallback owner instead of raising an error.
+        """
         # Get team members ordered by last assignment
         stmt = (
             select(TeamEventMember)
@@ -463,6 +470,9 @@ class BookingService:
         members = list(result.scalars().all())
 
         if not members:
+            # Fall back to owner if no team members configured
+            if fallback_owner_id:
+                return fallback_owner_id
             raise BookingServiceError("No team members available for assignment")
 
         # Simple round-robin: pick the member with least recent assignment
