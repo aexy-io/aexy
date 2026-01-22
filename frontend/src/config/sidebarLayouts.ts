@@ -107,6 +107,7 @@ const emailItems: SidebarItemConfig[] = [
 const bookingItems: SidebarItemConfig[] = [
     { href: "/booking/event-types", label: "Event Types", icon: CalendarCheck },
     { href: "/booking/availability", label: "Availability", icon: CalendarClock },
+    { href: "/booking/team-calendar", label: "Team Calendar", icon: Users },
     { href: "/booking/calendars", label: "Calendars", icon: Link2 },
 ];
 

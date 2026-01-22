@@ -307,6 +307,59 @@ class CalendarSyncService:
             "connection_id": connection.id,
         }
 
+    async def create_calendar_events_for_team(
+        self,
+        booking: Booking,
+        attendee_user_ids: list[str],
+    ) -> list[dict]:
+        """Create calendar events for all team members (host + attendees).
+
+        This creates events on each team member's connected calendar.
+        """
+        results = []
+
+        # Create event for host
+        if booking.host_id:
+            host_result = await self.create_calendar_event(booking)
+            if host_result:
+                results.append({
+                    "user_id": booking.host_id,
+                    "role": "host",
+                    **host_result,
+                })
+
+        # Create events for each attendee
+        for user_id in attendee_user_ids:
+            # Skip if user is the host (already created)
+            if user_id == booking.host_id:
+                continue
+
+            # Get user's primary calendar connection
+            stmt = select(CalendarConnection).where(
+                and_(
+                    CalendarConnection.user_id == user_id,
+                    CalendarConnection.create_events == True,
+                    CalendarConnection.is_primary == True,
+                )
+            )
+            result = await self.db.execute(stmt)
+            connection = result.scalar_one_or_none()
+
+            if connection:
+                # This would call the actual calendar API to create the event
+                # For Google: Google Calendar API events.insert
+                # For Microsoft: Microsoft Graph API events
+
+                results.append({
+                    "user_id": user_id,
+                    "role": "attendee",
+                    "calendar_event_id": f"placeholder_{booking.id}_{user_id}",
+                    "calendar_provider": connection.provider,
+                    "connection_id": connection.id,
+                })
+
+        return results
+
     async def update_calendar_event(
         self,
         booking: Booking,

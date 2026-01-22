@@ -65,8 +65,27 @@ class BookingService:
         payment_required: bool = False,
         payment_amount: int | None = None,
         payment_currency: str | None = None,
+        team_member_ids: list[str] | None = None,
     ) -> Booking:
-        """Create a new booking."""
+        """Create a new booking.
+
+        Args:
+            event_type_id: The event type ID
+            invitee_email: Email of the person booking
+            invitee_name: Name of the person booking
+            start_time: Start time of the booking
+            timezone: Timezone for the booking
+            workspace_id: Workspace ID
+            host_id: Optional specific host ID
+            invitee_phone: Optional phone number
+            answers: Optional answers to custom questions
+            location: Optional custom location
+            payment_required: Whether payment is required
+            payment_amount: Payment amount in cents
+            payment_currency: Payment currency code
+            team_member_ids: Optional list of team member IDs for team bookings.
+                             When provided, creates attendee records for these members.
+        """
         # Get event type for duration
         stmt = select(EventType).where(EventType.id == event_type_id)
         result = await self.db.execute(stmt)
@@ -75,20 +94,28 @@ class BookingService:
         if not event_type:
             raise BookingServiceError("Event type not found")
 
-        # Track if this is an ALL_HANDS team event for attendee creation
-        is_all_hands = False
-        team_member_ids: list[str] = []
+        # Track if we should create attendees
+        create_attendees = False
+        attendee_member_ids: list[str] = []
+
+        # If team_member_ids is explicitly provided, use those for attendees
+        if team_member_ids:
+            create_attendees = True
+            attendee_member_ids = team_member_ids
+            # Set host to the first member or event owner
+            if not host_id:
+                host_id = team_member_ids[0] if team_member_ids else event_type.owner_id
 
         # If no host specified and it's a team event, assign one
-        if not host_id:
+        elif not host_id:
             if event_type.is_team_event:
                 # Check assignment type
                 assignment_type = await self._get_team_assignment_type(event_type_id)
                 if assignment_type == AssignmentType.ALL_HANDS.value:
                     # For ALL_HANDS, owner is primary host, all members are attendees
                     host_id = event_type.owner_id
-                    is_all_hands = True
-                    team_member_ids = await self._get_team_member_ids(event_type_id)
+                    create_attendees = True
+                    attendee_member_ids = await self._get_team_member_ids(event_type_id)
                 else:
                     host_id = await self._assign_team_member(event_type_id, start_time)
             else:
@@ -132,9 +159,9 @@ class BookingService:
         self.db.add(booking)
         await self.db.flush()
 
-        # Create attendee records for ALL_HANDS team events
-        if is_all_hands and team_member_ids:
-            for member_id in team_member_ids:
+        # Create attendee records for team bookings (ALL_HANDS or explicit team_member_ids)
+        if create_attendees and attendee_member_ids:
+            for member_id in attendee_member_ids:
                 attendee = BookingAttendee(
                     booking_id=booking.id,
                     user_id=member_id,

@@ -20,14 +20,14 @@ interface TeamCalendarViewProps {
 
 // Color palette for team members
 const MEMBER_COLORS = [
-  { bg: "bg-blue-100", border: "border-blue-300", text: "text-blue-700" },
-  { bg: "bg-green-100", border: "border-green-300", text: "text-green-700" },
-  { bg: "bg-purple-100", border: "border-purple-300", text: "text-purple-700" },
-  { bg: "bg-orange-100", border: "border-orange-300", text: "text-orange-700" },
-  { bg: "bg-pink-100", border: "border-pink-300", text: "text-pink-700" },
-  { bg: "bg-cyan-100", border: "border-cyan-300", text: "text-cyan-700" },
-  { bg: "bg-yellow-100", border: "border-yellow-300", text: "text-yellow-700" },
-  { bg: "bg-red-100", border: "border-red-300", text: "text-red-700" },
+  { bg: "bg-blue-100 dark:bg-blue-900/40", border: "border-blue-300 dark:border-blue-600", text: "text-blue-700 dark:text-blue-300" },
+  { bg: "bg-green-100 dark:bg-green-900/40", border: "border-green-300 dark:border-green-600", text: "text-green-700 dark:text-green-300" },
+  { bg: "bg-purple-100 dark:bg-purple-900/40", border: "border-purple-300 dark:border-purple-600", text: "text-purple-700 dark:text-purple-300" },
+  { bg: "bg-orange-100 dark:bg-orange-900/40", border: "border-orange-300 dark:border-orange-600", text: "text-orange-700 dark:text-orange-300" },
+  { bg: "bg-pink-100 dark:bg-pink-900/40", border: "border-pink-300 dark:border-pink-600", text: "text-pink-700 dark:text-pink-300" },
+  { bg: "bg-cyan-100 dark:bg-cyan-900/40", border: "border-cyan-300 dark:border-cyan-600", text: "text-cyan-700 dark:text-cyan-300" },
+  { bg: "bg-yellow-100 dark:bg-yellow-900/40", border: "border-yellow-300 dark:border-yellow-600", text: "text-yellow-700 dark:text-yellow-300" },
+  { bg: "bg-red-100 dark:bg-red-900/40", border: "border-red-300 dark:border-red-600", text: "text-red-700 dark:text-red-300" },
 ];
 
 // Hours to display (6am to 10pm)
@@ -185,7 +185,7 @@ export function TeamCalendarView({
           );
         })}
         <div className="flex items-center gap-2 ml-4">
-          <div className="w-3 h-3 rounded-full bg-green-200 border border-green-400" />
+          <div className="w-3 h-3 rounded-full bg-green-200 dark:bg-green-800 border border-green-400 dark:border-green-500" />
           <span className="text-sm text-gray-600 dark:text-gray-400">
             All available
           </span>
@@ -209,7 +209,7 @@ export function TeamCalendarView({
                 <div
                   className={`text-lg font-semibold ${
                     isSameDay(day, new Date())
-                      ? "text-blue-600"
+                      ? "text-blue-600 dark:text-blue-400"
                       : "text-gray-900 dark:text-white"
                   }`}
                 >
@@ -302,7 +302,7 @@ export function TeamCalendarView({
                               e.stopPropagation();
                               onBookingClick?.(booking);
                             }}
-                            className="absolute left-1 right-1 top-1 bottom-1 bg-blue-500 text-white text-xs rounded px-1 py-0.5 overflow-hidden cursor-pointer hover:bg-blue-600 z-10"
+                            className="absolute left-1 right-1 top-1 bottom-1 bg-blue-500 dark:bg-blue-600 text-white text-xs rounded px-1 py-0.5 overflow-hidden cursor-pointer hover:bg-blue-600 dark:hover:bg-blue-500 z-10"
                           >
                             <div className="font-medium truncate">
                               {booking.event_name || "Meeting"}

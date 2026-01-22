@@ -11,14 +11,20 @@ import {
 import { TeamCalendarView } from "@/components/booking/TeamCalendarView";
 import { format, addDays, startOfWeek } from "date-fns";
 import { toast } from "sonner";
-import { Calendar, Users, RefreshCw } from "lucide-react";
+import { Calendar, Users, RefreshCw, ExternalLink, Plus, Copy, Check } from "lucide-react";
+import Link from "next/link";
+import { useTeams } from "@/hooks/useTeams";
+import { TeamListItem } from "@/lib/api";
 
 export default function TeamCalendarPage() {
   const { currentWorkspace } = useWorkspace();
+  const { teams } = useTeams(currentWorkspace?.id || null);
   const [loading, setLoading] = useState(true);
   const [availability, setAvailability] = useState<TeamAvailability | null>(null);
   const [eventTypes, setEventTypes] = useState<EventType[]>([]);
   const [selectedEventTypeId, setSelectedEventTypeId] = useState<string | null>(null);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [currentWeekStart, setCurrentWeekStart] = useState(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
@@ -99,6 +105,38 @@ export default function TeamCalendarPage() {
     setCurrentWeekStart(startOfWeek(date, { weekStartsOn: 1 }));
   };
 
+  const getBookingUrl = () => {
+    if (!currentWorkspace?.slug || !selectedEventTypeId) return null;
+    const eventType = eventTypes.find(et => et.id === selectedEventTypeId);
+    if (!eventType) return null;
+
+    let url = `${window.location.origin}/book/${currentWorkspace.slug}/${eventType.slug}`;
+
+    // Add team path if a specific team is selected
+    if (selectedTeamId) {
+      const team = teams.find(t => t.id === selectedTeamId);
+      if (team) {
+        url += `/team/${team.slug || team.id}`;
+      }
+    }
+
+    return url;
+  };
+
+  const copyBookingLink = async () => {
+    const url = getBookingUrl();
+    if (!url) return;
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast.success("Booking link copied to clipboard");
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      toast.error("Failed to copy link");
+    }
+  };
+
   // Show empty state if no team event types
   if (!loading && eventTypes.length === 0) {
     return (
@@ -139,7 +177,7 @@ export default function TeamCalendarPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           {/* Event type selector */}
           <select
             value={selectedEventTypeId || ""}
@@ -154,6 +192,22 @@ export default function TeamCalendarPage() {
             ))}
           </select>
 
+          {/* Team selector */}
+          {selectedEventTypeId && teams.length > 0 && (
+            <select
+              value={selectedTeamId || ""}
+              onChange={(e) => setSelectedTeamId(e.target.value || null)}
+              className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            >
+              <option value="">All assigned members</option>
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
+            </select>
+          )}
+
           {/* Refresh button */}
           <button
             onClick={loadAvailability}
@@ -163,6 +217,30 @@ export default function TeamCalendarPage() {
           >
             <RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
           </button>
+
+          {/* Copy Link button */}
+          {selectedEventTypeId && currentWorkspace?.slug && (
+            <button
+              onClick={copyBookingLink}
+              className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg"
+              title="Copy booking link"
+            >
+              {copied ? <Check className="h-5 w-5 text-green-500" /> : <Copy className="h-5 w-5" />}
+            </button>
+          )}
+
+          {/* Book Meeting button */}
+          {selectedEventTypeId && currentWorkspace?.slug && (
+            <Link
+              href={getBookingUrl() || "#"}
+              target="_blank"
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Book Meeting
+              <ExternalLink className="h-3 w-3" />
+            </Link>
+          )}
         </div>
       </div>
 

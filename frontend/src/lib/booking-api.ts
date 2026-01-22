@@ -21,6 +21,7 @@ export interface EventType {
   color: string;
   is_active: boolean;
   is_team_event: boolean;
+  assignment_type?: "round_robin" | "collective" | "all_hands";
   buffer_before: number;
   buffer_after: number;
   min_notice_hours: number;
@@ -471,6 +472,20 @@ export const bookingApi = {
   },
 };
 
+// Team Info for public booking
+export interface TeamPublicInfo {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  members: Array<{
+    id: string;
+    name: string | null;
+    email: string | null;
+    avatar_url: string | null;
+  }>;
+}
+
 // Public booking API (no auth required)
 export const publicBookingApi = {
   getWorkspaceBookingPage: async (workspaceSlug: string) => {
@@ -479,6 +494,16 @@ export const publicBookingApi = {
       workspace: { id: string; name: string; slug: string };
       event_types: Array<{ id: string; name: string; slug: string; description: string | null; duration_minutes: number; color: string }>;
     };
+  },
+
+  getTeamInfo: async (workspaceSlug: string, teamId: string) => {
+    const response = await api.get(`/public/book/${workspaceSlug}/team/${teamId}`);
+    return response.data as TeamPublicInfo;
+  },
+
+  getTeams: async (workspaceSlug: string) => {
+    const response = await api.get(`/public/book/${workspaceSlug}/teams`);
+    return response.data as { teams: TeamPublicInfo[] };
   },
 
   getEventType: async (workspaceSlug: string, eventSlug: string) => {
@@ -512,6 +537,27 @@ export const publicBookingApi = {
     };
   },
 
+  getTeamAvailableSlots: async (
+    workspaceSlug: string,
+    eventSlug: string,
+    date: string,
+    timezone: string,
+    teamId: string,
+    memberIds?: string[]
+  ) => {
+    const params: Record<string, string> = { date, timezone, team_id: teamId };
+    if (memberIds && memberIds.length > 0) {
+      params.member_ids = memberIds.join(",");
+    }
+    const response = await api.get(`/public/book/${workspaceSlug}/${eventSlug}/slots`, { params });
+    return response.data as {
+      event_type_id: string;
+      date: string;
+      timezone: string;
+      slots: TimeSlot[];
+    };
+  },
+
   getSlots: async (workspaceSlug: string, eventTypeId: string, date: string, timezone: string) => {
     const response = await api.get(`/public/book/${workspaceSlug}/slots/${eventTypeId}`, {
       params: { date, timezone },
@@ -529,6 +575,42 @@ export const publicBookingApi = {
       email: string;
       phone?: string;
       answers?: Record<string, any>;
+      payment_method_id?: string;
+    }
+  ) => {
+    const response = await api.post(`/public/book/${workspaceSlug}/${eventSlug}/book`, data);
+    return response.data as {
+      id: string;
+      event_name: string;
+      host_name: string | null;
+      host_email: string | null;
+      invitee_name: string;
+      invitee_email: string;
+      start_time: string;
+      end_time: string;
+      timezone: string;
+      status: string;
+      location: string | null;
+      meeting_link: string | null;
+      confirmation_message: string | null;
+      can_cancel: boolean;
+      can_reschedule: boolean;
+      cancel_token: string | null;
+    };
+  },
+
+  createTeamBooking: async (
+    workspaceSlug: string,
+    eventSlug: string,
+    data: {
+      start_time: string;
+      timezone: string;
+      name: string;
+      email: string;
+      phone?: string;
+      answers?: Record<string, any>;
+      team_id: string;
+      member_ids?: string[];
       payment_method_id?: string;
     }
   ) => {

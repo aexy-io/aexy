@@ -208,7 +208,7 @@ export default function NewEventTypePage() {
                     type="button"
                     onClick={() => setFormData({ ...formData, color })}
                     className={`w-8 h-8 rounded-full ${
-                      formData.color === color ? "ring-2 ring-offset-2 ring-blue-500" : ""
+                      formData.color === color ? "ring-2 ring-offset-2 ring-blue-500 dark:ring-offset-gray-800" : ""
                     }`}
                     style={{ backgroundColor: color }}
                   />

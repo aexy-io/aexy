@@ -136,7 +136,7 @@ export function BookingCard({
                       href={booking.meeting_link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-700 truncate max-w-[200px]"
+                      className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 truncate max-w-[200px]"
                     >
                       Join meeting
                     </a>
@@ -191,7 +191,7 @@ export function BookingCard({
               {onReschedule && (
                 <button
                   onClick={onReschedule}
-                  className="text-sm text-blue-600 hover:text-blue-700"
+                  className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                 >
                   Reschedule
                 </button>
@@ -199,7 +199,7 @@ export function BookingCard({
               {onCancel && (
                 <button
                   onClick={onCancel}
-                  className="text-sm text-red-600 hover:text-red-700"
+                  className="text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                 >
                   Cancel
                 </button>
@@ -207,7 +207,7 @@ export function BookingCard({
               {onMarkNoShow && isPastBooking && booking.status === "confirmed" && (
                 <button
                   onClick={onMarkNoShow}
-                  className="text-sm text-gray-600 hover:text-gray-700"
+                  className="text-sm text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                 >
                   Mark as No Show
                 </button>

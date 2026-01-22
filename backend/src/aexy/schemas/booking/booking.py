@@ -29,6 +29,9 @@ class BookingPublicCreate(BaseModel):
     phone: str | None = Field(default=None, max_length=50)
     answers: dict = Field(default_factory=dict)
     payment_method_id: str | None = None  # For paid events
+    # Team booking fields
+    team_id: str | None = None  # Team ID or slug for team bookings
+    member_ids: list[str] | None = None  # Specific team members to book with
 
 
 class BookingUpdate(BaseModel):

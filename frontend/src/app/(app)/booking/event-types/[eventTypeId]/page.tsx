@@ -15,8 +15,47 @@ import {
   Trash2,
   DollarSign,
   Loader2,
+  Users,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
+
+// Helper to extract user-friendly error messages from API responses
+function getErrorMessage(error: any, fallback: string = "An error occurred"): string {
+  if (!error) return fallback;
+
+  // Handle axios error responses
+  const data = error.response?.data;
+  if (data) {
+    // FastAPI validation error format: { detail: [{ msg, loc, type }] }
+    if (Array.isArray(data.detail)) {
+      const messages = data.detail
+        .map((d: any) => {
+          const field = d.loc?.slice(1).join(".") || "";
+          const msg = d.msg || "";
+          return field ? `${field}: ${msg}` : msg;
+        })
+        .filter(Boolean);
+      if (messages.length > 0) return messages.join(", ");
+    }
+    // Simple detail string
+    if (typeof data.detail === "string") return data.detail;
+    // Error message field
+    if (data.message) return data.message;
+    if (data.error) return data.error;
+  }
+
+  // Network or other errors
+  if (error.message) return error.message;
+
+  return fallback;
+}
+
+const ASSIGNMENT_TYPES = [
+  { value: "round_robin", label: "Round Robin", description: "Rotate through team members" },
+  { value: "collective", label: "Collective", description: "First available team member" },
+  { value: "all_hands", label: "All Hands", description: "All team members attend together" },
+];
 
 const LOCATION_TYPES = [
   { value: "google_meet", label: "Google Meet", icon: Video },
@@ -75,6 +114,7 @@ export default function EditEventTypePage() {
         payment_amount: data.payment_amount || 0,
         payment_currency: data.payment_currency || "USD",
         is_active: data.is_active,
+        is_team_event: data.is_team_event,
       });
     } catch (error) {
       console.error("Failed to load event type:", error);
@@ -125,17 +165,37 @@ export default function EditEventTypePage() {
       return;
     }
 
+    // Filter out questions with empty labels
+    const validQuestions = (formData.questions || []).filter(
+      (q) => q.label && q.label.trim().length > 0
+    );
+
     setSaving(true);
 
     try {
-      await bookingApi.eventTypes.update(currentWorkspace.id, eventType.id, formData);
+      await bookingApi.eventTypes.update(currentWorkspace.id, eventType.id, {
+        ...formData,
+        questions: validQuestions,
+      });
       toast.success("Event type updated!");
       router.push("/booking/event-types");
     } catch (error: any) {
-      if (error.response?.status === 409) {
-        toast.error("An event type with this slug already exists");
+      console.error("Failed to update:", error);
+      const status = error.response?.status;
+
+      if (status === 409) {
+        toast.error("An event type with this slug already exists. Please choose a different URL slug.");
+      } else if (status === 400) {
+        toast.error(getErrorMessage(error, "Invalid data provided. Please check your inputs."));
+      } else if (status === 403) {
+        toast.error("You don't have permission to update this event type.");
+      } else if (status === 404) {
+        toast.error("Event type not found. It may have been deleted.");
+        router.push("/booking/event-types");
+      } else if (status >= 500) {
+        toast.error("Server error. Please try again later.");
       } else {
-        toast.error("Failed to update event type");
+        toast.error(getErrorMessage(error, "Failed to update event type"));
       }
     } finally {
       setSaving(false);
@@ -247,7 +307,7 @@ export default function EditEventTypePage() {
                     type="button"
                     onClick={() => setFormData({ ...formData, color })}
                     className={`w-8 h-8 rounded-full ${
-                      formData.color === color ? "ring-2 ring-offset-2 ring-blue-500" : ""
+                      formData.color === color ? "ring-2 ring-offset-2 ring-blue-500 dark:ring-offset-gray-800" : ""
                     }`}
                     style={{ backgroundColor: color }}
                   />
@@ -488,6 +548,96 @@ export default function EditEventTypePage() {
                 <option value="EUR">EUR</option>
                 <option value="GBP">GBP</option>
               </select>
+            </div>
+          )}
+        </div>
+
+        {/* Team Settings */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <Users className="h-5 w-5 text-gray-400" />
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Team Event
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Enable for team-based bookings
+                </p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.is_team_event}
+                onChange={(e) => setFormData({ ...formData, is_team_event: e.target.checked })}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+          {formData.is_team_event && (
+            <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div className="flex gap-3">
+                  <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-blue-700 dark:text-blue-300">
+                    <p className="font-medium mb-1">Team Event Configuration</p>
+                    <p className="text-blue-600 dark:text-blue-400">
+                      Team members can be assigned to this event type in the{" "}
+                      <Link
+                        href="/booking/team-calendar"
+                        className="underline hover:no-underline"
+                      >
+                        Team Calendar
+                      </Link>{" "}
+                      page. Members will receive RSVP invitations for each booking.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Assignment Type
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  How team members are assigned to bookings
+                </p>
+                <div className="grid gap-2">
+                  {ASSIGNMENT_TYPES.map((type) => (
+                    <label
+                      key={type.value}
+                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                        eventType?.assignment_type === type.value
+                          ? "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-600"
+                          : "bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="assignment_type"
+                        value={type.value}
+                        checked={eventType?.assignment_type === type.value}
+                        disabled
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                      />
+                      <div>
+                        <span className="font-medium text-gray-900 dark:text-white">
+                          {type.label}
+                        </span>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {type.description}
+                        </p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  Assignment type is configured when creating team event members.
+                </p>
+              </div>
             </div>
           )}
         </div>

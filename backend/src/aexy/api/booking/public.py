@@ -15,6 +15,7 @@ from aexy.core.database import get_db
 from aexy.models.booking import EventType, Booking, BookingStatus
 from aexy.models.workspace import Workspace
 from aexy.models.developer import Developer
+from aexy.models.team import Team, TeamMember
 from aexy.schemas.booking import (
     EventTypePublicResponse,
     BookingPublicCreate,
@@ -24,7 +25,7 @@ from aexy.schemas.booking import (
     AvailableSlotsResponse,
     TimeSlot,
 )
-from aexy.services.booking import BookingService, AvailabilityService
+from aexy.services.booking import BookingService, AvailabilityService, CalendarSyncService
 
 router = APIRouter(
     prefix="/public/book",
@@ -79,6 +80,121 @@ async def get_workspace_booking_page(
                 "color": et.color,
             }
             for et in event_types
+        ],
+    }
+
+
+@router.get("/{workspace_slug}/teams")
+async def get_workspace_teams(
+    workspace_slug: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get all active teams in a workspace for public booking."""
+    # Get workspace
+    stmt = select(Workspace).where(Workspace.slug == workspace_slug)
+    result = await db.execute(stmt)
+    workspace = result.scalar_one_or_none()
+
+    if not workspace:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workspace not found",
+        )
+
+    # Get active teams
+    team_stmt = (
+        select(Team)
+        .where(
+            and_(
+                Team.workspace_id == workspace.id,
+                Team.is_active == True,
+            )
+        )
+        .order_by(Team.name)
+    )
+    team_result = await db.execute(team_stmt)
+    teams = team_result.scalars().all()
+
+    return {
+        "teams": [
+            {
+                "id": t.id,
+                "name": t.name,
+                "slug": t.slug,
+                "description": t.description,
+                "members": [
+                    {
+                        "id": m.developer.id,
+                        "name": m.developer.name,
+                        "email": m.developer.email,
+                        "avatar_url": m.developer.avatar_url,
+                    }
+                    for m in t.members
+                    if m.developer
+                ],
+            }
+            for t in teams
+        ]
+    }
+
+
+@router.get("/{workspace_slug}/team/{team_id}")
+async def get_team_info(
+    workspace_slug: str,
+    team_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get team info for public booking page."""
+    # Get workspace
+    workspace_stmt = select(Workspace).where(Workspace.slug == workspace_slug)
+    workspace_result = await db.execute(workspace_stmt)
+    workspace = workspace_result.scalar_one_or_none()
+
+    if not workspace:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workspace not found",
+        )
+
+    # Get team - try by ID first, then by slug
+    team_stmt = select(Team).where(
+        and_(
+            Team.workspace_id == workspace.id,
+            Team.is_active == True,
+        )
+    )
+
+    # Try to find by ID or slug
+    from sqlalchemy import or_
+    team_stmt = team_stmt.where(
+        or_(
+            Team.id == team_id,
+            Team.slug == team_id,
+        )
+    )
+    team_result = await db.execute(team_stmt)
+    team = team_result.scalar_one_or_none()
+
+    if not team:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Team not found",
+        )
+
+    return {
+        "id": team.id,
+        "name": team.name,
+        "slug": team.slug,
+        "description": team.description,
+        "members": [
+            {
+                "id": m.developer.id,
+                "name": m.developer.name,
+                "email": m.developer.email,
+                "avatar_url": m.developer.avatar_url,
+            }
+            for m in team.members
+            if m.developer
         ],
     }
 
@@ -146,9 +262,14 @@ async def get_available_slots(
     event_slug: str,
     target_date: date = Query(..., alias="date"),
     timezone: str = Query(default="UTC"),
+    team_id: str | None = Query(default=None),
+    member_ids: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get available time slots for a specific date."""
+    """Get available time slots for a specific date.
+
+    Optionally filter by team or specific members for team bookings.
+    """
     # Get workspace
     workspace_stmt = select(Workspace).where(Workspace.slug == workspace_slug)
     workspace_result = await db.execute(workspace_stmt)
@@ -177,6 +298,27 @@ async def get_available_slots(
             detail="Event type not found",
         )
 
+    # Parse member_ids if provided
+    user_ids: list[str] | None = None
+    if member_ids:
+        user_ids = [uid.strip() for uid in member_ids.split(",") if uid.strip()]
+
+    # If team_id is provided, get team members
+    if team_id and not user_ids:
+        from sqlalchemy import or_
+        team_stmt = select(Team).where(
+            and_(
+                Team.workspace_id == workspace.id,
+                Team.is_active == True,
+                or_(Team.id == team_id, Team.slug == team_id),
+            )
+        )
+        team_result = await db.execute(team_stmt)
+        team = team_result.scalar_one_or_none()
+
+        if team:
+            user_ids = [m.developer_id for m in team.members]
+
     # Get available slots
     availability_service = AvailabilityService(db)
 
@@ -184,6 +326,7 @@ async def get_available_slots(
         event_type_id=event_type.id,
         target_date=target_date,
         timezone=timezone,
+        user_ids=user_ids,
     )
 
     return AvailableSlotsResponse(
@@ -239,12 +382,36 @@ async def create_public_booking(
             detail="Event type not found",
         )
 
-    # Verify slot availability
+    # Resolve team members if team_id is provided
+    team_member_ids: list[str] | None = None
+    if data.team_id:
+        from sqlalchemy import or_
+        team_stmt = select(Team).where(
+            and_(
+                Team.workspace_id == workspace.id,
+                Team.is_active == True,
+                or_(Team.id == data.team_id, Team.slug == data.team_id),
+            )
+        )
+        team_result = await db.execute(team_stmt)
+        team = team_result.scalar_one_or_none()
+
+        if team:
+            # Use specific member_ids if provided, otherwise use all team members
+            if data.member_ids:
+                # Validate that all member_ids are part of the team
+                valid_member_ids = {m.developer_id for m in team.members}
+                team_member_ids = [uid for uid in data.member_ids if uid in valid_member_ids]
+            else:
+                team_member_ids = [m.developer_id for m in team.members]
+
+    # Verify slot availability (with team filtering if applicable)
     availability_service = AvailabilityService(db)
     is_available = await availability_service.check_slot_availability(
         event_type_id=event_type.id,
         start_time=data.start_time,
         timezone=data.timezone,
+        user_ids=team_member_ids,
     )
 
     if not is_available:
@@ -269,10 +436,28 @@ async def create_public_booking(
             payment_required=event_type.payment_enabled,
             payment_amount=event_type.payment_amount,
             payment_currency=event_type.payment_currency,
+            team_member_ids=team_member_ids,
         )
 
         await db.commit()
         await db.refresh(booking)
+
+        # Create calendar events for host and team attendees
+        calendar_service = CalendarSyncService(db)
+        try:
+            if event_type.is_team_event and booking.attendees:
+                # Create events for all team members
+                attendee_ids = [a.user_id for a in booking.attendees]
+                await calendar_service.create_calendar_events_for_team(
+                    booking, attendee_ids
+                )
+            else:
+                # Create event for host only
+                await calendar_service.create_calendar_event(booking)
+        except Exception as e:
+            # Log but don't fail the booking if calendar creation fails
+            import logging
+            logging.warning(f"Failed to create calendar events for booking {booking.id}: {e}")
 
         # Get host info
         host_stmt = select(Developer).where(Developer.id == booking.host_id)

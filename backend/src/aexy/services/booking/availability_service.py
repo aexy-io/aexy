@@ -250,8 +250,18 @@ class AvailabilityService:
         target_date: date,
         timezone: str = "UTC",
         calendar_service: "CalendarSyncService | None" = None,
+        user_ids: list[str] | None = None,
     ) -> list[dict]:
-        """Get available time slots for a specific date."""
+        """Get available time slots for a specific date.
+
+        Args:
+            event_type_id: The event type to get slots for
+            target_date: The date to get slots for
+            timezone: The timezone to use
+            calendar_service: Optional calendar service for external busy times
+            user_ids: Optional list of specific user IDs to check availability for.
+                      When provided, only returns slots when ALL specified users are free.
+        """
         # Get event type
         stmt = select(EventType).where(EventType.id == event_type_id)
         result = await self.db.execute(stmt)
@@ -277,7 +287,10 @@ class AvailabilityService:
             return []
 
         # Get host ID(s)
-        if event_type.is_team_event:
+        # If user_ids is provided, use those instead of the default team/owner lookup
+        if user_ids:
+            host_ids = user_ids
+        elif event_type.is_team_event:
             host_ids = await self._get_team_member_ids(event_type_id)
         else:
             host_ids = [event_type.owner_id]
@@ -328,12 +341,21 @@ class AvailabilityService:
         event_type_id: str,
         start_time: datetime,
         timezone: str = "UTC",
+        user_ids: list[str] | None = None,
     ) -> bool:
-        """Check if a specific slot is available."""
+        """Check if a specific slot is available.
+
+        Args:
+            event_type_id: The event type to check
+            start_time: The start time to check
+            timezone: The timezone to use
+            user_ids: Optional list of specific user IDs to check availability for
+        """
         slots = await self.get_available_slots(
             event_type_id=event_type_id,
             target_date=start_time.date(),
             timezone=timezone,
+            user_ids=user_ids,
         )
 
         for slot in slots:
