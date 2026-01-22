@@ -5,6 +5,81 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-01-23
+
+### Added
+
+#### Team Booking Features
+
+Extended the booking module with team scheduling capabilities.
+
+**All Hands Mode:**
+- New `ALL_HANDS` assignment type for team event types
+- Book meetings where all team members attend (not just rotating hosts)
+- All members added as attendees with individual RSVP tracking
+
+**RSVP System:**
+- Team attendees receive unique `response_token` for accepting/declining
+- Public RSVP page at `/rsvp/{token}` for viewing booking details and responding
+- Attendee status tracking: `pending`, `confirmed`, `declined`
+- Email notifications for RSVP invitations
+
+**Team Calendar View:**
+- New page at `/booking/team-calendar`
+- Visual overview of team availability across the week
+- Overlapping available slots highlighted
+- Filter by team event type or workspace team
+- Copy booking link functionality
+
+**Custom Booking Links:**
+- Workspace landing page: `/book/{workspace}` - Lists all public event types
+- Team-specific booking: `/book/{workspace}/{event}/team/{team}`
+- Custom member selection via query params: `?members=id1,id2,id3`
+- Clean URL structure with workspace and event slugs
+
+**New Database Table:**
+- `booking_attendees` - Stores team meeting attendees with RSVP status and response tokens
+
+**New API Endpoints:**
+- `GET /booking/rsvp/{token}` - Get booking details for RSVP
+- `POST /booking/rsvp/{token}/respond` - Submit RSVP response (accept/decline)
+- `GET /public/book/{workspace}/teams` - List workspace teams for booking
+- `GET /public/book/{workspace}/team/{team_id}` - Get team info for booking page
+- `GET /booking/calendars/callback/{provider}` - OAuth callback endpoint
+
+**New Frontend Pages:**
+- `/booking/team-calendar` - Team availability calendar view
+- `/book/{workspace}` - Public workspace landing page
+- `/book/{workspace}/{event}/team/{team}` - Team-specific booking page
+- `/rsvp/{token}` - Public RSVP response page
+
+#### Documentation & Website
+
+- Added comprehensive booking module documentation at `/docs/booking.md`
+- Added booking product page at `/products/booking`
+- Updated `/docs/README.md` to include booking in documentation index
+- Updated `/docs/google.md` with booking calendar callback URLs
+
+### Fixed
+
+**Calendar OAuth Flow:**
+- Fixed "Method Not Allowed" error when connecting Google/Microsoft calendars
+- Refactored to use standard OAuth callback pattern (backend receives redirect)
+- OAuth state now signed with HMAC for security
+- Proper error handling with user-friendly redirect messages
+
+**Callback URL Change:**
+- Old: Frontend received OAuth redirect, then POST to backend
+- New: Backend receives OAuth redirect directly at `/api/v1/booking/calendars/callback/{provider}`
+- Backend exchanges code for tokens and redirects user to frontend with success/error params
+
+### Changed
+
+- Calendar OAuth redirect URIs now point to backend callback endpoints
+- Frontend calendars page handles `?success=true` and `?error=...` query params
+
+---
+
 ## [0.2.0] - 2026-01-22
 
 ### Added
@@ -146,8 +221,7 @@ A comprehensive calendar booking system similar to Calendly, fully integrated in
 - `generate_booking_analytics` - Generate booking statistics
 
 **Enterprise Features (Planned):**
-- Team booking (round-robin and collective)
-- Payment collection via Stripe (free tier only)
+- Payment collection via Stripe
 - Custom branding
 - Webhooks for external integrations
 - Advanced analytics
