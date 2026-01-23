@@ -1,0 +1,1 @@
+export const MAX_VIOLATION_COUNT = 20;
