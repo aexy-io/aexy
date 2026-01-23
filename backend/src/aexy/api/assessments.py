@@ -634,8 +634,33 @@ async def generate_questions(
     Includes assessment context (job role, skills, experience) for better relevance.
     """
     from aexy.services.question_generation_service import QuestionGenerationService
+    from aexy.services.limits_service import LimitsService
     from aexy.models.assessment import AssessmentTopic
     from aexy.models.repository import Organization
+    from fastapi.responses import JSONResponse
+
+    # Check billing limits before generation
+    limits_service = LimitsService(db)
+    limit_check = await limits_service.check_llm_limit_for_billing(developer_id)
+
+    if not limit_check.allowed:
+        headers = {}
+        if limit_check.retry_after_seconds:
+            headers["Retry-After"] = str(int(limit_check.retry_after_seconds))
+
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "error": "limit_exceeded",
+                "message": limit_check.message,
+                "limit_type": limit_check.limit_type,
+                "current": limit_check.current,
+                "limit": limit_check.limit,
+                "percent_used": limit_check.percent_used,
+                "retry_after_seconds": limit_check.retry_after_seconds,
+            },
+            headers=headers if headers else None,
+        )
 
     # Get topic information
     topic_stmt = select(AssessmentTopic).where(AssessmentTopic.id == data.topic_id)
@@ -728,6 +753,9 @@ async def generate_questions(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="AI failed to generate questions. Please try again or check LLM configuration.",
         )
+
+    # Increment LLM usage after successful generation
+    await limits_service.increment_llm_usage(developer_id)
 
     # Convert generated data to QuestionCreate schemas
     questions = []

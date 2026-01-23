@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { billingApi, SubscriptionStatus, PlanFeatures } from "@/lib/api";
 
 export function useSubscription(workspaceId?: string | null) {
@@ -79,4 +79,18 @@ export function usePlans() {
     isLoading,
     error,
   };
+}
+
+// Hook for changing subscription plan
+export function useChangePlan(workspaceId?: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (planTier: string) => billingApi.changePlan({ plan_tier: planTier }),
+    onSuccess: () => {
+      // Invalidate subscription status to refetch the new plan
+      queryClient.invalidateQueries({ queryKey: ["subscriptionStatus", workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["subscriptionStatus"] });
+    },
+  });
 }

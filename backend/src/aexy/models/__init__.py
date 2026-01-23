@@ -225,6 +225,17 @@ from aexy.models.permissions import (
     WIDGET_PERMISSIONS,
     PermissionCategory,
 )
+from aexy.models.app_definitions import (
+    APP_CATALOG,
+    SYSTEM_APP_BUNDLES,
+    ROLE_DEFAULT_APP_ACCESS,
+    AppCategory,
+    get_app_list,
+    get_bundle_list,
+    get_default_app_access_for_role,
+    validate_app_access_config,
+)
+from aexy.models.app_access import AppAccessTemplate, AppAccessLog, AppAccessLogAction
 from aexy.models.email_marketing import (
     EmailTemplate,
     EmailCampaign,
@@ -331,6 +342,31 @@ from aexy.models.learning_integrations import (
     SCORMCompletionStatus,
     XAPIVerbType,
     CalendarProviderType,
+)
+from aexy.models.knowledge_graph import (
+    KnowledgeEntity,
+    KnowledgeEntityMention,
+    KnowledgeRelationship,
+    KnowledgeDocumentRelationship,
+    KnowledgeExtractionJob,
+    KnowledgeEntityType,
+    KnowledgeRelationType,
+    KnowledgeExtractionStatus,
+    KnowledgeExtractionJobType,
+)
+from aexy.models.booking import (
+    EventType,
+    LocationType,
+    UserAvailability,
+    AvailabilityOverride,
+    Booking,
+    BookingStatus,
+    PaymentStatus,
+    CalendarConnection,
+    CalendarProvider,
+    TeamEventMember,
+    AssignmentType,
+    BookingWebhook,
 )
 
 __all__ = [
@@ -561,6 +597,18 @@ __all__ = [
     "ROLE_TEMPLATES",
     "WIDGET_PERMISSIONS",
     "PermissionCategory",
+    # App Access
+    "AppAccessTemplate",
+    "AppAccessLog",
+    "AppAccessLogAction",
+    "APP_CATALOG",
+    "SYSTEM_APP_BUNDLES",
+    "ROLE_DEFAULT_APP_ACCESS",
+    "AppCategory",
+    "get_app_list",
+    "get_bundle_list",
+    "get_default_app_access_for_role",
+    "validate_app_access_config",
     # Projects
     "Project",
     "ProjectMember",
@@ -660,4 +708,27 @@ __all__ = [
     "SCORMCompletionStatus",
     "XAPIVerbType",
     "CalendarProviderType",
+    # Knowledge Graph
+    "KnowledgeEntity",
+    "KnowledgeEntityMention",
+    "KnowledgeRelationship",
+    "KnowledgeDocumentRelationship",
+    "KnowledgeExtractionJob",
+    "KnowledgeEntityType",
+    "KnowledgeRelationType",
+    "KnowledgeExtractionStatus",
+    "KnowledgeExtractionJobType",
+    # Booking/Calendar
+    "EventType",
+    "LocationType",
+    "UserAvailability",
+    "AvailabilityOverride",
+    "Booking",
+    "BookingStatus",
+    "PaymentStatus",
+    "CalendarConnection",
+    "CalendarProvider",
+    "TeamEventMember",
+    "AssignmentType",
+    "BookingWebhook",
 ]

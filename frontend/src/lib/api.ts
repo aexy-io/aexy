@@ -1953,6 +1953,99 @@ export interface SubscriptionStatus {
   } | null;
 }
 
+// Usage and Billing Types
+export interface UsageSummary {
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_tokens: number;
+  total_base_cost_cents: number;
+  total_cost_cents: number;
+  margin_percent: number;
+  by_provider: Record<string, {
+    input_tokens: number;
+    output_tokens: number;
+    cost_cents: number;
+  }>;
+  period_start: string | null;
+  period_end: string | null;
+}
+
+export interface UsageEstimate {
+  current_month_cost_cents: number;
+  projected_month_cost_cents: number;
+  daily_average_cost_cents: number;
+  days_elapsed: number;
+  days_remaining: number;
+}
+
+export interface BillingHistoryEntry {
+  period_start: string;
+  period_end: string;
+  total_tokens: number;
+  total_cost_cents: number;
+  total_requests: number;
+  by_provider: Record<string, {
+    input_tokens: number;
+    output_tokens: number;
+  }>;
+}
+
+export interface Invoice {
+  id: string;
+  number: string | null;
+  status: string;
+  amount_due: number;
+  amount_paid: number;
+  currency: string;
+  period_start: string | null;
+  period_end: string | null;
+  created_at: string | null;
+  paid_at: string | null;
+  invoice_pdf: string | null;
+  hosted_invoice_url: string | null;
+}
+
+export interface LimitsUsageSummary {
+  plan: {
+    id: string;
+    name: string;
+    tier: string;
+  };
+  repos: {
+    used: number;
+    limit: number;
+    unlimited: boolean;
+  };
+  llm: {
+    used_today: number;
+    limit_per_day: number;
+    unlimited: boolean;
+    providers: string[];
+    reset_at: string | null;
+  };
+  tokens: {
+    free_tokens_per_month: number;
+    tokens_used_this_month: number;
+    input_tokens_this_month: number;
+    output_tokens_this_month: number;
+    tokens_remaining_free: number;
+    is_in_overage: boolean;
+    overage_tokens: number;
+    overage_cost_cents: number;
+    input_cost_per_1k_cents: number;
+    output_cost_per_1k_cents: number;
+    enable_overage_billing: boolean;
+    reset_at: string | null;
+  };
+  features: {
+    real_time_sync: boolean;
+    webhooks: boolean;
+    advanced_analytics: boolean;
+    exports: boolean;
+    team_features: boolean;
+  };
+}
+
 export interface Team {
   id: string;
   workspace_id: string;
@@ -3836,6 +3929,43 @@ export const billingApi = {
     return_url: string;
   }): Promise<{ portal_url: string }> => {
     const response = await api.post("/billing/portal", data);
+    return response.data;
+  },
+
+  changePlan: async (data: {
+    plan_tier: string;
+  }): Promise<{ success: boolean; message: string }> => {
+    const response = await api.post("/billing/change-plan", data);
+    return response.data;
+  },
+
+  // Usage tracking
+  getUsageSummary: async (): Promise<UsageSummary> => {
+    const response = await api.get("/billing/usage");
+    return response.data;
+  },
+
+  getUsageEstimate: async (): Promise<UsageEstimate> => {
+    const response = await api.get("/billing/usage/estimate");
+    return response.data;
+  },
+
+  getBillingHistory: async (months: number = 6): Promise<BillingHistoryEntry[]> => {
+    const response = await api.get("/billing/usage/history", {
+      params: { months },
+    });
+    return response.data;
+  },
+
+  getInvoices: async (limit: number = 10): Promise<Invoice[]> => {
+    const response = await api.get("/billing/invoices", {
+      params: { limit },
+    });
+    return response.data;
+  },
+
+  getLimitsUsage: async (): Promise<LimitsUsageSummary> => {
+    const response = await api.get("/billing/limits");
     return response.data;
   },
 };
@@ -13123,5 +13253,894 @@ export const learningIntegrationsApi = {
     delete: async (integrationId: string): Promise<void> => {
       await api.delete(`/learning/integrations/calendar/${integrationId}`);
     },
+  },
+};
+
+// ============================================================================
+// Platform Admin API
+// ============================================================================
+
+export interface AdminCheckResponse {
+  is_admin: boolean;
+}
+
+export interface AdminDashboardStats {
+  total_workspaces: number;
+  total_users: number;
+  total_emails_sent: number;
+  total_notifications: number;
+  active_workspaces_30d: number;
+  email_delivery_rate: number;
+  emails_sent_today: number;
+  emails_sent_this_week: number;
+  emails_failed_today: number;
+}
+
+export interface AdminEmailLog {
+  id: string;
+  notification_id: string | null;
+  recipient_email: string;
+  subject: string;
+  template_name: string | null;
+  body_preview: string | null;
+  ses_message_id: string | null;
+  status: string;
+  error_message: string | null;
+  sent_at: string | null;
+  created_at: string;
+  workspace_id: string | null;
+  workspace_name: string | null;
+  notification_type: string | null;
+}
+
+export interface PaginatedAdminEmailLogs {
+  items: AdminEmailLog[];
+  total: number;
+  page: number;
+  per_page: number;
+  has_next: boolean;
+}
+
+export interface AdminNotification {
+  id: string;
+  recipient_id: string;
+  recipient_email: string | null;
+  recipient_name: string | null;
+  event_type: string;
+  title: string;
+  body: string;
+  context: Record<string, unknown>;
+  is_read: boolean;
+  email_sent: boolean;
+  created_at: string;
+}
+
+export interface PaginatedAdminNotifications {
+  items: AdminNotification[];
+  total: number;
+  page: number;
+  per_page: number;
+  has_next: boolean;
+}
+
+export interface AdminWorkspace {
+  id: string;
+  name: string;
+  slug: string;
+  type: string;
+  description: string | null;
+  owner_id: string;
+  owner_email: string | null;
+  owner_name: string | null;
+  plan_tier: string | null;
+  member_count: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface PaginatedAdminWorkspaces {
+  items: AdminWorkspace[];
+  total: number;
+  page: number;
+  per_page: number;
+  has_next: boolean;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string | null;
+  avatar_url: string | null;
+  has_github: boolean;
+  has_google: boolean;
+  workspace_count: number;
+  created_at: string;
+}
+
+export interface PaginatedAdminUsers {
+  items: AdminUser[];
+  total: number;
+  page: number;
+  per_page: number;
+  has_next: boolean;
+}
+
+export interface ResendEmailResponse {
+  success: boolean;
+  message: string;
+  new_email_log_id: string | null;
+}
+
+export interface EmailListParams {
+  page?: number;
+  per_page?: number;
+  status_filter?: string;
+  search?: string;
+  date_from?: string;
+  date_to?: string;
+}
+
+export const platformAdminApi = {
+  checkAdmin: async (): Promise<AdminCheckResponse> => {
+    const response = await api.get("/platform-admin/check");
+    return response.data;
+  },
+
+  getDashboardStats: async (): Promise<AdminDashboardStats> => {
+    const response = await api.get("/platform-admin/dashboard/stats");
+    return response.data;
+  },
+
+  // Email Logs
+  getEmailLogs: async (params?: EmailListParams): Promise<PaginatedAdminEmailLogs> => {
+    const response = await api.get("/platform-admin/emails", { params });
+    return response.data;
+  },
+
+  getEmailLog: async (emailId: string): Promise<AdminEmailLog> => {
+    const response = await api.get(`/platform-admin/emails/${emailId}`);
+    return response.data;
+  },
+
+  resendEmail: async (emailId: string): Promise<ResendEmailResponse> => {
+    const response = await api.post(`/platform-admin/emails/${emailId}/resend`);
+    return response.data;
+  },
+
+  // Notifications
+  getNotifications: async (params?: {
+    page?: number;
+    per_page?: number;
+    event_type?: string;
+    search?: string;
+  }): Promise<PaginatedAdminNotifications> => {
+    const response = await api.get("/platform-admin/notifications", { params });
+    return response.data;
+  },
+
+  // Workspaces
+  getWorkspaces: async (params?: {
+    page?: number;
+    per_page?: number;
+    search?: string;
+    plan_tier?: string;
+  }): Promise<PaginatedAdminWorkspaces> => {
+    const response = await api.get("/platform-admin/workspaces", { params });
+    return response.data;
+  },
+
+  // Users
+  getUsers: async (params?: {
+    page?: number;
+    per_page?: number;
+    search?: string;
+  }): Promise<PaginatedAdminUsers> => {
+    const response = await api.get("/platform-admin/users", { params });
+    return response.data;
+  },
+};
+
+// ============================================================================
+// Workspace Email Delivery API (Enterprise Only)
+// ============================================================================
+
+export interface WorkspaceEmailStats {
+  total_sent: number;
+  total_delivered: number;
+  total_failed: number;
+  total_bounced: number;
+  total_pending: number;
+  delivery_rate: number;
+  bounce_rate: number;
+  sent_today: number;
+  sent_this_week: number;
+  sent_this_month: number;
+}
+
+export interface WorkspaceEmailLog {
+  id: string;
+  notification_id: string | null;
+  recipient_email: string;
+  subject: string;
+  template_name: string | null;
+  ses_message_id: string | null;
+  status: string;
+  error_message: string | null;
+  sent_at: string | null;
+  created_at: string;
+  notification_type: string | null;
+}
+
+export interface PaginatedWorkspaceEmailLogs {
+  items: WorkspaceEmailLog[];
+  total: number;
+  page: number;
+  per_page: number;
+  has_next: boolean;
+}
+
+export const workspaceEmailApi = {
+  getEmailLogs: async (
+    workspaceId: string,
+    developerId: string,
+    params?: {
+      page?: number;
+      per_page?: number;
+      status_filter?: string;
+    }
+  ): Promise<PaginatedWorkspaceEmailLogs> => {
+    const response = await api.get(`/notifications/workspace/${workspaceId}/emails`, {
+      params: { developer_id: developerId, ...params },
+    });
+    return response.data;
+  },
+
+  getEmailStats: async (
+    workspaceId: string,
+    developerId: string
+  ): Promise<WorkspaceEmailStats> => {
+    const response = await api.get(`/notifications/workspace/${workspaceId}/email-stats`, {
+      params: { developer_id: developerId },
+    });
+    return response.data;
+  },
+};
+
+// ============================================================================
+// App Access Control API
+// ============================================================================
+
+export interface AppModuleInfo {
+  id: string;
+  name: string;
+  description: string;
+  route: string;
+}
+
+export interface AppInfo {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  category: string;
+  base_route: string;
+  required_permission: string | null;
+  modules: AppModuleInfo[];
+}
+
+export interface AppAccessTemplate {
+  id: string;
+  workspace_id: string | null;
+  name: string;
+  slug: string;
+  description: string | null;
+  icon: string;
+  color: string;
+  app_config: Record<string, AppAccessConfig>;
+  is_system: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AppAccessConfig {
+  enabled: boolean;
+  modules?: Record<string, boolean>;
+}
+
+export interface EffectiveAppAccess {
+  app_id: string;
+  enabled: boolean;
+  modules: Record<string, boolean>;
+}
+
+export interface MemberEffectiveAccess {
+  apps: Record<string, EffectiveAppAccess>;
+  applied_template_id: string | null;
+  applied_template_name: string | null;
+  has_custom_overrides: boolean;
+  is_admin: boolean;
+}
+
+export interface MemberAccessMatrixEntry {
+  developer_id: string;
+  developer_name: string | null;
+  developer_email: string | null;
+  role_name: string | null;
+  applied_template_id: string | null;
+  applied_template_name: string | null;
+  has_custom_overrides: boolean;
+  is_admin: boolean;
+  apps: Record<string, "full" | "partial" | "none">;
+}
+
+export interface AccessMatrixResponse {
+  members: MemberAccessMatrixEntry[];
+  apps: AppInfo[];
+}
+
+export interface SystemBundleInfo {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  app_config: Record<string, AppAccessConfig>;
+}
+
+export interface AccessCheckResponse {
+  allowed: boolean;
+  app_id: string;
+  module_id: string | null;
+  reason: string | null;
+}
+
+export const appAccessApi = {
+  // App catalog
+  getCatalog: async (workspaceId: string): Promise<{ apps: AppInfo[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/app-access/catalog`);
+    return response.data;
+  },
+
+  // System bundles
+  getBundles: async (workspaceId: string): Promise<{ bundles: SystemBundleInfo[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/app-access/bundles`);
+    return response.data;
+  },
+
+  // Templates
+  listTemplates: async (
+    workspaceId: string,
+    includeSystem = true
+  ): Promise<{ templates: AppAccessTemplate[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/app-access/templates`, {
+      params: { include_system: includeSystem },
+    });
+    return response.data;
+  },
+
+  getTemplate: async (workspaceId: string, templateId: string): Promise<AppAccessTemplate> => {
+    const response = await api.get(`/workspaces/${workspaceId}/app-access/templates/${templateId}`);
+    return response.data;
+  },
+
+  createTemplate: async (
+    workspaceId: string,
+    data: {
+      name: string;
+      description?: string;
+      icon?: string;
+      color?: string;
+      app_config: Record<string, AppAccessConfig>;
+    }
+  ): Promise<AppAccessTemplate> => {
+    const response = await api.post(`/workspaces/${workspaceId}/app-access/templates`, data);
+    return response.data;
+  },
+
+  updateTemplate: async (
+    workspaceId: string,
+    templateId: string,
+    data: {
+      name?: string;
+      description?: string;
+      icon?: string;
+      color?: string;
+      app_config?: Record<string, AppAccessConfig>;
+    }
+  ): Promise<AppAccessTemplate> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/app-access/templates/${templateId}`,
+      data
+    );
+    return response.data;
+  },
+
+  deleteTemplate: async (workspaceId: string, templateId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/app-access/templates/${templateId}`);
+  },
+
+  // Member access
+  getMemberEffectiveAccess: async (
+    workspaceId: string,
+    developerId: string
+  ): Promise<MemberEffectiveAccess> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/app-access/members/${developerId}/effective`
+    );
+    return response.data;
+  },
+
+  updateMemberAccess: async (
+    workspaceId: string,
+    developerId: string,
+    data: {
+      app_config: Record<string, AppAccessConfig>;
+      applied_template_id?: string | null;
+    }
+  ): Promise<{ success: boolean; developer_id: string }> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/app-access/members/${developerId}`,
+      data
+    );
+    return response.data;
+  },
+
+  applyTemplateToMember: async (
+    workspaceId: string,
+    developerId: string,
+    templateId: string
+  ): Promise<{ success: boolean; developer_id: string }> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/app-access/members/${developerId}/apply-template`,
+      { template_id: templateId }
+    );
+    return response.data;
+  },
+
+  resetMemberToDefaults: async (
+    workspaceId: string,
+    developerId: string
+  ): Promise<{ success: boolean; developer_id: string }> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/app-access/members/${developerId}/reset`
+    );
+    return response.data;
+  },
+
+  bulkApplyTemplate: async (
+    workspaceId: string,
+    developerIds: string[],
+    templateId: string
+  ): Promise<{
+    success_count: number;
+    failed_count: number;
+    applied_developer_ids: string[];
+  }> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/app-access/members/bulk-apply-template`,
+      {
+        developer_ids: developerIds,
+        template_id: templateId,
+      }
+    );
+    return response.data;
+  },
+
+  // Access matrix
+  getAccessMatrix: async (workspaceId: string): Promise<AccessMatrixResponse> => {
+    const response = await api.get(`/workspaces/${workspaceId}/app-access/matrix`);
+    return response.data;
+  },
+
+  // Access check
+  checkAccess: async (
+    workspaceId: string,
+    appId: string,
+    moduleId?: string
+  ): Promise<AccessCheckResponse> => {
+    const response = await api.post(`/workspaces/${workspaceId}/app-access/check`, {
+      app_id: appId,
+      module_id: moduleId,
+    });
+    return response.data;
+  },
+
+  // Access logs (Enterprise feature)
+  getAccessLogs: async (
+    workspaceId: string,
+    params?: {
+      action?: string;
+      target_type?: string;
+      target_id?: string;
+      actor_id?: string;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<AppAccessLogsResponse> => {
+    const response = await api.get(`/workspaces/${workspaceId}/app-access/logs`, {
+      params,
+    });
+    return response.data;
+  },
+
+  getAccessLogsSummary: async (
+    workspaceId: string,
+    days?: number
+  ): Promise<AppAccessLogsSummary> => {
+    const response = await api.get(`/workspaces/${workspaceId}/app-access/logs/summary`, {
+      params: { days },
+    });
+    return response.data;
+  },
+};
+
+// Access Log types
+export interface AppAccessLog {
+  id: string;
+  workspace_id: string;
+  actor_id: string | null;
+  action: string;
+  target_type: string;
+  target_id: string | null;
+  description: string | null;
+  old_value: Record<string, unknown> | null;
+  new_value: Record<string, unknown> | null;
+  extra_data: Record<string, unknown>;
+  ip_address: string | null;
+  user_agent: string | null;
+  created_at: string;
+}
+
+export interface AppAccessLogsResponse {
+  logs: AppAccessLog[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface AppAccessLogsSummary {
+  action_counts: Record<string, number>;
+  daily_counts: Array<{ date: string; count: number }>;
+  recent_denials: Array<{
+    id: string;
+    actor_id: string | null;
+    target_id: string | null;
+    extra_data: Record<string, unknown>;
+    created_at: string;
+  }>;
+  total_events: number;
+  period_days: number;
+}
+
+// ============================================================================
+// Knowledge Graph Types
+// ============================================================================
+
+export type KnowledgeEntityType =
+  | "person"
+  | "concept"
+  | "technology"
+  | "project"
+  | "organization"
+  | "code"
+  | "external";
+
+export type KnowledgeRelationType =
+  | "mentions"
+  | "related_to"
+  | "depends_on"
+  | "authored_by"
+  | "implements"
+  | "references"
+  | "links_to"
+  | "shares_entity"
+  | "mentioned_in";
+
+export type KnowledgeExtractionStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export interface KnowledgeGraphFilters {
+  entity_types?: KnowledgeEntityType[];
+  relationship_types?: KnowledgeRelationType[];
+  space_ids?: string[];
+  date_from?: string;
+  date_to?: string;
+  min_confidence?: number;
+  include_documents?: boolean;
+  include_entities?: boolean;
+  max_nodes?: number;
+}
+
+export interface KnowledgeGraphNode {
+  id: string;
+  label: string;
+  node_type: string;
+  metadata: {
+    created_at?: string;
+    updated_at?: string;
+    activity_score?: number;
+    occurrence_count?: number;
+    confidence_score?: number;
+    description?: string;
+    aliases?: string[];
+    first_seen_at?: string;
+    last_seen_at?: string;
+  };
+  color: string;
+}
+
+export interface KnowledgeGraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  relationship_type: string;
+  strength: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface KnowledgeGraphStatistics {
+  total_entities: number;
+  total_documents: number;
+  total_relationships: number;
+  entity_type_counts: Record<string, number>;
+  relationship_type_counts?: Record<string, number>;
+}
+
+export interface KnowledgeGraphTemporalData {
+  activity_heatmap: Array<{
+    date: string;
+    count: number;
+  }>;
+  entity_timeline: Array<{
+    entity_id: string;
+    first_seen: string;
+    last_seen: string;
+  }>;
+}
+
+export interface KnowledgeGraphData {
+  nodes: KnowledgeGraphNode[];
+  edges: KnowledgeGraphEdge[];
+  statistics: KnowledgeGraphStatistics;
+  temporal?: KnowledgeGraphTemporalData;
+}
+
+export interface KnowledgeEntity {
+  id: string;
+  workspace_id: string;
+  name: string;
+  entity_type: KnowledgeEntityType;
+  description: string | null;
+  aliases: string[];
+  metadata: Record<string, unknown>;
+  confidence_score: number;
+  occurrence_count: number;
+  first_seen_at: string | null;
+  last_seen_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface KnowledgeEntityDetails extends KnowledgeEntity {
+  documents: Array<{
+    id: string;
+    title: string;
+    updated_at?: string;
+  }>;
+  related_entities: Array<{
+    id: string;
+    name: string;
+    entity_type: string;
+    relationship_type: string;
+    strength: number;
+  }>;
+}
+
+export interface KnowledgeDocumentConnections {
+  document: {
+    id: string;
+    title: string;
+  } | null;
+  entities: Array<{
+    id: string;
+    name: string;
+    type: string;
+    confidence: number;
+    context?: string;
+  }>;
+  related_documents: Array<{
+    id: string;
+    title: string;
+    strength: number;
+    updated_at?: string;
+  }>;
+}
+
+export interface KnowledgeExtractionJob {
+  id: string;
+  workspace_id: string;
+  document_id: string | null;
+  status: KnowledgeExtractionStatus;
+  job_type: string;
+  entities_found: number;
+  relationships_found: number;
+  error_message: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface KnowledgeSearchResult {
+  id: string;
+  name: string;
+  type: string;
+  description?: string;
+  occurrence_count: number;
+}
+
+export interface KnowledgePathNode {
+  id: string;
+  name: string;
+  node_type: string;
+  relationship_to_next?: string;
+}
+
+// ============================================================================
+// Knowledge Graph API
+// ============================================================================
+
+export const knowledgeGraphApi = {
+  // Graph data
+  getGraph: async (
+    workspaceId: string,
+    filters?: KnowledgeGraphFilters
+  ): Promise<KnowledgeGraphData> => {
+    const response = await api.get(`/workspaces/${workspaceId}/knowledge-graph/graph`, {
+      params: filters,
+    });
+    return response.data;
+  },
+
+  getDocumentGraph: async (
+    workspaceId: string,
+    documentId: string,
+    depth?: number
+  ): Promise<KnowledgeGraphData> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/knowledge-graph/graph/document/${documentId}`,
+      { params: { depth } }
+    );
+    return response.data;
+  },
+
+  getEntityNeighborhood: async (
+    workspaceId: string,
+    entityId: string,
+    depth?: number
+  ): Promise<KnowledgeGraphData> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/knowledge-graph/graph/entity/${entityId}`,
+      { params: { depth } }
+    );
+    return response.data;
+  },
+
+  // Entities
+  listEntities: async (
+    workspaceId: string,
+    params?: {
+      entity_type?: KnowledgeEntityType;
+      search?: string;
+      min_confidence?: number;
+      skip?: number;
+      limit?: number;
+    }
+  ): Promise<{ entities: KnowledgeEntity[]; total: number }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/knowledge-graph/entities`, {
+      params,
+    });
+    return response.data;
+  },
+
+  getEntity: async (workspaceId: string, entityId: string): Promise<KnowledgeEntityDetails> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/knowledge-graph/entities/${entityId}`
+    );
+    return response.data;
+  },
+
+  getDocumentConnections: async (
+    workspaceId: string,
+    documentId: string
+  ): Promise<KnowledgeDocumentConnections> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/knowledge-graph/graph/document/${documentId}`
+    );
+    return response.data;
+  },
+
+  // Search and path finding
+  searchEntities: async (
+    workspaceId: string,
+    query: string,
+    entityType?: KnowledgeEntityType
+  ): Promise<KnowledgeSearchResult[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/knowledge-graph/entities`, {
+      params: { search: query, entity_type: entityType, limit: 20 },
+    });
+    return response.data.entities.map((e: KnowledgeEntity) => ({
+      id: e.id,
+      name: e.name,
+      type: e.entity_type,
+      description: e.description,
+      occurrence_count: e.occurrence_count,
+    }));
+  },
+
+  findPath: async (
+    workspaceId: string,
+    sourceId: string,
+    targetId: string,
+    maxDepth?: number
+  ): Promise<{ path: KnowledgePathNode[]; found: boolean }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/knowledge-graph/path`, {
+      params: { source_id: sourceId, target_id: targetId, max_depth: maxDepth },
+    });
+    return response.data;
+  },
+
+  // Statistics and temporal
+  getStatistics: async (workspaceId: string): Promise<KnowledgeGraphStatistics> => {
+    const response = await api.get(`/workspaces/${workspaceId}/knowledge-graph/statistics`);
+    return response.data;
+  },
+
+  getTemporalData: async (
+    workspaceId: string,
+    dateFrom?: string,
+    dateTo?: string
+  ): Promise<KnowledgeGraphTemporalData> => {
+    const response = await api.get(`/workspaces/${workspaceId}/knowledge-graph/temporal`, {
+      params: { date_from: dateFrom, date_to: dateTo },
+    });
+    return response.data;
+  },
+
+  // Extraction
+  triggerExtraction: async (
+    workspaceId: string,
+    documentId?: string
+  ): Promise<KnowledgeExtractionJob> => {
+    if (documentId) {
+      const response = await api.post(
+        `/workspaces/${workspaceId}/knowledge-graph/extract/document/${documentId}`
+      );
+      return response.data;
+    }
+    const response = await api.post(`/workspaces/${workspaceId}/knowledge-graph/extract`);
+    return response.data;
+  },
+
+  getExtractionJobs: async (
+    workspaceId: string,
+    params?: { status?: KnowledgeExtractionStatus; skip?: number; limit?: number }
+  ): Promise<{ jobs: KnowledgeExtractionJob[]; total: number }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/knowledge-graph/jobs`, {
+      params,
+    });
+    return response.data;
+  },
+
+  getExtractionJob: async (
+    workspaceId: string,
+    jobId: string
+  ): Promise<KnowledgeExtractionJob> => {
+    const response = await api.get(`/workspaces/${workspaceId}/knowledge-graph/jobs/${jobId}`);
+    return response.data;
   },
 };
