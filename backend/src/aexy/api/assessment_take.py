@@ -43,6 +43,10 @@ class AssessmentInfoResponse(BaseModel):
     proctoring_enabled: bool
     webcam_required: bool
     fullscreen_required: bool
+    screen_recording_enabled: bool = False
+    face_detection_enabled: bool = False
+    tab_tracking_enabled: bool = False
+    copy_paste_disabled: bool = False
     deadline: datetime | None
     can_start: bool
     message: str | None = None
@@ -340,9 +344,13 @@ async def get_assessment_info(
         total_duration_minutes=assessment.total_duration_minutes or 0,
         topics=topics_data,
         instructions=instructions,
-        proctoring_enabled=proctoring.get("enabled", False),
-        webcam_required=proctoring.get("webcam_required", False),
-        fullscreen_required=proctoring.get("fullscreen_required", False),
+        proctoring_enabled=proctoring.get("enabled", False) or proctoring.get("enable_webcam", False),
+        webcam_required=proctoring.get("enable_webcam", False),
+        fullscreen_required=proctoring.get("enable_fullscreen_enforcement", False),
+        screen_recording_enabled=proctoring.get("enable_screen_recording", False),
+        face_detection_enabled=proctoring.get("enable_face_detection", False),
+        tab_tracking_enabled=proctoring.get("enable_tab_tracking", False),
+        copy_paste_disabled=proctoring.get("enable_copy_paste_detection", False),
         deadline=deadline,
         can_start=can_start,
         message=message,

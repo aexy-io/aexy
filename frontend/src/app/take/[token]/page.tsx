@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Clock,
@@ -15,6 +15,7 @@ import {
   Send,
   Lock,
 } from "lucide-react";
+import * as faceapi from "face-api.js";
 
 // Types
 interface AssessmentInfo {
@@ -29,6 +30,10 @@ interface AssessmentInfo {
   proctoring_enabled: boolean;
   webcam_required: boolean;
   fullscreen_required: boolean;
+  screen_recording_enabled: boolean;
+  face_detection_enabled: boolean;
+  tab_tracking_enabled: boolean;
+  copy_paste_disabled: boolean;
   deadline: string | null;
   can_start: boolean;
   message: string | null;
@@ -86,6 +91,31 @@ export default function AssessmentTakePage() {
   const [candidateEmail, setCandidateEmail] = useState("");
   const [candidateName, setCandidateName] = useState("");
   const [needsEmail, setNeedsEmail] = useState(false);
+
+  // Proctoring state
+  const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null);
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const [faceDetectionInterval, setFaceDetectionInterval] = useState<NodeJS.Timeout | null>(null);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Load face-api.js models
+  useEffect(() => {
+    async function loadModels() {
+      try {
+        const MODEL_URL = "/models";
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+        ]);
+        setModelsLoaded(true);
+      } catch (err) {
+        console.warn("Failed to load face detection models:", err);
+      }
+    }
+    loadModels();
+  }, []);
 
   // Fetch assessment info
   useEffect(() => {
@@ -181,6 +211,35 @@ export default function AssessmentTakePage() {
     setIsStarting(true);
     setError(null);
     try {
+      // Request webcam if required
+      if (assessmentInfo?.webcam_required) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+          });
+          setWebcamStream(stream);
+        } catch (err) {
+          setError("Webcam access is required to start this assessment. Please allow webcam access and try again.");
+          setIsStarting(false);
+          return;
+        }
+      }
+
+      // Request screen recording if enabled
+      if (assessmentInfo?.screen_recording_enabled) {
+        try {
+          const stream = await (navigator.mediaDevices as any).getDisplayMedia({
+            video: true,
+            audio: false
+          });
+          setScreenStream(stream);
+        } catch (err) {
+          console.warn("Screen recording not available:", err);
+          // Don't block assessment if screen recording fails
+        }
+      }
+
       const body: Record<string, string> = {};
       if (needsEmail) {
         body.candidate_email = candidateEmail;
@@ -225,6 +284,11 @@ export default function AssessmentTakePage() {
           console.warn("Fullscreen not available");
         }
       }
+
+      // Start face detection if enabled
+      if (assessmentInfo?.face_detection_enabled && webcamStream) {
+        startFaceDetection();
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -252,6 +316,59 @@ export default function AssessmentTakePage() {
     }
   };
 
+  // Log proctoring event
+  const logProctoringEvent = useCallback(
+    async (eventType: string, data?: any) => {
+      if (!assessmentInfo?.proctoring_enabled) return;
+
+      try {
+        await fetch(`${API_BASE}/take/${apiToken}/proctoring/event`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ event_type: eventType, data }),
+        });
+      } catch (e) {
+        console.warn("Failed to log proctoring event");
+      }
+    },
+    [apiToken, assessmentInfo?.proctoring_enabled]
+  );
+
+  // Face detection function
+  const startFaceDetection = useCallback(() => {
+    if (!modelsLoaded || !videoRef.current || !webcamStream) return;
+
+    const video = videoRef.current;
+    video.srcObject = webcamStream;
+    video.play();
+
+    const detectFaces = async () => {
+      if (!video || video.paused || video.ended) return;
+
+      try {
+        const detections = await faceapi.detectAllFaces(
+          video,
+          new faceapi.TinyFaceDetectorOptions()
+        );
+
+        // Log face detection events
+        if (detections.length === 0) {
+          logProctoringEvent("no_face_detected", { timestamp: Date.now() });
+        } else if (detections.length > 1) {
+          logProctoringEvent("multiple_faces_detected", {
+            count: detections.length,
+            timestamp: Date.now()
+          });
+        }
+      } catch (err) {
+        console.warn("Face detection error:", err);
+      }
+    };
+
+    const interval = setInterval(detectFaces, 5000); // Check every 5 seconds
+    setFaceDetectionInterval(interval);
+  }, [modelsLoaded, webcamStream, logProctoringEvent]);
+
   // Complete assessment
   const handleComplete = async () => {
     setIsSubmitting(true);
@@ -274,6 +391,17 @@ export default function AssessmentTakePage() {
         completed_at: data.completed_at,
       });
 
+      // Clean up media streams
+      if (webcamStream) {
+        webcamStream.getTracks().forEach(track => track.stop());
+      }
+      if (screenStream) {
+        screenStream.getTracks().forEach(track => track.stop());
+      }
+      if (faceDetectionInterval) {
+        clearInterval(faceDetectionInterval);
+      }
+
       // Exit fullscreen
       if (document.fullscreenElement) {
         document.exitFullscreen();
@@ -285,27 +413,9 @@ export default function AssessmentTakePage() {
     }
   };
 
-  // Log proctoring event
-  const logProctoringEvent = useCallback(
-    async (eventType: string, data?: any) => {
-      if (!assessmentInfo?.proctoring_enabled) return;
-
-      try {
-        await fetch(`${API_BASE}/take/${apiToken}/proctoring/event`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ event_type: eventType, data }),
-        });
-      } catch (e) {
-        console.warn("Failed to log proctoring event");
-      }
-    },
-    [apiToken, assessmentInfo?.proctoring_enabled]
-  );
-
   // Proctoring: Tab switch detection
   useEffect(() => {
-    if (attemptStatus?.status !== "in_progress") return;
+    if (attemptStatus?.status !== "in_progress" || !assessmentInfo?.tab_tracking_enabled) return;
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
@@ -324,7 +434,7 @@ export default function AssessmentTakePage() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("blur", handleBlur);
     };
-  }, [attemptStatus?.status, logProctoringEvent]);
+  }, [attemptStatus?.status, assessmentInfo?.tab_tracking_enabled, logProctoringEvent]);
 
   // Proctoring: Fullscreen exit detection
   useEffect(() => {
@@ -339,6 +449,36 @@ export default function AssessmentTakePage() {
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, [attemptStatus?.status, assessmentInfo?.fullscreen_required, logProctoringEvent]);
+
+  // Proctoring: Copy/Paste detection
+  useEffect(() => {
+    if (attemptStatus?.status !== "in_progress" || !assessmentInfo?.copy_paste_disabled) return;
+
+    const handleCopy = (e: ClipboardEvent) => {
+      e.preventDefault();
+      logProctoringEvent("copy_attempt");
+    };
+
+    const handlePaste = (e: ClipboardEvent) => {
+      e.preventDefault();
+      logProctoringEvent("paste_attempt");
+    };
+
+    const handleCut = (e: ClipboardEvent) => {
+      e.preventDefault();
+      logProctoringEvent("cut_attempt");
+    };
+
+    document.addEventListener("copy", handleCopy);
+    document.addEventListener("paste", handlePaste);
+    document.addEventListener("cut", handleCut);
+
+    return () => {
+      document.removeEventListener("copy", handleCopy);
+      document.removeEventListener("paste", handlePaste);
+      document.removeEventListener("cut", handleCut);
+    };
+  }, [attemptStatus?.status, assessmentInfo?.copy_paste_disabled, logProctoringEvent]);
 
   // Current question
   const currentQuestion = questions[currentQuestionIndex];
@@ -447,16 +587,36 @@ export default function AssessmentTakePage() {
                       Webcam access required
                     </li>
                   )}
+                  {assessmentInfo.screen_recording_enabled && (
+                    <li className="flex items-center gap-2">
+                      <Monitor className="h-4 w-4 text-yellow-600" />
+                      Screen recording will be enabled
+                    </li>
+                  )}
                   {assessmentInfo.fullscreen_required && (
                     <li className="flex items-center gap-2">
                       <Monitor className="h-4 w-4 text-yellow-600" />
                       Fullscreen mode required
                     </li>
                   )}
-                  <li className="flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                    Tab switches will be recorded
-                  </li>
+                  {assessmentInfo.face_detection_enabled && (
+                    <li className="flex items-center gap-2">
+                      <Camera className="h-4 w-4 text-yellow-600" />
+                      Face detection will be active
+                    </li>
+                  )}
+                  {assessmentInfo.tab_tracking_enabled && (
+                    <li className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                      Tab switches will be recorded
+                    </li>
+                  )}
+                  {assessmentInfo.copy_paste_disabled && (
+                    <li className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                      Copy/paste is disabled
+                    </li>
+                  )}
                 </ul>
               </div>
             )}
@@ -781,6 +941,15 @@ export default function AssessmentTakePage() {
           )}
         </main>
       </div>
+
+      {/* Hidden video element for face detection */}
+      <video
+        ref={videoRef}
+        style={{ display: "none" }}
+        autoPlay
+        muted
+        playsInline
+      />
     </div>
   );
 }

@@ -188,6 +188,7 @@ class Step2Data(BaseModel):
 class ProctoringSettings(BaseModel):
     """Proctoring configuration."""
 
+    enabled: bool = True
     enable_webcam: bool = True
     enable_screen_recording: bool = True
     enable_face_detection: bool = True
