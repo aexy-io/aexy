@@ -92,7 +92,7 @@ class ProctoringService:
             attempt_id=attempt_id,
             event_type=event_type,
             severity=severity,
-            data=data or {},
+            event_data=data or {},
             screenshot_url=screenshot_url,
             timestamp=datetime.now(timezone.utc),
         )
@@ -307,7 +307,7 @@ class ProctoringService:
                 "type": event.event_type,
                 "severity": event.severity.value,
                 "timestamp": event.timestamp.isoformat() if event.timestamp else None,
-                "data": event.data,
+                "data": event.event_data,
             })
 
         prompt = PROCTORING_BEHAVIOR_ANALYSIS_PROMPT.format(
