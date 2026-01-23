@@ -45,7 +45,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - LLM_PROVIDER=gemini
       - LLM_MODEL=gemini-2.0-flash
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-YOUR_GEMINI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-your-gemini-api-key}
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
     depends_on:
       postgres:
@@ -67,7 +67,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - LLM_PROVIDER=gemini
       - LLM_MODEL=gemini-2.0-flash
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-YOUR_GEMINI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-your-gemini-api-key}
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
     depends_on:
       postgres:
@@ -89,7 +89,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - LLM_PROVIDER=gemini
       - LLM_MODEL=gemini-2.0-flash
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-YOUR_GEMINI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-your-gemini-api-key}
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
     depends_on:
       postgres:
