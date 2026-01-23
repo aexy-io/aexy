@@ -284,6 +284,15 @@ export default function AssessmentTakePage() {
               addViolation("Screen recording stopped! Please share your screen again.");
             };
           });
+          setScreenRecordingActive(true);
+
+          // Monitor if screen recording stops
+          stream.getTracks().forEach((track: MediaStreamTrack) => {
+            track.onended = () => {
+              setScreenRecordingActive(false);
+              addViolation("Screen recording stopped! Please share your screen again.");
+            };
+          });
         } catch (err) {
           console.warn("Screen recording not available:", err);
           // Don't block assessment if screen recording fails
@@ -330,6 +339,7 @@ export default function AssessmentTakePage() {
       if (assessmentInfo?.fullscreen_required) {
         try {
           await document.documentElement.requestFullscreen();
+          setIsFullscreen(true);
           setIsFullscreen(true);
         } catch (e) {
           console.warn("Fullscreen not available");
@@ -465,8 +475,89 @@ export default function AssessmentTakePage() {
     }
   }, [assessmentInfo, screenRecordingActive, screenStream, addViolation]);
 
+  // Complete handler ref for auto-submit
+  const completeHandlerRef = useRef<(() => Promise<void>) | null>(null);
+
+  // Face detection violation tracking
+  const lastFaceViolationTimeRef = useRef<number>(0);
+
+  // Track if submission is in progress to prevent duplicate calls
+  const isSubmittingRef = useRef<boolean>(false);
+
+  // Add violation and show warning
+  const addViolation = useCallback((message: string) => {
+    // Don't add violations if already submitting or completed
+    if (isSubmittingRef.current) {
+      return;
+    }
+
+    setViolationCount((prev) => {
+      const newCount = prev + 1;
+      setWarningMessage(message);
+      setShowWarningModal(true);
+
+      // Auto-submit if exceeded max violations (only if not already submitting)
+      if (newCount >= MAX_VIOLATION_COUNT && completeHandlerRef.current && !isSubmittingRef.current) {
+        // Don't set isSubmittingRef here - let handleComplete set it
+        setTimeout(() => {
+          if (!isSubmittingRef.current && completeHandlerRef.current) {
+            completeHandlerRef.current();
+          }
+        }, 2000);
+      }
+
+      return newCount;
+    });
+  }, []);
+
+  // Handle warning modal close and re-enable settings
+  const handleWarningClose = useCallback(async () => {
+    setShowWarningModal(false);
+
+    // Re-enable fullscreen if required and not in fullscreen
+    if (assessmentInfo?.fullscreen_required && !document.fullscreenElement) {
+      try {
+        await document.documentElement.requestFullscreen();
+        setIsFullscreen(true);
+      } catch (e) {
+        console.warn("Could not re-enable fullscreen");
+      }
+    }
+
+    // Re-enable screen recording if required and not active
+    if (assessmentInfo?.screen_recording_enabled && !screenRecordingActive) {
+      try {
+        const stream = await (navigator.mediaDevices as any).getDisplayMedia({
+          video: true,
+          audio: false
+        });
+
+        // Stop old stream if exists
+        if (screenStream) {
+          screenStream.getTracks().forEach(track => track.stop());
+        }
+
+        setScreenStream(stream);
+        setScreenRecordingActive(true);
+
+        // Monitor if screen recording stops
+        stream.getTracks().forEach((track: MediaStreamTrack) => {
+          track.onended = () => {
+            setScreenRecordingActive(false);
+            addViolation("Screen recording stopped! Please share your screen again.");
+          };
+        });
+      } catch (err) {
+        console.warn("Could not re-enable screen recording:", err);
+      }
+    }
+  }, [assessmentInfo, screenRecordingActive, screenStream, addViolation]);
+
   // Face detection function
   const startFaceDetection = useCallback(() => {
+    if (!modelsLoaded || !videoRef.current || !webcamStream) {
+      return;
+    }
     if (!modelsLoaded || !videoRef.current || !webcamStream) {
       return;
     }
@@ -481,8 +572,19 @@ export default function AssessmentTakePage() {
     };
 
     const VIOLATION_COOLDOWN = 10000; // 10 seconds cooldown between violations
+    // Wait for video to be ready
+    video.onloadedmetadata = () => {
+      video.play()
+        .then(() => console.log("Video playing successfully"))
+        .catch(err => console.error("Video play failed:", err));
+    };
+
+    const VIOLATION_COOLDOWN = 10000; // 10 seconds cooldown between violations
 
     const detectFaces = async () => {
+      if (!video || video.paused || video.ended) {
+        return;
+      }
       if (!video || video.paused || video.ended) {
         return;
       }
@@ -496,8 +598,18 @@ export default function AssessmentTakePage() {
         const now = Date.now();
         const canAddViolation = now - lastFaceViolationTimeRef.current > VIOLATION_COOLDOWN;
 
+        const now = Date.now();
+        const canAddViolation = now - lastFaceViolationTimeRef.current > VIOLATION_COOLDOWN;
+
         // Log face detection events
         if (detections.length === 0) {
+          setFaceDetected(false);
+          if (canAddViolation) {
+            
+            logProctoringEvent("no_face_detected", { timestamp: now });
+            addViolation("Face not detected! Please ensure your face is visible in the camera.");
+            lastFaceViolationTimeRef.current = now;
+          } 
           setFaceDetected(false);
           if (canAddViolation) {
             
@@ -517,6 +629,17 @@ export default function AssessmentTakePage() {
           }
         } else {
           setFaceDetected(true);
+          setFaceDetected(false);
+          if (canAddViolation) {
+            logProctoringEvent("multiple_faces_detected", {
+              count: detections.length,
+              timestamp: now
+            });
+            addViolation(`Multiple faces detected (${detections.length})! Only you should be visible.`);
+            lastFaceViolationTimeRef.current = now;
+          }
+        } else {
+          setFaceDetected(true);
         }
       } catch (err) {
         console.warn("Face detection error:", err);
@@ -524,7 +647,12 @@ export default function AssessmentTakePage() {
     };
 
     const interval = setInterval(detectFaces, 3000); // Check every 3 seconds
+    const interval = setInterval(detectFaces, 3000); // Check every 3 seconds
     setFaceDetectionInterval(interval);
+
+    // Run first detection immediately
+    setTimeout(detectFaces, 1000);
+  }, [modelsLoaded, webcamStream, logProctoringEvent, addViolation]);
 
     // Run first detection immediately
     setTimeout(detectFaces, 1000);
@@ -537,7 +665,14 @@ export default function AssessmentTakePage() {
       return;
     }
     isSubmittingRef.current = true;
+  const handleComplete = useCallback(async () => {
+    // Prevent duplicate submissions
+    if (isSubmittingRef.current) {
+      return;
+    }
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
+
 
     try {
       // Submit all pending answers
@@ -590,6 +725,10 @@ export default function AssessmentTakePage() {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.detail || "Failed to complete assessment");
       }
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Failed to complete assessment");
+      }
 
       const data = await response.json();
       setAttemptStatus({
@@ -625,7 +764,13 @@ export default function AssessmentTakePage() {
         document.exitFullscreen();
       }
 
+
     } catch (err: any) {
+      console.error("Error completing assessment:", err);
+      // Only show error if it's not a duplicate submission error
+      if (!err.message.includes("already completed") && !err.message.includes("not in progress")) {
+        setError(err.message);
+      }
       console.error("Error completing assessment:", err);
       // Only show error if it's not a duplicate submission error
       if (!err.message.includes("already completed") && !err.message.includes("not in progress")) {
@@ -633,6 +778,7 @@ export default function AssessmentTakePage() {
       }
     } finally {
       setIsSubmitting(false);
+      // Keep isSubmittingRef true to prevent any further attempts
       // Keep isSubmittingRef true to prevent any further attempts
     }
   }, [answers, apiToken, webcamStream, screenStream, faceDetectionInterval, webcamRecording, screenRecording]);
@@ -758,11 +904,13 @@ export default function AssessmentTakePage() {
       if (document.hidden) {
         logProctoringEvent("tab_switch");
         addViolation("Tab switch detected! Stay on the assessment page.");
+        addViolation("Tab switch detected! Stay on the assessment page.");
       }
     };
 
     const handleBlur = () => {
       logProctoringEvent("window_blur");
+      addViolation("Window lost focus! Keep the assessment window active.");
       addViolation("Window lost focus! Keep the assessment window active.");
     };
 
@@ -774,10 +922,14 @@ export default function AssessmentTakePage() {
       window.removeEventListener("blur", handleBlur);
     };
   }, [attemptStatus?.status, assessmentInfo?.tab_tracking_enabled, logProctoringEvent, addViolation]);
+  }, [attemptStatus?.status, assessmentInfo?.tab_tracking_enabled, logProctoringEvent, addViolation]);
 
   // Proctoring: Fullscreen exit detection
   useEffect(() => {
     if (attemptStatus?.status !== "in_progress" || !assessmentInfo?.fullscreen_required) return;
+
+    // Check initial fullscreen state
+    setIsFullscreen(!!document.fullscreenElement);
 
     // Check initial fullscreen state
     setIsFullscreen(!!document.fullscreenElement);
@@ -787,13 +939,19 @@ export default function AssessmentTakePage() {
       setIsFullscreen(inFullscreen);
 
       if (!inFullscreen && attemptStatus?.status === "in_progress") {
+      const inFullscreen = !!document.fullscreenElement;
+      setIsFullscreen(inFullscreen);
+
+      if (!inFullscreen && attemptStatus?.status === "in_progress") {
         logProctoringEvent("fullscreen_exit");
+        addViolation("You exited fullscreen mode! Please return to fullscreen.");
         addViolation("You exited fullscreen mode! Please return to fullscreen.");
       }
     };
 
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, [attemptStatus?.status, assessmentInfo?.fullscreen_required, logProctoringEvent, addViolation]);
   }, [attemptStatus?.status, assessmentInfo?.fullscreen_required, logProctoringEvent, addViolation]);
 
   // Proctoring: Copy/Paste detection
@@ -804,17 +962,20 @@ export default function AssessmentTakePage() {
       e.preventDefault();
       logProctoringEvent("copy_attempt");
       addViolation("Copy attempt detected! Copying is disabled.");
+      addViolation("Copy attempt detected! Copying is disabled.");
     };
 
     const handlePaste = (e: ClipboardEvent) => {
       e.preventDefault();
       logProctoringEvent("paste_attempt");
       addViolation("Paste attempt detected! Pasting is disabled.");
+      addViolation("Paste attempt detected! Pasting is disabled.");
     };
 
     const handleCut = (e: ClipboardEvent) => {
       e.preventDefault();
       logProctoringEvent("cut_attempt");
+      addViolation("Cut attempt detected! Cutting is disabled.");
       addViolation("Cut attempt detected! Cutting is disabled.");
     };
 
@@ -827,6 +988,7 @@ export default function AssessmentTakePage() {
       document.removeEventListener("paste", handlePaste);
       document.removeEventListener("cut", handleCut);
     };
+  }, [attemptStatus?.status, assessmentInfo?.copy_paste_disabled, logProctoringEvent, addViolation]);
   }, [attemptStatus?.status, assessmentInfo?.copy_paste_disabled, logProctoringEvent, addViolation]);
 
   // Current question
@@ -1125,6 +1287,57 @@ export default function AssessmentTakePage() {
         </div>
       )}
 
+      {/* Warning Modal */}
+      {showWarningModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
+            <div className="flex items-start gap-4">
+              <AlertTriangle className="h-8 w-8 text-red-500 flex-shrink-0 mt-1" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Proctoring Violation</h3>
+                <p className="text-gray-700 mb-4">{warningMessage}</p>
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm text-gray-600">
+                    Violations: <span className="font-semibold text-red-600">{violationCount}</span> / {MAX_VIOLATION_COUNT}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Remaining: <span className="font-semibold">{MAX_VIOLATION_COUNT - violationCount}</span>
+                  </p>
+                </div>
+                {violationCount >= MAX_VIOLATION_COUNT ? (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                    <p className="text-sm text-red-800 font-medium">
+                      Maximum violations exceeded. Your assessment will be submitted automatically.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                      <p className="text-sm text-yellow-800">
+                        Please resolve this issue to continue. {MAX_VIOLATION_COUNT - violationCount} violations remaining before automatic submission.
+                      </p>
+                    </div>
+                    {(assessmentInfo?.fullscreen_required || assessmentInfo?.screen_recording_enabled) && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                        <p className="text-sm text-blue-800">
+                          Clicking "I Understand" will attempt to re-enable required settings (fullscreen, screen sharing).
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+                <button
+                  onClick={handleWarningClose}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  I Understand
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-white border-b px-4 py-3 flex items-center justify-between">
         <div>
@@ -1156,6 +1369,53 @@ export default function AssessmentTakePage() {
           </button>
         </div>
       </header>
+
+      {/* Proctoring Status Bar */}
+      {assessmentInfo?.proctoring_enabled && (
+        <div className="bg-gray-50 border-b px-4 py-2">
+          <div className="flex items-center justify-between max-w-7xl mx-auto">
+            <div className="flex items-center gap-6">
+              {/* Face Detection Status */}
+              {assessmentInfo.face_detection_enabled && (
+                <div className="flex items-center gap-2">
+                  <Camera className={`h-4 w-4 ${faceDetected ? "text-green-600" : "text-red-600"}`} />
+                  <span className={`text-sm ${faceDetected ? "text-green-700" : "text-red-700"}`}>
+                    {faceDetected ? "Face Detected" : "No Face"}
+                  </span>
+                </div>
+              )}
+
+              {/* Fullscreen Status */}
+              {assessmentInfo.fullscreen_required && (
+                <div className="flex items-center gap-2">
+                  <Monitor className={`h-4 w-4 ${isFullscreen ? "text-green-600" : "text-red-600"}`} />
+                  <span className={`text-sm ${isFullscreen ? "text-green-700" : "text-red-700"}`}>
+                    {isFullscreen ? "Fullscreen" : "Exit Fullscreen"}
+                  </span>
+                </div>
+              )}
+
+              {/* Screen Recording Status */}
+              {assessmentInfo.screen_recording_enabled && (
+                <div className="flex items-center gap-2">
+                  <Monitor className={`h-4 w-4 ${screenRecordingActive ? "text-green-600" : "text-red-600"}`} />
+                  <span className={`text-sm ${screenRecordingActive ? "text-green-700" : "text-red-700"}`}>
+                    {screenRecordingActive ? "Screen Sharing" : "Not Sharing"}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Violation Count */}
+            <div className="flex items-center gap-2">
+              <AlertTriangle className={`h-4 w-4 ${violationCount >= MAX_VIOLATION_COUNT - 1 ? "text-red-600" : violationCount > 0 ? "text-yellow-600" : "text-gray-400"}`} />
+              <span className={`text-sm font-medium ${violationCount >= MAX_VIOLATION_COUNT - 1 ? "text-red-700" : violationCount > 0 ? "text-yellow-700" : "text-gray-600"}`}>
+                Violations: {violationCount} / {MAX_VIOLATION_COUNT}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Proctoring Status Bar */}
       {assessmentInfo?.proctoring_enabled && (
@@ -1414,8 +1674,20 @@ export default function AssessmentTakePage() {
       </div>
 
       {/* Video element for face detection - visible for debugging */}
+      {/* Video element for face detection - visible for debugging */}
       <video
         ref={videoRef}
+        style={{
+          position: "fixed",
+          bottom: "10px",
+          right: "10px",
+          width: "200px",
+          height: "150px",
+          border: "2px solid #3b82f6",
+          borderRadius: "8px",
+          zIndex: 40,
+          display: assessmentInfo?.face_detection_enabled ? "block" : "none"
+        }}
         style={{
           position: "fixed",
           bottom: "10px",
