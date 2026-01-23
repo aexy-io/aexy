@@ -679,7 +679,18 @@ async def complete_assessment(
 
     # Update invitation status
     invitation.status = InvitationStatus.COMPLETED
+    proctoring_service = ProctoringService(db)
+    breakdown = await proctoring_service.get_trust_score_breakdown(str(attempt.id))
 
+    # Store proctoring summary
+    attempt.proctoring_summary = {
+        "trust_score": breakdown["trust_score"],
+        "trust_level": breakdown["trust_level"],
+        "total_events": breakdown["total_events"],
+        "critical_events": breakdown["critical_events"],
+        "event_summary": breakdown["event_summary"],
+        "deductions": breakdown["deductions"],
+    }
     await db.commit()
 
     # Trigger evaluation (async in background ideally)
