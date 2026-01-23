@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Check,
   ArrowRight,
@@ -13,10 +14,15 @@ import {
   Building2,
   Star,
   CheckCircle2,
+  X,
+  AlertCircle,
 } from "lucide-react";
 import { LandingHeader, LandingFooter } from "@/components/landing/LandingHeader";
 import { useAuth } from "@/hooks/useAuth";
+import { useSubscription } from "@/hooks/useSubscription";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import { billingApi } from "@/lib/api";
+import { BillingToggle } from "@/components/billing/BillingToggle";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -26,7 +32,8 @@ const plans = [
     tier: "free",
     tagline: "Open Source",
     description: "For individuals, small teams, and evaluation",
-    price: "0",
+    monthlyPrice: 0,
+    annualPrice: 0,
     priceLabel: "forever",
     icon: Github,
     color: "from-emerald-500 to-cyan-500",
@@ -49,10 +56,11 @@ const plans = [
   },
   {
     name: "Team",
-    tier: "team",
+    tier: "pro",
     tagline: "Cloud",
     description: "For growing teams that want speed without ops overhead",
-    price: "29",
+    monthlyPrice: 29,
+    annualPrice: 24,
     priceLabel: "/ user / month",
     icon: Users,
     color: "from-primary-500 to-primary-600",
@@ -78,7 +86,8 @@ const plans = [
     tier: "enterprise",
     tagline: "Engineering OS at Scale",
     description: "For organizations running critical engineering operations",
-    price: "Custom",
+    monthlyPrice: -1,
+    annualPrice: -1,
     priceLabel: "pricing",
     icon: Building2,
     color: "from-purple-500 to-violet-500",
@@ -135,12 +144,28 @@ const faqs = [
   },
 ];
 
-export default function PricingPage() {
+function PricingContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { user } = useAuth();
+  const { currentWorkspaceId } = useWorkspace();
+  const { tier: currentTier } = useSubscription(currentWorkspaceId);
+
   const [loading, setLoading] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const { user } = useAuth();
-  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "annual">(
+    (searchParams.get("billing") as "monthly" | "annual") || "monthly"
+  );
+
   const googleLoginUrl = `${API_BASE_URL}/auth/google/login`;
+
+  // Update URL when billing period changes
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("billing", billingPeriod);
+    window.history.replaceState({}, "", url.toString());
+  }, [billingPeriod]);
 
   const handleSubscribe = async (tier: string) => {
     if (!user) {
@@ -166,9 +191,9 @@ export default function PricingPage() {
         cancel_url: `${window.location.origin}/pricing?canceled=true`,
       });
       window.location.href = checkout_url;
-    } catch (error) {
-      console.error("Failed to create checkout session:", error);
-      alert("Failed to start checkout. Please try again.");
+    } catch (err) {
+      console.error("Failed to create checkout session:", err);
+      setError("Failed to start checkout. Please try again.");
     } finally {
       setLoading(null);
     }
@@ -178,43 +203,130 @@ export default function PricingPage() {
     <div className="min-h-screen bg-[#0a0a0f] overflow-hidden">
       {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[120px] animate-pulse" />
+        <motion.div
+          animate={{
+            scale: [1, 1.1, 1],
+            opacity: [0.1, 0.15, 0.1],
+          }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary-500/10 rounded-full blur-[120px]"
+        />
+        <motion.div
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.1, 0.12, 0.1],
+          }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+          className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[120px]"
+        />
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
       </div>
 
       <LandingHeader />
 
+      {/* Error Modal */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          >
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setError(null)}
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+            >
+              <button
+                onClick={() => setError(null)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-white transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-red-500/20 rounded-xl">
+                  <AlertCircle className="h-6 w-6 text-red-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-2">Checkout Error</h3>
+                  <p className="text-slate-400">{error}</p>
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setError(null)}
+                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Hero */}
       <section className="pt-32 pb-16 px-6 relative">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 rounded-full text-emerald-400 text-sm mb-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 rounded-full text-emerald-400 text-sm mb-6"
+          >
             <Github className="h-4 w-4" />
             <span>Open Source</span>
             <span className="text-white/40">·</span>
             <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
             <span>Self-host free</span>
-          </div>
+          </motion.div>
 
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight">
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight"
+          >
             Simple pricing for the{" "}
-            <span className="bg-gradient-to-r from-primary-400 via-purple-400 to-emerald-400 bg-clip-text text-transparent">
+            <motion.span
+              animate={{
+                backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+              }}
+              transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
+              className="bg-gradient-to-r from-primary-400 via-purple-400 to-emerald-400 bg-[length:200%_auto] bg-clip-text text-transparent"
+            >
               Engineering OS
-            </span>
-          </h1>
+            </motion.span>
+          </motion.h1>
 
-          <p className="text-xl text-white/50 max-w-2xl mx-auto mb-4">
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="text-xl text-white/50 max-w-2xl mx-auto mb-4"
+          >
             Start open source. Scale with confidence.
             <br />
             Pay only when your organization needs more.
-          </p>
+          </motion.p>
         </div>
       </section>
 
       {/* Pricing Philosophy */}
       <section className="py-12 px-6">
         <div className="max-w-4xl mx-auto">
-          <div className="relative">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="relative"
+          >
             <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 rounded-3xl blur-xl" />
             <div className="relative bg-white/5 backdrop-blur-sm rounded-3xl p-8 border border-white/10 text-center">
               <div className="flex items-center justify-center gap-3 mb-4">
@@ -227,37 +339,90 @@ export default function PricingPage() {
                 We earn your business by being valuable - not by trapping you.
               </p>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
+      {/* Billing Toggle */}
+      <section className="py-8 px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+        >
+          <BillingToggle billingPeriod={billingPeriod} onToggle={setBillingPeriod} />
+        </motion.div>
+      </section>
+
       {/* Pricing Cards */}
-      <section className="py-16 px-6">
+      <section className="py-8 px-6">
         <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-6">
-          {plans.map((plan) => {
+          {plans.map((plan, index) => {
             const Icon = plan.icon;
+            const isCurrentPlan = user && currentTier === plan.tier;
+            const displayPrice = billingPeriod === "annual" ? plan.annualPrice : plan.monthlyPrice;
+            const isCustomPrice = plan.monthlyPrice === -1;
 
             return (
-              <div
+              <motion.div
                 key={plan.tier}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.5 + index * 0.1 }}
                 className={`relative group ${plan.popular ? "md:-mt-4 md:mb-4" : ""}`}
               >
-                {plan.popular && (
+                {plan.popular && !isCurrentPlan && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                    <div className="px-4 py-1 bg-gradient-to-r from-primary-500 to-primary-600 text-white text-sm font-medium rounded-full shadow-lg shadow-primary-500/25">
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", delay: 0.7 }}
+                      className="px-4 py-1 bg-gradient-to-r from-primary-500 to-primary-600 text-white text-sm font-medium rounded-full shadow-lg shadow-primary-500/25"
+                    >
                       Most Popular
-                    </div>
+                    </motion.div>
                   </div>
                 )}
 
-                <div className={`absolute inset-0 bg-gradient-to-br ${plan.color} rounded-3xl opacity-0 group-hover:opacity-20 blur-xl transition-all duration-500`} />
+                {isCurrentPlan && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", delay: 0.7 }}
+                      className="px-4 py-1 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-sm font-medium rounded-full shadow-lg shadow-emerald-500/25"
+                    >
+                      Current Plan
+                    </motion.div>
+                  </div>
+                )}
 
-                <div className={`relative h-full bg-white/5 backdrop-blur-sm border ${plan.popular ? "border-primary-500/50" : "border-white/10"} rounded-3xl p-8 hover:border-white/20 transition-all ${plan.popular ? "shadow-xl shadow-primary-500/10" : ""}`}>
+                <motion.div
+                  whileHover={{ scale: 1.02, y: -4 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  className={`absolute inset-0 bg-gradient-to-br ${plan.color} rounded-3xl opacity-0 group-hover:opacity-20 blur-xl transition-all duration-500`}
+                />
+
+                <div
+                  className={`relative h-full bg-white/5 backdrop-blur-sm border ${
+                    isCurrentPlan
+                      ? "border-emerald-500/50"
+                      : plan.popular
+                      ? "border-primary-500/50"
+                      : "border-white/10"
+                  } rounded-3xl p-8 hover:border-white/20 transition-all ${
+                    plan.popular || isCurrentPlan ? "shadow-xl shadow-primary-500/10" : ""
+                  }`}
+                >
                   {/* Plan Header */}
                   <div className="flex items-center gap-3 mb-2">
-                    <div className={`p-3 bg-gradient-to-br ${plan.color} rounded-2xl shadow-lg`}>
+                    <motion.div
+                      whileHover={{ rotate: [0, -10, 10, 0] }}
+                      transition={{ duration: 0.5 }}
+                      className={`p-3 bg-gradient-to-br ${plan.color} rounded-2xl shadow-lg`}
+                    >
                       <Icon className="h-6 w-6 text-white" />
-                    </div>
+                    </motion.div>
                     <div>
                       <span className={`text-xs font-semibold tracking-wider ${plan.textColor}`}>
                         {plan.tagline.toUpperCase()}
@@ -269,21 +434,37 @@ export default function PricingPage() {
                   <p className="text-white/50 text-sm mb-6">{plan.description}</p>
 
                   {/* Price */}
-                  <div className="mb-6">
-                    <div className="flex items-baseline gap-1">
-                      {plan.price !== "Custom" && <span className="text-white/50 text-2xl">$</span>}
-                      <span className="text-5xl font-bold text-white">{plan.price}</span>
-                    </div>
+                  <div className="mb-6 h-16">
+                    {isCustomPrice ? (
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-5xl font-bold text-white">Custom</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-white/50 text-2xl">$</span>
+                        <motion.span
+                          key={displayPrice}
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                          className="text-5xl font-bold text-white"
+                        >
+                          {displayPrice}
+                        </motion.span>
+                      </div>
+                    )}
                     <span className="text-white/40 text-sm">{plan.priceLabel}</span>
                   </div>
 
                   {/* CTA Button */}
                   <button
                     onClick={() => handleSubscribe(plan.tier)}
-                    disabled={loading === plan.tier}
-                    className={`w-full py-3.5 px-4 rounded-xl font-semibold transition flex items-center justify-center gap-2 ${
-                      plan.popular
-                        ? "bg-white text-black hover:bg-white/90"
+                    disabled={loading === plan.tier || isCurrentPlan}
+                    className={`w-full py-3.5 px-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+                      isCurrentPlan
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 cursor-default"
+                        : plan.popular
+                        ? "bg-white text-black hover:bg-white/90 hover:shadow-lg hover:shadow-white/10"
                         : plan.tier === "enterprise"
                         ? "bg-gradient-to-r from-purple-500 to-violet-500 text-white hover:from-purple-600 hover:to-violet-600"
                         : "bg-white/10 text-white hover:bg-white/20 border border-white/10"
@@ -291,6 +472,8 @@ export default function PricingPage() {
                   >
                     {loading === plan.tier ? (
                       <div className="w-5 h-5 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                    ) : isCurrentPlan ? (
+                      "Current Plan"
                     ) : (
                       <>
                         {plan.cta}
@@ -303,10 +486,16 @@ export default function PricingPage() {
                   <div className="mt-8 space-y-3">
                     <div className="text-white/40 text-xs font-semibold tracking-wider mb-4">WHAT YOU GET</div>
                     {plan.features.map((feature, idx) => (
-                      <div key={idx} className="flex items-start gap-3">
+                      <motion.div
+                        key={idx}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: 0.6 + idx * 0.05 }}
+                        className="flex items-start gap-3"
+                      >
                         <CheckCircle2 className={`h-5 w-5 ${plan.textColor} flex-shrink-0 mt-0.5`} />
                         <span className="text-white/70 text-sm">{feature}</span>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
 
@@ -325,7 +514,7 @@ export default function PricingPage() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>
@@ -334,13 +523,25 @@ export default function PricingPage() {
       {/* Comparison Strip */}
       <section className="py-20 px-6">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="text-center mb-12"
+          >
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
               Replace tool sprawl, not just one tool
             </h2>
-          </div>
+          </motion.div>
 
-          <div className="relative">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="relative"
+          >
             <div className="absolute inset-0 bg-gradient-to-r from-primary-500/10 via-purple-500/10 to-emerald-500/10 rounded-3xl blur-xl" />
             <div className="relative bg-white/5 backdrop-blur-sm rounded-3xl border border-white/10 overflow-hidden">
               <table className="w-full">
@@ -352,7 +553,14 @@ export default function PricingPage() {
                 </thead>
                 <tbody>
                   {comparisonItems.map((item, idx) => (
-                    <tr key={idx} className={idx !== comparisonItems.length - 1 ? "border-b border-white/5" : ""}>
+                    <motion.tr
+                      key={idx}
+                      initial={{ opacity: 0, x: -20 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.3, delay: idx * 0.1 }}
+                      className={idx !== comparisonItems.length - 1 ? "border-b border-white/5" : ""}
+                    >
                       <td className="py-4 px-6 text-white/60">{item.need}</td>
                       <td className="py-4 px-6">
                         <span className="inline-flex items-center gap-2 text-emerald-400 font-medium">
@@ -360,28 +568,38 @@ export default function PricingPage() {
                           {item.aexy}
                         </span>
                       </td>
-                    </tr>
+                    </motion.tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* FAQ */}
       <section className="py-20 px-6">
         <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="text-center mb-12"
+          >
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
               Frequently Asked Questions
             </h2>
-          </div>
+          </motion.div>
 
           <div className="space-y-4">
             {faqs.map((faq, idx) => (
-              <div
+              <motion.div
                 key={idx}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.3, delay: idx * 0.05 }}
                 className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden"
               >
                 <button
@@ -389,18 +607,29 @@ export default function PricingPage() {
                   className="w-full flex items-center justify-between p-6 text-left"
                 >
                   <h3 className="text-lg font-medium text-white pr-4">{faq.q}</h3>
-                  {openFaq === idx ? (
-                    <ChevronUp className="h-5 w-5 text-white/40 flex-shrink-0" />
-                  ) : (
+                  <motion.div
+                    animate={{ rotate: openFaq === idx ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
                     <ChevronDown className="h-5 w-5 text-white/40 flex-shrink-0" />
-                  )}
+                  </motion.div>
                 </button>
-                {openFaq === idx && (
-                  <div className="px-6 pb-6 -mt-2">
-                    <p className="text-white/60">{faq.a}</p>
-                  </div>
-                )}
-              </div>
+                <AnimatePresence>
+                  {openFaq === idx && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-6 pb-6 -mt-2">
+                        <p className="text-white/60">{faq.a}</p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -409,7 +638,13 @@ export default function PricingPage() {
       {/* Final CTA */}
       <section className="py-24 px-6">
         <div className="max-w-4xl mx-auto">
-          <div className="relative">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="relative"
+          >
             <div className="absolute inset-0 bg-gradient-to-r from-primary-500/30 via-purple-500/30 to-emerald-500/30 rounded-3xl blur-2xl" />
             <div className="relative bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm rounded-3xl p-12 border border-white/10 text-center overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/20 rounded-full blur-3xl" />
@@ -424,28 +659,46 @@ export default function PricingPage() {
                 </p>
 
                 <div className="flex flex-col sm:flex-row justify-center gap-4">
-                  <a
+                  <motion.a
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.98 }}
                     href={googleLoginUrl}
-                    className="group inline-flex items-center justify-center gap-3 bg-white text-black px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]"
+                    className="group inline-flex items-center justify-center gap-3 bg-white text-black px-8 py-4 rounded-full text-lg font-semibold transition-all hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]"
                   >
                     Get Started Free
                     <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                  </a>
-                  <a
+                  </motion.a>
+                  <motion.a
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.98 }}
                     href="https://github.com/aexy-io/aexy"
                     className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
                   >
                     <Github className="h-5 w-5" />
                     View on GitHub
-                  </a>
+                  </motion.a>
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       <LandingFooter />
     </div>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-primary-500/30 border-t-primary-500 rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <PricingContent />
+    </Suspense>
   );
 }

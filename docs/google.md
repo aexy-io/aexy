@@ -57,13 +57,18 @@
 4. Name: "Aexy Web Client"
 5. Add Authorized redirect URIs:
    ```
+   # CRM Google Integration
    http://localhost:8000/api/v1/workspaces/{workspace_id}/integrations/google/callback
    http://localhost:8000/api/v1/auth/google/callback
+
+   # Booking Calendar Integration
+   http://localhost:8000/api/v1/booking/calendars/callback/google
    ```
    For production:
    ```
    https://your-domain.com/api/v1/workspaces/{workspace_id}/integrations/google/callback
    https://your-domain.com/api/v1/auth/google/callback
+   https://your-domain.com/api/v1/booking/calendars/callback/google
    ```
 6. Click "Create"
 7. Download the JSON credentials file

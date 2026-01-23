@@ -37,6 +37,11 @@ class NotificationEventType(str, Enum):
     # Assessment invitations
     ASSESSMENT_INVITATION = "assessment_invitation"
 
+    # Usage alerts (billing)
+    USAGE_ALERT_80 = "usage_alert_80"  # 80% of limit reached
+    USAGE_ALERT_90 = "usage_alert_90"  # 90% of limit reached (critical)
+    USAGE_ALERT_100 = "usage_alert_100"  # Limit reached
+
 
 class NotificationContext(BaseModel):
     """Context for notification rendering and navigation."""
@@ -262,5 +267,20 @@ NOTIFICATION_TEMPLATES = {
         "title": "Assessment Invitation",
         "body_template": "You have been invited to take the assessment: {assessment_title}. Please complete it by {deadline}.",
         "email_subject": "You're Invited: {assessment_title} Assessment",
+    },
+    NotificationEventType.USAGE_ALERT_80: {
+        "title": "Usage Alert",
+        "body_template": "You've used 80% of your {resource_type}. Current usage: {current}/{limit}.",
+        "email_subject": "Usage Alert: 80% of {resource_type} Used",
+    },
+    NotificationEventType.USAGE_ALERT_90: {
+        "title": "Critical Usage Alert",
+        "body_template": "You've used 90% of your {resource_type}. Current usage: {current}/{limit}. Consider upgrading your plan.",
+        "email_subject": "Critical: 90% of {resource_type} Used",
+    },
+    NotificationEventType.USAGE_ALERT_100: {
+        "title": "Limit Reached",
+        "body_template": "You've reached your {resource_type} limit ({limit}). Upgrade your plan to continue using this feature.",
+        "email_subject": "Action Required: {resource_type} Limit Reached",
     },
 }

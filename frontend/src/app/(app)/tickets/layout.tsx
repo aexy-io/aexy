@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { AppAccessGuard } from "@/components/guards/AppAccessGuard";
 
 export const metadata: Metadata = {
   title: "Tickets",
@@ -9,5 +10,5 @@ export default function TicketsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return <AppAccessGuard appId="tickets">{children}</AppAccessGuard>;
 }

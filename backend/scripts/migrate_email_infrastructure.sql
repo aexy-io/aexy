@@ -3,6 +3,23 @@
 -- Run this script to create the email infrastructure tables
 
 -- =============================================================================
+-- DROP EXISTING TABLES (if they exist with incomplete schema)
+-- Drop in reverse dependency order to handle foreign keys
+-- =============================================================================
+
+-- DROP TABLE IF EXISTS provider_event_logs CASCADE;
+-- DROP TABLE IF EXISTS sending_pool_members CASCADE;
+-- DROP TABLE IF EXISTS sending_pools CASCADE;
+-- DROP TABLE IF EXISTS isp_metrics CASCADE;
+-- DROP TABLE IF EXISTS domain_health CASCADE;
+-- DROP TABLE IF EXISTS warming_progress CASCADE;
+-- DROP TABLE IF EXISTS dedicated_ips CASCADE;
+-- DROP TABLE IF EXISTS sending_identities CASCADE;
+-- DROP TABLE IF EXISTS sending_domains CASCADE;
+-- DROP TABLE IF EXISTS warming_schedules CASCADE;
+-- DROP TABLE IF EXISTS email_providers CASCADE;
+
+-- =============================================================================
 -- EMAIL PROVIDERS
 -- =============================================================================
 
@@ -407,27 +424,39 @@ CREATE INDEX IF NOT EXISTS ix_provider_event_created ON provider_event_logs(crea
 
 -- =============================================================================
 -- ALTER EMAIL CAMPAIGNS TABLE (Add routing fields)
+-- Only runs if the table exists (created by migrate_email_marketing.sql)
 -- =============================================================================
 
-ALTER TABLE email_campaigns
-ADD COLUMN IF NOT EXISTS sending_pool_id UUID REFERENCES sending_pools(id) ON DELETE SET NULL,
-ADD COLUMN IF NOT EXISTS sending_identity_id UUID REFERENCES sending_identities(id) ON DELETE SET NULL,
-ADD COLUMN IF NOT EXISTS routing_config JSONB;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'email_campaigns') THEN
+        ALTER TABLE email_campaigns
+        ADD COLUMN IF NOT EXISTS sending_pool_id UUID REFERENCES sending_pools(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS sending_identity_id UUID REFERENCES sending_identities(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS routing_config JSONB;
 
-CREATE INDEX IF NOT EXISTS ix_email_campaign_pool ON email_campaigns(sending_pool_id);
-CREATE INDEX IF NOT EXISTS ix_email_campaign_identity ON email_campaigns(sending_identity_id);
+        CREATE INDEX IF NOT EXISTS ix_email_campaign_pool ON email_campaigns(sending_pool_id);
+        CREATE INDEX IF NOT EXISTS ix_email_campaign_identity ON email_campaigns(sending_identity_id);
+    END IF;
+END $$;
 
 -- =============================================================================
 -- ALTER CAMPAIGN RECIPIENTS TABLE (Add sent_via fields)
+-- Only runs if the table exists (created by migrate_email_marketing.sql)
 -- =============================================================================
 
-ALTER TABLE campaign_recipients
-ADD COLUMN IF NOT EXISTS sent_via_domain_id UUID REFERENCES sending_domains(id) ON DELETE SET NULL,
-ADD COLUMN IF NOT EXISTS sent_via_provider_id UUID REFERENCES email_providers(id) ON DELETE SET NULL,
-ADD COLUMN IF NOT EXISTS sent_via_ip_id UUID REFERENCES dedicated_ips(id) ON DELETE SET NULL;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'campaign_recipients') THEN
+        ALTER TABLE campaign_recipients
+        ADD COLUMN IF NOT EXISTS sent_via_domain_id UUID REFERENCES sending_domains(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS sent_via_provider_id UUID REFERENCES email_providers(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS sent_via_ip_id UUID REFERENCES dedicated_ips(id) ON DELETE SET NULL;
 
-CREATE INDEX IF NOT EXISTS ix_campaign_recipient_domain ON campaign_recipients(sent_via_domain_id);
-CREATE INDEX IF NOT EXISTS ix_campaign_recipient_provider ON campaign_recipients(sent_via_provider_id);
+        CREATE INDEX IF NOT EXISTS ix_campaign_recipient_domain ON campaign_recipients(sent_via_domain_id);
+        CREATE INDEX IF NOT EXISTS ix_campaign_recipient_provider ON campaign_recipients(sent_via_provider_id);
+    END IF;
+END $$;
 
 -- =============================================================================
 -- TRIGGERS FOR UPDATED_AT

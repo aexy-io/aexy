@@ -16,16 +16,24 @@ import {
   Contact,
   Mail,
   Palette,
+  Crown,
+  Send,
+  Sparkles,
+  Shield,
 } from "lucide-react";
+import { useWorkspace } from "@/hooks/useWorkspace";
+import { useSubscription } from "@/hooks/useSubscription";
 
 interface SettingsSectionProps {
   href: string;
   icon: React.ReactNode;
   title: string;
   description: string;
+  badge?: string;
+  badgeColor?: string;
 }
 
-function SettingsSection({ href, icon, title, description }: SettingsSectionProps) {
+function SettingsSection({ href, icon, title, description, badge, badgeColor = "bg-amber-500/20 text-amber-400" }: SettingsSectionProps) {
   return (
     <Link
       href={href}
@@ -35,7 +43,15 @@ function SettingsSection({ href, icon, title, description }: SettingsSectionProp
         {icon}
       </div>
       <div className="flex-1">
-        <h3 className="text-white font-medium">{title}</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-white font-medium">{title}</h3>
+          {badge && (
+            <span className={`px-2 py-0.5 text-xs rounded-full ${badgeColor} flex items-center gap-1`}>
+              <Crown className="h-3 w-3" />
+              {badge}
+            </span>
+          )}
+        </div>
         <p className="text-slate-400 text-sm">{description}</p>
       </div>
       <ChevronRight className="h-5 w-5 text-slate-500 group-hover:text-slate-300 transition" />
@@ -44,6 +60,14 @@ function SettingsSection({ href, icon, title, description }: SettingsSectionProp
 }
 
 export default function SettingsPage() {
+  const { currentWorkspaceId, currentWorkspace } = useWorkspace();
+  const { isEnterprise } = useSubscription(currentWorkspaceId);
+
+  // Check if current user is workspace admin
+  const developerId = typeof window !== "undefined" ? localStorage.getItem("developer_id") : null;
+  const member = currentWorkspace?.members?.find((m) => m.developer_id === developerId);
+  const isWorkspaceAdmin = member?.role === "owner" || member?.role === "admin";
+
   return (
     <div className="min-h-screen bg-slate-900">
       {/* Header */}
@@ -94,6 +118,15 @@ export default function SettingsPage() {
             description="Manage your organization settings and preferences"
           />
 
+          {isWorkspaceAdmin && (
+            <SettingsSection
+              href="/settings/access"
+              icon={<Shield className="h-5 w-5 text-violet-400" />}
+              title="Access Control"
+              description="Manage which apps and modules each member can access"
+            />
+          )}
+
           <SettingsSection
             href="/crm/settings"
             icon={<Contact className="h-5 w-5 text-cyan-400" />}
@@ -107,6 +140,16 @@ export default function SettingsPage() {
             title="Email Marketing"
             description="Configure sending domains, providers, and email infrastructure"
           />
+
+          {isWorkspaceAdmin && (
+            <SettingsSection
+              href="/settings/email-delivery"
+              icon={<Send className="h-5 w-5 text-teal-400" />}
+              title="Email Delivery"
+              description="Monitor email delivery status and logs"
+              badge={!isEnterprise ? "Enterprise" : undefined}
+            />
+          )}
 
           <SettingsSection
             href="/settings/projects"
@@ -141,6 +184,13 @@ export default function SettingsPage() {
             icon={<Link2 className="h-5 w-5 text-orange-400" />}
             title="Integrations"
             description="Connect Jira, Linear, and other external tools"
+          />
+
+          <SettingsSection
+            href="/settings/plans"
+            icon={<Sparkles className="h-5 w-5 text-amber-400" />}
+            title="Subscription Plans"
+            description="Compare plans and upgrade or downgrade your subscription"
           />
 
           <SettingsSection

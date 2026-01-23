@@ -7,6 +7,7 @@ import {
     LayoutDashboard,
     Target,
     Calendar,
+    CalendarCheck,
     Ticket,
     FormInput,
     FileText,
@@ -33,6 +34,8 @@ import {
     Send,
     FileCode,
     Settings,
+    CalendarClock,
+    Link2,
     LucideIcon,
 } from "lucide-react";
 
@@ -101,6 +104,13 @@ const emailItems: SidebarItemConfig[] = [
     { href: "/email-marketing/settings", label: "Settings", icon: Settings },
 ];
 
+const bookingItems: SidebarItemConfig[] = [
+    { href: "/booking/event-types", label: "Event Types", icon: CalendarCheck },
+    { href: "/booking/availability", label: "Availability", icon: CalendarClock },
+    { href: "/booking/team-calendar", label: "Team Calendar", icon: Users },
+    { href: "/booking/calendars", label: "Calendars", icon: Link2 },
+];
+
 /**
  * Version 1: Grouped Layout (Role-Based)
  * Items organized by functional areas: Engineering, People, Business, Knowledge
@@ -166,6 +176,12 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
                     items: crmItems,
                 },
                 {
+                    href: "/booking",
+                    label: "Booking",
+                    icon: CalendarCheck,
+                    items: bookingItems,
+                },
+                {
                     href: "/email-marketing",
                     label: "Email",
                     icon: Mail,
@@ -228,6 +244,12 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                     label: "CRM",
                     icon: Building2,
                     items: crmItems,
+                },
+                {
+                    href: "/booking",
+                    label: "Booking",
+                    icon: CalendarCheck,
+                    items: bookingItems,
                 },
                 { href: "/learning", label: "Learning", icon: GraduationCap },
                 { href: "/docs", label: "Docs", icon: FileText },

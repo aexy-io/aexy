@@ -23,7 +23,10 @@ import { useNotionDocs } from "@/hooks/useNotionDocs";
 import { useDocumentSpaces } from "@/hooks/useDocumentSpaces";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useSidebarLayout } from "@/hooks/useSidebarLayout";
+import { useAppAccess } from "@/hooks/useAppAccess";
+import { useAuth } from "@/hooks/useAuth";
 import { SidebarItemConfig, SidebarSectionConfig } from "@/config/sidebarLayouts";
+import { getAppIdFromPath } from "@/config/appDefinitions";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 
 interface SidebarProps {
@@ -64,6 +67,33 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
     const workspaceId = currentWorkspace?.id || null;
     const { spaces, isLoading: spacesLoading } = useDocumentSpaces(workspaceId);
     const { privateTree, sharedTree, favorites, isLoading: docsLoading } = useNotionDocs(workspaceId);
+
+    // App access control
+    const { developer } = useAuth();
+    const developerId = developer?.id || null;
+    const { hasAppAccess, hasRouteAccess, isLoading: accessLoading } = useAppAccess(workspaceId, developerId);
+
+    // Filter a sidebar item based on app access
+    const canAccessItem = (item: SidebarItemConfig): boolean => {
+        // If access data is still loading, show all items
+        if (accessLoading) return true;
+
+        // Check if the route maps to an app that requires access
+        const appId = getAppIdFromPath(item.href);
+        if (!appId) return true; // Routes not in app catalog are accessible
+
+        return hasAppAccess(appId);
+    };
+
+    // Filter sidebar items recursively
+    const filterItems = (items: SidebarItemConfig[]): SidebarItemConfig[] => {
+        return items
+            .filter(item => canAccessItem(item))
+            .map(item => ({
+                ...item,
+                items: item.items ? filterItems(item.items) : undefined,
+            }));
+    };
 
     const toggleSidebar = () => setIsCollapsed(!isCollapsed);
     const toggleHidden = () => setIsHidden(!isHidden);
@@ -291,8 +321,13 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
 
     // Render a section with optional label
     const renderSection = (section: SidebarSectionConfig) => {
-        // Check if this is the "knowledge" section which contains docs
-        const hasDocsItem = section.items.some(item => item.href === "/docs");
+        // Filter items based on app access
+        const filteredItems = filterItems(section.items);
+
+        // Don't render the section if all items are filtered out
+        if (filteredItems.length === 0) {
+            return null;
+        }
 
         return (
             <div key={section.id} className="mb-2">
@@ -305,7 +340,7 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
 
                 {/* Section items */}
                 <div className="space-y-1">
-                    {section.items.map(item => {
+                    {filteredItems.map(item => {
                         // Special handling for Docs - render with tree structure
                         if (item.href === "/docs") {
                             return <React.Fragment key={item.href}>{renderDocsSection()}</React.Fragment>;

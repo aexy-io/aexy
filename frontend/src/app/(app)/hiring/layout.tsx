@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { AppAccessGuard } from "@/components/guards/AppAccessGuard";
 import HiringLayoutClient from "./HiringLayoutClient";
 
 export const metadata: Metadata = {
@@ -10,5 +11,9 @@ export default function HiringLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <HiringLayoutClient>{children}</HiringLayoutClient>;
+  return (
+    <AppAccessGuard appId="hiring">
+      <HiringLayoutClient>{children}</HiringLayoutClient>
+    </AppAccessGuard>
+  );
 }

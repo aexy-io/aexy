@@ -19,6 +19,7 @@ from aexy.services.report_builder import ReportBuilderService
 from aexy.services.export_service import ExportService
 from aexy.services.slack_integration import SlackIntegrationService
 from aexy.services.task_config_service import TaskConfigService
+from aexy.services.app_access_service import AppAccessService
 
 __all__ = [
     "GitHubService",
@@ -42,4 +43,6 @@ __all__ = [
     "SlackIntegrationService",
     # Task Configuration
     "TaskConfigService",
+    # App Access
+    "AppAccessService",
 ]
