@@ -175,9 +175,9 @@ export default function BookingDashboard() {
             ) : (
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
                 {eventTypes.slice(0, 5).map((eventType) => (
-                  <Link
+                  <div
                     key={eventType.id}
-                    href={`/booking/event-types/${eventType.id}`}
+                    // href={`/booking/event-types/${eventType.id}`}
                     className="p-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/50"
                   >
                     <div
@@ -217,7 +217,7 @@ export default function BookingDashboard() {
                     >
                       <ExternalLink className="h-4 w-4" />
                     </button>
-                  </Link>
+                  </div>
                 ))}
               </div>
             )}
@@ -243,34 +243,49 @@ export default function BookingDashboard() {
             ) : (
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
                 {upcomingBookings.map((booking) => (
-                  <Link
+                  <div
                     key={booking.id}
-                    href={`/booking/bookings/${booking.id}`}
-                    className="p-4 block hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                    className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50"
                   >
-                    <div className="flex items-start gap-3">
-                      <div
-                        className="w-2 h-2 rounded-full mt-2"
-                        style={{ backgroundColor: booking.event_type?.color || "#3B82F6" }}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-gray-900 dark:text-white truncate">
-                          {booking.invitee_name}
-                        </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {booking.event_type?.name}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1 text-sm text-gray-500 dark:text-gray-400">
-                          <span className="font-medium">
-                            {getDateLabel(booking.start_time)}
-                          </span>
-                          <span>
-                            {format(parseISO(booking.start_time), "h:mm a")}
-                          </span>
+                    <Link href={`/booking/bookings/${booking.id}`}>
+                      <div className="flex items-start gap-3">
+                        <div
+                          className="w-2 h-2 rounded-full mt-2"
+                          style={{ backgroundColor: booking.event_type?.color || "#3B82F6" }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-gray-900 dark:text-white truncate">
+                            {booking.invitee_name}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {booking.event_type?.name}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            <span className="font-medium">
+                              {getDateLabel(booking.start_time)}
+                            </span>
+                            <span>
+                              {format(parseISO(booking.start_time), "h:mm a")}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </Link>
+                    </Link>
+                    {booking.meeting_link && (
+                      <div className="mt-2 ml-5">
+                        <a
+                          href={booking.meeting_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
+                        >
+                          <Video className="h-3.5 w-3.5" />
+                          Join Meeting
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             )}

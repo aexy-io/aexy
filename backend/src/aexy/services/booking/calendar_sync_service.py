@@ -439,8 +439,10 @@ class CalendarSyncService:
         """Create a calendar event for a booking.
 
         Creates events on Google Calendar or Microsoft Outlook.
+        Also generates a meeting link (Google Meet / Microsoft Teams) if applicable.
         """
         if not booking.host_id:
+            logger.warning(f"Cannot create calendar event: booking {booking.id} has no host_id")
             return None
 
         # Get primary calendar or specified connection
@@ -458,6 +460,11 @@ class CalendarSyncService:
             connection = result.scalar_one_or_none()
 
         if not connection:
+            logger.info(
+                f"No calendar connection found for host {booking.host_id}. "
+                f"To generate meeting links automatically, connect a Google or Microsoft calendar "
+                f"and enable 'Create events' in calendar settings."
+            )
             return None
 
         try:
@@ -466,25 +473,47 @@ class CalendarSyncService:
 
             # Get event type details for the title
             event_type = booking.event_type
-            event_title = f"{event_type.name if event_type else 'Meeting'} with {booking.guest_name}"
+            event_title = f"{event_type.name if event_type else 'Meeting'} with {booking.invitee_name}"
+
+            # Check if we should create a meeting link based on location type
+            create_meeting_link = False
+            if event_type:
+                location_type = event_type.location_type
+                create_meeting_link = location_type in ("google_meet", "zoom", "microsoft_teams", "video")
+
             event_description = self._build_event_description(booking)
+            meeting_link = None
 
             if connection.provider == CalendarProvider.GOOGLE.value:
-                event_id = await self._create_google_event(
-                    connection, booking, event_title, event_description
+                event_id, meeting_link = await self._create_google_event(
+                    connection, booking, event_title, event_description,
+                    create_meet_link=create_meeting_link
                 )
             elif connection.provider == CalendarProvider.MICROSOFT.value:
-                event_id = await self._create_microsoft_event(
-                    connection, booking, event_title, event_description
+                event_id, meeting_link = await self._create_microsoft_event(
+                    connection, booking, event_title, event_description,
+                    create_teams_link=create_meeting_link
                 )
             else:
                 logger.warning(f"Unknown calendar provider: {connection.provider}")
                 return None
 
+            # Update booking with meeting link if generated
+            if meeting_link and not booking.meeting_link:
+                booking.meeting_link = meeting_link
+                await self.db.flush()
+                logger.info(f"Generated meeting link for booking {booking.id}: {meeting_link}")
+            elif not meeting_link and create_meeting_link:
+                logger.warning(
+                    f"No meeting link generated for booking {booking.id}. "
+                    f"Provider: {connection.provider}, location_type: {event_type.location_type if event_type else 'N/A'}"
+                )
+
             return {
                 "calendar_event_id": event_id,
                 "calendar_provider": connection.provider,
                 "connection_id": connection.id,
+                "meeting_link": meeting_link,
             }
 
         except Exception as e:
@@ -494,15 +523,15 @@ class CalendarSyncService:
     def _build_event_description(self, booking: Booking) -> str:
         """Build event description from booking details."""
         lines = [
-            f"Guest: {booking.guest_name}",
-            f"Email: {booking.guest_email}",
+            f"Guest: {booking.invitee_name}",
+            f"Email: {booking.invitee_email}",
         ]
 
-        if booking.guest_notes:
-            lines.append(f"\nNotes: {booking.guest_notes}")
+        if booking.invitee_phone:
+            lines.append(f"Phone: {booking.invitee_phone}")
 
-        if booking.meeting_url:
-            lines.append(f"\nMeeting URL: {booking.meeting_url}")
+        if booking.meeting_link:
+            lines.append(f"\nMeeting URL: {booking.meeting_link}")
 
         lines.append("\n---")
         lines.append("Created via Aexy Booking")
@@ -515,8 +544,13 @@ class CalendarSyncService:
         booking: Booking,
         title: str,
         description: str,
-    ) -> str:
-        """Create event on Google Calendar."""
+        create_meet_link: bool = True,
+    ) -> tuple[str, str | None]:
+        """Create event on Google Calendar.
+
+        Returns:
+            Tuple of (event_id, meeting_link)
+        """
         event_body = {
             "summary": title,
             "description": description,
@@ -529,18 +563,32 @@ class CalendarSyncService:
                 "timeZone": booking.timezone or "UTC",
             },
             "attendees": [
-                {"email": booking.guest_email, "displayName": booking.guest_name},
+                {"email": booking.invitee_email, "displayName": booking.invitee_name},
             ],
         }
 
-        if booking.meeting_url:
+        # Request Google Meet link generation
+        if create_meet_link and not booking.meeting_link:
+            import uuid
             event_body["conferenceData"] = {
-                "entryPoints": [{"entryPointType": "video", "uri": booking.meeting_url}]
+                "createRequest": {
+                    "requestId": str(uuid.uuid4()),
+                    "conferenceSolutionKey": {"type": "hangoutsMeet"},
+                }
+            }
+        elif booking.meeting_link:
+            event_body["conferenceData"] = {
+                "entryPoints": [{"entryPointType": "video", "uri": booking.meeting_link}]
             }
 
         async with httpx.AsyncClient() as client:
+            # Add conferenceDataVersion=1 to enable Meet link generation
+            url = f"{GOOGLE_CALENDAR_API}/calendars/{connection.calendar_id}/events"
+            if create_meet_link and not booking.meeting_link:
+                url += "?conferenceDataVersion=1"
+
             response = await client.post(
-                f"{GOOGLE_CALENDAR_API}/calendars/{connection.calendar_id}/events",
+                url,
                 headers={
                     "Authorization": f"Bearer {connection.access_token}",
                     "Content-Type": "application/json",
@@ -555,7 +603,16 @@ class CalendarSyncService:
 
             event = response.json()
 
-        return event["id"]
+        # Extract meeting link from response
+        meeting_link = None
+        conference_data = event.get("conferenceData", {})
+        entry_points = conference_data.get("entryPoints", [])
+        for entry in entry_points:
+            if entry.get("entryPointType") == "video":
+                meeting_link = entry.get("uri")
+                break
+
+        return event["id"], meeting_link
 
     async def _create_microsoft_event(
         self,
@@ -563,8 +620,13 @@ class CalendarSyncService:
         booking: Booking,
         title: str,
         description: str,
-    ) -> str:
-        """Create event on Microsoft Outlook Calendar."""
+        create_teams_link: bool = True,
+    ) -> tuple[str, str | None]:
+        """Create event on Microsoft Outlook Calendar.
+
+        Returns:
+            Tuple of (event_id, meeting_link)
+        """
         event_body = {
             "subject": title,
             "body": {
@@ -582,17 +644,21 @@ class CalendarSyncService:
             "attendees": [
                 {
                     "emailAddress": {
-                        "address": booking.guest_email,
-                        "name": booking.guest_name,
+                        "address": booking.invitee_email,
+                        "name": booking.invitee_name,
                     },
                     "type": "required",
                 }
             ],
         }
 
-        if booking.meeting_url:
+        # Request Teams meeting link generation
+        if create_teams_link and not booking.meeting_link:
+            event_body["isOnlineMeeting"] = True
+            event_body["onlineMeetingProvider"] = "teamsForBusiness"
+        elif booking.meeting_link:
             event_body["onlineMeeting"] = {
-                "joinUrl": booking.meeting_url,
+                "joinUrl": booking.meeting_link,
             }
 
         # Construct URL based on calendar_id
@@ -618,7 +684,13 @@ class CalendarSyncService:
 
             event = response.json()
 
-        return event["id"]
+        # Extract meeting link from response
+        meeting_link = None
+        online_meeting = event.get("onlineMeeting")
+        if online_meeting:
+            meeting_link = online_meeting.get("joinUrl")
+
+        return event["id"], meeting_link
 
     async def create_calendar_events_for_team(
         self,
@@ -628,10 +700,11 @@ class CalendarSyncService:
         """Create calendar events for all team members (host + attendees).
 
         This creates events on each team member's connected calendar.
+        The meeting link is generated from the host's calendar event.
         """
         results = []
 
-        # Create event for host
+        # Create event for host first (this generates the meeting link)
         if booking.host_id:
             host_result = await self.create_calendar_event(booking)
             if host_result:
@@ -643,10 +716,10 @@ class CalendarSyncService:
 
         # Get event details for attendee events
         event_type = booking.event_type
-        event_title = f"{event_type.name if event_type else 'Meeting'} with {booking.guest_name}"
+        event_title = f"{event_type.name if event_type else 'Meeting'} with {booking.invitee_name}"
         event_description = self._build_event_description(booking)
 
-        # Create events for each attendee
+        # Create events for each attendee (without generating new meeting links)
         for user_id in attendee_user_ids:
             # Skip if user is the host (already created)
             if user_id == booking.host_id:
@@ -670,12 +743,14 @@ class CalendarSyncService:
                 connection = await self._refresh_token_if_needed(connection)
 
                 if connection.provider == CalendarProvider.GOOGLE.value:
-                    event_id = await self._create_google_event(
-                        connection, booking, event_title, event_description
+                    event_id, _ = await self._create_google_event(
+                        connection, booking, event_title, event_description,
+                        create_meet_link=False  # Use existing meeting link
                     )
                 elif connection.provider == CalendarProvider.MICROSOFT.value:
-                    event_id = await self._create_microsoft_event(
-                        connection, booking, event_title, event_description
+                    event_id, _ = await self._create_microsoft_event(
+                        connection, booking, event_title, event_description,
+                        create_teams_link=False  # Use existing meeting link
                     )
                 else:
                     continue
