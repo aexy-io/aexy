@@ -47,10 +47,12 @@ export default function IncidentsPage() {
         status: statusFilter !== "all" ? statusFilter : undefined,
         limit: 50,
       });
-      setIncidents(data.incidents);
-      setTotal(data.total);
+      setIncidents(data?.incidents || []);
+      setTotal(data?.total || 0);
     } catch (error) {
       console.error("Failed to load incidents:", error);
+      setIncidents([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }

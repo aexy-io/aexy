@@ -48,12 +48,14 @@ export default function HistoryPage() {
 
     try {
       const data = await uptimeApi.monitors.list(currentWorkspace.id);
-      setMonitors(data.monitors);
-      if (data.monitors.length > 0 && !selectedMonitorId) {
-        setSelectedMonitorId(data.monitors[0].id);
+      const monitorList = data?.monitors || [];
+      setMonitors(monitorList);
+      if (monitorList.length > 0 && !selectedMonitorId) {
+        setSelectedMonitorId(monitorList[0].id);
       }
     } catch (error) {
       console.error("Failed to load monitors:", error);
+      setMonitors([]);
     } finally {
       setLoading(false);
     }
@@ -67,9 +69,10 @@ export default function HistoryPage() {
       const data = await uptimeApi.monitors.getChecks(currentWorkspace.id, selectedMonitorId, {
         limit: 100,
       });
-      setChecks(data.checks);
+      setChecks(data?.checks || []);
     } catch (error) {
       console.error("Failed to load checks:", error);
+      setChecks([]);
     } finally {
       setLoadingChecks(false);
     }

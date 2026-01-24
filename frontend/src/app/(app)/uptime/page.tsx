@@ -56,11 +56,14 @@ export default function UptimeDashboard() {
         uptimeApi.stats.getWorkspaceStats(currentWorkspace.id),
       ]);
 
-      setMonitors(monitorsData.monitors);
-      setIncidents(incidentsData.incidents);
-      setStats(statsData);
+      setMonitors(monitorsData?.monitors || []);
+      setIncidents(incidentsData?.incidents || []);
+      setStats(statsData || null);
     } catch (error) {
       console.error("Failed to load uptime data:", error);
+      setMonitors([]);
+      setIncidents([]);
+      setStats(null);
     } finally {
       setLoading(false);
     }
