@@ -168,7 +168,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A aexy.processing.celery_app worker --loglevel=info -E -Q celery,analysis,sync,batch,google_sync,tracking --concurrency=4
+    command: celery -A aexy.processing.celery_app worker --loglevel=info -E -Q celery,analysis,sync,batch,google_sync,tracking,integrations,workflows,email_campaigns,email_warming,email_reputation,booking,uptime --concurrency=4
     networks:
       - aexy-network
 
