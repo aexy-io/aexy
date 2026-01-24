@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import * as faceapi from "face-api.js";
 import { MAX_VIOLATION_COUNT } from "@/constants";
+import { useChunkedRecording } from "@/hooks/useChunkedRecording";
 
 // Types
 interface AssessmentInfo {
@@ -107,6 +108,33 @@ export default function AssessmentTakePage() {
   const [violationCount, setViolationCount] = useState(0);
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [warningMessage, setWarningMessage] = useState("");
+
+  // Chunked recording hooks for R2 upload
+  const webcamRecording = useChunkedRecording({
+    apiToken,
+    recordingType: "webcam",
+    mediaStream: webcamStream,
+    chunkDurationMs: 10000, // 10 seconds per chunk
+    onProgress: (progress) => {
+      console.log("Webcam upload progress:", progress.percentage.toFixed(1), "%");
+    },
+    onError: (error) => {
+      console.error("Webcam recording error:", error);
+    },
+  });
+
+  const screenRecording = useChunkedRecording({
+    apiToken,
+    recordingType: "screen",
+    mediaStream: screenStream,
+    chunkDurationMs: 10000, // 10 seconds per chunk
+    onProgress: (progress) => {
+      console.log("Screen upload progress:", progress.percentage.toFixed(1), "%");
+    },
+    onError: (error) => {
+      console.error("Screen recording error:", error);
+    },
+  });
 
   // Load face-api.js models
   useEffect(() => {
@@ -508,6 +536,43 @@ export default function AssessmentTakePage() {
         await handleSubmitAnswer(questionId, content);
       }
 
+      // Stop and finalize recordings before completing
+      console.log("Stopping recordings...");
+      const recordingPromises = [];
+
+      if (webcamRecording.isRecording) {
+        console.log("Stopping webcam recording...");
+        recordingPromises.push(
+          webcamRecording.stopRecording().then((url) => {
+            if (url) {
+              console.log("Webcam recording saved:", url);
+            } else {
+              console.warn("Webcam recording URL not returned");
+            }
+          })
+        );
+      }
+
+      if (screenRecording.isRecording) {
+        console.log("Stopping screen recording...");
+        recordingPromises.push(
+          screenRecording.stopRecording().then((url) => {
+            if (url) {
+              console.log("Screen recording saved:", url);
+            } else {
+              console.warn("Screen recording URL not returned");
+            }
+          })
+        );
+      }
+
+      // Wait for all recordings to finish uploading
+      if (recordingPromises.length > 0) {
+        console.log("Waiting for recordings to finish uploading...");
+        await Promise.all(recordingPromises);
+        console.log("All recordings uploaded successfully");
+      }
+
       const response = await fetch(`${API_BASE}/take/${apiToken}/complete`, {
         method: "POST",
       });
@@ -550,7 +615,7 @@ export default function AssessmentTakePage() {
       setIsSubmitting(false);
       // Keep isSubmittingRef true to prevent any further attempts
     }
-  }, [answers, apiToken, webcamStream, screenStream, faceDetectionInterval]);
+  }, [answers, apiToken, webcamStream, screenStream, faceDetectionInterval, webcamRecording, screenRecording]);
 
   // Store complete handler in ref
   useEffect(() => {
@@ -638,6 +703,32 @@ export default function AssessmentTakePage() {
       startFaceDetection();
     }
   }, [attemptStatus?.status, assessmentInfo?.face_detection_enabled, modelsLoaded, webcamStream, faceDetectionInterval, startFaceDetection]);
+
+  // Start webcam recording when stream is available
+  useEffect(() => {
+    if (
+      attemptStatus?.status === "in_progress" &&
+      assessmentInfo?.webcam_required &&
+      webcamStream &&
+      !webcamRecording.isRecording
+    ) {
+      console.log("Starting webcam recording...");
+      webcamRecording.startRecording();
+    }
+  }, [attemptStatus?.status, assessmentInfo?.webcam_required, webcamStream, webcamRecording.isRecording]);
+
+  // Start screen recording when stream is available
+  useEffect(() => {
+    if (
+      attemptStatus?.status === "in_progress" &&
+      assessmentInfo?.screen_recording_enabled &&
+      screenStream &&
+      !screenRecording.isRecording
+    ) {
+      console.log("Starting screen recording...");
+      screenRecording.startRecording();
+    }
+  }, [attemptStatus?.status, assessmentInfo?.screen_recording_enabled, screenStream, screenRecording.isRecording]);
 
   // Proctoring: Tab switch detection
   useEffect(() => {

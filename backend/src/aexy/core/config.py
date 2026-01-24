@@ -472,6 +472,40 @@ class Settings(BaseSettings):
             return f"https://{self.email_tracking_domain}"
         return self.backend_url
 
+    # Cloudflare R2 Storage (for video recordings)
+    r2_access_key_id: str = Field(
+        default="",
+        description="Cloudflare R2 Access Key ID",
+        validation_alias="R2_ACCESS_KEY_ID",
+    )
+    r2_secret_access_key: str = Field(
+        default="",
+        description="Cloudflare R2 Secret Access Key",
+        validation_alias="R2_SECRET_ACCESS_KEY",
+    )
+    r2_account_id: str = Field(
+        default="",
+        description="Cloudflare Account ID for R2",
+        validation_alias="R2_ACCOUNT_ID",
+    )
+    r2_bucket_name: str = Field(
+        default="",
+        description="R2 bucket name for assessment recordings",
+        validation_alias="R2_BUCKET_NAME",
+    )
+    r2_recordings_prefix: str = Field(
+        default="assessment-recordings",
+        description="R2 key prefix for assessment recordings",
+        validation_alias="R2_RECORDINGS_PREFIX",
+    )
+
+    @property
+    def r2_endpoint_url(self) -> str:
+        """Get the R2 endpoint URL based on account ID."""
+        if self.r2_account_id:
+            return f"https://{self.r2_account_id}.r2.cloudflarestorage.com"
+        return ""
+
     # LLM Configuration
     llm: LLMSettings = Field(default_factory=LLMSettings)
 
