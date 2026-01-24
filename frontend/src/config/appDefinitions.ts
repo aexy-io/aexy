@@ -18,6 +18,7 @@ import {
   ClipboardList,
   Phone,
   CalendarCheck,
+  MonitorCheck,
   LucideIcon,
 } from "lucide-react";
 
@@ -238,6 +239,20 @@ export const APP_CATALOG: Record<string, AppDefinition> = {
       { id: "calendars", name: "Calendars", description: "Connect external calendars", route: "/calendars" },
     ],
   },
+  uptime: {
+    id: "uptime",
+    name: "Uptime",
+    description: "Endpoint monitoring and incident management",
+    icon: MonitorCheck,
+    category: "engineering",
+    baseRoute: "/uptime",
+    requiredPermission: "can_view_uptime",
+    modules: [
+      { id: "monitors", name: "Monitors", description: "HTTP, TCP, and WebSocket endpoint monitors", route: "/monitors" },
+      { id: "incidents", name: "Incidents", description: "Active and resolved incidents", route: "/incidents" },
+      { id: "history", name: "History", description: "Check history and uptime reports", route: "/history" },
+    ],
+  },
 };
 
 // Get app definition by ID
@@ -301,6 +316,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       docs: { enabled: true },
       learning: { enabled: true },
       oncall: { enabled: true },
+      uptime: { enabled: true, modules: { monitors: true, incidents: true, history: true } },
       reviews: { enabled: false },
       hiring: { enabled: false },
       crm: { enabled: false },
@@ -332,6 +348,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       crm: { enabled: false },
       email_marketing: { enabled: false },
       oncall: { enabled: false },
+      uptime: { enabled: false },
       booking: { enabled: false },
     },
   },
@@ -358,6 +375,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       hiring: { enabled: false },
       learning: { enabled: false },
       oncall: { enabled: false },
+      uptime: { enabled: false },
       booking: { enabled: true, modules: { event_types: true, availability: true, calendars: true } },
     },
   },
@@ -387,6 +405,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       docs: { enabled: true },
       forms: { enabled: true },
       oncall: { enabled: true },
+      uptime: { enabled: true, modules: { monitors: true, incidents: true, history: true } },
       booking: { enabled: true, modules: { event_types: true, availability: true, calendars: true } },
     },
   },
@@ -436,6 +455,10 @@ export const SIDEBAR_TO_APP_MAP: Record<string, string> = {
   "/booking/event-types": "booking",
   "/booking/availability": "booking",
   "/booking/calendars": "booking",
+  "/uptime": "uptime",
+  "/uptime/monitors": "uptime",
+  "/uptime/incidents": "uptime",
+  "/uptime/history": "uptime",
 };
 
 // Get app ID from pathname
