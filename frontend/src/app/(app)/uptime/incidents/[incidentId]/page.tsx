@@ -53,11 +53,12 @@ export default function IncidentDetailPage() {
 
     try {
       const data = await uptimeApi.incidents.get(currentWorkspace.id, incidentId);
-      setIncident(data);
-      setResolutionNotes(data.resolution_notes || "");
-      setRootCause(data.root_cause || "");
+      setIncident(data || null);
+      setResolutionNotes(data?.resolution_notes || "");
+      setRootCause(data?.root_cause || "");
     } catch (error) {
       console.error("Failed to load incident:", error);
+      setIncident(null);
     } finally {
       setLoading(false);
     }

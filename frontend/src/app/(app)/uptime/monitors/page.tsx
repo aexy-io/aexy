@@ -91,9 +91,10 @@ export default function MonitorsPage() {
 
     try {
       const data = await uptimeApi.monitors.list(currentWorkspace.id);
-      setMonitors(data.monitors);
+      setMonitors(data?.monitors || []);
     } catch (error) {
       console.error("Failed to load monitors:", error);
+      setMonitors([]);
     } finally {
       setLoading(false);
     }

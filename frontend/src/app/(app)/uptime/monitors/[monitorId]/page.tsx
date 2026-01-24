@@ -68,12 +68,16 @@ export default function MonitorDetailPage() {
         uptimeApi.incidents.list(currentWorkspace.id, { monitor_id: monitorId, limit: 10 }),
       ]);
 
-      setMonitor(monitorData);
-      setStats(statsData);
-      setChecks(checksData.checks);
-      setIncidents(incidentsData.incidents);
+      setMonitor(monitorData || null);
+      setStats(statsData || null);
+      setChecks(checksData?.checks || []);
+      setIncidents(incidentsData?.incidents || []);
     } catch (error) {
       console.error("Failed to load monitor data:", error);
+      setMonitor(null);
+      setStats(null);
+      setChecks([]);
+      setIncidents([]);
     } finally {
       setLoading(false);
     }
