@@ -40,7 +40,8 @@ import {
   Briefcase,
   HelpCircle,
   Plus,
-  Minus
+  Minus,
+  MonitorCheck
 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -58,6 +59,7 @@ const productLinks = [
   { href: "/products/hiring", label: "Technical Hiring", icon: UserPlus, desc: "AI-powered assessments", color: "from-cyan-500 to-blue-500" },
   { href: "/products/crm", label: "CRM", icon: Building2, desc: "Relationship management", color: "from-purple-500 to-violet-500" },
   { href: "/products/email-marketing", label: "Email Marketing", icon: Mail, desc: "Campaigns & automation", color: "from-sky-500 to-blue-500" },
+  { href: "/products/uptime", label: "Uptime Monitoring", icon: MonitorCheck, desc: "Endpoint health & incidents", color: "from-emerald-500 to-green-500" },
 ];
 
 const solutionLinks = [
@@ -1327,6 +1329,7 @@ export default function Home() {
                 <li><Link href="/products/learning" className="hover:text-white transition">Learning</Link></li>
                 <li><Link href="/products/hiring" className="hover:text-white transition">Hiring</Link></li>
                 <li><Link href="/products/crm" className="hover:text-white transition">CRM</Link></li>
+                <li><Link href="/products/uptime" className="hover:text-white transition">Uptime</Link></li>
               </ul>
             </div>
             <div>

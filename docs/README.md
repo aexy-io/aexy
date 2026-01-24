@@ -26,6 +26,7 @@ We're on a mission to bring positive change by building world-class tools actual
 - [Deployment](./guides/deployment.md) - Production deployment guide
 - [Email Marketing](./email-marketing.md) - Campaigns, automation & infrastructure
 - [Booking](./booking.md) - Calendar scheduling, team bookings & RSVP
+- [Uptime Monitoring](./uptime.md) - Endpoint monitoring & incident management
 
 ### Testing
 - [Testing Strategy](./testing/testing-strategy.md) - Overall testing approach
