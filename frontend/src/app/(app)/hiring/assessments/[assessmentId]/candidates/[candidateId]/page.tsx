@@ -568,48 +568,55 @@ export default function CandidateDetailsPage() {
               </div>
             )}
 
-            {/* Recording Links */}
-            {(details.proctoring.webcam_recording_url || details.proctoring.screen_recording_url) && (
-              <div className="bg-card rounded-lg border border-border p-6">
-                <h3 className="font-semibold text-foreground mb-4">Recordings</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {details.proctoring.webcam_recording_url && (
-                    <a
-                      href={details.proctoring.webcam_recording_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 p-4 bg-muted rounded-lg hover:bg-accent transition-colors"
+            {/* Recordings */}
+            <div className="bg-card rounded-lg border border-border p-6">
+              <h3 className="font-semibold text-foreground mb-4">Recordings</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Webcam Recording */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Camera className="h-5 w-5 text-primary" />
+                    <h4 className="font-medium text-foreground">Webcam Recording</h4>
+                  </div>
+                  {details.proctoring.webcam_recording_url ? (
+                    <video
+                      controls
+                      className="w-full rounded-lg bg-black"
+                      src={details.proctoring.webcam_recording_url}
                     >
-                      <Camera className="h-6 w-6 text-primary" />
-                      <div>
-                        <p className="font-medium text-foreground">Webcam Recording</p>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Eye className="h-3 w-3" />
-                          View Recording
-                        </p>
-                      </div>
-                    </a>
+                      Your browser does not support the video tag.
+                    </video>
+                  ) : (
+                    <div className="w-full h-48 bg-muted rounded-lg flex flex-col items-center justify-center">
+                      <Camera className="h-12 w-12 text-muted-foreground mb-2" />
+                      <p className="text-muted-foreground text-sm">Recording not available</p>
+                    </div>
                   )}
-                  {details.proctoring.screen_recording_url && (
-                    <a
-                      href={details.proctoring.screen_recording_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 p-4 bg-muted rounded-lg hover:bg-accent transition-colors"
+                </div>
+
+                {/* Screen Recording */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Monitor className="h-5 w-5 text-primary" />
+                    <h4 className="font-medium text-foreground">Screen Recording</h4>
+                  </div>
+                  {details.proctoring.screen_recording_url ? (
+                    <video
+                      controls
+                      className="w-full rounded-lg bg-black"
+                      src={details.proctoring.screen_recording_url}
                     >
-                      <Monitor className="h-6 w-6 text-primary" />
-                      <div>
-                        <p className="font-medium text-foreground">Screen Recording</p>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Eye className="h-3 w-3" />
-                          View Recording
-                        </p>
-                      </div>
-                    </a>
+                      Your browser does not support the video tag.
+                    </video>
+                  ) : (
+                    <div className="w-full h-48 bg-muted rounded-lg flex flex-col items-center justify-center">
+                      <Monitor className="h-12 w-12 text-muted-foreground mb-2" />
+                      <p className="text-muted-foreground text-sm">Recording not available</p>
+                    </div>
                   )}
                 </div>
               </div>
-            )}
+            </div>
 
             {/* Event Timeline */}
             <div className="bg-card rounded-lg border border-border p-6">
