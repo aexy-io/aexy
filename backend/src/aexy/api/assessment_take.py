@@ -22,6 +22,7 @@ from aexy.models.assessment import (
 )
 from aexy.services.assessment_evaluation_service import AssessmentEvaluationService
 from aexy.services.proctoring_service import ProctoringService
+from aexy.services.r2_upload_service import get_r2_upload_service
 
 router = APIRouter(prefix="/take", tags=["assessment-take"])
 
@@ -825,3 +826,291 @@ async def get_attempt_status(
         "questions_submitted": submitted_count,
         "total_questions": assessment.total_questions or 0,
     }
+
+
+# ============================================================================
+# Recording Upload Endpoints (Cloudflare R2)
+# ============================================================================
+
+
+class InitiateUploadRequest(BaseModel):
+    """Request to initiate a recording upload."""
+    recording_type: str = Field(..., description="Type of recording: 'webcam' or 'screen'")
+    content_type: str = Field(default="video/webm", description="MIME type of the recording")
+
+
+class InitiateUploadResponse(BaseModel):
+    """Response after initiating a recording upload."""
+    upload_id: str
+    key: str
+    bucket: str
+
+
+class GetPresignedUrlRequest(BaseModel):
+    """Request to get a presigned URL for uploading a chunk."""
+    key: str
+    upload_id: str
+    part_number: int = Field(..., ge=1, le=10000, description="Part number (1-10000)")
+
+
+class GetPresignedUrlResponse(BaseModel):
+    """Response with presigned URL."""
+    presigned_url: str
+    part_number: int
+
+
+class CompleteUploadRequest(BaseModel):
+    """Request to complete a multipart upload."""
+    key: str
+    upload_id: str
+    recording_type: str = Field(..., description="Type of recording: 'webcam' or 'screen'")
+    parts: list[dict[str, Any]] = Field(..., description="List of uploaded parts with ETag and PartNumber")
+
+
+class CompleteUploadResponse(BaseModel):
+    """Response after completing upload."""
+    recording_url: str
+    recording_type: str
+
+
+@router.post("/{token}/recording/initiate", response_model=InitiateUploadResponse)
+async def initiate_recording_upload(
+    token: str,
+    request: InitiateUploadRequest,
+    db: AsyncSession = Depends(get_db),
+) -> InitiateUploadResponse:
+    """Initiate a multipart upload for assessment recording to Cloudflare R2."""
+    invitation = await get_invitation_by_token(token, db)
+
+    # Get active attempt
+    attempt = await get_active_attempt(invitation, db)
+    if not attempt:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No active attempt found",
+        )
+
+    # Validate recording type
+    if request.recording_type not in ["webcam", "screen"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid recording type. Must be 'webcam' or 'screen'",
+        )
+
+    # Initiate multipart upload
+    r2_service = get_r2_upload_service()
+    upload_info = await r2_service.initiate_multipart_upload(
+        attempt_id=str(attempt.id),
+        recording_type=request.recording_type,
+        content_type=request.content_type,
+    )
+
+    if not upload_info:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to initiate upload. R2 storage may not be configured.",
+        )
+
+    return InitiateUploadResponse(
+        upload_id=upload_info["upload_id"],
+        key=upload_info["key"],
+        bucket=upload_info["bucket"],
+    )
+
+
+@router.post("/{token}/recording/presigned-url", response_model=GetPresignedUrlResponse)
+async def get_presigned_upload_url(
+    token: str,
+    request: GetPresignedUrlRequest,
+    db: AsyncSession = Depends(get_db),
+) -> GetPresignedUrlResponse:
+    """Get a presigned URL for uploading a recording chunk to R2."""
+    invitation = await get_invitation_by_token(token, db)
+
+    # Get active attempt
+    attempt = await get_active_attempt(invitation, db)
+    if not attempt:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No active attempt found",
+        )
+
+    # Generate presigned URL
+    r2_service = get_r2_upload_service()
+    presigned_url = await r2_service.generate_presigned_upload_url(
+        key=request.key,
+        upload_id=request.upload_id,
+        part_number=request.part_number,
+    )
+
+    if not presigned_url:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate presigned URL",
+        )
+
+    return GetPresignedUrlResponse(
+        presigned_url=presigned_url,
+        part_number=request.part_number,
+    )
+
+
+@router.post("/{token}/recording/complete", response_model=CompleteUploadResponse)
+async def complete_recording_upload(
+    token: str,
+    request: CompleteUploadRequest,
+    db: AsyncSession = Depends(get_db),
+) -> CompleteUploadResponse:
+    """Complete a multipart upload and save the recording URL to the attempt."""
+    invitation = await get_invitation_by_token(token, db)
+
+    # Get active attempt
+    attempt = await get_active_attempt(invitation, db)
+    if not attempt:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No active attempt found",
+        )
+
+    # Validate recording type
+    if request.recording_type not in ["webcam", "screen"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid recording type. Must be 'webcam' or 'screen'",
+        )
+
+    # Complete multipart upload
+    r2_service = get_r2_upload_service()
+    recording_url = await r2_service.complete_multipart_upload(
+        key=request.key,
+        upload_id=request.upload_id,
+        parts=request.parts,
+    )
+
+    if not recording_url:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to complete upload",
+        )
+
+    # Update attempt with recording URL
+    if request.recording_type == "webcam":
+        attempt.webcam_recording_url = recording_url
+    else:  # screen
+        attempt.screen_recording_url = recording_url
+
+    await db.commit()
+
+    return CompleteUploadResponse(
+        recording_url=recording_url,
+        recording_type=request.recording_type,
+    )
+
+
+class DirectUploadRequest(BaseModel):
+    """Request to get a presigned URL for direct (non-multipart) upload."""
+    recording_type: str = Field(..., description="Type of recording: 'webcam' or 'screen'")
+    content_type: str = Field(default="video/webm", description="MIME type of the recording")
+
+
+class DirectUploadResponse(BaseModel):
+    """Response with presigned URL for direct upload."""
+    presigned_url: str
+    key: str
+    bucket: str
+
+
+class DirectUploadCompleteRequest(BaseModel):
+    """Request to confirm a direct upload was completed."""
+    key: str
+    recording_type: str = Field(..., description="Type of recording: 'webcam' or 'screen'")
+
+
+@router.post("/{token}/recording/direct-upload", response_model=DirectUploadResponse)
+async def get_direct_upload_url(
+    token: str,
+    request: DirectUploadRequest,
+    db: AsyncSession = Depends(get_db),
+) -> DirectUploadResponse:
+    """Get a presigned URL for direct (non-multipart) upload.
+
+    Use this for small recordings (under 5MB) that don't need multipart upload.
+    """
+    invitation = await get_invitation_by_token(token, db)
+
+    # Get active attempt
+    attempt = await get_active_attempt(invitation, db)
+    if not attempt:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No active attempt found",
+        )
+
+    # Validate recording type
+    if request.recording_type not in ["webcam", "screen"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid recording type. Must be 'webcam' or 'screen'",
+        )
+
+    # Generate direct upload URL
+    r2_service = get_r2_upload_service()
+    upload_info = await r2_service.generate_presigned_direct_upload_url(
+        attempt_id=str(attempt.id),
+        recording_type=request.recording_type,
+        content_type=request.content_type,
+    )
+
+    if not upload_info:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate upload URL. R2 storage may not be configured.",
+        )
+
+    return DirectUploadResponse(
+        presigned_url=upload_info["presigned_url"],
+        key=upload_info["key"],
+        bucket=upload_info["bucket"],
+    )
+
+
+@router.post("/{token}/recording/direct-complete", response_model=CompleteUploadResponse)
+async def complete_direct_upload(
+    token: str,
+    request: DirectUploadCompleteRequest,
+    db: AsyncSession = Depends(get_db),
+) -> CompleteUploadResponse:
+    """Confirm a direct upload was completed and save the recording URL."""
+    invitation = await get_invitation_by_token(token, db)
+
+    # Get active attempt
+    attempt = await get_active_attempt(invitation, db)
+    if not attempt:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No active attempt found",
+        )
+
+    # Validate recording type
+    if request.recording_type not in ["webcam", "screen"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid recording type. Must be 'webcam' or 'screen'",
+        )
+
+    # Get the object URL
+    r2_service = get_r2_upload_service()
+    recording_url = r2_service.get_object_url(request.key)
+
+    # Update attempt with recording URL
+    if request.recording_type == "webcam":
+        attempt.webcam_recording_url = recording_url
+    else:  # screen
+        attempt.screen_recording_url = recording_url
+
+    await db.commit()
+
+    return CompleteUploadResponse(
+        recording_url=recording_url,
+        recording_type=request.recording_type,
+    )

@@ -48,6 +48,7 @@ from aexy.schemas.assessment import (
     AssessmentMetrics,
 )
 from aexy.services.assessment_service import AssessmentService
+from aexy.services.r2_upload_service import get_r2_upload_service
 from aexy.models.assessment import Assessment
 from sqlalchemy import inspect
 
@@ -1316,6 +1317,33 @@ async def get_candidate_details(
                 "event_data": event.event_data,
             })
 
+        # Generate presigned URLs for recordings if they exist
+        webcam_url = None
+        screen_url = None
+        r2_service = get_r2_upload_service()
+
+        if r2_service.is_configured():
+            # Extract R2 key from the stored URL and generate presigned URL
+            if attempt.webcam_recording_url:
+                # URL format: https://{bucket}.{account_id}.r2.cloudflarestorage.com/{key}
+                # Extract the key (everything after the domain)
+                try:
+                    url_parts = attempt.webcam_recording_url.split(".r2.cloudflarestorage.com/")
+                    if len(url_parts) == 2:
+                        key = url_parts[1]
+                        webcam_url = await r2_service.generate_presigned_download_url(key, expires_in=3600)
+                except Exception as e:
+                    logger.warning(f"Failed to generate presigned URL for webcam recording: {e}")
+
+            if attempt.screen_recording_url:
+                try:
+                    url_parts = attempt.screen_recording_url.split(".r2.cloudflarestorage.com/")
+                    if len(url_parts) == 2:
+                        key = url_parts[1]
+                        screen_url = await r2_service.generate_presigned_download_url(key, expires_in=3600)
+                except Exception as e:
+                    logger.warning(f"Failed to generate presigned URL for screen recording: {e}")
+
         proctoring_details = {
             "trust_score": event_breakdown.get("trust_score", 100),
             "trust_level": event_breakdown.get("trust_level", "excellent"),
@@ -1324,8 +1352,8 @@ async def get_candidate_details(
             "event_summary": event_breakdown.get("event_summary", {}),
             "deductions": event_breakdown.get("deductions", {}),
             "events": events_list,
-            "webcam_recording_url": attempt.webcam_recording_url,
-            "screen_recording_url": attempt.screen_recording_url,
+            "webcam_recording_url": webcam_url,
+            "screen_recording_url": screen_url,
         }
 
     # Build response
