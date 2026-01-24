@@ -126,6 +126,8 @@ from aexy.api.booking import router as booking_router
 from aexy.api.booking import public_booking_router
 from aexy.api.booking import rsvp_booking_router
 from aexy.api.booking import calendar_callback_booking_router
+# Uptime Monitoring
+from aexy.api.uptime import router as uptime_router
 
 api_router = APIRouter()
 
@@ -258,3 +260,5 @@ api_router.include_router(booking_router, tags=["booking"])
 api_router.include_router(public_booking_router, tags=["booking-public"])
 api_router.include_router(rsvp_booking_router, tags=["booking-rsvp"])
 api_router.include_router(calendar_callback_booking_router, tags=["booking-calendar-callback"])
+# Uptime Monitoring
+api_router.include_router(uptime_router, tags=["uptime"])
