@@ -368,6 +368,15 @@ from aexy.models.booking import (
     AssignmentType,
     BookingWebhook,
 )
+from aexy.models.uptime import (
+    UptimeMonitor,
+    UptimeCheck,
+    UptimeIncident,
+    UptimeCheckType,
+    UptimeMonitorStatus,
+    UptimeIncidentStatus,
+    UptimeErrorType,
+)
 
 __all__ = [
     # Plan
@@ -731,4 +740,12 @@ __all__ = [
     "TeamEventMember",
     "AssignmentType",
     "BookingWebhook",
+    # Uptime Monitoring
+    "UptimeMonitor",
+    "UptimeCheck",
+    "UptimeIncident",
+    "UptimeCheckType",
+    "UptimeMonitorStatus",
+    "UptimeIncidentStatus",
+    "UptimeErrorType",
 ]

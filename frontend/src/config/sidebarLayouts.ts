@@ -37,6 +37,9 @@ import {
     CalendarClock,
     Link2,
     LucideIcon,
+    MonitorCheck,
+    AlertTriangle,
+    History,
 } from "lucide-react";
 
 export type SidebarLayoutType = "grouped" | "flat";
@@ -111,6 +114,12 @@ const bookingItems: SidebarItemConfig[] = [
     { href: "/booking/calendars", label: "Calendars", icon: Link2 },
 ];
 
+const uptimeItems: SidebarItemConfig[] = [
+    { href: "/uptime/monitors", label: "Monitors", icon: MonitorCheck },
+    { href: "/uptime/incidents", label: "Incidents", icon: AlertTriangle },
+    { href: "/uptime/history", label: "History", icon: History },
+];
+
 /**
  * Version 1: Grouped Layout (Role-Based)
  * Items organized by functional areas: Engineering, People, Business, Knowledge
@@ -144,6 +153,12 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
                     items: planningItems,
                 },
                 { href: "/tickets", label: "Tickets", icon: Ticket },
+                {
+                    href: "/uptime",
+                    label: "Uptime",
+                    icon: MonitorCheck,
+                    items: uptimeItems,
+                },
             ],
         },
         {
@@ -227,6 +242,12 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                     items: planningItems,
                 },
                 { href: "/tickets", label: "Tickets", icon: Ticket },
+                {
+                    href: "/uptime",
+                    label: "Uptime",
+                    icon: MonitorCheck,
+                    items: uptimeItems,
+                },
                 {
                     href: "/reviews",
                     label: "Reviews",

@@ -5,6 +5,152 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-01-24
+
+### Fixed
+
+#### Uptime Module - Nullability & Visibility Fixes
+
+**Monitor Visibility Bug:**
+- Fixed monitors not appearing in the UI after creation
+- Backend returns array directly for `/monitors` endpoint, but frontend expected `{ monitors: [], total }` format
+- Updated API client to normalize response formats across all uptime endpoints
+
+**API Response Format Alignment:**
+- `monitors.list()` - Now correctly handles array response from backend
+- `incidents.list()` - Now correctly handles `{ items: [] }` response format
+- `monitors.getChecks()` - Now correctly handles `{ items: [] }` response format
+
+**Unknown Status Handling:**
+- Added `unknown` status support for newly created monitors (before first check runs)
+- Added `unknown` to `STATUS_COLORS` in all uptime pages to prevent render crashes
+- Added `DEFAULT_STATUS_STYLE` fallback for unrecognized status values
+
+**Null-Safe Data Handling:**
+- Added optional chaining (`?.`) when accessing API response properties
+- Added fallback to empty arrays (`|| []`) for all list data
+- Added error state resets in catch blocks to prevent stale data display
+- Fixed `TypeError: Cannot read properties of undefined (reading 'length')` errors
+
+**Files Updated:**
+- `frontend/src/lib/uptime-api.ts` - API response normalization
+- `frontend/src/app/(app)/uptime/page.tsx` - Dashboard null safety
+- `frontend/src/app/(app)/uptime/monitors/page.tsx` - Monitors list null safety
+- `frontend/src/app/(app)/uptime/monitors/[monitorId]/page.tsx` - Monitor detail null safety
+- `frontend/src/app/(app)/uptime/incidents/page.tsx` - Incidents list null safety
+- `frontend/src/app/(app)/uptime/incidents/[incidentId]/page.tsx` - Incident detail null safety
+- `frontend/src/app/(app)/uptime/history/page.tsx` - Check history null safety
+
+---
+
+## [0.3.0] - 2026-01-24
+
+### Added
+
+#### Uptime Monitoring Module
+
+A comprehensive uptime monitoring system for tracking HTTP endpoints, TCP ports, and WebSocket connections with automatic incident management and ticket creation.
+
+**Core Features:**
+- **Multi-Protocol Monitoring**: Support for HTTP, TCP, and WebSocket endpoint checks
+- **Configurable Check Intervals**: 1 minute, 5 minutes, 15 minutes, 30 minutes, or 1 hour
+- **SSL Certificate Monitoring**: Track SSL expiry days and alert on upcoming expirations
+- **Consecutive Failure Thresholds**: Configure how many failures before alerting (default: 3)
+- **Auto-Ticketing**: Automatically create support tickets when services go down
+- **Auto-Close on Recovery**: Tickets are automatically closed when services recover with full timeline
+
+**Incident Management:**
+- Incident status tracking: `ongoing`, `acknowledged`, `resolved`
+- Incident timeline with start, acknowledgment, and resolution timestamps
+- Failed checks count and total checks during incident
+- Root cause and resolution notes for post-mortems
+- Automatic linking to support tickets
+
+**HTTP Check Features:**
+- Configurable HTTP methods (GET, POST, HEAD, PUT, PATCH)
+- Expected status codes validation (e.g., [200, 201, 204])
+- Custom request headers
+- Request body support
+- SSL verification toggle
+- Follow redirects option
+- Response time tracking
+
+**TCP Check Features:**
+- Host and port configuration
+- Connection timeout handling
+- Response time measurement
+
+**WebSocket Check Features:**
+- WebSocket URL monitoring
+- Optional message sending on connect
+- Expected response pattern validation
+- Connection health verification
+
+**Notification Channels:**
+- Slack notifications via channel ID
+- Custom webhook delivery
+- Email alerts (via existing infrastructure)
+- Recovery notifications (configurable)
+
+**Database Tables:**
+- `uptime_monitors` - Monitor configurations
+- `uptime_checks` - Individual check results (time-series)
+- `uptime_incidents` - Incident tracking with ticket integration
+
+**API Endpoints:**
+- `GET /workspaces/{id}/uptime/monitors` - List monitors
+- `POST /workspaces/{id}/uptime/monitors` - Create monitor
+- `GET /workspaces/{id}/uptime/monitors/{id}` - Get monitor details
+- `PATCH /workspaces/{id}/uptime/monitors/{id}` - Update monitor
+- `DELETE /workspaces/{id}/uptime/monitors/{id}` - Delete monitor
+- `POST /workspaces/{id}/uptime/monitors/{id}/pause` - Pause monitoring
+- `POST /workspaces/{id}/uptime/monitors/{id}/resume` - Resume monitoring
+- `POST /workspaces/{id}/uptime/monitors/{id}/test` - Run immediate test
+- `GET /workspaces/{id}/uptime/monitors/{id}/checks` - Check history
+- `GET /workspaces/{id}/uptime/monitors/{id}/stats` - Monitor statistics
+- `GET /workspaces/{id}/uptime/incidents` - List incidents
+- `GET /workspaces/{id}/uptime/incidents/{id}` - Get incident details
+- `PATCH /workspaces/{id}/uptime/incidents/{id}` - Update incident notes
+- `POST /workspaces/{id}/uptime/incidents/{id}/resolve` - Manually resolve
+- `POST /workspaces/{id}/uptime/incidents/{id}/acknowledge` - Acknowledge incident
+- `GET /workspaces/{id}/uptime/stats` - Workspace-level statistics
+
+**Frontend Pages:**
+- `/uptime` - Uptime dashboard with stats and overview
+- `/uptime/monitors` - Monitors list with create modal
+- `/uptime/monitors/[id]` - Monitor detail with stats, checks, and configuration
+- `/uptime/incidents` - Incidents list with filtering
+- `/uptime/incidents/[id]` - Incident detail with timeline and post-mortem notes
+- `/uptime/history` - Check history viewer
+
+**Product Page:**
+- `/products/uptime` - Marketing landing page for uptime monitoring
+
+**Celery Background Tasks:**
+- `process_due_checks` - Runs every minute, dispatches checks for due monitors
+- `execute_check` - Performs individual HTTP/TCP/WebSocket checks
+- `send_uptime_notification` - Sends Slack and webhook notifications
+- `cleanup_old_checks` - Daily cleanup of check history (keeps 30 days)
+
+**Access Control Integration:**
+- Added to sidebar under "Engineering" section
+- Sub-navigation: Monitors, Incidents, History
+- App bundle configuration:
+  - Engineering bundle: Uptime enabled
+  - People bundle: Uptime disabled
+  - Business bundle: Uptime disabled
+  - Full Access bundle: Uptime enabled
+- Permission: `can_view_uptime`
+
+**Statistics & Metrics:**
+- Uptime percentage (24h, 7d, 30d)
+- Average response time
+- Total and failed checks
+- Incident counts
+- Current and longest streak up
+
+---
+
 ## [0.2.1] - 2026-01-23
 
 ### Added
