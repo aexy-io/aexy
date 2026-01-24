@@ -28,12 +28,15 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
-const STATUS_COLORS: Record<UptimeMonitorStatus, { bg: string; text: string; dot: string; label: string }> = {
+const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string; label: string }> = {
   up: { bg: "bg-emerald-900/30", text: "text-emerald-400", dot: "bg-emerald-500", label: "Up" },
   down: { bg: "bg-red-900/30", text: "text-red-400", dot: "bg-red-500", label: "Down" },
   degraded: { bg: "bg-amber-900/30", text: "text-amber-400", dot: "bg-amber-500", label: "Degraded" },
   paused: { bg: "bg-slate-700/50", text: "text-slate-400", dot: "bg-slate-500", label: "Paused" },
+  unknown: { bg: "bg-slate-700/50", text: "text-slate-400", dot: "bg-slate-500", label: "Unknown" },
 };
+
+const DEFAULT_STATUS_STYLE = { bg: "bg-slate-700/50", text: "text-slate-400", dot: "bg-slate-500", label: "Unknown" };
 
 const CHECK_TYPE_ICONS: Record<UptimeCheckType, typeof Globe> = {
   http: Globe,
@@ -291,8 +294,8 @@ export default function MonitorsPage() {
           ) : (
             <div className="divide-y divide-slate-700">
               {filteredMonitors.map((monitor) => {
-                const Icon = CHECK_TYPE_ICONS[monitor.check_type];
-                const statusStyle = STATUS_COLORS[monitor.current_status];
+                const Icon = CHECK_TYPE_ICONS[monitor.check_type] || Globe;
+                const statusStyle = STATUS_COLORS[monitor.current_status] || DEFAULT_STATUS_STYLE;
 
                 return (
                   <div

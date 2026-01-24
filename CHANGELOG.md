@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-01-24
+
+### Fixed
+
+#### Uptime Module - Nullability & Visibility Fixes
+
+**Monitor Visibility Bug:**
+- Fixed monitors not appearing in the UI after creation
+- Backend returns array directly for `/monitors` endpoint, but frontend expected `{ monitors: [], total }` format
+- Updated API client to normalize response formats across all uptime endpoints
+
+**API Response Format Alignment:**
+- `monitors.list()` - Now correctly handles array response from backend
+- `incidents.list()` - Now correctly handles `{ items: [] }` response format
+- `monitors.getChecks()` - Now correctly handles `{ items: [] }` response format
+
+**Unknown Status Handling:**
+- Added `unknown` status support for newly created monitors (before first check runs)
+- Added `unknown` to `STATUS_COLORS` in all uptime pages to prevent render crashes
+- Added `DEFAULT_STATUS_STYLE` fallback for unrecognized status values
+
+**Null-Safe Data Handling:**
+- Added optional chaining (`?.`) when accessing API response properties
+- Added fallback to empty arrays (`|| []`) for all list data
+- Added error state resets in catch blocks to prevent stale data display
+- Fixed `TypeError: Cannot read properties of undefined (reading 'length')` errors
+
+**Files Updated:**
+- `frontend/src/lib/uptime-api.ts` - API response normalization
+- `frontend/src/app/(app)/uptime/page.tsx` - Dashboard null safety
+- `frontend/src/app/(app)/uptime/monitors/page.tsx` - Monitors list null safety
+- `frontend/src/app/(app)/uptime/monitors/[monitorId]/page.tsx` - Monitor detail null safety
+- `frontend/src/app/(app)/uptime/incidents/page.tsx` - Incidents list null safety
+- `frontend/src/app/(app)/uptime/incidents/[incidentId]/page.tsx` - Incident detail null safety
+- `frontend/src/app/(app)/uptime/history/page.tsx` - Check history null safety
+
+---
+
 ## [0.3.0] - 2026-01-24
 
 ### Added

@@ -30,12 +30,15 @@ const CHECK_TYPE_ICONS = {
   websocket: Wifi,
 };
 
-const STATUS_COLORS = {
+const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
   up: { bg: "bg-emerald-900/30", text: "text-emerald-400", label: "Up" },
   down: { bg: "bg-red-900/30", text: "text-red-400", label: "Down" },
   degraded: { bg: "bg-amber-900/30", text: "text-amber-400", label: "Degraded" },
   paused: { bg: "bg-slate-700/50", text: "text-slate-400", label: "Paused" },
+  unknown: { bg: "bg-slate-700/50", text: "text-slate-400", label: "Unknown" },
 };
+
+const DEFAULT_STATUS_STYLE = { bg: "bg-slate-700/50", text: "text-slate-400", label: "Unknown" };
 
 export default function MonitorDetailPage() {
   const params = useParams();
@@ -161,7 +164,7 @@ export default function MonitorDetailPage() {
   }
 
   const Icon = CHECK_TYPE_ICONS[monitor.check_type] || Globe;
-  const statusStyle = STATUS_COLORS[monitor.current_status];
+  const statusStyle = STATUS_COLORS[monitor.current_status] || DEFAULT_STATUS_STYLE;
 
   return (
     <div className="min-h-screen bg-slate-950">

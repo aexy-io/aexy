@@ -3,7 +3,7 @@ import { api } from "./api";
 // Types
 
 export type UptimeCheckType = "http" | "tcp" | "websocket";
-export type UptimeMonitorStatus = "up" | "down" | "degraded" | "paused";
+export type UptimeMonitorStatus = "up" | "down" | "degraded" | "paused" | "unknown";
 export type UptimeIncidentStatus = "ongoing" | "resolved" | "acknowledged";
 export type UptimeErrorType = "timeout" | "connection_refused" | "ssl_error" | "dns_error" | "unexpected_response" | "invalid_status_code" | "unknown";
 
@@ -169,7 +169,10 @@ export const uptimeApi = {
   monitors: {
     list: async (workspaceId: string, params?: { status?: UptimeMonitorStatus; is_active?: boolean; team_id?: string }) => {
       const response = await api.get(`/workspaces/${workspaceId}/uptime/monitors`, { params });
-      return response.data as { monitors: UptimeMonitor[]; total: number };
+      // Backend returns array directly
+      const data = response.data;
+      const monitors = Array.isArray(data) ? data : (data?.monitors || data?.items || []);
+      return { monitors: monitors as UptimeMonitor[], total: monitors.length };
     },
 
     get: async (workspaceId: string, monitorId: string) => {
@@ -208,7 +211,10 @@ export const uptimeApi = {
 
     getChecks: async (workspaceId: string, monitorId: string, params?: { start_date?: string; end_date?: string; limit?: number; offset?: number }) => {
       const response = await api.get(`/workspaces/${workspaceId}/uptime/monitors/${monitorId}/checks`, { params });
-      return response.data as { checks: UptimeCheck[]; total: number };
+      // Backend returns { items: [], total, ... }
+      const data = response.data;
+      const checks = data?.checks || data?.items || [];
+      return { checks: checks as UptimeCheck[], total: data?.total || checks.length };
     },
 
     getStats: async (workspaceId: string, monitorId: string) => {
@@ -221,7 +227,10 @@ export const uptimeApi = {
   incidents: {
     list: async (workspaceId: string, params?: { status?: UptimeIncidentStatus; monitor_id?: string; limit?: number; offset?: number }) => {
       const response = await api.get(`/workspaces/${workspaceId}/uptime/incidents`, { params });
-      return response.data as { incidents: UptimeIncident[]; total: number };
+      // Backend returns { items: [], total, ... }
+      const data = response.data;
+      const incidents = data?.incidents || data?.items || [];
+      return { incidents: incidents as UptimeIncident[], total: data?.total || incidents.length };
     },
 
     get: async (workspaceId: string, incidentId: string) => {

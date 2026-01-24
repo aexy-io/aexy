@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { uptimeApi, UptimeMonitor, UptimeIncident, WorkspaceUptimeStats } from "@/lib/uptime-api";
 import Link from "next/link";
@@ -19,12 +18,15 @@ import {
   Wifi,
 } from "lucide-react";
 
-const STATUS_COLORS = {
+const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
   up: { bg: "bg-emerald-900/30", text: "text-emerald-400", dot: "bg-emerald-500" },
   down: { bg: "bg-red-900/30", text: "text-red-400", dot: "bg-red-500" },
   degraded: { bg: "bg-amber-900/30", text: "text-amber-400", dot: "bg-amber-500" },
   paused: { bg: "bg-slate-700/50", text: "text-slate-400", dot: "bg-slate-500" },
+  unknown: { bg: "bg-slate-700/50", text: "text-slate-400", dot: "bg-slate-500" },
 };
+
+const DEFAULT_STATUS_STYLE = { bg: "bg-slate-700/50", text: "text-slate-400", dot: "bg-slate-500" };
 
 const CHECK_TYPE_ICONS = {
   http: Globe,
@@ -33,7 +35,6 @@ const CHECK_TYPE_ICONS = {
 };
 
 export default function UptimeDashboard() {
-  const router = useRouter();
   const { currentWorkspace } = useWorkspace();
   const [monitors, setMonitors] = useState<UptimeMonitor[]>([]);
   const [incidents, setIncidents] = useState<UptimeIncident[]>([]);
@@ -209,7 +210,7 @@ export default function UptimeDashboard() {
                 <div className="divide-y divide-slate-700">
                   {monitors.slice(0, 8).map((monitor) => {
                     const Icon = CHECK_TYPE_ICONS[monitor.check_type] || Globe;
-                    const statusStyle = STATUS_COLORS[monitor.current_status];
+                    const statusStyle = STATUS_COLORS[monitor.current_status] || DEFAULT_STATUS_STYLE;
 
                     return (
                       <Link
