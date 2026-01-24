@@ -206,8 +206,8 @@ export default function CandidateDetailsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Score</p>
                 <p className="text-3xl font-bold text-foreground">
-                  {details.attempt?.percentage_score?.toFixed(0) || "N/A"}
-                  {details.attempt?.percentage_score !== null && "%"}
+                  {details.attempt?.total_score?.toFixed(0) || "N/A"}
+                  {details.attempt?.total_score !== null && "%"}
                 </p>
               </div>
               <TrendingUp className="h-8 w-8 text-primary opacity-50" />
@@ -350,7 +350,7 @@ export default function CandidateDetailsPage() {
                   <div className="w-full bg-muted rounded-full h-2">
                     <div
                       className="bg-primary h-2 rounded-full transition-all"
-                      style={{ width: `${details.attempt?.percentage_score || 0}%` }}
+                      style={{ width: `${details.attempt?.total_score || 0}%` }}
                     />
                   </div>
                 </div>
