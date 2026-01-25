@@ -11083,21 +11083,43 @@ export interface AnalyticsOverview {
   active_subscribers: number;
 }
 
+export interface DNSRecord {
+  record_type: string;
+  name: string;
+  value: string;
+  verified: boolean;
+  note?: string;
+}
+
+export interface DNSRecords {
+  verification?: DNSRecord;
+  spf?: DNSRecord;
+  dkim?: DNSRecord[];
+  dmarc?: DNSRecord;
+}
+
 export interface SendingDomain {
   id: string;
   workspace_id: string;
   domain: string;
+  subdomain?: string;
   status: DomainStatus;
+  dns_records: DNSRecords;
+  dns_last_checked_at?: string;
+  verification_token?: string;
+  verified_at?: string;
   is_verified: boolean;
   spf_verified: boolean;
   dkim_verified: boolean;
   dmarc_verified: boolean;
   health_score: number;
+  health_status: string;
   daily_limit: number;
   daily_sent: number;
   warming_status: WarmingStatus;
   warming_day: number | null;
   is_active: boolean;
+  is_default: boolean;
   created_at: string;
   updated_at: string;
 }

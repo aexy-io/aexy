@@ -119,7 +119,7 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - SECRET_KEY=${SECRET_KEY}
-      - FRONTEND_URL=${FRONTEND_URL:-https://app.aexy.io}
+      - FRONTEND_URL=${FRONTEND_URL:-https://aexy.io}
       # LLM
       - LLM_PROVIDER=${LLM_PROVIDER:-gemini}
       - LLM_MODEL=${LLM_MODEL:-gemini-2.0-flash}

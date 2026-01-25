@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-01-25
+
+### Added
+
+#### Email Marketing Infrastructure Improvements
+
+**DNS Records UI:**
+- Enhanced DNS records display with collapsible section in domain cards
+- Copy-to-clipboard functionality for DNS record names and values
+- Visual indicators for verified/pending DNS records
+- "Action Required" badge for unverified domains
+- Documentation link to GitHub for DNS setup guidance
+- Support for Verification, SPF, DKIM, and DMARC record types
+
+**Provider Management:**
+- Providers can now be created without credentials (configurable later)
+- Credentials field now accepts empty dict as default
+
+### Fixed
+
+#### Provider Connection Testing
+- Fixed provider test connection hanging when credentials are not configured
+- Added credential validation before attempting API connections for all providers:
+  - SES: checks for `access_key_id` and `secret_access_key`
+  - SendGrid: checks for `api_key`
+  - Mailgun: checks for `api_key` and `domain`
+  - Postmark: checks for `server_token`
+  - SMTP: checks for `host`
+- Returns helpful error message indicating which credentials are missing
+
+#### Sending Domain Model
+- Made `provider_id` nullable in SendingDomain model
+- Added `SET NULL` on delete for provider foreign key relationship
+- Added `dns_records`, `verification_token`, and `verified_at` fields to SendingDomainListResponse schema
+
+---
+
 ## [0.4.0] - 2026-01-25
 
 ### Added

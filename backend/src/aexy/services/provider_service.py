@@ -157,6 +157,12 @@ class SESClient(EmailProviderClient):
             }
 
     async def test_connection(self) -> dict:
+        # Check for required credentials first
+        if not self.access_key_id or not self.secret_access_key:
+            return {
+                "success": False,
+                "message": "SES credentials not configured. Please add access_key_id and secret_access_key."
+            }
         try:
             self.client.get_send_quota()
             return {"success": True, "message": "SES connection successful"}
@@ -252,6 +258,12 @@ class SendGridClient(EmailProviderClient):
                 return {"success": False, "error": str(e), "provider": "sendgrid"}
 
     async def test_connection(self) -> dict:
+        # Check for required credentials first
+        if not self.api_key:
+            return {
+                "success": False,
+                "message": "SendGrid credentials not configured. Please add api_key."
+            }
         # Test by fetching user info
         async with httpx.AsyncClient() as client:
             try:
@@ -349,6 +361,12 @@ class MailgunClient(EmailProviderClient):
                 return {"success": False, "error": str(e), "provider": "mailgun"}
 
     async def test_connection(self) -> dict:
+        # Check for required credentials first
+        if not self.api_key or not self.domain:
+            return {
+                "success": False,
+                "message": "Mailgun credentials not configured. Please add api_key and domain."
+            }
         async with httpx.AsyncClient() as client:
             try:
                 # Test by getting domain info
@@ -449,6 +467,12 @@ class PostmarkClient(EmailProviderClient):
                 return {"success": False, "error": str(e), "provider": "postmark"}
 
     async def test_connection(self) -> dict:
+        # Check for required credentials first
+        if not self.server_token:
+            return {
+                "success": False,
+                "message": "Postmark credentials not configured. Please add server_token."
+            }
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.get(
@@ -551,6 +575,12 @@ class SMTPClient(EmailProviderClient):
             return {"success": False, "error": str(e), "provider": "smtp"}
 
     async def test_connection(self) -> dict:
+        # Check for required credentials first
+        if not self.host:
+            return {
+                "success": False,
+                "message": "SMTP credentials not configured. Please add host."
+            }
         try:
             use_ssl = self.port == 465
             start_tls = self.use_tls and not use_ssl

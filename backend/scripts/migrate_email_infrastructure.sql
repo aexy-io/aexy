@@ -571,6 +571,25 @@ VALUES
 ON CONFLICT DO NOTHING;
 
 -- =============================================================================
+-- ADD MISSING COLUMNS (for existing installations)
+-- =============================================================================
+
+-- email_providers: Add missing columns
+ALTER TABLE email_providers ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE email_providers ADD COLUMN IF NOT EXISTS settings JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE email_providers ADD COLUMN IF NOT EXISTS is_default BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE email_providers ADD COLUMN IF NOT EXISTS last_check_at TIMESTAMPTZ;
+ALTER TABLE email_providers ADD COLUMN IF NOT EXISTS last_check_status VARCHAR(50);
+ALTER TABLE email_providers ADD COLUMN IF NOT EXISTS last_error TEXT;
+
+-- sending_domains: Add missing columns
+ALTER TABLE sending_domains ADD COLUMN IF NOT EXISTS subdomain VARCHAR(100);
+ALTER TABLE sending_domains ADD COLUMN IF NOT EXISTS dns_last_checked_at TIMESTAMPTZ;
+ALTER TABLE sending_domains ADD COLUMN IF NOT EXISTS default_from_name VARCHAR(255);
+ALTER TABLE sending_domains ADD COLUMN IF NOT EXISTS default_reply_to VARCHAR(255);
+ALTER TABLE sending_domains ADD COLUMN IF NOT EXISTS is_default BOOLEAN NOT NULL DEFAULT false;
+
+-- =============================================================================
 -- DONE
 -- =============================================================================
 

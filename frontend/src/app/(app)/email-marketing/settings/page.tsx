@@ -23,13 +23,102 @@ import {
   TestTube,
   Tags,
   Edit3,
+  Copy,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
 import { useSendingDomains, useEmailProviders, useSubscriptionCategories } from "@/hooks/useEmailMarketing";
-import { SendingDomain, EmailProvider, SubscriptionCategory } from "@/lib/api";
+import { SendingDomain, EmailProvider, SubscriptionCategory, DNSRecord } from "@/lib/api";
 
 type TabType = "domains" | "providers" | "categories";
+
+function DNSRecordRow({
+  record,
+  label,
+  description,
+}: {
+  record: DNSRecord;
+  label: string;
+  description?: string;
+}) {
+  const [copied, setCopied] = useState<"name" | "value" | null>(null);
+
+  const copyToClipboard = async (text: string, field: "name" | "value") => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(field);
+      setTimeout(() => setCopied(null), 2000);
+    } catch {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      setCopied(field);
+      setTimeout(() => setCopied(null), 2000);
+    }
+  };
+
+  return (
+    <div className="bg-slate-800/50 rounded-lg p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded text-xs font-medium">
+            {record.record_type}
+          </span>
+          <span className="text-sm font-medium text-white">{label}</span>
+          {record.verified ? (
+            <CheckCircle className="h-4 w-4 text-emerald-400" />
+          ) : (
+            <AlertCircle className="h-4 w-4 text-amber-400" />
+          )}
+        </div>
+        <span className={`text-xs ${record.verified ? "text-emerald-400" : "text-amber-400"}`}>
+          {record.verified ? "Verified" : "Pending"}
+        </span>
+      </div>
+      {description && <p className="text-xs text-slate-500">{description}</p>}
+      <div className="space-y-2">
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">Host / Name</label>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 px-3 py-2 bg-slate-900 rounded text-sm text-slate-300 font-mono overflow-x-auto">
+              {record.name}
+            </code>
+            <button
+              onClick={() => copyToClipboard(record.name, "name")}
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition flex-shrink-0"
+              title="Copy host"
+            >
+              {copied === "name" ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">Value / Content</label>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 px-3 py-2 bg-slate-900 rounded text-sm text-slate-300 font-mono overflow-x-auto break-all">
+              {record.value}
+            </code>
+            <button
+              onClick={() => copyToClipboard(record.value, "value")}
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition flex-shrink-0"
+              title="Copy value"
+            >
+              {copied === "value" ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+      </div>
+      {record.note && <p className="text-xs text-slate-500 italic">{record.note}</p>}
+    </div>
+  );
+}
 
 function DomainCard({
   domain,
@@ -46,6 +135,18 @@ function DomainCard({
   onStartWarming: () => void;
   onDelete: () => void;
 }) {
+  const [showDnsRecords, setShowDnsRecords] = useState(!domain.is_verified);
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  const handleVerify = async () => {
+    setIsVerifying(true);
+    try {
+      onVerify();
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   const getStatusIcon = () => {
     if (!domain.is_active) return <Pause className="h-4 w-4 text-slate-400" />;
     if (!domain.is_verified) return <AlertCircle className="h-4 w-4 text-amber-400" />;
@@ -64,6 +165,13 @@ function DomainCard({
     return "Poor Health";
   };
 
+  const hasDnsRecords = domain.dns_records && (
+    domain.dns_records.verification ||
+    domain.dns_records.spf ||
+    domain.dns_records.dkim?.length ||
+    domain.dns_records.dmarc
+  );
+
   return (
     <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
       <div className="flex items-start justify-between mb-4">
@@ -72,7 +180,19 @@ function DomainCard({
             <Globe className="h-5 w-5 text-purple-400" />
           </div>
           <div>
-            <h3 className="text-white font-medium">{domain.domain}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-white font-medium">{domain.domain}</h3>
+              {!domain.is_verified && (
+                <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded text-xs font-medium">
+                  Action Required
+                </span>
+              )}
+              {domain.is_default && (
+                <span className="px-2 py-0.5 bg-sky-500/20 text-sky-400 rounded text-xs font-medium">
+                  Default
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-2 mt-1">
               {getStatusIcon()}
               <span className="text-sm text-slate-400">{getStatusText()}</span>
@@ -82,11 +202,12 @@ function DomainCard({
         <div className="flex items-center gap-1">
           {!domain.is_verified && (
             <button
-              onClick={onVerify}
-              className="p-2 text-amber-400 hover:bg-amber-500/20 rounded-lg transition"
+              onClick={handleVerify}
+              disabled={isVerifying}
+              className="p-2 text-amber-400 hover:bg-amber-500/20 rounded-lg transition disabled:opacity-50"
               title="Verify DNS"
             >
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className={`h-4 w-4 ${isVerifying ? "animate-spin" : ""}`} />
             </button>
           )}
           {domain.is_verified && domain.warming_status === "not_started" && (
@@ -140,13 +261,107 @@ function DomainCard({
         </div>
       </div>
 
-      {!domain.is_verified && (
+      {/* DNS Records Section */}
+      {hasDnsRecords && (
+        <div className="border-t border-slate-800 pt-4 mt-4">
+          <button
+            onClick={() => setShowDnsRecords(!showDnsRecords)}
+            className="flex items-center justify-between w-full text-left"
+          >
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-slate-400" />
+              <span className="text-sm font-medium text-white">DNS Records</span>
+              {!domain.is_verified && (
+                <span className="text-xs text-amber-400">Configuration required</span>
+              )}
+            </div>
+            {showDnsRecords ? (
+              <ChevronUp className="h-4 w-4 text-slate-400" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-slate-400" />
+            )}
+          </button>
+
+          {showDnsRecords && (
+            <div className="mt-4 space-y-4">
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <p>Add these DNS records to your domain registrar to enable email sending.</p>
+                <a
+                  href="https://github.com/bhanuc/aexy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-sky-400 hover:text-sky-300"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  Documentation
+                </a>
+              </div>
+
+              {domain.dns_records.verification && (
+                <DNSRecordRow
+                  record={domain.dns_records.verification}
+                  label="Domain Verification"
+                  description="Proves ownership of this domain"
+                />
+              )}
+
+              {domain.dns_records.spf && (
+                <DNSRecordRow
+                  record={domain.dns_records.spf}
+                  label="SPF Record"
+                  description="Authorizes mail servers to send on your behalf"
+                />
+              )}
+
+              {domain.dns_records.dkim?.map((dkimRecord, idx) => (
+                <DNSRecordRow
+                  key={idx}
+                  record={dkimRecord}
+                  label={`DKIM Record ${domain.dns_records.dkim && domain.dns_records.dkim.length > 1 ? idx + 1 : ""}`}
+                  description="Cryptographically signs emails to verify authenticity"
+                />
+              ))}
+
+              {domain.dns_records.dmarc && (
+                <DNSRecordRow
+                  record={domain.dns_records.dmarc}
+                  label="DMARC Policy"
+                  description="Tells receiving servers how to handle authentication failures"
+                />
+              )}
+
+              {!domain.is_verified && (
+                <div className="flex items-center justify-between p-3 bg-slate-800/30 rounded-lg">
+                  <p className="text-sm text-slate-400">
+                    After adding DNS records, click verify to check configuration.
+                  </p>
+                  <button
+                    onClick={handleVerify}
+                    disabled={isVerifying}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-lg hover:bg-amber-500/30 transition text-sm disabled:opacity-50"
+                  >
+                    {isVerifying ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    Verify DNS
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Fallback for domains without dns_records data */}
+      {!hasDnsRecords && !domain.is_verified && (
         <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
           <p className="text-sm text-amber-400 mb-2">DNS records need verification</p>
           <div className="text-xs text-slate-400 space-y-1">
             <p>Add these DNS records to verify your domain:</p>
             <code className="block p-2 bg-slate-800 rounded mt-2 text-slate-300">
-              TXT @ aexy-verification={domain.id?.slice(0, 8)}
+              TXT @ aexy-verification={domain.verification_token || domain.id?.slice(0, 8)}
             </code>
           </div>
         </div>
@@ -171,7 +386,7 @@ function ProviderCard({
   const handleTest = async () => {
     setIsTesting(true);
     try {
-      await onTest();
+      onTest();
     } finally {
       setIsTesting(false);
     }
@@ -321,7 +536,7 @@ function CategoryCard({
 export default function EmailSettingsPage() {
   const router = useRouter();
   const { currentWorkspace } = useWorkspace();
-  const { user, logout } = useAuth();
+  useAuth(); // Auth check
   const workspaceId = currentWorkspace?.id || null;
 
   const [activeTab, setActiveTab] = useState<TabType>("domains");
