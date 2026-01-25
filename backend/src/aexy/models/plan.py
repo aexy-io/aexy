@@ -49,6 +49,17 @@ class Plan(Base):
         default=["ollama"],
     )  # Which LLM providers are allowed
 
+    # Free token allocation per billing period (monthly)
+    # -1 means unlimited free tokens (no overage charges)
+    free_llm_tokens_per_month: Mapped[int] = mapped_column(Integer, default=100000)
+
+    # Pay-per-use pricing after free tier (in cents per 1K tokens)
+    llm_input_cost_per_1k_cents: Mapped[int] = mapped_column(Integer, default=30)  # $0.30 per 1K
+    llm_output_cost_per_1k_cents: Mapped[int] = mapped_column(Integer, default=60)  # $0.60 per 1K
+
+    # Whether overage billing is enabled (if False, usage stops at free tier limit)
+    enable_overage_billing: Mapped[bool] = mapped_column(Boolean, default=True)
+
     # Feature flags
     enable_real_time_sync: Mapped[bool] = mapped_column(Boolean, default=False)
     enable_advanced_analytics: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -110,6 +121,11 @@ DEFAULT_PLANS = [
         "llm_requests_per_minute": 5,
         "llm_tokens_per_minute": 20000,
         "llm_provider_access": ["ollama"],
+        # Free tier: 50K tokens/month, no overage (stops at limit)
+        "free_llm_tokens_per_month": 50000,
+        "llm_input_cost_per_1k_cents": 0,
+        "llm_output_cost_per_1k_cents": 0,
+        "enable_overage_billing": False,
         "enable_real_time_sync": False,
         "enable_advanced_analytics": False,
         "enable_exports": False,
@@ -130,6 +146,11 @@ DEFAULT_PLANS = [
         "llm_requests_per_minute": 20,
         "llm_tokens_per_minute": 100000,
         "llm_provider_access": ["claude", "gemini", "ollama"],
+        # Pro tier: 500K tokens/month included, then pay-per-use
+        "free_llm_tokens_per_month": 500000,
+        "llm_input_cost_per_1k_cents": 25,   # $0.25 per 1K input tokens
+        "llm_output_cost_per_1k_cents": 50,  # $0.50 per 1K output tokens
+        "enable_overage_billing": True,
         "enable_real_time_sync": True,
         "enable_advanced_analytics": True,
         "enable_exports": True,
@@ -150,6 +171,11 @@ DEFAULT_PLANS = [
         "llm_requests_per_minute": 60,
         "llm_tokens_per_minute": -1,  # Unlimited
         "llm_provider_access": ["claude", "gemini", "ollama"],
+        # Enterprise tier: 2M tokens/month included, discounted overage
+        "free_llm_tokens_per_month": 2000000,
+        "llm_input_cost_per_1k_cents": 15,   # $0.15 per 1K input tokens (40% discount)
+        "llm_output_cost_per_1k_cents": 30,  # $0.30 per 1K output tokens (40% discount)
+        "enable_overage_billing": True,
         "enable_real_time_sync": True,
         "enable_advanced_analytics": True,
         "enable_exports": True,

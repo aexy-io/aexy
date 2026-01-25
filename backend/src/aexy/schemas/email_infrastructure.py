@@ -65,7 +65,7 @@ class EmailProviderCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     provider_type: EmailProviderType
     description: str | None = None
-    credentials: dict = Field(..., min_length=1)  # Validated based on provider_type
+    credentials: dict = Field(default_factory=dict)  # Can be configured later
     settings: dict = Field(default_factory=dict)
     max_sends_per_second: int | None = Field(default=None, ge=1)
     max_sends_per_day: int | None = Field(default=None, ge=1)
@@ -108,7 +108,7 @@ class EmailProviderResponse(BaseModel):
     last_error: str | None
     created_at: datetime
     updated_at: datetime
-    # Note: credentials are intentionally omitted for security
+    has_credentials: bool = False  # Indicates if credentials are configured (actual values omitted for security)
 
 
 class EmailProviderListResponse(BaseModel):
@@ -126,6 +126,7 @@ class EmailProviderListResponse(BaseModel):
     max_sends_per_day: int | None
     last_check_status: str | None
     created_at: datetime
+    has_credentials: bool = False  # Indicates if credentials are configured
 
 
 class ProviderTestRequest(BaseModel):
@@ -166,7 +167,7 @@ class SendingDomainCreate(BaseModel):
     """Schema for creating a sending domain."""
     domain: str = Field(..., min_length=1, max_length=255)
     subdomain: str | None = Field(default=None, max_length=100)
-    provider_id: str
+    provider_id: str | None = None
     default_from_name: str | None = Field(default=None, max_length=255)
     default_reply_to: EmailStr | None = None
     is_default: bool = False
@@ -219,6 +220,9 @@ class SendingDomainListResponse(BaseModel):
     domain: str
     subdomain: str | None
     status: str
+    dns_records: dict
+    verification_token: str | None
+    verified_at: datetime | None
     warming_status: str
     warming_day: int
     daily_limit: int

@@ -214,10 +214,10 @@ class SendingDomain(Base):
         nullable=False,
         index=True,
     )
-    provider_id: Mapped[str] = mapped_column(
+    provider_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False),
-        ForeignKey("email_providers.id", ondelete="CASCADE"),
-        nullable=False,
+        ForeignKey("email_providers.id", ondelete="SET NULL"),
+        nullable=True,
         index=True,
     )
 
@@ -309,7 +309,7 @@ class SendingDomain(Base):
 
     # Relationships
     workspace: Mapped["Workspace"] = relationship("Workspace")
-    provider: Mapped["EmailProvider"] = relationship(
+    provider: Mapped["EmailProvider | None"] = relationship(
         "EmailProvider",
         back_populates="domains",
     )

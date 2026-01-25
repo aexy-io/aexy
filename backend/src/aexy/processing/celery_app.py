@@ -21,6 +21,8 @@ celery_app = Celery(
         "aexy.processing.email_marketing_tasks",
         "aexy.processing.warming_tasks",
         "aexy.processing.reputation_tasks",
+        "aexy.processing.booking_tasks",
+        "aexy.processing.uptime_tasks",
     ],
 )
 
@@ -70,6 +72,8 @@ celery_app.conf.update(
         "aexy.processing.email_marketing_tasks.*": {"queue": "email_campaigns"},
         "aexy.processing.warming_tasks.*": {"queue": "email_warming"},
         "aexy.processing.reputation_tasks.*": {"queue": "email_reputation"},
+        "aexy.processing.booking_tasks.*": {"queue": "booking"},
+        "aexy.processing.uptime_tasks.*": {"queue": "uptime"},
     },
 
     # Retry settings
@@ -173,6 +177,32 @@ celery_app.conf.update(
         "process-unprocessed-events": {
             "task": "aexy.processing.reputation_tasks.process_unprocessed_events",
             "schedule": 300,  # Every 5 minutes
+        },
+        # Booking module
+        "send-booking-reminders": {
+            "task": "aexy.processing.booking_tasks.send_booking_reminders",
+            "schedule": 900,  # Every 15 minutes
+        },
+        "sync-booking-calendars": {
+            "task": "aexy.processing.booking_tasks.sync_all_calendars",
+            "schedule": 300,  # Every 5 minutes
+        },
+        "cleanup-expired-pending-bookings": {
+            "task": "aexy.processing.booking_tasks.cleanup_expired_pending_bookings",
+            "schedule": 600,  # Every 10 minutes
+        },
+        "mark-completed-bookings": {
+            "task": "aexy.processing.booking_tasks.mark_completed_bookings",
+            "schedule": 3600,  # Hourly
+        },
+        # Uptime monitoring
+        "uptime-process-due-checks": {
+            "task": "aexy.processing.uptime_tasks.process_due_checks",
+            "schedule": 60,  # Every minute
+        },
+        "uptime-cleanup-old-checks": {
+            "task": "aexy.processing.uptime_tasks.cleanup_old_checks",
+            "schedule": 3600 * 24,  # Daily - keep 30 days
         },
     },
 )

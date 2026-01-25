@@ -53,6 +53,17 @@ class Developer(Base):
         nullable=True,
     )
 
+    # Monthly token usage tracking for pay-per-use billing
+    llm_tokens_used_this_month: Mapped[int] = mapped_column(BigInteger, default=0)
+    llm_input_tokens_this_month: Mapped[int] = mapped_column(BigInteger, default=0)
+    llm_output_tokens_this_month: Mapped[int] = mapped_column(BigInteger, default=0)
+    llm_tokens_reset_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    # Overage cost accumulated this billing period (in cents)
+    llm_overage_cost_cents: Mapped[int] = mapped_column(Integer, default=0)
+
     # Skill fingerprint stored as JSON
     skill_fingerprint: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 

@@ -7,6 +7,7 @@ import {
     LayoutDashboard,
     Target,
     Calendar,
+    CalendarCheck,
     Ticket,
     FormInput,
     FileText,
@@ -33,7 +34,12 @@ import {
     Send,
     FileCode,
     Settings,
+    CalendarClock,
+    Link2,
     LucideIcon,
+    MonitorCheck,
+    AlertTriangle,
+    History,
 } from "lucide-react";
 
 export type SidebarLayoutType = "grouped" | "flat";
@@ -101,6 +107,19 @@ const emailItems: SidebarItemConfig[] = [
     { href: "/email-marketing/settings", label: "Settings", icon: Settings },
 ];
 
+const bookingItems: SidebarItemConfig[] = [
+    { href: "/booking/event-types", label: "Event Types", icon: CalendarCheck },
+    { href: "/booking/availability", label: "Availability", icon: CalendarClock },
+    { href: "/booking/team-calendar", label: "Team Calendar", icon: Users },
+    { href: "/booking/calendars", label: "Calendars", icon: Link2 },
+];
+
+const uptimeItems: SidebarItemConfig[] = [
+    { href: "/uptime/monitors", label: "Monitors", icon: MonitorCheck },
+    { href: "/uptime/incidents", label: "Incidents", icon: AlertTriangle },
+    { href: "/uptime/history", label: "History", icon: History },
+];
+
 /**
  * Version 1: Grouped Layout (Role-Based)
  * Items organized by functional areas: Engineering, People, Business, Knowledge
@@ -134,6 +153,12 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
                     items: planningItems,
                 },
                 { href: "/tickets", label: "Tickets", icon: Ticket },
+                {
+                    href: "/uptime",
+                    label: "Uptime",
+                    icon: MonitorCheck,
+                    items: uptimeItems,
+                },
             ],
         },
         {
@@ -164,6 +189,12 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
                     label: "CRM",
                     icon: Building2,
                     items: crmItems,
+                },
+                {
+                    href: "/booking",
+                    label: "Booking",
+                    icon: CalendarCheck,
+                    items: bookingItems,
                 },
                 {
                     href: "/email-marketing",
@@ -212,6 +243,12 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                 },
                 { href: "/tickets", label: "Tickets", icon: Ticket },
                 {
+                    href: "/uptime",
+                    label: "Uptime",
+                    icon: MonitorCheck,
+                    items: uptimeItems,
+                },
+                {
                     href: "/reviews",
                     label: "Reviews",
                     icon: ClipboardCheck,
@@ -228,6 +265,12 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                     label: "CRM",
                     icon: Building2,
                     items: crmItems,
+                },
+                {
+                    href: "/booking",
+                    label: "Booking",
+                    icon: CalendarCheck,
+                    items: bookingItems,
                 },
                 { href: "/learning", label: "Learning", icon: GraduationCap },
                 { href: "/docs", label: "Docs", icon: FileText },

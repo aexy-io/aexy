@@ -24,6 +24,15 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  async rewrites() {
+    return [
+      // Clean booking URLs: /book/* -> /public/book/*
+      {
+        source: '/book/:path*',
+        destination: '/public/book/:path*',
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

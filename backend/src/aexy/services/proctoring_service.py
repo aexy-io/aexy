@@ -92,7 +92,7 @@ class ProctoringService:
             attempt_id=attempt_id,
             event_type=event_type,
             severity=severity,
-            data=data or {},
+            event_data=data or {},
             screenshot_url=screenshot_url,
             timestamp=datetime.now(timezone.utc),
         )
@@ -211,7 +211,7 @@ class ProctoringService:
             if event_type not in event_summary:
                 event_summary[event_type] = {
                     "count": 0,
-                    "severity": event.severity.value,
+                    "severity": event.severity.value if hasattr(event.severity, 'value') else event.severity,
                     "timestamps": [],
                 }
             event_summary[event_type]["count"] += 1
@@ -305,9 +305,9 @@ class ProctoringService:
         for event in events:
             events_data.append({
                 "type": event.event_type,
-                "severity": event.severity.value,
+                "severity": event.severity.value if hasattr(event.severity, 'value') else event.severity,
                 "timestamp": event.timestamp.isoformat() if event.timestamp else None,
-                "data": event.data,
+                "data": event.event_data,
             })
 
         prompt = PROCTORING_BEHAVIOR_ANALYSIS_PROMPT.format(
@@ -366,7 +366,9 @@ class ProctoringService:
 
         # Count critical events
         critical_events = [
-            e for e in events if e.severity == ProctoringEventSeverity.CRITICAL
+            e for e in events
+            if (e.severity == ProctoringEventSeverity.CRITICAL or
+                e.severity == ProctoringEventSeverity.CRITICAL.value)
         ]
 
         # Determine if flagged
@@ -391,7 +393,7 @@ class ProctoringService:
             "violations": [
                 {
                     "type": e.event_type,
-                    "severity": e.severity.value,
+                    "severity": e.severity.value if hasattr(e.severity, 'value') else e.severity,
                     "timestamp": e.timestamp.isoformat() if e.timestamp else None,
                 }
                 for e in critical_events

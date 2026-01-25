@@ -414,6 +414,24 @@ class Settings(BaseSettings):
         description="Google OAuth redirect URI for Google integration",
     )
 
+    # Microsoft OAuth (for calendar integration)
+    microsoft_client_id: str = Field(
+        default="",
+        description="Microsoft Azure AD App Client ID",
+    )
+    microsoft_client_secret: str = Field(
+        default="",
+        description="Microsoft Azure AD App Client Secret",
+    )
+    microsoft_tenant_id: str = Field(
+        default="common",
+        description="Microsoft Azure AD Tenant ID (use 'common' for multi-tenant)",
+    )
+    microsoft_redirect_uri: str = Field(
+        default="http://localhost:8000/api/v1/integrations/microsoft/callback",
+        description="Microsoft OAuth redirect URI for calendar integration",
+    )
+
     # Slack Integration
     slack_client_id: str = Field(
         default="",
@@ -452,6 +470,20 @@ class Settings(BaseSettings):
         description="Anthropic API key for Claude (used by AI agents)",
     )
 
+    # Platform Admin Configuration
+    admin_emails: str = Field(
+        default="",
+        description="Comma-separated list of platform admin emails",
+        validation_alias="ADMIN_EMAILS",
+    )
+
+    @property
+    def admin_email_list(self) -> list[str]:
+        """Parse admin emails from comma-separated string."""
+        if not self.admin_emails:
+            return []
+        return [e.strip().lower() for e in self.admin_emails.split(",") if e.strip()]
+
     # Email Tracking
     email_tracking_enabled: bool = Field(
         default=True,
@@ -471,6 +503,40 @@ class Settings(BaseSettings):
         if self.email_tracking_domain:
             return f"https://{self.email_tracking_domain}"
         return self.backend_url
+
+    # Cloudflare R2 Storage (for video recordings)
+    r2_access_key_id: str = Field(
+        default="",
+        description="Cloudflare R2 Access Key ID",
+        validation_alias="R2_ACCESS_KEY_ID",
+    )
+    r2_secret_access_key: str = Field(
+        default="",
+        description="Cloudflare R2 Secret Access Key",
+        validation_alias="R2_SECRET_ACCESS_KEY",
+    )
+    r2_account_id: str = Field(
+        default="",
+        description="Cloudflare Account ID for R2",
+        validation_alias="R2_ACCOUNT_ID",
+    )
+    r2_bucket_name: str = Field(
+        default="",
+        description="R2 bucket name for assessment recordings",
+        validation_alias="R2_BUCKET_NAME",
+    )
+    r2_recordings_prefix: str = Field(
+        default="assessment-recordings",
+        description="R2 key prefix for assessment recordings",
+        validation_alias="R2_RECORDINGS_PREFIX",
+    )
+
+    @property
+    def r2_endpoint_url(self) -> str:
+        """Get the R2 endpoint URL based on account ID."""
+        if self.r2_account_id:
+            return f"https://{self.r2_account_id}.r2.cloudflarestorage.com"
+        return ""
 
     # LLM Configuration
     llm: LLMSettings = Field(default_factory=LLMSettings)

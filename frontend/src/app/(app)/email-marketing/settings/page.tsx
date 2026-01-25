@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import {
   ChevronLeft,
   Globe,
@@ -23,13 +22,102 @@ import {
   TestTube,
   Tags,
   Edit3,
+  Copy,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
 import { useSendingDomains, useEmailProviders, useSubscriptionCategories } from "@/hooks/useEmailMarketing";
-import { SendingDomain, EmailProvider, SubscriptionCategory } from "@/lib/api";
+import { SendingDomain, EmailProvider, SubscriptionCategory, DNSRecord } from "@/lib/api";
 
 type TabType = "domains" | "providers" | "categories";
+
+function DNSRecordRow({
+  record,
+  label,
+  description,
+}: {
+  record: DNSRecord;
+  label: string;
+  description?: string;
+}) {
+  const [copied, setCopied] = useState<"name" | "value" | null>(null);
+
+  const copyToClipboard = async (text: string, field: "name" | "value") => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(field);
+      setTimeout(() => setCopied(null), 2000);
+    } catch {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      setCopied(field);
+      setTimeout(() => setCopied(null), 2000);
+    }
+  };
+
+  return (
+    <div className="bg-slate-800/50 rounded-lg p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded text-xs font-medium">
+            {record.record_type}
+          </span>
+          <span className="text-sm font-medium text-white">{label}</span>
+          {record.verified ? (
+            <CheckCircle className="h-4 w-4 text-emerald-400" />
+          ) : (
+            <AlertCircle className="h-4 w-4 text-amber-400" />
+          )}
+        </div>
+        <span className={`text-xs ${record.verified ? "text-emerald-400" : "text-amber-400"}`}>
+          {record.verified ? "Verified" : "Pending"}
+        </span>
+      </div>
+      {description && <p className="text-xs text-slate-500">{description}</p>}
+      <div className="space-y-2">
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">Host / Name</label>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 px-3 py-2 bg-slate-900 rounded text-sm text-slate-300 font-mono overflow-x-auto">
+              {record.name}
+            </code>
+            <button
+              onClick={() => copyToClipboard(record.name, "name")}
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition flex-shrink-0"
+              title="Copy host"
+            >
+              {copied === "name" ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">Value / Content</label>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 px-3 py-2 bg-slate-900 rounded text-sm text-slate-300 font-mono overflow-x-auto break-all">
+              {record.value}
+            </code>
+            <button
+              onClick={() => copyToClipboard(record.value, "value")}
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition flex-shrink-0"
+              title="Copy value"
+            >
+              {copied === "value" ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+      </div>
+      {record.note && <p className="text-xs text-slate-500 italic">{record.note}</p>}
+    </div>
+  );
+}
 
 function DomainCard({
   domain,
@@ -46,6 +134,18 @@ function DomainCard({
   onStartWarming: () => void;
   onDelete: () => void;
 }) {
+  const [showDnsRecords, setShowDnsRecords] = useState(!domain.is_verified);
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  const handleVerify = async () => {
+    setIsVerifying(true);
+    try {
+      onVerify();
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   const getStatusIcon = () => {
     if (!domain.is_active) return <Pause className="h-4 w-4 text-slate-400" />;
     if (!domain.is_verified) return <AlertCircle className="h-4 w-4 text-amber-400" />;
@@ -64,6 +164,13 @@ function DomainCard({
     return "Poor Health";
   };
 
+  const hasDnsRecords = domain.dns_records && (
+    domain.dns_records.verification ||
+    domain.dns_records.spf ||
+    domain.dns_records.dkim?.length ||
+    domain.dns_records.dmarc
+  );
+
   return (
     <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
       <div className="flex items-start justify-between mb-4">
@@ -72,7 +179,19 @@ function DomainCard({
             <Globe className="h-5 w-5 text-purple-400" />
           </div>
           <div>
-            <h3 className="text-white font-medium">{domain.domain}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-white font-medium">{domain.domain}</h3>
+              {!domain.is_verified && (
+                <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded text-xs font-medium">
+                  Action Required
+                </span>
+              )}
+              {domain.is_default && (
+                <span className="px-2 py-0.5 bg-sky-500/20 text-sky-400 rounded text-xs font-medium">
+                  Default
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-2 mt-1">
               {getStatusIcon()}
               <span className="text-sm text-slate-400">{getStatusText()}</span>
@@ -82,11 +201,12 @@ function DomainCard({
         <div className="flex items-center gap-1">
           {!domain.is_verified && (
             <button
-              onClick={onVerify}
-              className="p-2 text-amber-400 hover:bg-amber-500/20 rounded-lg transition"
+              onClick={handleVerify}
+              disabled={isVerifying}
+              className="p-2 text-amber-400 hover:bg-amber-500/20 rounded-lg transition disabled:opacity-50"
               title="Verify DNS"
             >
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className={`h-4 w-4 ${isVerifying ? "animate-spin" : ""}`} />
             </button>
           )}
           {domain.is_verified && domain.warming_status === "not_started" && (
@@ -140,13 +260,107 @@ function DomainCard({
         </div>
       </div>
 
-      {!domain.is_verified && (
+      {/* DNS Records Section */}
+      {hasDnsRecords && (
+        <div className="border-t border-slate-800 pt-4 mt-4">
+          <button
+            onClick={() => setShowDnsRecords(!showDnsRecords)}
+            className="flex items-center justify-between w-full text-left"
+          >
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-slate-400" />
+              <span className="text-sm font-medium text-white">DNS Records</span>
+              {!domain.is_verified && (
+                <span className="text-xs text-amber-400">Configuration required</span>
+              )}
+            </div>
+            {showDnsRecords ? (
+              <ChevronUp className="h-4 w-4 text-slate-400" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-slate-400" />
+            )}
+          </button>
+
+          {showDnsRecords && (
+            <div className="mt-4 space-y-4">
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <p>Add these DNS records to your domain registrar to enable email sending.</p>
+                <a
+                  href="https://github.com/bhanuc/aexy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-sky-400 hover:text-sky-300"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  Documentation
+                </a>
+              </div>
+
+              {domain.dns_records.verification && (
+                <DNSRecordRow
+                  record={domain.dns_records.verification}
+                  label="Domain Verification"
+                  description="Proves ownership of this domain"
+                />
+              )}
+
+              {domain.dns_records.spf && (
+                <DNSRecordRow
+                  record={domain.dns_records.spf}
+                  label="SPF Record"
+                  description="Authorizes mail servers to send on your behalf"
+                />
+              )}
+
+              {domain.dns_records.dkim?.map((dkimRecord, idx) => (
+                <DNSRecordRow
+                  key={idx}
+                  record={dkimRecord}
+                  label={`DKIM Record ${domain.dns_records.dkim && domain.dns_records.dkim.length > 1 ? idx + 1 : ""}`}
+                  description="Cryptographically signs emails to verify authenticity"
+                />
+              ))}
+
+              {domain.dns_records.dmarc && (
+                <DNSRecordRow
+                  record={domain.dns_records.dmarc}
+                  label="DMARC Policy"
+                  description="Tells receiving servers how to handle authentication failures"
+                />
+              )}
+
+              {!domain.is_verified && (
+                <div className="flex items-center justify-between p-3 bg-slate-800/30 rounded-lg">
+                  <p className="text-sm text-slate-400">
+                    After adding DNS records, click verify to check configuration.
+                  </p>
+                  <button
+                    onClick={handleVerify}
+                    disabled={isVerifying}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-lg hover:bg-amber-500/30 transition text-sm disabled:opacity-50"
+                  >
+                    {isVerifying ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    Verify DNS
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Fallback for domains without dns_records data */}
+      {!hasDnsRecords && !domain.is_verified && (
         <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
           <p className="text-sm text-amber-400 mb-2">DNS records need verification</p>
           <div className="text-xs text-slate-400 space-y-1">
             <p>Add these DNS records to verify your domain:</p>
             <code className="block p-2 bg-slate-800 rounded mt-2 text-slate-300">
-              TXT @ aexy-verification={domain.id?.slice(0, 8)}
+              TXT @ aexy-verification={domain.verification_token || domain.id?.slice(0, 8)}
             </code>
           </div>
         </div>
@@ -159,11 +373,13 @@ function ProviderCard({
   provider,
   onToggle,
   onTest,
+  onEdit,
   onDelete,
 }: {
   provider: EmailProvider;
   onToggle: () => void;
-  onTest: () => void;
+  onTest: () => Promise<unknown>;
+  onEdit: () => void;
   onDelete: () => void;
 }) {
   const [isTesting, setIsTesting] = useState(false);
@@ -176,6 +392,8 @@ function ProviderCard({
       setIsTesting(false);
     }
   };
+
+  const hasCredentials = provider.has_credentials;
 
   return (
     <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
@@ -190,6 +408,11 @@ function ProviderCard({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {!hasCredentials && (
+            <span className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded-full text-xs font-medium">
+              Setup Required
+            </span>
+          )}
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
             provider.is_active
               ? "bg-emerald-500/20 text-emerald-400"
@@ -205,18 +428,30 @@ function ProviderCard({
         </div>
       </div>
 
+      {provider.description && (
+        <p className="text-sm text-slate-400 mb-4">{provider.description}</p>
+      )}
+
       <div className="flex items-center gap-2">
         <button
+          onClick={onEdit}
+          className="flex items-center gap-2 px-3 py-1.5 bg-sky-500/20 text-sky-400 hover:bg-sky-500/30 rounded-lg transition text-sm"
+        >
+          <Settings className="h-4 w-4" />
+          Configure
+        </button>
+        <button
           onClick={handleTest}
-          disabled={isTesting}
-          className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-lg transition text-sm"
+          disabled={isTesting || !hasCredentials}
+          className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-lg transition text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          title={!hasCredentials ? "Configure credentials first" : "Test connection"}
         >
           {isTesting ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <TestTube className="h-4 w-4" />
           )}
-          Test Connection
+          Test
         </button>
         <button
           onClick={onToggle}
@@ -321,7 +556,7 @@ function CategoryCard({
 export default function EmailSettingsPage() {
   const router = useRouter();
   const { currentWorkspace } = useWorkspace();
-  const { user, logout } = useAuth();
+  useAuth(); // Auth check
   const workspaceId = currentWorkspace?.id || null;
 
   const [activeTab, setActiveTab] = useState<TabType>("domains");
@@ -329,9 +564,15 @@ export default function EmailSettingsPage() {
   const [showAddProvider, setShowAddProvider] = useState(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [editingCategory, setEditingCategory] = useState<SubscriptionCategory | null>(null);
+  const [editingProvider, setEditingProvider] = useState<EmailProvider | null>(null);
   const [newDomain, setNewDomain] = useState("");
   const [newProviderName, setNewProviderName] = useState("");
   const [newProviderType, setNewProviderType] = useState("ses");
+
+  // Provider credentials state
+  const [providerCredentials, setProviderCredentials] = useState<Record<string, string>>({});
+  const [providerDescription, setProviderDescription] = useState("");
+
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategorySlug, setNewCategorySlug] = useState("");
   const [newCategoryDescription, setNewCategoryDescription] = useState("");
@@ -406,6 +647,89 @@ export default function EmailSettingsPage() {
   const handleDeleteProvider = async (id: string) => {
     if (confirm("Are you sure you want to delete this provider?")) {
       await deleteProvider(id);
+    }
+  };
+
+  const openEditProvider = (provider: EmailProvider) => {
+    setEditingProvider(provider);
+    setNewProviderName(provider.name);
+    setProviderDescription(provider.description || "");
+    // Extract credentials (they may be masked on backend, but we show what we have)
+    // Convert unknown values to strings for the form
+    const creds: Record<string, string> = {};
+    if (provider.credentials) {
+      for (const [key, value] of Object.entries(provider.credentials)) {
+        creds[key] = String(value ?? "");
+      }
+    }
+    setProviderCredentials(creds);
+  };
+
+  const closeEditProvider = () => {
+    setEditingProvider(null);
+    setNewProviderName("");
+    setProviderDescription("");
+    setProviderCredentials({});
+  };
+
+  const handleUpdateProvider = async () => {
+    if (!editingProvider) return;
+    try {
+      await updateProvider({
+        providerId: editingProvider.id,
+        data: {
+          name: newProviderName,
+          description: providerDescription || undefined,
+          credentials: providerCredentials,
+        },
+      });
+      closeEditProvider();
+    } catch {
+      // Error handled by mutation
+    }
+  };
+
+  type CredentialField = {
+    key: string;
+    label: string;
+    type: "text" | "password" | "number" | "select" | "checkbox";
+    placeholder?: string;
+    options?: { value: string; label: string }[];
+  };
+
+  const getCredentialFields = (providerType: string): CredentialField[] => {
+    switch (providerType) {
+      case "ses":
+        return [
+          { key: "access_key_id", label: "Access Key ID", type: "text", placeholder: "AKIAIOSFODNN7EXAMPLE" },
+          { key: "secret_access_key", label: "Secret Access Key", type: "password", placeholder: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" },
+          { key: "region", label: "Region", type: "text", placeholder: "us-east-1" },
+          { key: "configuration_set", label: "Configuration Set (optional)", type: "text", placeholder: "my-configuration-set" },
+        ];
+      case "sendgrid":
+        return [
+          { key: "api_key", label: "API Key", type: "password", placeholder: "SG.xxxxxxxxxxxxxxxxxxxx" },
+        ];
+      case "mailgun":
+        return [
+          { key: "api_key", label: "API Key", type: "password", placeholder: "key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" },
+          { key: "domain", label: "Domain", type: "text", placeholder: "mg.example.com" },
+          { key: "region", label: "Region", type: "select", options: [{ value: "us", label: "US" }, { value: "eu", label: "EU" }] },
+        ];
+      case "postmark":
+        return [
+          { key: "server_token", label: "Server Token", type: "password", placeholder: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" },
+        ];
+      case "smtp":
+        return [
+          { key: "host", label: "SMTP Host", type: "text", placeholder: "smtp.example.com" },
+          { key: "port", label: "Port", type: "number", placeholder: "587" },
+          { key: "username", label: "Username", type: "text", placeholder: "user@example.com" },
+          { key: "password", label: "Password", type: "password", placeholder: "password" },
+          { key: "use_tls", label: "Use TLS", type: "checkbox" },
+        ];
+      default:
+        return [];
     }
   };
 
@@ -651,6 +975,7 @@ export default function EmailSettingsPage() {
                         data: { is_active: !provider.is_active }
                       })}
                       onTest={() => testProvider(provider.id)}
+                      onEdit={() => openEditProvider(provider)}
                       onDelete={() => handleDeleteProvider(provider.id)}
                     />
                   ))}
@@ -812,6 +1137,113 @@ export default function EmailSettingsPage() {
                 className="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition disabled:opacity-50"
               >
                 Add Provider
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Provider Modal */}
+      {editingProvider && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="p-4 border-b border-slate-800">
+              <h3 className="text-lg font-medium text-white">
+                Configure {editingProvider.provider_type.toUpperCase()} Provider
+              </h3>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">Provider Name</label>
+                <input
+                  type="text"
+                  value={newProviderName}
+                  onChange={(e) => setNewProviderName(e.target.value)}
+                  placeholder="My Provider"
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">Description (optional)</label>
+                <input
+                  type="text"
+                  value={providerDescription}
+                  onChange={(e) => setProviderDescription(e.target.value)}
+                  placeholder="Production email provider"
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+
+              <div className="border-t border-slate-800 pt-4">
+                <h4 className="text-sm font-medium text-white mb-3">Credentials</h4>
+                <div className="space-y-3">
+                  {getCredentialFields(editingProvider.provider_type).map((field) => (
+                    <div key={field.key}>
+                      <label className="block text-sm text-slate-400 mb-1">{field.label}</label>
+                      {field.type === "select" && field.options ? (
+                        <select
+                          value={providerCredentials[field.key] || ""}
+                          onChange={(e) => setProviderCredentials({
+                            ...providerCredentials,
+                            [field.key]: e.target.value,
+                          })}
+                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        >
+                          <option value="">Select...</option>
+                          {field.options.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      ) : field.type === "checkbox" ? (
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={providerCredentials[field.key] === "true"}
+                            onChange={(e) => setProviderCredentials({
+                              ...providerCredentials,
+                              [field.key]: e.target.checked ? "true" : "false",
+                            })}
+                            className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-sky-500"
+                          />
+                          <span className="text-sm text-slate-300">Enable TLS encryption</span>
+                        </label>
+                      ) : (
+                        <input
+                          type={field.type}
+                          value={providerCredentials[field.key] || ""}
+                          onChange={(e) => setProviderCredentials({
+                            ...providerCredentials,
+                            [field.key]: e.target.value,
+                          })}
+                          placeholder={field.placeholder}
+                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-slate-800/50 rounded-lg p-3">
+                <p className="text-xs text-slate-400">
+                  <strong className="text-slate-300">Security note:</strong> Credentials are encrypted and stored securely.
+                  After saving, some credential values may be masked for security.
+                </p>
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-800 flex justify-end gap-2">
+              <button
+                onClick={closeEditProvider}
+                className="px-4 py-2 text-slate-400 hover:text-white transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateProvider}
+                disabled={!newProviderName}
+                className="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition disabled:opacity-50"
+              >
+                Save Changes
               </button>
             </div>
           </div>

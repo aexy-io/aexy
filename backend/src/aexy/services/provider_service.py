@@ -16,6 +16,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
+from aexy.core.encryption import encrypt_credentials, decrypt_credentials
 from aexy.models.email_infrastructure import (
     EmailProvider,
     SendingDomain,
@@ -157,6 +158,12 @@ class SESClient(EmailProviderClient):
             }
 
     async def test_connection(self) -> dict:
+        # Check for required credentials first
+        if not self.access_key_id or not self.secret_access_key:
+            return {
+                "success": False,
+                "message": "SES credentials not configured. Please add access_key_id and secret_access_key."
+            }
         try:
             self.client.get_send_quota()
             return {"success": True, "message": "SES connection successful"}
@@ -252,6 +259,12 @@ class SendGridClient(EmailProviderClient):
                 return {"success": False, "error": str(e), "provider": "sendgrid"}
 
     async def test_connection(self) -> dict:
+        # Check for required credentials first
+        if not self.api_key:
+            return {
+                "success": False,
+                "message": "SendGrid credentials not configured. Please add api_key."
+            }
         # Test by fetching user info
         async with httpx.AsyncClient() as client:
             try:
@@ -349,6 +362,12 @@ class MailgunClient(EmailProviderClient):
                 return {"success": False, "error": str(e), "provider": "mailgun"}
 
     async def test_connection(self) -> dict:
+        # Check for required credentials first
+        if not self.api_key or not self.domain:
+            return {
+                "success": False,
+                "message": "Mailgun credentials not configured. Please add api_key and domain."
+            }
         async with httpx.AsyncClient() as client:
             try:
                 # Test by getting domain info
@@ -449,6 +468,12 @@ class PostmarkClient(EmailProviderClient):
                 return {"success": False, "error": str(e), "provider": "postmark"}
 
     async def test_connection(self) -> dict:
+        # Check for required credentials first
+        if not self.server_token:
+            return {
+                "success": False,
+                "message": "Postmark credentials not configured. Please add server_token."
+            }
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.get(
@@ -551,6 +576,12 @@ class SMTPClient(EmailProviderClient):
             return {"success": False, "error": str(e), "provider": "smtp"}
 
     async def test_connection(self) -> dict:
+        # Check for required credentials first
+        if not self.host:
+            return {
+                "success": False,
+                "message": "SMTP credentials not configured. Please add host."
+            }
         try:
             use_ssl = self.port == 465
             start_tls = self.use_tls and not use_ssl
@@ -581,16 +612,19 @@ def get_provider_client(provider: EmailProvider) -> EmailProviderClient:
     """Factory function to create the appropriate provider client."""
     provider_type = provider.provider_type
 
+    # Decrypt credentials before passing to client
+    credentials = decrypt_credentials(provider.credentials)
+
     if provider_type == EmailProviderType.SES.value:
-        return SESClient(provider.credentials)
+        return SESClient(credentials)
     elif provider_type == EmailProviderType.SENDGRID.value:
-        return SendGridClient(provider.credentials)
+        return SendGridClient(credentials)
     elif provider_type == EmailProviderType.MAILGUN.value:
-        return MailgunClient(provider.credentials)
+        return MailgunClient(credentials)
     elif provider_type == EmailProviderType.POSTMARK.value:
-        return PostmarkClient(provider.credentials)
+        return PostmarkClient(credentials)
     elif provider_type == EmailProviderType.SMTP.value:
-        return SMTPClient(provider.credentials)
+        return SMTPClient(credentials)
     else:
         raise ValueError(f"Unsupported provider type: {provider_type}")
 
@@ -611,13 +645,16 @@ class ProviderService:
         data: EmailProviderCreate,
     ) -> EmailProvider:
         """Create a new email provider."""
+        # Encrypt credentials before storing
+        encrypted_creds = encrypt_credentials(data.credentials) if data.credentials else {}
+
         provider = EmailProvider(
             id=str(uuid4()),
             workspace_id=workspace_id,
             name=data.name,
             provider_type=data.provider_type,
             description=data.description,
-            credentials=data.credentials,
+            credentials=encrypted_creds,
             settings=data.settings,
             max_sends_per_second=data.max_sends_per_second,
             max_sends_per_day=data.max_sends_per_day,
@@ -662,6 +699,10 @@ class ProviderService:
         # Handle default flag
         if update_data.get("is_default"):
             await self._unset_default_providers(workspace_id, exclude_id=provider_id)
+
+        # Encrypt credentials if being updated
+        if "credentials" in update_data and update_data["credentials"]:
+            update_data["credentials"] = encrypt_credentials(update_data["credentials"])
 
         for key, value in update_data.items():
             setattr(provider, key, value)

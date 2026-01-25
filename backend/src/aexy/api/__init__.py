@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from aexy.api.admin import router as admin_router
+from aexy.api.platform_admin import router as platform_admin_router
 from aexy.api.admin_rate_limits import router as admin_rate_limits_router
 from aexy.api.analysis import router as analysis_router
 from aexy.api.auth import router as auth_router
@@ -104,6 +105,8 @@ from aexy.api.dashboard import router as dashboard_router
 # Roles & Projects
 from aexy.api.roles import router as roles_router
 from aexy.api.projects import router as projects_router
+# App Access Control
+from aexy.api.app_access import router as app_access_router
 # Email Marketing
 from aexy.api.email_marketing import router as email_marketing_router
 # Email Infrastructure (Multi-domain sending, warming, routing)
@@ -116,6 +119,15 @@ from aexy.api.preferences import public_router as preferences_public_router
 from aexy.api.preferences import admin_router as subscriptions_router
 # Visual Email Builder
 from aexy.api.visual_builder import router as visual_builder_router
+# Knowledge Graph (Enterprise)
+from aexy.api.knowledge_graph import router as knowledge_graph_router
+# Calendar Booking
+from aexy.api.booking import router as booking_router
+from aexy.api.booking import public_booking_router
+from aexy.api.booking import rsvp_booking_router
+from aexy.api.booking import calendar_callback_booking_router
+# Uptime Monitoring
+from aexy.api.uptime import router as uptime_router
 
 api_router = APIRouter()
 
@@ -126,6 +138,7 @@ api_router.include_router(webhooks_router, prefix="/webhooks", tags=["webhooks"]
 api_router.include_router(teams_router, prefix="/teams", tags=["teams"])
 api_router.include_router(analysis_router, tags=["analysis"])
 api_router.include_router(admin_router, tags=["admin"])
+api_router.include_router(platform_admin_router, tags=["platform-admin"])
 api_router.include_router(admin_rate_limits_router, tags=["admin-rate-limits"])
 # Phase 3: Career Intelligence
 api_router.include_router(career_router, tags=["career"])
@@ -226,6 +239,8 @@ api_router.include_router(dashboard_router, tags=["dashboard"])
 # Roles & Projects
 api_router.include_router(roles_router, tags=["roles"])
 api_router.include_router(projects_router, tags=["projects"])
+# App Access Control
+api_router.include_router(app_access_router, tags=["app-access"])
 # Email Marketing
 api_router.include_router(email_marketing_router, tags=["email-marketing"])
 # Email Infrastructure (Multi-domain sending, warming, routing)
@@ -238,3 +253,12 @@ api_router.include_router(preferences_public_router, tags=["preferences-public"]
 api_router.include_router(subscriptions_router, tags=["subscriptions"])
 # Visual Email Builder
 api_router.include_router(visual_builder_router, tags=["visual-builder"])
+# Knowledge Graph (Enterprise)
+api_router.include_router(knowledge_graph_router, tags=["knowledge-graph"])
+# Calendar Booking
+api_router.include_router(booking_router, tags=["booking"])
+api_router.include_router(public_booking_router, tags=["booking-public"])
+api_router.include_router(rsvp_booking_router, tags=["booking-rsvp"])
+api_router.include_router(calendar_callback_booking_router, tags=["booking-calendar-callback"])
+# Uptime Monitoring
+api_router.include_router(uptime_router, tags=["uptime"])

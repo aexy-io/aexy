@@ -36,11 +36,11 @@ export default function Step3ScheduleSettings({
 
   // Proctoring state
   const [enableProctoring, setEnableProctoring] = useState(true);
-  const [webcamRequired, setWebcamRequired] = useState(true);
-  const [screenRecording, setScreenRecording] = useState(false);
-  const [fullscreenRequired, setFullscreenRequired] = useState(true);
-  const [faceDetection, setFaceDetection] = useState(true);
-  const [tabSwitchDetection, setTabSwitchDetection] = useState(true);
+  const [enableWebcam, setEnableWebcam] = useState(true);
+  const [enableScreenRecording, setEnableScreenRecording] = useState(false);
+  const [enableFullscreenEnforcement, setEnableFullscreenEnforcement] = useState(true);
+  const [enableFaceDetection, setEnableFaceDetection] = useState(true);
+  const [enableTabTracking, setEnableTabTracking] = useState(true);
 
   // Security state
   const [disableCopyPaste, setDisableCopyPaste] = useState(true);
@@ -77,12 +77,12 @@ export default function Step3ScheduleSettings({
 
     if (assessment.proctoring_settings) {
       const proctoring = assessment.proctoring_settings;
-      setEnableProctoring(proctoring.enabled ?? true);
-      setWebcamRequired(proctoring.webcam_required ?? true);
-      setScreenRecording(proctoring.screen_recording ?? false);
-      setFullscreenRequired(proctoring.fullscreen_required ?? true);
-      setFaceDetection(proctoring.face_detection ?? true);
-      setTabSwitchDetection(proctoring.tab_switch_detection ?? true);
+      setEnableProctoring(proctoring.enabled ?? proctoring.enable_webcam ?? true);
+      setEnableWebcam(proctoring.enable_webcam ?? true);
+      setEnableScreenRecording(proctoring.enable_screen_recording ?? false);
+      setEnableFullscreenEnforcement(proctoring.enable_fullscreen_enforcement ?? true);
+      setEnableFaceDetection(proctoring.enable_face_detection ?? true);
+      setEnableTabTracking(proctoring.enable_tab_tracking ?? true);
     }
 
     if (assessment.security_settings) {
@@ -123,11 +123,14 @@ export default function Step3ScheduleSettings({
 
       const proctoring: ProctoringSettings = {
         enabled: enableProctoring,
-        webcam_required: webcamRequired,
-        screen_recording: screenRecording,
-        fullscreen_required: fullscreenRequired,
-        face_detection: faceDetection,
-        tab_switch_detection: tabSwitchDetection,
+        enable_webcam: enableWebcam,
+        enable_screen_recording: enableScreenRecording,
+        enable_fullscreen_enforcement: enableFullscreenEnforcement,
+        enable_face_detection: enableFaceDetection,
+        enable_tab_tracking: enableTabTracking,
+        enable_copy_paste_detection: disableCopyPaste,
+        allow_calculator: false,
+        allow_ide: false,
       };
 
       const security: SecuritySettings = {
@@ -145,7 +148,7 @@ export default function Step3ScheduleSettings({
         linkedin_required: requireLinkedIn,
         github_required: requireGitHub,
       };
-
+      console.log("PROCTORING DATA",proctoring);
       await onSave({
         schedule,
         proctoring_settings: proctoring,
@@ -337,8 +340,8 @@ export default function Step3ScheduleSettings({
             <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-accent">
               <input
                 type="checkbox"
-                checked={webcamRequired}
-                onChange={(e) => setWebcamRequired(e.target.checked)}
+                checked={enableWebcam}
+                onChange={(e) => setEnableWebcam(e.target.checked)}
                 className="w-4 h-4 rounded border-border text-primary"
               />
               <div>
@@ -349,8 +352,8 @@ export default function Step3ScheduleSettings({
             <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-accent">
               <input
                 type="checkbox"
-                checked={screenRecording}
-                onChange={(e) => setScreenRecording(e.target.checked)}
+                checked={enableScreenRecording}
+                onChange={(e) => setEnableScreenRecording(e.target.checked)}
                 className="w-4 h-4 rounded border-border text-primary"
               />
               <div>
@@ -361,8 +364,8 @@ export default function Step3ScheduleSettings({
             <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-accent">
               <input
                 type="checkbox"
-                checked={fullscreenRequired}
-                onChange={(e) => setFullscreenRequired(e.target.checked)}
+                checked={enableFullscreenEnforcement}
+                onChange={(e) => setEnableFullscreenEnforcement(e.target.checked)}
                 className="w-4 h-4 rounded border-border text-primary"
               />
               <div>
@@ -373,8 +376,8 @@ export default function Step3ScheduleSettings({
             <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-accent">
               <input
                 type="checkbox"
-                checked={faceDetection}
-                onChange={(e) => setFaceDetection(e.target.checked)}
+                checked={enableFaceDetection}
+                onChange={(e) => setEnableFaceDetection(e.target.checked)}
                 className="w-4 h-4 rounded border-border text-primary"
               />
               <div>
@@ -385,8 +388,8 @@ export default function Step3ScheduleSettings({
             <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-accent">
               <input
                 type="checkbox"
-                checked={tabSwitchDetection}
-                onChange={(e) => setTabSwitchDetection(e.target.checked)}
+                checked={enableTabTracking}
+                onChange={(e) => setEnableTabTracking(e.target.checked)}
                 className="w-4 h-4 rounded border-border text-primary"
               />
               <div>
