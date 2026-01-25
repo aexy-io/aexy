@@ -108,7 +108,7 @@ class EmailProviderResponse(BaseModel):
     last_error: str | None
     created_at: datetime
     updated_at: datetime
-    # Note: credentials are intentionally omitted for security
+    has_credentials: bool = False  # Indicates if credentials are configured (actual values omitted for security)
 
 
 class EmailProviderListResponse(BaseModel):
@@ -126,6 +126,7 @@ class EmailProviderListResponse(BaseModel):
     max_sends_per_day: int | None
     last_check_status: str | None
     created_at: datetime
+    has_credentials: bool = False  # Indicates if credentials are configured
 
 
 class ProviderTestRequest(BaseModel):

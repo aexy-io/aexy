@@ -11128,12 +11128,20 @@ export interface EmailProvider {
   id: string;
   workspace_id: string;
   name: string;
-  provider_type: "ses" | "sendgrid" | "mailgun" | "postmark";
+  provider_type: "ses" | "sendgrid" | "mailgun" | "postmark" | "smtp";
+  description?: string;
+  credentials?: Record<string, unknown>;
+  settings?: Record<string, unknown>;
   is_active: boolean;
   is_default: boolean;
+  has_credentials: boolean;
   rate_limit_per_second: number | null;
   rate_limit_per_day: number | null;
+  last_check_at?: string;
+  last_check_status?: string;
+  last_error?: string;
   created_at: string;
+  updated_at: string;
 }
 
 export interface VisualBlock {
@@ -11513,7 +11521,7 @@ export const emailInfrastructureApi = {
       return response.data;
     },
 
-    update: async (workspaceId: string, providerId: string, data: { name?: string; is_active?: boolean; is_default?: boolean }): Promise<EmailProvider> => {
+    update: async (workspaceId: string, providerId: string, data: { name?: string; description?: string; credentials?: Record<string, unknown>; is_active?: boolean; is_default?: boolean }): Promise<EmailProvider> => {
       const response = await api.patch(`/workspaces/${workspaceId}/email-infrastructure/providers/${providerId}`, data);
       return response.data;
     },

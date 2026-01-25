@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-01-25
+
+### Added
+
+#### Email Provider Configuration UI
+
+**Provider Edit Modal:**
+- Added comprehensive provider configuration modal with provider-specific credential fields
+- SES credentials: Access Key ID, Secret Access Key, Region, Configuration Set
+- SendGrid credentials: API Key
+- Mailgun credentials: API Key, Domain, Region (US/EU selector)
+- Postmark credentials: Server Token
+- SMTP credentials: Host, Port, Username, Password, TLS toggle
+
+**Provider Card Improvements:**
+- Added "Configure" button to edit provider settings and credentials
+- Added "Setup Required" badge for providers without credentials configured
+- Test connection button now disabled until credentials are configured
+- Display provider description when available
+
+**Provider Test Feedback:**
+- Added toast notifications for provider connection test results
+- Success toast shows "Connection successful" with provider message
+- Error toast shows "Connection failed" with detailed error message (e.g., invalid credentials)
+- Added Toaster component to root layout for app-wide notifications
+
+### Changed
+
+- Updated `EmailProvider` TypeScript interface with `credentials`, `description`, `settings`, and status fields
+- Updated provider update API to accept `credentials` and `description` parameters
+- Added `has_credentials` boolean field to provider API responses for secure credential status indication
+- Credentials are no longer returned in API responses (security improvement) - only `has_credentials` flag indicates if configured
+
+### Fixed
+
+- Fixed migration runner `--force` flag not re-running changed migrations
+- Fixed TypeScript type errors in provider credential handling
+- Fixed provider test not showing results to user (toast notifications now display success/error)
+- Fixed "Setup Required" badge not updating after credentials are saved (now uses `has_credentials` from API)
+
+---
+
 ## [0.4.1] - 2026-01-25
 
 ### Added

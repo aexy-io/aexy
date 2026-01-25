@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   emailMarketingApi,
   emailInfrastructureApi,
@@ -366,7 +367,7 @@ export function useEmailProviders(workspaceId: string | null) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ providerId, data }: { providerId: string; data: { name?: string; is_active?: boolean; is_default?: boolean } }) =>
+    mutationFn: ({ providerId, data }: { providerId: string; data: { name?: string; description?: string; credentials?: Record<string, unknown>; is_active?: boolean; is_default?: boolean } }) =>
       emailInfrastructureApi.providers.update(workspaceId!, providerId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["emailProviders", workspaceId] });
@@ -382,6 +383,22 @@ export function useEmailProviders(workspaceId: string | null) {
 
   const testMutation = useMutation({
     mutationFn: (providerId: string) => emailInfrastructureApi.providers.test(workspaceId!, providerId),
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success("Connection successful", {
+          description: data.message || "Provider is configured correctly",
+        });
+      } else {
+        toast.error("Connection failed", {
+          description: data.message || "Please check your credentials",
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast.error("Test failed", {
+        description: error.message || "Could not test the provider connection",
+      });
+    },
   });
 
   return {

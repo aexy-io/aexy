@@ -58,6 +58,54 @@ from aexy.schemas.email_infrastructure import (
 router = APIRouter(prefix="/workspaces/{workspace_id}/email-infrastructure")
 
 
+def provider_to_response(provider) -> dict:
+    """Convert provider model to response dict with has_credentials computed."""
+    # Check if credentials are configured (not empty)
+    has_credentials = bool(provider.credentials and len(provider.credentials) > 0)
+
+    return {
+        "id": str(provider.id),
+        "workspace_id": str(provider.workspace_id),
+        "name": provider.name,
+        "provider_type": provider.provider_type,
+        "description": provider.description,
+        "status": provider.status,
+        "settings": provider.settings or {},
+        "max_sends_per_second": provider.max_sends_per_second,
+        "max_sends_per_day": provider.max_sends_per_day,
+        "current_daily_sends": provider.current_daily_sends or 0,
+        "daily_sends_reset_at": provider.daily_sends_reset_at,
+        "priority": provider.priority,
+        "is_default": provider.is_default,
+        "last_check_at": provider.last_check_at,
+        "last_check_status": provider.last_check_status,
+        "last_error": provider.last_error,
+        "created_at": provider.created_at,
+        "updated_at": provider.updated_at,
+        "has_credentials": has_credentials,
+    }
+
+
+def provider_to_list_response(provider) -> dict:
+    """Convert provider model to list response dict with has_credentials computed."""
+    has_credentials = bool(provider.credentials and len(provider.credentials) > 0)
+
+    return {
+        "id": str(provider.id),
+        "workspace_id": str(provider.workspace_id),
+        "name": provider.name,
+        "provider_type": provider.provider_type,
+        "status": provider.status,
+        "is_default": provider.is_default,
+        "priority": provider.priority,
+        "current_daily_sends": provider.current_daily_sends or 0,
+        "max_sends_per_day": provider.max_sends_per_day,
+        "last_check_status": provider.last_check_status,
+        "created_at": provider.created_at,
+        "has_credentials": has_credentials,
+    }
+
+
 async def check_workspace_permission(
     db: AsyncSession,
     workspace_id: str,
@@ -91,7 +139,7 @@ async def create_provider(
 
     service = ProviderService(db)
     provider = await service.create_provider(workspace_id, data)
-    return provider
+    return provider_to_response(provider)
 
 
 @router.get("/providers", response_model=list[EmailProviderListResponse])
@@ -105,7 +153,7 @@ async def list_providers(
 
     service = ProviderService(db)
     providers = await service.list_providers(workspace_id)
-    return providers
+    return [provider_to_list_response(p) for p in providers]
 
 
 @router.get("/providers/{provider_id}", response_model=EmailProviderResponse)
@@ -125,7 +173,7 @@ async def get_provider(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Provider not found",
         )
-    return provider
+    return provider_to_response(provider)
 
 
 @router.patch("/providers/{provider_id}", response_model=EmailProviderResponse)
@@ -146,7 +194,7 @@ async def update_provider(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Provider not found",
         )
-    return provider
+    return provider_to_response(provider)
 
 
 @router.delete("/providers/{provider_id}", status_code=status.HTTP_204_NO_CONTENT)
