@@ -43,7 +43,7 @@ export default function Step5ReviewConfirm({
 }: Step5Props) {
   const [confirmed, setConfirmed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-
+  console.log("ASSESSMENT IN REVIEW",assessment);
   const { publishCheck, isChecking, publish, isPublishing } = useAssessmentPublish(
     assessmentId,
     organizationId
@@ -156,10 +156,10 @@ export default function Step5ReviewConfirm({
       status: assessment.proctoring_settings?.enabled === true ? "complete" : "warning",
       items: [
         { label: "Status", value: assessment.proctoring_settings?.enabled === true ? "Enabled" : "Off" },
-        { label: "Webcam", value: assessment.proctoring_settings?.enabled && assessment.proctoring_settings?.webcam_required ? "Required" : "Not required" },
-        { label: "Screen Recording", value: assessment.proctoring_settings?.enabled && assessment.proctoring_settings?.screen_recording ? "Enabled" : "Off" },
-        { label: "Face Detection", value: assessment.proctoring_settings?.enabled && assessment.proctoring_settings?.face_detection ? "Enabled" : "Off" },
-        { label: "Tab Switch Detection", value: assessment.proctoring_settings?.enabled && assessment.proctoring_settings?.tab_switch_detection ? "Enabled" : "Off" },
+        { label: "Webcam", value: assessment.proctoring_settings?.enable_webcam ? "Required" : "Not required" },
+        { label: "Screen Recording", value: assessment.proctoring_settings?.enable_screen_recording ? "Enabled" : "Off" },
+        { label: "Face Detection", value: assessment.proctoring_settings?.enable_face_detection ? "Enabled" : "Off" },
+        { label: "Tab Tracking", value: assessment.proctoring_settings?.enable_tab_tracking ? "Enabled" : "Off" },
       ],
     },
     {

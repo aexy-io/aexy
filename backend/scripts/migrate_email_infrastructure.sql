@@ -457,6 +457,27 @@ BEGIN
         CREATE INDEX IF NOT EXISTS ix_campaign_recipient_provider ON campaign_recipients(sent_via_provider_id);
     END IF;
 END $$;
+-- =============================================================================
+
+ALTER TABLE email_campaigns
+ADD COLUMN IF NOT EXISTS sending_pool_id UUID REFERENCES sending_pools(id) ON DELETE SET NULL,
+ADD COLUMN IF NOT EXISTS sending_identity_id UUID REFERENCES sending_identities(id) ON DELETE SET NULL,
+ADD COLUMN IF NOT EXISTS routing_config JSONB;
+
+CREATE INDEX IF NOT EXISTS ix_email_campaign_pool ON email_campaigns(sending_pool_id);
+CREATE INDEX IF NOT EXISTS ix_email_campaign_identity ON email_campaigns(sending_identity_id);
+
+-- =============================================================================
+-- ALTER CAMPAIGN RECIPIENTS TABLE (Add sent_via fields)
+-- =============================================================================
+
+ALTER TABLE campaign_recipients
+ADD COLUMN IF NOT EXISTS sent_via_domain_id UUID REFERENCES sending_domains(id) ON DELETE SET NULL,
+ADD COLUMN IF NOT EXISTS sent_via_provider_id UUID REFERENCES email_providers(id) ON DELETE SET NULL,
+ADD COLUMN IF NOT EXISTS sent_via_ip_id UUID REFERENCES dedicated_ips(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS ix_campaign_recipient_domain ON campaign_recipients(sent_via_domain_id);
+CREATE INDEX IF NOT EXISTS ix_campaign_recipient_provider ON campaign_recipients(sent_via_provider_id);
 
 -- =============================================================================
 -- TRIGGERS FOR UPDATED_AT

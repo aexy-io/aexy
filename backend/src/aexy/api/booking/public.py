@@ -26,6 +26,8 @@ from aexy.schemas.booking import (
     TimeSlot,
 )
 from aexy.services.booking import BookingService, AvailabilityService, CalendarSyncService
+from aexy.services.booking.booking_notification_service import BookingNotificationService
+from aexy.services.email_service import EmailService
 
 router = APIRouter(
     prefix="/public/book",
@@ -445,6 +447,7 @@ async def create_public_booking(
         await db.refresh(booking)
 
         # Create calendar events for host and team attendees
+        # This also generates meeting links (Google Meet / Microsoft Teams)
         calendar_service = CalendarSyncService(db)
         try:
             if event_type.is_team_event and booking.attendees:
@@ -456,6 +459,10 @@ async def create_public_booking(
             else:
                 # Create event for host only
                 await calendar_service.create_calendar_event(booking)
+
+            # Commit and refresh to get the meeting link that was set by calendar service
+            await db.commit()
+            await db.refresh(booking)
         except Exception as e:
             # Log but don't fail the booking if calendar creation fails
             import logging

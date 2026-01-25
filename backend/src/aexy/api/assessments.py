@@ -48,6 +48,7 @@ from aexy.schemas.assessment import (
     AssessmentMetrics,
 )
 from aexy.services.assessment_service import AssessmentService
+from aexy.services.r2_upload_service import get_r2_upload_service
 from aexy.models.assessment import Assessment
 from sqlalchemy import inspect
 
@@ -661,6 +662,8 @@ async def generate_questions(
             },
             headers=headers if headers else None,
         )
+    from aexy.models.assessment import AssessmentTopic
+    from aexy.models.repository import Organization
 
     # Get topic information
     topic_stmt = select(AssessmentTopic).where(AssessmentTopic.id == data.topic_id)
@@ -836,7 +839,7 @@ async def list_candidates(
         }
         if hasattr(inv, "attempts") and inv.attempts:
             latest = sorted(inv.attempts, key=lambda a: a.created_at, reverse=True)[0]
-            inv_dict["latest_score"] = float(latest.percentage_score) if latest.percentage_score else None
+            inv_dict["latest_score"] = float(latest.total_score) if latest.total_score else None
             inv_dict["latest_trust_score"] = float(latest.trust_score) if latest.trust_score else None
 
         result.append(InvitationWithAttempt(**inv_dict))
@@ -1176,3 +1179,216 @@ async def register_for_public_assessment(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
+
+
+@router.get(
+    "/{assessment_id}/candidates/{invitation_id}/details",
+    response_model=dict[str, Any],
+    tags=["assessments"],
+)
+async def get_candidate_details(
+    assessment_id: str,
+    invitation_id: str,
+    workspace_id: str | None = Query(None),
+    developer_id: str = Depends(get_current_developer_id),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Get detailed candidate information including attempt, submissions, and proctoring data."""
+    from aexy.models.assessment import (
+        AssessmentInvitation,
+        AssessmentAttempt,
+        QuestionSubmission,
+        SubmissionEvaluation,
+        Question,
+        ProctoringEvent,
+    )
+    from aexy.services.proctoring_service import ProctoringService
+
+    # Get assessment
+    service = AssessmentService(db)
+    assessment = await service.get_assessment(assessment_id, workspace_id)
+
+    if not assessment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assessment not found"
+        )
+
+    # Get invitation with candidate
+    invitation_query = (
+        select(AssessmentInvitation)
+        .where(
+            AssessmentInvitation.id == invitation_id,
+            AssessmentInvitation.assessment_id == assessment_id
+        )
+    )
+    result = await db.execute(invitation_query)
+    invitation = result.scalar_one_or_none()
+
+    if not invitation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate not found"
+        )
+
+    # Get attempt
+    attempt_query = (
+        select(AssessmentAttempt)
+        .where(AssessmentAttempt.invitation_id == invitation_id)
+        .order_by(AssessmentAttempt.created_at.desc())
+    )
+    result = await db.execute(attempt_query)
+    attempt = result.scalar_one_or_none()
+
+    if not attempt:
+        return {
+            "candidate": {
+                "id": invitation.candidate_id,
+                "name": invitation.candidate.name if invitation.candidate else None,
+                "email": invitation.candidate.email if invitation.candidate else None,
+            },
+            "status": invitation.status.value if hasattr(invitation.status, 'value') else invitation.status,
+            "invited_at": invitation.invited_at.isoformat() if invitation.invited_at else None,
+            "attempt": None,
+        }
+
+    # Get all submissions for this attempt
+    submissions_query = (
+        select(QuestionSubmission, SubmissionEvaluation, Question)
+        .outerjoin(SubmissionEvaluation, SubmissionEvaluation.submission_id == QuestionSubmission.id)
+        .join(Question, Question.id == QuestionSubmission.question_id)
+        .where(QuestionSubmission.attempt_id == attempt.id)
+        .order_by(Question.sequence_order)
+    )
+    result = await db.execute(submissions_query)
+    submission_rows = result.all()
+
+    # Format submissions with evaluations
+    submissions = []
+    for submission, evaluation, question in submission_rows:
+        submission_data = {
+            "question_id": str(question.id),
+            "question_title": question.title,
+            "question_type": question.question_type.value if hasattr(question.question_type, 'value') else question.question_type,
+            "difficulty": question.difficulty.value if hasattr(question.difficulty, 'value') else question.difficulty,
+            "max_marks": question.max_marks,
+            "sequence": question.sequence_order,
+            "submitted_at": submission.submitted_at.isoformat() if submission.submitted_at else None,
+            "time_taken_seconds": submission.time_taken_seconds,
+            "evaluation": None,
+        }
+
+        if evaluation:
+            submission_data["evaluation"] = {
+                "marks_obtained": float(evaluation.marks_obtained) if evaluation.marks_obtained else 0,
+                "percentage": float(evaluation.percentage) if evaluation.percentage else 0,
+                "feedback": evaluation.feedback,
+                "test_case_results": evaluation.test_case_results if hasattr(evaluation, 'test_case_results') else None,
+                "evaluated_at": evaluation.evaluated_at.isoformat() if evaluation.evaluated_at else None,
+            }
+
+        submissions.append(submission_data)
+
+    # Get proctoring summary
+    proctoring_summary = attempt.proctoring_summary or {}
+
+    # Get detailed proctoring events if proctoring was enabled
+    proctoring_details = None
+    if assessment.proctoring_settings.get("enabled", False):
+        proctoring_service = ProctoringService(db)
+
+        # Get event breakdown
+        event_breakdown = await proctoring_service.get_trust_score_breakdown(str(attempt.id))
+
+        # Get all events
+        events_query = (
+            select(ProctoringEvent)
+            .where(ProctoringEvent.attempt_id == attempt.id)
+            .order_by(ProctoringEvent.timestamp)
+        )
+        result = await db.execute(events_query)
+        all_events = result.scalars().all()
+
+        # Format events
+        events_list = []
+        for event in all_events:
+            events_list.append({
+                "event_type": event.event_type,
+                "severity": event.severity.value if hasattr(event.severity, 'value') else event.severity,
+                "timestamp": event.timestamp.isoformat() if event.timestamp else None,
+                "event_data": event.event_data,
+            })
+
+        # Generate presigned URLs for recordings if they exist
+        webcam_url = None
+        screen_url = None
+        r2_service = get_r2_upload_service()
+
+        if r2_service.is_configured():
+            # Extract R2 key from the stored URL and generate presigned URL
+            if attempt.webcam_recording_url:
+                # URL format: https://{bucket}.{account_id}.r2.cloudflarestorage.com/{key}
+                # Extract the key (everything after the domain)
+                try:
+                    url_parts = attempt.webcam_recording_url.split(".r2.cloudflarestorage.com/")
+                    if len(url_parts) == 2:
+                        key = url_parts[1]
+                        webcam_url = await r2_service.generate_presigned_download_url(key, expires_in=3600)
+                except Exception as e:
+                    logger.warning(f"Failed to generate presigned URL for webcam recording: {e}")
+
+            if attempt.screen_recording_url:
+                try:
+                    url_parts = attempt.screen_recording_url.split(".r2.cloudflarestorage.com/")
+                    if len(url_parts) == 2:
+                        key = url_parts[1]
+                        screen_url = await r2_service.generate_presigned_download_url(key, expires_in=3600)
+                except Exception as e:
+                    logger.warning(f"Failed to generate presigned URL for screen recording: {e}")
+
+        proctoring_details = {
+            "trust_score": event_breakdown.get("trust_score", 100),
+            "trust_level": event_breakdown.get("trust_level", "excellent"),
+            "total_events": event_breakdown.get("total_events", 0),
+            "critical_events": event_breakdown.get("critical_events", 0),
+            "event_summary": event_breakdown.get("event_summary", {}),
+            "deductions": event_breakdown.get("deductions", {}),
+            "events": events_list,
+            "webcam_recording_url": webcam_url,
+            "screen_recording_url": screen_url,
+        }
+
+    # Build response
+    return {
+        "candidate": {
+            "id": invitation.candidate_id,
+            "name": invitation.candidate.name if invitation.candidate else None,
+            "email": invitation.candidate.email if invitation.candidate else None,
+        },
+        "invitation": {
+            "id": str(invitation.id),
+            "status": invitation.status.value if hasattr(invitation.status, 'value') else invitation.status,
+            "invited_at": invitation.invited_at.isoformat() if invitation.invited_at else None,
+            "started_at": invitation.started_at.isoformat() if invitation.started_at else None,
+            "completed_at": invitation.completed_at.isoformat() if invitation.completed_at else None,
+        },
+        "attempt": {
+            "id": str(attempt.id),
+            "attempt_number": attempt.attempt_number,
+            "status": attempt.status.value if hasattr(attempt.status, 'value') else attempt.status,
+            "started_at": attempt.started_at.isoformat() if attempt.started_at else None,
+            "completed_at": attempt.completed_at.isoformat() if attempt.completed_at else None,
+            "time_taken_seconds": attempt.time_taken_seconds,
+            "total_score": float(attempt.total_score) if attempt.total_score else None,
+            "percentage_score": float(attempt.percentage_score) if attempt.percentage_score else None,
+            "max_possible_score": attempt.max_possible_score,
+        },
+        "submissions": submissions,
+        "proctoring": proctoring_details,
+        "assessment": {
+            "id": str(assessment.id),
+            "title": assessment.title,
+            "total_questions": assessment.total_questions,
+            "max_score": assessment.max_score,
+        },
+    }

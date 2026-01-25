@@ -481,6 +481,203 @@ class EmailService:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
+    async def send_template_email(
+        self,
+        to_email: str,
+        template_name: str,
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Send an email using a booking template.
+
+        This is a simplified method for booking notifications that doesn't require
+        a database session. Templates are rendered inline based on template_name.
+        """
+        if not self.is_configured:
+            logger.warning(f"Email service not configured, skipping email to {to_email}")
+            return {"success": False, "error": "Email service not configured"}
+
+        # Build email content based on template name
+        subject, body_text, body_html = self._get_booking_email_content(template_name, context)
+
+        try:
+            result = await self._send_email(to_email, subject, body_text, body_html)
+            logger.info(f"Booking email '{template_name}' sent to {to_email}")
+            return {"success": True, **result}
+        except Exception as e:
+            logger.error(f"Failed to send booking email '{template_name}' to {to_email}: {e}")
+            return {"success": False, "error": str(e)}
+
+    def _get_booking_email_content(
+        self,
+        template_name: str,
+        context: dict[str, Any],
+    ) -> tuple[str, str, str]:
+        """Get email content for booking templates."""
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        # Parse start time for formatting
+        start_time_str = context.get("start_time", "")
+        end_time_str = context.get("end_time", "")
+        timezone = context.get("timezone", "UTC")
+
+        try:
+            start_dt = datetime.fromisoformat(start_time_str.replace("Z", "+00:00"))
+            end_dt = datetime.fromisoformat(end_time_str.replace("Z", "+00:00"))
+            # Convert to local timezone
+            try:
+                tz = ZoneInfo(timezone)
+                start_local = start_dt.astimezone(tz)
+                end_local = end_dt.astimezone(tz)
+            except Exception:
+                start_local = start_dt
+                end_local = end_dt
+
+            date_str = start_local.strftime("%A, %B %d, %Y")
+            time_str = f"{start_local.strftime('%I:%M %p')} - {end_local.strftime('%I:%M %p')}"
+        except Exception:
+            date_str = start_time_str
+            time_str = ""
+
+        event_name = context.get("event_name", "Meeting")
+        invitee_name = context.get("invitee_name", "Guest")
+        host_name = context.get("host_name", "Host")
+        duration = context.get("duration_minutes", 30)
+        location = context.get("location") or context.get("meeting_link") or "To be determined"
+        confirmation_message = context.get("confirmation_message", "")
+
+        # Template content based on template_name
+        templates = {
+            "booking_confirmation_invitee": {
+                "subject": f"Confirmed: {event_name} with {host_name}",
+                "body": f"""Hi {invitee_name},
+
+Your booking has been confirmed!
+
+Event: {event_name}
+Date: {date_str}
+Time: {time_str} ({timezone})
+Duration: {duration} minutes
+Location: {location}
+
+{f"Note from host: {confirmation_message}" if confirmation_message else ""}
+
+If you need to make changes, you can cancel or reschedule from your confirmation page.
+
+See you soon!""",
+            },
+            "booking_confirmation_host": {
+                "subject": f"New Booking: {event_name} with {invitee_name}",
+                "body": f"""Hi {host_name},
+
+You have a new booking!
+
+Event: {event_name}
+Guest: {invitee_name}
+Date: {date_str}
+Time: {time_str} ({timezone})
+Duration: {duration} minutes
+Location: {location}
+
+The guest has been sent a confirmation email with the booking details.""",
+            },
+            "booking_reminder_invitee": {
+                "subject": f"Reminder: {event_name} with {host_name} tomorrow",
+                "body": f"""Hi {invitee_name},
+
+This is a reminder about your upcoming booking.
+
+Event: {event_name}
+Date: {date_str}
+Time: {time_str} ({timezone})
+Duration: {duration} minutes
+Location: {location}
+
+See you soon!""",
+            },
+            "booking_reminder_host": {
+                "subject": f"Reminder: {event_name} with {invitee_name} tomorrow",
+                "body": f"""Hi {host_name},
+
+This is a reminder about your upcoming booking.
+
+Event: {event_name}
+Guest: {invitee_name}
+Date: {date_str}
+Time: {time_str} ({timezone})
+Duration: {duration} minutes
+Location: {location}""",
+            },
+            "booking_cancelled_invitee": {
+                "subject": f"Cancelled: {event_name} with {host_name}",
+                "body": f"""Hi {invitee_name},
+
+Unfortunately, your booking has been cancelled.
+
+Event: {event_name}
+Date: {date_str}
+Time: {time_str} ({timezone})
+
+{f"Reason: {context.get('cancellation_reason', '')}" if context.get('cancellation_reason') else ""}
+
+We apologize for any inconvenience. Please feel free to book another time.""",
+            },
+            "booking_cancelled_host": {
+                "subject": f"Booking Cancelled: {event_name} with {invitee_name}",
+                "body": f"""Hi {host_name},
+
+A booking has been cancelled by the guest.
+
+Event: {event_name}
+Guest: {invitee_name}
+Date: {date_str}
+Time: {time_str} ({timezone})
+
+{f"Reason: {context.get('cancellation_reason', '')}" if context.get('cancellation_reason') else ""}""",
+            },
+            "booking_rescheduled_invitee": {
+                "subject": f"Rescheduled: {event_name} with {host_name}",
+                "body": f"""Hi {invitee_name},
+
+Your booking has been rescheduled.
+
+Event: {event_name}
+New Date: {date_str}
+New Time: {time_str} ({timezone})
+Duration: {duration} minutes
+Location: {location}
+
+See you at the new time!""",
+            },
+            "booking_rescheduled_host": {
+                "subject": f"Booking Rescheduled: {event_name} with {invitee_name}",
+                "body": f"""Hi {host_name},
+
+A booking has been rescheduled.
+
+Event: {event_name}
+Guest: {invitee_name}
+New Date: {date_str}
+New Time: {time_str} ({timezone})
+Duration: {duration} minutes
+Location: {location}""",
+            },
+        }
+
+        template = templates.get(template_name, {
+            "subject": f"Booking Update: {event_name}",
+            "body": f"You have an update regarding your booking for {event_name}.",
+        })
+
+        subject = template["subject"]
+        body_text = template["body"]
+        body_html = self._create_html_email(
+            title=subject,
+            body=body_text.replace("\n", "<br>"),
+        )
+
+        return subject, body_text, body_html
+
 
 # Singleton instance
 email_service = EmailService()

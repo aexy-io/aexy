@@ -87,7 +87,10 @@ class AssessmentEvaluationService:
         MCQs are auto-graded by comparing the selected answer with the correct answer.
         """
         selected_answer = submission.content.get("selected_answer")
-        correct_answer = question.correct_answer
+        correct_answer = next(
+            (opt.get("id") for opt in (question.options or []) if opt.get("is_correct")),
+            None,
+        )
 
         is_correct = selected_answer == correct_answer
         marks = question.max_marks if is_correct else 0
@@ -101,11 +104,9 @@ class AssessmentEvaluationService:
 
         evaluation = SubmissionEvaluation(
             submission_id=submission.id,
-            marks=marks,
+            marks_obtained=marks,
             max_marks=question.max_marks,
             feedback=feedback,
-            is_correct=is_correct,
-            evaluation_type="auto",
             test_case_results=None,
             ai_analysis=None,
         )
@@ -192,11 +193,9 @@ class AssessmentEvaluationService:
 
         evaluation = SubmissionEvaluation(
             submission_id=submission.id,
-            marks=marks,
+            marks_obtained=marks,
             max_marks=question.max_marks,
             feedback="\n".join(feedback_parts) or "Evaluation complete.",
-            is_correct=marks >= question.max_marks * 0.6,  # Consider correct if >= 60%
-            evaluation_type="hybrid" if ai_analysis else "auto",
             test_case_results=test_case_results,
             ai_analysis=ai_analysis,
         )
@@ -257,11 +256,9 @@ class AssessmentEvaluationService:
 
         evaluation = SubmissionEvaluation(
             submission_id=submission.id,
-            marks=marks,
+            marks_obtained=marks,
             max_marks=question.max_marks,
             feedback=feedback,
-            is_correct=marks >= question.max_marks * 0.6,
-            evaluation_type="ai" if ai_analysis else "basic",
             test_case_results=None,
             ai_analysis=ai_analysis,
         )
@@ -330,7 +327,7 @@ class AssessmentEvaluationService:
             evaluation = eval_result.scalar_one_or_none()
 
             if evaluation:
-                total_marks += evaluation.marks
+                total_marks += evaluation.marks_obtained
                 max_marks += evaluation.max_marks
 
                 # Get question for topic info
@@ -342,14 +339,13 @@ class AssessmentEvaluationService:
                     topic_id = str(question.topic_id)
                     if topic_id not in topic_scores:
                         topic_scores[topic_id] = {"marks": 0, "max_marks": 0}
-                    topic_scores[topic_id]["marks"] += evaluation.marks
+                    topic_scores[topic_id]["marks"] += evaluation.marks_obtained
                     topic_scores[topic_id]["max_marks"] += evaluation.max_marks
 
                 question_results.append({
                     "question_id": str(submission.question_id),
-                    "marks": evaluation.marks,
+                    "marks": evaluation.marks_obtained,
                     "max_marks": evaluation.max_marks,
-                    "is_correct": evaluation.is_correct,
                 })
 
         percentage = (total_marks / max_marks * 100) if max_marks > 0 else 0

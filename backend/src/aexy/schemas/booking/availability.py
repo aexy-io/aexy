@@ -1,7 +1,7 @@
 """Availability schemas for booking module."""
 
 from datetime import date, datetime, time
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 
 class AvailabilitySlotCreate(BaseModel):
@@ -37,6 +37,11 @@ class AvailabilitySlotResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+
+    @field_serializer("start_time", "end_time")
+    def serialize_time(self, value: time) -> str:
+        """Serialize time as HH:MM format (without seconds)."""
+        return value.strftime("%H:%M")
 
 
 class DayAvailability(BaseModel):
@@ -83,6 +88,13 @@ class AvailabilityOverrideResponse(BaseModel):
     notes: str | None = None
     created_at: datetime
     updated_at: datetime
+
+    @field_serializer("start_time", "end_time")
+    def serialize_time(self, value: time | None) -> str | None:
+        """Serialize time as HH:MM format (without seconds)."""
+        if value is None:
+            return None
+        return value.strftime("%H:%M")
 
 
 class TimeSlot(BaseModel):
