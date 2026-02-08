@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "changelog": "node scripts/generate-changelog.mjs",
+    "prebuild": "node scripts/generate-changelog.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
