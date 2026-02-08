@@ -20,8 +20,10 @@ let content;
 try {
   content = fs.readFileSync(CHANGELOG_PATH, "utf-8");
 } catch {
-  console.error("CHANGELOG.md not found at", CHANGELOG_PATH);
-  process.exit(1);
+  // In Docker builds, CHANGELOG.md may be outside the build context.
+  // Skip generation gracefully — the Next.js page handles missing content.
+  console.warn("  CHANGELOG.md not found at", CHANGELOG_PATH, "— skipping generation");
+  process.exit(0);
 }
 
 fs.mkdirSync(PUBLIC_DIR, { recursive: true });
