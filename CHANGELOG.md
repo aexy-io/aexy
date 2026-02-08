@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-02-08
+
+### Changed
+
+#### Temporal Workflow Engine (Celery Replacement)
+
+Replaced Celery 5.3+ task queue with Temporal Python SDK for all background processing, workflow orchestration, and scheduled tasks.
+
+**Infrastructure:**
+- Temporal server (auto-setup) with PostgreSQL persistence on port 7233
+- Temporal Web UI for workflow monitoring on port 8080
+- Dedicated Temporal worker service with 6 task queues
+- Removed Celery worker, Celery Beat, and Flower monitoring services
+
+**Activities & Workflows:**
+- 13 activity modules with 77+ Temporal activities
+- 7 workflow modules including CRMAutomationWorkflow (replaced 652-line SyncWorkflowExecutor)
+- 25 Temporal schedules replacing 28 Celery Beat entries (3 polling tasks eliminated)
+- `dispatch()` function replacing Celery `.delay()` for fire-and-forget execution
+- `SingleActivityWorkflow` wrapper for dispatching individual activities
+- CRM automation events use Temporal signals for instant resume (replaced 60s polling)
+
+**Task Queues:**
+- `analysis` - Developer profiling, code analysis, LLM tasks
+- `sync` - GitHub sync, Google sync, external data
+- `workflows` - CRM automations, workflow execution
+- `email` - Campaigns, onboarding, transactional email
+- `integrations` - Webhooks, Slack, external services
+- `operations` - Stats aggregation, cleanup, maintenance
+
+**Retry Policies:**
+- `STANDARD_RETRY` - General tasks with exponential backoff
+- `LLM_RETRY` - AI/LLM calls with longer timeouts
+- `WEBHOOK_RETRY` - External webhook delivery
+
+### Added
+
+- `EmailCampaignService` - 9 async methods for email campaign management, extracted from Celery tasks
+- `OnboardingService.check_due_steps()` - Checks and dispatches due onboarding step processing
+
+### Fixed
+
+- Onboarding activity input dataclasses now match `OnboardingService` API signatures
+- Warming metrics dispatch uses proper `UpdateWarmingMetricsInput` dataclass instead of raw dict
+- Workflow action callers updated to pass correct field names to Temporal activities
+
 ## [0.5.0] - 2026-02-02
 
 ### Added
