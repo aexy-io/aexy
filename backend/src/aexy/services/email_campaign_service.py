@@ -320,10 +320,11 @@ class EmailCampaignService:
                         if send_domain.warming_status == WarmingStatus.IN_PROGRESS.value:
                             from aexy.temporal.dispatch import dispatch
                             from aexy.temporal.task_queues import TaskQueue
+                            from aexy.temporal.activities.warming import UpdateWarmingMetricsInput
 
                             await dispatch(
                                 "update_warming_metrics",
-                                {"domain_id": send_domain.id, "sent": 1},
+                                UpdateWarmingMetricsInput(domain_id=send_domain.id, emails_sent=1),
                                 task_queue=TaskQueue.EMAIL,
                             )
 
