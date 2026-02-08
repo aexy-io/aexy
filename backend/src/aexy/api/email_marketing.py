@@ -442,9 +442,17 @@ async def send_campaign(
             detail="Campaign not found",
         )
 
-    # Queue Celery task for actual sending
-    from aexy.processing.email_marketing_tasks import send_campaign_task
-    background_tasks.add_task(send_campaign_task.delay, campaign_id)
+    # Dispatch to Temporal
+    from aexy.temporal.client import get_temporal_client
+    from aexy.temporal.workflows.email_campaign import EmailCampaignWorkflow, EmailCampaignWorkflowInput
+
+    client = await get_temporal_client()
+    await client.start_workflow(
+        EmailCampaignWorkflow.run,
+        EmailCampaignWorkflowInput(campaign_id=campaign_id),
+        id=f"email-campaign-{campaign_id}",
+        task_queue="email",
+    )
 
     return campaign
 
@@ -504,8 +512,16 @@ async def resume_campaign(
 
     # Resume sending if it was in sending state
     if campaign.status == "sending":
-        from aexy.processing.email_marketing_tasks import send_campaign_task
-        background_tasks.add_task(send_campaign_task.delay, campaign_id)
+        from aexy.temporal.client import get_temporal_client
+        from aexy.temporal.workflows.email_campaign import EmailCampaignWorkflow, EmailCampaignWorkflowInput
+
+        client = await get_temporal_client()
+        await client.start_workflow(
+            EmailCampaignWorkflow.run,
+            EmailCampaignWorkflowInput(campaign_id=campaign_id),
+            id=f"email-campaign-{campaign_id}",
+            task_queue="email",
+        )
 
     return campaign
 

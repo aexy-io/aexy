@@ -232,10 +232,13 @@ class WorkflowEventService:
         execution.wait_event_type = None
         execution.wait_timeout_at = None
 
-        # Queue for resumption via Celery
-        from aexy.processing.workflow_tasks import resume_workflow_task
+        # Signal the running Temporal workflow to resume
+        from aexy.temporal.client import get_temporal_client
+        from aexy.temporal.workflows.crm_workflow import CRMAutomationWorkflow
 
-        resume_workflow_task.delay(execution_id)
+        client = await get_temporal_client()
+        handle = client.get_workflow_handle(f"crm-workflow-{execution_id}")
+        await handle.signal(CRMAutomationWorkflow.on_event, event_type, event_data)
 
     async def cancel_subscriptions(self, execution_id: str):
         """Cancel all active subscriptions for an execution."""
@@ -418,9 +421,17 @@ class SyncWorkflowEventService:
         execution.wait_timeout_at = None
         self.db.commit()
 
-        from aexy.processing.workflow_tasks import resume_workflow_task
+        # Signal the running Temporal workflow to resume
+        import asyncio
+        from aexy.temporal.client import get_temporal_client
+        from aexy.temporal.workflows.crm_workflow import CRMAutomationWorkflow
 
-        resume_workflow_task.delay(execution_id)
+        async def _signal():
+            client = await get_temporal_client()
+            handle = client.get_workflow_handle(f"crm-workflow-{execution_id}")
+            await handle.signal(CRMAutomationWorkflow.on_event, event_type, event_data)
+
+        asyncio.get_event_loop().run_until_complete(_signal())
 
     def check_timed_out_subscriptions(self) -> int:
         """Check for and handle timed out subscriptions (sync version)."""

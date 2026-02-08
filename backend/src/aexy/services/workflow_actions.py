@@ -237,19 +237,21 @@ class WorkflowActionHandler:
             # This would be implemented later
             pass
 
-        # Queue the email via Celery
-        from aexy.processing.celery_app import celery_app
+        # Queue the email via Temporal
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+        from aexy.temporal.activities.email import SendWorkflowEmailInput
 
-        celery_app.send_task(
-            "aexy.processing.email_marketing_tasks.send_workflow_email",
-            kwargs={
-                "workspace_id": context.workspace_id,
-                "to": email_to,
-                "subject": subject,
-                "body": body,
-                "record_id": context.record_id,
-            },
-            queue="email_campaigns",
+        await dispatch(
+            "send_workflow_email",
+            SendWorkflowEmailInput(
+                workspace_id=context.workspace_id,
+                to_email=email_to,
+                subject=subject,
+                html_body=body,
+                record_id=context.record_id,
+            ),
+            task_queue=TaskQueue.EMAIL,
         )
 
         return NodeExecutionResult(
@@ -318,22 +320,23 @@ class WorkflowActionHandler:
                 track_links=track_clicks,
             )
 
-        # Queue email for sending
-        from aexy.processing.celery_app import celery_app
+        # Queue email for sending via Temporal
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+        from aexy.temporal.activities.email import SendWorkflowEmailInput
 
-        celery_app.send_task(
-            "aexy.processing.email_marketing_tasks.send_workflow_email",
-            kwargs={
-                "workspace_id": context.workspace_id,
-                "to": email_to,
-                "subject": subject,
-                "body": body,
-                "from_email": from_email,
-                "from_name": from_name,
-                "record_id": context.record_id,
-                "sending_pool_id": data.get("sending_pool_id"),
-            },
-            queue="email_campaigns",
+        await dispatch(
+            "send_workflow_email",
+            SendWorkflowEmailInput(
+                workspace_id=context.workspace_id,
+                to_email=email_to,
+                subject=subject,
+                html_body=body,
+                from_email=from_email,
+                from_name=from_name,
+                record_id=context.record_id,
+            ),
+            task_queue=TaskQueue.EMAIL,
         )
 
         return NodeExecutionResult(
@@ -407,9 +410,19 @@ class WorkflowActionHandler:
             self.db.add(recipient)
             await self.db.flush()
 
-            # Queue send task
-            from aexy.processing.email_marketing_tasks import send_campaign_email_task
-            send_campaign_email_task.delay(campaign_id, recipient.id)
+            # Queue send task via Temporal
+            from aexy.temporal.dispatch import dispatch
+            from aexy.temporal.task_queues import TaskQueue
+            from aexy.temporal.activities.email import SendCampaignEmailInput
+
+            await dispatch(
+                "send_campaign_email",
+                SendCampaignEmailInput(
+                    campaign_id=campaign_id,
+                    recipient_id=recipient.id,
+                ),
+                task_queue=TaskQueue.EMAIL,
+            )
 
             return NodeExecutionResult(
                 node_id="",
@@ -446,14 +459,21 @@ class WorkflowActionHandler:
                 template, render_context
             )
 
-            # Queue email
-            from aexy.processing.email_marketing_tasks import send_workflow_email
-            send_workflow_email.delay(
-                workspace_id=context.workspace_id,
-                to=email_to,
-                subject=subject,
-                body=html_body,
-                record_id=context.record_id,
+            # Queue email via Temporal
+            from aexy.temporal.dispatch import dispatch
+            from aexy.temporal.task_queues import TaskQueue
+            from aexy.temporal.activities.email import SendWorkflowEmailInput
+
+            await dispatch(
+                "send_workflow_email",
+                SendWorkflowEmailInput(
+                    workspace_id=context.workspace_id,
+                    to_email=email_to,
+                    subject=subject,
+                    html_body=html_body,
+                    record_id=context.record_id,
+                ),
+                task_queue=TaskQueue.EMAIL,
             )
 
             return NodeExecutionResult(
@@ -647,19 +667,21 @@ class WorkflowActionHandler:
 
         message = self._render_template(message, context)
 
-        # Queue Slack message via Celery
-        from aexy.processing.celery_app import celery_app
+        # Queue Slack message via Temporal
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+        from aexy.temporal.activities.integrations import SendSlackWorkflowMessageInput
 
-        celery_app.send_task(
-            "aexy.processing.integration_tasks.send_slack_workflow_message",
-            kwargs={
-                "workspace_id": context.workspace_id,
-                "target_type": target_type,
-                "target": target,
-                "message": message,
-                "record_id": context.record_id,
-            },
-            queue="celery",
+        await dispatch(
+            "send_slack_workflow_message",
+            SendSlackWorkflowMessageInput(
+                workspace_id=context.workspace_id,
+                target_type=target_type,
+                target=target,
+                message=message,
+                record_id=context.record_id,
+            ),
+            task_queue=TaskQueue.INTEGRATIONS,
         )
 
         return NodeExecutionResult(
@@ -688,17 +710,20 @@ class WorkflowActionHandler:
         message = data.get("message_template", "")
         message = self._render_template(message, context)
 
-        # Queue SMS via Celery
-        from aexy.processing.celery_app import celery_app
+        # Queue SMS via Temporal
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+        from aexy.temporal.activities.integrations import SendSMSInput
 
-        celery_app.send_task(
-            "aexy.processing.tasks.integration_tasks.send_sms",
-            kwargs={
-                "to": phone_to,
-                "body": message,
-                "record_id": context.record_id,
-            },
-            queue="celery",
+        await dispatch(
+            "send_sms",
+            SendSMSInput(
+                workspace_id=context.workspace_id,
+                to=phone_to,
+                body=message,
+                record_id=context.record_id,
+            ),
+            task_queue=TaskQueue.INTEGRATIONS,
         )
 
         return NodeExecutionResult(
@@ -1347,20 +1372,23 @@ class SyncWorkflowActionHandler:
         subject = self._render_template(subject, context)
         body = self._render_template(body, context)
 
-        # Queue the email via Celery
-        from aexy.processing.celery_app import celery_app
+        # Queue the email via Temporal
+        import asyncio
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+        from aexy.temporal.activities.email import SendWorkflowEmailInput
 
-        celery_app.send_task(
-            "aexy.processing.email_marketing_tasks.send_workflow_email",
-            kwargs={
-                "workspace_id": execution.workspace_id,
-                "to": email_to,
-                "subject": subject,
-                "body": body,
-                "record_id": execution.record_id,
-            },
-            queue="email_campaigns",
-        )
+        asyncio.get_event_loop().run_until_complete(dispatch(
+            "send_workflow_email",
+            SendWorkflowEmailInput(
+                workspace_id=execution.workspace_id,
+                to_email=email_to,
+                subject=subject,
+                html_body=body,
+                record_id=execution.record_id,
+            ),
+            task_queue=TaskQueue.EMAIL,
+        ))
 
         return {
             "status": "success",
@@ -1377,17 +1405,20 @@ class SyncWorkflowActionHandler:
 
         message = self._render_template(message, context)
 
-        from aexy.processing.celery_app import celery_app
+        import asyncio
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+        from aexy.temporal.activities.integrations import SendSlackMessageInput
 
-        celery_app.send_task(
-            "aexy.processing.integration_tasks.send_slack_message",
-            kwargs={
-                "workspace_id": execution.workspace_id,
-                "channel_id": channel_id,
-                "message": message,
-            },
-            queue="integrations",
-        )
+        asyncio.get_event_loop().run_until_complete(dispatch(
+            "send_slack_message",
+            SendSlackMessageInput(
+                workspace_id=execution.workspace_id,
+                channel=channel_id,
+                message=message,
+            ),
+            task_queue=TaskQueue.INTEGRATIONS,
+        ))
 
         return {"status": "success", "output": {"channel_id": channel_id, "queued": True}}
 
@@ -1406,17 +1437,20 @@ class SyncWorkflowActionHandler:
         message = data.get("message_template", "")
         message = self._render_template(message, context)
 
-        from aexy.processing.celery_app import celery_app
+        import asyncio
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+        from aexy.temporal.activities.integrations import SendSMSInput
 
-        celery_app.send_task(
-            "aexy.processing.integration_tasks.send_sms",
-            kwargs={
-                "workspace_id": execution.workspace_id,
-                "to": phone_to,
-                "body": message,
-            },
-            queue="integrations",
-        )
+        asyncio.get_event_loop().run_until_complete(dispatch(
+            "send_sms",
+            SendSMSInput(
+                workspace_id=execution.workspace_id,
+                to=phone_to,
+                body=message,
+            ),
+            task_queue=TaskQueue.INTEGRATIONS,
+        ))
 
         return {"status": "success", "output": {"to": phone_to, "queued": True}}
 
@@ -1625,8 +1659,19 @@ class SyncWorkflowActionHandler:
             self.db.add(recipient)
             self.db.commit()
 
-            from aexy.processing.email_marketing_tasks import send_campaign_email_task
-            send_campaign_email_task.delay(campaign_id, recipient.id)
+            import asyncio
+            from aexy.temporal.dispatch import dispatch
+            from aexy.temporal.task_queues import TaskQueue
+            from aexy.temporal.activities.email import SendCampaignEmailInput
+
+            asyncio.get_event_loop().run_until_complete(dispatch(
+                "send_campaign_email",
+                SendCampaignEmailInput(
+                    campaign_id=campaign_id,
+                    recipient_id=recipient.id,
+                ),
+                task_queue=TaskQueue.EMAIL,
+            ))
 
             return {
                 "status": "success",
@@ -1639,14 +1684,22 @@ class SyncWorkflowActionHandler:
             }
 
         elif template_id:
-            from aexy.processing.email_marketing_tasks import send_workflow_email
-            send_workflow_email.delay(
-                workspace_id=execution.workspace_id,
-                to=email_to,
-                subject=data.get("subject", ""),
-                body=data.get("body", ""),
-                record_id=execution.record_id,
-            )
+            import asyncio
+            from aexy.temporal.dispatch import dispatch
+            from aexy.temporal.task_queues import TaskQueue
+            from aexy.temporal.activities.email import SendWorkflowEmailInput
+
+            asyncio.get_event_loop().run_until_complete(dispatch(
+                "send_workflow_email",
+                SendWorkflowEmailInput(
+                    workspace_id=execution.workspace_id,
+                    to_email=email_to,
+                    subject=data.get("subject", ""),
+                    html_body=data.get("body", ""),
+                    record_id=execution.record_id,
+                ),
+                task_queue=TaskQueue.EMAIL,
+            ))
 
             return {
                 "status": "success",
@@ -1675,20 +1728,22 @@ class SyncWorkflowActionHandler:
         if not user_id:
             return {"status": "failed", "error": "No user_id found for onboarding"}
 
-        # Queue onboarding start via Celery
-        from aexy.processing.celery_app import celery_app
+        # Queue onboarding start via Temporal
+        import asyncio
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+        from aexy.temporal.activities.email import StartUserOnboardingInput
 
-        celery_app.send_task(
-            "aexy.processing.email_marketing_tasks.start_user_onboarding",
-            kwargs={
-                "workspace_id": execution.workspace_id,
-                "flow_id": flow_id,
-                "flow_slug": flow_slug,
-                "user_id": user_id,
-                "record_id": execution.record_id,
-            },
-            queue="email_campaigns",
-        )
+        asyncio.get_event_loop().run_until_complete(dispatch(
+            "start_user_onboarding",
+            StartUserOnboardingInput(
+                workspace_id=execution.workspace_id,
+                user_id=user_id,
+                flow_id=flow_id,
+                flow_slug=flow_slug,
+            ),
+            task_queue=TaskQueue.EMAIL,
+        ))
 
         return {
             "status": "success",
@@ -1709,18 +1764,21 @@ class SyncWorkflowActionHandler:
         if not progress_id and not (flow_id and user_id):
             return {"status": "failed", "error": "Must specify progress_id or (flow_id + user_id)"}
 
-        from aexy.processing.celery_app import celery_app
+        import asyncio
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+        from aexy.temporal.activities.email import CompleteOnboardingStepInput
 
-        celery_app.send_task(
-            "aexy.processing.email_marketing_tasks.complete_onboarding_step",
-            kwargs={
-                "progress_id": progress_id,
-                "flow_id": flow_id,
-                "user_id": user_id,
-                "step_id": step_id,
-            },
-            queue="email_campaigns",
-        )
+        asyncio.get_event_loop().run_until_complete(dispatch(
+            "complete_onboarding_step",
+            CompleteOnboardingStepInput(
+                progress_id=progress_id,
+                flow_id=flow_id,
+                user_id=user_id,
+                step_id=step_id,
+            ),
+            task_queue=TaskQueue.EMAIL,
+        ))
 
         return {
             "status": "success",

@@ -84,16 +84,20 @@ class SyncService:
         job_id = str(uuid4())
 
         if use_celery:
-            # Use Celery task for production workloads
-            from aexy.processing.sync_tasks import sync_repository_task
+            # Use Temporal workflow for production workloads
+            from aexy.temporal.dispatch import dispatch
+            from aexy.temporal.task_queues import TaskQueue
+            from aexy.temporal.activities.sync import SyncRepositoryInput
 
-            result = sync_repository_task.delay(
-                developer_id=developer_id,
-                repository_id=repository_id,
-                sync_type=sync_type,
-                access_token=connection.access_token,
+            workflow_id = await dispatch(
+                "sync_repository",
+                SyncRepositoryInput(
+                    repository_id=repository_id,
+                    developer_id=developer_id,
+                ),
+                task_queue=TaskQueue.SYNC,
             )
-            return result.id
+            return workflow_id
         else:
             # Start sync in background (async task)
             asyncio.create_task(

@@ -819,19 +819,21 @@ class CRMAutomationService:
                 subject = subject.replace("{record_name}", record.name)
                 body = body.replace("{record_name}", record.name)
 
-        # Queue the email via Celery
-        from aexy.processing.celery_app import celery_app
+        # Queue the email via Temporal
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+        from aexy.temporal.activities.email import SendWorkflowEmailInput
 
-        celery_app.send_task(
-            "aexy.processing.email_marketing_tasks.send_workflow_email",
-            kwargs={
-                "workspace_id": workspace_id,
-                "to": email_to,
-                "subject": subject,
-                "body": body,
-                "record_id": record.id if record else None,
-            },
-            queue="email_campaigns",
+        await dispatch(
+            "send_workflow_email",
+            SendWorkflowEmailInput(
+                workspace_id=workspace_id,
+                to_email=email_to,
+                subject=subject,
+                html_body=body,
+                record_id=record.id if record else None,
+            ),
+            task_queue=TaskQueue.EMAIL,
         )
 
         return {

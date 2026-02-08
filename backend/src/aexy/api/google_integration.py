@@ -661,18 +661,25 @@ async def trigger_gmail_sync(
     db.add(job)
     await db.commit()
 
-    # Queue the Celery task
-    from aexy.processing.google_sync_tasks import sync_gmail_task
+    # Dispatch to Temporal
+    from aexy.temporal.client import get_temporal_client
+    from aexy.temporal.workflows.sync import SyncGmailWorkflow, SyncGmailWorkflowInput
 
-    task = sync_gmail_task.delay(
-        job_id=job.id,
-        workspace_id=workspace_id,
-        integration_id=integration.id,
-        max_messages=data.max_messages,
+    client = await get_temporal_client()
+    handle = await client.start_workflow(
+        SyncGmailWorkflow.run,
+        SyncGmailWorkflowInput(
+            job_id=job.id,
+            workspace_id=workspace_id,
+            integration_id=integration.id,
+            max_messages=data.max_messages,
+        ),
+        id=f"sync-gmail-{job.id}",
+        task_queue="sync",
     )
 
-    # Update job with Celery task ID
-    job.celery_task_id = task.id
+    # Update job with Temporal workflow ID
+    job.celery_task_id = handle.id
     await db.commit()
 
     return GmailSyncResponse(
@@ -1020,18 +1027,25 @@ async def trigger_calendar_sync(
     db.add(job)
     await db.commit()
 
-    # Queue the Celery task
-    from aexy.processing.google_sync_tasks import sync_calendar_task
+    # Dispatch to Temporal
+    from aexy.temporal.dispatch import dispatch
+    from aexy.temporal.task_queues import TaskQueue
+    from aexy.temporal.activities.google_sync import SyncCalendarInput
 
-    task = sync_calendar_task.delay(
-        job_id=job.id,
-        workspace_id=workspace_id,
-        integration_id=integration.id,
-        calendar_ids=data.calendar_ids,
+    wf_id = await dispatch(
+        "sync_calendar",
+        SyncCalendarInput(
+            job_id=job.id,
+            workspace_id=workspace_id,
+            integration_id=integration.id,
+            calendar_ids=data.calendar_ids,
+        ),
+        task_queue=TaskQueue.SYNC,
+        workflow_id=f"sync-calendar-{job.id}",
     )
 
-    # Update job with Celery task ID
-    job.celery_task_id = task.id
+    # Update job with Temporal workflow ID
+    job.celery_task_id = wf_id
     await db.commit()
 
     return CalendarSyncResponse(

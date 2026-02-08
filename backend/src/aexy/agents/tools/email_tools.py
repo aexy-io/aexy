@@ -27,24 +27,26 @@ class SendEmailTool(BaseTool):
 
     async def _arun(self, to: str, subject: str, body: str, record_id: str | None = None) -> str:
         """Send an email."""
-        from aexy.processing.celery_app import celery_app
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+        from aexy.temporal.activities.integrations import SendCRMEmailInput
 
         if not self.workspace_id or not self.user_id:
             return "Error: Missing workspace or user context"
 
         try:
-            # Queue the email via Celery
-            celery_app.send_task(
-                "aexy.processing.tasks.gmail_tasks.send_email",
-                kwargs={
-                    "workspace_id": self.workspace_id,
-                    "user_id": self.user_id,
-                    "to": to,
-                    "subject": subject,
-                    "body": body,
-                    "record_id": record_id,
-                },
-                queue="google_sync",
+            # Queue the email via Temporal
+            await dispatch(
+                "send_crm_email",
+                SendCRMEmailInput(
+                    workspace_id=self.workspace_id,
+                    user_id=self.user_id,
+                    to_email=to,
+                    subject=subject,
+                    body=body,
+                    record_id=record_id,
+                ),
+                task_queue=TaskQueue.INTEGRATIONS,
             )
 
             return f"Email queued successfully to {to} with subject: '{subject}'"
@@ -73,22 +75,24 @@ class CreateDraftTool(BaseTool):
 
     async def _arun(self, to: str, subject: str, body: str) -> str:
         """Create an email draft."""
-        from aexy.processing.celery_app import celery_app
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+        from aexy.temporal.activities.integrations import SendCRMEmailInput
 
         if not self.workspace_id or not self.user_id:
             return "Error: Missing workspace or user context"
 
         try:
-            celery_app.send_task(
-                "aexy.processing.tasks.gmail_tasks.create_draft",
-                kwargs={
-                    "workspace_id": self.workspace_id,
-                    "user_id": self.user_id,
-                    "to": to,
-                    "subject": subject,
-                    "body": body,
-                },
-                queue="google_sync",
+            await dispatch(
+                "send_crm_email",
+                SendCRMEmailInput(
+                    workspace_id=self.workspace_id,
+                    user_id=self.user_id,
+                    to_email=to,
+                    subject=subject,
+                    body=body,
+                ),
+                task_queue=TaskQueue.INTEGRATIONS,
             )
 
             return f"Email draft created for {to}. Subject: '{subject}'"
