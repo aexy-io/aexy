@@ -403,7 +403,9 @@ async def import_slack_history(
     service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
 ):
     """Import Slack message history (async task)."""
-    from aexy.processing.tracking_tasks import import_slack_history_task
+    from aexy.temporal.dispatch import dispatch
+    from aexy.temporal.task_queues import TaskQueue
+    from aexy.temporal.activities.tracking import ImportSlackHistoryInput
 
     integration = await service.get_integration(integration_id, db)
     if not integration or not integration.is_active:
@@ -412,17 +414,21 @@ async def import_slack_history(
     # Use defaults if no request body
     req = request or ImportHistoryRequest()
 
-    # Queue the import task
-    task = import_slack_history_task.delay(
-        integration_id=integration_id,
-        channel_ids=req.channel_ids,
-        days_back=req.days_back,
-        team_id=req.team_id,
-        sprint_id=req.sprint_id,
+    # Dispatch to Temporal
+    wf_id = await dispatch(
+        "import_slack_history",
+        ImportSlackHistoryInput(
+            integration_id=integration_id,
+            channel_ids=req.channel_ids,
+            days_back=req.days_back,
+            team_id=req.team_id,
+            sprint_id=req.sprint_id,
+        ),
+        task_queue=TaskQueue.INTEGRATIONS,
     )
 
     return {
-        "task_id": task.id,
+        "task_id": wf_id,
         "status": "queued",
         "message": f"Import started for {req.days_back} days of history",
     }
@@ -435,17 +441,23 @@ async def sync_slack_channels(
     service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
 ):
     """Trigger immediate sync of all configured channels."""
-    from aexy.processing.tracking_tasks import sync_all_slack_channels_task
+    from aexy.temporal.dispatch import dispatch
+    from aexy.temporal.task_queues import TaskQueue
+    from aexy.temporal.activities.tracking import SyncAllSlackChannelsInput
 
     integration = await service.get_integration(integration_id, db)
     if not integration or not integration.is_active:
         raise HTTPException(status_code=404, detail="Integration not found or inactive")
 
-    # Queue the sync task
-    task = sync_all_slack_channels_task.delay(integration_id=integration_id)
+    # Dispatch to Temporal
+    wf_id = await dispatch(
+        "sync_all_slack_channels",
+        SyncAllSlackChannelsInput(integration_id=integration_id),
+        task_queue=TaskQueue.INTEGRATIONS,
+    )
 
     return {
-        "task_id": task.id,
+        "task_id": wf_id,
         "status": "queued",
         "message": "Sync started for all configured channels",
     }

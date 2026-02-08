@@ -24,20 +24,22 @@ class SendSlackTool(BaseTool):
 
     async def _arun(self, channel: str, message: str) -> str:
         """Send Slack message."""
-        from aexy.processing.celery_app import celery_app
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+        from aexy.temporal.activities.integrations import SendSlackMessageInput
 
         if not self.workspace_id:
             return "Error: Missing workspace context"
 
         try:
-            celery_app.send_task(
-                "aexy.processing.tasks.integration_tasks.send_slack_message",
-                kwargs={
-                    "workspace_id": self.workspace_id,
-                    "channel": channel,
-                    "message": message,
-                },
-                queue="celery",
+            await dispatch(
+                "send_slack_message",
+                SendSlackMessageInput(
+                    workspace_id=self.workspace_id,
+                    channel=channel,
+                    message=message,
+                ),
+                task_queue=TaskQueue.INTEGRATIONS,
             )
 
             return f"Slack message queued to {channel}"
@@ -64,7 +66,9 @@ class SendSMSTool(BaseTool):
 
     async def _arun(self, phone_number: str, message: str) -> str:
         """Send SMS via Twilio."""
-        from aexy.processing.celery_app import celery_app
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+        from aexy.temporal.activities.integrations import SendSMSInput
 
         if not self.workspace_id:
             return "Error: Missing workspace context"
@@ -74,14 +78,14 @@ class SendSMSTool(BaseTool):
             return "Error: Phone number must be in E.164 format (e.g., '+14155551234')"
 
         try:
-            celery_app.send_task(
-                "aexy.processing.tasks.integration_tasks.send_sms",
-                kwargs={
-                    "workspace_id": self.workspace_id,
-                    "to": phone_number,
-                    "body": message,
-                },
-                queue="celery",
+            await dispatch(
+                "send_sms",
+                SendSMSInput(
+                    workspace_id=self.workspace_id,
+                    to=phone_number,
+                    body=message,
+                ),
+                task_queue=TaskQueue.INTEGRATIONS,
             )
 
             return f"SMS queued to {phone_number}"

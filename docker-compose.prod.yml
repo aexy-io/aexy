@@ -32,6 +32,36 @@ services:
     networks:
       - aexy-network
 
+  temporal:
+    image: temporalio/auto-setup:latest
+    container_name: aexy-temporal
+    restart: unless-stopped
+    environment:
+      - DB=postgresql
+      - DB_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-aexy}
+      - POSTGRES_PWD=${POSTGRES_PASSWORD}
+      - POSTGRES_SEEDS=postgres
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - aexy-network
+
+  temporal-ui:
+    image: temporalio/ui:latest
+    container_name: aexy-temporal-ui
+    restart: unless-stopped
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+    depends_on:
+      - temporal
+    networks:
+      - aexy-network
+    expose:
+      - "8080"
+
   backend:
     build:
       context: ./backend
@@ -41,9 +71,8 @@ services:
     environment:
       # Core
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-aexy}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aexy}
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - REDIS_URL=redis://redis:6379/0
+      - TEMPORAL_ADDRESS=temporal:7233
       - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY in .env.prod}
       - FRONTEND_URL=${FRONTEND_URL:-https://aexy.io}
       - BACKEND_URL=${BACKEND_URL:-https://server.aexy.io}
@@ -101,23 +130,25 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      temporal:
+        condition: service_started
     command: uvicorn aexy.main:app --host 0.0.0.0 --port 8000 --workers 4
     networks:
       - aexy-network
     expose:
       - "8000"
 
-  celery-worker:
+  temporal-worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: aexy-celery-worker
+    container_name: aexy-temporal-worker
     restart: unless-stopped
     environment:
       # Core
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-aexy}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aexy}
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - REDIS_URL=redis://redis:6379/0
+      - TEMPORAL_ADDRESS=temporal:7233
       - SECRET_KEY=${SECRET_KEY}
       - FRONTEND_URL=${FRONTEND_URL:-https://aexy.io}
       # LLM
@@ -168,35 +199,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A aexy.processing.celery_app worker --loglevel=info -E -Q celery,analysis,sync,batch,google_sync,tracking,integrations,workflows,email_campaigns,email_warming,email_reputation,booking,uptime --concurrency=4
-    networks:
-      - aexy-network
-
-  celery-beat:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: aexy-celery-beat
-    restart: unless-stopped
-    environment:
-      # Core
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-aexy}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aexy}
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - SECRET_KEY=${SECRET_KEY}
-      # LLM (for scheduled tasks)
-      - LLM_PROVIDER=${LLM_PROVIDER:-gemini}
-      - LLM_MODEL=${LLM_MODEL:-gemini-2.0-flash}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      celery-worker:
+      temporal:
         condition: service_started
-    command: celery -A aexy.processing.celery_app beat --loglevel=info
+    command: python -m aexy.temporal.worker
     networks:
       - aexy-network
 

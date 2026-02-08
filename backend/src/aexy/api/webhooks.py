@@ -181,7 +181,8 @@ async def trigger_automation_webhook(
         WorkflowExecution,
         WorkflowExecutionStatus,
     )
-    from aexy.processing.workflow_tasks import execute_workflow_task
+    from aexy.temporal.client import get_temporal_client
+    from aexy.temporal.workflows.crm_workflow import CRMAutomationWorkflow, CRMWorkflowInput
 
     # Get payload
     try:
@@ -269,8 +270,23 @@ async def trigger_automation_webhook(
     await db.commit()
     await db.refresh(execution)
 
-    # Queue execution
-    execute_workflow_task.delay(execution.id)
+    # Dispatch to Temporal
+    client = await get_temporal_client()
+    await client.start_workflow(
+        CRMAutomationWorkflow.run,
+        CRMWorkflowInput(
+            execution_id=execution.id,
+            workflow_id=workflow.id,
+            workspace_id=automation.workspace_id,
+            trigger_data=trigger_data,
+            record_id=record_id,
+            record_data=record_data,
+            nodes=workflow.nodes or [],
+            edges=workflow.edges or [],
+        ),
+        id=f"crm-workflow-{execution.id}",
+        task_queue="workflows",
+    )
 
     return {
         "status": "accepted",

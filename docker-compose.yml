@@ -29,6 +29,31 @@ services:
       timeout: 5s
       retries: 5
 
+  temporal:
+    image: temporalio/auto-setup:latest
+    container_name: aexy-temporal
+    ports:
+      - "7233:7233"
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PWD=postgres
+      - POSTGRES_SEEDS=postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  temporal-ui:
+    image: temporalio/ui:latest
+    container_name: aexy-temporal-ui
+    ports:
+      - "8080:8080"
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+    depends_on:
+      - temporal
+
   backend:
     build:
       context: ./backend
@@ -41,8 +66,7 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/aexy
       - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - TEMPORAL_ADDRESS=temporal:7233
       - LLM_PROVIDER=gemini
       - LLM_MODEL=gemini-2.0-flash
       - GEMINI_API_KEY=${GEMINI_API_KEY:-your-gemini-api-key}
@@ -52,19 +76,21 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      temporal:
+        condition: service_started
     volumes:
       - ./backend:/app
     command: uvicorn aexy.main:app --host 0.0.0.0 --port 8000 --reload
 
-  celery-worker:
+  temporal-worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: aexy-celery-worker
+    container_name: aexy-temporal-worker
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/aexy
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - REDIS_URL=redis://redis:6379/0
+      - TEMPORAL_ADDRESS=temporal:7233
       - LLM_PROVIDER=gemini
       - LLM_MODEL=gemini-2.0-flash
       - GEMINI_API_KEY=${GEMINI_API_KEY:-your-gemini-api-key}
@@ -74,49 +100,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
-    command: celery -A aexy.processing.celery_app worker --loglevel=info -E -Q celery,analysis,sync,batch,google_sync,tracking,integrations,workflows,email_campaigns,email_warming,email_reputation,booking,uptime
-
-  celery-beat:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: aexy-celery-beat
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/aexy
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - LLM_PROVIDER=gemini
-      - LLM_MODEL=gemini-2.0-flash
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-your-gemini-api-key}
-      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      celery-worker:
+      temporal:
         condition: service_started
     volumes:
       - ./backend:/app
-    command: celery -A aexy.processing.celery_app beat --loglevel=info
-
-  flower:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: aexy-flower
-    ports:
-      - "5555:5555"
-    environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - FLOWER_UNAUTHENTICATED_API=true
-    depends_on:
-      - redis
-      - celery-worker
-    command: celery --broker=redis://redis:6379/0 flower --port=5555
+    command: python -m aexy.temporal.worker
 
   frontend:
     build:
