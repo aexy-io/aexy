@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.2] - 2026-02-09
+
+### Fixed
+
+- Set default `github_app_install_url` to production GitHub App URL in `config.py` instead of empty string
+- Added `GITHUB_APP_INSTALL_URL` environment variable to `docker-compose.prod.yml` backend service
+
+---
+
 ## [0.5.1] - 2026-02-08
 
 ### Changed

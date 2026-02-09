@@ -247,7 +247,7 @@ class Settings(BaseSettings):
     github_private_key_path: str = ""  # Alternative: path to PEM file
     github_redirect_uri: str = "http://localhost:8000/api/v1/auth/github/callback"
     github_app_install_url: str = Field(
-        default="",
+        default="https://github.com/apps/devograph/installations/new",
         validation_alias="GITHUB_APP_INSTALL_URL",
     )
 
