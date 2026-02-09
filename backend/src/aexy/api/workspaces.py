@@ -28,6 +28,8 @@ from aexy.schemas.workspace import (
 )
 from aexy.services.workspace_service import WorkspaceService
 from aexy.services.developer_service import DeveloperService
+from aexy.services.analytics_dashboard import AnalyticsDashboardService
+from aexy.schemas.analytics import WorkspaceGitHubAnalytics
 
 router = APIRouter(prefix="/workspaces", tags=["Workspaces"])
 invites_router = APIRouter(prefix="/invites", tags=["Invites"])
@@ -1270,4 +1272,38 @@ async def accept_invite(
         workspace_name=invite.workspace.name,
         workspace_slug=invite.workspace.slug,
         message=f"Successfully joined {invite.workspace.name}",
+    )
+
+
+# GitHub Work Analytics (admin/owner only)
+@router.get("/{workspace_id}/github-analytics", response_model=WorkspaceGitHubAnalytics)
+async def get_workspace_github_analytics(
+    workspace_id: str,
+    days: int = 30,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get GitHub commit and PR analytics for all workspace members.
+
+    Requires admin or owner role.
+    """
+    service = WorkspaceService(db)
+
+    if not await service.check_permission(workspace_id, str(current_user.id), "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin or owner permission required to view work analytics",
+        )
+
+    if days < 1 or days > 365:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Days must be between 1 and 365",
+        )
+
+    analytics_service = AnalyticsDashboardService()
+    return await analytics_service.get_workspace_github_analytics(
+        workspace_id=workspace_id,
+        db=db,
+        days=days,
     )

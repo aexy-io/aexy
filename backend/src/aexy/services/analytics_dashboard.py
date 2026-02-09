@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.models.activity import Commit, PullRequest, CodeReview
 from aexy.models.developer import Developer
+from aexy.models.workspace import WorkspaceMember
 from aexy.schemas.analytics import (
     SkillHeatmapCell,
     SkillHeatmapData,
@@ -20,6 +21,13 @@ from aexy.schemas.analytics import (
     CollaborationEdge,
     CollaborationGraph,
     DateRange,
+    MemberActivityDay,
+    MemberRepoStat,
+    MemberGitHubStats,
+    TeamActivityDay,
+    TopRepoStat,
+    GitHubAnalyticsSummary,
+    WorkspaceGitHubAnalytics,
 )
 
 
@@ -616,3 +624,375 @@ class AnalyticsDashboardService:
         }
 
         return metrics
+
+    async def get_workspace_github_analytics(
+        self,
+        workspace_id: str,
+        db: AsyncSession,
+        days: int = 30,
+    ) -> WorkspaceGitHubAnalytics:
+        """Get GitHub analytics for all members in a workspace.
+
+        Args:
+            workspace_id: Workspace ID
+            db: Database session
+            days: Number of days to analyze
+
+        Returns:
+            WorkspaceGitHubAnalytics with per-member and team-level stats
+        """
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+        # Get active workspace members
+        member_stmt = (
+            select(WorkspaceMember)
+            .where(
+                and_(
+                    WorkspaceMember.workspace_id == workspace_id,
+                    WorkspaceMember.status == "active",
+                )
+            )
+        )
+        result = await db.execute(member_stmt)
+        members = list(result.scalars().all())
+        developer_ids = [str(m.developer_id) for m in members]
+
+        if not developer_ids:
+            return WorkspaceGitHubAnalytics(
+                summary=GitHubAnalyticsSummary(),
+                members=[],
+                activity_timeline=[],
+                period_days=days,
+                generated_at=datetime.now(timezone.utc),
+            )
+
+        # Get developers info
+        dev_stmt = select(Developer).where(Developer.id.in_(developer_ids))
+        result = await db.execute(dev_stmt)
+        developers = {str(dev.id): dev for dev in result.scalars().all()}
+
+        # === Per-member commit stats ===
+        commit_stats_stmt = (
+            select(
+                Commit.developer_id,
+                func.count(Commit.id).label("commit_count"),
+                func.coalesce(func.sum(Commit.additions), 0).label("additions"),
+                func.coalesce(func.sum(Commit.deletions), 0).label("deletions"),
+                func.max(Commit.committed_at).label("last_commit_at"),
+            )
+            .where(
+                and_(
+                    Commit.developer_id.in_(developer_ids),
+                    Commit.committed_at >= cutoff,
+                )
+            )
+            .group_by(Commit.developer_id)
+        )
+        result = await db.execute(commit_stats_stmt)
+        commit_stats = {str(row.developer_id): row for row in result}
+
+        # === Per-member PR stats ===
+        from sqlalchemy import Integer as SAInteger, case
+        pr_stats_stmt = (
+            select(
+                PullRequest.developer_id,
+                func.count(PullRequest.id).label("pr_count"),
+                func.sum(case((PullRequest.state == "merged", 1), else_=0)).label("pr_merged"),
+                func.coalesce(func.sum(PullRequest.additions), 0).label("pr_additions"),
+                func.coalesce(func.sum(PullRequest.deletions), 0).label("pr_deletions"),
+            )
+            .where(
+                and_(
+                    PullRequest.developer_id.in_(developer_ids),
+                    PullRequest.created_at_github >= cutoff,
+                )
+            )
+            .group_by(PullRequest.developer_id)
+        )
+        result = await db.execute(pr_stats_stmt)
+        pr_stats = {str(row.developer_id): row for row in result}
+
+        # === Per-member review stats ===
+        review_stats_stmt = (
+            select(
+                CodeReview.developer_id,
+                func.count(CodeReview.id).label("review_count"),
+            )
+            .where(
+                and_(
+                    CodeReview.developer_id.in_(developer_ids),
+                    CodeReview.submitted_at >= cutoff,
+                )
+            )
+            .group_by(CodeReview.developer_id)
+        )
+        result = await db.execute(review_stats_stmt)
+        review_stats = {str(row.developer_id): row for row in result}
+
+        # === Per-member top repos (commits) ===
+        repo_commit_stmt = (
+            select(
+                Commit.developer_id,
+                Commit.repository,
+                func.count(Commit.id).label("count"),
+                func.coalesce(func.sum(Commit.additions), 0).label("adds"),
+                func.coalesce(func.sum(Commit.deletions), 0).label("dels"),
+            )
+            .where(
+                and_(
+                    Commit.developer_id.in_(developer_ids),
+                    Commit.committed_at >= cutoff,
+                )
+            )
+            .group_by(Commit.developer_id, Commit.repository)
+        )
+        result = await db.execute(repo_commit_stmt)
+        member_repo_commits: dict[str, dict[str, dict]] = defaultdict(lambda: defaultdict(lambda: {"commits": 0, "prs": 0, "additions": 0, "deletions": 0}))
+        for row in result:
+            dev_id = str(row.developer_id)
+            member_repo_commits[dev_id][row.repository]["commits"] = row.count
+            member_repo_commits[dev_id][row.repository]["additions"] = row.adds
+            member_repo_commits[dev_id][row.repository]["deletions"] = row.dels
+
+        # === Per-member top repos (PRs) ===
+        repo_pr_stmt = (
+            select(
+                PullRequest.developer_id,
+                PullRequest.repository,
+                func.count(PullRequest.id).label("count"),
+            )
+            .where(
+                and_(
+                    PullRequest.developer_id.in_(developer_ids),
+                    PullRequest.created_at_github >= cutoff,
+                )
+            )
+            .group_by(PullRequest.developer_id, PullRequest.repository)
+        )
+        result = await db.execute(repo_pr_stmt)
+        for row in result:
+            dev_id = str(row.developer_id)
+            member_repo_commits[dev_id][row.repository]["prs"] = row.count
+
+        # === Daily activity per member (for sparklines) ===
+        daily_commit_stmt = (
+            select(
+                Commit.developer_id,
+                func.date(Commit.committed_at).label("day"),
+                func.count(Commit.id).label("count"),
+            )
+            .where(
+                and_(
+                    Commit.developer_id.in_(developer_ids),
+                    Commit.committed_at >= cutoff,
+                )
+            )
+            .group_by(Commit.developer_id, func.date(Commit.committed_at))
+        )
+        result = await db.execute(daily_commit_stmt)
+        member_daily_commits: dict[str, dict[str, int]] = defaultdict(dict)
+        for row in result:
+            member_daily_commits[str(row.developer_id)][str(row.day)] = row.count
+
+        daily_pr_stmt = (
+            select(
+                PullRequest.developer_id,
+                func.date(PullRequest.created_at_github).label("day"),
+                func.count(PullRequest.id).label("count"),
+            )
+            .where(
+                and_(
+                    PullRequest.developer_id.in_(developer_ids),
+                    PullRequest.created_at_github >= cutoff,
+                )
+            )
+            .group_by(PullRequest.developer_id, func.date(PullRequest.created_at_github))
+        )
+        result = await db.execute(daily_pr_stmt)
+        member_daily_prs: dict[str, dict[str, int]] = defaultdict(dict)
+        for row in result:
+            member_daily_prs[str(row.developer_id)][str(row.day)] = row.count
+
+        # === Build member stats ===
+        member_list: list[MemberGitHubStats] = []
+        total_commits = 0
+        total_prs = 0
+        total_prs_merged = 0
+        total_reviews = 0
+        total_additions = 0
+        total_deletions = 0
+        active_contributors = 0
+
+        # For team timeline
+        team_daily_commits: dict[str, int] = defaultdict(int)
+        team_daily_prs_opened: dict[str, int] = defaultdict(int)
+        team_daily_reviews: dict[str, int] = defaultdict(int)
+
+        # Daily reviews for timeline
+        daily_review_stmt = (
+            select(
+                func.date(CodeReview.submitted_at).label("day"),
+                func.count(CodeReview.id).label("count"),
+            )
+            .where(
+                and_(
+                    CodeReview.developer_id.in_(developer_ids),
+                    CodeReview.submitted_at >= cutoff,
+                )
+            )
+            .group_by(func.date(CodeReview.submitted_at))
+        )
+        result = await db.execute(daily_review_stmt)
+        for row in result:
+            team_daily_reviews[str(row.day)] = row.count
+
+        # Daily merged PRs for timeline
+        daily_merged_stmt = (
+            select(
+                func.date(PullRequest.merged_at).label("day"),
+                func.count(PullRequest.id).label("count"),
+            )
+            .where(
+                and_(
+                    PullRequest.developer_id.in_(developer_ids),
+                    PullRequest.merged_at >= cutoff,
+                    PullRequest.state == "merged",
+                )
+            )
+            .group_by(func.date(PullRequest.merged_at))
+        )
+        result = await db.execute(daily_merged_stmt)
+        team_daily_merged: dict[str, int] = {}
+        for row in result:
+            team_daily_merged[str(row.day)] = row.count
+
+        # Global repo stats for top repos
+        global_repo_stats: dict[str, dict] = defaultdict(lambda: {"commits": 0, "prs": 0, "contributors": set()})
+
+        for dev_id in developer_ids:
+            dev = developers.get(dev_id)
+            if not dev:
+                continue
+
+            c_stats = commit_stats.get(dev_id)
+            p_stats = pr_stats.get(dev_id)
+            r_stats = review_stats.get(dev_id)
+
+            commits = c_stats.commit_count if c_stats else 0
+            additions = (c_stats.additions or 0) if c_stats else 0
+            deletions = (c_stats.deletions or 0) if c_stats else 0
+            last_commit = c_stats.last_commit_at if c_stats else None
+
+            prs_created = p_stats.pr_count if p_stats else 0
+            prs_merged = (p_stats.pr_merged or 0) if p_stats else 0
+            pr_adds = (p_stats.pr_additions or 0) if p_stats else 0
+            pr_dels = (p_stats.pr_deletions or 0) if p_stats else 0
+
+            reviews = r_stats.review_count if r_stats else 0
+
+            total_commits += commits
+            total_prs += prs_created
+            total_prs_merged += prs_merged
+            total_reviews += reviews
+            total_additions += additions + pr_adds
+            total_deletions += deletions + pr_dels
+
+            if commits > 0 or prs_created > 0:
+                active_contributors += 1
+
+            # Build top repos for this member
+            repos = member_repo_commits.get(dev_id, {})
+            top_repos = sorted(repos.items(), key=lambda x: x[1]["commits"] + x[1]["prs"], reverse=True)[:5]
+            repo_stats_list = [
+                MemberRepoStat(
+                    repository=repo,
+                    commits=data["commits"],
+                    prs=data["prs"],
+                    additions=data["additions"],
+                    deletions=data["deletions"],
+                )
+                for repo, data in top_repos
+            ]
+
+            # Update global repo stats
+            for repo, data in repos.items():
+                global_repo_stats[repo]["commits"] += data["commits"]
+                global_repo_stats[repo]["prs"] += data["prs"]
+                global_repo_stats[repo]["contributors"].add(dev_id)
+
+            # Build daily activity trend
+            all_days = set(member_daily_commits.get(dev_id, {}).keys()) | set(member_daily_prs.get(dev_id, {}).keys())
+            activity_trend = []
+            for day in sorted(all_days):
+                c = member_daily_commits.get(dev_id, {}).get(day, 0)
+                p = member_daily_prs.get(dev_id, {}).get(day, 0)
+                activity_trend.append(MemberActivityDay(date=day, commits=c, prs=p))
+                team_daily_commits[day] += c
+                team_daily_prs_opened[day] += p
+
+            member_list.append(MemberGitHubStats(
+                developer_id=dev_id,
+                name=dev.name or dev.email,
+                email=dev.email,
+                avatar_url=dev.avatar_url,
+                commits=commits,
+                prs_created=prs_created,
+                prs_merged=prs_merged,
+                reviews_given=reviews,
+                additions=additions + pr_adds,
+                deletions=deletions + pr_dels,
+                top_repositories=repo_stats_list,
+                last_commit_at=last_commit,
+                activity_trend=activity_trend,
+            ))
+
+        # Sort members by total activity (commits + PRs)
+        member_list.sort(key=lambda m: m.commits + m.prs_created, reverse=True)
+
+        # Build top repositories
+        top_global_repos = sorted(
+            global_repo_stats.items(),
+            key=lambda x: x[1]["commits"] + x[1]["prs"],
+            reverse=True,
+        )[:10]
+        top_repos_list = [
+            TopRepoStat(
+                repository=repo,
+                commits=data["commits"],
+                prs=data["prs"],
+                contributors=len(data["contributors"]),
+            )
+            for repo, data in top_global_repos
+        ]
+
+        # Build team activity timeline
+        all_dates = set(team_daily_commits.keys()) | set(team_daily_prs_opened.keys()) | set(team_daily_reviews.keys())
+        activity_timeline = []
+        current = cutoff
+        while current <= datetime.now(timezone.utc):
+            date_str = current.strftime("%Y-%m-%d")
+            activity_timeline.append(TeamActivityDay(
+                date=date_str,
+                commits=team_daily_commits.get(date_str, 0),
+                prs_opened=team_daily_prs_opened.get(date_str, 0),
+                prs_merged=team_daily_merged.get(date_str, 0),
+                reviews=team_daily_reviews.get(date_str, 0),
+            ))
+            current += timedelta(days=1)
+
+        return WorkspaceGitHubAnalytics(
+            summary=GitHubAnalyticsSummary(
+                total_commits=total_commits,
+                total_prs=total_prs,
+                total_prs_merged=total_prs_merged,
+                total_reviews=total_reviews,
+                total_additions=total_additions,
+                total_deletions=total_deletions,
+                active_contributors=active_contributors,
+                top_repositories=top_repos_list,
+            ),
+            members=member_list,
+            activity_timeline=activity_timeline,
+            period_days=days,
+            generated_at=datetime.now(timezone.utc),
+        )

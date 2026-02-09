@@ -535,3 +535,83 @@ class TeamHealthRequest(BaseModel):
 
     developer_ids: list[str]
     include_predictions: bool = True
+
+
+# Workspace GitHub Analytics schemas
+
+class MemberActivityDay(BaseModel):
+    """Daily activity data point for a member."""
+
+    date: str
+    commits: int = 0
+    prs: int = 0
+
+
+class MemberRepoStat(BaseModel):
+    """Repository-level stats for a member."""
+
+    repository: str
+    commits: int = 0
+    prs: int = 0
+    additions: int = 0
+    deletions: int = 0
+
+
+class MemberGitHubStats(BaseModel):
+    """GitHub statistics for a single workspace member."""
+
+    developer_id: str
+    name: str
+    email: str
+    avatar_url: str | None = None
+    commits: int = 0
+    prs_created: int = 0
+    prs_merged: int = 0
+    reviews_given: int = 0
+    additions: int = 0
+    deletions: int = 0
+    top_repositories: list[MemberRepoStat] = []
+    last_commit_at: datetime | None = None
+    activity_trend: list[MemberActivityDay] = []
+
+
+class TeamActivityDay(BaseModel):
+    """Daily activity data point for the team."""
+
+    date: str
+    commits: int = 0
+    prs_opened: int = 0
+    prs_merged: int = 0
+    reviews: int = 0
+
+
+class TopRepoStat(BaseModel):
+    """Top repository stats for the workspace."""
+
+    repository: str
+    commits: int = 0
+    prs: int = 0
+    contributors: int = 0
+
+
+class GitHubAnalyticsSummary(BaseModel):
+    """Summary statistics for workspace GitHub analytics."""
+
+    total_commits: int = 0
+    total_prs: int = 0
+    total_prs_merged: int = 0
+    total_reviews: int = 0
+    total_additions: int = 0
+    total_deletions: int = 0
+    active_contributors: int = 0
+    top_repositories: list[TopRepoStat] = []
+
+
+class WorkspaceGitHubAnalytics(BaseModel):
+    """Full workspace GitHub analytics response."""
+
+    summary: GitHubAnalyticsSummary
+    members: list[MemberGitHubStats]
+    activity_timeline: list[TeamActivityDay] = []
+    period_days: int = 30
+    generated_at: datetime

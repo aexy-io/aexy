@@ -96,6 +96,7 @@ export const APP_CATALOG: Record<string, AppDefinition> = {
       { id: "standups", name: "Standups", description: "Daily standup submissions", route: "/standups" },
       { id: "blockers", name: "Blockers", description: "Track and manage blockers", route: "/blockers" },
       { id: "time", name: "Time Tracking", description: "Log and track work hours", route: "/time" },
+      { id: "work_stats", name: "Work Stats", description: "GitHub commits and PR analytics for workspace", route: "/work-stats" },
     ],
   },
   sprints: {
@@ -331,7 +332,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
     isSystem: true,
     appConfig: {
       dashboard: { enabled: true },
-      tracking: { enabled: true, modules: { standups: true, blockers: true, time: true } },
+      tracking: { enabled: true, modules: { standups: true, blockers: true, time: true, work_stats: true } },
       sprints: { enabled: true, modules: { board: true, epics: true, tasks: true, backlog: true } },
       tickets: { enabled: true },
       docs: { enabled: true },
@@ -415,7 +416,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
     isSystem: true,
     appConfig: {
       dashboard: { enabled: true },
-      tracking: { enabled: true, modules: { standups: true, blockers: true, time: true } },
+      tracking: { enabled: true, modules: { standups: true, blockers: true, time: true, work_stats: true } },
       sprints: { enabled: true, modules: { board: true, epics: true, tasks: true, backlog: true } },
       tickets: { enabled: true },
       reviews: { enabled: true, modules: { cycles: true, goals: true, peer_requests: true, manage: true } },
@@ -452,6 +453,7 @@ export const SIDEBAR_TO_APP_MAP: Record<string, string> = {
   "/tracking/standups": "tracking",
   "/tracking/blockers": "tracking",
   "/tracking/time": "tracking",
+  "/tracking/work-stats": "tracking",
   "/sprints": "sprints",
   "/tickets": "tickets",
   "/reviews": "reviews",

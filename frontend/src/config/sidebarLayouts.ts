@@ -41,6 +41,7 @@ import {
     AlertTriangle,
     History,
     Bot,
+    GitCommitHorizontal,
 } from "lucide-react";
 
 export type SidebarLayoutType = "grouped" | "flat";
@@ -70,6 +71,7 @@ const trackingItems: SidebarItemConfig[] = [
     { href: "/tracking/standups", label: "Standups", icon: MessageSquare },
     { href: "/tracking/blockers", label: "Blockers", icon: Ban },
     { href: "/tracking/time", label: "Time", icon: Clock },
+    { href: "/tracking/work-stats", label: "Work Stats", icon: GitCommitHorizontal },
 ];
 
 const planningItems: SidebarItemConfig[] = [
