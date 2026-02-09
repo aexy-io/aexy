@@ -23,6 +23,7 @@ from aexy.models.assessment import (
 from aexy.services.assessment_evaluation_service import AssessmentEvaluationService
 from aexy.services.proctoring_service import ProctoringService
 from aexy.services.r2_upload_service import get_r2_upload_service
+from aexy.services.automation_service import dispatch_automation_event
 
 router = APIRouter(prefix="/take", tags=["assessment-take"])
 
@@ -721,6 +722,39 @@ async def complete_assessment(
         # Log but don't fail - evaluation can be retried
         import logging
         logging.error(f"Evaluation error: {e}")
+
+    # Dispatch automation event for assessment completion
+    # Get candidate info for trigger data
+    from aexy.models.assessment import Candidate
+    candidate_query = select(Candidate).where(Candidate.id == invitation.candidate_id)
+    candidate_result = await db.execute(candidate_query)
+    candidate = candidate_result.scalar_one_or_none()
+
+    try:
+        await dispatch_automation_event(
+            db=db,
+            workspace_id=str(assessment.organization_id),  # Use organization_id as workspace
+            module="hiring",
+            trigger_type="assessment.completed",
+            entity_id=str(attempt.id),
+            trigger_data={
+                "attempt_id": str(attempt.id),
+                "assessment_id": str(assessment.id),
+                "assessment_title": assessment.title,
+                "candidate_id": str(invitation.candidate_id),
+                "candidate_name": candidate.name if candidate else None,
+                "candidate_email": candidate.email if candidate else None,
+                "total_score": attempt.total_score,
+                "max_score": attempt.max_possible_score,
+                "percentage_score": round((attempt.total_score / attempt.max_possible_score * 100), 2) if attempt.max_possible_score and attempt.total_score else None,
+                "trust_score": breakdown["trust_score"],
+                "trust_level": breakdown["trust_level"],
+                "completed_at": attempt.completed_at.isoformat() if attempt.completed_at else None,
+            },
+        )
+    except Exception as e:
+        import logging
+        logging.error(f"Failed to dispatch assessment.completed automation: {e}")
 
     attempt_status = attempt.status.value if hasattr(attempt.status, 'value') else attempt.status
     return CompleteAssessmentResponse(

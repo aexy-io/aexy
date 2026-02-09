@@ -2,11 +2,14 @@
 
 import asyncio
 import httpx
+import logging
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import select, func, and_
+
+logger = logging.getLogger(__name__)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -423,11 +426,57 @@ class CRMAutomationService:
         elif action_type == "webhook_call":
             return await self._action_webhook_call(config, record, trigger_data)
         elif action_type == "create_task":
-            return await self._action_create_task(config, record, workspace_id)
+            return await self._action_create_task(config, record, workspace_id, trigger_data)
         elif action_type == "send_slack":
             return await self._action_send_slack(config, record, workspace_id, trigger_data)
         elif action_type == "send_email":
             return await self._action_send_email(config, record, workspace_id, trigger_data)
+        # Uptime module actions
+        elif action_type == "pause_monitor":
+            return await self._action_pause_monitor(config, trigger_data)
+        elif action_type == "resume_monitor":
+            return await self._action_resume_monitor(config, trigger_data)
+        elif action_type == "create_incident":
+            return await self._action_create_incident(config, trigger_data, workspace_id)
+        elif action_type == "resolve_incident":
+            return await self._action_resolve_incident(config, trigger_data)
+        # Common actions
+        elif action_type == "notify_user":
+            return await self._action_notify_user(config, record, workspace_id, trigger_data)
+        elif action_type == "notify_team":
+            return await self._action_notify_team(config, record, workspace_id, trigger_data)
+        # Sprint module actions
+        elif action_type == "update_task":
+            return await self._action_update_task(config, trigger_data)
+        elif action_type == "assign_task":
+            return await self._action_assign_task(config, trigger_data)
+        elif action_type == "move_task":
+            return await self._action_move_task(config, trigger_data)
+        elif action_type == "create_subtask":
+            return await self._action_create_subtask(config, trigger_data)
+        # Ticket module actions
+        elif action_type == "update_ticket":
+            return await self._action_update_ticket(config, trigger_data)
+        elif action_type == "assign_ticket":
+            return await self._action_assign_ticket(config, trigger_data)
+        elif action_type == "escalate":
+            return await self._action_escalate_ticket(config, trigger_data)
+        elif action_type == "change_priority":
+            return await self._action_change_ticket_priority(config, trigger_data)
+        # Hiring module actions
+        elif action_type == "update_candidate":
+            return await self._action_update_candidate(config, trigger_data)
+        elif action_type == "move_stage":
+            return await self._action_move_candidate_stage(config, trigger_data)
+        elif action_type == "schedule_interview":
+            return await self._action_schedule_interview(config, trigger_data, workspace_id)
+        # Booking module actions
+        elif action_type == "confirm_booking":
+            return await self._action_confirm_booking(config, trigger_data)
+        elif action_type == "cancel_booking":
+            return await self._action_cancel_booking(config, trigger_data)
+        elif action_type == "reschedule_booking":
+            return await self._action_reschedule_booking(config, trigger_data)
         else:
             return {"message": f"Action type {action_type} not implemented"}
 
@@ -586,17 +635,94 @@ class CRMAutomationService:
         config: dict,
         record: CRMRecord | None,
         workspace_id: str,
+        trigger_data: dict | None = None,
     ) -> dict:
-        """Create a task (placeholder - would integrate with sprint tasks)."""
-        title = config.get("title", "Automated Task")
-        assignee_id = config.get("assignee_id")
+        """Create a sprint task.
 
-        # This would integrate with the sprint task system
-        return {
-            "message": "Task creation placeholder",
-            "title": title,
-            "assignee_id": assignee_id,
-        }
+        Config options:
+        - task_title / title: Task title (supports placeholders)
+        - task_description / description: Task description (supports placeholders)
+        - priority: Task priority (critical, high, medium, low)
+        - task_priority: Alternative key for priority
+        - assignee_id: Developer ID to assign
+        - project_id: Optional project ID (will look up team from project)
+        - sprint_id: Optional sprint ID (if not provided, creates backlog task)
+        - labels: List of labels
+        """
+        from aexy.models.sprint import SprintTask
+        from aexy.models.project import ProjectTeam
+
+        logger.info(f"[CREATE_TASK] Starting task creation with config: {config}")
+
+        # Get title from various config keys
+        title_template = config.get("task_title") or config.get("title") or "Automated Task"
+        description_template = config.get("task_description") or config.get("description") or ""
+
+        # Replace placeholders in title and description
+        title = self._replace_placeholders(title_template, record, trigger_data)
+        description = self._replace_placeholders(description_template, record, trigger_data)
+
+        priority = config.get("task_priority") or config.get("priority", "medium")
+        assignee_id = config.get("assignee_id")
+        project_id = config.get("project_id")
+        sprint_id = config.get("sprint_id")
+        labels = config.get("labels", [])
+
+        # If project_id is provided, get the first team from that project
+        team_id = None
+        if project_id:
+            logger.info(f"[CREATE_TASK] Looking up team for project: {project_id}")
+            try:
+                project_team_stmt = select(ProjectTeam).where(
+                    ProjectTeam.project_id == project_id
+                ).limit(1)
+                result = await self.db.execute(project_team_stmt)
+                project_team = result.scalar_one_or_none()
+                if project_team:
+                    team_id = project_team.team_id
+                    logger.info(f"[CREATE_TASK] Found team_id: {team_id} for project: {project_id}")
+                else:
+                    logger.warning(f"[CREATE_TASK] No team found for project: {project_id}")
+            except Exception as e:
+                logger.error(f"[CREATE_TASK] Failed to look up team for project: {e}")
+
+        logger.info(f"[CREATE_TASK] Creating task: title='{title}', project_id={project_id}, team_id={team_id}, sprint_id={sprint_id}, workspace_id={workspace_id}")
+
+        try:
+            # Create the task
+            task = SprintTask(
+                id=str(uuid4()),
+                workspace_id=workspace_id,
+                team_id=team_id,  # From project lookup, or None for workspace-level tasks
+                sprint_id=sprint_id,  # Can be None for backlog tasks
+                source_type="automation",
+                source_id=str(uuid4()),  # Unique ID for this automated task
+                title=title,
+                description=description,
+                priority=priority,
+                assignee_id=assignee_id,
+                labels=labels if isinstance(labels, list) else [],
+                status="todo",
+            )
+            self.db.add(task)
+            await self.db.flush()
+            await self.db.refresh(task)
+
+            logger.info(f"[CREATE_TASK] Task created successfully: id={task.id}, title='{task.title}', team_id={task.team_id}")
+
+            return {
+                "success": True,
+                "task_id": task.id,
+                "title": task.title,
+                "status": task.status,
+                "workspace_id": workspace_id,
+                "team_id": team_id,
+                "project_id": project_id,
+                "sprint_id": sprint_id,
+            }
+        except Exception as e:
+            logger.error(f"[CREATE_TASK] Failed to create task: {e}", exc_info=True)
+            return {"error": str(e)}
 
     async def _action_send_slack(
         self,
@@ -842,6 +968,1106 @@ class CRMAutomationService:
             "subject": subject,
             "queued": True,
         }
+
+    # =========================================================================
+    # UPTIME MODULE ACTIONS
+    # =========================================================================
+
+    async def _action_pause_monitor(
+        self,
+        config: dict,
+        trigger_data: dict | None = None,
+    ) -> dict:
+        """Pause an uptime monitor.
+
+        Config options:
+        - monitor_id: Direct monitor ID (optional, falls back to trigger_data)
+        """
+        from aexy.services.uptime_service import UptimeService, MonitorNotFoundError
+
+        # Get monitor_id from config or trigger_data
+        monitor_id = config.get("monitor_id")
+        if not monitor_id and trigger_data:
+            monitor_id = trigger_data.get("monitor_id")
+
+        if not monitor_id:
+            return {"error": "No monitor_id specified"}
+
+        try:
+            uptime_service = UptimeService(self.db)
+            monitor = await uptime_service.pause_monitor(monitor_id)
+            return {
+                "success": True,
+                "monitor_id": monitor.id,
+                "monitor_name": monitor.name,
+                "status": monitor.current_status,
+            }
+        except MonitorNotFoundError:
+            return {"error": f"Monitor {monitor_id} not found"}
+        except Exception as e:
+            return {"error": str(e)}
+
+    async def _action_resume_monitor(
+        self,
+        config: dict,
+        trigger_data: dict | None = None,
+    ) -> dict:
+        """Resume a paused uptime monitor.
+
+        Config options:
+        - monitor_id: Direct monitor ID (optional, falls back to trigger_data)
+        """
+        from aexy.services.uptime_service import UptimeService, MonitorNotFoundError
+
+        # Get monitor_id from config or trigger_data
+        monitor_id = config.get("monitor_id")
+        if not monitor_id and trigger_data:
+            monitor_id = trigger_data.get("monitor_id")
+
+        if not monitor_id:
+            return {"error": "No monitor_id specified"}
+
+        try:
+            uptime_service = UptimeService(self.db)
+            monitor = await uptime_service.resume_monitor(monitor_id)
+            return {
+                "success": True,
+                "monitor_id": monitor.id,
+                "monitor_name": monitor.name,
+                "status": monitor.current_status,
+            }
+        except MonitorNotFoundError:
+            return {"error": f"Monitor {monitor_id} not found"}
+        except Exception as e:
+            return {"error": str(e)}
+
+    async def _action_create_incident(
+        self,
+        config: dict,
+        trigger_data: dict | None = None,
+        workspace_id: str | None = None,
+    ) -> dict:
+        """Create an uptime incident manually.
+
+        Config options:
+        - monitor_id: Monitor to create incident for
+        - error_message: Error message for the incident
+        - error_type: Type of error (e.g., 'manual', 'timeout', 'connection')
+        """
+        from aexy.models.uptime import UptimeIncident, UptimeIncidentStatus
+        from aexy.services.uptime_service import UptimeService, MonitorNotFoundError
+
+        # Get monitor_id from config or trigger_data
+        monitor_id = config.get("monitor_id")
+        if not monitor_id and trigger_data:
+            monitor_id = trigger_data.get("monitor_id")
+
+        if not monitor_id:
+            return {"error": "No monitor_id specified"}
+
+        error_message = config.get("error_message", "Manual incident created by automation")
+        error_type = config.get("error_type", "manual")
+
+        try:
+            uptime_service = UptimeService(self.db)
+            monitor = await uptime_service.get_monitor(monitor_id)
+            if not monitor:
+                return {"error": f"Monitor {monitor_id} not found"}
+
+            # Check for existing ongoing incident
+            existing = await uptime_service.get_ongoing_incident(monitor_id)
+            if existing:
+                return {
+                    "success": False,
+                    "message": "An ongoing incident already exists",
+                    "incident_id": existing.id,
+                }
+
+            # Create new incident
+            incident = UptimeIncident(
+                id=str(uuid4()),
+                monitor_id=monitor_id,
+                workspace_id=monitor.workspace_id,
+                status=UptimeIncidentStatus.ONGOING.value,
+                first_error_message=error_message,
+                first_error_type=error_type,
+                last_error_message=error_message,
+                last_error_type=error_type,
+                total_checks=0,
+                failed_checks=0,
+            )
+            self.db.add(incident)
+            await self.db.flush()
+            await self.db.refresh(incident)
+
+            return {
+                "success": True,
+                "incident_id": incident.id,
+                "monitor_id": monitor_id,
+                "monitor_name": monitor.name,
+                "status": incident.status,
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    async def _action_resolve_incident(
+        self,
+        config: dict,
+        trigger_data: dict | None = None,
+    ) -> dict:
+        """Resolve an uptime incident.
+
+        Config options:
+        - incident_id: Direct incident ID
+        - monitor_id: Resolve the ongoing incident for this monitor
+        - resolution_notes: Notes about the resolution
+        - root_cause: Root cause analysis
+        """
+        from aexy.services.uptime_service import UptimeService, IncidentNotFoundError
+        from aexy.schemas.uptime import UptimeIncidentResolve
+
+        # Get incident_id from config or trigger_data
+        incident_id = config.get("incident_id")
+        if not incident_id and trigger_data:
+            incident_id = trigger_data.get("incident_id")
+
+        # If no incident_id, try to find ongoing incident by monitor_id
+        monitor_id = config.get("monitor_id")
+        if not monitor_id and trigger_data:
+            monitor_id = trigger_data.get("monitor_id")
+
+        uptime_service = UptimeService(self.db)
+
+        if not incident_id and monitor_id:
+            # Find ongoing incident for this monitor
+            ongoing = await uptime_service.get_ongoing_incident(monitor_id)
+            if ongoing:
+                incident_id = ongoing.id
+
+        if not incident_id:
+            return {"error": "No incident_id or monitor_id with ongoing incident specified"}
+
+        resolution_notes = config.get("resolution_notes", "Resolved by automation")
+        root_cause = config.get("root_cause")
+
+        try:
+            resolve_data = UptimeIncidentResolve(
+                resolution_notes=resolution_notes,
+                root_cause=root_cause,
+            )
+            incident = await uptime_service.resolve_incident(incident_id, resolve_data)
+            return {
+                "success": True,
+                "incident_id": incident.id,
+                "status": incident.status,
+                "resolved_at": incident.resolved_at.isoformat() if incident.resolved_at else None,
+            }
+        except IncidentNotFoundError:
+            return {"error": f"Incident {incident_id} not found"}
+        except Exception as e:
+            return {"error": str(e)}
+
+    # =========================================================================
+    # COMMON NOTIFICATION ACTIONS
+    # =========================================================================
+
+    async def _action_notify_user(
+        self,
+        config: dict,
+        record: CRMRecord | None,
+        workspace_id: str,
+        trigger_data: dict | None = None,
+    ) -> dict:
+        """Send notification to a specific user via their preferred channel (Slack DM, email).
+
+        Config options:
+        - user_id: Developer ID to notify
+        - user_email: Email of user to notify (fallback if user_id not provided)
+        - message: Message content
+        - channel: Notification channel ('slack', 'email', 'both') - defaults to 'slack'
+        """
+        user_id = config.get("user_id")
+        user_email = config.get("user_email")
+        message_template = config.get("message", "")
+        channel = config.get("channel", "slack")
+
+        # Replace placeholders in message
+        message = self._replace_placeholders(message_template, record, trigger_data)
+
+        if not user_id and not user_email:
+            return {"error": "No user_id or user_email specified"}
+
+        results = {"channels_notified": []}
+
+        # Get user by ID or email
+        developer = None
+        if user_id:
+            result = await self.db.execute(
+                select(Developer).where(Developer.id == user_id)
+            )
+            developer = result.scalar_one_or_none()
+        elif user_email:
+            result = await self.db.execute(
+                select(Developer).where(Developer.email == user_email)
+            )
+            developer = result.scalar_one_or_none()
+
+        if not developer:
+            return {"error": f"User not found: {user_id or user_email}"}
+
+        # Send Slack notification
+        if channel in ("slack", "both"):
+            slack_result = await self._action_send_slack(
+                {"user_email": developer.email, "message": message},
+                record,
+                workspace_id,
+                trigger_data,
+            )
+            if slack_result.get("success"):
+                results["channels_notified"].append("slack")
+            results["slack"] = slack_result
+
+        # Send email notification
+        if channel in ("email", "both"):
+            email_result = await self._action_send_email(
+                {
+                    "to": developer.email,
+                    "email_subject": config.get("email_subject", "Notification"),
+                    "email_body": message,
+                },
+                record,
+                workspace_id,
+                trigger_data,
+            )
+            if email_result.get("success"):
+                results["channels_notified"].append("email")
+            results["email"] = email_result
+
+        results["success"] = len(results["channels_notified"]) > 0
+        return results
+
+    async def _action_notify_team(
+        self,
+        config: dict,
+        record: CRMRecord | None,
+        workspace_id: str,
+        trigger_data: dict | None = None,
+    ) -> dict:
+        """Send notification to an entire team via Slack channel.
+
+        Config options:
+        - team_id: Team ID to notify
+        - channel_id: Slack channel to use (optional - falls back to workspace default)
+        - message: Message content
+        """
+        from aexy.models.team import Team
+
+        team_id = config.get("team_id")
+        channel_id = config.get("channel_id")
+        message_template = config.get("message", "")
+
+        # Replace placeholders in message
+        message = self._replace_placeholders(message_template, record, trigger_data)
+
+        if not team_id and not channel_id:
+            return {"error": "No team_id or channel_id specified"}
+
+        # If team_id provided, try to get team's Slack channel
+        if team_id and not channel_id:
+            result = await self.db.execute(
+                select(Team).where(Team.id == team_id)
+            )
+            team = result.scalar_one_or_none()
+            if team:
+                # Check if team has a slack_channel_id attribute
+                channel_id = getattr(team, "slack_channel_id", None)
+
+        # Fall back to sending to workspace default channel
+        if not channel_id:
+            slack_service = SlackIntegrationService()
+            integration = await slack_service.get_integration_by_workspace(
+                workspace_id, self.db
+            )
+            if integration:
+                channel_id = integration.default_channel_id
+
+        if not channel_id:
+            return {"error": "No channel available for team notification"}
+
+        # Send to the channel
+        return await self._action_send_slack(
+            {"channel_id": channel_id, "message": message},
+            record,
+            workspace_id,
+            trigger_data,
+        )
+
+    def _replace_placeholders(
+        self,
+        template: str,
+        record: CRMRecord | None,
+        trigger_data: dict | None,
+    ) -> str:
+        """Replace placeholders in a template string with values from record and trigger_data."""
+        message = template
+
+        # Replace {{trigger.field}} placeholders from trigger_data
+        if trigger_data:
+            import re
+            trigger_pattern = re.compile(r"\{\{trigger\.([a-zA-Z0-9_.]+)\}\}")
+            for match in trigger_pattern.finditer(template):
+                field_path = match.group(1)
+                value = trigger_data
+                for part in field_path.split("."):
+                    if isinstance(value, dict):
+                        value = value.get(part)
+                    else:
+                        value = None
+                        break
+                if value is not None:
+                    message = message.replace(match.group(0), str(value))
+
+            # Also support simple {field} from trigger_data
+            for key, value in trigger_data.items():
+                if isinstance(value, (str, int, float, bool)):
+                    message = message.replace(f"{{{key}}}", str(value))
+
+        # Replace {field} placeholders from record values
+        if record:
+            for key, value in record.values.items():
+                message = message.replace(f"{{{key}}}", str(value or ""))
+            message = message.replace("{record_id}", record.id)
+            if hasattr(record, "name") and record.name:
+                message = message.replace("{record_name}", record.name)
+
+        return message
+
+    # =========================================================================
+    # SPRINT MODULE ACTIONS
+    # =========================================================================
+
+    async def _action_update_task(
+        self,
+        config: dict,
+        trigger_data: dict | None = None,
+    ) -> dict:
+        """Update a sprint task.
+
+        Config options:
+        - task_id: Task ID to update
+        - title: New title
+        - description: New description
+        - priority: New priority (critical, high, medium, low)
+        - status: New status (backlog, todo, in_progress, review, done)
+        - story_points: New story points
+        - labels: New labels list
+        """
+        from aexy.services.sprint_task_service import SprintTaskService
+
+        task_id = config.get("task_id")
+        if not task_id and trigger_data:
+            task_id = trigger_data.get("task_id")
+
+        if not task_id:
+            return {"error": "No task_id specified"}
+
+        task_service = SprintTaskService(self.db)
+
+        try:
+            task = await task_service.update_task(
+                task_id=task_id,
+                title=config.get("title"),
+                description=config.get("description"),
+                priority=config.get("priority"),
+                status=config.get("status"),
+                story_points=config.get("story_points"),
+                labels=config.get("labels"),
+            )
+            if not task:
+                return {"error": f"Task {task_id} not found"}
+            return {
+                "success": True,
+                "task_id": task.id,
+                "title": task.title,
+                "status": task.status,
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    async def _action_assign_task(
+        self,
+        config: dict,
+        trigger_data: dict | None = None,
+    ) -> dict:
+        """Assign a sprint task to a developer.
+
+        Config options:
+        - task_id: Task ID to assign
+        - developer_id/assignee_id: Developer ID to assign
+        - reason: Assignment reason
+        """
+        from aexy.services.sprint_task_service import SprintTaskService
+
+        task_id = config.get("task_id")
+        if not task_id and trigger_data:
+            task_id = trigger_data.get("task_id")
+
+        developer_id = config.get("developer_id") or config.get("assignee_id")
+        if not developer_id and trigger_data:
+            developer_id = trigger_data.get("assignee_id")
+
+        if not task_id:
+            return {"error": "No task_id specified"}
+        if not developer_id:
+            return {"error": "No developer_id/assignee_id specified"}
+
+        task_service = SprintTaskService(self.db)
+
+        try:
+            task = await task_service.assign_task(
+                task_id=task_id,
+                developer_id=developer_id,
+                reason=config.get("reason", "Assigned by automation"),
+            )
+            if not task:
+                return {"error": f"Task {task_id} not found"}
+            return {
+                "success": True,
+                "task_id": task.id,
+                "assignee_id": task.assignee_id,
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    async def _action_move_task(
+        self,
+        config: dict,
+        trigger_data: dict | None = None,
+    ) -> dict:
+        """Move a sprint task to a different status/column.
+
+        Config options:
+        - task_id: Task ID to move
+        - status: New status (backlog, todo, in_progress, review, done)
+        - sprint_id: Optional sprint ID to move to a different sprint
+        """
+        from aexy.services.sprint_task_service import SprintTaskService
+
+        task_id = config.get("task_id")
+        if not task_id and trigger_data:
+            task_id = trigger_data.get("task_id")
+
+        new_status = config.get("status")
+        new_sprint_id = config.get("sprint_id")
+
+        if not task_id:
+            return {"error": "No task_id specified"}
+        if not new_status and not new_sprint_id:
+            return {"error": "No status or sprint_id specified"}
+
+        task_service = SprintTaskService(self.db)
+
+        try:
+            if new_status:
+                task = await task_service.update_task_status(task_id, new_status)
+            else:
+                # Just get the task first
+                task = await task_service.get_task(task_id)
+
+            if not task:
+                return {"error": f"Task {task_id} not found"}
+
+            # Move to different sprint if specified
+            if new_sprint_id:
+                tasks = await task_service.bulk_move_to_sprint([task_id], new_sprint_id)
+                if not tasks:
+                    return {"error": f"Failed to move task to sprint {new_sprint_id}"}
+                task = tasks[0]
+
+            return {
+                "success": True,
+                "task_id": task.id,
+                "status": task.status,
+                "sprint_id": task.sprint_id,
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    async def _action_create_subtask(
+        self,
+        config: dict,
+        trigger_data: dict | None = None,
+    ) -> dict:
+        """Create a subtask under a parent task.
+
+        Config options:
+        - parent_task_id: Parent task ID
+        - title: Subtask title
+        - description: Subtask description
+        - priority: Priority level
+        - assignee_id: Optional assignee
+        """
+        from aexy.services.sprint_task_service import SprintTaskService
+
+        parent_task_id = config.get("parent_task_id")
+        if not parent_task_id and trigger_data:
+            parent_task_id = trigger_data.get("task_id")
+
+        title = config.get("title", "Subtask")
+        if not parent_task_id:
+            return {"error": "No parent_task_id specified"}
+
+        task_service = SprintTaskService(self.db)
+
+        try:
+            # Get parent task to find sprint_id
+            parent = await task_service.get_task(parent_task_id)
+            if not parent:
+                return {"error": f"Parent task {parent_task_id} not found"}
+
+            subtask = await task_service.add_task(
+                sprint_id=parent.sprint_id,
+                title=title,
+                description=config.get("description"),
+                priority=config.get("priority", "medium"),
+                assignee_id=config.get("assignee_id"),
+                parent_task_id=parent_task_id,
+                status="todo",
+            )
+            return {
+                "success": True,
+                "subtask_id": subtask.id,
+                "parent_task_id": parent_task_id,
+                "title": subtask.title,
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    # =========================================================================
+    # TICKET MODULE ACTIONS
+    # =========================================================================
+
+    async def _action_update_ticket(
+        self,
+        config: dict,
+        trigger_data: dict | None = None,
+    ) -> dict:
+        """Update a ticket.
+
+        Config options:
+        - ticket_id: Ticket ID to update
+        - status: New status
+        - priority: New priority
+        - severity: New severity
+        """
+        from aexy.services.ticket_service import TicketService
+        from aexy.schemas.ticketing import TicketUpdate
+
+        ticket_id = config.get("ticket_id")
+        if not ticket_id and trigger_data:
+            ticket_id = trigger_data.get("ticket_id")
+
+        if not ticket_id:
+            return {"error": "No ticket_id specified"}
+
+        ticket_service = TicketService(self.db)
+
+        try:
+            update_data = TicketUpdate(
+                status=config.get("status"),
+                priority=config.get("priority"),
+                severity=config.get("severity"),
+            )
+            ticket = await ticket_service.update_ticket(ticket_id, update_data)
+            if not ticket:
+                return {"error": f"Ticket {ticket_id} not found"}
+            return {
+                "success": True,
+                "ticket_id": ticket.id,
+                "ticket_number": ticket.ticket_number,
+                "status": ticket.status,
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    async def _action_assign_ticket(
+        self,
+        config: dict,
+        trigger_data: dict | None = None,
+    ) -> dict:
+        """Assign a ticket to a developer or team.
+
+        Config options:
+        - ticket_id: Ticket ID to assign
+        - assignee_id: Developer ID to assign
+        - team_id: Team ID to assign
+        """
+        from aexy.services.ticket_service import TicketService
+
+        ticket_id = config.get("ticket_id")
+        if not ticket_id and trigger_data:
+            ticket_id = trigger_data.get("ticket_id")
+
+        if not ticket_id:
+            return {"error": "No ticket_id specified"}
+
+        ticket_service = TicketService(self.db)
+
+        try:
+            ticket = await ticket_service.assign_ticket(
+                ticket_id=ticket_id,
+                assignee_id=config.get("assignee_id"),
+                team_id=config.get("team_id"),
+            )
+            if not ticket:
+                return {"error": f"Ticket {ticket_id} not found"}
+            return {
+                "success": True,
+                "ticket_id": ticket.id,
+                "assignee_id": ticket.assignee_id,
+                "team_id": ticket.team_id,
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    async def _action_escalate_ticket(
+        self,
+        config: dict,
+        trigger_data: dict | None = None,
+    ) -> dict:
+        """Escalate a ticket.
+
+        Config options:
+        - ticket_id: Ticket ID to escalate
+        - level: Escalation level (level_1, level_2, level_3)
+        """
+        from aexy.services.ticket_service import TicketService
+
+        ticket_id = config.get("ticket_id")
+        if not ticket_id and trigger_data:
+            ticket_id = trigger_data.get("ticket_id")
+
+        level = config.get("level", "level_1")
+
+        if not ticket_id:
+            return {"error": "No ticket_id specified"}
+
+        ticket_service = TicketService(self.db)
+
+        try:
+            ticket = await ticket_service.get_ticket(ticket_id)
+            if not ticket:
+                return {"error": f"Ticket {ticket_id} not found"}
+
+            escalation = await ticket_service.trigger_escalation(ticket, level)
+            if not escalation:
+                return {
+                    "success": False,
+                    "message": "No matching escalation matrix found",
+                    "ticket_id": ticket_id,
+                }
+            return {
+                "success": True,
+                "ticket_id": ticket_id,
+                "escalation_id": escalation.id,
+                "level": escalation.level,
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    async def _action_change_ticket_priority(
+        self,
+        config: dict,
+        trigger_data: dict | None = None,
+    ) -> dict:
+        """Change a ticket's priority.
+
+        Config options:
+        - ticket_id: Ticket ID
+        - priority: New priority (urgent, high, medium, low)
+        """
+        from aexy.services.ticket_service import TicketService
+        from aexy.schemas.ticketing import TicketUpdate
+
+        ticket_id = config.get("ticket_id")
+        if not ticket_id and trigger_data:
+            ticket_id = trigger_data.get("ticket_id")
+
+        priority = config.get("priority")
+        if not ticket_id:
+            return {"error": "No ticket_id specified"}
+        if not priority:
+            return {"error": "No priority specified"}
+
+        ticket_service = TicketService(self.db)
+
+        try:
+            update_data = TicketUpdate(priority=priority)
+            ticket = await ticket_service.update_ticket(ticket_id, update_data)
+            if not ticket:
+                return {"error": f"Ticket {ticket_id} not found"}
+            return {
+                "success": True,
+                "ticket_id": ticket.id,
+                "priority": ticket.priority,
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    # =========================================================================
+    # HIRING MODULE ACTIONS
+    # =========================================================================
+
+    async def _action_update_candidate(
+        self,
+        config: dict,
+        trigger_data: dict | None = None,
+    ) -> dict:
+        """Update a hiring candidate's custom fields.
+
+        Config options:
+        - candidate_id: Candidate ID to update
+        - status: New status (stored in custom_fields)
+        - notes: Additional notes (stored in custom_fields)
+        - rating: Candidate rating (stored in custom_fields)
+        - custom_data: Additional custom data to merge
+        """
+        from aexy.models.assessment import Candidate
+
+        candidate_id = config.get("candidate_id")
+        if not candidate_id and trigger_data:
+            candidate_id = trigger_data.get("candidate_id")
+
+        if not candidate_id:
+            return {"error": "No candidate_id specified"}
+
+        try:
+            stmt = select(Candidate).where(Candidate.id == candidate_id)
+            result = await self.db.execute(stmt)
+            candidate = result.scalar_one_or_none()
+
+            if not candidate:
+                return {"error": f"Candidate {candidate_id} not found"}
+
+            # Update custom_fields with status, notes, rating
+            custom_fields = dict(candidate.custom_fields) if candidate.custom_fields else {}
+
+            if config.get("status"):
+                custom_fields["hiring_status"] = config["status"]
+            if config.get("notes"):
+                existing_notes = custom_fields.get("notes", "")
+                if existing_notes:
+                    custom_fields["notes"] = f"{existing_notes}\n\n---\n{config['notes']}"
+                else:
+                    custom_fields["notes"] = config["notes"]
+            if config.get("rating"):
+                custom_fields["rating"] = config["rating"]
+            if config.get("custom_data"):
+                custom_fields.update(config["custom_data"])
+
+            candidate.custom_fields = custom_fields
+
+            await self.db.flush()
+            await self.db.refresh(candidate)
+
+            return {
+                "success": True,
+                "candidate_id": candidate.id,
+                "custom_fields": candidate.custom_fields,
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    async def _action_move_candidate_stage(
+        self,
+        config: dict,
+        trigger_data: dict | None = None,
+    ) -> dict:
+        """Move a candidate to a different hiring stage.
+
+        Config options:
+        - candidate_id: Candidate ID
+        - stage: New stage (applied, screening, interviewing, offer, hired, rejected)
+        """
+        from aexy.models.assessment import Candidate
+
+        candidate_id = config.get("candidate_id")
+        if not candidate_id and trigger_data:
+            candidate_id = trigger_data.get("candidate_id")
+
+        new_stage = config.get("stage")
+        if not candidate_id:
+            return {"error": "No candidate_id specified"}
+        if not new_stage:
+            return {"error": "No stage specified"}
+
+        try:
+            stmt = select(Candidate).where(Candidate.id == candidate_id)
+            result = await self.db.execute(stmt)
+            candidate = result.scalar_one_or_none()
+
+            if not candidate:
+                return {"error": f"Candidate {candidate_id} not found"}
+
+            # Store stage in custom_fields since Candidate doesn't have a status field
+            custom_fields = dict(candidate.custom_fields) if candidate.custom_fields else {}
+            old_stage = custom_fields.get("hiring_status", "applied")
+            custom_fields["hiring_status"] = new_stage
+            custom_fields["stage_changed_at"] = datetime.now(timezone.utc).isoformat()
+            candidate.custom_fields = custom_fields
+
+            await self.db.flush()
+            await self.db.refresh(candidate)
+
+            return {
+                "success": True,
+                "candidate_id": candidate.id,
+                "old_stage": old_stage,
+                "new_stage": new_stage,
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    async def _action_schedule_interview(
+        self,
+        config: dict,
+        trigger_data: dict | None = None,
+        workspace_id: str | None = None,
+    ) -> dict:
+        """Schedule an interview for a candidate.
+
+        Config options:
+        - candidate_id: Candidate ID
+        - interviewer_id: Developer ID of the interviewer
+        - interview_type: Type of interview (phone, video, onsite)
+        - scheduled_at: ISO datetime for the interview
+        - duration_minutes: Duration of the interview
+        - notes: Additional notes for the interview
+        """
+        from aexy.models.assessment import Candidate
+
+        candidate_id = config.get("candidate_id")
+        if not candidate_id and trigger_data:
+            candidate_id = trigger_data.get("candidate_id")
+
+        if not candidate_id:
+            return {"error": "No candidate_id specified"}
+
+        interviewer_id = config.get("interviewer_id")
+        interview_type = config.get("interview_type", "video")
+        scheduled_at = config.get("scheduled_at")
+        duration_minutes = config.get("duration_minutes", 60)
+        notes = config.get("notes", "")
+
+        try:
+            stmt = select(Candidate).where(Candidate.id == candidate_id)
+            result = await self.db.execute(stmt)
+            candidate = result.scalar_one_or_none()
+
+            if not candidate:
+                return {"error": f"Candidate {candidate_id} not found"}
+
+            # Store interview info in custom_fields
+            custom_fields = dict(candidate.custom_fields) if candidate.custom_fields else {}
+
+            # Update status to interviewing
+            current_status = custom_fields.get("hiring_status", "applied")
+            if current_status not in ("interviewing", "offer", "hired"):
+                custom_fields["hiring_status"] = "interviewing"
+
+            interview_data = {
+                "interviewer_id": interviewer_id,
+                "interview_type": interview_type,
+                "scheduled_at": scheduled_at,
+                "duration_minutes": duration_minutes,
+                "notes": notes,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+            # Add to scheduled interviews list in custom_fields
+            interviews = custom_fields.get("scheduled_interviews", [])
+            if not isinstance(interviews, list):
+                interviews = []
+            interviews.append(interview_data)
+            custom_fields["scheduled_interviews"] = interviews
+
+            candidate.custom_fields = custom_fields
+
+            await self.db.flush()
+            await self.db.refresh(candidate)
+
+            return {
+                "success": True,
+                "candidate_id": candidate.id,
+                "interview_type": interview_type,
+                "scheduled_at": scheduled_at,
+                "interviewer_id": interviewer_id,
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    # =========================================================================
+    # BOOKING MODULE ACTIONS
+    # =========================================================================
+
+    async def _action_confirm_booking(
+        self,
+        config: dict,
+        trigger_data: dict | None = None,
+    ) -> dict:
+        """Confirm a booking.
+
+        Config options:
+        - booking_id: Booking ID to confirm
+        """
+        from aexy.models.booking.booking import Booking
+
+        booking_id = config.get("booking_id")
+        if not booking_id and trigger_data:
+            booking_id = trigger_data.get("booking_id")
+
+        if not booking_id:
+            return {"error": "No booking_id specified"}
+
+        try:
+            stmt = select(Booking).where(Booking.id == booking_id)
+            result = await self.db.execute(stmt)
+            booking = result.scalar_one_or_none()
+
+            if not booking:
+                return {"error": f"Booking {booking_id} not found"}
+
+            booking.status = "confirmed"
+
+            await self.db.flush()
+            await self.db.refresh(booking)
+
+            return {
+                "success": True,
+                "booking_id": booking.id,
+                "status": booking.status,
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    async def _action_cancel_booking(
+        self,
+        config: dict,
+        trigger_data: dict | None = None,
+    ) -> dict:
+        """Cancel a booking.
+
+        Config options:
+        - booking_id: Booking ID to cancel
+        - reason: Cancellation reason
+        """
+        from aexy.models.booking.booking import Booking
+
+        booking_id = config.get("booking_id")
+        if not booking_id and trigger_data:
+            booking_id = trigger_data.get("booking_id")
+
+        if not booking_id:
+            return {"error": "No booking_id specified"}
+
+        try:
+            stmt = select(Booking).where(Booking.id == booking_id)
+            result = await self.db.execute(stmt)
+            booking = result.scalar_one_or_none()
+
+            if not booking:
+                return {"error": f"Booking {booking_id} not found"}
+
+            booking.status = "cancelled"
+            booking.cancelled_at = datetime.now(timezone.utc)
+            booking.cancellation_reason = config.get("reason", "Cancelled by automation")
+            booking.cancelled_by = "system"
+
+            await self.db.flush()
+            await self.db.refresh(booking)
+
+            return {
+                "success": True,
+                "booking_id": booking.id,
+                "status": booking.status,
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    async def _action_reschedule_booking(
+        self,
+        config: dict,
+        trigger_data: dict | None = None,
+    ) -> dict:
+        """Reschedule a booking.
+
+        Config options:
+        - booking_id: Booking ID to reschedule
+        - new_start_time: New start time (ISO datetime)
+        - new_end_time: New end time (ISO datetime)
+        - reason: Reason for rescheduling (stored in answers)
+        """
+        from aexy.models.booking.booking import Booking
+
+        booking_id = config.get("booking_id")
+        if not booking_id and trigger_data:
+            booking_id = trigger_data.get("booking_id")
+
+        if not booking_id:
+            return {"error": "No booking_id specified"}
+
+        new_start_time = config.get("new_start_time")
+        new_end_time = config.get("new_end_time")
+
+        if not new_start_time:
+            return {"error": "No new_start_time specified"}
+
+        try:
+            stmt = select(Booking).where(Booking.id == booking_id)
+            result = await self.db.execute(stmt)
+            booking = result.scalar_one_or_none()
+
+            if not booking:
+                return {"error": f"Booking {booking_id} not found"}
+
+            # Store old times for reference
+            old_start = booking.start_time
+            old_end = booking.end_time
+
+            # Parse and update times
+            from dateutil.parser import parse as parse_datetime
+            booking.start_time = parse_datetime(new_start_time)
+            if new_end_time:
+                booking.end_time = parse_datetime(new_end_time)
+
+            # Store reschedule info in answers field (JSONB)
+            answers = dict(booking.answers) if booking.answers else {}
+            answers["reschedule_history"] = answers.get("reschedule_history", [])
+            answers["reschedule_history"].append({
+                "old_start": old_start.isoformat() if old_start else None,
+                "old_end": old_end.isoformat() if old_end else None,
+                "new_start": new_start_time,
+                "new_end": new_end_time,
+                "reason": config.get("reason", "Rescheduled by automation"),
+                "rescheduled_at": datetime.now(timezone.utc).isoformat(),
+            })
+            booking.answers = answers
+
+            # Keep status as confirmed (rescheduled is not a valid BookingStatus)
+            booking.status = "confirmed"
+
+            await self.db.flush()
+            await self.db.refresh(booking)
+
+            return {
+                "success": True,
+                "booking_id": booking.id,
+                "old_start_time": old_start.isoformat() if old_start else None,
+                "new_start_time": booking.start_time.isoformat() if booking.start_time else None,
+                "status": booking.status,
+            }
+        except Exception as e:
+            return {"error": str(e)}
 
     # =========================================================================
     # TRIGGER MATCHING

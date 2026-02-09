@@ -783,11 +783,66 @@ export function WorkflowCanvas(props: WorkflowCanvasProps) {
 function getNodeLabel(type: string, subtype?: string): string {
   const labels: Record<string, Record<string, string>> = {
     trigger: {
+      // CRM triggers
       record_created: "Record Created",
       record_updated: "Record Updated",
       record_deleted: "Record Deleted",
       field_changed: "Field Changed",
       stage_changed: "Stage Changed",
+      "record.created": "Record Created",
+      "record.updated": "Record Updated",
+      "record.deleted": "Record Deleted",
+      "field.changed": "Field Changed",
+      "stage.changed": "Stage Changed",
+      // Ticket triggers
+      "ticket.created": "Ticket Created",
+      "ticket.updated": "Ticket Updated",
+      "ticket.status_changed": "Status Changed",
+      "ticket.assigned": "Ticket Assigned",
+      "ticket.priority_changed": "Priority Changed",
+      "sla.breached": "SLA Breached",
+      "sla.warning": "SLA Warning",
+      // Hiring triggers
+      "candidate.created": "Candidate Added",
+      "candidate.updated": "Candidate Updated",
+      "candidate.stage_changed": "Stage Changed",
+      "assessment.completed": "Assessment Completed",
+      "interview.scheduled": "Interview Scheduled",
+      "interview.completed": "Interview Completed",
+      "offer.sent": "Offer Sent",
+      "offer.accepted": "Offer Accepted",
+      "offer.rejected": "Offer Rejected",
+      // Email marketing triggers
+      "campaign.sent": "Campaign Sent",
+      "campaign.scheduled": "Campaign Scheduled",
+      "email.opened": "Email Opened",
+      "email.clicked": "Link Clicked",
+      "email.bounced": "Email Bounced",
+      "email.unsubscribed": "Unsubscribed",
+      "list.member_added": "Added to List",
+      // Uptime triggers
+      "monitor.created": "Monitor Created",
+      "monitor.down": "Monitor Down",
+      "monitor.up": "Monitor Up",
+      "monitor.degraded": "Monitor Degraded",
+      "incident.created": "Incident Created",
+      "incident.resolved": "Incident Resolved",
+      "incident.acknowledged": "Incident Acknowledged",
+      "ssl.expiring": "SSL Expiring",
+      // Sprint triggers
+      "task.created": "Task Created",
+      "task.status_changed": "Task Status Changed",
+      "task.assigned": "Task Assigned",
+      "sprint.started": "Sprint Started",
+      "sprint.completed": "Sprint Completed",
+      // Form triggers
+      "form.submitted": "Form Submitted",
+      // Booking triggers
+      "booking.created": "Booking Created",
+      "booking.confirmed": "Booking Confirmed",
+      "booking.cancelled": "Booking Cancelled",
+      "booking.rescheduled": "Booking Rescheduled",
+      // Common triggers
       scheduled: "Scheduled",
       webhook_received: "Webhook Received",
       form_submitted: "Form Submitted",
@@ -795,19 +850,66 @@ function getNodeLabel(type: string, subtype?: string): string {
       manual: "Manual Trigger",
     },
     action: {
-      update_record: "Update Record",
-      create_record: "Create Record",
-      delete_record: "Delete Record",
+      // Common actions
       send_email: "Send Email",
       send_slack: "Send Slack",
       send_sms: "Send SMS",
+      webhook_call: "Webhook Call",
+      api_request: "API Request",
+      notify_user: "Notify User",
+      notify_team: "Notify Team",
+      run_agent: "Run AI Agent",
+      // CRM actions
+      update_record: "Update Record",
+      create_record: "Create Record",
+      delete_record: "Delete Record",
       create_task: "Create Task",
       add_to_list: "Add to List",
       remove_from_list: "Remove from List",
       enroll_sequence: "Enroll in Sequence",
       unenroll_sequence: "Unenroll from Sequence",
-      webhook_call: "Webhook Call",
       assign_owner: "Assign Owner",
+      link_records: "Link Records",
+      enrich_record: "Enrich Record",
+      classify_record: "Classify Record",
+      generate_summary: "Generate Summary",
+      // Ticket actions
+      update_ticket: "Update Ticket",
+      assign_ticket: "Assign Ticket",
+      add_response: "Add Response",
+      escalate: "Escalate",
+      change_priority: "Change Priority",
+      add_tag: "Add Tag",
+      remove_tag: "Remove Tag",
+      // Hiring actions
+      update_candidate: "Update Candidate",
+      move_stage: "Move Stage",
+      schedule_interview: "Schedule Interview",
+      send_rejection: "Send Rejection",
+      create_offer: "Create Offer",
+      add_note: "Add Note",
+      assign_recruiter: "Assign Recruiter",
+      // Email marketing actions
+      send_campaign: "Send Campaign",
+      update_contact: "Update Contact",
+      // Uptime actions
+      create_incident: "Create Incident",
+      resolve_incident: "Resolve Incident",
+      pause_monitor: "Pause Monitor",
+      resume_monitor: "Resume Monitor",
+      // Sprint actions
+      update_task: "Update Task",
+      assign_task: "Assign Task",
+      move_task: "Move Task",
+      create_subtask: "Create Subtask",
+      add_comment: "Add Comment",
+      // Form actions
+      send_response: "Send Response",
+      // Booking actions
+      confirm_booking: "Confirm Booking",
+      cancel_booking: "Cancel Booking",
+      reschedule_booking: "Reschedule",
+      send_reminder: "Send Reminder",
     },
     wait: {
       duration: "Wait Duration",
@@ -835,5 +937,5 @@ function getNodeLabel(type: string, subtype?: string): string {
     },
   };
 
-  return labels[type]?.[subtype || "default"] || type.charAt(0).toUpperCase() + type.slice(1);
+  return labels[type]?.[subtype || "default"] || subtype?.replace(/[._]/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) || type.charAt(0).toUpperCase() + type.slice(1);
 }

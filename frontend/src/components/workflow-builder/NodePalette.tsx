@@ -96,6 +96,7 @@ const TRIGGER_LABELS: Record<string, Record<string, string>> = {
     "candidate.created": "Candidate Added",
     "candidate.updated": "Candidate Updated",
     "candidate.stage_changed": "Stage Changed",
+    "assessment.completed": "Assessment Completed",
     "interview.scheduled": "Interview Scheduled",
     "interview.completed": "Interview Completed",
     "offer.sent": "Offer Sent",
@@ -261,6 +262,7 @@ const TRIGGER_ICONS: Record<string, React.ElementType> = {
   "candidate.created": UserPlus,
   "candidate.updated": FileEdit,
   "candidate.stage_changed": GitBranch,
+  "assessment.completed": CheckSquare,
   "interview.scheduled": Calendar,
   "interview.completed": CheckSquare,
   "offer.sent": Send,
@@ -457,6 +459,7 @@ const FALLBACK_TRIGGERS: Record<string, string[]> = {
   hiring: [
     "candidate.created",
     "candidate.stage_changed",
+    "assessment.completed",
     "interview.scheduled",
     "offer.accepted",
     "scheduled",

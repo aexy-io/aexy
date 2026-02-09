@@ -63,6 +63,11 @@ export function NodeConfigPanel({
   const messageTemplateRef = useRef<HTMLTextAreaElement>(null);
   const webhookBodyRef = useRef<HTMLTextAreaElement>(null);
 
+  // Sync label state when node changes (e.g., selecting a different trigger)
+  useEffect(() => {
+    setLabel((node.data.label as string) || "");
+  }, [node.id, node.data.label]);
+
   // Webhook trigger state
   const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
   const [webhookLoading, setWebhookLoading] = useState(false);
@@ -76,7 +81,31 @@ export function NodeConfigPanel({
   const [moduleObjects, setModuleObjects] = useState<Array<{ id: string; name: string; slug: string }>>([]);
   const [objectsLoading, setObjectsLoading] = useState(false);
 
+  // Projects for task creation
+  const [projects, setProjects] = useState<Array<{ id: string; name: string; slug: string }>>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+
   const triggerType = node.data.trigger_type as string;
+  const actionType = node.data.action_type as string;
+
+  // Fetch projects when action is create_task
+  useEffect(() => {
+    async function fetchProjects() {
+      if (!workspaceId || actionType !== "create_task") return;
+
+      setProjectsLoading(true);
+      try {
+        const response = await api.get(`/workspaces/${workspaceId}/projects`);
+        setProjects(response.data?.projects || response.data || []);
+      } catch (error) {
+        console.error("Failed to fetch projects:", error);
+      } finally {
+        setProjectsLoading(false);
+      }
+    }
+
+    fetchProjects();
+  }, [workspaceId, actionType]);
 
   // Fetch objects based on module - module-aware object loading
   useEffect(() => {
@@ -844,12 +873,31 @@ export function NodeConfigPanel({
         {actionType === "create_task" && (
           <>
             <div>
+              <label className="block text-sm text-slate-400 mb-1">Project</label>
+              <select
+                value={(node.data.project_id as string) || ""}
+                onChange={(e) => onUpdate({ project_id: e.target.value || null })}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                disabled={projectsLoading}
+              >
+                <option value="">Workspace Backlog (No Project)</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500 mt-1">
+                {projectsLoading ? "Loading projects..." : "Select a project for this task"}
+              </p>
+            </div>
+            <div>
               <label className="block text-sm text-slate-400 mb-1">Task Title</label>
               <input
                 type="text"
                 value={(node.data.task_title as string) || ""}
                 onChange={(e) => onUpdate({ task_title: e.target.value })}
-                placeholder="Follow up with {{record.name}}"
+                placeholder="Follow up with {{trigger.monitor_name}}"
                 className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
               />
             </div>
