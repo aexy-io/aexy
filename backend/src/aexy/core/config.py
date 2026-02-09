@@ -318,14 +318,16 @@ class Settings(BaseSettings):
         description="Redis connection URL",
     )
 
-    # Celery (for background processing)
-    celery_broker_url: str = Field(
-        default="redis://localhost:6379/1",
-        description="Celery broker URL",
+    # Temporal (for workflow and task execution)
+    temporal_address: str = Field(
+        default="localhost:7233",
+        description="Temporal server gRPC address",
+        validation_alias="TEMPORAL_ADDRESS",
     )
-    celery_result_backend: str = Field(
-        default="redis://localhost:6379/1",
-        description="Celery result backend URL",
+    temporal_namespace: str = Field(
+        default="default",
+        description="Temporal namespace",
+        validation_alias="TEMPORAL_NAMESPACE",
     )
 
     # AWS SES (for email notifications)

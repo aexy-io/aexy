@@ -43,7 +43,7 @@ class ProcessingQueue:
         self.default_mode = mode
         self._pending_jobs: list[AnalysisJob] = []
 
-    def enqueue_commit_analysis(
+    async def enqueue_commit_analysis(
         self,
         developer_id: str | UUID,
         commit_id: str | UUID,
@@ -61,23 +61,27 @@ class ProcessingQueue:
             metadata: Additional metadata.
 
         Returns:
-            Task ID.
+            Workflow ID.
         """
-        from aexy.processing.tasks import analyze_commit_task
-
         effective_mode = mode or self.default_mode
 
         if effective_mode == ProcessingMode.REAL_TIME:
-            # Execute immediately
-            result = analyze_commit_task.delay(
-                str(developer_id),
-                str(commit_id),
+            from aexy.temporal.dispatch import dispatch
+            from aexy.temporal.task_queues import TaskQueue
+            from aexy.temporal.activities.analysis import AnalyzeCommitInput
+
+            wf_id = await dispatch(
+                "analyze_commit",
+                AnalyzeCommitInput(
+                    developer_id=str(developer_id),
+                    commit_id=str(commit_id),
+                ),
+                task_queue=TaskQueue.ANALYSIS,
             )
-            logger.info(f"Queued real-time commit analysis: {result.id}")
-            return result.id
+            logger.info(f"Queued real-time commit analysis: {wf_id}")
+            return wf_id
 
         elif effective_mode == ProcessingMode.BATCH:
-            # Add to batch queue (will be processed by scheduler)
             job = AnalysisJob(
                 job_id=f"commit-{commit_id}",
                 developer_id=str(developer_id),
@@ -92,10 +96,9 @@ class ProcessingQueue:
             return job.job_id
 
         else:
-            # On-demand - don't queue, return placeholder
             return f"on-demand-commit-{commit_id}"
 
-    def enqueue_pr_analysis(
+    async def enqueue_pr_analysis(
         self,
         developer_id: str | UUID,
         pr_id: str | UUID,
@@ -113,19 +116,25 @@ class ProcessingQueue:
             metadata: Additional metadata.
 
         Returns:
-            Task ID.
+            Workflow ID.
         """
-        from aexy.processing.tasks import analyze_pr_task
-
         effective_mode = mode or self.default_mode
 
         if effective_mode == ProcessingMode.REAL_TIME:
-            result = analyze_pr_task.delay(
-                str(developer_id),
-                str(pr_id),
+            from aexy.temporal.dispatch import dispatch
+            from aexy.temporal.task_queues import TaskQueue
+            from aexy.temporal.activities.analysis import AnalyzePRInput
+
+            wf_id = await dispatch(
+                "analyze_pr",
+                AnalyzePRInput(
+                    developer_id=str(developer_id),
+                    pr_id=str(pr_id),
+                ),
+                task_queue=TaskQueue.ANALYSIS,
             )
-            logger.info(f"Queued real-time PR analysis: {result.id}")
-            return result.id
+            logger.info(f"Queued real-time PR analysis: {wf_id}")
+            return wf_id
 
         elif effective_mode == ProcessingMode.BATCH:
             job = AnalysisJob(
@@ -144,7 +153,7 @@ class ProcessingQueue:
         else:
             return f"on-demand-pr-{pr_id}"
 
-    def enqueue_developer_refresh(
+    async def enqueue_developer_refresh(
         self,
         developer_id: str | UUID,
         mode: ProcessingMode | None = None,
@@ -158,16 +167,22 @@ class ProcessingQueue:
             priority: Job priority (default higher for refresh).
 
         Returns:
-            Task ID.
+            Workflow ID.
         """
-        from aexy.processing.tasks import analyze_developer_task
-
         effective_mode = mode or self.default_mode
 
         if effective_mode in (ProcessingMode.REAL_TIME, ProcessingMode.ON_DEMAND):
-            result = analyze_developer_task.delay(str(developer_id))
-            logger.info(f"Queued developer analysis: {result.id}")
-            return result.id
+            from aexy.temporal.dispatch import dispatch
+            from aexy.temporal.task_queues import TaskQueue
+            from aexy.temporal.activities.analysis import AnalyzeDeveloperInput
+
+            wf_id = await dispatch(
+                "analyze_developer",
+                AnalyzeDeveloperInput(developer_id=str(developer_id)),
+                task_queue=TaskQueue.ANALYSIS,
+            )
+            logger.info(f"Queued developer analysis: {wf_id}")
+            return wf_id
 
         else:
             job = AnalysisJob(
@@ -199,45 +214,59 @@ class ProcessingQueue:
         self._pending_jobs.clear()
         return count
 
-    def process_batch(self) -> list[str]:
+    async def process_batch(self) -> list[str]:
         """Process all pending batch jobs.
 
         Returns:
-            List of task IDs.
+            List of workflow IDs.
         """
-        from aexy.processing.tasks import (
-            analyze_commit_task,
-            analyze_developer_task,
-            analyze_pr_task,
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+        from aexy.temporal.activities.analysis import (
+            AnalyzeCommitInput,
+            AnalyzeDeveloperInput,
+            AnalyzePRInput,
         )
 
-        task_ids = []
+        wf_ids = []
         jobs = self.get_pending_jobs()
 
         for job in jobs:
             try:
                 if job.activity_type == "commit":
-                    result = analyze_commit_task.delay(
-                        job.developer_id,
-                        job.activity_id,
+                    wf_id = await dispatch(
+                        "analyze_commit",
+                        AnalyzeCommitInput(
+                            developer_id=job.developer_id,
+                            commit_id=job.activity_id,
+                        ),
+                        task_queue=TaskQueue.ANALYSIS,
                     )
                 elif job.activity_type == "pr":
-                    result = analyze_pr_task.delay(
-                        job.developer_id,
-                        job.activity_id,
+                    wf_id = await dispatch(
+                        "analyze_pr",
+                        AnalyzePRInput(
+                            developer_id=job.developer_id,
+                            pr_id=job.activity_id,
+                        ),
+                        task_queue=TaskQueue.ANALYSIS,
                     )
                 elif job.activity_type == "developer":
-                    result = analyze_developer_task.delay(job.developer_id)
+                    wf_id = await dispatch(
+                        "analyze_developer",
+                        AnalyzeDeveloperInput(developer_id=job.developer_id),
+                        task_queue=TaskQueue.ANALYSIS,
+                    )
                 else:
                     continue
 
-                task_ids.append(result.id)
+                wf_ids.append(wf_id)
 
             except Exception as e:
                 logger.error(f"Failed to process job {job.job_id}: {e}")
 
         self.clear_pending()
-        return task_ids
+        return wf_ids
 
 
 # Singleton queue instance

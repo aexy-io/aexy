@@ -5,40 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.2] - 2026-02-09
-
-### Added
-
-#### GitHub Work Stats Dashboard
-
-Team-level GitHub analytics dashboard for workspace admins/owners to track team member work distribution, commits, and pull requests.
-
-**New Route:**
-- `/tracking/work-stats` - GitHub analytics dashboard with member filtering and repo-wise breakdown
-
-**Frontend:**
-- New page: `app/(app)/tracking/work-stats/page.tsx` - Full analytics dashboard
-- New API client: `lib/work-stats-api.ts` - Types and API methods for work stats
-- New hook: `hooks/useWorkStats.ts` - React Query hook for GitHub analytics
-- Sidebar entry with `GitCommitHorizontal` icon under Tracking section
-- Module config in `appDefinitions.ts` with route mapping and bundle support
-
-**Dashboard Features:**
-- Period selector (7/30/90 days)
-- Member filter chips with avatar display (All Members + individual selection)
-- Summary metric cards: Total Commits, Pull Requests, Code Reviews, Contributors/Lines Changed
-- Interactive activity timeline bar chart with Y-axis labels, grid lines, and hover tooltips
-- Team view: Members table with inline sparklines, top repositories panel, code impact stats
-- Individual member view: Personal stats, repo-wise breakdown cards with commit/PR counts and additions/deletions bars
-- Permission-gated: Only workspace admins and owners can access
-
-**Backend:**
-- New schemas in `schemas/analytics.py`: `MemberActivityDay`, `MemberRepoStat`, `MemberGitHubStats`, `TeamActivityDay`, `TopRepoStat`, `GitHubAnalyticsSummary`, `WorkspaceGitHubAnalytics`
-- New service method: `AnalyticsDashboardService.get_workspace_github_analytics()` - Aggregates per-member and team-level GitHub stats from Commit, PullRequest, and CodeReview models
-- New API endpoint: `GET /workspaces/{workspace_id}/github-analytics?days=30` - Returns full workspace GitHub analytics (admin/owner only)
-
----
-
 ## [0.5.1] - 2026-02-08
 
 ### Changed

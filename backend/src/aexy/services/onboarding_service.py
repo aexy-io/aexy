@@ -338,6 +338,34 @@ class OnboardingService:
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
+    async def check_due_steps(self) -> dict:
+        """Check for and process any due onboarding steps.
+
+        Finds steps that are due and dispatches process_onboarding_step for each.
+        """
+        logger.info("Checking for due onboarding steps")
+
+        due_progress = await self.get_due_onboarding_steps()
+
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+        from aexy.temporal.activities.email import ProcessOnboardingStepInput
+
+        queued = 0
+        for progress in due_progress:
+            try:
+                await dispatch(
+                    "process_onboarding_step",
+                    ProcessOnboardingStepInput(progress_id=progress.id),
+                    task_queue=TaskQueue.EMAIL,
+                )
+                queued += 1
+            except Exception as e:
+                logger.error(f"Failed to dispatch onboarding step for progress {progress.id}: {e}")
+
+        logger.info(f"Queued {queued} due onboarding steps")
+        return {"queued": queued}
+
     # =========================================================================
     # MILESTONE MANAGEMENT
     # =========================================================================
@@ -600,14 +628,20 @@ class OnboardingService:
         if not user or not user.email:
             return
 
-        # Queue campaign email
-        from aexy.processing.email_marketing_tasks import send_workflow_email
-        send_workflow_email.delay(
-            workspace_id=milestone.workspace_id,
-            to=user.email,
-            subject=f"Congratulations on reaching {milestone.name}!",
-            body=f"<p>You've achieved: {milestone.name}</p>",
-            record_id=None,
+        # Queue campaign email via Temporal
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+        from aexy.temporal.activities.email import SendWorkflowEmailInput
+
+        await dispatch(
+            "send_workflow_email",
+            SendWorkflowEmailInput(
+                workspace_id=milestone.workspace_id,
+                to_email=user.email,
+                subject=f"Congratulations on reaching {milestone.name}!",
+                html_body=f"<p>You've achieved: {milestone.name}</p>",
+            ),
+            task_queue=TaskQueue.EMAIL,
         )
 
         logger.info(f"Triggered milestone campaign for user {user_id}")

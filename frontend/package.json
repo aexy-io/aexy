@@ -1,6 +1,6 @@
 {
   "name": "aexy-frontend",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "changelog": "node scripts/generate-changelog.mjs",
+    "prebuild": "node scripts/generate-changelog.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

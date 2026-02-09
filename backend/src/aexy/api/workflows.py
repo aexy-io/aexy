@@ -469,10 +469,26 @@ async def execute_workflow(
             is_dry_run=True,
         )
 
-    # For real executions, queue to Celery
-    from aexy.processing.workflow_tasks import execute_workflow_task
+    # For real executions, dispatch to Temporal
+    from aexy.temporal.client import get_temporal_client
+    from aexy.temporal.workflows.crm_workflow import CRMAutomationWorkflow, CRMWorkflowInput
 
-    execute_workflow_task.delay(execution.id)
+    client = await get_temporal_client()
+    await client.start_workflow(
+        CRMAutomationWorkflow.run,
+        CRMWorkflowInput(
+            execution_id=execution.id,
+            workflow_id=workflow.id,
+            workspace_id=workspace_id,
+            trigger_data=trigger_data,
+            record_id=data.record_id if record_data.get("id") else None,
+            record_data=record_data,
+            nodes=workflow.nodes or [],
+            edges=workflow.edges or [],
+        ),
+        id=f"crm-workflow-{execution.id}",
+        task_queue="workflows",
+    )
 
     return WorkflowExecutionResponse(
         execution_id=execution.id,

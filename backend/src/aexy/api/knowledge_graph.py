@@ -423,32 +423,42 @@ async def trigger_extraction(
     developer_id: Annotated[str, Depends(get_current_developer_id)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Trigger knowledge extraction (queues a Celery task)."""
-    from aexy.processing.knowledge_graph_tasks import (
-        extract_knowledge_from_document_task,
-        rebuild_workspace_graph_task,
+    """Trigger knowledge extraction (dispatches to Temporal)."""
+    from aexy.temporal.dispatch import dispatch
+    from aexy.temporal.task_queues import TaskQueue
+    from aexy.temporal.activities.knowledge_graph import (
+        ExtractKnowledgeInput,
+        RebuildWorkspaceGraphInput,
     )
 
     if request.document_id:
         # Single document extraction
-        task = extract_knowledge_from_document_task.delay(
-            document_id=request.document_id,
-            developer_id=developer_id,
-            workspace_id=workspace_id,
+        wf_id = await dispatch(
+            "extract_knowledge_from_document",
+            ExtractKnowledgeInput(
+                document_id=request.document_id,
+                developer_id=developer_id,
+                workspace_id=workspace_id,
+            ),
+            task_queue=TaskQueue.ANALYSIS,
         )
         return TriggerExtractionResponse(
-            job_id=task.id,
+            job_id=wf_id,
             status="pending",
             message=f"Incremental extraction queued for document {request.document_id}",
         )
     else:
         # Full workspace extraction
-        task = rebuild_workspace_graph_task.delay(
-            workspace_id=workspace_id,
-            developer_id=developer_id,
+        wf_id = await dispatch(
+            "rebuild_workspace_graph",
+            RebuildWorkspaceGraphInput(
+                workspace_id=workspace_id,
+                developer_id=developer_id,
+            ),
+            task_queue=TaskQueue.ANALYSIS,
         )
         return TriggerExtractionResponse(
-            job_id=task.id,
+            job_id=wf_id,
             status="pending",
             message="Full workspace extraction queued",
         )
@@ -467,16 +477,22 @@ async def extract_document(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Trigger extraction for a specific document."""
-    from aexy.processing.knowledge_graph_tasks import extract_knowledge_from_document_task
+    from aexy.temporal.dispatch import dispatch
+    from aexy.temporal.task_queues import TaskQueue
+    from aexy.temporal.activities.knowledge_graph import ExtractKnowledgeInput
 
-    task = extract_knowledge_from_document_task.delay(
-        document_id=document_id,
-        developer_id=developer_id,
-        workspace_id=workspace_id,
+    wf_id = await dispatch(
+        "extract_knowledge_from_document",
+        ExtractKnowledgeInput(
+            document_id=document_id,
+            developer_id=developer_id,
+            workspace_id=workspace_id,
+        ),
+        task_queue=TaskQueue.ANALYSIS,
     )
 
     return TriggerExtractionResponse(
-        job_id=task.id,
+        job_id=wf_id,
         status="pending",
         message=f"Extraction queued for document {document_id}",
     )
