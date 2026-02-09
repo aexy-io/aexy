@@ -22,6 +22,16 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+    # Ensure storage bucket exists
+    try:
+        from aexy.services.storage_service import get_storage_service
+        storage = get_storage_service()
+        if storage.is_configured():
+            await storage.ensure_bucket_exists()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Storage bucket bootstrap failed: {e}")
+
     yield
 
     # Cleanup on shutdown

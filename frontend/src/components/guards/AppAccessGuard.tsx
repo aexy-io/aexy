@@ -31,7 +31,7 @@ export function AppAccessGuard({
 }: AppAccessGuardProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { developer, isLoading: authLoading } = useAuth();
+  const { user: developer, isLoading: authLoading } = useAuth();
   const { currentWorkspace } = useWorkspace();
 
   const workspaceId = currentWorkspace?.id || null;

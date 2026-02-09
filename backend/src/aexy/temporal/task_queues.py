@@ -1,6 +1,6 @@
 """Temporal task queue constants.
 
-Consolidates 12 Celery queues into 6 Temporal task queues:
+Consolidates into 6 Temporal task queues (previously 12 Celery queues):
   analysis  - LLM analysis work (replaces: analysis, batch)
   sync      - External API sync (replaces: sync, google_sync)
   workflows - CRM automations (replaces: workflows)

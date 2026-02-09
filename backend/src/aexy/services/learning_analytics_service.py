@@ -779,7 +779,7 @@ class LearningAnalyticsService:
         await self.db.commit()
         await self.db.refresh(run)
 
-        # In a real implementation, this would trigger a Celery task
+        # In a real implementation, this would trigger a Temporal activity
         # For now, just mark as completed
         run.status = ReportRunStatus.COMPLETED.value
         run.started_at = datetime.now(timezone.utc)

@@ -29,6 +29,25 @@ services:
       timeout: 5s
       retries: 5
 
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: aexy-rustfs
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    environment:
+      - RUSTFS_ROOT_USER=${RUSTFS_ROOT_USER:-aexy-admin}
+      - RUSTFS_ROOT_PASSWORD=${RUSTFS_ROOT_PASSWORD:-aexy-secret-key}
+    volumes:
+      - rustfs_data:/data
+      - rustfs_logs:/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: server /data --console-address ":9001"
+
   temporal:
     image: temporalio/auto-setup:latest
     container_name: aexy-temporal
@@ -71,11 +90,19 @@ services:
       - LLM_MODEL=gemini-2.0-flash
       - GEMINI_API_KEY=${GEMINI_API_KEY:-your-gemini-api-key}
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - S3_ENDPOINT_URL=http://rustfs:9000
+      - S3_ACCESS_KEY_ID=${RUSTFS_ROOT_USER:-aexy-admin}
+      - S3_SECRET_ACCESS_KEY=${RUSTFS_ROOT_PASSWORD:-aexy-secret-key}
+      - S3_BUCKET_NAME=aexy-storage
+      - S3_REGION=us-east-1
+      - S3_PUBLIC_ENDPOINT_URL=http://localhost:9000
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      # rustfs:
+      #   condition: service_healthy
       temporal:
         condition: service_started
     volumes:
@@ -95,11 +122,19 @@ services:
       - LLM_MODEL=gemini-2.0-flash
       - GEMINI_API_KEY=${GEMINI_API_KEY:-your-gemini-api-key}
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - S3_ENDPOINT_URL=http://rustfs:9000
+      - S3_ACCESS_KEY_ID=${RUSTFS_ROOT_USER:-aexy-admin}
+      - S3_SECRET_ACCESS_KEY=${RUSTFS_ROOT_PASSWORD:-aexy-secret-key}
+      - S3_BUCKET_NAME=aexy-storage
+      - S3_REGION=us-east-1
+      - S3_PUBLIC_ENDPOINT_URL=http://localhost:9000
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      # rustfs:
+      #   condition: service_healthy
       temporal:
         condition: service_started
     volumes:
@@ -156,3 +191,5 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  rustfs_data:
+  rustfs_logs:

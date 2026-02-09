@@ -19,13 +19,13 @@ import Link from "next/link";
 
 const CALENDAR_PROVIDERS = [
   {
-    value: "google",
+    value: "google" as const,
     label: "Google Calendar",
     icon: "/icons/google-calendar.svg",
     color: "#4285F4",
   },
   {
-    value: "microsoft",
+    value: "microsoft" as const,
     label: "Microsoft Outlook",
     icon: "/icons/outlook.svg",
     color: "#0078D4",

@@ -1,4 +1,8 @@
-"""Celery tasks for on-call scheduling.
+"""Legacy task functions for on-call scheduling.
+
+Business logic has been moved to Temporal activities.
+These functions are retained as plain functions so Temporal activities can
+import and call the inner async helpers (e.g. _check_upcoming_shifts_async).
 
 These tasks handle:
 - Shift change notifications
@@ -9,7 +13,6 @@ These tasks handle:
 import logging
 from datetime import datetime, timezone
 
-from aexy.processing.celery_app import celery_app
 from aexy.core.database import async_session_maker
 from aexy.services.oncall_service import OnCallService
 from aexy.services.notification_service import NotificationService
@@ -19,7 +22,6 @@ from aexy.models.notification import NotificationEventType
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(name="aexy.processing.oncall_tasks.check_upcoming_shifts")
 def check_upcoming_shifts():
     """Check for shifts starting soon and send notifications.
 
@@ -80,7 +82,6 @@ async def _check_upcoming_shifts_async():
             raise
 
 
-@celery_app.task(name="aexy.processing.oncall_tasks.check_ending_shifts")
 def check_ending_shifts():
     """Check for shifts ending soon and send notifications.
 
@@ -149,7 +150,6 @@ async def _check_ending_shifts_async():
             raise
 
 
-@celery_app.task(name="aexy.processing.oncall_tasks.sync_calendar_events")
 def sync_calendar_events(config_id: str):
     """Sync all on-call schedules for a config to Google Calendar.
 
@@ -174,7 +174,6 @@ async def _sync_calendar_events_async(config_id: str):
             raise
 
 
-@celery_app.task(name="aexy.processing.oncall_tasks.send_swap_notification")
 def send_swap_notification(swap_id: str, notification_type: str):
     """Send notification for a swap request event.
 

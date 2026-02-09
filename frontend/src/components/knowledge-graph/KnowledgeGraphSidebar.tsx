@@ -21,13 +21,14 @@ import {
 interface EntityData {
   id: string;
   name: string;
-  type: string;
-  description?: string;
+  type?: string;
+  entity_type?: string;
+  description?: string | null;
   aliases: string[];
   confidence_score: number;
   occurrence_count: number;
-  first_seen_at?: string;
-  last_seen_at?: string;
+  first_seen_at?: string | null;
+  last_seen_at?: string | null;
   documents: Array<{
     id: string;
     title: string;
@@ -65,7 +66,7 @@ interface KnowledgeGraphSidebarProps {
   workspaceId: string;
 }
 
-const ENTITY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+const ENTITY_ICONS: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
   person: User,
   concept: Lightbulb,
   technology: Cpu,
@@ -85,7 +86,7 @@ const ENTITY_COLORS: Record<string, string> = {
   external: "#94a3b8",
 };
 
-function formatDate(dateString?: string): string {
+function formatDate(dateString?: string | null): string {
   if (!dateString) return "Unknown";
   const date = new Date(dateString);
   return date.toLocaleDateString("en-US", {
@@ -147,8 +148,9 @@ function EntityDetails({
   data: EntityData;
   workspaceId: string;
 }) {
-  const Icon = ENTITY_ICONS[data.type] || Lightbulb;
-  const color = ENTITY_COLORS[data.type] || "#94a3b8";
+  const entityType = data.type || data.entity_type || "";
+  const Icon = ENTITY_ICONS[entityType] || Lightbulb;
+  const color = ENTITY_COLORS[entityType] || "#94a3b8";
 
   return (
     <div className="p-4 space-y-6">
@@ -165,7 +167,7 @@ function EntityDetails({
             {data.name}
           </h4>
           <p className="text-sm capitalize" style={{ color }}>
-            {data.type}
+            {entityType}
           </p>
         </div>
       </div>

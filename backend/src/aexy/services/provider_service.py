@@ -996,7 +996,7 @@ class ProviderService:
             await self.db.commit()
 
     # -------------------------------------------------------------------------
-    # SYNC METHODS (for Celery tasks)
+    # SYNC METHODS (for Temporal activities)
     # -------------------------------------------------------------------------
 
     def send_email_sync(
@@ -1011,7 +1011,7 @@ class ProviderService:
         reply_to: str | None = None,
     ) -> dict:
         """
-        Sync version of send_via_provider for Celery tasks.
+        Sync version of send_via_provider for Temporal activities.
 
         Returns:
             Dict with success, message_id, or error

@@ -1,32 +1,26 @@
-"""Celery tasks for Google Gmail and Calendar sync."""
+"""Legacy task functions for Google Gmail and Calendar sync.
+
+Business logic has been moved to Temporal activities.
+These functions are retained as plain functions so Temporal activities can
+import and call the inner async helpers (e.g. _sync_gmail, _sync_calendar).
+"""
 
 import logging
 from datetime import datetime, timezone
 from typing import Any
-
-from celery import shared_task
 
 from aexy.processing.tasks import run_async
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(
-    bind=True,
-    max_retries=3,
-    default_retry_delay=60,
-    autoretry_for=(Exception,),
-    retry_backoff=True,
-    retry_backoff_max=300,
-)
 def sync_gmail_task(
-    self,
     job_id: str,
     workspace_id: str,
     integration_id: str,
     max_messages: int = 500,
 ) -> dict[str, Any]:
-    """Async Gmail sync task.
+    """Gmail sync task.
 
     Args:
         job_id: The GoogleSyncJob ID
@@ -53,19 +47,10 @@ def sync_gmail_task(
         logger.error(f"Gmail sync task failed: {exc}")
         # Update job status on failure
         run_async(_update_job_failed(job_id, str(exc)))
-        raise self.retry(exc=exc)
+        raise
 
 
-@shared_task(
-    bind=True,
-    max_retries=3,
-    default_retry_delay=60,
-    autoretry_for=(Exception,),
-    retry_backoff=True,
-    retry_backoff_max=300,
-)
 def sync_calendar_task(
-    self,
     job_id: str,
     workspace_id: str,
     integration_id: str,
@@ -73,7 +58,7 @@ def sync_calendar_task(
     days_back: int = 30,
     days_forward: int = 90,
 ) -> dict[str, Any]:
-    """Async Calendar sync task.
+    """Calendar sync task.
 
     Args:
         job_id: The GoogleSyncJob ID
@@ -104,7 +89,7 @@ def sync_calendar_task(
         logger.error(f"Calendar sync task failed: {exc}")
         # Update job status on failure
         run_async(_update_job_failed(job_id, str(exc)))
-        raise self.retry(exc=exc)
+        raise
 
 
 async def _update_job_progress(
@@ -461,8 +446,7 @@ async def _sync_calendar(
 # =============================================================================
 
 
-@shared_task(bind=True)
-def check_auto_sync_integrations(self) -> dict[str, Any]:
+def check_auto_sync_integrations() -> dict[str, Any]:
     """Periodic task to check and trigger auto-syncs for integrations.
 
     This task runs every minute and checks which integrations need syncing
@@ -552,16 +536,8 @@ async def _check_and_trigger_auto_syncs() -> dict[str, Any]:
                 db.add(job)
                 await db.commit()
 
-                # Queue the Celery task
-                task = sync_gmail_task.delay(
-                    job_id=job.id,
-                    workspace_id=integration.workspace_id,
-                    integration_id=integration.id,
-                    max_messages=200,  # Smaller batch for auto-sync
-                )
-
-                # Update job with Celery task ID
-                job.celery_task_id = task.id
+                # Note: Auto-sync is now handled by Temporal schedules.
+                # This code path is retained for backward compatibility.
                 await db.commit()
 
                 gmail_syncs_triggered += 1
@@ -626,17 +602,8 @@ async def _check_and_trigger_auto_syncs() -> dict[str, Any]:
                 db.add(job)
                 await db.commit()
 
-                # Queue the Celery task
-                task = sync_calendar_task.delay(
-                    job_id=job.id,
-                    workspace_id=integration.workspace_id,
-                    integration_id=integration.id,
-                    days_back=30,
-                    days_forward=90,
-                )
-
-                # Update job with Celery task ID
-                job.celery_task_id = task.id
+                # Note: Auto-sync is now handled by Temporal schedules.
+                # This code path is retained for backward compatibility.
                 await db.commit()
 
                 calendar_syncs_triggered += 1

@@ -845,7 +845,7 @@ class AgentService:
         return AgentBuilder.get_available_tools()
 
     # =========================================================================
-    # SYNC EXECUTION (for Celery workers)
+    # SYNC EXECUTION (for Temporal workers)
     # =========================================================================
 
     def run_agent_sync(
@@ -857,7 +857,7 @@ class AgentService:
         record_id: str | None = None,
     ) -> dict:
         """
-        Synchronous wrapper for agent execution - for use in Celery workers.
+        Synchronous wrapper for agent execution - for use in Temporal workers.
 
         Args:
             agent_type: Type of prebuilt agent (sales_outreach, lead_scoring, etc.)
@@ -983,7 +983,7 @@ class AgentService:
 
 
 class SyncAgentService:
-    """Synchronous agent service for Celery workers."""
+    """Synchronous agent service for Temporal workers."""
 
     def __init__(self, db: Session):
         self.db = db

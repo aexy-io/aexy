@@ -4,10 +4,10 @@
 Aexy is an Engineering OS platform with assessment capabilities, LLM integrations, and workflow automation.
 
 ## Tech Stack
-- **Backend**: Python 3.13, FastAPI, SQLAlchemy (async), Celery
+- **Backend**: Python 3.13, FastAPI, SQLAlchemy (async), Temporal
 - **Frontend**: Next.js 14, React, TypeScript, TailwindCSS
 - **Database**: PostgreSQL (async via asyncpg)
-- **Queue**: Redis (Celery broker)
+- **Queue**: Redis (cache, rate limiting), Temporal (workflow engine)
 - **LLM Providers**: Claude (Anthropic), Gemini (Google), Ollama (self-hosted)
 
 ## Local Development Setup
@@ -20,7 +20,7 @@ docker-compose up -d
 Services:
 - Backend: http://localhost:8000
 - Frontend: http://localhost:3000
-- Flower (Celery monitor): http://localhost:5555
+- Temporal UI: http://localhost:8233
 - PostgreSQL: localhost:5432
 - Redis: localhost:6379
 
@@ -124,13 +124,13 @@ async def test():
 asyncio.run(test())
 ```
 
-### 6. Test Celery Task Retry
+### 6. Test Temporal Activity Retry
 ```bash
-# Watch Celery logs
-docker logs -f aexy-celery-worker
+# Watch Temporal worker logs
+docker logs -f aexy-temporal-worker
 
 # Trigger an analysis task that will hit rate limits
-# The task should auto-retry with the wait time from the rate limiter
+# The activity should auto-retry via Temporal's built-in retry policies
 ```
 
 ### 7. Clear Rate Limit Data (for testing)
@@ -169,14 +169,18 @@ RATE_LIMIT_ENABLED=true
 
 ### Rate Limiting
 - `backend/src/aexy/services/llm_rate_limiter.py` - Rate limiter service
-- `backend/src/aexy/processing/rate_limited_task.py` - Celery task utilities
+- `backend/src/aexy/processing/rate_limited_task.py` - Rate limiting utilities
 
 ### Configuration
 - `backend/src/aexy/core/config.py` - App settings including rate limits
 
-### Celery Tasks
-- `backend/src/aexy/processing/celery_app.py` - Celery configuration
-- `backend/src/aexy/processing/tasks.py` - Analysis tasks
+### Temporal (Background Processing)
+- `backend/src/aexy/temporal/dispatch.py` - Fire-and-forget dispatch (replaces Celery .delay())
+- `backend/src/aexy/temporal/worker.py` - Temporal worker configuration
+- `backend/src/aexy/temporal/schedules.py` - Periodic schedules (replaces Celery Beat)
+- `backend/src/aexy/temporal/activities/` - Activity implementations
+- `backend/src/aexy/temporal/workflows/` - Workflow definitions
+- `backend/src/aexy/temporal/task_queues.py` - Task queue constants
 
 ### AI Agents
 - `backend/src/aexy/models/agent.py` - CRMAgent SQLAlchemy model
@@ -194,10 +198,10 @@ RATE_LIMIT_ENABLED=true
 - Wait for the reset window (1 minute for per-minute limits)
 - Or clear rate limit data for testing
 
-### Celery Task Not Retrying
-- Ensure task uses `RateLimitedTask` as base class
-- Check that `LLMRateLimitError` is being raised
-- Verify `wait_seconds` is being passed to retry
+### Temporal Activity Not Retrying
+- Check retry policy in `temporal/dispatch.py` ACTIVITY_CONFIG
+- Ensure `LLMRateLimitError` is being raised (triggers Temporal retry)
+- Check Temporal UI for workflow execution history
 
 ### Redis Connection Issues
 - Ensure Redis container is running: `docker-compose ps`

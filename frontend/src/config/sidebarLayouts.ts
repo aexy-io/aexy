@@ -41,6 +41,12 @@ import {
     AlertTriangle,
     History,
     Bot,
+    TrendingUp,
+    ShieldCheck,
+    FileSearch,
+    Bell,
+    CalendarDays,
+    UserCheck,
 } from "lucide-react";
 
 export type SidebarLayoutType = "grouped" | "flat";
@@ -129,6 +135,21 @@ const automationsItems: SidebarItemConfig[] = [
     { href: "/automations/new", label: "Create Automation", icon: UserPlus },
 ];
 
+const insightsItems: SidebarItemConfig[] = [
+    { href: "/insights", label: "Team Overview", icon: LayoutDashboard },
+    { href: "/insights/leaderboard", label: "Leaderboard", icon: BarChart },
+];
+
+const complianceItems: SidebarItemConfig[] = [
+    { href: "/compliance", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/compliance/reminders", label: "Reminders", icon: Bell },
+    { href: "/compliance/documents", label: "Documents", icon: FileStack },
+    { href: "/compliance/reminders/compliance", label: "Questionnaires", icon: FileSearch },
+    { href: "/compliance/training", label: "Training", icon: GraduationCap },
+    { href: "/compliance/certifications", label: "Certifications", icon: ShieldCheck },
+    { href: "/compliance/calendar", label: "Calendar", icon: CalendarDays },
+];
+
 /**
  * Version 1: Grouped Layout (Role-Based)
  * Items organized by functional areas: Engineering, People, Business, Knowledge
@@ -185,6 +206,24 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
                     label: "Uptime",
                     icon: MonitorCheck,
                     items: uptimeItems,
+                },
+                {
+                    href: "/insights",
+                    label: "Insights",
+                    icon: TrendingUp,
+                    items: insightsItems,
+                },
+            ],
+        },
+        {
+            id: "compliance",
+            label: "Compliance",
+            items: [
+                {
+                    href: "/compliance",
+                    label: "Compliance",
+                    icon: ShieldCheck,
+                    items: complianceItems,
                 },
             ],
         },
@@ -276,6 +315,12 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                     items: uptimeItems,
                 },
                 {
+                    href: "/compliance",
+                    label: "Compliance",
+                    icon: ShieldCheck,
+                    items: complianceItems,
+                },
+                {
                     href: "/reviews",
                     label: "Reviews",
                     icon: ClipboardCheck,
@@ -310,6 +355,12 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                     label: "Automations",
                     icon: Zap,
                     items: automationsItems,
+                },
+                {
+                    href: "/insights",
+                    label: "Insights",
+                    icon: TrendingUp,
+                    items: insightsItems,
                 },
                 { href: "/learning", label: "Learning", icon: GraduationCap },
                 { href: "/docs", label: "Docs", icon: FileText },

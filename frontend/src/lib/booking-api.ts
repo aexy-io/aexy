@@ -52,6 +52,7 @@ export interface EventTypeCreate {
   location_type?: string;
   custom_location?: string | null;
   color?: string;
+  is_active?: boolean;
   is_team_event?: boolean;
   buffer_before?: number;
   buffer_after?: number;

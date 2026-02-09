@@ -88,9 +88,9 @@ class SyncStartRequest(BaseModel):
         default="incremental",
         description="Sync type: 'full' or 'incremental'",
     )
-    use_celery: bool = Field(
+    use_background: bool = Field(
         default=False,
-        description="Use Celery task queue for background processing",
+        description="Use Temporal workflow for background processing",
     )
 
 
@@ -100,7 +100,7 @@ class SyncStartResponse(BaseModel):
     job_id: str
     message: str
     sync_type: str = "incremental"
-    use_celery: bool = False
+    use_background: bool = False
 
 
 class OnboardingStatusResponse(BaseModel):

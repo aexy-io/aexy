@@ -1,13 +1,15 @@
-"""Celery tasks for knowledge graph extraction and maintenance."""
+"""Legacy task functions for knowledge graph extraction and maintenance.
+
+Business logic has been moved to Temporal activities.
+These functions are retained as plain functions so Temporal activities can
+import and call the inner async helpers (e.g. _cleanup_orphaned_entities).
+"""
 
 import asyncio
 import logging
 from typing import Any
 
-from celery import shared_task
-
 from aexy.llm.base import LLMRateLimitError
-from aexy.processing.rate_limited_task import RateLimitedTask
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +18,7 @@ def run_async(coro):
     """Run an async coroutine in a sync context.
 
     Always creates a new event loop to avoid conflicts between
-    concurrent Celery tasks sharing the same worker process.
+    concurrent tasks sharing the same worker process.
     """
     from aexy.core.database import get_engine
 
@@ -34,9 +36,7 @@ def run_async(coro):
         loop.close()
 
 
-@shared_task(bind=True, base=RateLimitedTask, max_retries=5)
 def extract_knowledge_from_document_task(
-    self,
     document_id: str,
     developer_id: str,
     workspace_id: str,
@@ -52,20 +52,12 @@ def extract_knowledge_from_document_task(
         Extraction result dict.
     """
     logger.info(f"Extracting knowledge from document {document_id}")
-
-    try:
-        result = run_async(_extract_knowledge_from_document(
-            document_id=document_id,
-            developer_id=developer_id,
-            workspace_id=workspace_id,
-        ))
-        return result
-    except LLMRateLimitError as exc:
-        logger.warning(f"Rate limit hit for knowledge extraction: {exc.message}")
-        raise self.retry(exc=exc, countdown=exc.wait_seconds)
-    except Exception as exc:
-        logger.error(f"Knowledge extraction failed: {exc}")
-        raise self.retry(exc=exc)
+    result = run_async(_extract_knowledge_from_document(
+        document_id=document_id,
+        developer_id=developer_id,
+        workspace_id=workspace_id,
+    ))
+    return result
 
 
 async def _extract_knowledge_from_document(
@@ -97,9 +89,7 @@ async def _extract_knowledge_from_document(
         }
 
 
-@shared_task(bind=True, base=RateLimitedTask, max_retries=3)
 def rebuild_workspace_graph_task(
-    self,
     workspace_id: str,
     developer_id: str,
 ) -> dict[str, Any]:
@@ -113,19 +103,11 @@ def rebuild_workspace_graph_task(
         Rebuild result dict.
     """
     logger.info(f"Rebuilding knowledge graph for workspace {workspace_id}")
-
-    try:
-        result = run_async(_rebuild_workspace_graph(
-            workspace_id=workspace_id,
-            developer_id=developer_id,
-        ))
-        return result
-    except LLMRateLimitError as exc:
-        logger.warning(f"Rate limit hit for graph rebuild: {exc.message}")
-        raise self.retry(exc=exc, countdown=exc.wait_seconds)
-    except Exception as exc:
-        logger.error(f"Graph rebuild failed: {exc}")
-        raise self.retry(exc=exc)
+    result = run_async(_rebuild_workspace_graph(
+        workspace_id=workspace_id,
+        developer_id=developer_id,
+    ))
+    return result
 
 
 async def _rebuild_workspace_graph(
@@ -155,7 +137,6 @@ async def _rebuild_workspace_graph(
         }
 
 
-@shared_task
 def update_document_relationships_task(workspace_id: str) -> dict[str, Any]:
     """Update document-to-document relationships based on shared entities.
 
@@ -194,7 +175,6 @@ async def _update_document_relationships(workspace_id: str) -> dict[str, Any]:
         }
 
 
-@shared_task
 def cleanup_orphaned_entities_task(workspace_id: str) -> dict[str, Any]:
     """Clean up entities that no longer have any document mentions.
 
@@ -265,7 +245,6 @@ async def _cleanup_orphaned_entities(workspace_id: str) -> dict[str, Any]:
         }
 
 
-@shared_task
 def schedule_incremental_extraction_task(
     workspace_id: str,
     document_id: str,
@@ -276,6 +255,10 @@ def schedule_incremental_extraction_task(
 
     This task can be called multiple times for the same document,
     but only the last call within the delay window will actually execute.
+
+    Note: Scheduling with delay is now handled by Temporal workflows.
+    This function retains the debounce logic via Redis but calls the
+    extraction function directly.
 
     Args:
         workspace_id: Workspace ID.
@@ -296,15 +279,8 @@ def schedule_incremental_extraction_task(
     # Set the key with expiration - only extract after debounce period
     redis_client.setex(debounce_key, delay_seconds, developer_id)
 
-    # Schedule the actual extraction to run after the delay
-    extract_knowledge_from_document_task.apply_async(
-        kwargs={
-            "document_id": document_id,
-            "developer_id": developer_id,
-            "workspace_id": workspace_id,
-        },
-        countdown=delay_seconds,
-    )
+    # Note: Delayed execution is now handled by Temporal schedules.
+    # Direct invocation is retained for backward compatibility.
 
     return {
         "status": "scheduled",

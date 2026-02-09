@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aexy"
-version = "0.5.1"
+version = "0.5.4"
 description = "GitHub-Based Developer Profiling & Analytics Platform"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -39,12 +39,16 @@ dependencies = [
     "mjml>=0.11.0",
     # Caching
     "redis>=5.0.0",
+    # Scheduling
+    "croniter>=2.0.0",
     # Temporal workflow engine
     "temporalio>=1.9.0",
     # Payments
     "stripe>=7.0.0",
     # JWT for GitHub App
     "PyJWT>=2.8.0",
+    # Excel file parsing
+    "openpyxl>=3.1.0",
 ]
 
 [project.optional-dependencies]

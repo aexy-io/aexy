@@ -21,6 +21,7 @@ import {
   Sparkles,
   Shield,
   Bot,
+  TrendingUp,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -179,6 +180,15 @@ export default function SettingsPage() {
             title="Ticket Forms"
             description="Create and manage public forms for collecting tickets"
           />
+
+          {isWorkspaceAdmin && (
+            <SettingsSection
+              href="/settings/insights"
+              icon={<TrendingUp className="h-5 w-5 text-indigo-400" />}
+              title="Insights"
+              description="Configure developer insights, team metrics, and working hours"
+            />
+          )}
 
           <SettingsSection
             href="/settings/escalation"

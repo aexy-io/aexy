@@ -18,7 +18,7 @@ class Base(DeclarativeBase):
     pass
 
 
-# Store engine per-process to handle Celery fork workers correctly.
+# Store engine per-process to handle forked workers correctly.
 # asyncpg connections cannot be shared across forked processes.
 _engine_cache: dict[int, tuple] = {}
 
@@ -26,7 +26,7 @@ _engine_cache: dict[int, tuple] = {}
 def _get_engine():
     """Get or create the async engine for the current process.
 
-    This ensures each forked Celery worker gets its own engine instance,
+    This ensures each forked worker gets its own engine instance,
     avoiding asyncpg connection conflicts across processes.
     """
     pid = os.getpid()
@@ -113,14 +113,14 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
         await session.close()
 
 
-# Synchronous database support for Celery tasks
+# Synchronous database support for background tasks
 _sync_engine_cache: dict[int, tuple] = {}
 
 
 def _get_sync_engine():
     """Get or create the sync engine for the current process.
 
-    This ensures each forked Celery worker gets its own engine instance.
+    This ensures each forked worker gets its own engine instance.
     """
     pid = os.getpid()
     if pid not in _sync_engine_cache:
@@ -156,7 +156,7 @@ def get_sync_engine():
 
 @contextmanager
 def get_sync_session() -> Generator[Session, None, None]:
-    """Get a synchronous database session for Celery tasks.
+    """Get a synchronous database session for background tasks.
 
     Usage:
         with get_sync_session() as session:

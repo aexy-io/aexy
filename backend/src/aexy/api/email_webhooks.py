@@ -771,7 +771,7 @@ def process_inbound_email(email_data: dict):
 
             logger.info(f"Created inbox message {message.id} for agent {agent.id}")
 
-            # Note: AI processing should be done via Celery task or separate async service
+            # Note: AI processing should be done via Temporal activity or separate async service
             # For now, just save the message - processing can be triggered manually or via a worker
 
     except Exception as e:

@@ -1,30 +1,27 @@
-"""Celery tasks for tracking: standups, blockers, time aggregation, and patterns."""
+"""Legacy task functions for tracking: standups, blockers, time aggregation, and patterns.
+
+Business logic has been moved to Temporal activities.
+These functions are retained as plain functions so Temporal activities can
+import and call the inner async helpers (e.g. _send_standup_reminders).
+"""
 
 import logging
 from datetime import date, datetime, timedelta
 from typing import Any
-
-from celery import shared_task
 
 from aexy.processing.tasks import run_async
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def send_standup_reminders_task(self) -> dict[str, Any]:
+def send_standup_reminders_task() -> dict[str, Any]:
     """
     Send standup reminders to configured channels.
     Should run daily around 9 AM (configurable per channel).
     """
     logger.info("Sending standup reminders")
-
-    try:
-        result = run_async(_send_standup_reminders())
-        return result
-    except Exception as exc:
-        logger.error(f"Standup reminders failed: {exc}")
-        raise self.retry(exc=exc)
+    result = run_async(_send_standup_reminders())
+    return result
 
 
 async def _send_standup_reminders() -> dict[str, Any]:
@@ -102,20 +99,14 @@ async def _send_standup_reminders() -> dict[str, Any]:
     }
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def aggregate_daily_standups_task(self, team_id: str | None = None) -> dict[str, Any]:
+def aggregate_daily_standups_task(team_id: str | None = None) -> dict[str, Any]:
     """
     Aggregate daily standups into sprint summaries.
     Should run at end of day (6 PM).
     """
     logger.info(f"Aggregating daily standups for team {team_id or 'all'}")
-
-    try:
-        result = run_async(_aggregate_daily_standups(team_id))
-        return result
-    except Exception as exc:
-        logger.error(f"Standup aggregation failed: {exc}")
-        raise self.retry(exc=exc)
+    result = run_async(_aggregate_daily_standups(team_id))
+    return result
 
 
 async def _aggregate_daily_standups(team_id: str | None) -> dict[str, Any]:
@@ -266,21 +257,15 @@ async def _aggregate_daily_standups(team_id: str | None) -> dict[str, Any]:
     }
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def check_overdue_blockers_task(self) -> dict[str, Any]:
+def check_overdue_blockers_task() -> dict[str, Any]:
     """
     Check for blockers that have been active too long.
     Sends escalation notifications for high-severity blockers older than 24h.
     Should run every 4 hours.
     """
     logger.info("Checking overdue blockers")
-
-    try:
-        result = run_async(_check_overdue_blockers())
-        return result
-    except Exception as exc:
-        logger.error(f"Overdue blockers check failed: {exc}")
-        raise self.retry(exc=exc)
+    result = run_async(_check_overdue_blockers())
+    return result
 
 
 async def _check_overdue_blockers() -> dict[str, Any]:
@@ -359,19 +344,13 @@ async def _check_overdue_blockers() -> dict[str, Any]:
     }
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def analyze_activity_patterns_task(self, developer_id: str) -> dict[str, Any]:
+def analyze_activity_patterns_task(developer_id: str) -> dict[str, Any]:
     """
     Analyze developer activity patterns from standups, work logs, and time entries.
     """
     logger.info(f"Analyzing activity patterns for developer {developer_id}")
-
-    try:
-        result = run_async(_analyze_activity_patterns(developer_id))
-        return result
-    except Exception as exc:
-        logger.error(f"Activity pattern analysis failed: {exc}")
-        raise self.retry(exc=exc)
+    result = run_async(_analyze_activity_patterns(developer_id))
+    return result
 
 
 async def _analyze_activity_patterns(developer_id: str) -> dict[str, Any]:
@@ -543,19 +522,13 @@ async def _analyze_activity_patterns(developer_id: str) -> dict[str, Any]:
     }
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def aggregate_time_entries_task(self, sprint_id: str) -> dict[str, Any]:
+def aggregate_time_entries_task(sprint_id: str) -> dict[str, Any]:
     """
     Aggregate time entries for sprint reporting.
     """
     logger.info(f"Aggregating time entries for sprint {sprint_id}")
-
-    try:
-        result = run_async(_aggregate_time_entries(sprint_id))
-        return result
-    except Exception as exc:
-        logger.error(f"Time entry aggregation failed: {exc}")
-        raise self.retry(exc=exc)
+    result = run_async(_aggregate_time_entries(sprint_id))
+    return result
 
 
 async def _aggregate_time_entries(sprint_id: str) -> dict[str, Any]:
@@ -620,20 +593,14 @@ async def _aggregate_time_entries(sprint_id: str) -> dict[str, Any]:
     }
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def generate_sprint_progress_report_task(self, sprint_id: str) -> dict[str, Any]:
+def generate_sprint_progress_report_task(sprint_id: str) -> dict[str, Any]:
     """
     Generate daily sprint progress from individual updates.
     Should run at 5 PM daily.
     """
     logger.info(f"Generating sprint progress report for {sprint_id}")
-
-    try:
-        result = run_async(_generate_sprint_progress_report(sprint_id))
-        return result
-    except Exception as exc:
-        logger.error(f"Sprint progress report failed: {exc}")
-        raise self.retry(exc=exc)
+    result = run_async(_generate_sprint_progress_report(sprint_id))
+    return result
 
 
 async def _generate_sprint_progress_report(sprint_id: str) -> dict[str, Any]:
@@ -714,9 +681,7 @@ async def _generate_sprint_progress_report(sprint_id: str) -> dict[str, Any]:
 # ==================== Slack Sync Tasks ====================
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def sync_slack_channel_task(
-    self,
     integration_id: str,
     channel_id: str,
     team_id: str | None = None,
@@ -727,13 +692,8 @@ def sync_slack_channel_task(
     Can be triggered manually or by scheduler.
     """
     logger.info(f"Syncing Slack channel {channel_id}")
-
-    try:
-        result = run_async(_sync_slack_channel(integration_id, channel_id, team_id, sprint_id))
-        return result
-    except Exception as exc:
-        logger.error(f"Slack channel sync failed: {exc}")
-        raise self.retry(exc=exc)
+    result = run_async(_sync_slack_channel(integration_id, channel_id, team_id, sprint_id))
+    return result
 
 
 async def _sync_slack_channel(
@@ -767,20 +727,14 @@ async def _sync_slack_channel(
         return stats
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=300)
-def sync_all_slack_channels_task(self, integration_id: str) -> dict[str, Any]:
+def sync_all_slack_channels_task(integration_id: str) -> dict[str, Any]:
     """
     Sync all configured Slack channels for an integration.
     Should run every 15-30 minutes for continuous sync.
     """
     logger.info(f"Syncing all channels for integration {integration_id}")
-
-    try:
-        result = run_async(_sync_all_slack_channels(integration_id))
-        return result
-    except Exception as exc:
-        logger.error(f"Slack all-channel sync failed: {exc}")
-        raise self.retry(exc=exc)
+    result = run_async(_sync_all_slack_channels(integration_id))
+    return result
 
 
 async def _sync_all_slack_channels(integration_id: str) -> dict[str, Any]:
@@ -838,9 +792,7 @@ async def _sync_all_slack_channels(integration_id: str) -> dict[str, Any]:
         return total_stats
 
 
-@shared_task(bind=True, max_retries=1, default_retry_delay=60)
 def import_slack_history_task(
-    self,
     integration_id: str,
     channel_ids: list[str] | None = None,
     days_back: int = 30,
@@ -851,15 +803,10 @@ def import_slack_history_task(
     Full import of Slack history. One-time operation.
     """
     logger.info(f"Importing Slack history for integration {integration_id}, days_back={days_back}")
-
-    try:
-        result = run_async(_import_slack_history(
-            integration_id, channel_ids, days_back, team_id, sprint_id
-        ))
-        return result
-    except Exception as exc:
-        logger.error(f"Slack history import failed: {exc}")
-        raise self.retry(exc=exc)
+    result = run_async(_import_slack_history(
+        integration_id, channel_ids, days_back, team_id, sprint_id
+    ))
+    return result
 
 
 async def _import_slack_history(
@@ -894,19 +841,13 @@ async def _import_slack_history(
         return stats
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def map_slack_users_task(self, integration_id: str) -> dict[str, Any]:
+def map_slack_users_task(integration_id: str) -> dict[str, Any]:
     """
     Auto-map Slack users to developers based on email.
     """
     logger.info(f"Mapping Slack users for integration {integration_id}")
-
-    try:
-        result = run_async(_map_slack_users(integration_id))
-        return result
-    except Exception as exc:
-        logger.error(f"Slack user mapping failed: {exc}")
-        raise self.retry(exc=exc)
+    result = run_async(_map_slack_users(integration_id))
+    return result
 
 
 async def _map_slack_users(integration_id: str) -> dict[str, Any]:

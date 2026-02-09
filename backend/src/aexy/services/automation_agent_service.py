@@ -543,7 +543,7 @@ class AutomationAgentService:
 
 
 class SyncAutomationAgentService:
-    """Synchronous version of AutomationAgentService for Celery workers."""
+    """Synchronous version of AutomationAgentService for Temporal workers."""
 
     def __init__(self, db: Session):
         self.db = db
@@ -558,7 +558,7 @@ class SyncAutomationAgentService:
         workflow_step_id: str | None = None,
         input_mapping: dict | None = None,
     ) -> dict:
-        """Spawn an agent synchronously (for Celery workers).
+        """Spawn an agent synchronously (for Temporal workers).
 
         Note: This version does not support wait_for_completion.
         """

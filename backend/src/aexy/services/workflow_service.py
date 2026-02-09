@@ -923,7 +923,7 @@ class WorkflowExecutor:
         if wait_type == "duration":
             duration_value = data.get("duration_value", 1)
             duration_unit = data.get("duration_unit", "days")
-            # This would schedule the continuation via Celery
+            # This would schedule the continuation via Temporal
             return NodeExecutionResult(
                 node_id="",
                 status="success",

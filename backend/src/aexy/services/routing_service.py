@@ -635,7 +635,7 @@ class RoutingService:
         return False
 
     # -------------------------------------------------------------------------
-    # SYNC METHODS (for Celery tasks)
+    # SYNC METHODS (for Temporal activities)
     # -------------------------------------------------------------------------
 
     def route_email_sync(
@@ -646,7 +646,7 @@ class RoutingService:
         min_health_score: int = 50,
     ) -> dict | None:
         """
-        Sync version of email routing for Celery tasks.
+        Sync version of email routing for Temporal activities.
 
         Returns a dict with routing decision info.
         """

@@ -1,9 +1,12 @@
-"""Celery tasks for reputation monitoring and health calculation."""
+"""Legacy task functions for reputation monitoring and health calculation.
+
+Business logic has been moved to Temporal activities.
+These functions are retained as plain functions for backward compatibility.
+"""
 
 import logging
 from datetime import datetime, timezone, timedelta
 
-from celery import shared_task
 from sqlalchemy import select, and_
 
 from aexy.core.database import get_sync_session
@@ -17,7 +20,6 @@ from aexy.models.email_infrastructure import (
 logger = logging.getLogger(__name__)
 
 
-@shared_task(name="aexy.processing.reputation_tasks.calculate_daily_health")
 def calculate_daily_health(date_str: str | None = None) -> dict:
     """
     Daily task to calculate health scores for all domains.
@@ -66,7 +68,6 @@ def calculate_daily_health(date_str: str | None = None) -> dict:
         }
 
 
-@shared_task(name="aexy.processing.reputation_tasks.calculate_isp_metrics")
 def calculate_isp_metrics(date_str: str | None = None) -> dict:
     """
     Daily task to calculate ISP-specific metrics for all domains.
@@ -115,7 +116,6 @@ def calculate_isp_metrics(date_str: str | None = None) -> dict:
         }
 
 
-@shared_task(name="aexy.processing.reputation_tasks.auto_pause_unhealthy_domains")
 def auto_pause_unhealthy_domains() -> dict:
     """
     Task to auto-pause domains with critical health.
@@ -154,7 +154,6 @@ def auto_pause_unhealthy_domains() -> dict:
         return {"paused_count": len(paused), "paused_ids": paused}
 
 
-@shared_task(name="aexy.processing.reputation_tasks.process_unprocessed_events")
 def process_unprocessed_events(limit: int = 1000) -> dict:
     """
     Task to process unprocessed provider events.

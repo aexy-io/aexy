@@ -187,7 +187,7 @@ export default function CampaignDetailPage() {
 
   const openRate = campaign.sent_count > 0 ? (campaign.open_count / campaign.sent_count) * 100 : 0;
   const clickRate = campaign.sent_count > 0 ? (campaign.click_count / campaign.sent_count) * 100 : 0;
-  const bounceRate = campaign.sent_count > 0 ? (campaign.bounce_count / campaign.sent_count) * 100 : 0;
+  const bounceRate = campaign.sent_count > 0 ? ((campaign.bounce_count || 0) / campaign.sent_count) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-slate-950">
@@ -463,14 +463,7 @@ export default function CampaignDetailPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
-                    {recipientsData.items.map((recipient: {
-                      id: string;
-                      email: string;
-                      status: string;
-                      sent_at?: string;
-                      opened_at?: string;
-                      clicked_at?: string;
-                    }) => (
+                    {recipientsData.items.map((recipient) => (
                       <tr key={recipient.id} className="hover:bg-slate-800/50">
                         <td className="px-4 py-3 text-white">{recipient.email}</td>
                         <td className="px-4 py-3">

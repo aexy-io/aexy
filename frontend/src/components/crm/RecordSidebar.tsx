@@ -472,7 +472,7 @@ export function RecordSidebar({
                   >
                     <div
                       className="w-3 h-3 rounded-full ring-2 ring-offset-2 ring-offset-slate-900"
-                      style={{ backgroundColor: list.color || "#6366f1", ringColor: list.color || "#6366f1" }}
+                      style={{ backgroundColor: list.color || "#6366f1", ["--tw-ring-color" as string]: list.color || "#6366f1" }}
                     />
                     <span className="text-sm text-white group-hover:text-purple-300 transition-colors">{list.name}</span>
                   </div>

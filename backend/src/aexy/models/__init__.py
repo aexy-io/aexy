@@ -382,6 +382,51 @@ from aexy.models.roadmap_voting import (
     RoadmapVote,
     RoadmapComment,
 )
+from aexy.models.developer_insights import (
+    DeveloperMetricsSnapshot,
+    TeamMetricsSnapshot,
+    PeriodType,
+    InsightSettings,
+    DeveloperWorkingSchedule,
+    InsightAlertRule,
+    InsightAlertHistory,
+    InsightReportSchedule,
+    SavedInsightDashboard,
+    AlertSeverity,
+    AlertStatus,
+    ScheduleFrequency,
+)
+from aexy.models.questionnaire import (
+    QuestionnaireResponse,
+    QuestionnaireQuestion,
+    QuestionnaireStatus,
+    ResponseType,
+)
+from aexy.models.compliance_document import (
+    ComplianceFolder,
+    ComplianceDocument,
+    ComplianceDocumentTag,
+    ComplianceDocumentLink,
+    ComplianceDocumentStatus,
+    ComplianceEntityType,
+    ComplianceDocumentLinkType,
+)
+from aexy.models.reminder import (
+    Reminder,
+    ReminderInstance,
+    ReminderEscalation,
+    ControlOwner,
+    DomainTeamMapping,
+    AssignmentRule,
+    ReminderSuggestion,
+    ReminderStatus,
+    ReminderPriority,
+    ReminderFrequency,
+    InstanceStatus,
+    ReminderEscalationLevel,
+    AssignmentStrategy,
+    ReminderCategory,
+)
 
 __all__ = [
     # Plan
@@ -757,4 +802,45 @@ __all__ = [
     "RoadmapRequest",
     "RoadmapVote",
     "RoadmapComment",
+    # Developer Insights
+    "DeveloperMetricsSnapshot",
+    "TeamMetricsSnapshot",
+    "PeriodType",
+    "InsightSettings",
+    "DeveloperWorkingSchedule",
+    "InsightAlertRule",
+    "InsightAlertHistory",
+    "InsightReportSchedule",
+    "SavedInsightDashboard",
+    "AlertSeverity",
+    "AlertStatus",
+    "ScheduleFrequency",
+    # Questionnaire Import
+    "QuestionnaireResponse",
+    "QuestionnaireQuestion",
+    "QuestionnaireStatus",
+    "ResponseType",
+    # Compliance Documents
+    "ComplianceFolder",
+    "ComplianceDocument",
+    "ComplianceDocumentTag",
+    "ComplianceDocumentLink",
+    "ComplianceDocumentStatus",
+    "ComplianceEntityType",
+    "ComplianceDocumentLinkType",
+    # Reminders
+    "Reminder",
+    "ReminderInstance",
+    "ReminderEscalation",
+    "ControlOwner",
+    "DomainTeamMapping",
+    "AssignmentRule",
+    "ReminderSuggestion",
+    "ReminderStatus",
+    "ReminderPriority",
+    "ReminderFrequency",
+    "InstanceStatus",
+    "ReminderEscalationLevel",
+    "AssignmentStrategy",
+    "ReminderCategory",
 ]

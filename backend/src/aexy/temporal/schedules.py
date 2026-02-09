@@ -235,6 +235,56 @@ SCHEDULES: list[dict] = [
         "queue": TaskQueue.OPERATIONS,
     },
 
+    # === Reminders (Compliance) ===
+    {
+        "id": "generate-reminder-instances",
+        "activity": "generate_reminder_instances",
+        "input_module": "aexy.temporal.activities.reminders",
+        "input_class": "GenerateReminderInstancesInput",
+        "interval": timedelta(hours=24),
+        "queue": TaskQueue.OPERATIONS,
+    },
+    {
+        "id": "process-reminder-escalations",
+        "activity": "process_escalations",
+        "input_module": "aexy.temporal.activities.reminders",
+        "input_class": "ProcessEscalationsInput",
+        "interval": timedelta(hours=2),
+        "queue": TaskQueue.OPERATIONS,
+    },
+    {
+        "id": "send-daily-reminder-digest",
+        "activity": "send_daily_digest",
+        "input_module": "aexy.temporal.activities.reminders",
+        "input_class": "SendDailyDigestInput",
+        "interval": timedelta(hours=24),
+        "queue": TaskQueue.OPERATIONS,
+    },
+    {
+        "id": "flag-overdue-reminders",
+        "activity": "flag_overdue_reminders",
+        "input_module": "aexy.temporal.activities.reminders",
+        "input_class": "FlagOverdueRemindersInput",
+        "interval": timedelta(hours=1),
+        "queue": TaskQueue.OPERATIONS,
+    },
+    {
+        "id": "check-evidence-freshness",
+        "activity": "check_evidence_freshness",
+        "input_module": "aexy.temporal.activities.reminders",
+        "input_class": "CheckEvidenceFreshnessInput",
+        "interval": timedelta(hours=24),
+        "queue": TaskQueue.OPERATIONS,
+    },
+    {
+        "id": "send-weekly-slack-summary",
+        "activity": "send_weekly_slack_summary",
+        "input_module": "aexy.temporal.activities.reminders",
+        "input_class": "SendWeeklySlackSummaryInput",
+        "interval": timedelta(weeks=1),
+        "queue": TaskQueue.OPERATIONS,
+    },
+
     # === Google Sync ===
     {
         "id": "check-gmail-auto-sync",

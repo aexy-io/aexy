@@ -295,7 +295,7 @@ export default function PlansPage() {
             className="mb-8"
           >
             <PlanComparison
-              currentPlan={currentPlan}
+              currentPlan={currentPlan ?? null}
               targetPlan={selectedPlan}
               isUpgrade={isUpgrade(selectedPlan.tier)}
             />
@@ -325,7 +325,7 @@ export default function PlansPage() {
             setSelectedPlan(null);
           }}
           onConfirm={handleConfirmChange}
-          currentPlan={currentPlan}
+          currentPlan={currentPlan ?? null}
           targetPlan={selectedPlan}
           isUpgrade={isUpgrade(selectedPlan.tier)}
           billingPeriod={billingPeriod}

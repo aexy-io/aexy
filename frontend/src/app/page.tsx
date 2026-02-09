@@ -39,7 +39,8 @@ import {
   Briefcase,
   Plus,
   Minus,
-  MonitorCheck
+  MonitorCheck,
+  Bell
 } from "lucide-react";
 import { SiGithub } from "@icons-pack/react-simple-icons";
 import Link from "next/link";
@@ -60,6 +61,7 @@ const productLinks = [
   { href: "/products/email-marketing", label: "Email Marketing", icon: Mail, desc: "Campaigns & automation", color: "from-sky-500 to-blue-500" },
   { href: "/products/ai-agents", label: "AI Agents", icon: Bot, desc: "Intelligent automation", color: "from-purple-500 to-violet-500" },
   { href: "/products/uptime", label: "Uptime Monitoring", icon: MonitorCheck, desc: "Endpoint health & incidents", color: "from-emerald-500 to-green-500" },
+  { href: "/products/reminders", label: "Compliance Reminders", icon: Bell, desc: "Track recurring commitments", color: "from-blue-500 to-cyan-500" },
 ];
 
 const solutionLinks = [
@@ -1500,7 +1502,7 @@ function LinearIcon({ large }: { large?: boolean }) {
   );
 }
 
-export function GoogleIcon() {
+function GoogleIcon() {
   return (
     <svg className="h-5 w-5" viewBox="0 0 24 24">
       <path

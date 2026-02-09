@@ -1,9 +1,11 @@
-"""Celery tasks for integration actions (SMS, Slack, Webhooks)."""
+"""Legacy task functions for integration actions (SMS, Slack, Webhooks).
+
+Business logic has been moved to Temporal activities.
+These functions are retained as plain functions for backward compatibility.
+"""
 
 import logging
 from typing import Any
-
-from celery import shared_task
 
 from aexy.processing.tasks import run_async
 
@@ -15,9 +17,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def send_sms(
-    self,
     workspace_id: str,
     to: str,
     body: str,
@@ -35,13 +35,8 @@ def send_sms(
         Result dict with message SID and status.
     """
     logger.info(f"Sending SMS to {to}")
-
-    try:
-        result = run_async(_send_sms(workspace_id, to, body, record_id))
-        return result
-    except Exception as exc:
-        logger.error(f"SMS send failed: {exc}")
-        raise self.retry(exc=exc)
+    result = run_async(_send_sms(workspace_id, to, body, record_id))
+    return result
 
 
 async def _send_sms(
@@ -71,9 +66,7 @@ async def _send_sms(
 # =============================================================================
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def send_slack_message(
-    self,
     workspace_id: str,
     channel: str,
     message: str,
@@ -94,14 +87,10 @@ def send_slack_message(
     """
     logger.info(f"Sending Slack message to {channel}")
 
-    try:
-        result = run_async(_send_slack_message(
-            workspace_id, channel, message, blocks, thread_ts
-        ))
-        return result
-    except Exception as exc:
-        logger.error(f"Slack message failed: {exc}")
-        raise self.retry(exc=exc)
+    result = run_async(_send_slack_message(
+        workspace_id, channel, message, blocks, thread_ts
+    ))
+    return result
 
 
 async def _send_slack_message(
@@ -127,9 +116,7 @@ async def _send_slack_message(
         return result
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def send_slack_dm(
-    self,
     workspace_id: str,
     user_id: str,
     message: str,
@@ -148,12 +135,8 @@ def send_slack_dm(
     """
     logger.info(f"Sending Slack DM to {user_id}")
 
-    try:
-        result = run_async(_send_slack_dm(workspace_id, user_id, message, blocks))
-        return result
-    except Exception as exc:
-        logger.error(f"Slack DM failed: {exc}")
-        raise self.retry(exc=exc)
+    result = run_async(_send_slack_dm(workspace_id, user_id, message, blocks))
+    return result
 
 
 async def _send_slack_dm(
@@ -177,9 +160,7 @@ async def _send_slack_dm(
         return result
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def send_slack_workflow_message(
-    self,
     workspace_id: str,
     target_type: str,
     target: str,
@@ -202,14 +183,10 @@ def send_slack_workflow_message(
     """
     logger.info(f"Sending Slack workflow message: {target_type} -> {target}")
 
-    try:
-        result = run_async(_send_slack_workflow_message(
-            workspace_id, target_type, target, message, record_id
-        ))
-        return result
-    except Exception as exc:
-        logger.error(f"Slack workflow message failed: {exc}")
-        raise self.retry(exc=exc)
+    result = run_async(_send_slack_workflow_message(
+        workspace_id, target_type, target, message, record_id
+    ))
+    return result
 
 
 async def _send_slack_workflow_message(
@@ -286,9 +263,7 @@ async def _send_slack_workflow_message(
         }
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def send_slack_record_notification(
-    self,
     workspace_id: str,
     channel: str,
     title: str,
@@ -313,14 +288,10 @@ def send_slack_record_notification(
     """
     logger.info(f"Sending Slack record notification to {channel}")
 
-    try:
-        result = run_async(_send_slack_record_notification(
-            workspace_id, channel, title, record_name, record_type, fields, action_url
-        ))
-        return result
-    except Exception as exc:
-        logger.error(f"Slack notification failed: {exc}")
-        raise self.retry(exc=exc)
+    result = run_async(_send_slack_record_notification(
+        workspace_id, channel, title, record_name, record_type, fields, action_url
+    ))
+    return result
 
 
 async def _send_slack_record_notification(
@@ -359,9 +330,7 @@ async def _send_slack_record_notification(
 # =============================================================================
 
 
-@shared_task(bind=True, max_retries=5, default_retry_delay=60)
 def deliver_webhook(
-    self,
     webhook_id: str,
     payload: dict[str, Any],
     delivery_id: str | None = None,
@@ -377,19 +346,8 @@ def deliver_webhook(
         Delivery result with status and response info.
     """
     logger.info(f"Delivering webhook {webhook_id}")
-
-    # Exponential backoff: 1min, 5min, 15min, 30min, 60min
-    retry_delays = [60, 300, 900, 1800, 3600]
-    current_retry = self.request.retries
-    if current_retry < len(retry_delays):
-        self.retry_delay = retry_delays[current_retry]
-
-    try:
-        result = run_async(_deliver_webhook(webhook_id, payload, delivery_id))
-        return result
-    except Exception as exc:
-        logger.error(f"Webhook delivery failed: {exc}")
-        raise self.retry(exc=exc)
+    result = run_async(_deliver_webhook(webhook_id, payload, delivery_id))
+    return result
 
 
 async def _deliver_webhook(
@@ -519,9 +477,7 @@ async def _deliver_webhook(
             raise Exception(f"Webhook delivery failed: {e}")
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def retry_webhook_delivery(
-    self,
     delivery_id: str,
 ) -> dict[str, Any]:
     """Retry a failed webhook delivery.
@@ -533,13 +489,8 @@ def retry_webhook_delivery(
         Retry result.
     """
     logger.info(f"Retrying webhook delivery {delivery_id}")
-
-    try:
-        result = run_async(_retry_webhook_delivery(delivery_id))
-        return result
-    except Exception as exc:
-        logger.error(f"Webhook retry failed: {exc}")
-        raise self.retry(exc=exc)
+    result = run_async(_retry_webhook_delivery(delivery_id))
+    return result
 
 
 async def _retry_webhook_delivery(delivery_id: str) -> dict[str, Any]:
@@ -570,9 +521,7 @@ async def _retry_webhook_delivery(delivery_id: str) -> dict[str, Any]:
 # =============================================================================
 
 
-@shared_task(bind=True, max_retries=2, default_retry_delay=30)
 def execute_agent_task(
-    self,
     agent_id: str,
     record_id: str | None = None,
     context: dict | None = None,
@@ -595,14 +544,10 @@ def execute_agent_task(
     """
     logger.info(f"Executing agent {agent_id}")
 
-    try:
-        result = run_async(_execute_agent(
-            agent_id, record_id, context, user_id, triggered_by, trigger_id
-        ))
-        return result
-    except Exception as exc:
-        logger.error(f"Agent execution failed: {exc}")
-        raise self.retry(exc=exc)
+    result = run_async(_execute_agent(
+        agent_id, record_id, context, user_id, triggered_by, trigger_id
+    ))
+    return result
 
 
 async def _execute_agent(
@@ -643,9 +588,7 @@ async def _execute_agent(
 # =============================================================================
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def send_crm_email(
-    self,
     workspace_id: str,
     user_id: str,
     to_email: str,
@@ -670,14 +613,10 @@ def send_crm_email(
     """
     logger.info(f"Sending CRM email to {to_email}")
 
-    try:
-        result = run_async(_send_crm_email(
-            workspace_id, user_id, to_email, subject, body, record_id, thread_id
-        ))
-        return result
-    except Exception as exc:
-        logger.error(f"Email send failed: {exc}")
-        raise self.retry(exc=exc)
+    result = run_async(_send_crm_email(
+        workspace_id, user_id, to_email, subject, body, record_id, thread_id
+    ))
+    return result
 
 
 async def _send_crm_email(

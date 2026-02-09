@@ -31,7 +31,7 @@ interface EntityNodeData extends Record<string, unknown> {
 type EntityNodeType = Node<EntityNodeData>;
 
 // Icon mapping for entity types
-const ENTITY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+const ENTITY_ICONS: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
   person: User,
   concept: Lightbulb,
   technology: Cpu,

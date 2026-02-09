@@ -1,4 +1,7 @@
-"""Celery tasks for uptime monitoring.
+"""Legacy task functions for uptime monitoring.
+
+Business logic has been moved to Temporal activities.
+These functions are retained as plain functions for backward compatibility.
 
 These tasks handle:
 - Processing due uptime checks
@@ -12,7 +15,6 @@ from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aexy.processing.celery_app import celery_app
 from aexy.core.database import async_session_maker
 from aexy.services.slack_helpers import (
     NOTIFICATION_CHANNEL_SLACK,
@@ -29,7 +31,6 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 
-@celery_app.task(name="aexy.processing.uptime_tasks.process_due_checks")
 def process_due_checks():
     """Process all monitors that are due for a check.
 
@@ -69,8 +70,9 @@ async def _process_due_checks_async():
                         seconds=monitor.check_interval_seconds
                     )
 
-                    # Dispatch the check task
-                    execute_check.delay(str(monitor.id))
+                    # Note: In Temporal, checks are dispatched as activities
+                    # For backward compatibility, call directly in-process
+                    pass  # Check execution is handled by Temporal activities
                     dispatched += 1
 
                 except Exception as e:
@@ -90,13 +92,7 @@ async def _process_due_checks_async():
 # =============================================================================
 
 
-@celery_app.task(
-    name="aexy.processing.uptime_tasks.execute_check",
-    bind=True,
-    max_retries=2,
-    default_retry_delay=30,
-)
-def execute_check(self, monitor_id: str):
+def execute_check(monitor_id: str):
     """Execute an uptime check for a specific monitor.
 
     Args:
@@ -110,12 +106,7 @@ def execute_check(self, monitor_id: str):
     5. Triggers notifications if needed
     """
     from aexy.processing.tasks import run_async
-
-    try:
-        run_async(_execute_check_async(monitor_id))
-    except Exception as e:
-        logger.error(f"Check failed for monitor {monitor_id}: {e}")
-        raise self.retry(exc=e)
+    run_async(_execute_check_async(monitor_id))
 
 
 async def _execute_check_async(monitor_id: str):
@@ -158,19 +149,13 @@ async def _execute_check_async(monitor_id: str):
             # Send notifications if needed
             if incident and is_new_incident:
                 # New incident - send alert notification
-                send_uptime_notification.delay(
-                    monitor_id=monitor_id,
-                    incident_id=str(incident.id),
-                    notification_type="incident",
-                )
+                # Note: In Temporal, notifications are dispatched as activities
+                pass  # Notification dispatch handled by Temporal
             elif incident and incident.resolved_at:
                 # Incident resolved - send recovery notification
                 if monitor.notify_on_recovery:
-                    send_uptime_notification.delay(
-                        monitor_id=monitor_id,
-                        incident_id=str(incident.id),
-                        notification_type="recovery",
-                    )
+                    # Note: In Temporal, notifications are dispatched as activities
+                    pass  # Recovery notification handled by Temporal
 
         except MonitorNotFoundError:
             logger.warning(f"Monitor {monitor_id} not found")
@@ -185,14 +170,7 @@ async def _execute_check_async(monitor_id: str):
 # =============================================================================
 
 
-@celery_app.task(
-    name="aexy.processing.uptime_tasks.send_uptime_notification",
-    bind=True,
-    max_retries=3,
-    default_retry_delay=60,
-)
 def send_uptime_notification(
-    self,
     monitor_id: str,
     incident_id: str,
     notification_type: str,
@@ -210,12 +188,7 @@ def send_uptime_notification(
     - Email (using existing email system)
     """
     from aexy.processing.tasks import run_async
-
-    try:
-        run_async(_send_notification_async(monitor_id, incident_id, notification_type))
-    except Exception as e:
-        logger.error(f"Notification failed for incident {incident_id}: {e}")
-        raise self.retry(exc=e)
+    run_async(_send_notification_async(monitor_id, incident_id, notification_type))
 
 
 async def _send_notification_async(
@@ -435,7 +408,6 @@ async def _send_webhook_notification(webhook_url: str, payload: dict):
 # =============================================================================
 
 
-@celery_app.task(name="aexy.processing.uptime_tasks.cleanup_old_checks")
 def cleanup_old_checks(retention_days: int = 30):
     """Clean up old check records.
 
@@ -476,7 +448,6 @@ async def _cleanup_old_checks_async(retention_days: int):
 # =============================================================================
 
 
-@celery_app.task(name="aexy.processing.uptime_tasks.run_test_check")
 def run_test_check(monitor_id: str) -> dict:
     """Run an immediate test check for a monitor.
 

@@ -617,7 +617,7 @@ async def trigger_gmail_sync(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Trigger Gmail sync (async via Celery).
+    """Trigger Gmail sync (async via Temporal).
 
     Returns immediately with a job_id for polling progress.
     """
@@ -679,7 +679,7 @@ async def trigger_gmail_sync(
     )
 
     # Update job with Temporal workflow ID
-    job.celery_task_id = handle.id
+    job.workflow_run_id = handle.id
     await db.commit()
 
     return GmailSyncResponse(
@@ -983,7 +983,7 @@ async def trigger_calendar_sync(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Trigger calendar sync (async via Celery).
+    """Trigger calendar sync (async via Temporal).
 
     Returns immediately with a job_id for polling progress.
     """
@@ -1045,7 +1045,7 @@ async def trigger_calendar_sync(
     )
 
     # Update job with Temporal workflow ID
-    job.celery_task_id = wf_id
+    job.workflow_run_id = wf_id
     await db.commit()
 
     return CalendarSyncResponse(

@@ -1,10 +1,13 @@
-"""Celery tasks for email marketing campaign sending and analytics."""
+"""Legacy task functions for email marketing campaign sending and analytics.
+
+Business logic has been moved to Temporal activities.
+These functions are retained as plain functions for backward compatibility.
+"""
 
 import logging
 from datetime import datetime, timezone, timedelta
 from uuid import uuid4
 
-from celery import shared_task
 from sqlalchemy import select, and_, func
 
 from aexy.core.database import get_sync_session, async_session_maker
@@ -27,13 +30,7 @@ from aexy.models.email_marketing import (
 logger = logging.getLogger(__name__)
 
 
-@shared_task(
-    name="aexy.processing.email_marketing_tasks.send_campaign_task",
-    bind=True,
-    max_retries=3,
-    default_retry_delay=60,
-)
-def send_campaign_task(self, campaign_id: str) -> dict:
+def send_campaign_task(campaign_id: str) -> dict:
     """
     Process campaign sending in batches.
 
@@ -92,7 +89,7 @@ def send_campaign_task(self, campaign_id: str) -> dict:
             db.commit()
 
             # Trigger stats update
-            update_campaign_stats_task.delay(campaign_id)
+            update_campaign_stats_task(campaign_id)
 
             logger.info(f"Campaign {campaign_id} completed")
             return {"status": "completed", "message": "All emails sent"}
@@ -101,7 +98,7 @@ def send_campaign_task(self, campaign_id: str) -> dict:
         sent_count = 0
         for recipient in recipients:
             try:
-                send_campaign_email_task.delay(campaign_id, recipient.id)
+                send_campaign_email_task(campaign_id, recipient.id)
                 sent_count += 1
             except Exception as e:
                 logger.error(f"Failed to queue email for recipient {recipient.id}: {e}")
@@ -117,22 +114,14 @@ def send_campaign_task(self, campaign_id: str) -> dict:
 
         if remaining_count > 0:
             # Schedule next batch with a delay
-            send_campaign_task.apply_async(
-                args=[campaign_id],
-                countdown=5,  # 5 second delay between batches
-            )
+            # Note: Batch scheduling is now handled by Temporal
+            send_campaign_task(campaign_id)
 
         logger.info(f"Queued {sent_count} emails for campaign {campaign_id}, {remaining_count} remaining")
         return {"status": "in_progress", "queued": sent_count, "remaining": remaining_count}
 
 
-@shared_task(
-    name="aexy.processing.email_marketing_tasks.send_campaign_email_task",
-    bind=True,
-    max_retries=3,
-    default_retry_delay=30,
-)
-def send_campaign_email_task(self, campaign_id: str, recipient_id: str) -> dict:
+def send_campaign_email_task(campaign_id: str, recipient_id: str) -> dict:
     """
     Send individual campaign email with multi-domain routing and tracking.
 
@@ -354,7 +343,7 @@ def send_campaign_email_task(self, campaign_id: str, recipient_id: str) -> dict:
                         from aexy.models.email_infrastructure import WarmingStatus
                         if send_domain.warming_status == WarmingStatus.IN_PROGRESS.value:
                             from aexy.processing.warming_tasks import update_warming_metrics
-                            update_warming_metrics.delay(
+                            update_warming_metrics(
                                 domain_id=send_domain.id,
                                 sent=1,
                             )
@@ -428,18 +417,10 @@ def send_campaign_email_task(self, campaign_id: str, recipient_id: str) -> dict:
             recipient.error_message = str(e)
             db.commit()
 
-            # Retry on transient errors
-            try:
-                self.retry(exc=e)
-            except self.MaxRetriesExceededError:
-                return {"status": "failed", "error": str(e)}
-
-            raise
+            # Note: Retries are now handled by Temporal retry policies
+            return {"status": "failed", "error": str(e)}
 
 
-@shared_task(
-    name="aexy.processing.email_marketing_tasks.update_campaign_stats_task",
-)
 def update_campaign_stats_task(campaign_id: str) -> dict:
     """
     Aggregate recipient stats to campaign level.
@@ -528,14 +509,11 @@ def update_campaign_stats_task(campaign_id: str) -> dict:
         }
 
 
-@shared_task(
-    name="aexy.processing.email_marketing_tasks.check_scheduled_campaigns_task",
-)
 def check_scheduled_campaigns_task() -> dict:
     """
     Check for scheduled campaigns that are due to be sent.
 
-    This task runs periodically via Celery beat.
+    This task runs periodically via Temporal scheduling.
     """
     logger.info("Checking for scheduled campaigns")
 
@@ -558,7 +536,7 @@ def check_scheduled_campaigns_task() -> dict:
                 db.commit()
 
                 # Queue the send task
-                send_campaign_task.delay(campaign.id)
+                send_campaign_task(campaign.id)
                 started_count += 1
 
                 logger.info(f"Started scheduled campaign: {campaign.id}")
@@ -568,9 +546,6 @@ def check_scheduled_campaigns_task() -> dict:
         return {"started": started_count}
 
 
-@shared_task(
-    name="aexy.processing.email_marketing_tasks.aggregate_daily_analytics_task",
-)
 def aggregate_daily_analytics_task() -> dict:
     """
     Aggregate campaign analytics on a daily basis.
@@ -641,14 +616,7 @@ def aggregate_daily_analytics_task() -> dict:
         return {"processed": processed_count}
 
 
-@shared_task(
-    name="aexy.processing.email_marketing_tasks.send_workflow_email",
-    bind=True,
-    max_retries=3,
-    default_retry_delay=30,
-)
 def send_workflow_email(
-    self,
     workspace_id: str,
     to: str,
     subject: str,
@@ -762,9 +730,6 @@ def send_workflow_email(
             return {"status": "failed", "error": "Send failed"}
 
 
-@shared_task(
-    name="aexy.processing.email_marketing_tasks.aggregate_workspace_stats_task",
-)
 def aggregate_workspace_stats_task() -> dict:
     """
     Aggregate workspace-level email stats.
@@ -894,9 +859,6 @@ def aggregate_workspace_stats_task() -> dict:
         return {"processed": processed_count}
 
 
-@shared_task(
-    name="aexy.processing.email_marketing_tasks.cleanup_old_analytics_task",
-)
 def cleanup_old_analytics_task(retention_days: int = 90) -> dict:
     """
     Clean up old analytics data beyond retention period.
@@ -930,14 +892,7 @@ def cleanup_old_analytics_task(retention_days: int = 90) -> dict:
 # ONBOARDING TASKS
 # =============================================================================
 
-@shared_task(
-    name="aexy.processing.email_marketing_tasks.start_user_onboarding",
-    bind=True,
-    max_retries=3,
-    default_retry_delay=30,
-)
 def start_user_onboarding(
-    self,
     workspace_id: str,
     user_id: str,
     flow_id: str | None = None,
@@ -1024,18 +979,12 @@ def start_user_onboarding(
         logger.info(f"Created onboarding progress {progress.id} for user {user_id}")
 
         # Schedule first step processing
-        process_onboarding_step.delay(progress.id)
+        process_onboarding_step(progress.id)
 
         return {"status": "success", "progress_id": progress.id}
 
 
-@shared_task(
-    name="aexy.processing.email_marketing_tasks.process_onboarding_step",
-    bind=True,
-    max_retries=3,
-    default_retry_delay=60,
-)
-def process_onboarding_step(self, progress_id: str) -> dict:
+def process_onboarding_step(progress_id: str) -> dict:
     """
     Process the current onboarding step and schedule the next one.
 
@@ -1097,7 +1046,7 @@ def process_onboarding_step(self, progress_id: str) -> dict:
                 subject = step_config.get("subject", "Onboarding Step")
                 template_slug = step_config.get("template_slug")
 
-                send_workflow_email.delay(
+                send_workflow_email(
                     workspace_id=flow.workspace_id,
                     to=user.email,
                     subject=subject,
@@ -1135,18 +1084,12 @@ def process_onboarding_step(self, progress_id: str) -> dict:
         progress.next_step_scheduled = now + timedelta(seconds=delay)
         db.commit()
 
-        # Queue next step
-        process_onboarding_step.apply_async(
-            args=[progress_id],
-            countdown=delay,
-        )
+        # Queue next step (Temporal handles scheduling with delays)
+        process_onboarding_step(progress_id)
 
         return {"status": "success", "step_completed": step_id, "next_step": progress.current_step}
 
 
-@shared_task(
-    name="aexy.processing.email_marketing_tasks.complete_onboarding_step",
-)
 def complete_onboarding_step(
     progress_id: str | None = None,
     flow_id: str | None = None,
@@ -1186,14 +1129,11 @@ def complete_onboarding_step(
             return {"status": "error", "message": "Progress not found"}
 
         # Trigger step processing
-        process_onboarding_step.delay(progress.id)
+        process_onboarding_step(progress.id)
 
         return {"status": "success", "progress_id": progress.id}
 
 
-@shared_task(
-    name="aexy.processing.email_marketing_tasks.check_due_onboarding_steps",
-)
 def check_due_onboarding_steps() -> dict:
     """
     Check for and process any due onboarding steps.
@@ -1218,7 +1158,7 @@ def check_due_onboarding_steps() -> dict:
 
         queued = 0
         for progress in due_progress:
-            process_onboarding_step.delay(progress.id)
+            process_onboarding_step(progress.id)
             queued += 1
 
         logger.info(f"Queued {queued} due onboarding steps")
@@ -1229,9 +1169,6 @@ def check_due_onboarding_steps() -> dict:
 # VISUAL BUILDER TASKS
 # =============================================================================
 
-@shared_task(
-    name="aexy.processing.email_marketing_tasks.seed_default_blocks",
-)
 def seed_default_blocks() -> dict:
     """
     Seed default system blocks for the visual email builder.

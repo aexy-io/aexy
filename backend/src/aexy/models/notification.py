@@ -60,6 +60,18 @@ class NotificationEventType(str, Enum):
     USAGE_ALERT_90 = "usage_alert_90"  # 90% of limit reached (critical)
     USAGE_ALERT_100 = "usage_alert_100"  # Limit reached
 
+    # Insights alerts
+    INSIGHT_ALERT_WARNING = "insight_alert_warning"
+    INSIGHT_ALERT_CRITICAL = "insight_alert_critical"
+
+    # Reminder related
+    REMINDER_DUE = "reminder_due"  # Reminder is due
+    REMINDER_ACKNOWLEDGED = "reminder_acknowledged"  # Reminder was acknowledged
+    REMINDER_COMPLETED = "reminder_completed"  # Reminder was completed
+    REMINDER_ESCALATED = "reminder_escalated"  # Reminder was escalated
+    REMINDER_OVERDUE = "reminder_overdue"  # Reminder is overdue
+    REMINDER_ASSIGNED = "reminder_assigned"  # Reminder was assigned
+
 
 class Notification(Base):
     """In-app notification for a user.
@@ -247,4 +259,14 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     NotificationEventType.ONCALL_SWAP_DECLINED: {"in_app": True, "email": True, "slack": False},
     # Task mentions
     NotificationEventType.TASK_MENTIONED: {"in_app": True, "email": True, "slack": False},
+    # Insights alerts
+    NotificationEventType.INSIGHT_ALERT_WARNING: {"in_app": True, "email": False, "slack": False},
+    NotificationEventType.INSIGHT_ALERT_CRITICAL: {"in_app": True, "email": True, "slack": False},
+    # Reminders
+    NotificationEventType.REMINDER_DUE: {"in_app": True, "email": True, "slack": False},
+    NotificationEventType.REMINDER_ACKNOWLEDGED: {"in_app": True, "email": False, "slack": False},
+    NotificationEventType.REMINDER_COMPLETED: {"in_app": True, "email": False, "slack": False},
+    NotificationEventType.REMINDER_ESCALATED: {"in_app": True, "email": True, "slack": True},
+    NotificationEventType.REMINDER_OVERDUE: {"in_app": True, "email": True, "slack": True},
+    NotificationEventType.REMINDER_ASSIGNED: {"in_app": True, "email": True, "slack": False},
 }

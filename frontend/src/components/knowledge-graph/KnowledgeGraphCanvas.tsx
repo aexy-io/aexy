@@ -33,10 +33,11 @@ export interface GraphEdge {
 }
 
 export interface TemporalData {
-  entity_timeline: Array<{ date: string; count: number }>;
-  document_activity: Array<{ date: string; count: number }>;
-  activity_scores: Record<string, number>;
-  date_range: { from: string; to: string };
+  entity_timeline?: Array<{ date: string; count: number } | { entity_id: string; first_seen: string; last_seen: string }>;
+  activity_heatmap?: Array<{ date: string; count: number }>;
+  document_activity?: Array<{ date: string; count: number }>;
+  activity_scores?: Record<string, number>;
+  date_range?: { from: string; to: string };
 }
 
 interface KnowledgeGraphCanvasProps {

@@ -21,11 +21,11 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 
-async def get_celery_stats() -> dict[str, Any]:
+async def get_temporal_stats() -> dict[str, Any]:
     """Get Temporal workflow execution statistics.
 
     Returns:
-        Dict with workflow stats (replaces old Celery monitoring).
+        Dict with Temporal workflow stats.
     """
     try:
         from aexy.temporal.client import get_temporal_client
@@ -118,7 +118,7 @@ class BatchTriggerResponse(BaseModel):
 
 
 class WorkerInfo(BaseModel):
-    """Information about a Celery worker."""
+    """Information about a Temporal worker."""
 
     name: str
     active_tasks: int = 0
@@ -185,14 +185,14 @@ async def get_processing_status() -> ProcessingStatus:
             logger.warning(f"Failed to get cache status: {e}")
 
     # Get Celery stats
-    celery_stats = await get_celery_stats()
+    temporal_stats = await get_temporal_stats()
 
     return ProcessingStatus(
         mode=settings.llm.processing_mode.value,
         llm_provider=llm_status,
         cache=cache_status,
-        queue_length=celery_stats.get("queue_length", 0),
-        workers_active=celery_stats.get("workers_active", 0),
+        queue_length=temporal_stats.get("queue_length", 0),
+        workers_active=temporal_stats.get("workers_active", 0),
     )
 
 
@@ -238,7 +238,7 @@ async def get_queue_stats() -> QueueStats:
     - Active worker count and details
     - Current running tasks on each worker
     """
-    stats = await get_celery_stats()
+    stats = await get_temporal_stats()
 
     workers = [
         WorkerInfo(**w) for w in stats.get("worker_details", [])
@@ -396,7 +396,7 @@ async def health_check() -> dict[str, Any]:
     checks = {
         "llm_provider": {"status": "unknown", "message": ""},
         "cache": {"status": "unknown", "message": ""},
-        "queue": {"status": "not_implemented", "message": "Celery queue not yet implemented"},
+        "queue": {"status": "not_implemented", "message": "Temporal queue monitoring not yet implemented"},
     }
 
     # Check LLM provider

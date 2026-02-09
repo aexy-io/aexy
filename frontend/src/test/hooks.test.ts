@@ -166,7 +166,7 @@ describe("Developer Data Transformation", () => {
   });
 
   it("should handle null skill fingerprint", () => {
-    const apiResponse = {
+    const apiResponse: { skill_fingerprint: { languages: string[] } | null } = {
       skill_fingerprint: null,
     };
 

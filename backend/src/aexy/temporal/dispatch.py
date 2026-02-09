@@ -84,6 +84,10 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
     "send_campaign": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=30)},
     "execute_agent": {"retry": LLM_RETRY, "timeout": timedelta(minutes=10)},
     "execute_workflow_action": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
+
+    # Reminders (on-demand)
+    "process_auto_assignment": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
+    "send_reminder_notification": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=2)},
 }
 
 DEFAULT_CONFIG = {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)}

@@ -554,7 +554,7 @@ class PreferenceService:
         email: str,
         category_slug: str | None = None,
     ) -> tuple[bool, str | None]:
-        """Synchronous version for Celery tasks."""
+        """Synchronous version for Temporal activities."""
         import asyncio
 
         loop = asyncio.new_event_loop()

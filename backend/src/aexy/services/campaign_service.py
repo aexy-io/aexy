@@ -723,7 +723,7 @@ class CampaignService:
         Initiate campaign sending.
 
         This populates recipients and marks campaign as sending.
-        Actual sending is handled by Celery tasks.
+        Actual sending is handled by Temporal activities.
         """
         campaign = await self.get_campaign_with_template(campaign_id, workspace_id)
         if not campaign:

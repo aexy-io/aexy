@@ -91,7 +91,7 @@ class NotificationService:
 
         # Queue email if enabled
         if send_email and pref and pref.email_enabled:
-            # Email sending will be handled by Celery task
+            # Email sending will be handled by Temporal activity
             # For now, just mark that email should be sent
             logger.info(f"Email notification queued for {recipient_id}")
 

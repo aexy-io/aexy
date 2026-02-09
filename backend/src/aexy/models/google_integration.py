@@ -427,8 +427,16 @@ class GoogleSyncJob(Base):
     processed_items: Mapped[int] = mapped_column(default=0)
     progress_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # Celery task tracking
+    # Temporal workflow tracking (column kept as celery_task_id for DB compat)
     celery_task_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    @property
+    def workflow_run_id(self) -> str | None:
+        return self.celery_task_id
+
+    @workflow_run_id.setter
+    def workflow_run_id(self, value: str | None):
+        self.celery_task_id = value
 
     # Result
     result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)

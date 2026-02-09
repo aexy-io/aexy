@@ -1,4 +1,8 @@
-"""Celery tasks for GitHub data synchronization with rate limiting."""
+"""Legacy task functions for GitHub data synchronization with rate limiting.
+
+Business logic has been moved to Temporal activities.
+These functions are retained as plain functions for backward compatibility.
+"""
 
 import asyncio
 import logging
@@ -6,24 +10,12 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from celery import shared_task
-
 from aexy.processing.tasks import run_async
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(
-    bind=True,
-    max_retries=5,
-    default_retry_delay=60,
-    autoretry_for=(Exception,),
-    retry_backoff=True,
-    retry_backoff_max=600,
-    retry_jitter=True,
-)
 def sync_repository_task(
-    self,
     developer_id: str,
     repository_id: str,
     sync_type: str = "incremental",
@@ -44,20 +36,15 @@ def sync_repository_task(
         f"Starting {sync_type} sync for repository {repository_id} "
         f"(developer: {developer_id})"
     )
-
-    try:
-        result = run_async(
-            _sync_repository(
-                developer_id=developer_id,
-                repository_id=repository_id,
-                sync_type=sync_type,
-                access_token=access_token,
-            )
+    result = run_async(
+        _sync_repository(
+            developer_id=developer_id,
+            repository_id=repository_id,
+            sync_type=sync_type,
+            access_token=access_token,
         )
-        return result
-    except Exception as exc:
-        logger.error(f"Repository sync failed: {exc}")
-        raise self.retry(exc=exc)
+    )
+    return result
 
 
 async def _sync_repository(
@@ -528,9 +515,7 @@ async def _sync_reviews(
     return synced
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def sync_commits_task(
-    self,
     developer_id: str,
     repository_id: str,
     since: str | None = None,
@@ -548,21 +533,16 @@ def sync_commits_task(
         Sync result.
     """
     logger.info(f"Syncing commits for repository {repository_id}")
-
-    try:
-        since_dt = datetime.fromisoformat(since) if since else None
-        result = run_async(
-            _sync_commits_standalone(
-                developer_id=developer_id,
-                repository_id=repository_id,
-                since=since_dt,
-                max_commits=max_commits,
-            )
+    since_dt = datetime.fromisoformat(since) if since else None
+    result = run_async(
+        _sync_commits_standalone(
+            developer_id=developer_id,
+            repository_id=repository_id,
+            since=since_dt,
+            max_commits=max_commits,
         )
-        return result
-    except Exception as exc:
-        logger.error(f"Commit sync failed: {exc}")
-        raise self.retry(exc=exc)
+    )
+    return result
 
 
 async def _sync_commits_standalone(

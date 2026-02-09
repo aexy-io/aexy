@@ -72,7 +72,7 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
     const { privateTree, sharedTree, favorites, isLoading: docsLoading } = useNotionDocs(workspaceId);
 
     // App access control
-    const { developer } = useAuth();
+    const { user: developer } = useAuth();
     const developerId = developer?.id || null;
     const { hasAppAccess, hasRouteAccess, isLoading: accessLoading } = useAppAccess(workspaceId, developerId);
 

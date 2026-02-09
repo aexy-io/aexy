@@ -20,6 +20,7 @@ import {
   CalendarCheck,
   MonitorCheck,
   Bot,
+  TrendingUp,
   LucideIcon,
 } from "lucide-react";
 
@@ -274,6 +275,20 @@ export const APP_CATALOG: Record<string, AppDefinition> = {
     requiredPermission: "can_view_agents",
     modules: [],
   },
+  insights: {
+    id: "insights",
+    name: "Insights",
+    description: "Developer productivity metrics and team analytics",
+    icon: TrendingUp,
+    category: "engineering",
+    baseRoute: "/insights",
+    requiredPermission: "can_view_insights",
+    modules: [
+      { id: "team_overview", name: "Team Overview", description: "Team-wide velocity, efficiency, and workload distribution", route: "" },
+      { id: "leaderboard", name: "Leaderboard", description: "Ranked developer metrics", route: "/leaderboard" },
+      { id: "developer_drilldown", name: "Developer Drill-down", description: "Individual developer metrics deep-dive", route: "/developers" },
+    ],
+  },
 };
 
 // Get app definition by ID
@@ -346,6 +361,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       booking: { enabled: false },
       automations: { enabled: true },
       agents: { enabled: true },
+      insights: { enabled: false },
     },
   },
   {
@@ -375,6 +391,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       booking: { enabled: false },
       automations: { enabled: true },
       agents: { enabled: true },
+      insights: { enabled: false },
     },
   },
   {
@@ -404,6 +421,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       booking: { enabled: true, modules: { event_types: true, availability: true, calendars: true } },
       automations: { enabled: true },
       agents: { enabled: true },
+      insights: { enabled: false },
     },
   },
   {
@@ -436,6 +454,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       booking: { enabled: true, modules: { event_types: true, availability: true, calendars: true } },
       automations: { enabled: true },
       agents: { enabled: true },
+      insights: { enabled: true, modules: { team_overview: true, leaderboard: true, developer_drilldown: true } },
     },
   },
 ];
@@ -490,6 +509,9 @@ export const SIDEBAR_TO_APP_MAP: Record<string, string> = {
   "/uptime/monitors": "uptime",
   "/uptime/incidents": "uptime",
   "/uptime/history": "uptime",
+  "/insights": "insights",
+  "/insights/leaderboard": "insights",
+  "/insights/developers": "insights",
 };
 
 // Get app ID from pathname

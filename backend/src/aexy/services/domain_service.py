@@ -720,7 +720,7 @@ class DomainService:
             await self.db.commit()
 
     # -------------------------------------------------------------------------
-    # SYNC METHODS (for Celery tasks)
+    # SYNC METHODS (for Temporal activities)
     # -------------------------------------------------------------------------
 
     def can_send_sync(

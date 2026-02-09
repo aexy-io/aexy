@@ -1,9 +1,12 @@
-"""Celery tasks for email warming automation."""
+"""Legacy task functions for email warming automation.
+
+Business logic has been moved to Temporal activities.
+These functions are retained as plain functions for backward compatibility.
+"""
 
 import logging
 from datetime import datetime, timezone
 
-from celery import shared_task
 from sqlalchemy import select, and_
 
 from aexy.core.database import get_sync_session
@@ -17,7 +20,6 @@ from aexy.models.email_infrastructure import (
 logger = logging.getLogger(__name__)
 
 
-@shared_task(name="aexy.processing.warming_tasks.process_warming_day")
 def process_warming_day() -> dict:
     """
     Daily task to advance warming for all domains.
@@ -168,7 +170,6 @@ def process_warming_day() -> dict:
         }
 
 
-@shared_task(name="aexy.processing.warming_tasks.check_warming_thresholds")
 def check_warming_thresholds() -> dict:
     """
     Hourly task to check warming thresholds.
@@ -246,7 +247,6 @@ def check_warming_thresholds() -> dict:
         return {"paused": paused}
 
 
-@shared_task(name="aexy.processing.warming_tasks.reset_daily_volumes")
 def reset_daily_volumes() -> dict:
     """
     Daily task to reset daily send counters.
@@ -287,7 +287,6 @@ def reset_daily_volumes() -> dict:
         }
 
 
-@shared_task(name="aexy.processing.warming_tasks.update_warming_metrics")
 def update_warming_metrics(
     domain_id: str,
     sent: int = 0,

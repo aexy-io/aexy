@@ -315,7 +315,7 @@ async def get_repository_status(
 async def start_sync(
     repo_id: str,
     sync_type: str = Query("incremental", description="Sync type: 'full' or 'incremental'"),
-    use_celery: bool = Query(False, description="Use Celery task queue"),
+    use_background: bool = Query(False, description="Use Temporal workflow for background processing"),
     developer_id: str = Depends(get_current_developer_id),
     db: AsyncSession = Depends(get_db),
 ) -> SyncStartResponse:
@@ -324,7 +324,7 @@ async def start_sync(
     Args:
         repo_id: Repository ID.
         sync_type: 'full' for complete sync, 'incremental' for only new data.
-        use_celery: If True, use Celery task queue (better for large repos).
+        use_background: If True, use Temporal workflow (better for large repos).
     """
     # Validate sync_type
     if sync_type not in ("full", "incremental"):
@@ -339,13 +339,13 @@ async def start_sync(
             developer_id=developer_id,
             repository_id=repo_id,
             sync_type=sync_type,
-            use_celery=use_celery,
+            use_background=use_background,
         )
         return SyncStartResponse(
             job_id=job_id,
             message=f"{sync_type.title()} sync started successfully",
             sync_type=sync_type,
-            use_celery=use_celery,
+            use_background=use_background,
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

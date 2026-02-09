@@ -108,12 +108,12 @@ export function UsageTrendChart({ months = 6, className = "" }: UsageTrendChartP
                 boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
               }}
               labelStyle={{ color: "#f1f5f9", fontWeight: "600", marginBottom: "4px" }}
-              formatter={(value: number, name: string) => {
+              formatter={((value: number, name: string) => {
                 if (name === "cost") {
                   return [formatCurrency(value * 100), "Cost"];
                 }
                 return [formatNumber(value), name === "requests" ? "Requests" : "Tokens"];
-              }}
+              }) as never}
               labelFormatter={(label, payload) => {
                 if (payload && payload[0]) {
                   return payload[0].payload.month;

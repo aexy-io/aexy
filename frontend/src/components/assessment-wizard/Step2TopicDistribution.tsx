@@ -43,7 +43,7 @@ interface GeneratedQuestion {
   problem_statement: string;
   question_type: QuestionType;
   difficulty: DifficultyLevel;
-  options?: { id: string; text: string; is_correct?: boolean }[];
+  options?: { id: string; text: string; is_correct: boolean; explanation?: string }[];
   topic_id: string;
   selected: boolean;
 }

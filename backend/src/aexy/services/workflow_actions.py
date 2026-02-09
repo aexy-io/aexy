@@ -1896,17 +1896,20 @@ class WorkflowActionHandler:
                 body = data.get("email_body", data.get("message", "Thank you for your application. Unfortunately, we have decided to move forward with other candidates."))
                 body = self._render_template(body, context)
 
-                from aexy.processing.celery_app import celery_app
-                celery_app.send_task(
-                    "aexy.processing.email_marketing_tasks.send_workflow_email",
-                    kwargs={
-                        "workspace_id": context.workspace_id,
-                        "to": email_to,
-                        "subject": subject,
-                        "body": body,
-                        "record_id": context.record_id,
-                    },
-                    queue="email_campaigns",
+                from aexy.temporal.dispatch import dispatch
+                from aexy.temporal.task_queues import TaskQueue
+                from aexy.temporal.activities.email import SendWorkflowEmailInput
+
+                await dispatch(
+                    "send_workflow_email",
+                    SendWorkflowEmailInput(
+                        workspace_id=context.workspace_id,
+                        to_email=email_to,
+                        subject=subject,
+                        html_body=body,
+                        record_id=context.record_id,
+                    ),
+                    task_queue=TaskQueue.EMAIL,
                 )
 
             return NodeExecutionResult(
@@ -2282,17 +2285,20 @@ class WorkflowActionHandler:
         subject = self._render_template(subject, context)
         body = self._render_template(body, context)
 
-        from aexy.processing.celery_app import celery_app
-        celery_app.send_task(
-            "aexy.processing.email_marketing_tasks.send_workflow_email",
-            kwargs={
-                "workspace_id": context.workspace_id,
-                "to": email_to,
-                "subject": subject,
-                "body": body,
-                "record_id": context.record_id,
-            },
-            queue="email_campaigns",
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+        from aexy.temporal.activities.email import SendWorkflowEmailInput
+
+        await dispatch(
+            "send_workflow_email",
+            SendWorkflowEmailInput(
+                workspace_id=context.workspace_id,
+                to_email=email_to,
+                subject=subject,
+                html_body=body,
+                record_id=context.record_id,
+            ),
+            task_queue=TaskQueue.EMAIL,
         )
 
         return NodeExecutionResult(
@@ -2339,10 +2345,26 @@ class WorkflowActionHandler:
 
 
 class SyncWorkflowActionHandler:
-    """Synchronous action handler for Celery tasks."""
+    """Synchronous action handler (legacy, used for backward compat only).
+
+    Note: Temporal's execute_workflow_action activity uses the async
+    WorkflowActionHandler instead. This sync handler is retained for
+    any remaining sync call-sites but dispatches to Temporal rather
+    than Celery.
+    """
 
     def __init__(self, db: Session):
         self.db = db
+
+    @staticmethod
+    def _dispatch_temporal(activity_name: str, activity_input, task_queue: str = "operations"):
+        """Fire-and-forget dispatch to Temporal from synchronous code."""
+        import asyncio
+        from aexy.temporal.dispatch import dispatch as temporal_dispatch
+        try:
+            asyncio.run(temporal_dispatch(activity_name, activity_input, task_queue))
+        except Exception as e:
+            logger.warning(f"Failed to dispatch {activity_name} to Temporal: {e}")
 
     def execute_action(
         self,
@@ -2422,7 +2444,7 @@ class SyncWorkflowActionHandler:
         return handler(data, context, execution)
 
     def _execute_agent(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
-        """Execute an AI agent synchronously (for Celery workers)."""
+        """Execute an AI agent synchronously."""
         from aexy.services.automation_agent_service import SyncAutomationAgentService
 
         agent_id = data.get("agent_id")
@@ -3067,34 +3089,46 @@ class SyncWorkflowActionHandler:
     # =========================================================================
 
     def _pause_monitor(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
-        """Pause an uptime monitor - queued via Celery."""
-        from aexy.processing.celery_app import celery_app
+        """Pause an uptime monitor."""
+        from aexy.models.uptime import UptimeMonitor
 
         monitor_id = data.get("monitor_id") or context.get("trigger_data", {}).get("monitor_id")
         if not monitor_id:
             return {"status": "failed", "error": "No monitor_id specified"}
 
-        celery_app.send_task(
-            "aexy.processing.tasks.pause_uptime_monitor",
-            kwargs={"monitor_id": monitor_id},
-            queue="celery",
-        )
-        return {"status": "success", "output": {"monitor_id": monitor_id, "queued": True}}
+        try:
+            monitor = self.db.execute(
+                select(UptimeMonitor).where(UptimeMonitor.id == monitor_id)
+            ).scalar_one_or_none()
+            if monitor:
+                monitor.is_paused = True
+                self.db.commit()
+            else:
+                return {"status": "failed", "error": f"Monitor {monitor_id} not found"}
+        except Exception as e:
+            return {"status": "failed", "error": str(e)}
+        return {"status": "success", "output": {"monitor_id": monitor_id, "paused": True}}
 
     def _resume_monitor(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
-        """Resume a paused uptime monitor - queued via Celery."""
-        from aexy.processing.celery_app import celery_app
+        """Resume a paused uptime monitor."""
+        from aexy.models.uptime import UptimeMonitor
 
         monitor_id = data.get("monitor_id") or context.get("trigger_data", {}).get("monitor_id")
         if not monitor_id:
             return {"status": "failed", "error": "No monitor_id specified"}
 
-        celery_app.send_task(
-            "aexy.processing.tasks.resume_uptime_monitor",
-            kwargs={"monitor_id": monitor_id},
-            queue="celery",
-        )
-        return {"status": "success", "output": {"monitor_id": monitor_id, "queued": True}}
+        try:
+            monitor = self.db.execute(
+                select(UptimeMonitor).where(UptimeMonitor.id == monitor_id)
+            ).scalar_one_or_none()
+            if monitor:
+                monitor.is_paused = False
+                self.db.commit()
+            else:
+                return {"status": "failed", "error": f"Monitor {monitor_id} not found"}
+        except Exception as e:
+            return {"status": "failed", "error": str(e)}
+        return {"status": "success", "output": {"monitor_id": monitor_id, "resumed": True}}
 
     def _create_incident(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
         """Create an uptime incident."""
@@ -3124,8 +3158,8 @@ class SyncWorkflowActionHandler:
             return {"status": "failed", "error": str(e)}
 
     def _resolve_incident(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
-        """Resolve an uptime incident - queued via Celery."""
-        from aexy.processing.celery_app import celery_app
+        """Resolve an uptime incident."""
+        from aexy.models.uptime import UptimeIncident, UptimeIncidentStatus
 
         incident_id = data.get("incident_id") or context.get("trigger_data", {}).get("incident_id")
         monitor_id = data.get("monitor_id") or context.get("trigger_data", {}).get("monitor_id")
@@ -3133,48 +3167,62 @@ class SyncWorkflowActionHandler:
         if not incident_id and not monitor_id:
             return {"status": "failed", "error": "No incident_id or monitor_id specified"}
 
-        celery_app.send_task(
-            "aexy.processing.tasks.resolve_uptime_incident",
-            kwargs={
-                "incident_id": incident_id,
-                "monitor_id": monitor_id,
-                "resolution_notes": data.get("resolution_notes", "Resolved by automation"),
-                "root_cause": data.get("root_cause"),
-            },
-            queue="celery",
-        )
-        return {"status": "success", "output": {"incident_id": incident_id, "queued": True}}
+        try:
+            if incident_id:
+                incident = self.db.execute(
+                    select(UptimeIncident).where(UptimeIncident.id == incident_id)
+                ).scalar_one_or_none()
+            elif monitor_id:
+                incident = self.db.execute(
+                    select(UptimeIncident).where(
+                        UptimeIncident.monitor_id == monitor_id,
+                        UptimeIncident.status == UptimeIncidentStatus.ONGOING.value,
+                    )
+                ).scalar_one_or_none()
+            else:
+                incident = None
+
+            if incident:
+                incident.status = UptimeIncidentStatus.RESOLVED.value
+                incident.resolution_notes = data.get("resolution_notes", "Resolved by automation")
+                incident.root_cause = data.get("root_cause")
+                incident.resolved_at = datetime.now(timezone.utc)
+                self.db.commit()
+                return {"status": "success", "output": {"incident_id": incident.id, "resolved": True}}
+            return {"status": "failed", "error": "Incident not found"}
+        except Exception as e:
+            return {"status": "failed", "error": str(e)}
 
     # =========================================================================
     # SPRINT MODULE ACTIONS (sync)
     # =========================================================================
 
     def _update_task(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
-        """Update a sprint task - queued via Celery."""
-        from aexy.processing.celery_app import celery_app
+        """Update a sprint task."""
+        from aexy.models.sprint import SprintTask
 
         task_id = data.get("task_id") or context.get("trigger_data", {}).get("task_id")
         if not task_id:
             return {"status": "failed", "error": "No task_id specified"}
 
-        celery_app.send_task(
-            "aexy.processing.tasks.update_sprint_task",
-            kwargs={
-                "task_id": task_id,
-                "title": data.get("title"),
-                "description": data.get("description"),
-                "priority": data.get("priority"),
-                "status": data.get("status"),
-                "story_points": data.get("story_points"),
-                "labels": data.get("labels"),
-            },
-            queue="celery",
-        )
-        return {"status": "success", "output": {"task_id": task_id, "queued": True}}
+        try:
+            task = self.db.execute(
+                select(SprintTask).where(SprintTask.id == task_id)
+            ).scalar_one_or_none()
+            if not task:
+                return {"status": "failed", "error": f"Task {task_id} not found"}
+            for field in ("title", "description", "priority", "status", "story_points", "labels"):
+                val = data.get(field)
+                if val is not None:
+                    setattr(task, field, val)
+            self.db.commit()
+        except Exception as e:
+            return {"status": "failed", "error": str(e)}
+        return {"status": "success", "output": {"task_id": task_id, "updated": True}}
 
     def _assign_task(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
-        """Assign a sprint task - queued via Celery."""
-        from aexy.processing.celery_app import celery_app
+        """Assign a sprint task."""
+        from aexy.models.sprint import SprintTask
 
         task_id = data.get("task_id") or context.get("trigger_data", {}).get("task_id")
         developer_id = data.get("developer_id") or data.get("assignee_id")
@@ -3184,39 +3232,44 @@ class SyncWorkflowActionHandler:
         if not developer_id:
             return {"status": "failed", "error": "No assignee_id specified"}
 
-        celery_app.send_task(
-            "aexy.processing.tasks.assign_sprint_task",
-            kwargs={
-                "task_id": task_id,
-                "developer_id": developer_id,
-                "reason": data.get("reason", "Assigned by automation"),
-            },
-            queue="celery",
-        )
-        return {"status": "success", "output": {"task_id": task_id, "assignee_id": developer_id, "queued": True}}
+        try:
+            task = self.db.execute(
+                select(SprintTask).where(SprintTask.id == task_id)
+            ).scalar_one_or_none()
+            if not task:
+                return {"status": "failed", "error": f"Task {task_id} not found"}
+            task.assignee_id = developer_id
+            self.db.commit()
+        except Exception as e:
+            return {"status": "failed", "error": str(e)}
+        return {"status": "success", "output": {"task_id": task_id, "assignee_id": developer_id, "assigned": True}}
 
     def _move_task(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
-        """Move a sprint task - queued via Celery."""
-        from aexy.processing.celery_app import celery_app
+        """Move a sprint task."""
+        from aexy.models.sprint import SprintTask
 
         task_id = data.get("task_id") or context.get("trigger_data", {}).get("task_id")
         if not task_id:
             return {"status": "failed", "error": "No task_id specified"}
 
-        celery_app.send_task(
-            "aexy.processing.tasks.move_sprint_task",
-            kwargs={
-                "task_id": task_id,
-                "status": data.get("status"),
-                "sprint_id": data.get("sprint_id"),
-            },
-            queue="celery",
-        )
-        return {"status": "success", "output": {"task_id": task_id, "queued": True}}
+        try:
+            task = self.db.execute(
+                select(SprintTask).where(SprintTask.id == task_id)
+            ).scalar_one_or_none()
+            if not task:
+                return {"status": "failed", "error": f"Task {task_id} not found"}
+            if data.get("status"):
+                task.status = data["status"]
+            if data.get("sprint_id"):
+                task.sprint_id = data["sprint_id"]
+            self.db.commit()
+        except Exception as e:
+            return {"status": "failed", "error": str(e)}
+        return {"status": "success", "output": {"task_id": task_id, "moved": True}}
 
     def _create_subtask(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
-        """Create a subtask - queued via Celery."""
-        from aexy.processing.celery_app import celery_app
+        """Create a subtask."""
+        from aexy.models.sprint import SprintTask
 
         parent_task_id = data.get("parent_task_id") or context.get("trigger_data", {}).get("task_id")
         if not parent_task_id:
@@ -3225,18 +3278,29 @@ class SyncWorkflowActionHandler:
         title = data.get("title", "Subtask")
         title = self._render_template(title, context)
 
-        celery_app.send_task(
-            "aexy.processing.tasks.create_sprint_subtask",
-            kwargs={
-                "parent_task_id": parent_task_id,
-                "title": title,
-                "description": data.get("description"),
-                "priority": data.get("priority", "medium"),
-                "assignee_id": data.get("assignee_id"),
-            },
-            queue="celery",
-        )
-        return {"status": "success", "output": {"parent_task_id": parent_task_id, "queued": True}}
+        try:
+            parent = self.db.execute(
+                select(SprintTask).where(SprintTask.id == parent_task_id)
+            ).scalar_one_or_none()
+            if not parent:
+                return {"status": "failed", "error": f"Parent task {parent_task_id} not found"}
+            subtask = SprintTask(
+                id=str(uuid4()),
+                title=title,
+                description=data.get("description"),
+                priority=data.get("priority", "medium"),
+                assignee_id=data.get("assignee_id"),
+                parent_task_id=parent_task_id,
+                workspace_id=parent.workspace_id,
+                project_id=parent.project_id,
+                sprint_id=parent.sprint_id,
+                task_type="subtask",
+            )
+            self.db.add(subtask)
+            self.db.commit()
+        except Exception as e:
+            return {"status": "failed", "error": str(e)}
+        return {"status": "success", "output": {"parent_task_id": parent_task_id, "created": True}}
 
     def _add_comment(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
         """Add a comment to a sprint task."""
@@ -3279,47 +3343,54 @@ class SyncWorkflowActionHandler:
     # =========================================================================
 
     def _update_ticket(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
-        """Update a ticket - queued via Celery."""
-        from aexy.processing.celery_app import celery_app
+        """Update a ticket."""
+        from aexy.models.ticketing import Ticket
 
         ticket_id = data.get("ticket_id") or context.get("trigger_data", {}).get("ticket_id")
         if not ticket_id:
             return {"status": "failed", "error": "No ticket_id specified"}
 
-        celery_app.send_task(
-            "aexy.processing.tasks.update_ticket",
-            kwargs={
-                "ticket_id": ticket_id,
-                "status": data.get("status"),
-                "priority": data.get("priority"),
-                "severity": data.get("severity"),
-            },
-            queue="celery",
-        )
-        return {"status": "success", "output": {"ticket_id": ticket_id, "queued": True}}
+        try:
+            ticket = self.db.execute(
+                select(Ticket).where(Ticket.id == ticket_id)
+            ).scalar_one_or_none()
+            if not ticket:
+                return {"status": "failed", "error": f"Ticket {ticket_id} not found"}
+            for field in ("status", "priority", "severity"):
+                val = data.get(field)
+                if val is not None:
+                    setattr(ticket, field, val)
+            self.db.commit()
+        except Exception as e:
+            return {"status": "failed", "error": str(e)}
+        return {"status": "success", "output": {"ticket_id": ticket_id, "updated": True}}
 
     def _assign_ticket(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
-        """Assign a ticket - queued via Celery."""
-        from aexy.processing.celery_app import celery_app
+        """Assign a ticket."""
+        from aexy.models.ticketing import Ticket
 
         ticket_id = data.get("ticket_id") or context.get("trigger_data", {}).get("ticket_id")
         if not ticket_id:
             return {"status": "failed", "error": "No ticket_id specified"}
 
-        celery_app.send_task(
-            "aexy.processing.tasks.assign_ticket",
-            kwargs={
-                "ticket_id": ticket_id,
-                "assignee_id": data.get("assignee_id"),
-                "team_id": data.get("team_id"),
-            },
-            queue="celery",
-        )
-        return {"status": "success", "output": {"ticket_id": ticket_id, "queued": True}}
+        try:
+            ticket = self.db.execute(
+                select(Ticket).where(Ticket.id == ticket_id)
+            ).scalar_one_or_none()
+            if not ticket:
+                return {"status": "failed", "error": f"Ticket {ticket_id} not found"}
+            if data.get("assignee_id"):
+                ticket.assignee_id = data["assignee_id"]
+            if data.get("team_id"):
+                ticket.team_id = data["team_id"]
+            self.db.commit()
+        except Exception as e:
+            return {"status": "failed", "error": str(e)}
+        return {"status": "success", "output": {"ticket_id": ticket_id, "assigned": True}}
 
     def _add_response(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
-        """Add a response to a ticket - queued via Celery."""
-        from aexy.processing.celery_app import celery_app
+        """Add a response to a ticket."""
+        from aexy.models.ticketing import Ticket, TicketResponse
 
         ticket_id = data.get("ticket_id") or context.get("trigger_data", {}).get("ticket_id")
         message = data.get("message", data.get("response", ""))
@@ -3331,20 +3402,23 @@ class SyncWorkflowActionHandler:
 
         message = self._render_template(message, context)
 
-        celery_app.send_task(
-            "aexy.processing.tasks.add_ticket_response",
-            kwargs={
-                "ticket_id": ticket_id,
-                "content": message,
-                "is_internal": data.get("is_internal", False),
-            },
-            queue="celery",
-        )
-        return {"status": "success", "output": {"ticket_id": ticket_id, "queued": True}}
+        try:
+            response = TicketResponse(
+                id=str(uuid4()),
+                ticket_id=ticket_id,
+                content=message,
+                is_internal=data.get("is_internal", False),
+                source="automation",
+            )
+            self.db.add(response)
+            self.db.commit()
+        except Exception as e:
+            return {"status": "failed", "error": str(e)}
+        return {"status": "success", "output": {"ticket_id": ticket_id, "response_added": True}}
 
     def _escalate(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
-        """Escalate a ticket - queued via Celery."""
-        from aexy.processing.celery_app import celery_app
+        """Escalate a ticket."""
+        from aexy.models.ticketing import Ticket
 
         ticket_id = data.get("ticket_id") or context.get("trigger_data", {}).get("ticket_id")
         level = data.get("level", "level_1")
@@ -3352,16 +3426,21 @@ class SyncWorkflowActionHandler:
         if not ticket_id:
             return {"status": "failed", "error": "No ticket_id specified"}
 
-        celery_app.send_task(
-            "aexy.processing.tasks.escalate_ticket",
-            kwargs={"ticket_id": ticket_id, "level": level},
-            queue="celery",
-        )
-        return {"status": "success", "output": {"ticket_id": ticket_id, "level": level, "queued": True}}
+        try:
+            ticket = self.db.execute(
+                select(Ticket).where(Ticket.id == ticket_id)
+            ).scalar_one_or_none()
+            if not ticket:
+                return {"status": "failed", "error": f"Ticket {ticket_id} not found"}
+            ticket.escalation_level = level
+            self.db.commit()
+        except Exception as e:
+            return {"status": "failed", "error": str(e)}
+        return {"status": "success", "output": {"ticket_id": ticket_id, "level": level, "escalated": True}}
 
     def _change_priority(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
-        """Change a ticket's priority - queued via Celery."""
-        from aexy.processing.celery_app import celery_app
+        """Change a ticket's priority."""
+        from aexy.models.ticketing import Ticket
 
         ticket_id = data.get("ticket_id") or context.get("trigger_data", {}).get("ticket_id")
         priority = data.get("priority")
@@ -3371,12 +3450,17 @@ class SyncWorkflowActionHandler:
         if not priority:
             return {"status": "failed", "error": "No priority specified"}
 
-        celery_app.send_task(
-            "aexy.processing.tasks.change_ticket_priority",
-            kwargs={"ticket_id": ticket_id, "priority": priority},
-            queue="celery",
-        )
-        return {"status": "success", "output": {"ticket_id": ticket_id, "priority": priority, "queued": True}}
+        try:
+            ticket = self.db.execute(
+                select(Ticket).where(Ticket.id == ticket_id)
+            ).scalar_one_or_none()
+            if not ticket:
+                return {"status": "failed", "error": f"Ticket {ticket_id} not found"}
+            ticket.priority = priority
+            self.db.commit()
+        except Exception as e:
+            return {"status": "failed", "error": str(e)}
+        return {"status": "success", "output": {"ticket_id": ticket_id, "priority": priority, "updated": True}}
 
     def _add_tag(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
         """Add a tag to a ticket."""
@@ -3569,19 +3653,19 @@ class SyncWorkflowActionHandler:
             # Send rejection email if configured
             email_to = data.get("email") or (candidate.email if hasattr(candidate, "email") else None)
             if email_to:
-                from aexy.processing.celery_app import celery_app
+                from aexy.temporal.activities.email import SendWorkflowEmailInput
                 body = data.get("email_body", data.get("message", "Thank you for your application."))
                 body = self._render_template(body, context)
-                celery_app.send_task(
-                    "aexy.processing.email_marketing_tasks.send_workflow_email",
-                    kwargs={
-                        "workspace_id": execution.workspace_id,
-                        "to": email_to,
-                        "subject": data.get("email_subject", "Application Update"),
-                        "body": body,
-                        "record_id": execution.record_id,
-                    },
-                    queue="email_campaigns",
+                self._dispatch_temporal(
+                    "send_workflow_email",
+                    SendWorkflowEmailInput(
+                        workspace_id=execution.workspace_id,
+                        to_email=email_to,
+                        subject=data.get("email_subject", "Application Update"),
+                        html_body=body,
+                        record_id=execution.record_id,
+                    ),
+                    task_queue="email",
                 )
 
             return {"status": "success", "output": {"candidate_id": candidate.id, "rejected": True}}
@@ -3772,7 +3856,7 @@ class SyncWorkflowActionHandler:
 
     def _send_reminder(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
         """Send a booking reminder."""
-        from aexy.processing.celery_app import celery_app
+        from aexy.temporal.activities.email import SendWorkflowEmailInput
 
         message = data.get("message", data.get("message_template", "Reminder: You have an upcoming booking."))
         message = self._render_template(message, context)
@@ -3785,16 +3869,16 @@ class SyncWorkflowActionHandler:
         if not email_to:
             return {"status": "failed", "error": "No email address for reminder"}
 
-        celery_app.send_task(
-            "aexy.processing.email_marketing_tasks.send_workflow_email",
-            kwargs={
-                "workspace_id": execution.workspace_id,
-                "to": email_to,
-                "subject": data.get("subject", "Booking Reminder"),
-                "body": message,
-                "record_id": execution.record_id,
-            },
-            queue="email_campaigns",
+        self._dispatch_temporal(
+            "send_workflow_email",
+            SendWorkflowEmailInput(
+                workspace_id=execution.workspace_id,
+                to_email=email_to,
+                subject=data.get("subject", "Booking Reminder"),
+                html_body=message,
+                record_id=execution.record_id,
+            ),
+            task_queue="email",
         )
         return {"status": "success", "output": {"to": email_to, "queued": True}}
 
@@ -3804,7 +3888,8 @@ class SyncWorkflowActionHandler:
 
     def _notify_user(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
         """Send notification to a specific user."""
-        from aexy.processing.celery_app import celery_app
+        from aexy.temporal.activities.integrations import SendSlackWorkflowMessageInput
+        from aexy.temporal.activities.email import SendWorkflowEmailInput
 
         user_id = data.get("user_id")
         user_email = data.get("user_email")
@@ -3816,37 +3901,37 @@ class SyncWorkflowActionHandler:
             return {"status": "failed", "error": "No user_id or user_email specified"}
 
         if channel in ("slack", "both"):
-            celery_app.send_task(
-                "aexy.processing.integration_tasks.send_slack_workflow_message",
-                kwargs={
-                    "workspace_id": execution.workspace_id,
-                    "target_type": "dm",
-                    "target": user_email or user_id,
-                    "message": message,
-                    "record_id": execution.record_id,
-                },
-                queue="celery",
+            self._dispatch_temporal(
+                "send_slack_workflow_message",
+                SendSlackWorkflowMessageInput(
+                    workspace_id=execution.workspace_id,
+                    target_type="dm",
+                    target=user_email or user_id,
+                    message=message,
+                    record_id=execution.record_id,
+                ),
+                task_queue="integrations",
             )
 
         if channel in ("email", "both"):
             if user_email:
-                celery_app.send_task(
-                    "aexy.processing.email_marketing_tasks.send_workflow_email",
-                    kwargs={
-                        "workspace_id": execution.workspace_id,
-                        "to": user_email,
-                        "subject": data.get("email_subject", "Notification"),
-                        "body": message,
-                        "record_id": execution.record_id,
-                    },
-                    queue="email_campaigns",
+                self._dispatch_temporal(
+                    "send_workflow_email",
+                    SendWorkflowEmailInput(
+                        workspace_id=execution.workspace_id,
+                        to_email=user_email,
+                        subject=data.get("email_subject", "Notification"),
+                        html_body=message,
+                        record_id=execution.record_id,
+                    ),
+                    task_queue="email",
                 )
 
         return {"status": "success", "output": {"user": user_id or user_email, "channel": channel, "queued": True}}
 
     def _notify_team(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
         """Send notification to an entire team."""
-        from aexy.processing.celery_app import celery_app
+        from aexy.temporal.activities.integrations import SendSlackMessageInput
 
         channel_id = data.get("channel_id")
         message = data.get("message", data.get("message_template", ""))
@@ -3855,14 +3940,14 @@ class SyncWorkflowActionHandler:
         if not channel_id:
             return {"status": "failed", "error": "No channel_id specified"}
 
-        celery_app.send_task(
-            "aexy.processing.integration_tasks.send_slack_message",
-            kwargs={
-                "workspace_id": execution.workspace_id,
-                "channel_id": channel_id,
-                "message": message,
-            },
-            queue="integrations",
+        self._dispatch_temporal(
+            "send_slack_message",
+            SendSlackMessageInput(
+                workspace_id=execution.workspace_id,
+                channel=channel_id,
+                message=message,
+            ),
+            task_queue="integrations",
         )
         return {"status": "success", "output": {"channel_id": channel_id, "queued": True}}
 
@@ -3880,7 +3965,7 @@ class SyncWorkflowActionHandler:
 
     def _send_response(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
         """Send a response after form submission."""
-        from aexy.processing.celery_app import celery_app
+        from aexy.temporal.activities.email import SendWorkflowEmailInput
 
         email_to = data.get("to") or data.get("email")
         if not email_to:
@@ -3897,16 +3982,16 @@ class SyncWorkflowActionHandler:
         subject = self._render_template(subject, context)
         body = self._render_template(body, context)
 
-        celery_app.send_task(
-            "aexy.processing.email_marketing_tasks.send_workflow_email",
-            kwargs={
-                "workspace_id": execution.workspace_id,
-                "to": email_to,
-                "subject": subject,
-                "body": body,
-                "record_id": execution.record_id,
-            },
-            queue="email_campaigns",
+        self._dispatch_temporal(
+            "send_workflow_email",
+            SendWorkflowEmailInput(
+                workspace_id=execution.workspace_id,
+                to_email=email_to,
+                subject=subject,
+                html_body=body,
+                record_id=execution.record_id,
+            ),
+            task_queue="email",
         )
         return {"status": "success", "output": {"to": email_to, "subject": subject, "queued": True}}
 

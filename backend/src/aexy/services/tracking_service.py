@@ -706,7 +706,7 @@ class TrackingService:
         }
 
     # -------------------------------------------------------------------------
-    # SYNC METHODS (for Celery tasks)
+    # SYNC METHODS (for Temporal activities)
     # -------------------------------------------------------------------------
 
     def process_email_body_sync(
@@ -720,7 +720,7 @@ class TrackingService:
         track_links: bool = True,
     ) -> tuple[str, str | None]:
         """
-        Sync version of process_email_body for Celery tasks.
+        Sync version of process_email_body for Temporal activities.
 
         Returns:
             Tuple of (processed HTML, pixel_id if created)

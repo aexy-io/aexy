@@ -306,7 +306,7 @@ class WorkflowEventService:
 
 
 class SyncWorkflowEventService:
-    """Synchronous service for Celery workers."""
+    """Synchronous service for Temporal workers."""
 
     def __init__(self, db: Session):
         self.db = db

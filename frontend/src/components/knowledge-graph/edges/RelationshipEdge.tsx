@@ -121,12 +121,10 @@ export const RelationshipEdge = memo(
                 position: "absolute",
                 transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
                 pointerEvents: "none",
-              }}
-              className="px-1.5 py-0.5 rounded text-[10px] bg-slate-800/90 border"
-              style={{
                 borderColor: `${color}50`,
                 color,
               }}
+              className="px-1.5 py-0.5 rounded text-[10px] bg-slate-800/90 border"
             >
               {label}
             </div>

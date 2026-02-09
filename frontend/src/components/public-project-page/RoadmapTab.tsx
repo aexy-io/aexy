@@ -29,7 +29,7 @@ import {
   RoadmapStatus,
 } from "@/lib/api";
 import { LoadingSpinner, EmptyState } from "./shared";
-import { GoogleIcon } from "@/app/page";
+import { GoogleIcon } from "@/components/icons/GoogleIcon";
 import { Pagination } from "@/components/ui/pagination";
 
 interface RoadmapTabProps {

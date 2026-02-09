@@ -416,7 +416,7 @@ async def test_monitor(
             detail="Monitor not found",
         )
 
-    # Run the test check directly (not via Celery for immediate response)
+    # Run the test check directly (not via Temporal for immediate response)
     from aexy.services.uptime_checker import get_uptime_checker
 
     checker = get_uptime_checker()

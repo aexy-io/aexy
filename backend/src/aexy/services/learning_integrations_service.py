@@ -296,7 +296,7 @@ class LearningIntegrationsService:
         await self.db.commit()
         await self.db.refresh(sync_log)
 
-        # In production, this would queue a Celery task to perform the sync
+        # In production, this would queue a Temporal activity to perform the sync
         # For now, we just create the log entry
 
         return sync_log

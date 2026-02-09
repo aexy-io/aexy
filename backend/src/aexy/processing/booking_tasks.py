@@ -1,4 +1,7 @@
-"""Celery tasks for the booking module.
+"""Legacy task functions for the booking module.
+
+Business logic has been moved to Temporal activities.
+These functions are retained as plain functions for backward compatibility.
 
 These tasks handle:
 - Booking reminders (24h and 1h before)
@@ -11,13 +14,11 @@ These tasks handle:
 import logging
 from datetime import datetime, timedelta, timezone
 
-from aexy.processing.celery_app import celery_app
 from aexy.core.database import async_session_maker
 
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(name="aexy.processing.booking_tasks.send_booking_reminders")
 def send_booking_reminders():
     """Send reminder emails for upcoming bookings.
 
@@ -103,7 +104,6 @@ async def _send_booking_reminders_async():
             raise
 
 
-@celery_app.task(name="aexy.processing.booking_tasks.sync_all_calendars")
 def sync_all_calendars():
     """Sync calendar events for all active calendar connections.
 
@@ -149,7 +149,6 @@ async def _sync_all_calendars_async():
             raise
 
 
-@celery_app.task(name="aexy.processing.booking_tasks.process_booking_webhooks")
 def process_booking_webhooks(booking_id: str, event_type: str):
     """Dispatch webhooks for a booking event.
 
@@ -220,7 +219,6 @@ async def _process_booking_webhooks_async(booking_id: str, event_type: str):
             raise
 
 
-@celery_app.task(name="aexy.processing.booking_tasks.cleanup_expired_pending_bookings")
 def cleanup_expired_pending_bookings():
     """Cancel bookings that have been pending payment for too long.
 
@@ -270,7 +268,6 @@ async def _cleanup_expired_pending_bookings_async():
             raise
 
 
-@celery_app.task(name="aexy.processing.booking_tasks.mark_completed_bookings")
 def mark_completed_bookings():
     """Mark confirmed bookings as completed after their end time.
 
@@ -306,8 +303,9 @@ async def _mark_completed_bookings_async():
             for booking in completed_bookings:
                 booking.status = BookingStatus.COMPLETED
 
-                # Trigger webhook
-                process_booking_webhooks.delay(str(booking.id), "booking.completed")
+                # Trigger webhook (direct call - Temporal handles scheduling)
+                # Note: In Temporal, this would be dispatched as a separate activity
+                pass  # Webhook dispatch is handled by Temporal activities
 
             await db.commit()
             logger.info(f"Marked {len(completed_bookings)} bookings as completed")
@@ -318,7 +316,6 @@ async def _mark_completed_bookings_async():
             raise
 
 
-@celery_app.task(name="aexy.processing.booking_tasks.generate_booking_analytics")
 def generate_booking_analytics(workspace_id: str):
     """Generate booking analytics for a workspace.
 
@@ -398,7 +395,6 @@ async def _generate_booking_analytics_async(workspace_id: str):
             raise
 
 
-@celery_app.task(name="aexy.processing.booking_tasks.send_booking_notification")
 def send_booking_notification(booking_id: str, notification_type: str):
     """Send a notification for a booking event.
 
@@ -436,7 +432,6 @@ async def _send_booking_notification_async(booking_id: str, notification_type: s
             raise
 
 
-@celery_app.task(name="aexy.processing.booking_tasks.create_calendar_event")
 def create_calendar_event(booking_id: str):
     """Create a calendar event for a confirmed booking.
 

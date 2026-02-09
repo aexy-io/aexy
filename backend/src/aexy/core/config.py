@@ -514,36 +514,83 @@ class Settings(BaseSettings):
             return f"https://{self.email_tracking_domain}"
         return self.backend_url
 
-    # Cloudflare R2 Storage (for video recordings)
+    # S3-Compatible Storage (RustFS in dev, any S3-compatible in prod)
+    s3_endpoint_url: str = Field(
+        default="",
+        description="S3-compatible endpoint URL (e.g. http://rustfs:9000)",
+        validation_alias="S3_ENDPOINT_URL",
+    )
+    s3_access_key_id: str = Field(
+        default="",
+        description="S3 access key ID",
+        validation_alias="S3_ACCESS_KEY_ID",
+    )
+    s3_secret_access_key: str = Field(
+        default="",
+        description="S3 secret access key",
+        validation_alias="S3_SECRET_ACCESS_KEY",
+    )
+    s3_bucket_name: str = Field(
+        default="aexy-storage",
+        description="S3 bucket name",
+        validation_alias="S3_BUCKET_NAME",
+    )
+    s3_region: str = Field(
+        default="us-east-1",
+        description="S3 region",
+        validation_alias="S3_REGION",
+    )
+    s3_public_endpoint_url: str = Field(
+        default="",
+        description="Public S3 endpoint URL for presigned URLs accessible from browser",
+        validation_alias="S3_PUBLIC_ENDPOINT_URL",
+    )
+    s3_recordings_prefix: str = Field(
+        default="assessment-recordings",
+        description="S3 key prefix for assessment recordings",
+        validation_alias="S3_RECORDINGS_PREFIX",
+    )
+    s3_compliance_prefix: str = Field(
+        default="compliance-documents",
+        description="S3 key prefix for compliance documents",
+        validation_alias="S3_COMPLIANCE_PREFIX",
+    )
+    compliance_max_file_size_mb: int = Field(
+        default=50,
+        description="Maximum file size for compliance document uploads in MB",
+        validation_alias="COMPLIANCE_MAX_FILE_SIZE_MB",
+    )
+
+    # Deprecated R2 fields (kept for backward compatibility)
     r2_access_key_id: str = Field(
         default="",
-        description="Cloudflare R2 Access Key ID",
+        description="(Deprecated) Cloudflare R2 Access Key ID - use S3_ACCESS_KEY_ID",
         validation_alias="R2_ACCESS_KEY_ID",
     )
     r2_secret_access_key: str = Field(
         default="",
-        description="Cloudflare R2 Secret Access Key",
+        description="(Deprecated) Cloudflare R2 Secret Access Key - use S3_SECRET_ACCESS_KEY",
         validation_alias="R2_SECRET_ACCESS_KEY",
     )
     r2_account_id: str = Field(
         default="",
-        description="Cloudflare Account ID for R2",
+        description="(Deprecated) Cloudflare Account ID for R2",
         validation_alias="R2_ACCOUNT_ID",
     )
     r2_bucket_name: str = Field(
         default="",
-        description="R2 bucket name for assessment recordings",
+        description="(Deprecated) R2 bucket name - use S3_BUCKET_NAME",
         validation_alias="R2_BUCKET_NAME",
     )
     r2_recordings_prefix: str = Field(
         default="assessment-recordings",
-        description="R2 key prefix for assessment recordings",
+        description="(Deprecated) R2 key prefix - use S3_RECORDINGS_PREFIX",
         validation_alias="R2_RECORDINGS_PREFIX",
     )
 
     @property
     def r2_endpoint_url(self) -> str:
-        """Get the R2 endpoint URL based on account ID."""
+        """Get the R2 endpoint URL based on account ID (deprecated)."""
         if self.r2_account_id:
             return f"https://{self.r2_account_id}.r2.cloudflarestorage.com"
         return ""

@@ -1,170 +1,110 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import { redirect } from "next/navigation";
-import {
-  GitBranch,
-  BarChart3,
-  Users,
-  AlertTriangle,
-  TrendingUp,
-  Brain,
-  RefreshCw,
-  LogOut,
-  GraduationCap,
-  Lightbulb,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 import {
-  predictionsApi,
-  developerApi,
-  TeamHealthAnalysis,
-  AttritionRiskAnalysis,
-  BurnoutRiskAssessment,
-  PerformanceTrajectory,
-  Developer,
-} from "@/lib/api";
-import { TeamHealthGauge } from "@/components/charts";
+  TrendingUp,
+  Users,
+  GitCommit,
+  GitPullRequest,
+  Code,
+  MessageSquare,
+  AlertTriangle,
+  RefreshCw,
+  Crown,
+  ArrowRight,
+  BarChart3,
+  FolderKanban,
+  Bell,
+  Building2,
+  Gauge,
+  User,
+  Brain,
+} from "lucide-react";
+import {
+  useTeamInsights,
+  useLeaderboard,
+  useGenerateSnapshots,
+} from "@/hooks/useInsights";
+import { InsightsPeriodType } from "@/lib/api";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
-interface DeveloperInsight {
-  developer: Developer;
-  attrition?: AttritionRiskAnalysis;
-  burnout?: BurnoutRiskAssessment;
-  trajectory?: PerformanceTrajectory;
-  loading: boolean;
-  expanded: boolean;
+const PERIOD_OPTIONS: { value: InsightsPeriodType; label: string }[] = [
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+  { value: "sprint", label: "Sprint" },
+];
+
+const METRIC_COLORS = [
+  "#6366f1",
+  "#8b5cf6",
+  "#a78bfa",
+  "#c4b5fd",
+  "#818cf8",
+  "#7c3aed",
+  "#4f46e5",
+  "#4338ca",
+];
+
+function GiniIndicator({ value }: { value: number }) {
+  const label =
+    value < 0.2
+      ? "Very Equal"
+      : value < 0.35
+        ? "Balanced"
+        : value < 0.5
+          ? "Moderate"
+          : "Unequal";
+  const color =
+    value < 0.2
+      ? "text-green-400"
+      : value < 0.35
+        ? "text-blue-400"
+        : value < 0.5
+          ? "text-yellow-400"
+          : "text-red-400";
+  return (
+    <div className="flex items-center gap-2">
+      <span className={`text-sm font-medium ${color}`}>{label}</span>
+      <span className="text-xs text-slate-500">({value.toFixed(2)})</span>
+    </div>
+  );
 }
 
 export default function InsightsPage() {
-  const { user, isLoading, isAuthenticated, logout } = useAuth();
-  const [developers, setDevelopers] = useState<Developer[]>([]);
-  const [teamHealth, setTeamHealth] = useState<TeamHealthAnalysis | null>(null);
-  const [developerInsights, setDeveloperInsights] = useState<DeveloperInsight[]>([]);
-  const [loadingTeamHealth, setLoadingTeamHealth] = useState(false);
-  const [loadingDevelopers, setLoadingDevelopers] = useState(true);
+  const { isLoading: authLoading, isAuthenticated } = useAuth();
+  const { currentWorkspaceId } = useWorkspace();
+  const [periodType, setPeriodType] = useState<InsightsPeriodType>("weekly");
 
-  const fetchDevelopers = useCallback(async (): Promise<Developer[]> => {
-    try {
-      const data: Developer[] = await developerApi.list();
-      setDevelopers(data);
-      setDeveloperInsights(
-        data.map((dev) => ({
-          developer: dev,
-          loading: false,
-          expanded: false,
-        }))
-      );
-      return data;
-    } catch (error) {
-      console.error("Failed to fetch developers:", error);
-      return [];
-    } finally {
-      setLoadingDevelopers(false);
-    }
-  }, []);
+  const {
+    teamInsights,
+    isLoading: teamLoading,
+    refetch: refetchTeam,
+  } = useTeamInsights(currentWorkspaceId, { period_type: periodType });
 
-  const fetchTeamHealth = useCallback(async (developerIds: string[]) => {
-    if (developerIds.length === 0) return;
-    setLoadingTeamHealth(true);
-    try {
-      const data = await predictionsApi.getTeamHealth(developerIds);
-      setTeamHealth(data);
-    } catch (error) {
-      console.error("Failed to fetch team health:", error);
-    } finally {
-      setLoadingTeamHealth(false);
-    }
-  }, []);
+  const { leaderboard, isLoading: lbLoading } = useLeaderboard(
+    currentWorkspaceId,
+    { metric: "commits", period_type: periodType, limit: 5 }
+  );
 
-  const fetchDeveloperInsight = async (developerId: string, index: number) => {
-    setDeveloperInsights((prev) =>
-      prev.map((insight, i) =>
-        i === index ? { ...insight, loading: true } : insight
-      )
-    );
+  const { generateSnapshots, isGenerating } =
+    useGenerateSnapshots(currentWorkspaceId);
 
-    try {
-      const [attrition, burnout, trajectory] = await Promise.all([
-        predictionsApi.getAttritionRisk(developerId).catch(() => undefined),
-        predictionsApi.getBurnoutRisk(developerId).catch(() => undefined),
-        predictionsApi.getPerformanceTrajectory(developerId).catch(() => undefined),
-      ]);
-
-      setDeveloperInsights((prev) =>
-        prev.map((insight, i) =>
-          i === index
-            ? { ...insight, attrition, burnout, trajectory, loading: false }
-            : insight
-        )
-      );
-    } catch (error) {
-      console.error("Failed to fetch developer insight:", error);
-      setDeveloperInsights((prev) =>
-        prev.map((insight, i) =>
-          i === index ? { ...insight, loading: false } : insight
-        )
-      );
-    }
-  };
-
-  const toggleExpanded = (index: number) => {
-    const insight = developerInsights[index];
-    if (!insight.expanded && !insight.attrition && !insight.loading) {
-      fetchDeveloperInsight(insight.developer.id, index);
-    }
-    setDeveloperInsights((prev) =>
-      prev.map((insight, i) =>
-        i === index ? { ...insight, expanded: !insight.expanded } : insight
-      )
-    );
-  };
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchDevelopers().then((devs) => {
-        if (devs.length > 0) {
-          fetchTeamHealth(devs.map((d) => d.id));
-        }
-      });
-    }
-  }, [isAuthenticated, fetchDevelopers, fetchTeamHealth]);
-
-  const getRiskColor = (level: string) => {
-    switch (level) {
-      case "critical":
-        return "text-red-400 bg-red-400/10";
-      case "high":
-        return "text-orange-400 bg-orange-400/10";
-      case "moderate":
-        return "text-yellow-400 bg-yellow-400/10";
-      default:
-        return "text-green-400 bg-green-400/10";
-    }
-  };
-
-  const getTrajectoryColor = (trajectory: string) => {
-    switch (trajectory) {
-      case "accelerating":
-        return "text-green-400";
-      case "steady":
-        return "text-blue-400";
-      case "plateauing":
-        return "text-yellow-400";
-      case "declining":
-        return "text-red-400";
-      default:
-        return "text-slate-400";
-    }
-  };
-
-  if (isLoading || loadingDevelopers) {
+  if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500" />
       </div>
     );
   }
@@ -173,337 +113,433 @@ export default function InsightsPage() {
     redirect("/");
   }
 
-  return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <GitBranch className="h-8 w-8 text-primary-500" />
-              <span className="text-2xl font-bold text-white">Aexy</span>
-            </div>
-            <nav className="hidden md:flex items-center gap-1 ml-6">
-              <Link
-                href="/dashboard"
-                className="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm font-medium transition"
-              >
-                Dashboard
-              </Link>
-              <Link
-                href="/analytics"
-                className="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm font-medium transition flex items-center gap-2"
-              >
-                <BarChart3 className="h-4 w-4" />
-                Analytics
-              </Link>
-              <Link
-                href="/insights"
-                className="px-3 py-2 text-white bg-slate-700 rounded-lg text-sm font-medium flex items-center gap-2"
-              >
-                <Lightbulb className="h-4 w-4" />
-                Insights
-              </Link>
-              <Link
-                href="/learning"
-                className="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm font-medium transition flex items-center gap-2"
-              >
-                <GraduationCap className="h-4 w-4" />
-                Learning
-              </Link>
-              <Link
-                href="/hiring"
-                className="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm font-medium transition flex items-center gap-2"
-              >
-                <Users className="h-4 w-4" />
-                Hiring
-              </Link>
-            </nav>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              {user?.avatar_url && (
-                <Image
-                  src={user.avatar_url}
-                  alt={user.name || "User"}
-                  width={32}
-                  height={32}
-                  className="rounded-full"
-                />
-              )}
-              <span className="text-white">{user?.name || user?.email}</span>
-            </div>
-            <button
-              onClick={logout}
-              className="text-slate-400 hover:text-white transition"
-            >
-              <LogOut className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-      </header>
+  const agg = teamInsights?.aggregate;
+  const dist = teamInsights?.distribution;
+  const members = dist?.member_metrics ?? [];
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Page Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-              <Brain className="h-8 w-8 text-primary-400" />
-              Predictive Insights
-            </h1>
-            <p className="text-slate-400 mt-1">
-              AI-powered analysis of team health, attrition risk, and performance trajectories
-            </p>
+  const workloadData = members.map((m, i) => ({
+    name: m.developer_id.slice(0, 8),
+    commits: m.commits_count,
+    prs: m.prs_merged,
+    reviews: m.reviews_given,
+    fill: METRIC_COLORS[i % METRIC_COLORS.length],
+  }));
+
+  const handleGenerate = async () => {
+    if (!currentWorkspaceId) return;
+    const now = new Date();
+    const start = new Date(now);
+    start.setDate(start.getDate() - (periodType === "monthly" ? 30 : 7));
+    try {
+      await generateSnapshots({
+        period_type: periodType,
+        start_date: start.toISOString().split("T")[0],
+        end_date: now.toISOString().split("T")[0],
+      });
+      refetchTeam();
+    } catch {
+      toast.error("Failed to generate snapshots. Please try again.");
+    }
+  };
+
+  return (
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <TrendingUp className="h-6 w-6 text-indigo-400" />
+            Team Insights
+          </h1>
+          <p className="text-slate-400 text-sm mt-1">
+            Metrics-driven view of team velocity, efficiency, and workload
+            distribution
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {/* Period Selector */}
+          <div className="flex bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+            {PERIOD_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setPeriodType(opt.value)}
+                className={`px-3 py-1.5 text-sm font-medium transition ${
+                  periodType === opt.value
+                    ? "bg-indigo-600 text-white"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
-          <button
-            onClick={() => fetchTeamHealth(developers.map((d) => d.id))}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+          <Link
+            href="/insights/compare"
+            className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition"
           >
-            <RefreshCw className={`h-4 w-4 ${loadingTeamHealth ? "animate-spin" : ""}`} />
-            Refresh
+            <Users className="h-4 w-4" />
+            Compare
+          </Link>
+          <Link
+            href="/insights/allocations"
+            className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition"
+          >
+            <FolderKanban className="h-4 w-4" />
+            Allocations
+          </Link>
+          <Link
+            href="/insights/alerts"
+            className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition"
+          >
+            <Bell className="h-4 w-4" />
+            Alerts
+          </Link>
+          <Link
+            href="/insights/executive"
+            className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition"
+          >
+            <Building2 className="h-4 w-4" />
+            Executive
+          </Link>
+          <Link
+            href="/insights/sprint-capacity"
+            className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition"
+          >
+            <Gauge className="h-4 w-4" />
+            Capacity
+          </Link>
+          <Link
+            href="/insights/ai"
+            className="flex items-center gap-2 px-3 py-1.5 bg-purple-700 hover:bg-purple-600 text-white text-sm rounded-lg transition"
+          >
+            <Brain className="h-4 w-4" />
+            AI Insights
+          </Link>
+          <Link
+            href="/insights/me"
+            className="flex items-center gap-2 px-3 py-1.5 bg-indigo-700 hover:bg-indigo-600 text-white text-sm rounded-lg transition"
+          >
+            <User className="h-4 w-4" />
+            My Insights
+          </Link>
+          <button
+            onClick={handleGenerate}
+            disabled={isGenerating}
+            className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm rounded-lg transition"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isGenerating ? "animate-spin" : ""}`}
+            />
+            {isGenerating ? "Generating..." : "Generate Snapshots"}
           </button>
         </div>
+      </div>
 
-        {/* Team Health Section */}
-        <div className="grid lg:grid-cols-3 gap-8 mb-8">
-          {/* Health Gauge */}
-          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-            <h2 className="text-lg font-semibold text-white mb-4">Team Health</h2>
-            <TeamHealthGauge data={teamHealth} isLoading={loadingTeamHealth} />
-          </div>
-
-          {/* Strengths & Risks */}
-          <div className="lg:col-span-2 grid md:grid-cols-2 gap-6">
-            {/* Strengths */}
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-green-400" />
-                Team Strengths
-              </h3>
-              {teamHealth?.strengths.length ? (
-                <ul className="space-y-2">
-                  {teamHealth.strengths.map((strength, i) => (
-                    <li
-                      key={i}
-                      className="text-sm text-slate-300 flex items-start gap-2"
-                    >
-                      <span className="text-green-400 mt-1">✓</span>
-                      {strength}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-slate-400 text-sm">Loading...</p>
-              )}
-            </div>
-
-            {/* Risks */}
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-orange-400" />
-                Team Risks
-              </h3>
-              {teamHealth?.risks.length ? (
-                <ul className="space-y-3">
-                  {teamHealth.risks.map((risk, i) => (
-                    <li key={i} className="text-sm">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span
-                          className={`px-2 py-0.5 rounded text-xs ${getRiskColor(
-                            risk.severity
-                          )}`}
-                        >
-                          {risk.severity}
-                        </span>
-                        <span className="text-white">{risk.risk}</span>
-                      </div>
-                      <p className="text-slate-400 text-xs ml-4">
-                        {risk.mitigation}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-slate-400 text-sm">No risks identified</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Recommendations */}
-        {teamHealth?.recommendations && teamHealth.recommendations.length > 0 && (
-          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 mb-8">
-            <h3 className="text-lg font-semibold text-white mb-4">
-              Recommendations
-            </h3>
-            <ul className="grid md:grid-cols-2 gap-4">
-              {teamHealth.recommendations.map((rec, i) => (
-                <li
-                  key={i}
-                  className="text-sm text-slate-300 flex items-start gap-2"
-                >
-                  <span className="text-primary-400 mt-1">{i + 1}.</span>
-                  {rec}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Individual Developer Insights */}
-        <h2 className="text-xl font-bold text-white mb-4">
-          Individual Developer Insights
-        </h2>
-        <div className="space-y-4">
-          {developerInsights.map((insight, index) => (
+      {/* Stat Cards */}
+      {teamLoading ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
             <div
-              key={insight.developer.id}
-              className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden"
-            >
-              {/* Header - always visible */}
-              <button
-                onClick={() => toggleExpanded(index)}
-                className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-700/50 transition"
-              >
-                <div className="flex items-center gap-4">
-                  {insight.developer.avatar_url && (
-                    <Image
-                      src={insight.developer.avatar_url}
-                      alt={insight.developer.name || "Developer"}
-                      width={40}
-                      height={40}
-                      className="rounded-full"
-                    />
-                  )}
-                  <div>
-                    <h3 className="text-white font-medium">
-                      {insight.developer.name || insight.developer.email}
-                    </h3>
-                    <p className="text-slate-400 text-sm">
-                      {insight.developer.github_connection?.github_username &&
-                        `@${insight.developer.github_connection.github_username}`}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  {insight.attrition && (
-                    <span
-                      className={`px-2 py-1 rounded text-xs ${getRiskColor(
-                        insight.attrition.risk_level
-                      )}`}
-                    >
-                      Attrition: {insight.attrition.risk_level}
-                    </span>
-                  )}
-                  {insight.trajectory && (
-                    <span
-                      className={`text-sm ${getTrajectoryColor(
-                        insight.trajectory.trajectory
-                      )}`}
-                    >
-                      {insight.trajectory.trajectory}
-                    </span>
-                  )}
-                  {insight.loading ? (
-                    <RefreshCw className="h-5 w-5 text-slate-400 animate-spin" />
-                  ) : insight.expanded ? (
-                    <ChevronUp className="h-5 w-5 text-slate-400" />
-                  ) : (
-                    <ChevronDown className="h-5 w-5 text-slate-400" />
-                  )}
-                </div>
-              </button>
-
-              {/* Expanded content */}
-              {insight.expanded && (
-                <div className="border-t border-slate-700 p-4 grid md:grid-cols-3 gap-6">
-                  {/* Attrition Risk */}
-                  <div>
-                    <h4 className="text-sm font-medium text-slate-400 mb-3">
-                      Attrition Risk
-                    </h4>
-                    {insight.attrition ? (
-                      <div className="space-y-2">
-                        <div
-                          className={`inline-flex px-3 py-1 rounded-full text-sm ${getRiskColor(
-                            insight.attrition.risk_level
-                          )}`}
-                        >
-                          {insight.attrition.risk_level.toUpperCase()} (
-                          {(insight.attrition.risk_score * 100).toFixed(0)}%)
-                        </div>
-                        {insight.attrition.factors.slice(0, 3).map((f, i) => (
-                          <p key={i} className="text-xs text-slate-300">
-                            • {f.factor}
-                          </p>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-slate-500 text-sm">Click to analyze</p>
-                    )}
-                  </div>
-
-                  {/* Burnout Risk */}
-                  <div>
-                    <h4 className="text-sm font-medium text-slate-400 mb-3">
-                      Burnout Risk
-                    </h4>
-                    {insight.burnout ? (
-                      <div className="space-y-2">
-                        <div
-                          className={`inline-flex px-3 py-1 rounded-full text-sm ${getRiskColor(
-                            insight.burnout.risk_level
-                          )}`}
-                        >
-                          {insight.burnout.risk_level.toUpperCase()} (
-                          {(insight.burnout.risk_score * 100).toFixed(0)}%)
-                        </div>
-                        {insight.burnout.indicators.slice(0, 3).map((ind, i) => (
-                          <p key={i} className="text-xs text-slate-300">
-                            • {ind}
-                          </p>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-slate-500 text-sm">Click to analyze</p>
-                    )}
-                  </div>
-
-                  {/* Performance Trajectory */}
-                  <div>
-                    <h4 className="text-sm font-medium text-slate-400 mb-3">
-                      Performance Trajectory
-                    </h4>
-                    {insight.trajectory ? (
-                      <div className="space-y-2">
-                        <div
-                          className={`text-lg font-semibold ${getTrajectoryColor(
-                            insight.trajectory.trajectory
-                          )}`}
-                        >
-                          {insight.trajectory.trajectory.charAt(0).toUpperCase() +
-                            insight.trajectory.trajectory.slice(1)}
-                        </div>
-                        <p className="text-xs text-slate-400">
-                          Career readiness:{" "}
-                          {(insight.trajectory.career_readiness.readiness_score * 100).toFixed(0)}%
-                        </p>
-                        {insight.trajectory.opportunities.slice(0, 2).map((opp, i) => (
-                          <p key={i} className="text-xs text-slate-300">
-                            • {opp}
-                          </p>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-slate-500 text-sm">Click to analyze</p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+              key={i}
+              className="bg-slate-800 rounded-xl p-4 border border-slate-700 animate-pulse h-24"
+            />
           ))}
         </div>
-      </main>
+      ) : teamInsights ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <StatCard
+            icon={Users}
+            label="Team Size"
+            value={teamInsights.member_count}
+            color="text-blue-400"
+          />
+          <StatCard
+            icon={GitCommit}
+            label="Commits"
+            value={agg?.total_commits ?? 0}
+            sub={`${(agg?.avg_commits_per_member ?? 0).toFixed(1)}/member`}
+            color="text-green-400"
+          />
+          <StatCard
+            icon={GitPullRequest}
+            label="PRs Merged"
+            value={agg?.total_prs_merged ?? 0}
+            sub={`${(agg?.avg_prs_per_member ?? 0).toFixed(1)}/member`}
+            color="text-purple-400"
+          />
+          <StatCard
+            icon={MessageSquare}
+            label="Reviews"
+            value={agg?.total_reviews ?? 0}
+            color="text-amber-400"
+          />
+          <StatCard
+            icon={Code}
+            label="Lines Changed"
+            value={formatNumber(agg?.total_lines_changed ?? 0)}
+            color="text-cyan-400"
+          />
+          <StatCard
+            icon={BarChart3}
+            label="Workload Equality"
+            value={
+              <GiniIndicator value={dist?.gini_coefficient ?? 0} />
+            }
+            color="text-indigo-400"
+          />
+        </div>
+      ) : (
+        <div className="bg-slate-800 rounded-xl p-8 border border-slate-700 text-center">
+          <p className="text-slate-400">
+            No insights data yet. Click &quot;Generate Snapshots&quot; to compute
+            metrics.
+          </p>
+        </div>
+      )}
+
+      {/* Main Content Grid */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Workload Distribution Chart */}
+        <div className="lg:col-span-2 bg-slate-800 rounded-xl p-6 border border-slate-700">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-white">
+              Workload Distribution
+            </h2>
+            {dist && dist.bottleneck_developers.length > 0 && (
+              <div className="flex items-center gap-1 text-amber-400 text-xs">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                {dist.bottleneck_developers.length} bottleneck
+                {dist.bottleneck_developers.length > 1 ? "s" : ""}
+              </div>
+            )}
+          </div>
+          {workloadData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={workloadData}>
+                <XAxis
+                  dataKey="name"
+                  tick={{ fill: "#94a3b8", fontSize: 12 }}
+                  axisLine={{ stroke: "#334155" }}
+                />
+                <YAxis
+                  tick={{ fill: "#94a3b8", fontSize: 12 }}
+                  axisLine={{ stroke: "#334155" }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#1e293b",
+                    border: "1px solid #334155",
+                    borderRadius: "8px",
+                    color: "#f8fafc",
+                  }}
+                />
+                <Bar dataKey="commits" name="Commits" stackId="a" fill="#6366f1" />
+                <Bar dataKey="prs" name="PRs" stackId="a" fill="#8b5cf6" />
+                <Bar
+                  dataKey="reviews"
+                  name="Reviews"
+                  stackId="a"
+                  fill="#a78bfa"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-64 text-slate-500">
+              No workload data available
+            </div>
+          )}
+          {dist && (
+            <div className="mt-3 flex items-center gap-4 text-xs text-slate-400">
+              <span>
+                Top contributor:{" "}
+                <span className="text-white">
+                  {(dist.top_contributor_share * 100).toFixed(0)}%
+                </span>{" "}
+                of work
+              </span>
+              <span>
+                Gini:{" "}
+                <span className="text-white">
+                  {dist.gini_coefficient.toFixed(2)}
+                </span>
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Leaderboard */}
+        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Crown className="h-5 w-5 text-amber-400" />
+              Top Contributors
+            </h2>
+            <Link
+              href="/insights/leaderboard"
+              className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+            >
+              View all <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+          {lbLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-10 bg-slate-700 rounded animate-pulse"
+                />
+              ))}
+            </div>
+          ) : leaderboard?.entries.length ? (
+            <div className="space-y-2">
+              {leaderboard.entries.map((entry, i) => (
+                <div
+                  key={entry.developer_id}
+                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-700/50 transition"
+                >
+                  <span
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                      i === 0
+                        ? "bg-amber-500/20 text-amber-400"
+                        : i === 1
+                          ? "bg-slate-400/20 text-slate-300"
+                          : i === 2
+                            ? "bg-orange-500/20 text-orange-400"
+                            : "bg-slate-700 text-slate-400"
+                    }`}
+                  >
+                    {entry.rank}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <Link
+                      href={`/insights/developers/${entry.developer_id}`}
+                      className="text-sm text-white hover:text-indigo-300 truncate block"
+                    >
+                      {entry.developer_name || entry.developer_id.slice(0, 8)}
+                    </Link>
+                  </div>
+                  <span className="text-sm font-mono text-slate-300">
+                    {entry.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-slate-500 text-sm text-center py-4">
+              No leaderboard data
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Member Summary Table */}
+      {members.length > 0 && (
+        <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-700">
+            <h2 className="text-lg font-semibold text-white">
+              Developer Summary
+            </h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="text-left text-xs text-slate-400 border-b border-slate-700">
+                  <th className="px-6 py-3 font-medium">Developer</th>
+                  <th className="px-6 py-3 font-medium text-right">Commits</th>
+                  <th className="px-6 py-3 font-medium text-right">
+                    PRs Merged
+                  </th>
+                  <th className="px-6 py-3 font-medium text-right">
+                    Lines Changed
+                  </th>
+                  <th className="px-6 py-3 font-medium text-right">
+                    Reviews Given
+                  </th>
+                  <th className="px-6 py-3 font-medium text-right"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {members.map((m) => {
+                  const isBottleneck =
+                    dist?.bottleneck_developers.includes(m.developer_id) ??
+                    false;
+                  return (
+                    <tr
+                      key={m.developer_id}
+                      className="border-b border-slate-700/50 hover:bg-slate-700/30 transition"
+                    >
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-white">
+                            {m.developer_id.slice(0, 8)}
+                          </span>
+                          {isBottleneck && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400">
+                              bottleneck
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-3 text-right text-sm text-slate-300 font-mono">
+                        {m.commits_count}
+                      </td>
+                      <td className="px-6 py-3 text-right text-sm text-slate-300 font-mono">
+                        {m.prs_merged}
+                      </td>
+                      <td className="px-6 py-3 text-right text-sm text-slate-300 font-mono">
+                        {formatNumber(m.lines_changed)}
+                      </td>
+                      <td className="px-6 py-3 text-right text-sm text-slate-300 font-mono">
+                        {m.reviews_given}
+                      </td>
+                      <td className="px-6 py-3 text-right">
+                        <Link
+                          href={`/insights/developers/${m.developer_id}`}
+                          className="text-xs text-indigo-400 hover:text-indigo-300"
+                        >
+                          Details →
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  sub,
+  color,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: React.ReactNode;
+  sub?: string;
+  color: string;
+}) {
+  return (
+    <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className={`h-4 w-4 ${color}`} />
+        <span className="text-xs text-slate-400">{label}</span>
+      </div>
+      <div className="text-xl font-bold text-white">{value}</div>
+      {sub && <div className="text-xs text-slate-500 mt-1">{sub}</div>}
+    </div>
+  );
+}
+
+function formatNumber(n: number): string {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  return String(n);
 }

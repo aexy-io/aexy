@@ -1,7 +1,7 @@
 """Service for email campaign sending, analytics, and onboarding email ops.
 
 Extracted from processing/email_marketing_tasks.py for the Temporal migration.
-Each method converts the old sync Celery task logic to async using self.db (AsyncSession).
+Each method converts the old sync Temporal activity logic to async using self.db (AsyncSession).
 """
 
 import logging

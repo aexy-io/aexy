@@ -496,8 +496,8 @@ export default function CandidatesPage() {
             className="bg-slate-800 text-white rounded-lg px-3 py-2 border border-slate-700 focus:border-primary-500 focus:outline-none text-sm"
           >
             <option value="all">All Sources</option>
-            {sources.map((source) => (
-              <option key={source} value={source}>
+            {sources.filter(Boolean).map((source) => (
+              <option key={source} value={source!}>
                 {source}
               </option>
             ))}

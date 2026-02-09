@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 # Sync mode types
-SyncMode = Literal["async", "celery"]
+SyncMode = Literal["async", "temporal"]
 SyncType = Literal["full", "incremental"]
 
 
@@ -36,7 +36,7 @@ class SyncService:
         developer_id: str,
         repository_id: str,
         sync_type: SyncType = "incremental",
-        use_celery: bool = False,
+        use_background: bool = False,
     ) -> str:
         """
         Start historical sync for a repository.
@@ -45,7 +45,7 @@ class SyncService:
             developer_id: Developer ID.
             repository_id: Repository ID.
             sync_type: "full" or "incremental" sync.
-            use_celery: Use Celery task queue instead of async background task.
+            use_background: Use Temporal workflow instead of async background task.
 
         Returns job ID for tracking.
         """
@@ -83,7 +83,7 @@ class SyncService:
 
         job_id = str(uuid4())
 
-        if use_celery:
+        if use_background:
             # Use Temporal workflow for production workloads
             from aexy.temporal.dispatch import dispatch
             from aexy.temporal.task_queues import TaskQueue

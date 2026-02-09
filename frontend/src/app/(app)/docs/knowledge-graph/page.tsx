@@ -6,7 +6,7 @@ import { Network, Sparkles, RefreshCw, Lock, AlertTriangle } from "lucide-react"
 import Link from "next/link";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useSubscription } from "@/hooks/useSubscription";
-import { knowledgeGraphApi } from "@/lib/api";
+import { knowledgeGraphApi, KnowledgeEntityType, KnowledgeRelationType } from "@/lib/api";
 import { KnowledgeGraphCanvas } from "@/components/knowledge-graph/KnowledgeGraphCanvas";
 import { KnowledgeGraphToolbar } from "@/components/knowledge-graph/KnowledgeGraphToolbar";
 import { KnowledgeGraphSidebar } from "@/components/knowledge-graph/KnowledgeGraphSidebar";
@@ -57,8 +57,8 @@ export default function KnowledgeGraphPage() {
     queryKey: ["knowledgeGraph", currentWorkspace?.id, filters],
     queryFn: () =>
       knowledgeGraphApi.getGraph(currentWorkspace!.id, {
-        entity_types: filters.entityTypes.length > 0 ? filters.entityTypes : undefined,
-        relationship_types: filters.relationshipTypes.length > 0 ? filters.relationshipTypes : undefined,
+        entity_types: filters.entityTypes.length > 0 ? filters.entityTypes as KnowledgeEntityType[] : undefined,
+        relationship_types: filters.relationshipTypes.length > 0 ? filters.relationshipTypes as KnowledgeRelationType[] : undefined,
         space_ids: filters.spaceIds.length > 0 ? filters.spaceIds : undefined,
         date_from: filters.dateFrom || undefined,
         date_to: filters.dateTo || undefined,
@@ -206,7 +206,7 @@ export default function KnowledgeGraphPage() {
         onFilterChange={handleFilterChange}
         onSearch={handleSearch}
         searchQuery={searchQuery}
-        searchResults={searchEntities.data?.results || []}
+        searchResults={searchEntities.data || []}
         searchLoading={searchEntities.isPending}
         onTriggerExtraction={handleTriggerExtraction}
         extractionLoading={triggerExtraction.isPending}
@@ -259,7 +259,7 @@ export default function KnowledgeGraphPage() {
               onNodeSelect={handleNodeSelect}
               onNodeDeselect={handleNodeDeselect}
               selectedNodeId={selectedNodeId}
-              temporal={graphData?.temporal}
+              temporal={graphData?.temporal as import("@/components/knowledge-graph/KnowledgeGraphCanvas").TemporalData | undefined}
             />
           )}
         </div>

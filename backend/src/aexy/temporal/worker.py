@@ -113,6 +113,16 @@ def get_all_activities() -> list:
         send_swap_notification,
         sync_oncall_calendar_events,
     )
+    from aexy.temporal.activities.reminders import (
+        check_evidence_freshness,
+        flag_overdue_reminders,
+        generate_reminder_instances,
+        process_auto_assignment,
+        process_escalations,
+        send_daily_digest,
+        send_reminder_notification,
+        send_weekly_slack_summary,
+    )
     from aexy.temporal.activities.reputation import (
         auto_pause_unhealthy_domains,
         calculate_daily_health,
@@ -241,6 +251,15 @@ def get_all_activities() -> list:
         # Workflow Actions
         execute_workflow_action,
         cleanup_old_executions,
+        # Reminders (Compliance)
+        generate_reminder_instances,
+        process_escalations,
+        send_daily_digest,
+        flag_overdue_reminders,
+        check_evidence_freshness,
+        process_auto_assignment,
+        send_weekly_slack_summary,
+        send_reminder_notification,
     ]
 
 

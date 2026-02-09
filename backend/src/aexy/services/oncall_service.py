@@ -668,7 +668,7 @@ class OnCallService:
     ) -> list[OnCallSchedule]:
         """Get shifts starting soon that need notification.
 
-        Used by the Celery task to send shift-starting notifications.
+        Used by the Temporal activity to send shift-starting notifications.
         """
         now = datetime.now(timezone.utc)
         notify_window = now + timedelta(minutes=minutes_ahead)

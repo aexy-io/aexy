@@ -6,12 +6,14 @@ import { OKRGoal, OKRGoalStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const STATUS_CONFIG: Record<OKRGoalStatus, { label: string; color: string }> = {
+  not_started: { label: "Not Started", color: "text-slate-400" },
   draft: { label: "Draft", color: "text-slate-400" },
   active: { label: "Active", color: "text-blue-400" },
   on_track: { label: "On Track", color: "text-green-400" },
   at_risk: { label: "At Risk", color: "text-amber-400" },
   behind: { label: "Behind", color: "text-red-400" },
   achieved: { label: "Achieved", color: "text-green-400" },
+  missed: { label: "Missed", color: "text-red-500" },
   cancelled: { label: "Cancelled", color: "text-slate-500" },
 };
 
