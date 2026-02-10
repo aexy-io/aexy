@@ -33,7 +33,7 @@ const PERIOD_OPTIONS: { value: InsightsPeriodType; label: string }[] = [
 ];
 
 export default function MyInsightsPage() {
-  const { isLoading: authLoading, isAuthenticated, developer } = useAuth();
+  const { isLoading: authLoading, isAuthenticated, user: developer } = useAuth();
   const { currentWorkspaceId } = useWorkspace();
   const [periodType, setPeriodType] = useState<InsightsPeriodType>("weekly");
   const [exporting, setExporting] = useState(false);
@@ -63,7 +63,7 @@ export default function MyInsightsPage() {
       }),
     enabled: !!currentWorkspaceId && !!myId,
   });
-
+  console.log("data",percentile);
   if (authLoading) {
     return (
       <div className="flex items-center justify-center h-64">
