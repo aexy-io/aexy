@@ -268,7 +268,7 @@ class DeveloperInsightsService:
         ).where(
             and_(
                 PullRequest.developer_id == developer_id,
-                PullRequest.state == "merged",
+                PullRequest.merged_at.isnot(None),
                 PullRequest.merged_at >= start,
                 PullRequest.merged_at <= end,
             )
@@ -319,7 +319,7 @@ class DeveloperInsightsService:
             return EfficiencyMetrics()
 
         total_prs = len(prs)
-        merged_prs = [p for p in prs if p.state == "merged" and p.merged_at]
+        merged_prs = [p for p in prs if p.merged_at]
         merge_count = len(merged_prs)
 
         # Cycle time: created_at_github → merged_at
@@ -647,7 +647,7 @@ class DeveloperInsightsService:
         own_prs_stmt = select(PullRequest).where(
             and_(
                 PullRequest.developer_id == developer_id,
-                PullRequest.state == "merged",
+                PullRequest.merged_at.isnot(None),
                 PullRequest.merged_at >= start,
                 PullRequest.merged_at <= end,
             )
@@ -1159,7 +1159,7 @@ class DeveloperInsightsService:
         ).where(
             and_(
                 PullRequest.developer_id.in_(developer_ids),
-                PullRequest.state == "merged",
+                PullRequest.merged_at.isnot(None),
                 PullRequest.merged_at >= start,
                 PullRequest.merged_at <= end,
             )
@@ -1547,7 +1547,7 @@ class DeveloperInsightsService:
         # 5. Self-merge without review
         self_merged = [
             p for p in prs
-            if p.state == "merged" and p.merged_at
+            if p.merged_at
         ]
         if self_merged:
             sm_ids = [p.github_id for p in self_merged]

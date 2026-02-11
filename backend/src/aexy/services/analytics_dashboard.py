@@ -258,7 +258,7 @@ class AnalyticsDashboardService:
                 func.date_trunc(group_by, PullRequest.created_at).label("period"),
                 func.count(PullRequest.id).label("prs_opened"),
                 func.sum(
-                    func.cast(PullRequest.state == "merged", type_=Integer)
+                    func.cast(PullRequest.merged_at.isnot(None), type_=Integer)
                 ).label("prs_merged"),
             )
             .where(
@@ -565,7 +565,7 @@ class AnalyticsDashboardService:
                 select(
                     func.count(PullRequest.id).label("total"),
                     func.sum(
-                        func.cast(PullRequest.state == "merged", type_=Integer)
+                        func.cast(PullRequest.merged_at.isnot(None), type_=Integer)
                     ).label("merged"),
                 )
                 .where(
