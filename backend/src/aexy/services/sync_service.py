@@ -348,6 +348,9 @@ class SyncService:
                 result = await db.execute(stmt)
                 existing = result.scalar_one_or_none()
 
+                # GitHub API returns "closed" for merged PRs — normalize to "merged"
+                pr_state = "merged" if pr_data.get("merged_at") else pr_data["state"]
+
                 if not existing:
                     pr = PullRequest(
                         id=str(uuid4()),
@@ -356,7 +359,7 @@ class SyncService:
                         github_id=pr_data["id"],
                         number=pr_data["number"],
                         title=pr_data["title"][:500] if pr_data["title"] else "",
-                        state=pr_data["state"],
+                        state=pr_state,
                         additions=pr_data.get("additions", 0),
                         deletions=pr_data.get("deletions", 0),
                         files_changed=pr_data.get("changed_files", 0),
@@ -374,6 +377,15 @@ class SyncService:
                     )
                     db.add(pr)
                     synced += 1
+                else:
+                    # Update existing PR state and timestamps
+                    existing.state = pr_state
+                    existing.merged_at = datetime.fromisoformat(
+                        pr_data["merged_at"].replace("Z", "+00:00")
+                    ) if pr_data.get("merged_at") else existing.merged_at
+                    existing.closed_at = datetime.fromisoformat(
+                        pr_data["closed_at"].replace("Z", "+00:00")
+                    ) if pr_data.get("closed_at") else existing.closed_at
 
             if len(prs) < 100:
                 break

@@ -111,7 +111,7 @@ function RepoItem({ repo, onRepoToggle, onStartSync, showOwner }: RepoItemProps)
                 <WebhookStatusBadge status={repo.webhook_status as WebhookStatus} />
               </div>
             </div>
-            {(repo.sync_status === "pending" || repo.sync_status === "failed") && (
+             
               <button
                 onClick={() => onStartSync(repo.id)}
                 className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition"
@@ -119,7 +119,7 @@ function RepoItem({ repo, onRepoToggle, onStartSync, showOwner }: RepoItemProps)
               >
                 <RefreshCw className="h-4 w-4" />
               </button>
-            )}
+            
           </>
         )}
       </div>
