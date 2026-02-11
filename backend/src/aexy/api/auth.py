@@ -171,7 +171,7 @@ async def github_callback(
         scopes=scopes,
     )
 
-    # If this is an installation callback, sync the installation
+    # If this is an installation callback, sync the installation and fetch repos
     if is_installation_callback and installation_id:
         try:
             from aexy.services.github_app_service import GitHubAppService
@@ -188,6 +188,14 @@ async def github_callback(
                     user_info.login,
                 )
                 await db.commit()
+
+                # Auto-fetch available repositories so user doesn't have to
+                # manually click "Refresh from GitHub"
+                try:
+                    await repo_service.sync_repos_from_installations(developer.id)
+                    await db.commit()
+                except Exception:
+                    pass  # Non-critical, user can refresh later
         except Exception as e:
             # Log but don't fail - user can sync later
             print(f"Failed to sync installation: {e}")

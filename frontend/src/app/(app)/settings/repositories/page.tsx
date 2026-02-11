@@ -224,6 +224,20 @@ export default function RepositorySettingsPage() {
     fetchData();
   }, [fetchData]);
 
+  // Auto-refresh from GitHub if installation exists but no repos loaded yet
+  const autoRefreshedRef = useRef(false);
+  useEffect(() => {
+    if (
+      !loading &&
+      !autoRefreshedRef.current &&
+      installationStatus?.has_installation &&
+      repositories.length === 0
+    ) {
+      autoRefreshedRef.current = true;
+      handleRefresh();
+    }
+  }, [loading, installationStatus, repositories.length]);
+
   // Auto-poll when repos are syncing
   useEffect(() => {
     const hasSyncingRepos = repositories.some(r => r.sync_status === "syncing");

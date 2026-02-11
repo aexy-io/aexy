@@ -35,7 +35,7 @@ class Plan(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Sync limits (-1 means unlimited)
-    max_repos: Mapped[int] = mapped_column(Integer, default=3)
+    max_repos: Mapped[int] = mapped_column(Integer, default=5)
     max_commits_per_repo: Mapped[int] = mapped_column(Integer, default=500)
     max_prs_per_repo: Mapped[int] = mapped_column(Integer, default=100)
     sync_history_days: Mapped[int] = mapped_column(Integer, default=90)  # How far back to sync
@@ -113,7 +113,7 @@ DEFAULT_PLANS = [
         "name": "Free",
         "tier": PlanTier.FREE.value,
         "description": "Perfect for trying out Aexy",
-        "max_repos": 3,
+        "max_repos": 5,
         "max_commits_per_repo": 500,
         "max_prs_per_repo": 100,
         "sync_history_days": 90,
