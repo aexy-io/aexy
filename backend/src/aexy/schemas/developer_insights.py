@@ -448,6 +448,7 @@ class RepositoryContributor(BaseModel):
     commits_count: int = 0
     lines_added: int = 0
     lines_removed: int = 0
+    is_workspace_member: bool = True
 
 
 class RepositoryInsightsSummary(BaseModel):
@@ -481,6 +482,7 @@ class RepositoryDeveloperBreakdown(BaseModel):
     lines_removed: int = 0
     lines_changed: int = 0
     reviews_given: int = 0
+    is_workspace_member: bool = True
 
 
 class RepositoryDetailResponse(BaseModel):
@@ -508,6 +510,7 @@ class DeveloperSyncStatus(BaseModel):
     developer_id: str
     developer_name: str | None = None
     repositories: list[RepositorySyncInfo] = []
+    is_workspace_member: bool = True
 
 
 class SyncStatusResponse(BaseModel):

@@ -233,12 +233,19 @@ export default function RepositoryDetailPage() {
                 {sorted.map((dev) => (
                   <tr key={dev.developer_id} className="hover:bg-slate-700/30 transition">
                     <td className="px-4 py-3">
-                      <Link
-                        href={`/insights/developers/${dev.developer_id}`}
-                        className="text-sm font-medium text-white hover:text-indigo-300 transition"
-                      >
-                        {dev.developer_name || dev.developer_id.slice(0, 12)}
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/insights/developers/${dev.developer_id}`}
+                          className="text-sm font-medium text-white hover:text-indigo-300 transition"
+                        >
+                          {dev.developer_name || dev.developer_id.slice(0, 12)}
+                        </Link>
+                        {!dev.is_workspace_member && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-medium">
+                            External
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-right text-sm font-mono text-white">
                       {dev.commits_count}

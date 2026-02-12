@@ -2582,13 +2582,49 @@ class DeveloperInsightsService:
     # Repository Insights
     # -----------------------------------------------------------------------
 
+    async def _find_workspace_repositories(
+        self,
+        developer_ids: list[str],
+        start: datetime,
+        end: datetime,
+    ) -> list[str]:
+        """Find all repository names that workspace members have activity in."""
+        stmt = select(distinct(Commit.repository)).where(
+            and_(
+                Commit.developer_id.in_(developer_ids),
+                Commit.committed_at >= start,
+                Commit.committed_at <= end,
+                Commit.repository.isnot(None),
+            )
+        )
+        result = await self.db.execute(stmt)
+        repos = {row[0] for row in result.all()}
+
+        # Also include repos with PRs
+        pr_stmt = select(distinct(PullRequest.repository)).where(
+            and_(
+                PullRequest.developer_id.in_(developer_ids),
+                PullRequest.created_at >= start,
+                PullRequest.created_at <= end,
+                PullRequest.repository.isnot(None),
+            )
+        )
+        pr_result = await self.db.execute(pr_stmt)
+        repos.update(row[0] for row in pr_result.all())
+
+        return list(repos)
+
     async def compute_repository_insights(
         self,
         developer_ids: list[str],
         start: datetime,
         end: datetime,
+        include_external: bool = False,
     ) -> list[dict]:
-        """Compute per-repository activity metrics across all workspace members.
+        """Compute per-repository activity metrics.
+
+        When include_external=True, first finds repos workspace members touch,
+        then returns ALL contributors to those repos (including non-members).
 
         Returns a list of dicts sorted by commits_count descending.
         """
@@ -2597,53 +2633,84 @@ class DeveloperInsightsService:
 
         from collections import defaultdict
 
+        # When including external contributors, find repos first then query
+        # all activity on those repos without filtering by developer_id
+        repo_filter: list[str] | None = None
+        if include_external:
+            repo_filter = await self._find_workspace_repositories(
+                developer_ids, start, end
+            )
+            if not repo_filter:
+                return []
+
         # 1) Commits per (repo, developer)
+        if repo_filter is not None:
+            commit_where = and_(
+                Commit.repository.in_(repo_filter),
+                Commit.committed_at >= start,
+                Commit.committed_at <= end,
+            )
+        else:
+            commit_where = and_(
+                Commit.developer_id.in_(developer_ids),
+                Commit.committed_at >= start,
+                Commit.committed_at <= end,
+            )
+
         commit_stmt = select(
             Commit.repository,
             Commit.developer_id,
             func.count(Commit.id).label("commit_count"),
             func.coalesce(func.sum(Commit.additions), 0).label("lines_added"),
             func.coalesce(func.sum(Commit.deletions), 0).label("lines_removed"),
-        ).where(
-            and_(
-                Commit.developer_id.in_(developer_ids),
-                Commit.committed_at >= start,
-                Commit.committed_at <= end,
-            )
-        ).group_by(Commit.repository, Commit.developer_id)
+        ).where(commit_where).group_by(Commit.repository, Commit.developer_id)
 
         commit_result = await self.db.execute(commit_stmt)
         commit_rows = commit_result.all()
 
         # 2) PRs per (repo, developer)
+        if repo_filter is not None:
+            pr_where = and_(
+                PullRequest.repository.in_(repo_filter),
+                PullRequest.created_at >= start,
+                PullRequest.created_at <= end,
+            )
+        else:
+            pr_where = and_(
+                PullRequest.developer_id.in_(developer_ids),
+                PullRequest.created_at >= start,
+                PullRequest.created_at <= end,
+            )
+
         pr_stmt = select(
             PullRequest.repository,
             PullRequest.developer_id,
             func.count(PullRequest.id).label("pr_count"),
             func.sum(case((PullRequest.merged_at.isnot(None), 1), else_=0)).label("pr_merged"),
-        ).where(
-            and_(
-                PullRequest.developer_id.in_(developer_ids),
-                PullRequest.created_at >= start,
-                PullRequest.created_at <= end,
-            )
-        ).group_by(PullRequest.repository, PullRequest.developer_id)
+        ).where(pr_where).group_by(PullRequest.repository, PullRequest.developer_id)
 
         pr_result = await self.db.execute(pr_stmt)
         pr_rows = pr_result.all()
 
         # 3) Reviews per (repo, developer)
-        review_stmt = select(
-            CodeReview.repository,
-            CodeReview.developer_id,
-            func.count(CodeReview.id).label("review_count"),
-        ).where(
-            and_(
+        if repo_filter is not None:
+            review_where = and_(
+                CodeReview.repository.in_(repo_filter),
+                CodeReview.submitted_at >= start,
+                CodeReview.submitted_at <= end,
+            )
+        else:
+            review_where = and_(
                 CodeReview.developer_id.in_(developer_ids),
                 CodeReview.submitted_at >= start,
                 CodeReview.submitted_at <= end,
             )
-        ).group_by(CodeReview.repository, CodeReview.developer_id)
+
+        review_stmt = select(
+            CodeReview.repository,
+            CodeReview.developer_id,
+            func.count(CodeReview.id).label("review_count"),
+        ).where(review_where).group_by(CodeReview.repository, CodeReview.developer_id)
 
         review_result = await self.db.execute(review_stmt)
         review_rows = review_result.all()
@@ -2723,13 +2790,17 @@ class DeveloperInsightsService:
         repository: str,
         start: datetime,
         end: datetime,
+        include_external: bool = False,
     ) -> list[dict]:
         """Compute per-developer breakdown for a single repository.
+
+        When include_external=True, returns ALL developers who contributed
+        to this repo, not just workspace members.
 
         Returns list of dicts with developer_id, commits_count, lines_added,
         lines_removed, prs_merged, reviews_given, sorted by commits_count desc.
         """
-        if not developer_ids:
+        if not developer_ids and not include_external:
             return []
 
         from collections import defaultdict
@@ -2742,20 +2813,21 @@ class DeveloperInsightsService:
             "reviews_given": 0,
         })
 
-        # Commits
+        # Commits — filter by repo + time; optionally restrict to developer_ids
+        commit_where = and_(
+            Commit.repository == repository,
+            Commit.committed_at >= start,
+            Commit.committed_at <= end,
+        )
+        if not include_external:
+            commit_where = and_(commit_where, Commit.developer_id.in_(developer_ids))
+
         commit_stmt = select(
             Commit.developer_id,
             func.count(Commit.id).label("commit_count"),
             func.coalesce(func.sum(Commit.additions), 0).label("lines_added"),
             func.coalesce(func.sum(Commit.deletions), 0).label("lines_removed"),
-        ).where(
-            and_(
-                Commit.developer_id.in_(developer_ids),
-                Commit.repository == repository,
-                Commit.committed_at >= start,
-                Commit.committed_at <= end,
-            )
-        ).group_by(Commit.developer_id)
+        ).where(commit_where).group_by(Commit.developer_id)
 
         result = await self.db.execute(commit_stmt)
         for dev_id, count, added, removed in result.all():
@@ -2764,34 +2836,36 @@ class DeveloperInsightsService:
             dev_data[dev_id]["lines_removed"] = int(removed)
 
         # PRs merged
+        pr_where = and_(
+            PullRequest.repository == repository,
+            PullRequest.created_at >= start,
+            PullRequest.created_at <= end,
+        )
+        if not include_external:
+            pr_where = and_(pr_where, PullRequest.developer_id.in_(developer_ids))
+
         pr_stmt = select(
             PullRequest.developer_id,
             func.sum(case((PullRequest.merged_at.isnot(None), 1), else_=0)).label("pr_merged"),
-        ).where(
-            and_(
-                PullRequest.developer_id.in_(developer_ids),
-                PullRequest.repository == repository,
-                PullRequest.created_at >= start,
-                PullRequest.created_at <= end,
-            )
-        ).group_by(PullRequest.developer_id)
+        ).where(pr_where).group_by(PullRequest.developer_id)
 
         result = await self.db.execute(pr_stmt)
         for dev_id, merged in result.all():
             dev_data[dev_id]["prs_merged"] = int(merged)
 
         # Reviews
+        review_where = and_(
+            CodeReview.repository == repository,
+            CodeReview.submitted_at >= start,
+            CodeReview.submitted_at <= end,
+        )
+        if not include_external:
+            review_where = and_(review_where, CodeReview.developer_id.in_(developer_ids))
+
         review_stmt = select(
             CodeReview.developer_id,
             func.count(CodeReview.id).label("review_count"),
-        ).where(
-            and_(
-                CodeReview.developer_id.in_(developer_ids),
-                CodeReview.repository == repository,
-                CodeReview.submitted_at >= start,
-                CodeReview.submitted_at <= end,
-            )
-        ).group_by(CodeReview.developer_id)
+        ).where(review_where).group_by(CodeReview.developer_id)
 
         result = await self.db.execute(review_stmt)
         for dev_id, count in result.all():

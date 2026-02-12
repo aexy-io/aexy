@@ -1862,7 +1862,7 @@ async def get_repository_insights(
     start_date: datetime | None = Query(default=None),
     end_date: datetime | None = Query(default=None),
 ):
-    """Get per-repository activity metrics for all workspace members."""
+    """Get per-repository activity metrics including external contributors."""
     from aexy.services.developer_insights_service import DeveloperInsightsService
 
     if not start_date or not end_date:
@@ -1879,8 +1879,11 @@ async def get_repository_insights(
             period_end=end_date,
         )
 
+    member_id_set = set(dev_ids)
     service = DeveloperInsightsService(db)
-    raw_repos = await service.compute_repository_insights(dev_ids, start_date, end_date)
+    raw_repos = await service.compute_repository_insights(
+        dev_ids, start_date, end_date, include_external=True
+    )
 
     # Enrich with repository metadata (language, is_private)
     repo_names = [r["repository"] for r in raw_repos]
@@ -1917,6 +1920,7 @@ async def get_repository_insights(
                 commits_count=c["commits_count"],
                 lines_added=c["lines_added"],
                 lines_removed=c["lines_removed"],
+                is_workspace_member=c["developer_id"] in member_id_set,
             )
             for c in r.get("top_contributors", [])
         ]
@@ -1953,7 +1957,7 @@ async def get_repository_detail(
     start_date: datetime | None = Query(default=None),
     end_date: datetime | None = Query(default=None),
 ):
-    """Get detailed per-developer breakdown for a specific repository."""
+    """Get detailed per-developer breakdown including external contributors."""
     from aexy.services.developer_insights_service import DeveloperInsightsService
 
     if not start_date or not end_date:
@@ -1964,10 +1968,13 @@ async def get_repository_detail(
     if not dev_ids:
         raise HTTPException(status_code=404, detail="No workspace members found")
 
+    member_id_set = set(dev_ids)
     service = DeveloperInsightsService(db)
 
-    # Get aggregate for this repo
-    all_repos = await service.compute_repository_insights(dev_ids, start_date, end_date)
+    # Get aggregate for this repo (with external contributors)
+    all_repos = await service.compute_repository_insights(
+        dev_ids, start_date, end_date, include_external=True
+    )
     repo_aggregate = None
     for r in all_repos:
         if r["repository"] == repo_full_name:
@@ -1977,9 +1984,9 @@ async def get_repository_detail(
     if repo_aggregate is None:
         raise HTTPException(status_code=404, detail="No data found for this repository")
 
-    # Get per-developer breakdown
+    # Get per-developer breakdown (with external contributors)
     breakdown = await service.compute_repository_developer_breakdown(
-        dev_ids, repo_full_name, start_date, end_date
+        dev_ids, repo_full_name, start_date, end_date, include_external=True
     )
 
     # Repository metadata
@@ -1989,7 +1996,7 @@ async def get_repository_detail(
     meta_result = await db.execute(meta_stmt)
     meta_row = meta_result.first()
 
-    # Resolve developer names
+    # Resolve developer names (including external developers in the DB)
     all_dev_ids_set = set()
     for c in repo_aggregate.get("top_contributors", []):
         all_dev_ids_set.add(c["developer_id"])
@@ -2012,6 +2019,7 @@ async def get_repository_detail(
             commits_count=c["commits_count"],
             lines_added=c["lines_added"],
             lines_removed=c["lines_removed"],
+            is_workspace_member=c["developer_id"] in member_id_set,
         )
         for c in repo_aggregate.get("top_contributors", [])
     ]
@@ -2040,6 +2048,7 @@ async def get_repository_detail(
             lines_removed=d["lines_removed"],
             lines_changed=d["lines_changed"],
             reviews_given=d["reviews_given"],
+            is_workspace_member=d["developer_id"] in member_id_set,
         )
         for d in breakdown
     ]
@@ -2064,17 +2073,40 @@ async def get_sync_status(
     db: Annotated[AsyncSession, Depends(get_db)],
     developer_id: Annotated[str, Depends(verify_workspace_membership)],
 ):
-    """Get sync status for all workspace members and their repositories."""
+    """Get sync status for workspace members and external developers on shared repos."""
+    from collections import defaultdict
+
     dev_ids = await _get_workspace_developer_ids(db, workspace_id)
     if not dev_ids:
         return SyncStatusResponse(developers=[], total_developers=0)
 
-    # Get developer names
-    names_stmt = select(Developer.id, Developer.name).where(Developer.id.in_(dev_ids))
-    names_result = await db.execute(names_stmt)
-    dev_names: dict[str, str | None] = {row[0]: row[1] for row in names_result.all()}
+    member_id_set = set(dev_ids)
 
-    # Get all developer_repositories with repository info
+    # Find all repo IDs linked to workspace members
+    member_repo_stmt = select(distinct(DeveloperRepository.repository_id)).where(
+        DeveloperRepository.developer_id.in_(dev_ids)
+    )
+    member_repo_result = await db.execute(member_repo_stmt)
+    repo_ids = [row[0] for row in member_repo_result.all()]
+
+    if not repo_ids:
+        # No repos at all — just return empty entries for workspace members
+        names_stmt = select(Developer.id, Developer.name).where(Developer.id.in_(dev_ids))
+        names_result = await db.execute(names_stmt)
+        dev_names = {row[0]: row[1] for row in names_result.all()}
+
+        developers = [
+            DeveloperSyncStatus(
+                developer_id=did,
+                developer_name=dev_names.get(did),
+                repositories=[],
+                is_workspace_member=True,
+            )
+            for did in dev_ids
+        ]
+        return SyncStatusResponse(developers=developers, total_developers=len(developers))
+
+    # Get ALL developer_repositories for those repos (includes external devs)
     stmt = select(
         DeveloperRepository.developer_id,
         DeveloperRepository.repository_id,
@@ -2089,17 +2121,19 @@ async def get_sync_status(
     ).join(
         Repository, DeveloperRepository.repository_id == Repository.id
     ).where(
-        DeveloperRepository.developer_id.in_(dev_ids)
+        DeveloperRepository.repository_id.in_(repo_ids)
     ).order_by(DeveloperRepository.developer_id, Repository.full_name)
 
     result = await db.execute(stmt)
     rows = result.all()
 
-    # Group by developer
-    from collections import defaultdict
+    # Collect all developer IDs (members + external)
+    all_dev_id_set = set()
     dev_repos: dict[str, list[RepositorySyncInfo]] = defaultdict(list)
     for row in rows:
-        dev_repos[row[0]].append(RepositorySyncInfo(
+        did = row[0]
+        all_dev_id_set.add(did)
+        dev_repos[did].append(RepositorySyncInfo(
             repository_id=row[1],
             repository_full_name=row[9],
             is_enabled=row[2],
@@ -2111,16 +2145,33 @@ async def get_sync_status(
             reviews_synced=row[8] or 0,
         ))
 
+    # Also include workspace members who have no repos yet
+    all_dev_id_set.update(dev_ids)
+
+    # Get names for all developers
+    dev_names: dict[str, str | None] = {}
+    if all_dev_id_set:
+        names_stmt = select(Developer.id, Developer.name).where(
+            Developer.id.in_(list(all_dev_id_set))
+        )
+        names_result = await db.execute(names_stmt)
+        dev_names = {row[0]: row[1] for row in names_result.all()}
+
     developers = []
-    for dev_id in dev_ids:
+    for did in all_dev_id_set:
         developers.append(DeveloperSyncStatus(
-            developer_id=dev_id,
-            developer_name=dev_names.get(dev_id),
-            repositories=dev_repos.get(dev_id, []),
+            developer_id=did,
+            developer_name=dev_names.get(did),
+            repositories=dev_repos.get(did, []),
+            is_workspace_member=did in member_id_set,
         ))
 
-    # Sort: developers with repos first, then by name
-    developers.sort(key=lambda d: (-len(d.repositories), d.developer_name or ""))
+    # Sort: workspace members first, then external; within each group by repo count desc
+    developers.sort(key=lambda d: (
+        0 if d.is_workspace_member else 1,
+        -len(d.repositories),
+        d.developer_name or "",
+    ))
 
     return SyncStatusResponse(
         developers=developers,

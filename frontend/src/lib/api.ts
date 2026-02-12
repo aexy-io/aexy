@@ -15623,6 +15623,7 @@ export interface RepositoryContributor {
   commits_count: number;
   lines_added: number;
   lines_removed: number;
+  is_workspace_member: boolean;
 }
 
 export interface RepositoryInsightsSummary {
@@ -15656,6 +15657,7 @@ export interface RepositoryDeveloperBreakdown {
   lines_removed: number;
   lines_changed: number;
   reviews_given: number;
+  is_workspace_member: boolean;
 }
 
 export interface RepositoryDetailResponse {
@@ -15683,6 +15685,7 @@ export interface DeveloperSyncStatusData {
   developer_id: string;
   developer_name?: string | null;
   repositories: RepositorySyncInfo[];
+  is_workspace_member: boolean;
 }
 
 export interface SyncStatusResponse {

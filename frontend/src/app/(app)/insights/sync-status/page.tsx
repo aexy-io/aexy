@@ -96,6 +96,11 @@ function DeveloperRow({ developer }: { developer: DeveloperSyncStatusData }) {
           <span className="text-sm font-medium text-white">
             {developer.developer_name || developer.developer_id.slice(0, 12)}
           </span>
+          {!developer.is_workspace_member && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-medium ml-2">
+              External
+            </span>
+          )}
           <span className="text-xs text-slate-500 ml-2">
             {enabledCount} repos enabled
             {failedCount > 0 && (
