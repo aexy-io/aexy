@@ -24,12 +24,14 @@ import {
   Gauge,
   User,
   Brain,
+  FolderGit2,
 } from "lucide-react";
 import {
   useTeamInsights,
   useLeaderboard,
   useGenerateSnapshots,
 } from "@/hooks/useInsights";
+import { useEnabledRepositories } from "@/hooks/useRepositories";
 import { InsightsPeriodType } from "@/lib/api";
 import {
   BarChart,
@@ -85,6 +87,7 @@ function GiniIndicator({ value }: { value: number }) {
 export default function InsightsPage() {
   const { isLoading: authLoading, isAuthenticated } = useAuth();
   const { currentWorkspaceId } = useWorkspace();
+  const { hasEnabledRepos, hasInstallation, installUrl, isLoading: reposLoading } = useEnabledRepositories();
   const [periodType, setPeriodType] = useState<InsightsPeriodType>("weekly");
 
   const {
@@ -95,7 +98,7 @@ export default function InsightsPage() {
 
   const { leaderboard, isLoading: lbLoading } = useLeaderboard(
     currentWorkspaceId,
-    { metric: "commits", period_type: periodType, limit: 5 }
+    { metric: "commits", period_type: periodType, limit: 5 },
   );
 
   const { generateSnapshots, isGenerating } =
@@ -145,19 +148,18 @@ export default function InsightsPage() {
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <TrendingUp className="h-6 w-6 text-indigo-400" />
-            Team Insights
-          </h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Metrics-driven view of team velocity, efficiency, and workload
-            distribution
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {/* Period Selector */}
+      <div className="flex flex-col justify-between gap-6">
+        <div className="flex justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+              <TrendingUp className="h-6 w-6 text-indigo-400" />
+              Team Insights
+            </h1>
+            <p className="text-slate-400 text-sm mt-1">
+              Metrics-driven view of team velocity, efficiency, and workload
+              distribution
+            </p>
+          </div>
           <div className="flex bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
             {PERIOD_OPTIONS.map((opt) => (
               <button
@@ -173,6 +175,10 @@ export default function InsightsPage() {
               </button>
             ))}
           </div>
+        </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Period Selector */}
+
           <Link
             href="/insights/compare"
             className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition"
@@ -208,6 +214,7 @@ export default function InsightsPage() {
             <Gauge className="h-4 w-4" />
             Capacity
           </Link>
+
           <Link
             href="/insights/ai"
             className="flex items-center gap-2 px-3 py-1.5 bg-purple-700 hover:bg-purple-600 text-white text-sm rounded-lg transition"
@@ -235,8 +242,58 @@ export default function InsightsPage() {
         </div>
       </div>
 
+      {/* GitHub App not installed */}
+      {!reposLoading && !hasInstallation && (
+        <div className="bg-slate-800 rounded-xl p-8 border border-slate-700 text-center">
+          <FolderGit2 className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-white mb-2">
+            Connect your GitHub account
+          </h3>
+          <p className="text-slate-400 text-sm mb-6 max-w-md mx-auto">
+            Install the Aexy GitHub App to grant access to your repositories. This is required to generate team insights, velocity metrics, and workload analysis.
+          </p>
+          {installUrl ? (
+            <a
+              href={installUrl}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition"
+            >
+              Install GitHub App
+              <ArrowRight className="w-4 h-4" />
+            </a>
+          ) : (
+            <Link
+              href="/settings/repositories"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition"
+            >
+              Go to Repository Settings
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          )}
+        </div>
+      )}
+
+      {/* Installation exists but no repos enabled */}
+      {!reposLoading && hasInstallation && !hasEnabledRepos && (
+        <div className="bg-slate-800 rounded-xl p-8 border border-slate-700 text-center">
+          <FolderGit2 className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-white mb-2">
+            No repositories enabled
+          </h3>
+          <p className="text-slate-400 text-sm mb-6 max-w-md mx-auto">
+            Your GitHub App is connected but you haven&apos;t enabled any repositories yet. Enable at least one repository to see team velocity, efficiency, and workload distribution.
+          </p>
+          <Link
+            href="/settings/repositories"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition"
+          >
+            Select Repositories
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      )}
+
       {/* Stat Cards */}
-      {teamLoading ? (
+      {!hasEnabledRepos ? null : teamLoading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div
@@ -282,23 +339,21 @@ export default function InsightsPage() {
           <StatCard
             icon={BarChart3}
             label="Workload Equality"
-            value={
-              <GiniIndicator value={dist?.gini_coefficient ?? 0} />
-            }
+            value={<GiniIndicator value={dist?.gini_coefficient ?? 0} />}
             color="text-indigo-400"
           />
         </div>
       ) : (
         <div className="bg-slate-800 rounded-xl p-8 border border-slate-700 text-center">
           <p className="text-slate-400">
-            No insights data yet. Click &quot;Generate Snapshots&quot; to compute
-            metrics.
+            No insights data yet. Click &quot;Generate Snapshots&quot; to
+            compute metrics.
           </p>
         </div>
       )}
 
       {/* Main Content Grid */}
-      <div className="grid lg:grid-cols-3 gap-6">
+      {hasEnabledRepos && <div className="grid lg:grid-cols-3 gap-6">
         {/* Workload Distribution Chart */}
         <div className="lg:col-span-2 bg-slate-800 rounded-xl p-6 border border-slate-700">
           <div className="flex items-center justify-between mb-4">
@@ -333,7 +388,12 @@ export default function InsightsPage() {
                     color: "#f8fafc",
                   }}
                 />
-                <Bar dataKey="commits" name="Commits" stackId="a" fill="#6366f1" />
+                <Bar
+                  dataKey="commits"
+                  name="Commits"
+                  stackId="a"
+                  fill="#6366f1"
+                />
                 <Bar dataKey="prs" name="PRs" stackId="a" fill="#8b5cf6" />
                 <Bar
                   dataKey="reviews"
@@ -431,10 +491,10 @@ export default function InsightsPage() {
             </p>
           )}
         </div>
-      </div>
+      </div>}
 
       {/* Member Summary Table */}
-      {members.length > 0 && (
+      {hasEnabledRepos && members.length > 0 && (
         <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-700">
             <h2 className="text-lg font-semibold text-white">

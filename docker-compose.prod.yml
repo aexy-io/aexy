@@ -37,7 +37,7 @@ services:
     container_name: aexy-temporal
     restart: unless-stopped
     environment:
-      - DB=postgresql
+      - DB=postgres12
       - DB_PORT=5432
       - POSTGRES_USER=${POSTGRES_USER:-aexy}
       - POSTGRES_PWD=${POSTGRES_PASSWORD}
@@ -55,6 +55,7 @@ services:
     restart: unless-stopped
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_NAMESPACE=default
     depends_on:
       - temporal
     networks:
@@ -73,6 +74,7 @@ services:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-aexy}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aexy}
       - REDIS_URL=redis://redis:6379/0
       - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_NAMESPACE=default
       - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY in .env.prod}
       - FRONTEND_URL=${FRONTEND_URL:-https://aexy.io}
       - BACKEND_URL=${BACKEND_URL:-https://server.aexy.io}
@@ -150,6 +152,7 @@ services:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-aexy}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aexy}
       - REDIS_URL=redis://redis:6379/0
       - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_NAMESPACE=default
       - SECRET_KEY=${SECRET_KEY}
       - FRONTEND_URL=${FRONTEND_URL:-https://aexy.io}
       # LLM

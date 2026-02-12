@@ -13,6 +13,7 @@ from temporalio.client import (
     Client,
     Schedule,
     ScheduleActionStartWorkflow,
+    ScheduleAlreadyRunningError,
     ScheduleIntervalSpec,
     ScheduleSpec,
     ScheduleState,
@@ -356,19 +357,8 @@ async def register_schedules(client: Client) -> None:
                     Schedule(action=action, spec=spec, state=ScheduleState()),
                 )
                 logger.info(f"Created schedule: {schedule_id}")
-            except Exception as e:
-                if "already exists" in str(e).lower():
-                    handle = client.get_schedule_handle(schedule_id)
-                    await handle.update(
-                        lambda prev: Schedule(
-                            action=action,
-                            spec=spec,
-                            state=prev.state,
-                        )
-                    )
-                    logger.info(f"Updated schedule: {schedule_id}")
-                else:
-                    raise
+            except ScheduleAlreadyRunningError:
+                logger.info(f"Schedule already exists, skipping: {schedule_id}")
 
         except Exception:
             logger.exception(f"Failed to register schedule: {schedule_id}")

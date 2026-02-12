@@ -271,11 +271,27 @@ async def run_worker(queues: list[str] | None = None) -> None:
     """
     settings = get_settings()
 
-    client = await Client.connect(
-        settings.temporal_address,
-        namespace=settings.temporal_namespace,
-    )
-    logger.info(f"Connected to Temporal at {settings.temporal_address}")
+    # Retry connection — Temporal server may still be initializing
+    client = None
+    max_retries = 10
+    for attempt in range(1, max_retries + 1):
+        try:
+            client = await Client.connect(
+                settings.temporal_address,
+                namespace=settings.temporal_namespace,
+            )
+            logger.info(f"Connected to Temporal at {settings.temporal_address}")
+            break
+        except Exception as e:
+            if attempt == max_retries:
+                logger.error(f"Failed to connect to Temporal after {max_retries} attempts: {e}")
+                raise
+            wait = min(attempt * 2, 15)
+            logger.warning(
+                f"Temporal connection attempt {attempt}/{max_retries} failed: {e}. "
+                f"Retrying in {wait}s..."
+            )
+            await asyncio.sleep(wait)
 
     target_queues = queues or TaskQueue.ALL
     workflows = get_all_workflows()

@@ -18,6 +18,8 @@ import {
   Calendar,
   BarChart3,
   ClipboardCheck,
+  FolderGit2,
+  ArrowRight,
 } from "lucide-react";
 import Image from "next/image";
 import { analysisApi, DeveloperInsights, SoftSkillsProfile } from "@/lib/api";
@@ -29,6 +31,7 @@ import { PeerBenchmarkCard } from "@/components/PeerBenchmarkCard";
 import { SimpleTooltip as Tooltip } from "@/components/ui/tooltip";
 import { useDashboardPreferences } from "@/hooks/useDashboardPreferences";
 import { useDashboardStore } from "@/stores/dashboardStore";
+import { useEnabledRepositories } from "@/hooks/useRepositories";
 import {
   DashboardCustomizeModal,
   CustomizeButton,
@@ -41,6 +44,7 @@ import {
 
 export default function DashboardPage() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
+  const { hasEnabledRepos, hasInstallation, installUrl, isLoading: reposLoading } = useEnabledRepositories();
   const [insights, setInsights] = useState<DeveloperInsights | null>(null);
   const [softSkills, setSoftSkills] = useState<SoftSkillsProfile | null>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
@@ -197,8 +201,58 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* GitHub App not installed */}
+      {!reposLoading && !hasInstallation && (
+        <div className="bg-card border border-border rounded-xl p-8 text-center">
+          <FolderGit2 className="w-12 h-12 text-muted-foreground/40 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-2">
+            Connect your GitHub account
+          </h3>
+          <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
+            Install the Aexy GitHub App to grant access to your repositories. This is required to analyze your commits, pull requests, and code reviews.
+          </p>
+          {installUrl ? (
+            <a
+              href={installUrl}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-sm font-medium transition"
+            >
+              Install GitHub App
+              <ArrowRight className="w-4 h-4" />
+            </a>
+          ) : (
+            <Link
+              href="/settings/repositories"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-sm font-medium transition"
+            >
+              Go to Repository Settings
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          )}
+        </div>
+      )}
+
+      {/* Installation exists but no repos enabled */}
+      {!reposLoading && hasInstallation && !hasEnabledRepos && (
+        <div className="bg-card border border-border rounded-xl p-8 text-center">
+          <FolderGit2 className="w-12 h-12 text-muted-foreground/40 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-2">
+            No repositories enabled
+          </h3>
+          <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
+            Your GitHub App is connected but you haven&apos;t enabled any repositories yet. Enable at least one repository to see your code contributions, insights, and analysis.
+          </p>
+          <Link
+            href="/settings/repositories"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-sm font-medium transition"
+          >
+            Select Repositories
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      )}
+
       {/* Quick Stats */}
-      {showWidget("quickStats") && (
+      {showWidget("quickStats") && hasEnabledRepos && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-card border border-border rounded-xl p-4 hover:border-border-strong transition">
             <div className="flex items-center gap-3 mb-2">
@@ -246,7 +300,7 @@ export default function DashboardPage() {
       )}
 
       {/* Main Content Grid */}
-      {(showWidget("languageProficiency") || showWidget("workPatterns")) && (
+      {hasEnabledRepos && (showWidget("languageProficiency") || showWidget("workPatterns")) && (
         <div className="grid lg:grid-cols-3 gap-6 mb-10">
           {/* Languages Card */}
           {showWidget("languageProficiency") && (
@@ -377,7 +431,7 @@ export default function DashboardPage() {
       )}
 
       {/* Skills Section */}
-      {(showWidget("domainExpertise") || showWidget("frameworksTools")) && (
+      {hasEnabledRepos && (showWidget("domainExpertise") || showWidget("frameworksTools")) && (
         <div className="grid lg:grid-cols-2 gap-6 mb-10">
           {/* Domain Expertise */}
           {showWidget("domainExpertise") && (
@@ -456,7 +510,7 @@ export default function DashboardPage() {
       )}
 
       {/* AI Insights Section */}
-      {(showWidget("aiInsights") || showWidget("softSkills") || showWidget("growthTrajectory") || showWidget("peerBenchmark")) && (
+      {hasEnabledRepos && (showWidget("aiInsights") || showWidget("softSkills") || showWidget("growthTrajectory") || showWidget("peerBenchmark")) && (
         <div className="mb-10">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-gradient-to-br from-primary-500/20 to-purple-500/20 rounded-lg">
@@ -494,7 +548,7 @@ export default function DashboardPage() {
       )}
 
       {/* Task Matching Section */}
-      {showWidget("taskMatcher") && (
+      {hasEnabledRepos && showWidget("taskMatcher") && (
         <div>
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-lg">
