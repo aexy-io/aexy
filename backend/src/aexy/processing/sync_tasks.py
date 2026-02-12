@@ -104,9 +104,6 @@ async def _sync_repository(
                 return {"error": "GitHub connection not found"}
 
             access_token = connection.access_token
-            github_username = connection.github_username
-        else:
-            github_username = None
 
         # Update status
         dev_repo.sync_status = "syncing"
@@ -139,7 +136,6 @@ async def _sync_repository(
                     repo_name=repo_name,
                     developer_id=developer_id,
                     repository_id=repository_id,
-                    github_username=github_username,
                     since=since_date,
                     max_commits=sync_limits.max_commits_per_repo,
                 )
@@ -154,7 +150,6 @@ async def _sync_repository(
                     repo_name=repo_name,
                     developer_id=developer_id,
                     repository_id=repository_id,
-                    github_username=github_username,
                     since=since_date,
                     max_prs=sync_limits.max_prs_per_repo,
                 )
@@ -169,7 +164,6 @@ async def _sync_repository(
                     repo_name=repo_name,
                     developer_id=developer_id,
                     repository_id=repository_id,
-                    github_username=github_username,
                     since=since_date,
                 )
 
@@ -224,11 +218,10 @@ async def _sync_commits(
     repo_name: str,
     developer_id: str,
     repository_id: str,
-    github_username: str | None,
     since: datetime | None,
     max_commits: int,
 ) -> tuple[int, dict | None]:
-    """Sync commits with rate limiting and pagination.
+    """Sync commits with rate limiting and pagination (all contributors).
 
     Returns (count_synced, last_commit_info).
     """
@@ -253,7 +246,6 @@ async def _sync_commits(
             commits = await gh.get_commits(
                 owner,
                 repo_name,
-                author=github_username,
                 since=since,
                 per_page=100,
                 page=page,
@@ -327,11 +319,10 @@ async def _sync_pull_requests(
     repo_name: str,
     developer_id: str,
     repository_id: str,
-    github_username: str | None,
     since: datetime | None,
     max_prs: int,
 ) -> tuple[int, dict | None]:
-    """Sync pull requests with rate limiting.
+    """Sync pull requests with rate limiting (all contributors).
 
     Returns (count_synced, last_pr_info).
     """
@@ -363,10 +354,6 @@ async def _sync_pull_requests(
         for pr_data in prs:
             if not is_unlimited and synced >= max_prs:
                 break
-
-            # Filter by author if username provided
-            if github_username and pr_data["user"]["login"] != github_username:
-                continue
 
             # Filter by since date
             pr_created = datetime.fromisoformat(
@@ -431,10 +418,9 @@ async def _sync_reviews(
     repo_name: str,
     developer_id: str,
     repository_id: str,
-    github_username: str | None,
     since: datetime | None,
 ) -> int:
-    """Sync code reviews with rate limiting."""
+    """Sync code reviews with rate limiting (all contributors)."""
     from sqlalchemy import select
 
     from aexy.models.activity import CodeReview
@@ -477,10 +463,6 @@ async def _sync_reviews(
                 continue
 
             for review_data in reviews:
-                # Filter by reviewer if username provided
-                if github_username and review_data["user"]["login"] != github_username:
-                    continue
-
                 # Check if review already exists
                 stmt = select(CodeReview).where(
                     CodeReview.github_id == review_data["id"],
@@ -494,7 +476,7 @@ async def _sync_reviews(
                         developer_id=developer_id,
                         repository=f"{owner}/{repo_name}",
                         github_id=review_data["id"],
-                        pull_request_id=pr_data["id"],
+                        pull_request_github_id=pr_data["id"],
                         state=review_data["state"],
                         body=review_data.get("body", "")[:1000] if review_data.get("body") else None,
                         submitted_at=datetime.fromisoformat(
@@ -602,7 +584,6 @@ async def _sync_commits_standalone(
                 repo_name=repo_name,
                 developer_id=developer_id,
                 repository_id=repository_id,
-                github_username=connection.github_username,
                 since=since,
                 max_commits=max_commits,
             )

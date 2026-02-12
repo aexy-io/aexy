@@ -175,7 +175,7 @@ export default function SprintCapacityPage() {
                             href={`/insights/developers/${dev.developer_id}`}
                             className="text-indigo-400 hover:text-indigo-300"
                           >
-                            {dev.developer_id.slice(0, 12)}...
+                            {dev.developer_name || dev.developer_id.slice(0, 12)}
                           </Link>
                         </td>
                         <td className="py-2 text-right text-white font-medium">

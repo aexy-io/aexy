@@ -380,7 +380,7 @@ async def sample_reviews_db(db_session: AsyncSession, sample_developer, sample_p
     for i, pr in enumerate(sample_pull_requests_db[:3]):
         review = CodeReview(
             github_id=2000 + i,
-            pull_request_id=pr.id,
+            pull_request_github_id=pr.github_id,
             reviewer_id=sample_developer.id,
             state="approved" if i % 2 == 0 else "changes_requested",
             body=f"Review comment for PR {pr.number}",

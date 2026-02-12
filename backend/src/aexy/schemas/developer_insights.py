@@ -83,6 +83,7 @@ class SprintProductivityMetrics(BaseModel):
 
 class MemberSummary(BaseModel):
     developer_id: str
+    developer_name: str | None = None
     commits_count: int = 0
     prs_merged: int = 0
     lines_changed: int = 0

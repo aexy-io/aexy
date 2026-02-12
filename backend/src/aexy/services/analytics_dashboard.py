@@ -476,7 +476,7 @@ class AnalyticsDashboardService:
         # Get PR reviews: reviewer -> PR author
         review_stmt = (
             select(CodeReview.developer_id, PullRequest.developer_id)
-            .join(PullRequest, CodeReview.pull_request_id == PullRequest.id)
+            .join(PullRequest, CodeReview.pull_request_github_id == PullRequest.github_id)
             .where(
                 and_(
                     CodeReview.developer_id.in_(developer_ids),
@@ -589,7 +589,7 @@ class AnalyticsDashboardService:
             # Get average review cycles (approximation based on review count per PR)
             review_stmt = (
                 select(func.avg(func.count(CodeReview.id)))
-                .join(PullRequest, CodeReview.pull_request_id == PullRequest.id)
+                .join(PullRequest, CodeReview.pull_request_github_id == PullRequest.github_id)
                 .where(
                     and_(
                         PullRequest.developer_id == dev_id,

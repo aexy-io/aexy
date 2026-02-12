@@ -474,21 +474,26 @@ export default function DeveloperInsightsPage() {
                   <p className="text-xs text-slate-400">No anomalous patterns detected.</p>
                 ) : (
                   <div className="space-y-2">
-                    {gamingFlags.flags.map((flag, i) => (
-                      <div
-                        key={i}
-                        className={`p-2 rounded-lg text-xs ${
-                          flag.severity === "high"
-                            ? "bg-red-500/10 text-red-300"
-                            : flag.severity === "medium"
-                            ? "bg-yellow-500/10 text-yellow-300"
-                            : "bg-blue-500/10 text-blue-300"
-                        }`}
-                      >
-                        <div className="font-medium capitalize">{flag.pattern.replace(/_/g, " ")}</div>
-                        <div className="text-slate-400 mt-0.5">{flag.evidence}</div>
-                      </div>
-                    ))}
+                    {gamingFlags.flags.map((flag: Record<string, unknown>, i: number) => {
+                      const severity = (flag.severity as string) || (flag.type ? "warning" : "low");
+                      const label = (flag.pattern as string) || (flag.type as string) || "unknown";
+                      const desc = (flag.description as string) || "";
+                      return (
+                        <div
+                          key={i}
+                          className={`p-2 rounded-lg text-xs ${
+                            severity === "high" || severity === "critical"
+                              ? "bg-red-500/10 text-red-300"
+                              : severity === "medium" || severity === "warning"
+                              ? "bg-yellow-500/10 text-yellow-300"
+                              : "bg-blue-500/10 text-blue-300"
+                          }`}
+                        >
+                          <div className="font-medium capitalize">{label.replace(/_/g, " ")}</div>
+                          <div className="text-slate-400 mt-0.5">{desc || (typeof flag.evidence === "string" ? flag.evidence : "")}</div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

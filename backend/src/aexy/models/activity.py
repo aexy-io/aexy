@@ -43,6 +43,10 @@ class Commit(Base):
     languages: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
     file_types: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
 
+    # Original author identity (preserved even if developer_id changes)
+    author_github_login: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    author_email: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+
     # Semantic analysis (LLM-derived)
     semantic_analysis: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 

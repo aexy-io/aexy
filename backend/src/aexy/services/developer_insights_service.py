@@ -14,7 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from zoneinfo import ZoneInfo
 
 from aexy.models.activity import Commit, PullRequest, CodeReview
+from aexy.models.developer import Developer
 from aexy.models.notification import Notification, NotificationEventType
+from aexy.models.repository import DeveloperRepository, Repository
 from aexy.models.developer_insights import (
     DeveloperMetricsSnapshot,
     DeveloperWorkingSchedule,
@@ -160,6 +162,7 @@ class SprintProductivityMetrics:
 @dataclass
 class MemberSummary:
     developer_id: str
+    developer_name: str | None = None
     commits_count: int = 0
     prs_merged: int = 0
     lines_changed: int = 0
@@ -168,6 +171,7 @@ class MemberSummary:
     def to_dict(self) -> dict:
         return {
             "developer_id": self.developer_id,
+            "developer_name": self.developer_name,
             "commits_count": self.commits_count,
             "prs_merged": self.prs_merged,
             "lines_changed": self.lines_changed,
@@ -1137,6 +1141,11 @@ class DeveloperInsightsService:
         member_summaries: list[MemberSummary] = []
         total_loads: list[float] = []
 
+        # Batch query: developer names
+        name_stmt = select(Developer.id, Developer.name).where(Developer.id.in_(developer_ids))
+        name_result = await self.db.execute(name_stmt)
+        dev_names: dict[str, str | None] = {row[0]: row[1] for row in name_result.all()}
+
         # Batch query: commits per developer
         c_stmt = select(
             Commit.developer_id,
@@ -1187,6 +1196,7 @@ class DeveloperInsightsService:
             reviews_given = review_data.get(dev_id, 0)
             summary = MemberSummary(
                 developer_id=dev_id,
+                developer_name=dev_names.get(dev_id),
                 commits_count=commits_count,
                 prs_merged=prs_merged,
                 lines_changed=lines,
@@ -2231,6 +2241,16 @@ class DeveloperInsightsService:
         per_dev: list[dict] = []
         team_totals = {"commits": 0.0, "prs_merged": 0.0, "lines_added": 0.0, "story_points": 0.0}
 
+        # Build developer name lookup
+        from aexy.models.developer import Developer as DevModel
+        name_stmt = select(DevModel.id, DevModel.name, DevModel.email).where(
+            DevModel.id.in_(dev_ids)
+        )
+        name_result = await self.db.execute(name_stmt)
+        dev_names: dict[str, str] = {}
+        for row in name_result.all():
+            dev_names[row[0]] = row[1] or row[2] or row[0][:8]
+
         for dev_id in dev_ids:
             dev_history: list[dict] = []
             for i in range(periods_back):
@@ -2266,6 +2286,7 @@ class DeveloperInsightsService:
 
             per_dev.append({
                 "developer_id": dev_id,
+                "developer_name": dev_names.get(dev_id, dev_id[:8]),
                 "forecast": forecast,
                 "confidence": confidence,
                 "data_points": len(dev_history),
@@ -2294,18 +2315,31 @@ class DeveloperInsightsService:
         workspace_id: str,
         start: datetime,
         end: datetime,
+        *,
+        all_dev_ids: list[str] | None = None,
     ) -> dict:
         """Compute org-wide executive summary.
 
         Aggregates across all workspace members: total activity, health overview,
         top risks (burnout, bottlenecks), and team-level breakdown.
         """
-        # Get all workspace developers
-        stmt = select(WorkspaceMember.developer_id).where(
-            WorkspaceMember.workspace_id == workspace_id
+        # Get all workspace developers (or use pre-computed list with ghost devs)
+        if all_dev_ids is None:
+            stmt = select(WorkspaceMember.developer_id).where(
+                WorkspaceMember.workspace_id == workspace_id
+            )
+            result = await self.db.execute(stmt)
+            all_dev_ids = [row[0] for row in result.all()]
+
+        # Build developer name lookup
+        from aexy.models.developer import Developer as DevModel
+        name_stmt = select(DevModel.id, DevModel.name, DevModel.email).where(
+            DevModel.id.in_(all_dev_ids)
         )
-        result = await self.db.execute(stmt)
-        all_dev_ids = [row[0] for row in result.all()]
+        name_result = await self.db.execute(name_stmt)
+        dev_names: dict[str, str] = {}
+        for row in name_result.all():
+            dev_names[row[0]] = row[1] or row[2] or row[0][:8]
 
         if not all_dev_ids:
             return {
@@ -2337,6 +2371,7 @@ class DeveloperInsightsService:
 
             dev_summaries.append({
                 "developer_id": dev_id,
+                "developer_name": dev_names.get(dev_id, dev_id[:8]),
                 "commits": vel.commits_count,
                 "prs_merged": vel.prs_merged,
                 "lines_changed": vel.lines_added + vel.lines_removed,
@@ -2346,6 +2381,7 @@ class DeveloperInsightsService:
             if sus.weekend_commit_ratio > 0.3 or sus.late_night_commit_ratio > 0.25:
                 burnout_risks.append({
                     "developer_id": dev_id,
+                    "developer_name": dev_names.get(dev_id, dev_id[:8]),
                     "weekend_ratio": round(sus.weekend_commit_ratio, 2),
                     "late_night_ratio": round(sus.late_night_commit_ratio, 2),
                 })
@@ -2361,6 +2397,7 @@ class DeveloperInsightsService:
                 if avg_commits > 0 and d["commits"] > avg_commits * 2:
                     bottlenecks.append({
                         "developer_id": d["developer_id"],
+                        "developer_name": d.get("developer_name", d["developer_id"][:8]),
                         "commits": d["commits"],
                         "ratio_vs_avg": round(d["commits"] / avg_commits, 1),
                     })
@@ -2588,7 +2625,12 @@ class DeveloperInsightsService:
         start: datetime,
         end: datetime,
     ) -> list[str]:
-        """Find all repository names that workspace members have activity in."""
+        """Find all repository names that workspace members have activity in,
+        including repos enabled via developer_repositories (even if the GitHub
+        developer ID differs from the workspace member ID)."""
+        repos: set[str] = set()
+
+        # 1. Repos with commits by workspace members
         stmt = select(distinct(Commit.repository)).where(
             and_(
                 Commit.developer_id.in_(developer_ids),
@@ -2598,9 +2640,9 @@ class DeveloperInsightsService:
             )
         )
         result = await self.db.execute(stmt)
-        repos = {row[0] for row in result.all()}
+        repos.update(row[0] for row in result.all())
 
-        # Also include repos with PRs
+        # 2. Repos with PRs by workspace members
         pr_stmt = select(distinct(PullRequest.repository)).where(
             and_(
                 PullRequest.developer_id.in_(developer_ids),
@@ -2611,6 +2653,16 @@ class DeveloperInsightsService:
         )
         pr_result = await self.db.execute(pr_stmt)
         repos.update(row[0] for row in pr_result.all())
+
+        # 3. Enabled repos from developer_repositories (covers case where
+        #    the GitHub-connected developer ID differs from workspace member ID)
+        dr_stmt = (
+            select(Repository.full_name)
+            .join(DeveloperRepository, DeveloperRepository.repository_id == Repository.id)
+            .where(DeveloperRepository.is_enabled == True)
+        )
+        dr_result = await self.db.execute(dr_stmt)
+        repos.update(row[0] for row in dr_result.all())
 
         return list(repos)
 

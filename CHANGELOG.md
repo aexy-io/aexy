@@ -5,6 +5,81 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.5] - 2026-02-13
+
+### Added
+
+#### All-Contributors Sync
+
+Extended GitHub sync to capture all contributors' commits, PRs, and reviews — not just the connecting user. External contributors are auto-created as "ghost" Developer records.
+
+**Backend:**
+- New model fields: `author_github_login` and `author_email` on `Commit` for preserving original author identity
+- New helpers: `_resolve_developer_for_commit()` and `_resolve_developer_for_pr()` in `SyncService` to match or auto-create Developer records by GitHub ID or email
+- In-memory developer lookup cache within each sync session to avoid N+1 queries
+- Removed `author=github_username` filter from `_sync_commits_with_session()` — now fetches all commits
+- Removed `login != github_username` filter from `_sync_pull_requests_with_session()` and `_sync_reviews_with_session()`
+- Migration: `migrate_commit_author_fields.sql` — adds `author_github_login`, `author_email` columns with indexes
+
+**Ghost Developer Support Across Insights:**
+- New helper: `_get_all_contributor_ids()` in `developer_insights.py` — discovers external contributors by querying commits/PRs/reviews in workspace repos
+- Leaderboard, team insights, executive summary, and all 6 AI insight endpoints (team narrative, sprint retro, trajectory, root cause, composition, hiring forecast) now include ghost developers
+- Ghost developers appear in all rankings, comparisons, and AI-generated narratives alongside workspace members
+
+#### Metric Explanation Tooltips
+
+Added hover tooltips with explanations across all insights pages.
+
+**Compare Page (`/insights/compare`):**
+- Info icon + CSS hover popover on each row in the Side-by-Side Metrics table (commits, PRs merged, merge rate, cycle time, lines added, review rate, health score, focus time)
+- Radar chart axis labels show native browser tooltips via SVG `<title>` element
+- Extended `RadarDataPoint` interface with optional `desc` field
+- New `CustomAngleTick` component in `MetricsRadar.tsx` for tooltip-enabled axis labels
+- `RADAR_METRICS` config includes `desc` for each metric
+
+**Executive Dashboard (`/insights/executive`):**
+- Org Health metrics: Gini Coefficient, Workload Balance, Avg Commits/Dev, Avg PRs/Dev
+- Burnout Risks: WE (weekend commit %) and LN (late night commit %) with explanations
+- Bottlenecks: explanation of the 2x average threshold
+
+### Fixed
+
+#### Developer Names Instead of UUID Hashes
+
+Multiple insights pages displayed truncated UUIDs (e.g., `8f983e00-386...`) instead of developer names.
+
+- **Compare page** — dropdown items, selected pills, radar chart legends, heatmap labels, and table headers now show developer names via `devNameMap` lookup
+- **Executive dashboard** — top contributors table, burnout risks, and bottlenecks now show `developer_name` from API
+- **Sprint capacity** — per-developer breakdown table now shows `developer_name` from API
+- Added `developer_name` field to backend responses: `compute_executive_summary()`, `estimate_sprint_capacity()`
+- Updated TypeScript interfaces: `ExecutiveSummaryResponse`, `SprintCapacityDeveloper`
+
+#### Developer Detail Page Crash
+
+Fixed `/insights/developers/[id]` crashing on gaming flags section due to API schema mismatch.
+
+- Backend returns `{type, severity, description, evidence(object)}` but frontend expected `{pattern, severity: "low"|"medium"|"high", evidence: string}`
+- Fixed with `Record<string, unknown>` type and proper field fallbacks (`flag.type || flag.pattern`, severity includes "warning")
+- Added optional chaining for `flag.pattern?.replace()` to prevent `TypeError`
+
+#### Analytics Dashboard Broken Joins
+
+Fixed `analytics_dashboard.py` using stale `CodeReview.pull_request_id` column (renamed to `pull_request_github_id`).
+
+- Updated two join clauses to use `CodeReview.pull_request_github_id == PullRequest.github_id`
+- Fixed `conftest.py` test fixture using the same stale field name
+
+#### Ghost Developer Creation for PRs/Reviews
+
+`_resolve_developer_for_pr()` now auto-creates ghost Developer records (by GitHub login) when no existing developer matches, consistent with `_resolve_developer_for_commit()` behavior.
+
+### Changed
+
+- Bumped frontend version from `0.5.4` to `0.5.5`
+- Moved inline `from sqlalchemy import or_` to top-level import in `developer_insights.py`
+
+---
+
 ## [0.5.4] - 2026-02-09
 
 ### Added

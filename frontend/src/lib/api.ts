@@ -15500,6 +15500,7 @@ export interface DeveloperSnapshotResponse {
 
 export interface MemberSummary {
   developer_id: string;
+  developer_name?: string | null;
   commits_count: number;
   prs_merged: number;
   lines_changed: number;
@@ -15816,6 +15817,7 @@ export interface RoleBenchmarkResponse {
 
 export interface SprintCapacityDeveloper {
   developer_id: string;
+  developer_name?: string;
   forecast: {
     commits: number;
     prs_merged: number;
@@ -15861,10 +15863,10 @@ export interface ExecutiveSummaryResponse {
     bottleneck_count: number;
   };
   risks: {
-    burnout: { developer_id: string; weekend_ratio: number; late_night_ratio: number }[];
-    bottlenecks: { developer_id: string; commits: number; ratio_vs_avg: number }[];
+    burnout: { developer_id: string; developer_name?: string; weekend_ratio: number; late_night_ratio: number }[];
+    bottlenecks: { developer_id: string; developer_name?: string; commits: number; ratio_vs_avg: number }[];
   };
-  top_contributors: { developer_id: string; commits: number; prs_merged: number; lines_changed: number }[];
+  top_contributors: { developer_id: string; developer_name?: string; commits: number; prs_merged: number; lines_changed: number }[];
 }
 
 export interface RotationImpactResponse {

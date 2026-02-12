@@ -17,6 +17,7 @@ import {
   ShieldAlert,
   Crown,
   Activity,
+  Info,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -149,25 +150,49 @@ export default function ExecutiveDashboardPage() {
               </h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-zinc-400">Gini Coefficient</span>
+                  <span className="group relative text-sm text-zinc-400 cursor-help inline-flex items-center gap-1">
+                    Gini Coefficient
+                    <Info className="h-3 w-3 text-zinc-600 group-hover:text-zinc-400 transition" />
+                    <span className="invisible group-hover:visible absolute left-0 bottom-full mb-1 w-52 px-3 py-2 text-xs text-slate-200 bg-slate-900 border border-slate-700 rounded-lg shadow-lg z-20">
+                      Measures workload inequality (0 = perfectly equal, 1 = one person does everything). Based on commits + PRs + reviews.
+                    </span>
+                  </span>
                   <span className="text-sm font-medium text-white">
                     {summary.health.gini_coefficient.toFixed(3)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-zinc-400">Workload Balance</span>
+                  <span className="group relative text-sm text-zinc-400 cursor-help inline-flex items-center gap-1">
+                    Workload Balance
+                    <Info className="h-3 w-3 text-zinc-600 group-hover:text-zinc-400 transition" />
+                    <span className="invisible group-hover:visible absolute left-0 bottom-full mb-1 w-52 px-3 py-2 text-xs text-slate-200 bg-slate-900 border border-slate-700 rounded-lg shadow-lg z-20">
+                      Good (&lt;0.3 Gini), Moderate (0.3–0.5), or Poor (&gt;0.5). Lower Gini means more evenly distributed work.
+                    </span>
+                  </span>
                   <span className={`text-sm font-medium capitalize ${balanceColor}`}>
                     {summary.health.workload_balance}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-zinc-400">Avg Commits/Dev</span>
+                  <span className="group relative text-sm text-zinc-400 cursor-help inline-flex items-center gap-1">
+                    Avg Commits/Dev
+                    <Info className="h-3 w-3 text-zinc-600 group-hover:text-zinc-400 transition" />
+                    <span className="invisible group-hover:visible absolute left-0 bottom-full mb-1 w-48 px-3 py-2 text-xs text-slate-200 bg-slate-900 border border-slate-700 rounded-lg shadow-lg z-20">
+                      Average number of commits per developer during this period.
+                    </span>
+                  </span>
                   <span className="text-sm font-medium text-white">
                     {summary.activity.avg_commits_per_dev}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-zinc-400">Avg PRs/Dev</span>
+                  <span className="group relative text-sm text-zinc-400 cursor-help inline-flex items-center gap-1">
+                    Avg PRs/Dev
+                    <Info className="h-3 w-3 text-zinc-600 group-hover:text-zinc-400 transition" />
+                    <span className="invisible group-hover:visible absolute left-0 bottom-full mb-1 w-48 px-3 py-2 text-xs text-slate-200 bg-slate-900 border border-slate-700 rounded-lg shadow-lg z-20">
+                      Average number of pull requests merged per developer during this period.
+                    </span>
+                  </span>
                   <span className="text-sm font-medium text-white">
                     {summary.activity.avg_prs_per_dev}
                   </span>
@@ -194,11 +219,23 @@ export default function ExecutiveDashboardPage() {
                         href={`/insights/developers/${risk.developer_id}`}
                         className="text-xs text-amber-300 hover:text-amber-200 truncate flex-1"
                       >
-                        {risk.developer_id.slice(0, 8)}...
+                        {risk.developer_name || risk.developer_id.slice(0, 8)}
                       </Link>
-                      <span className="text-[10px] text-zinc-400">
-                        WE: {(risk.weekend_ratio * 100).toFixed(0)}% | LN:{" "}
-                        {(risk.late_night_ratio * 100).toFixed(0)}%
+                      <span className="text-[10px] text-zinc-400 flex items-center gap-2">
+                        <span className="group relative cursor-help inline-flex items-center gap-0.5">
+                          WE: {(risk.weekend_ratio * 100).toFixed(0)}%
+                          <Info className="h-2.5 w-2.5 text-zinc-600 group-hover:text-zinc-400 transition" />
+                          <span className="invisible group-hover:visible absolute right-0 bottom-full mb-1 w-44 px-2 py-1.5 text-[10px] text-slate-200 bg-slate-900 border border-slate-700 rounded-lg shadow-lg z-20">
+                            Weekend commits — % of commits made on weekends. High values suggest overwork.
+                          </span>
+                        </span>
+                        <span className="group relative cursor-help inline-flex items-center gap-0.5">
+                          LN: {(risk.late_night_ratio * 100).toFixed(0)}%
+                          <Info className="h-2.5 w-2.5 text-zinc-600 group-hover:text-zinc-400 transition" />
+                          <span className="invisible group-hover:visible absolute right-0 bottom-full mb-1 w-44 px-2 py-1.5 text-[10px] text-slate-200 bg-slate-900 border border-slate-700 rounded-lg shadow-lg z-20">
+                            Late night commits — % of commits after 10 PM. High values suggest unsustainable hours.
+                          </span>
+                        </span>
                       </span>
                     </div>
                   ))}
@@ -225,10 +262,14 @@ export default function ExecutiveDashboardPage() {
                         href={`/insights/developers/${bn.developer_id}`}
                         className="text-xs text-red-300 hover:text-red-200 truncate flex-1"
                       >
-                        {bn.developer_id.slice(0, 8)}...
+                        {bn.developer_name || bn.developer_id.slice(0, 8)}
                       </Link>
-                      <span className="text-[10px] text-zinc-400">
+                      <span className="group relative text-[10px] text-zinc-400 cursor-help inline-flex items-center gap-0.5">
                         {bn.commits} commits ({bn.ratio_vs_avg}x avg)
+                        <Info className="h-2.5 w-2.5 text-zinc-600 group-hover:text-zinc-400 transition" />
+                        <span className="invisible group-hover:visible absolute right-0 bottom-full mb-1 w-48 px-2 py-1.5 text-[10px] text-slate-200 bg-slate-900 border border-slate-700 rounded-lg shadow-lg z-20">
+                          This developer has more than 2x the team average commits — a potential single point of failure.
+                        </span>
                       </span>
                     </div>
                   ))}
@@ -263,7 +304,7 @@ export default function ExecutiveDashboardPage() {
                           href={`/insights/developers/${dev.developer_id}`}
                           className="text-indigo-400 hover:text-indigo-300"
                         >
-                          {dev.developer_id.slice(0, 12)}...
+                          {dev.developer_name || dev.developer_id.slice(0, 12)}
                         </Link>
                       </td>
                       <td className="py-2 text-right text-white font-medium">{dev.commits}</td>
