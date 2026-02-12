@@ -42,10 +42,15 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-aexy}
       - POSTGRES_PWD=${POSTGRES_PASSWORD}
       - POSTGRES_SEEDS=postgres
-      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "temporal", "operator", "cluster", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     networks:
       - aexy-network
 
@@ -134,7 +139,7 @@ services:
       redis:
         condition: service_healthy
       temporal:
-        condition: service_started
+        condition: service_healthy
     command: uvicorn aexy.main:app --host 0.0.0.0 --port 8000 --workers 4
     networks:
       - aexy-network
@@ -204,7 +209,7 @@ services:
       redis:
         condition: service_healthy
       temporal:
-        condition: service_started
+        condition: service_healthy
     command: python -m aexy.temporal.worker
     networks:
       - aexy-network
