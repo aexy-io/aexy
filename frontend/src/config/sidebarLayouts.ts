@@ -47,6 +47,8 @@ import {
     Bell,
     CalendarDays,
     UserCheck,
+    FolderGit2,
+    RefreshCw,
 } from "lucide-react";
 
 export type SidebarLayoutType = "grouped" | "flat";
@@ -138,6 +140,8 @@ const automationsItems: SidebarItemConfig[] = [
 const insightsItems: SidebarItemConfig[] = [
     { href: "/insights", label: "Team Overview", icon: LayoutDashboard },
     { href: "/insights/leaderboard", label: "Leaderboard", icon: BarChart },
+    { href: "/insights/repositories", label: "Repositories", icon: FolderGit2 },
+    { href: "/insights/sync-status", label: "Sync Status", icon: RefreshCw },
 ];
 
 const complianceItems: SidebarItemConfig[] = [

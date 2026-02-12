@@ -15616,6 +15616,80 @@ export interface AlertHistoryData {
 
 export type InsightsPeriodType = "daily" | "weekly" | "sprint" | "monthly";
 
+// Repository Insights types
+export interface RepositoryContributor {
+  developer_id: string;
+  developer_name?: string | null;
+  commits_count: number;
+  lines_added: number;
+  lines_removed: number;
+}
+
+export interface RepositoryInsightsSummary {
+  repository: string;
+  commits_count: number;
+  lines_added: number;
+  lines_removed: number;
+  prs_count: number;
+  prs_merged: number;
+  reviews_count: number;
+  unique_contributors: number;
+  top_contributors: RepositoryContributor[];
+  language?: string | null;
+  is_private: boolean;
+}
+
+export interface RepositoryInsightsListResponse {
+  repositories: RepositoryInsightsSummary[];
+  total_repositories: number;
+  period_type: string;
+  period_start: string;
+  period_end: string;
+}
+
+export interface RepositoryDeveloperBreakdown {
+  developer_id: string;
+  developer_name?: string | null;
+  commits_count: number;
+  prs_merged: number;
+  lines_added: number;
+  lines_removed: number;
+  lines_changed: number;
+  reviews_given: number;
+}
+
+export interface RepositoryDetailResponse {
+  repository: string;
+  aggregate: RepositoryInsightsSummary;
+  developer_breakdown: RepositoryDeveloperBreakdown[];
+  period_type: string;
+  period_start: string;
+  period_end: string;
+}
+
+export interface RepositorySyncInfo {
+  repository_id: string;
+  repository_full_name: string;
+  is_enabled: boolean;
+  sync_status: string;
+  last_sync_at?: string | null;
+  sync_error?: string | null;
+  commits_synced: number;
+  prs_synced: number;
+  reviews_synced: number;
+}
+
+export interface DeveloperSyncStatusData {
+  developer_id: string;
+  developer_name?: string | null;
+  repositories: RepositorySyncInfo[];
+}
+
+export interface SyncStatusResponse {
+  developers: DeveloperSyncStatusData[];
+  total_developers: number;
+}
+
 export interface PRSizeDistribution {
   distribution: { trivial: number; small: number; medium: number; large: number; massive: number };
   avg_size: number;
@@ -16315,6 +16389,47 @@ export const insightsApi = {
     const response = await api.get(
       `/workspaces/${workspaceId}/insights/ai/team/hiring-forecast`,
       { params }
+    );
+    return response.data;
+  },
+
+  // Repository Insights
+  getRepositoryInsights: async (
+    workspaceId: string,
+    params?: {
+      period_type?: InsightsPeriodType;
+      start_date?: string;
+      end_date?: string;
+    }
+  ): Promise<RepositoryInsightsListResponse> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/insights/repositories`,
+      { params }
+    );
+    return response.data;
+  },
+
+  getRepositoryDetail: async (
+    workspaceId: string,
+    repoFullName: string,
+    params?: {
+      period_type?: InsightsPeriodType;
+      start_date?: string;
+      end_date?: string;
+    }
+  ): Promise<RepositoryDetailResponse> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/insights/repositories/${repoFullName}`,
+      { params }
+    );
+    return response.data;
+  },
+
+  getSyncStatus: async (
+    workspaceId: string,
+  ): Promise<SyncStatusResponse> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/insights/sync-status`
     );
     return response.data;
   },

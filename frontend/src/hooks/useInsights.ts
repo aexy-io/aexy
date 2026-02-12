@@ -11,6 +11,9 @@ import {
   PercentileRankingsResponse,
   AlertRuleData,
   AlertHistoryData,
+  RepositoryInsightsListResponse,
+  RepositoryDetailResponse,
+  SyncStatusResponse,
 } from "@/lib/api";
 
 export function useDeveloperInsights(
@@ -245,4 +248,64 @@ export function useAlertHistory(
     evaluateAlerts: evaluateAlerts.mutateAsync,
     isEvaluating: evaluateAlerts.isPending,
   };
+}
+
+export function useRepositoryInsights(
+  workspaceId: string | null,
+  params?: {
+    period_type?: InsightsPeriodType;
+    start_date?: string;
+    end_date?: string;
+  }
+) {
+  const {
+    data: repositoryInsights,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery<RepositoryInsightsListResponse>({
+    queryKey: ["repositoryInsights", workspaceId, params],
+    queryFn: () => insightsApi.getRepositoryInsights(workspaceId!, params),
+    enabled: !!workspaceId,
+  });
+
+  return { repositoryInsights, isLoading, error, refetch };
+}
+
+export function useRepositoryDetail(
+  workspaceId: string | null,
+  repoFullName: string | null,
+  params?: {
+    period_type?: InsightsPeriodType;
+    start_date?: string;
+    end_date?: string;
+  }
+) {
+  const {
+    data: repositoryDetail,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery<RepositoryDetailResponse>({
+    queryKey: ["repositoryDetail", workspaceId, repoFullName, params],
+    queryFn: () => insightsApi.getRepositoryDetail(workspaceId!, repoFullName!, params),
+    enabled: !!workspaceId && !!repoFullName,
+  });
+
+  return { repositoryDetail, isLoading, error, refetch };
+}
+
+export function useSyncStatus(workspaceId: string | null) {
+  const {
+    data: syncStatus,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery<SyncStatusResponse>({
+    queryKey: ["syncStatus", workspaceId],
+    queryFn: () => insightsApi.getSyncStatus(workspaceId!),
+    enabled: !!workspaceId,
+  });
+
+  return { syncStatus, isLoading, error, refetch };
 }

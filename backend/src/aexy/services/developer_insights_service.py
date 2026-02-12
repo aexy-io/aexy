@@ -2577,3 +2577,234 @@ class DeveloperInsightsService:
             "working_schedule": schedule_data,
             "alert_history": alert_data,
         }
+
+    # -----------------------------------------------------------------------
+    # Repository Insights
+    # -----------------------------------------------------------------------
+
+    async def compute_repository_insights(
+        self,
+        developer_ids: list[str],
+        start: datetime,
+        end: datetime,
+    ) -> list[dict]:
+        """Compute per-repository activity metrics across all workspace members.
+
+        Returns a list of dicts sorted by commits_count descending.
+        """
+        if not developer_ids:
+            return []
+
+        from collections import defaultdict
+
+        # 1) Commits per (repo, developer)
+        commit_stmt = select(
+            Commit.repository,
+            Commit.developer_id,
+            func.count(Commit.id).label("commit_count"),
+            func.coalesce(func.sum(Commit.additions), 0).label("lines_added"),
+            func.coalesce(func.sum(Commit.deletions), 0).label("lines_removed"),
+        ).where(
+            and_(
+                Commit.developer_id.in_(developer_ids),
+                Commit.committed_at >= start,
+                Commit.committed_at <= end,
+            )
+        ).group_by(Commit.repository, Commit.developer_id)
+
+        commit_result = await self.db.execute(commit_stmt)
+        commit_rows = commit_result.all()
+
+        # 2) PRs per (repo, developer)
+        pr_stmt = select(
+            PullRequest.repository,
+            PullRequest.developer_id,
+            func.count(PullRequest.id).label("pr_count"),
+            func.sum(case((PullRequest.merged_at.isnot(None), 1), else_=0)).label("pr_merged"),
+        ).where(
+            and_(
+                PullRequest.developer_id.in_(developer_ids),
+                PullRequest.created_at >= start,
+                PullRequest.created_at <= end,
+            )
+        ).group_by(PullRequest.repository, PullRequest.developer_id)
+
+        pr_result = await self.db.execute(pr_stmt)
+        pr_rows = pr_result.all()
+
+        # 3) Reviews per (repo, developer)
+        review_stmt = select(
+            CodeReview.repository,
+            CodeReview.developer_id,
+            func.count(CodeReview.id).label("review_count"),
+        ).where(
+            and_(
+                CodeReview.developer_id.in_(developer_ids),
+                CodeReview.submitted_at >= start,
+                CodeReview.submitted_at <= end,
+            )
+        ).group_by(CodeReview.repository, CodeReview.developer_id)
+
+        review_result = await self.db.execute(review_stmt)
+        review_rows = review_result.all()
+
+        # Merge into per-repo structures
+        repo_data: dict[str, dict] = defaultdict(lambda: {
+            "commits_count": 0,
+            "lines_added": 0,
+            "lines_removed": 0,
+            "prs_count": 0,
+            "prs_merged": 0,
+            "reviews_count": 0,
+            "contributors": {},  # dev_id -> {commits, lines_added, lines_removed}
+        })
+
+        for repo, dev_id, count, added, removed in commit_rows:
+            if not repo:
+                continue
+            d = repo_data[repo]
+            d["commits_count"] += count
+            d["lines_added"] += int(added)
+            d["lines_removed"] += int(removed)
+            if dev_id not in d["contributors"]:
+                d["contributors"][dev_id] = {"commits_count": 0, "lines_added": 0, "lines_removed": 0}
+            d["contributors"][dev_id]["commits_count"] += count
+            d["contributors"][dev_id]["lines_added"] += int(added)
+            d["contributors"][dev_id]["lines_removed"] += int(removed)
+
+        for repo, dev_id, count, merged in pr_rows:
+            if not repo:
+                continue
+            d = repo_data[repo]
+            d["prs_count"] += count
+            d["prs_merged"] += int(merged)
+
+        for repo, dev_id, count in review_rows:
+            if not repo:
+                continue
+            repo_data[repo]["reviews_count"] += count
+
+        # Build result list
+        results = []
+        for repo, data in repo_data.items():
+            contributors = data.pop("contributors")
+            unique_contributors = len(contributors)
+
+            # Top 5 contributors by commits
+            sorted_contribs = sorted(
+                contributors.items(),
+                key=lambda x: x[1]["commits_count"],
+                reverse=True,
+            )[:5]
+
+            top_contributors = [
+                {
+                    "developer_id": dev_id,
+                    "commits_count": info["commits_count"],
+                    "lines_added": info["lines_added"],
+                    "lines_removed": info["lines_removed"],
+                }
+                for dev_id, info in sorted_contribs
+            ]
+
+            results.append({
+                "repository": repo,
+                "unique_contributors": unique_contributors,
+                "top_contributors": top_contributors,
+                **data,
+            })
+
+        results.sort(key=lambda x: x["commits_count"], reverse=True)
+        return results
+
+    async def compute_repository_developer_breakdown(
+        self,
+        developer_ids: list[str],
+        repository: str,
+        start: datetime,
+        end: datetime,
+    ) -> list[dict]:
+        """Compute per-developer breakdown for a single repository.
+
+        Returns list of dicts with developer_id, commits_count, lines_added,
+        lines_removed, prs_merged, reviews_given, sorted by commits_count desc.
+        """
+        if not developer_ids:
+            return []
+
+        from collections import defaultdict
+
+        dev_data: dict[str, dict] = defaultdict(lambda: {
+            "commits_count": 0,
+            "lines_added": 0,
+            "lines_removed": 0,
+            "prs_merged": 0,
+            "reviews_given": 0,
+        })
+
+        # Commits
+        commit_stmt = select(
+            Commit.developer_id,
+            func.count(Commit.id).label("commit_count"),
+            func.coalesce(func.sum(Commit.additions), 0).label("lines_added"),
+            func.coalesce(func.sum(Commit.deletions), 0).label("lines_removed"),
+        ).where(
+            and_(
+                Commit.developer_id.in_(developer_ids),
+                Commit.repository == repository,
+                Commit.committed_at >= start,
+                Commit.committed_at <= end,
+            )
+        ).group_by(Commit.developer_id)
+
+        result = await self.db.execute(commit_stmt)
+        for dev_id, count, added, removed in result.all():
+            dev_data[dev_id]["commits_count"] = count
+            dev_data[dev_id]["lines_added"] = int(added)
+            dev_data[dev_id]["lines_removed"] = int(removed)
+
+        # PRs merged
+        pr_stmt = select(
+            PullRequest.developer_id,
+            func.sum(case((PullRequest.merged_at.isnot(None), 1), else_=0)).label("pr_merged"),
+        ).where(
+            and_(
+                PullRequest.developer_id.in_(developer_ids),
+                PullRequest.repository == repository,
+                PullRequest.created_at >= start,
+                PullRequest.created_at <= end,
+            )
+        ).group_by(PullRequest.developer_id)
+
+        result = await self.db.execute(pr_stmt)
+        for dev_id, merged in result.all():
+            dev_data[dev_id]["prs_merged"] = int(merged)
+
+        # Reviews
+        review_stmt = select(
+            CodeReview.developer_id,
+            func.count(CodeReview.id).label("review_count"),
+        ).where(
+            and_(
+                CodeReview.developer_id.in_(developer_ids),
+                CodeReview.repository == repository,
+                CodeReview.submitted_at >= start,
+                CodeReview.submitted_at <= end,
+            )
+        ).group_by(CodeReview.developer_id)
+
+        result = await self.db.execute(review_stmt)
+        for dev_id, count in result.all():
+            dev_data[dev_id]["reviews_given"] = count
+
+        # Build result
+        results = []
+        for dev_id, data in dev_data.items():
+            results.append({
+                "developer_id": dev_id,
+                "lines_changed": data["lines_added"] + data["lines_removed"],
+                **data,
+            })
+
+        results.sort(key=lambda x: x["commits_count"], reverse=True)
+        return results

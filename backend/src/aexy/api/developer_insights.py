@@ -28,6 +28,7 @@ from aexy.models.workspace import WorkspaceMember
 from aexy.models.team import TeamMember
 from aexy.models.project import ProjectMember
 from aexy.models.developer_insights import InsightSettings, DeveloperWorkingSchedule, InsightAlertRule, InsightAlertHistory
+from aexy.models.repository import Repository, DeveloperRepository
 from aexy.schemas.developer_insights import (
     DeveloperInsightsResponse,
     DeveloperSnapshotResponse,
@@ -55,6 +56,14 @@ from aexy.schemas.developer_insights import (
     AlertRuleUpdate,
     AlertRuleResponse,
     AlertHistoryResponse,
+    RepositoryContributor,
+    RepositoryInsightsSummary,
+    RepositoryInsightsListResponse,
+    RepositoryDeveloperBreakdown,
+    RepositoryDetailResponse,
+    RepositorySyncInfo,
+    DeveloperSyncStatus,
+    SyncStatusResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -1838,3 +1847,282 @@ async def get_hiring_forecast(
         "period_end": end_date.isoformat(),
         **result,
     }
+
+
+# ---------------------------------------------------------------------------
+# Repository Insights
+# ---------------------------------------------------------------------------
+
+@router.get("/repositories", response_model=RepositoryInsightsListResponse)
+async def get_repository_insights(
+    workspace_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    developer_id: Annotated[str, Depends(verify_workspace_membership)],
+    period_type: PeriodTypeParam = Query(default=PeriodTypeParam.weekly),
+    start_date: datetime | None = Query(default=None),
+    end_date: datetime | None = Query(default=None),
+):
+    """Get per-repository activity metrics for all workspace members."""
+    from aexy.services.developer_insights_service import DeveloperInsightsService
+
+    if not start_date or not end_date:
+        start_date, end_date = _default_range(period_type)
+    _validate_date_range(start_date, end_date)
+
+    dev_ids = await _get_workspace_developer_ids(db, workspace_id)
+    if not dev_ids:
+        return RepositoryInsightsListResponse(
+            repositories=[],
+            total_repositories=0,
+            period_type=period_type.value,
+            period_start=start_date,
+            period_end=end_date,
+        )
+
+    service = DeveloperInsightsService(db)
+    raw_repos = await service.compute_repository_insights(dev_ids, start_date, end_date)
+
+    # Enrich with repository metadata (language, is_private)
+    repo_names = [r["repository"] for r in raw_repos]
+    repo_meta: dict[str, dict] = {}
+    if repo_names:
+        meta_stmt = select(
+            Repository.full_name, Repository.language, Repository.is_private
+        ).where(Repository.full_name.in_(repo_names))
+        meta_result = await db.execute(meta_stmt)
+        for full_name, language, is_private in meta_result.all():
+            repo_meta[full_name] = {"language": language, "is_private": is_private}
+
+    # Resolve developer names for top_contributors
+    all_dev_ids = set()
+    for r in raw_repos:
+        for c in r.get("top_contributors", []):
+            all_dev_ids.add(c["developer_id"])
+
+    dev_names: dict[str, str | None] = {}
+    if all_dev_ids:
+        names_stmt = select(Developer.id, Developer.name).where(
+            Developer.id.in_(list(all_dev_ids))
+        )
+        names_result = await db.execute(names_stmt)
+        dev_names = {row[0]: row[1] for row in names_result.all()}
+
+    repositories = []
+    for r in raw_repos:
+        meta = repo_meta.get(r["repository"], {})
+        top_contribs = [
+            RepositoryContributor(
+                developer_id=c["developer_id"],
+                developer_name=dev_names.get(c["developer_id"]),
+                commits_count=c["commits_count"],
+                lines_added=c["lines_added"],
+                lines_removed=c["lines_removed"],
+            )
+            for c in r.get("top_contributors", [])
+        ]
+        repositories.append(RepositoryInsightsSummary(
+            repository=r["repository"],
+            commits_count=r["commits_count"],
+            lines_added=r["lines_added"],
+            lines_removed=r["lines_removed"],
+            prs_count=r["prs_count"],
+            prs_merged=r["prs_merged"],
+            reviews_count=r["reviews_count"],
+            unique_contributors=r["unique_contributors"],
+            top_contributors=top_contribs,
+            language=meta.get("language"),
+            is_private=meta.get("is_private", False),
+        ))
+
+    return RepositoryInsightsListResponse(
+        repositories=repositories,
+        total_repositories=len(repositories),
+        period_type=period_type.value,
+        period_start=start_date,
+        period_end=end_date,
+    )
+
+
+@router.get("/repositories/{repo_full_name:path}", response_model=RepositoryDetailResponse)
+async def get_repository_detail(
+    workspace_id: str,
+    repo_full_name: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    developer_id: Annotated[str, Depends(verify_workspace_membership)],
+    period_type: PeriodTypeParam = Query(default=PeriodTypeParam.weekly),
+    start_date: datetime | None = Query(default=None),
+    end_date: datetime | None = Query(default=None),
+):
+    """Get detailed per-developer breakdown for a specific repository."""
+    from aexy.services.developer_insights_service import DeveloperInsightsService
+
+    if not start_date or not end_date:
+        start_date, end_date = _default_range(period_type)
+    _validate_date_range(start_date, end_date)
+
+    dev_ids = await _get_workspace_developer_ids(db, workspace_id)
+    if not dev_ids:
+        raise HTTPException(status_code=404, detail="No workspace members found")
+
+    service = DeveloperInsightsService(db)
+
+    # Get aggregate for this repo
+    all_repos = await service.compute_repository_insights(dev_ids, start_date, end_date)
+    repo_aggregate = None
+    for r in all_repos:
+        if r["repository"] == repo_full_name:
+            repo_aggregate = r
+            break
+
+    if repo_aggregate is None:
+        raise HTTPException(status_code=404, detail="No data found for this repository")
+
+    # Get per-developer breakdown
+    breakdown = await service.compute_repository_developer_breakdown(
+        dev_ids, repo_full_name, start_date, end_date
+    )
+
+    # Repository metadata
+    meta_stmt = select(
+        Repository.full_name, Repository.language, Repository.is_private
+    ).where(Repository.full_name == repo_full_name)
+    meta_result = await db.execute(meta_stmt)
+    meta_row = meta_result.first()
+
+    # Resolve developer names
+    all_dev_ids_set = set()
+    for c in repo_aggregate.get("top_contributors", []):
+        all_dev_ids_set.add(c["developer_id"])
+    for d in breakdown:
+        all_dev_ids_set.add(d["developer_id"])
+
+    dev_names: dict[str, str | None] = {}
+    if all_dev_ids_set:
+        names_stmt = select(Developer.id, Developer.name).where(
+            Developer.id.in_(list(all_dev_ids_set))
+        )
+        names_result = await db.execute(names_stmt)
+        dev_names = {row[0]: row[1] for row in names_result.all()}
+
+    # Build aggregate summary
+    top_contribs = [
+        RepositoryContributor(
+            developer_id=c["developer_id"],
+            developer_name=dev_names.get(c["developer_id"]),
+            commits_count=c["commits_count"],
+            lines_added=c["lines_added"],
+            lines_removed=c["lines_removed"],
+        )
+        for c in repo_aggregate.get("top_contributors", [])
+    ]
+
+    aggregate = RepositoryInsightsSummary(
+        repository=repo_full_name,
+        commits_count=repo_aggregate["commits_count"],
+        lines_added=repo_aggregate["lines_added"],
+        lines_removed=repo_aggregate["lines_removed"],
+        prs_count=repo_aggregate["prs_count"],
+        prs_merged=repo_aggregate["prs_merged"],
+        reviews_count=repo_aggregate["reviews_count"],
+        unique_contributors=repo_aggregate["unique_contributors"],
+        top_contributors=top_contribs,
+        language=meta_row[1] if meta_row else None,
+        is_private=meta_row[2] if meta_row else False,
+    )
+
+    developer_breakdown = [
+        RepositoryDeveloperBreakdown(
+            developer_id=d["developer_id"],
+            developer_name=dev_names.get(d["developer_id"]),
+            commits_count=d["commits_count"],
+            prs_merged=d["prs_merged"],
+            lines_added=d["lines_added"],
+            lines_removed=d["lines_removed"],
+            lines_changed=d["lines_changed"],
+            reviews_given=d["reviews_given"],
+        )
+        for d in breakdown
+    ]
+
+    return RepositoryDetailResponse(
+        repository=repo_full_name,
+        aggregate=aggregate,
+        developer_breakdown=developer_breakdown,
+        period_type=period_type.value,
+        period_start=start_date,
+        period_end=end_date,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Sync Status
+# ---------------------------------------------------------------------------
+
+@router.get("/sync-status", response_model=SyncStatusResponse)
+async def get_sync_status(
+    workspace_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    developer_id: Annotated[str, Depends(verify_workspace_membership)],
+):
+    """Get sync status for all workspace members and their repositories."""
+    dev_ids = await _get_workspace_developer_ids(db, workspace_id)
+    if not dev_ids:
+        return SyncStatusResponse(developers=[], total_developers=0)
+
+    # Get developer names
+    names_stmt = select(Developer.id, Developer.name).where(Developer.id.in_(dev_ids))
+    names_result = await db.execute(names_stmt)
+    dev_names: dict[str, str | None] = {row[0]: row[1] for row in names_result.all()}
+
+    # Get all developer_repositories with repository info
+    stmt = select(
+        DeveloperRepository.developer_id,
+        DeveloperRepository.repository_id,
+        DeveloperRepository.is_enabled,
+        DeveloperRepository.sync_status,
+        DeveloperRepository.last_sync_at,
+        DeveloperRepository.sync_error,
+        DeveloperRepository.commits_synced,
+        DeveloperRepository.prs_synced,
+        DeveloperRepository.reviews_synced,
+        Repository.full_name,
+    ).join(
+        Repository, DeveloperRepository.repository_id == Repository.id
+    ).where(
+        DeveloperRepository.developer_id.in_(dev_ids)
+    ).order_by(DeveloperRepository.developer_id, Repository.full_name)
+
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    # Group by developer
+    from collections import defaultdict
+    dev_repos: dict[str, list[RepositorySyncInfo]] = defaultdict(list)
+    for row in rows:
+        dev_repos[row[0]].append(RepositorySyncInfo(
+            repository_id=row[1],
+            repository_full_name=row[9],
+            is_enabled=row[2],
+            sync_status=row[3] or "pending",
+            last_sync_at=row[4],
+            sync_error=row[5],
+            commits_synced=row[6] or 0,
+            prs_synced=row[7] or 0,
+            reviews_synced=row[8] or 0,
+        ))
+
+    developers = []
+    for dev_id in dev_ids:
+        developers.append(DeveloperSyncStatus(
+            developer_id=dev_id,
+            developer_name=dev_names.get(dev_id),
+            repositories=dev_repos.get(dev_id, []),
+        ))
+
+    # Sort: developers with repos first, then by name
+    developers.sort(key=lambda d: (-len(d.repositories), d.developer_name or ""))
+
+    return SyncStatusResponse(
+        developers=developers,
+        total_developers=len(developers),
+    )

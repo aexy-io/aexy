@@ -436,3 +436,80 @@ class SavedDashboardResponse(BaseModel):
     is_shared: bool = False
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+
+# ---------------------------------------------------------------------------
+# Repository Insights schemas
+# ---------------------------------------------------------------------------
+
+class RepositoryContributor(BaseModel):
+    developer_id: str
+    developer_name: str | None = None
+    commits_count: int = 0
+    lines_added: int = 0
+    lines_removed: int = 0
+
+
+class RepositoryInsightsSummary(BaseModel):
+    repository: str
+    commits_count: int = 0
+    lines_added: int = 0
+    lines_removed: int = 0
+    prs_count: int = 0
+    prs_merged: int = 0
+    reviews_count: int = 0
+    unique_contributors: int = 0
+    top_contributors: list[RepositoryContributor] = []
+    language: str | None = None
+    is_private: bool = False
+
+
+class RepositoryInsightsListResponse(BaseModel):
+    repositories: list[RepositoryInsightsSummary] = []
+    total_repositories: int = 0
+    period_type: str
+    period_start: datetime
+    period_end: datetime
+
+
+class RepositoryDeveloperBreakdown(BaseModel):
+    developer_id: str
+    developer_name: str | None = None
+    commits_count: int = 0
+    prs_merged: int = 0
+    lines_added: int = 0
+    lines_removed: int = 0
+    lines_changed: int = 0
+    reviews_given: int = 0
+
+
+class RepositoryDetailResponse(BaseModel):
+    repository: str
+    aggregate: RepositoryInsightsSummary
+    developer_breakdown: list[RepositoryDeveloperBreakdown] = []
+    period_type: str
+    period_start: datetime
+    period_end: datetime
+
+
+class RepositorySyncInfo(BaseModel):
+    repository_id: str
+    repository_full_name: str
+    is_enabled: bool = False
+    sync_status: str = "pending"
+    last_sync_at: datetime | None = None
+    sync_error: str | None = None
+    commits_synced: int = 0
+    prs_synced: int = 0
+    reviews_synced: int = 0
+
+
+class DeveloperSyncStatus(BaseModel):
+    developer_id: str
+    developer_name: str | None = None
+    repositories: list[RepositorySyncInfo] = []
+
+
+class SyncStatusResponse(BaseModel):
+    developers: list[DeveloperSyncStatus] = []
+    total_developers: int = 0
