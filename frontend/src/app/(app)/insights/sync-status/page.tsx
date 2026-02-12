@@ -73,6 +73,12 @@ function formatDate(dateStr?: string | null): string {
 function DeveloperRow({ developer }: { developer: DeveloperSyncStatusData }) {
   const [expanded, setExpanded] = useState(false);
 
+  // Sort repos: enabled first, then by commits_synced descending
+  const sortedRepos = [...developer.repositories].sort((a, b) => {
+    if (a.is_enabled !== b.is_enabled) return a.is_enabled ? -1 : 1;
+    return b.commits_synced - a.commits_synced;
+  });
+
   const totalCommits = developer.repositories.reduce((s, r) => s + r.commits_synced, 0);
   const totalPRs = developer.repositories.reduce((s, r) => s + r.prs_synced, 0);
   const totalReviews = developer.repositories.reduce((s, r) => s + r.reviews_synced, 0);
@@ -147,7 +153,7 @@ function DeveloperRow({ developer }: { developer: DeveloperSyncStatusData }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/30">
-              {developer.repositories.map((repo) => (
+              {sortedRepos.map((repo) => (
                 <tr key={repo.repository_id} className="hover:bg-slate-700/20 transition">
                   <td className="px-4 py-2 pl-12">
                     <span className="text-sm text-white">{repo.repository_full_name}</span>
@@ -209,7 +215,15 @@ export default function SyncStatusPage() {
     redirect("/");
   }
 
-  const developers = syncStatus?.developers || [];
+  // Sort developers: those with enabled repos first, then by total synced data
+  const developers = [...(syncStatus?.developers || [])].sort((a, b) => {
+    const aEnabled = a.repositories.some((r) => r.is_enabled);
+    const bEnabled = b.repositories.some((r) => r.is_enabled);
+    if (aEnabled !== bEnabled) return aEnabled ? -1 : 1;
+    const aTotal = a.repositories.reduce((s, r) => s + r.commits_synced, 0);
+    const bTotal = b.repositories.reduce((s, r) => s + r.commits_synced, 0);
+    return bTotal - aTotal;
+  });
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">

@@ -12,6 +12,7 @@ import {
   Plus,
   X,
   ChevronDown,
+  Info,
 } from "lucide-react";
 import {
   insightsApi,
@@ -35,12 +36,12 @@ const PERIOD_OPTIONS: { value: InsightsPeriodType; label: string }[] = [
 ];
 
 const RADAR_METRICS = [
-  { key: "commits_count", label: "Commits", maxBase: 50 },
-  { key: "prs_merged", label: "PRs Merged", maxBase: 10 },
-  { key: "pr_throughput", label: "PR Throughput", maxBase: 5 },
-  { key: "review_participation_rate", label: "Review Rate", maxBase: 2 },
-  { key: "unique_collaborators", label: "Collaborators", maxBase: 10 },
-  { key: "pr_merge_rate", label: "Merge Rate", maxBase: 1 },
+  { key: "commits_count", label: "Commits", maxBase: 50, desc: "Total commits pushed during the period" },
+  { key: "prs_merged", label: "PRs Merged", maxBase: 10, desc: "Pull requests successfully merged" },
+  { key: "pr_throughput", label: "PR Throughput", maxBase: 5, desc: "PRs merged per week" },
+  { key: "review_participation_rate", label: "Review Rate", maxBase: 2, desc: "Code reviews per working day" },
+  { key: "unique_collaborators", label: "Collaborators", maxBase: 10, desc: "Unique developers collaborated with" },
+  { key: "pr_merge_rate", label: "Merge Rate", maxBase: 1, desc: "Percentage of PRs that were merged" },
 ];
 
 function getMetricValue(
@@ -81,6 +82,13 @@ export default function ComparePage() {
   });
 
   const availableMembers = teamInsights?.distribution?.member_metrics ?? [];
+
+  // Build name lookup from available members
+  const devNameMap: Record<string, string> = {};
+  availableMembers.forEach((m) => {
+    devNameMap[m.developer_id] = m.developer_name || m.developer_id.slice(0, 8);
+  });
+  const devName = (id: string) => devNameMap[id] || id.slice(0, 8);
 
   const fetchComparison = useCallback(async () => {
     if (!currentWorkspaceId || selectedDevIds.length < 2) return;
@@ -135,6 +143,7 @@ export default function ComparePage() {
   const radarData: RadarDataPoint[] = RADAR_METRICS.map((m) => {
     const point: RadarDataPoint = {
       metric: m.label,
+      desc: m.desc,
       fullMark: m.maxBase,
     };
     compareResults.forEach((dev) => {
@@ -149,7 +158,7 @@ export default function ComparePage() {
 
   const radarDevs = compareResults.map((dev) => ({
     id: dev.developer_id,
-    name: dev.developer_id.slice(0, 8),
+    name: devName(dev.developer_id),
   }));
 
   // Build heatmap data (mock weekly breakdown from available data)
@@ -178,7 +187,7 @@ export default function ComparePage() {
         );
         heatmapData.push({
           developerId: dev.developer_id,
-          developerName: dev.developer_id.slice(0, 8),
+          developerName: devName(dev.developer_id),
           week: weekLabel,
           value: Math.round(avgPerDay * daysInWeek),
         });
@@ -240,7 +249,7 @@ export default function ComparePage() {
               className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/20 border border-indigo-500/30 rounded-lg"
             >
               <span className="text-sm text-indigo-300">
-                {devId.slice(0, 8)}
+                {devName(devId)}
               </span>
               <button
                 onClick={() => removeDeveloper(devId)}
@@ -270,7 +279,7 @@ export default function ComparePage() {
                         onClick={() => addDeveloper(m.developer_id)}
                         className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 transition"
                       >
-                        {m.developer_id.slice(0, 8)}
+                        {m.developer_name || m.developer_id.slice(0, 8)}
                         <span className="ml-2 text-xs text-slate-500">
                           ({m.commits_count}c, {m.prs_merged}pr)
                         </span>
@@ -338,7 +347,7 @@ export default function ComparePage() {
                           href={`/insights/developers/${dev.developer_id}`}
                           className="text-indigo-400 hover:text-indigo-300"
                         >
-                          {dev.developer_id.slice(0, 8)}
+                          {devName(dev.developer_id)}
                         </Link>
                       </th>
                     ))}
@@ -348,38 +357,45 @@ export default function ComparePage() {
                   {[
                     {
                       label: "Commits",
+                      desc: "Total number of commits pushed during the period",
                       get: (d: DeveloperInsightsResponse) =>
                         d.velocity.commits_count,
                     },
                     {
                       label: "PRs Merged",
+                      desc: "Pull requests successfully merged into the target branch",
                       get: (d: DeveloperInsightsResponse) =>
                         d.velocity.prs_merged,
                     },
                     {
                       label: "Lines Added",
+                      desc: "Total lines of code added across all commits",
                       get: (d: DeveloperInsightsResponse) =>
                         d.velocity.lines_added,
                     },
                     {
                       label: "PR Cycle (hrs)",
+                      desc: "Average time from PR creation to merge. Lower is better",
                       get: (d: DeveloperInsightsResponse) =>
                         d.efficiency.avg_pr_cycle_time_hours,
                       lower: true,
                     },
                     {
                       label: "Merge Rate",
+                      desc: "Percentage of opened PRs that were merged (vs closed without merge)",
                       get: (d: DeveloperInsightsResponse) =>
                         d.efficiency.pr_merge_rate,
                       pct: true,
                     },
                     {
                       label: "Review Depth",
+                      desc: "Average number of comments left per code review",
                       get: (d: DeveloperInsightsResponse) =>
                         d.quality.avg_review_depth,
                     },
                     {
                       label: "Self-merge Rate",
+                      desc: "PRs merged without review from another developer. Lower is better",
                       get: (d: DeveloperInsightsResponse) =>
                         d.quality.self_merge_rate,
                       pct: true,
@@ -387,6 +403,7 @@ export default function ComparePage() {
                     },
                     {
                       label: "Weekend Ratio",
+                      desc: "Percentage of commits made on weekends. High values may indicate overwork",
                       get: (d: DeveloperInsightsResponse) =>
                         d.sustainability.weekend_commit_ratio,
                       pct: true,
@@ -394,6 +411,7 @@ export default function ComparePage() {
                     },
                     {
                       label: "Collaborators",
+                      desc: "Number of unique developers this person co-authored or reviewed with",
                       get: (d: DeveloperInsightsResponse) =>
                         d.collaboration.unique_collaborators,
                     },
@@ -409,7 +427,13 @@ export default function ComparePage() {
                         className="border-b border-slate-700/30"
                       >
                         <td className="py-2 text-xs text-slate-400">
-                          {row.label}
+                          <span className="group relative inline-flex items-center gap-1 cursor-help">
+                            {row.label}
+                            <Info className="h-3 w-3 text-slate-600 group-hover:text-slate-400 transition" />
+                            <span className="invisible group-hover:visible absolute left-0 bottom-full mb-1 w-52 px-3 py-2 text-xs text-slate-200 bg-slate-900 border border-slate-700 rounded-lg shadow-lg z-20">
+                              {row.desc}
+                            </span>
+                          </span>
                         </td>
                         {compareResults.map((dev) => {
                           const val = row.get(dev);

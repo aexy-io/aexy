@@ -24,14 +24,45 @@ const COLORS = [
 
 export interface RadarDataPoint {
   metric: string;
+  desc?: string;
   fullMark: number;
-  [key: string]: string | number;
+  [key: string]: string | number | undefined;
 }
 
 interface MetricsRadarProps {
   data: RadarDataPoint[];
   developers: { id: string; name: string }[];
   height?: number;
+}
+
+function CustomAngleTick({
+  payload,
+  x,
+  y,
+  textAnchor,
+  descMap,
+}: {
+  payload: { value: string };
+  x: number;
+  y: number;
+  textAnchor: string;
+  descMap: Record<string, string>;
+}) {
+  const desc = descMap[payload.value];
+  return (
+    <g>
+      <text
+        x={x}
+        y={y}
+        textAnchor={textAnchor}
+        fill="#94a3b8"
+        fontSize={11}
+      >
+        {payload.value}
+        {desc && <title>{desc}</title>}
+      </text>
+    </g>
+  );
 }
 
 export function MetricsRadar({
@@ -50,13 +81,20 @@ export function MetricsRadar({
     );
   }
 
+  const descMap: Record<string, string> = {};
+  data.forEach((d) => {
+    if (d.desc) descMap[d.metric] = d.desc;
+  });
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <RadarChart cx="50%" cy="50%" outerRadius="75%" data={data}>
         <PolarGrid stroke="#334155" />
         <PolarAngleAxis
           dataKey="metric"
-          tick={{ fill: "#94a3b8", fontSize: 11 }}
+          tick={(props: Record<string, unknown>) => (
+            <CustomAngleTick {...(props as { payload: { value: string }; x: number; y: number; textAnchor: string })} descMap={descMap} />
+          )}
         />
         <PolarRadiusAxis
           angle={90}

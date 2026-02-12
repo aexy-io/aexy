@@ -121,7 +121,7 @@ export default function InsightsPage() {
   const members = dist?.member_metrics ?? [];
 
   const workloadData = members.map((m, i) => ({
-    name: m.developer_id.slice(0, 8),
+    name: m.developer_name || m.developer_id.slice(0, 8),
     commits: m.commits_count,
     prs: m.prs_merged,
     reviews: m.reviews_given,
@@ -532,7 +532,7 @@ export default function InsightsPage() {
                       <td className="px-6 py-3">
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-white">
-                            {m.developer_id.slice(0, 8)}
+                            {m.developer_name || m.developer_id.slice(0, 8)}
                           </span>
                           {isBottleneck && (
                             <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400">

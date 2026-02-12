@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 from aexy.core.config import get_settings
 from aexy.core.database import async_session_maker
 from aexy.models.activity import CodeReview, Commit, PullRequest
-from aexy.models.developer import GitHubConnection
+from aexy.models.developer import Developer, GitHubConnection
 from aexy.models.repository import DeveloperRepository, Repository
 from aexy.services.github_service import GitHubAPIError, GitHubService
 
@@ -142,29 +142,27 @@ class SyncService:
                 repo = dev_repo.repository
                 owner, repo_name = repo.full_name.split("/")
 
-                # Get GitHub username for filtering
-                stmt = select(GitHubConnection).where(GitHubConnection.developer_id == developer_id)
-                result = await db.execute(stmt)
-                connection = result.scalar_one_or_none()
-                github_username = connection.github_username if connection else None
-
                 # Get repo language for tagging commits
                 repo_language = repo.language if hasattr(repo, 'language') else None
 
+                # Initialize developer lookup caches to avoid N+1 queries
+                self._dev_cache_by_github_id: dict[int, str] = {}
+                self._dev_cache_by_email: dict[str, str] = {}
+
                 async with GitHubService(access_token=access_token) as gh:
-                    # Sync commits
+                    # Sync commits (all contributors)
                     commits_synced = await self._sync_commits_with_session(
-                        db, gh, owner, repo_name, developer_id, repository_id, github_username, repo_language
+                        db, gh, owner, repo_name, developer_id, repository_id, repo_language
                     )
 
-                    # Sync PRs
+                    # Sync PRs (all contributors)
                     prs_synced = await self._sync_pull_requests_with_session(
-                        db, gh, owner, repo_name, developer_id, repository_id, github_username
+                        db, gh, owner, repo_name, developer_id, repository_id
                     )
 
-                    # Sync reviews
+                    # Sync reviews (all contributors)
                     reviews_synced = await self._sync_reviews_with_session(
-                        db, gh, owner, repo_name, developer_id, repository_id, github_username
+                        db, gh, owner, repo_name, developer_id, repository_id
                     )
 
                 # Refetch to update
@@ -220,6 +218,113 @@ class SyncService:
                 except Exception as inner_e:
                     logger.error(f"Failed to update sync status: {inner_e}")
 
+    async def _resolve_developer_for_commit(
+        self,
+        db: AsyncSession,
+        commit_data: dict,
+        fallback_developer_id: str,
+    ) -> tuple[str, str | None, str | None]:
+        """Resolve developer_id for a commit author.
+
+        Returns (developer_id, github_login, author_email).
+        """
+        author_obj = commit_data.get("author") or {}  # GitHub user object (may be null)
+        commit_author = commit_data.get("commit", {}).get("author", {})
+
+        github_login = author_obj.get("login") if author_obj else None
+        author_email = commit_author.get("email")
+        author_name = commit_author.get("name")
+
+        # 1. Try matching by GitHub ID (most reliable) — check cache first
+        github_id = author_obj.get("id") if author_obj else None
+        if github_id:
+            if github_id in self._dev_cache_by_github_id:
+                return self._dev_cache_by_github_id[github_id], github_login, author_email
+
+            stmt = (
+                select(Developer)
+                .join(GitHubConnection)
+                .where(GitHubConnection.github_id == github_id)
+            )
+            result = await db.execute(stmt)
+            dev = result.scalar_one_or_none()
+            if dev:
+                self._dev_cache_by_github_id[github_id] = dev.id
+                return dev.id, github_login, author_email
+
+        # 2. Try matching by email — check cache first
+        if author_email:
+            if author_email in self._dev_cache_by_email:
+                return self._dev_cache_by_email[author_email], github_login, author_email
+
+            stmt = select(Developer).where(Developer.email == author_email)
+            result = await db.execute(stmt)
+            dev = result.scalar_one_or_none()
+            if dev:
+                self._dev_cache_by_email[author_email] = dev.id
+                if github_id:
+                    self._dev_cache_by_github_id[github_id] = dev.id
+                return dev.id, github_login, author_email
+
+            # 3. Auto-create ghost developer
+            new_dev = Developer(email=author_email, name=author_name)
+            db.add(new_dev)
+            await db.flush()
+            self._dev_cache_by_email[author_email] = new_dev.id
+            if github_id:
+                self._dev_cache_by_github_id[github_id] = new_dev.id
+            return new_dev.id, github_login, author_email
+
+        # 4. Fallback to connecting developer
+        return fallback_developer_id, github_login, author_email
+
+    async def _resolve_developer_for_pr(
+        self,
+        db: AsyncSession,
+        user_data: dict,
+        fallback_developer_id: str,
+    ) -> str:
+        """Resolve developer_id for a PR/review author."""
+        if not user_data:
+            return fallback_developer_id
+
+        github_id = user_data.get("id")
+        github_login = user_data.get("login")
+
+        # 1. Try GitHub ID — check cache first
+        if github_id:
+            if github_id in self._dev_cache_by_github_id:
+                return self._dev_cache_by_github_id[github_id]
+
+            stmt = (
+                select(Developer)
+                .join(GitHubConnection)
+                .where(GitHubConnection.github_id == github_id)
+            )
+            result = await db.execute(stmt)
+            dev = result.scalar_one_or_none()
+            if dev:
+                self._dev_cache_by_github_id[github_id] = dev.id
+                return dev.id
+
+        # 2. Auto-create ghost developer if we have a login
+        if github_login:
+            # Check if a developer with this login already exists (by email-like key)
+            cache_key = f"gh:{github_login}"
+            if cache_key in self._dev_cache_by_email:
+                return self._dev_cache_by_email[cache_key]
+
+            new_dev = Developer(name=github_login)
+            db.add(new_dev)
+            await db.flush()
+            self._dev_cache_by_email[cache_key] = new_dev.id
+            if github_id:
+                self._dev_cache_by_github_id[github_id] = new_dev.id
+            return new_dev.id
+
+        # 3. Fallback to connecting developer
+        return fallback_developer_id
+
     async def _sync_commits_with_session(
         self,
         db: AsyncSession,
@@ -228,17 +333,16 @@ class SyncService:
         repo: str,
         developer_id: str,
         repository_id: str,
-        github_username: str | None,
         repo_language: str | None = None,
     ) -> int:
-        """Sync commits from repository."""
+        """Sync commits from repository (all contributors)."""
         synced = 0
         page = 1
 
         while True:
             try:
                 commits = await gh.get_commits(
-                    owner, repo, author=github_username, per_page=100, page=page
+                    owner, repo, per_page=100, page=page
                 )
             except GitHubAPIError:
                 break
@@ -253,6 +357,11 @@ class SyncService:
                 existing = result.scalar_one_or_none()
 
                 if not existing:
+                    # Resolve which developer this commit belongs to
+                    resolved_dev_id, github_login, author_email = (
+                        await self._resolve_developer_for_commit(db, commit_data, developer_id)
+                    )
+
                     # Get commit details for stats
                     try:
                         details = await gh.get_commit_details(owner, repo, commit_data["sha"])
@@ -286,7 +395,7 @@ class SyncService:
 
                     commit = Commit(
                         id=str(uuid4()),
-                        developer_id=developer_id,
+                        developer_id=resolved_dev_id,
                         repository=f"{owner}/{repo}",
                         sha=commit_data["sha"],
                         message=commit_data["commit"]["message"][:500] if commit_data["commit"]["message"] else "",
@@ -295,6 +404,8 @@ class SyncService:
                         files_changed=len(files),
                         languages=list(detected_languages) if detected_languages else None,
                         file_types=list(file_types) if file_types else None,
+                        author_github_login=github_login,
+                        author_email=author_email,
                         committed_at=datetime.fromisoformat(
                             commit_data["commit"]["committer"]["date"].replace("Z", "+00:00")
                         ),
@@ -321,9 +432,8 @@ class SyncService:
         repo: str,
         developer_id: str,
         repository_id: str,
-        github_username: str | None,
     ) -> int:
-        """Sync pull requests from repository."""
+        """Sync pull requests from repository (all contributors)."""
         synced = 0
         page = 1
 
@@ -337,10 +447,6 @@ class SyncService:
                 break
 
             for pr_data in prs:
-                # Filter by author if username provided
-                if github_username and pr_data["user"]["login"] != github_username:
-                    continue
-
                 # Check if PR already exists
                 stmt = select(PullRequest).where(
                     PullRequest.github_id == pr_data["id"],
@@ -352,9 +458,14 @@ class SyncService:
                 pr_state = "merged" if pr_data.get("merged_at") else pr_data["state"]
 
                 if not existing:
+                    # Resolve which developer this PR belongs to
+                    resolved_dev_id = await self._resolve_developer_for_pr(
+                        db, pr_data.get("user", {}), developer_id
+                    )
+
                     pr = PullRequest(
                         id=str(uuid4()),
-                        developer_id=developer_id,
+                        developer_id=resolved_dev_id,
                         repository=f"{owner}/{repo}",
                         github_id=pr_data["id"],
                         number=pr_data["number"],
@@ -405,9 +516,8 @@ class SyncService:
         repo: str,
         developer_id: str,
         repository_id: str,
-        github_username: str | None,
     ) -> int:
-        """Sync code reviews from repository."""
+        """Sync code reviews from repository (all contributors)."""
         synced = 0
         page = 1
 
@@ -428,10 +538,6 @@ class SyncService:
                     continue
 
                 for review_data in reviews:
-                    # Filter by reviewer if username provided
-                    if github_username and review_data["user"]["login"] != github_username:
-                        continue
-
                     # Check if review already exists
                     stmt = select(CodeReview).where(
                         CodeReview.github_id == review_data["id"],
@@ -440,12 +546,17 @@ class SyncService:
                     existing = result.scalar_one_or_none()
 
                     if not existing:
+                        # Resolve which developer this review belongs to
+                        resolved_dev_id = await self._resolve_developer_for_pr(
+                            db, review_data.get("user", {}), developer_id
+                        )
+
                         review = CodeReview(
                             id=str(uuid4()),
-                            developer_id=developer_id,
+                            developer_id=resolved_dev_id,
                             repository=f"{owner}/{repo}",
                             github_id=review_data["id"],
-                            pull_request_id=pr_data["id"],
+                            pull_request_github_id=pr_data["id"],
                             state=review_data["state"],
                             body=review_data.get("body", "")[:1000] if review_data.get("body") else None,
                             submitted_at=datetime.fromisoformat(
