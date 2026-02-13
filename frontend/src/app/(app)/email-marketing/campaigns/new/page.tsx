@@ -492,7 +492,7 @@ export default function NewCampaignPage() {
                       rows={8}
                       className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono text-sm"
                     />
-                    <div className="flex items-center justify-between mt-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-3">
                       <p className="text-xs text-slate-500">
                         Separate emails with newlines, commas, or semicolons
                       </p>
@@ -601,7 +601,7 @@ export default function NewCampaignPage() {
           </div>
 
           {/* Navigation */}
-          <div className="flex items-center justify-between mt-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-6">
             <button
               onClick={goToPrevStep}
               disabled={currentStep === "details"}

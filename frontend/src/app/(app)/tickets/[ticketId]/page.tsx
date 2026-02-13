@@ -298,7 +298,7 @@ export default function TicketDetailPage() {
                   rows={3}
                   className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
                 />
-                <div className="flex items-center justify-between mt-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-3">
                   <div className="flex items-center gap-4">
                     <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer">
                       <input
@@ -482,7 +482,7 @@ export default function TicketDetailPage() {
                       href={issue.issue_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-between p-2 bg-slate-900 rounded-lg hover:bg-slate-700 transition"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-2 bg-slate-900 rounded-lg hover:bg-slate-700 transition"
                     >
                       <span className="text-white capitalize">{issue.platform}</span>
                       <ExternalLink className="h-4 w-4 text-slate-400" />
@@ -501,7 +501,7 @@ export default function TicketDetailPage() {
               {ticket.linked_task_id ? (
                 <button
                   onClick={() => router.push(`/sprints?task=${ticket.linked_task_id}`)}
-                  className="w-full flex items-center justify-between p-2 bg-slate-900 rounded-lg hover:bg-slate-700 transition"
+                  className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-2 bg-slate-900 rounded-lg hover:bg-slate-700 transition"
                 >
                   <span className="text-white">View Sprint Task</span>
                   <ExternalLink className="h-4 w-4 text-slate-400" />
@@ -523,7 +523,7 @@ export default function TicketDetailPage() {
         {showCreateTaskModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 w-full max-w-md mx-4">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                 <h2 className="text-lg font-semibold text-white">Create Sprint Task</h2>
                 <button
                   onClick={() => setShowCreateTaskModal(false)}

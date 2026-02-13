@@ -361,7 +361,7 @@ function StatusMappingUI({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h4 className="text-sm font-medium text-white">Status Mapping</h4>
         {hasChanges && (
           <button
@@ -451,7 +451,7 @@ function ConnectedIntegration({
 
   return (
     <div className="bg-slate-700/50 rounded-lg p-4 space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center">
             {type === "jira" ? (
@@ -505,7 +505,7 @@ function ConnectedIntegration({
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-t border-slate-600 pt-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-slate-600 pt-4">
         <div className="flex items-center gap-4">
           <label className="flex items-center gap-2 cursor-pointer">
             <input
@@ -763,7 +763,7 @@ function IntegrationsPageContent() {
                 </div>
 
                 <div className="bg-slate-700/50 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                       <ConnectionStatusBadge connected />
                       <span className="text-slate-400 text-sm">
@@ -947,7 +947,7 @@ function IntegrationsPageContent() {
 
                   {slackConnected && slackIntegration && (
                     <div className="bg-slate-700/50 rounded-lg p-4 space-y-4">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center">
                             <Slack className="h-6 w-6 text-[#E01E5A]" />
@@ -1021,7 +1021,7 @@ function IntegrationsPageContent() {
                 {/* Channel Configuration */}
                 {slackConnected && slackIntegration && isAdmin && (
                   <div className="bg-slate-800 rounded-xl p-6">
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                       <div>
                         <h3 className="text-white font-medium">Configured Channels</h3>
                         <p className="text-slate-400 text-sm">
@@ -1042,7 +1042,7 @@ function IntegrationsPageContent() {
                         {slackConfiguredData.channels.map((channel) => (
                           <div
                             key={channel.id}
-                            className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg"
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-slate-700/50 rounded-lg"
                           >
                             <div className="flex items-center gap-3">
                               <Hash className="h-4 w-4 text-slate-400" />

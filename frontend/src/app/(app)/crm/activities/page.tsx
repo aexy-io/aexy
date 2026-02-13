@@ -197,7 +197,7 @@ export default function ActivitiesPage() {
 <div className="p-6">
         {/* Header */}
         <div className="border-b border-slate-800 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push("/crm")}
@@ -261,7 +261,7 @@ export default function ActivitiesPage() {
         </div>
 
         {/* Activity Count */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <p className="text-sm text-slate-400">
             {total} {total === 1 ? "activity" : "activities"}
             {selectedType !== "all" && ` (${getActivityConfig(selectedType).label})`}

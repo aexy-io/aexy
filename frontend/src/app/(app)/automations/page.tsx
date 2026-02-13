@@ -221,7 +221,8 @@ export default function AutomationsPage() {
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
-            <div className="flex-1">
+            <div className="flex sm:flex-row flex-col sm:items-center sm:justify-between items-start">
+              <div className="flex-1">
               <h1 className="text-2xl font-bold text-white">Automations</h1>
               <p className="text-sm text-slate-400">Automate workflows across all Aexy modules</p>
             </div>
@@ -232,6 +233,7 @@ export default function AutomationsPage() {
               <Plus className="h-4 w-4" />
               Create Automation
             </button>
+            </div>
           </div>
 
           {/* Module Filter Tabs */}

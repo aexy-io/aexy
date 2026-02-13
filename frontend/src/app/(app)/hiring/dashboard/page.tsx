@@ -104,7 +104,7 @@ export default function HiringDashboardPage() {
   return (
     <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-gradient-to-br from-primary/20 to-info/20 rounded-xl">
               <Target className="h-7 w-7 text-primary" />
@@ -174,7 +174,7 @@ export default function HiringDashboardPage() {
             href="/hiring/candidates"
             className="group bg-gradient-to-br from-info/10 to-info/5 rounded-xl border border-info/30 p-5 hover:border-info/50 transition"
           >
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
               <div className="p-2.5 bg-info/20 rounded-lg">
                 <UserPlus className="h-6 w-6 text-info" />
               </div>
@@ -188,7 +188,7 @@ export default function HiringDashboardPage() {
             href="/hiring/assessments/new"
             className="group bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/30 p-5 hover:border-primary/50 transition"
           >
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
               <div className="p-2.5 bg-primary/20 rounded-lg">
                 <ClipboardCheck className="h-6 w-6 text-primary" />
               </div>
@@ -202,7 +202,7 @@ export default function HiringDashboardPage() {
             href="/hiring/analytics"
             className="group bg-gradient-to-br from-purple-500/10 to-purple-500/5 rounded-xl border border-purple-500/30 p-5 hover:border-purple-500/50 transition"
           >
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
               <div className="p-2.5 bg-purple-500/20 rounded-lg">
                 <BarChart3 className="h-6 w-6 text-purple-500" />
               </div>
@@ -216,7 +216,7 @@ export default function HiringDashboardPage() {
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Recent Assessments */}
           <div className="bg-card rounded-xl border border-border overflow-hidden">
-            <div className="p-4 border-b border-border flex items-center justify-between">
+            <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                 <ClipboardCheck className="h-5 w-5 text-primary" />
                 Recent Assessments
@@ -235,7 +235,7 @@ export default function HiringDashboardPage() {
                   <Link
                     key={assessment.id}
                     href={`/hiring/assessments/${assessment.id}/report`}
-                    className="flex items-center justify-between p-4 hover:bg-accent transition group"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 hover:bg-accent transition group"
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-2 h-2 rounded-full ${
@@ -276,7 +276,7 @@ export default function HiringDashboardPage() {
 
           {/* Open Positions */}
           <div className="bg-card rounded-xl border border-border overflow-hidden">
-            <div className="p-4 border-b border-border flex items-center justify-between">
+            <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                 <FileText className="h-5 w-5 text-info" />
                 Open Positions
@@ -294,7 +294,7 @@ export default function HiringDashboardPage() {
                 requirements.filter(r => r.status === "active").slice(0, 5).map((req) => (
                   <div
                     key={req.id}
-                    className="flex items-center justify-between p-4 hover:bg-accent transition"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 hover:bg-accent transition"
                   >
                     <div className="flex items-center gap-3">
                       <div className={`p-1.5 rounded-lg ${
@@ -340,7 +340,7 @@ export default function HiringDashboardPage() {
 
         {/* Hiring Funnel Preview */}
         <div className="mt-8 bg-card rounded-xl border border-border p-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-success" />
               Hiring Funnel
@@ -353,7 +353,7 @@ export default function HiringDashboardPage() {
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
-          <div className="grid grid-cols-6 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
             {[
               { stage: "Applied", count: totalCandidates, color: "bg-info" },
               { stage: "Screening", count: Math.round(totalCandidates * 0.7), color: "bg-cyan-500" },

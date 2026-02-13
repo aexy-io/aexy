@@ -254,7 +254,7 @@ export default function HiringAnalyticsPage() {
   return (
     <main className="w-full px-6 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl">
               <BarChart3 className="h-7 w-7 text-purple-400" />
@@ -309,7 +309,7 @@ export default function HiringAnalyticsPage() {
         <div className="mb-8">
           <button
             onClick={() => toggleSection("codeIntelligence")}
-            className="w-full flex items-center justify-between mb-4"
+            className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4"
           >
             <h2 className="text-xl font-bold text-white flex items-center gap-3">
               <div className="p-2 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-lg">
@@ -369,7 +369,7 @@ export default function HiringAnalyticsPage() {
                             key={idx}
                             className={`p-3 rounded-lg border ${getSeverityColor(gap.gap_severity)}`}
                           >
-                            <div className="flex items-center justify-between mb-2">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                               <span className="font-medium">{gap.skill}</span>
                               <span className="text-xs uppercase">{gap.gap_severity}</span>
                             </div>
@@ -406,7 +406,7 @@ export default function HiringAnalyticsPage() {
                       <div className="space-y-3 max-h-80 overflow-y-auto">
                         {gapAnalysis.bus_factor_risks.map((risk, idx) => (
                           <div key={idx} className="p-3 bg-slate-700/50 rounded-lg">
-                            <div className="flex items-center justify-between mb-1">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-1">
                               <span className="text-white font-medium">{risk.skill_or_area}</span>
                               <span className={`text-xs font-medium ${getRiskColor(risk.risk_level)}`}>
                                 {risk.risk_level.toUpperCase()}
@@ -432,7 +432,7 @@ export default function HiringAnalyticsPage() {
               {/* Hiring Requirements */}
               <div className="grid lg:grid-cols-2 gap-6">
                 <div className="bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden">
-                  <div className="p-4 flex items-center justify-between border-b border-slate-800">
+                  <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800">
                     <div>
                       <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                         <FileText className="h-5 w-5 text-primary-400" />
@@ -488,7 +488,7 @@ export default function HiringAnalyticsPage() {
                             selectedRequirement?.id === req.id ? "bg-slate-700" : ""
                           }`}
                         >
-                          <div className="flex items-center justify-between mb-1">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-1">
                             <span className="text-white font-medium">{req.role_title}</span>
                             <span className={`text-xs px-2 py-1 rounded ${getPriorityColor(req.priority)}`}>
                               {req.priority}
@@ -635,7 +635,7 @@ export default function HiringAnalyticsPage() {
         <div className="mb-8">
           <button
             onClick={() => toggleSection("funnel")}
-            className="w-full flex items-center justify-between mb-4"
+            className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4"
           >
             <h2 className="text-xl font-bold text-white flex items-center gap-3">
               <div className="p-2 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-lg">
@@ -654,7 +654,7 @@ export default function HiringAnalyticsPage() {
             <div className="bg-slate-900/50 rounded-xl border border-slate-800 p-6">
               {pipelineMetrics ? (
                 <>
-                  <div className="grid grid-cols-6 gap-4 mb-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-6 gap-4 mb-6">
                     {[
                       { stage: "applied", label: "Applied", color: "bg-blue-500" },
                       { stage: "screening", label: "Screening", color: "bg-cyan-500" },
@@ -685,7 +685,7 @@ export default function HiringAnalyticsPage() {
                   </div>
 
                   {/* Conversion Rates */}
-                  <div className="grid grid-cols-5 gap-4 pt-4 border-t border-slate-700">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 pt-4 border-t border-slate-700">
                     {[
                       { from: "applied", to: "screening", fromLabel: "Applied", toLabel: "Screening" },
                       { from: "screening", to: "assessment", fromLabel: "Screening", toLabel: "Assessment" },
@@ -719,7 +719,7 @@ export default function HiringAnalyticsPage() {
         <div className="mb-8">
           <button
             onClick={() => toggleSection("performance")}
-            className="w-full flex items-center justify-between mb-4"
+            className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4"
           >
             <h2 className="text-xl font-bold text-white flex items-center gap-3">
               <div className="p-2 bg-gradient-to-br from-orange-500/20 to-red-500/20 rounded-lg">
@@ -737,7 +737,7 @@ export default function HiringAnalyticsPage() {
           {expandedSections.performance && (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-slate-900/50 rounded-xl border border-slate-800 p-5">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
                   <Clock className="h-5 w-5 text-blue-400" />
                   <span className="text-xs text-green-400 flex items-center gap-1">
                     <ArrowDownRight className="h-3 w-3" />
@@ -749,7 +749,7 @@ export default function HiringAnalyticsPage() {
               </div>
 
               <div className="bg-slate-900/50 rounded-xl border border-slate-800 p-5">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
                   <Percent className="h-5 w-5 text-purple-400" />
                   <span className="text-xs text-green-400 flex items-center gap-1">
                     <ArrowUpRight className="h-3 w-3" />
@@ -761,7 +761,7 @@ export default function HiringAnalyticsPage() {
               </div>
 
               <div className="bg-slate-900/50 rounded-xl border border-slate-800 p-5">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
                   <UserCheck className="h-5 w-5 text-green-400" />
                   <span className="text-xs text-green-400 flex items-center gap-1">
                     <ArrowUpRight className="h-3 w-3" />
@@ -773,7 +773,7 @@ export default function HiringAnalyticsPage() {
               </div>
 
               <div className="bg-slate-900/50 rounded-xl border border-slate-800 p-5">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
                   <DollarSign className="h-5 w-5 text-orange-400" />
                   <span className="text-xs text-red-400 flex items-center gap-1">
                     <ArrowUpRight className="h-3 w-3" />
@@ -798,7 +798,7 @@ export default function HiringAnalyticsPage() {
               <p className="text-sm text-slate-400">Which channels bring the best candidates</p>
             </div>
           </div>
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
               { source: "LinkedIn", candidates: 45, hires: 8, rate: 18, color: "bg-blue-500" },
               { source: "Referrals", candidates: 20, hires: 6, rate: 30, color: "bg-green-500" },

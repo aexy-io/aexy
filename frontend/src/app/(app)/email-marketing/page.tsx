@@ -94,7 +94,7 @@ export default function EmailMarketingPage() {
       {/* Header */}
       <div className="border-b border-slate-800 bg-slate-900/50">
         <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-gradient-to-br from-sky-500 to-blue-600 rounded-xl">
                 <Mail className="h-6 w-6 text-white" />
@@ -514,7 +514,7 @@ export default function EmailMarketingPage() {
                   <Loader2 className="h-6 w-6 text-slate-500 animate-spin" />
                 </div>
               ) : (
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="text-center p-4 bg-slate-800/50 rounded-lg">
                     <p className="text-2xl font-bold text-white">{analyticsOverview?.active_subscribers?.toLocaleString() || 0}</p>
                     <p className="text-slate-400 text-sm">Active subscribers</p>

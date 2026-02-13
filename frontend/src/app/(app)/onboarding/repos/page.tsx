@@ -206,7 +206,7 @@ export default function ReposSelection() {
         </div>
 
         {/* Selection summary */}
-        <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg px-4 py-3 mb-6 flex items-center justify-between">
+        <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg px-4 py-3 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <span className="text-sm text-slate-400">
             {selectedRepos.size} of {repositories.length} repositories selected
           </span>
@@ -308,7 +308,7 @@ export default function ReposSelection() {
         </div>
 
         {/* Navigation */}
-        <div className="flex items-center justify-between pt-6 border-t border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 border-t border-slate-800">
           <button
             onClick={() => router.push("/onboarding/connect")}
             className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-white transition-colors"

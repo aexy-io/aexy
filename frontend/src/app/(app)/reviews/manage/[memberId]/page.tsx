@@ -365,7 +365,7 @@ export default function MemberDetailPage() {
             {/* Goals Summary */}
             <div className="lg:col-span-2 space-y-4">
               <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+                <div className="px-6 py-4 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                     <Target className="h-5 w-5 text-cyan-400" />
                     Active Goals
@@ -453,7 +453,7 @@ export default function MemberDetailPage() {
                           <p className="text-slate-400 text-xs mb-1">Suggested Goal:</p>
                           <p className="text-white text-sm">{suggestion.suggestedGoal}</p>
                         </div>
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                           <div className="flex flex-wrap gap-1">
                             {suggestion.keywords.map((kw) => (
                               <span key={kw} className="px-2 py-0.5 bg-slate-700 text-slate-400 text-xs rounded">
@@ -579,7 +579,7 @@ export default function MemberDetailPage() {
 
         {activeTab === "goals" && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h2 className="text-xl font-semibold text-white">All Goals</h2>
               <Link
                 href={`/reviews/goals/new?member=${member.id}`}
@@ -630,7 +630,7 @@ export default function MemberDetailPage() {
                       <p className="text-slate-400 text-sm font-medium">Key Results</p>
                       {goal.keyResults.map((kr, idx) => (
                         <div key={idx} className="bg-slate-900 rounded-lg p-3">
-                          <div className="flex items-center justify-between mb-2">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                             <span className="text-white text-sm">{kr.description}</span>
                             <span className="text-slate-400 text-sm">
                               {kr.current}/{kr.target} {kr.unit}
@@ -684,7 +684,7 @@ export default function MemberDetailPage() {
             </div>
 
             <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+              <div className="px-6 py-4 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h3 className="text-lg font-semibold text-white">Peer Reviews</h3>
                 <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs rounded-full">
                   {member.feedbackSummary.peerCount} received

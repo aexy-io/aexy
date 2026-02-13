@@ -316,7 +316,7 @@ export default function EmailDeliverySettingsPage() {
       {/* Header */}
       <header className="border-b border-slate-700 bg-slate-800/50">
         <div className="max-w-5xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href="/settings"
@@ -415,7 +415,7 @@ export default function EmailDeliverySettingsPage() {
 
         {/* Email Logs */}
         <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
+          <div className="px-5 py-4 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h2 className="text-lg font-semibold text-white">Email Logs</h2>
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-slate-400" />
@@ -459,8 +459,8 @@ export default function EmailDeliverySettingsPage() {
               )}
             </div>
           ) : (
-            <>
-              <table className="w-full">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[600px]">
                 <thead className="bg-slate-900/50">
                   <tr className="text-left text-slate-400 text-sm">
                     <th className="px-4 py-3 font-medium">Recipient</th>
@@ -479,7 +479,7 @@ export default function EmailDeliverySettingsPage() {
 
               {/* Pagination */}
               {emailLogs && emailLogs.total > 25 && (
-                <div className="px-4 py-3 border-t border-slate-700 flex items-center justify-between">
+                <div className="px-4 py-3 border-t border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <span className="text-slate-400 text-sm">
                     Showing {(page - 1) * 25 + 1} - {Math.min(page * 25, emailLogs.total)} of{" "}
                     {emailLogs.total} emails
@@ -503,7 +503,7 @@ export default function EmailDeliverySettingsPage() {
                   </div>
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
       </main>

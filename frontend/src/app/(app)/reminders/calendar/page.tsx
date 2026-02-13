@@ -399,7 +399,7 @@ export default function RemindersCalendarPage() {
     <div className="min-h-screen bg-gray-950 flex flex-col">
       {/* Header */}
       <div className="border-b border-gray-800 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Link
               href="/compliance/reminders"
@@ -440,7 +440,7 @@ export default function RemindersCalendarPage() {
         <>
           {/* Calendar Controls */}
           <div className="border-b border-gray-800 px-6 py-3">
-            <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <button
                   onClick={goToToday}

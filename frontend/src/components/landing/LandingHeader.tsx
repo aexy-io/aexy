@@ -21,7 +21,14 @@ import {
   Heart,
   Mail,
   Bot,
+  Menu,
 } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { SiGithub } from "@icons-pack/react-simple-icons";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
@@ -72,9 +79,11 @@ export function LandingHeader({ showGetStarted = true }: LandingHeaderProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0f]/80 backdrop-blur-xl border-b border-white/5">
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3">
           <div className="relative">
             <div className="absolute inset-0 bg-primary-500 blur-lg opacity-50" />
@@ -182,24 +191,104 @@ export function LandingHeader({ showGetStarted = true }: LandingHeaderProps) {
           </a>
         </nav>
 
-        {showGetStarted && (
-          <div className="flex items-center gap-4">
-            <a
-              href={githubLoginUrl}
-              className="hidden sm:flex text-white/70 hover:text-white transition text-sm font-medium items-center gap-1"
-            >
-              <SiGithub className="h-4 w-4" />
-              Sign In
-            </a>
-            <a
-              href={googleLoginUrl}
-              className="group relative bg-white text-black px-5 py-2.5 rounded-full transition text-sm font-semibold flex items-center gap-2 hover:bg-white/90"
-            >
-              Get Started
-              <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-            </a>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {showGetStarted && (
+            <>
+              <a
+                href={githubLoginUrl}
+                className="hidden sm:flex text-white/70 hover:text-white transition text-sm font-medium items-center gap-1"
+              >
+                <SiGithub className="h-4 w-4" />
+                Sign In
+              </a>
+              <a
+                href={googleLoginUrl}
+                className="group relative bg-white text-black px-3 sm:px-5 py-2 sm:py-2.5 rounded-full transition text-xs sm:text-sm font-semibold flex items-center gap-2 hover:bg-white/90"
+              >
+                Get Started
+                <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+              </a>
+            </>
+          )}
+
+          {/* Mobile hamburger menu */}
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetTrigger asChild>
+              <button className="md:hidden p-2 text-white/70 hover:text-white transition">
+                <Menu className="h-5 w-5" />
+              </button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[300px] bg-[#0a0a0f] border-white/10 overflow-y-auto">
+              <SheetTitle className="text-white text-lg font-bold mb-6">Menu</SheetTitle>
+              <nav className="flex flex-col gap-6">
+                <div>
+                  <h3 className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-3">Products</h3>
+                  <div className="space-y-1">
+                    {productLinks.map(({ href, label, icon: Icon, color }) => (
+                      <Link
+                        key={href}
+                        href={href}
+                        onClick={() => setMobileOpen(false)}
+                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition"
+                      >
+                        <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center`}>
+                          <Icon className="h-4 w-4 text-white" />
+                        </div>
+                        <span className="text-white/80 text-sm">{label}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-3">Solutions</h3>
+                  <div className="space-y-1">
+                    {solutionLinks.map(({ href, label, icon: Icon, color }) => (
+                      <Link
+                        key={href}
+                        href={href}
+                        onClick={() => setMobileOpen(false)}
+                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition"
+                      >
+                        <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center`}>
+                          <Icon className="h-4 w-4 text-white" />
+                        </div>
+                        <span className="text-white/80 text-sm">{label}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Link href="/story" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Our Story</Link>
+                  <Link href="/mission" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Mission</Link>
+                  <Link href="/manifesto" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Engineering OS</Link>
+                  <Link href="/pricing" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Pricing</Link>
+                  <a href="https://github.com/aexy-io/aexy" className="flex items-center gap-2 p-2 text-white/70 hover:text-white text-sm transition">
+                    <SiGithub className="h-4 w-4" />
+                    GitHub
+                  </a>
+                </div>
+                {showGetStarted && (
+                  <div className="pt-4 border-t border-white/10 space-y-3">
+                    <a
+                      href={githubLoginUrl}
+                      className="flex items-center justify-center gap-2 w-full px-4 py-2.5 border border-white/20 rounded-full text-white text-sm font-medium hover:bg-white/5 transition"
+                    >
+                      <SiGithub className="h-4 w-4" />
+                      Sign In with GitHub
+                    </a>
+                    <a
+                      href={googleLoginUrl}
+                      className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-white text-black rounded-full text-sm font-semibold hover:bg-white/90 transition"
+                    >
+                      Get Started
+                      <ArrowRight className="h-4 w-4" />
+                    </a>
+                  </div>
+                )}
+              </nav>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </header>
   );

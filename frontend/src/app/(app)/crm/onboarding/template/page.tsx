@@ -241,7 +241,7 @@ export default function TemplateSelection() {
                   <button
                     key={useCase.id}
                     onClick={() => toggleUseCase(useCase.id)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-all ${
+                    className={`w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-3 py-2 rounded-lg text-left transition-all ${
                       isSelected
                         ? "bg-slate-800/80 text-white"
                         : "text-slate-400 hover:bg-slate-800/40 hover:text-slate-300"
@@ -324,7 +324,7 @@ export default function TemplateSelection() {
                         <p className="text-sm text-slate-400 line-clamp-2 mb-2">
                           {template.description}
                         </p>
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                           <div className="flex flex-wrap gap-1.5">
                             {template.tags.slice(0, 3).map((tag) => (
                               <span
@@ -374,7 +374,7 @@ export default function TemplateSelection() {
         </div>
 
         {/* Navigation */}
-        <div className="flex items-center justify-between pt-6 mt-6 border-t border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 mt-6 border-t border-slate-800">
           <button
             onClick={() => router.push("/crm/onboarding/use-case")}
             className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-white transition-colors"

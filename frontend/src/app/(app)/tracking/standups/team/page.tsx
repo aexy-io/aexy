@@ -166,7 +166,7 @@ export default function TeamStandupsPage() {
             <ArrowLeft className="h-4 w-4" />
             Back to Standups
           </button>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-white flex items-center gap-3">
                 <Users className="h-8 w-8 text-purple-400" />
@@ -381,7 +381,7 @@ export default function TeamStandupsPage() {
           <div className="lg:col-span-1">
             {selectedStandup ? (
               <div className="sticky top-4">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                   <h3 className="text-lg font-semibold text-white">Standup Details</h3>
                   <button
                     onClick={() => setSelectedStandup(null)}

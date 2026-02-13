@@ -48,7 +48,7 @@ function RoleCard({ role, isAdmin, onEdit, onDelete }: RoleCardProps) {
   return (
     <div className="bg-slate-800 rounded-xl border border-slate-700">
       <div className="p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <button
             onClick={() => setExpanded(!expanded)}
             className="flex items-center gap-3 flex-1 text-left"
@@ -400,7 +400,7 @@ export default function RolesSettingsPage() {
 
       <main className="max-w-3xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <h2 className="text-lg font-medium text-white flex items-center gap-2">
               <Shield className="h-5 w-5 text-slate-400" />

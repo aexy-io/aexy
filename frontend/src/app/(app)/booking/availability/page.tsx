@@ -263,7 +263,7 @@ export default function AvailabilityPage() {
           <ArrowLeft className="h-4 w-4" />
           Back to Booking
         </Link>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               Availability
@@ -388,7 +388,7 @@ export default function AvailabilityPage() {
 
       {/* Date Overrides */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <Calendar className="h-5 w-5" />
             Date Overrides
@@ -412,7 +412,7 @@ export default function AvailabilityPage() {
         ) : (
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {overrides.map((override) => (
-              <div key={override.id} className="p-4 flex items-center justify-between">
+              <div key={override.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <div className="font-medium text-gray-900 dark:text-white">
                     {format(parseISO(override.date), "EEEE, MMMM d, yyyy")}

@@ -135,7 +135,7 @@ function QuestionnaireListView({
   return (
     <>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Compliance Center
@@ -222,7 +222,7 @@ function QuestionnaireListView({
               <button
                 key={q.id}
                 onClick={() => onSelect(q.id)}
-                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-left transition-colors"
+                className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-left transition-colors"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-1">
@@ -546,7 +546,7 @@ function QuestionsGrouped({ questions }: { questions: QuestionnaireQuestion[] })
           <div key={domain}>
             <button
               onClick={() => toggleDomain(domain)}
-              className="w-full flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-left"
+              className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-left"
             >
               <div className="flex items-center gap-2">
                 {expandedDomains.has(domain) ? (
@@ -701,7 +701,7 @@ function SuggestionsList({
             {accepted.map((s) => (
               <div
                 key={s.id}
-                className="bg-green-50 dark:bg-green-900/10 rounded-lg border border-green-200 dark:border-green-800 p-3 flex items-center justify-between"
+                className="bg-green-50 dark:bg-green-900/10 rounded-lg border border-green-200 dark:border-green-800 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
               >
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />

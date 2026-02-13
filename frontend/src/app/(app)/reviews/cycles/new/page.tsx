@@ -260,7 +260,7 @@ export default function NewReviewCyclePage() {
             <h2 className="text-lg font-semibold text-white mb-4">Review Settings</h2>
             <div className="space-y-4">
               {/* Enable/Disable Phases */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <label className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg cursor-pointer hover:bg-slate-800 transition">
                   <input
                     type="checkbox"

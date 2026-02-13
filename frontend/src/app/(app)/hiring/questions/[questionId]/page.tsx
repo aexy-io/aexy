@@ -120,7 +120,7 @@ function DifficultyCalibration({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <span className="text-sm text-gray-500">Stated Difficulty</span>
         <span
           className={`px-2 py-0.5 text-xs font-medium rounded-full capitalize ${
@@ -130,7 +130,7 @@ function DifficultyCalibration({
           {stated || "N/A"}
         </span>
       </div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <span className="text-sm text-gray-500">Calculated Difficulty</span>
         <span
           className={`px-2 py-0.5 text-xs font-medium rounded-full capitalize ${
@@ -140,7 +140,7 @@ function DifficultyCalibration({
           {calculated || "N/A"}
         </span>
       </div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <span className="text-sm text-gray-500">Accuracy</span>
         <div className="flex items-center gap-2">
           {match ? (
@@ -343,7 +343,7 @@ export default function QuestionDetailPage() {
         {/* Analytics Summary */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-lg border p-4 shadow-sm">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-medium text-gray-500">Total Attempts</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">{analytics?.total_attempts || 0}</p>
@@ -354,7 +354,7 @@ export default function QuestionDetailPage() {
             </div>
           </div>
           <div className="bg-white rounded-lg border p-4 shadow-sm">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-medium text-gray-500">Avg Score</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
@@ -367,7 +367,7 @@ export default function QuestionDetailPage() {
             </div>
           </div>
           <div className="bg-white rounded-lg border p-4 shadow-sm">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-medium text-gray-500">Avg Time</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
@@ -380,7 +380,7 @@ export default function QuestionDetailPage() {
             </div>
           </div>
           <div className="bg-white rounded-lg border p-4 shadow-sm">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-medium text-gray-500">Completion Rate</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
@@ -401,7 +401,7 @@ export default function QuestionDetailPage() {
             <div className="bg-white rounded-lg border shadow-sm">
               <button
                 onClick={() => setShowProblem(!showProblem)}
-                className="w-full flex items-center justify-between px-6 py-4 border-b"
+                className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-4 border-b"
               >
                 <h2 className="text-lg font-semibold text-gray-900">Problem Statement</h2>
                 {showProblem ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
@@ -471,7 +471,7 @@ export default function QuestionDetailPage() {
             <div className="bg-white rounded-lg border shadow-sm">
               <button
                 onClick={() => setShowSubmissions(!showSubmissions)}
-                className="w-full flex items-center justify-between px-6 py-4 border-b"
+                className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-4 border-b"
               >
                 <h2 className="text-lg font-semibold text-gray-900">
                   Submissions ({submissionsTotal})
@@ -513,8 +513,8 @@ export default function QuestionDetailPage() {
                   ) : submissions.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">No submissions found</div>
                   ) : (
-                    <div>
-                      <table className="w-full">
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[600px]">
                         <thead className="bg-gray-50">
                           <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -586,7 +586,7 @@ export default function QuestionDetailPage() {
 
                       {/* Pagination */}
                       {submissionsTotalPages > 1 && (
-                        <div className="px-6 py-3 border-t flex items-center justify-between">
+                        <div className="px-6 py-3 border-t flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                           <span className="text-sm text-gray-500">
                             Page {submissionsPage} of {submissionsTotalPages}
                           </span>
@@ -655,23 +655,23 @@ export default function QuestionDetailPage() {
             <div className="bg-white rounded-lg border shadow-sm p-6">
               <h3 className="font-semibold text-gray-900 mb-4">Quality Indicators</h3>
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <span className="text-sm text-gray-500">Skip Rate</span>
                   <span className="font-medium text-gray-900">{analytics?.skip_rate.toFixed(1) || 0}%</span>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <span className="text-sm text-gray-500">Partial Credit Rate</span>
                   <span className="font-medium text-gray-900">
                     {analytics?.partial_credit_rate.toFixed(1) || 0}%
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <span className="text-sm text-gray-500">Median Score</span>
                   <span className="font-medium text-gray-900">
                     {analytics?.median_score_percent.toFixed(0) || 0}%
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <span className="text-sm text-gray-500">Median Time</span>
                   <span className="font-medium text-gray-900">
                     {formatTime(analytics?.median_time_seconds || 0)}
@@ -686,7 +686,7 @@ export default function QuestionDetailPage() {
                 <h3 className="font-semibold text-gray-900 mb-4">Option Selection</h3>
                 <div className="space-y-2">
                   {Object.entries(analytics.option_selection_distribution).map(([opt, count]) => (
-                    <div key={opt} className="flex items-center justify-between">
+                    <div key={opt} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <span className="text-sm text-gray-500">Option {opt}</span>
                       <span className="font-medium text-gray-900">{count}</span>
                     </div>

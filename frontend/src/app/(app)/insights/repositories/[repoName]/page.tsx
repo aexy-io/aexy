@@ -103,7 +103,7 @@ export default function RepositoryDetailPage() {
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Link
             href="/insights/repositories"
@@ -208,8 +208,8 @@ export default function RepositoryDetailPage() {
             ))}
           </div>
         ) : sorted.length > 0 ? (
-          <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-            <table className="w-full">
+          <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden overflow-x-auto">
+            <table className="w-full min-w-[600px]">
               <thead>
                 <tr className="border-b border-slate-700 text-left">
                   <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">

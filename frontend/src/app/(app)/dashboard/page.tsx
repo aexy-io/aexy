@@ -141,7 +141,7 @@ export default function DashboardPage() {
   const avgPRSize = workPatterns?.average_pr_size || 0;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className="max-w-7xl mx-auto space-y-8 p-4">
       {/* Welcome Section */}
       <div>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -305,7 +305,7 @@ export default function DashboardPage() {
           {/* Languages Card */}
           {showWidget("languageProficiency") && (
             <div className="lg:col-span-2 bg-card border border-border rounded-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+              <div className="px-6 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-primary-500/10 rounded-lg">
                     <Code className="h-5 w-5 text-primary-400" />
@@ -377,7 +377,7 @@ export default function DashboardPage() {
                 {workPatterns ? (
                   <div className="space-y-5">
                     <div className="p-3 bg-muted rounded-lg">
-                      <div className="flex items-center justify-between mb-1">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-1">
                         <span className="text-muted-foreground text-sm">Complexity Preference</span>
                       </div>
                       <p className="text-foreground font-medium capitalize">
@@ -385,7 +385,7 @@ export default function DashboardPage() {
                       </p>
                     </div>
                     <div className="p-3 bg-muted rounded-lg">
-                      <div className="flex items-center justify-between mb-1">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-1">
                         <span className="text-muted-foreground text-sm">Peak Hours</span>
                       </div>
                       <p className="text-foreground font-medium">
@@ -395,7 +395,7 @@ export default function DashboardPage() {
                       </p>
                     </div>
                     <div className="p-3 bg-muted rounded-lg">
-                      <div className="flex items-center justify-between mb-1">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-1">
                         <span className="text-muted-foreground text-sm">Review Turnaround</span>
                       </div>
                       <p className="text-foreground font-medium">
@@ -405,7 +405,7 @@ export default function DashboardPage() {
                       </p>
                     </div>
                     <div className="p-3 bg-muted rounded-lg">
-                      <div className="flex items-center justify-between mb-1">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-1">
                         <span className="text-muted-foreground text-sm">PR Efficiency</span>
                       </div>
                       <p className="text-foreground font-medium">
@@ -648,7 +648,7 @@ export default function DashboardPage() {
             {/* Goals Overview Card */}
             {showWidget("myGoals") && (
               <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+                <div className="px-6 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-cyan-500/10 rounded-lg">
                       <Target className="h-5 w-5 text-cyan-400" />
@@ -681,7 +681,7 @@ export default function DashboardPage() {
             {/* Reviews Overview Card */}
             {showWidget("performanceReviews") && (
               <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+                <div className="px-6 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-teal-500/10 rounded-lg">
                       <ClipboardCheck className="h-5 w-5 text-teal-400" />

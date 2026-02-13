@@ -482,7 +482,7 @@ export default function DocsPage() {
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-800">
               <div className="flex items-center gap-3">
                 {sourceMode === "repo" && repoStep === "browse" ? (
                   <button
@@ -649,7 +649,7 @@ export default function DocsPage() {
                 /* Directory Browser */
                 <div className="flex flex-col h-[400px]">
                   {/* Breadcrumb & Branch Selector */}
-                  <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800 bg-slate-800/30">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-4 py-2 border-b border-slate-800 bg-slate-800/30">
                     <div className="flex items-center gap-1 text-sm overflow-x-auto">
                       <button
                         onClick={() => setCurrentPath("")}
@@ -754,7 +754,7 @@ export default function DocsPage() {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-between gap-3 p-4 border-t border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-t border-slate-800">
               <div className="text-sm text-slate-500">
                 {sourceMode === "repo" && repoStep === "browse" && (
                   <>Generating docs for: <span className="text-slate-300">{currentPath || "root"}</span></>

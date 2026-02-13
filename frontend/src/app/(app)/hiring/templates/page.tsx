@@ -66,7 +66,7 @@ function TemplateCard({ template, onEdit, onClone, onDelete }: { template: Templ
       className="group relative bg-slate-900/50 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition"
     >
       {/* Type Badge */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div className={cn("flex items-center gap-2 px-2.5 py-1 rounded-lg", config.bgColor)}>
           <Icon className={cn("h-4 w-4", config.color)} />
           <span className={cn("text-xs font-medium", config.color)}>{config.label}</span>
@@ -84,7 +84,7 @@ function TemplateCard({ template, onEdit, onClone, onDelete }: { template: Templ
       <p className="text-sm text-slate-400 mb-4 line-clamp-2">{template.description}</p>
 
       {/* Footer */}
-      <div className="flex items-center justify-between text-xs text-slate-500">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-slate-500">
         <div className="flex items-center gap-1">
           <User className="h-3 w-3" />
           {template.createdBy}
@@ -209,7 +209,7 @@ export default function TemplatesPage() {
   return (
     <main className="w-full px-6 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-gradient-to-br from-orange-500/20 to-amber-500/20 rounded-xl">
               <Briefcase className="h-7 w-7 text-orange-400" />
@@ -359,7 +359,7 @@ export default function TemplatesPage() {
                 className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-6"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <h2 className="text-xl font-bold text-white">Create Template</h2>
                   <button
                     onClick={() => setShowCreateModal(false)}
@@ -373,7 +373,7 @@ export default function TemplatesPage() {
                   {/* Template Type */}
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">Template Type</label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       {(Object.keys(TYPE_CONFIG) as TemplateType[]).map((type) => {
                         const config = TYPE_CONFIG[type];
                         const Icon = config.icon;

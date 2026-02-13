@@ -170,7 +170,7 @@ export default function AllocationsPage() {
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Link
@@ -335,7 +335,7 @@ export default function AllocationsPage() {
                         ))}
                       </div>
                     ) : members.length > 0 ? (
-                      <table className="w-full mt-3">
+                      <table className="w-full min-w-[600px] mt-3">
                         <thead>
                           <tr className="text-left text-xs text-slate-400 border-b border-slate-700/50">
                             <th className="pb-2 font-medium">Developer</th>
@@ -457,7 +457,7 @@ export default function AllocationsPage() {
             </p>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[600px]">
               <thead>
                 <tr className="text-left text-xs text-slate-400 border-b border-slate-700">
                   <th className="px-6 py-3 font-medium">Developer</th>

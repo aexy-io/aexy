@@ -338,7 +338,7 @@ export default function LearningPage() {
   return (
     <div className="min-h-screen bg-slate-950">
 <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl">
               <GraduationCap className="h-7 w-7 text-green-400" />
@@ -865,7 +865,7 @@ export default function LearningPage() {
                   </div>
 
                   {/* Stats */}
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-white">
                         {Math.round((selectedPath.estimated_success_probability || 0.7) * 100)}%

@@ -204,7 +204,7 @@ export default function ReportsPage() {
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Page Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white flex items-center gap-3">
               <FileText className="h-8 w-8 text-primary-400" />

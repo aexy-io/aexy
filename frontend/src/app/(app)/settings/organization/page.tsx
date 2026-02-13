@@ -106,7 +106,7 @@ function MemberRow({ member, currentUserId, isCurrentUserAdmin, onUpdateRole, on
   };
 
   return (
-    <div className="p-4 flex items-center justify-between hover:bg-slate-700/30 transition">
+    <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-700/30 transition">
       <div className="flex items-center gap-3">
         {member.developer_avatar_url ? (
           <Image
@@ -499,7 +499,7 @@ function PendingInviteRow({ invite, onRevoke, onResend, isRevoking }: PendingInv
   };
 
   return (
-    <div className="p-4 flex items-center justify-between hover:bg-slate-700/30 transition">
+    <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-700/30 transition">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 bg-yellow-900/30 rounded-full flex items-center justify-center">
           <Mail className="h-5 w-5 text-yellow-400" />
@@ -590,7 +590,7 @@ function AppSettingsSection({ appSettings, onUpdate, isUpdating, isOwner }: AppS
         {Object.entries(APP_LABELS).map(([key, { label, description }]) => (
           <div
             key={key}
-            className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg"
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-slate-700/30 rounded-lg"
           >
             <div>
               <div className="text-white font-medium">{label}</div>
@@ -763,7 +763,7 @@ export default function OrganizationSettingsPage() {
       <main className="max-w-5xl mx-auto px-4 py-8">
         {/* Workspace Selector */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <h2 className="text-lg font-medium text-white flex items-center gap-2">
               <Building2 className="h-5 w-5 text-slate-400" />
               Workspaces
@@ -897,7 +897,7 @@ export default function OrganizationSettingsPage() {
 
             {/* Members Section */}
             <div className="bg-slate-800 rounded-xl mb-6">
-              <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+              <div className="p-4 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <Users className="h-5 w-5 text-slate-400" />
                   <div>

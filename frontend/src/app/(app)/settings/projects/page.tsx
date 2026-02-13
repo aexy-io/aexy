@@ -256,7 +256,7 @@ function ProjectCard({
                 {members.map((member) => (
                   <div
                     key={member.id}
-                    className="p-3 px-4 flex items-center justify-between hover:bg-slate-700/30"
+                    className="p-3 px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-700/30"
                   >
                     <div className="flex items-center gap-3">
                       {member.developer_avatar_url ? (
@@ -685,7 +685,7 @@ export default function ProjectsSettingsPage() {
         ) : (
           <>
             {/* Header with Actions */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div>
                 <h2 className="text-lg font-medium text-white flex items-center gap-2">
                   <FolderKanban className="h-5 w-5 text-slate-400" />

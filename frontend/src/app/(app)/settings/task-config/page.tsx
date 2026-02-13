@@ -340,7 +340,7 @@ function StatusModal({ status, onClose, onSave, isSaving }: StatusModalProps) {
 
             <div>
               <label className="block text-sm text-slate-400 mb-1">Category</label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {STATUS_CATEGORIES.map((cat) => (
                   <button
                     key={cat.value}
@@ -874,7 +874,7 @@ export default function TaskConfigPage() {
             {/* Statuses Tab */}
             {activeTab === "statuses" && (
               <div>
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                   <div>
                     <h2 className="text-lg font-medium text-white">Task Statuses</h2>
                     <p className="text-slate-400 text-sm">
@@ -967,7 +967,7 @@ export default function TaskConfigPage() {
             {/* Custom Fields Tab */}
             {activeTab === "fields" && (
               <div>
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                   <div>
                     <h2 className="text-lg font-medium text-white">Custom Fields</h2>
                     <p className="text-slate-400 text-sm">

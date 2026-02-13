@@ -102,7 +102,7 @@ export default function StoriesPage() {
       {/* Header */}
       <header className="flex-shrink-0 border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="max-w-[1800px] mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href={`/sprints/${projectId}`}
@@ -226,7 +226,7 @@ export default function StoriesPage() {
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
-            <div className="flex items-center justify-between p-4 border-b border-slate-700">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-700">
               <h2 className="text-lg font-semibold text-white">Create User Story</h2>
               <button
                 onClick={() => setShowCreateModal(false)}
@@ -251,7 +251,7 @@ export default function StoriesPage() {
       {selectedStory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto m-4">
-            <div className="flex items-center justify-between p-4 border-b border-slate-700">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-700">
               <div>
                 <span className="text-sm font-mono text-slate-400">{selectedStory.key}</span>
                 <h2 className="text-lg font-semibold text-white">{selectedStory.title}</h2>

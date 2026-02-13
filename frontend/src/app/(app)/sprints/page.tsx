@@ -104,7 +104,7 @@ function ProjectCard({
                   href={`/sprints/${project.id}/board`}
                   className="block bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-xl p-4 mb-4 hover:from-green-500/15 hover:to-emerald-500/15 transition-all"
                 >
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                       <span className="text-green-400 text-xs font-medium uppercase tracking-wider">
@@ -146,7 +146,7 @@ function ProjectCard({
                     />
                   </div>
 
-                  <div className="flex items-center justify-between text-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
                     <span className="text-slate-400">
                       <CheckCircle className="h-3 w-3 inline mr-1" />
                       {activeSprint.completed_count}/{activeSprint.tasks_count}{" "}
@@ -201,7 +201,7 @@ function ProjectCard({
               )}
 
               {/* Stats row */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="text-center p-2 bg-slate-800/30 rounded-lg">
                   <div className="text-lg font-semibold text-white">
                     {sprints.length}
@@ -232,7 +232,7 @@ function ProjectCard({
         </div>
 
         {/* Quick Actions Footer */}
-        <div className="border-t border-slate-800/80 px-4 py-3 bg-slate-900/50 flex items-center justify-between">
+        <div className="border-t border-slate-800/80 px-4 py-3 bg-slate-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Link
               href={`/sprints/${project.id}/board`}
@@ -403,7 +403,7 @@ function SprintsPageContent() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between mb-8"
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8"
         >
           <div className="flex items-center gap-4">
             <div className="p-3 bg-gradient-to-br from-primary-500/20 to-purple-500/20 rounded-xl border border-primary-500/20">

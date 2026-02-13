@@ -68,7 +68,7 @@ export default function ExecutiveDashboardPage() {
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Link
             href="/insights"
@@ -285,7 +285,7 @@ export default function ExecutiveDashboardPage() {
               Top Contributors
             </h3>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[600px] text-sm">
                 <thead>
                   <tr className="text-zinc-400 text-xs border-b border-zinc-800">
                     <th className="text-left py-2 font-medium">#</th>

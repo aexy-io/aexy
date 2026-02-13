@@ -40,11 +40,18 @@ import {
   Plus,
   Minus,
   MonitorCheck,
-  Bell
+  Bell,
+  Menu,
 } from "lucide-react";
 import { SiGithub } from "@icons-pack/react-simple-icons";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -124,6 +131,7 @@ export default function Home() {
   const [isChecking, setIsChecking] = useState(true);
   const [showProductsMenu, setShowProductsMenu] = useState(false);
   const [showSolutionsMenu, setShowSolutionsMenu] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const productsRef = useRef<HTMLDivElement>(null);
   const solutionsRef = useRef<HTMLDivElement>(null);
   const githubLoginUrl = `${API_BASE_URL}/auth/github/login`;
@@ -172,7 +180,7 @@ export default function Home() {
 
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0f]/80 backdrop-blur-xl border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
               <div className="absolute inset-0 bg-primary-500 blur-lg opacity-50" />
@@ -278,28 +286,104 @@ export default function Home() {
               GitHub
             </a>
           </nav>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <a
               href={githubLoginUrl}
-              className="text-white/70 hover:text-white transition text-sm font-medium flex items-center gap-1"
+              className="hidden sm:flex text-white/70 hover:text-white transition text-sm font-medium items-center gap-1"
             >
               <SiGithub className="h-4 w-4" />
               Sign In
             </a>
             <a
               href={googleLoginUrl}
-              className="group relative bg-white text-black px-5 py-2.5 rounded-full transition text-sm font-semibold flex items-center gap-2 hover:bg-white/90"
+              className="group relative bg-white text-black px-3 sm:px-5 py-2 sm:py-2.5 rounded-full transition text-xs sm:text-sm font-semibold flex items-center gap-2 hover:bg-white/90"
             >
               <GoogleIcon />
               Get Started
               <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
             </a>
+
+            {/* Mobile hamburger menu */}
+            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+              <SheetTrigger asChild>
+                <button className="md:hidden p-2 text-white/70 hover:text-white transition">
+                  <Menu className="h-5 w-5" />
+                </button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[300px] bg-[#0a0a0f] border-white/10 overflow-y-auto">
+                <SheetTitle className="text-white text-lg font-bold mb-6">Menu</SheetTitle>
+                <nav className="flex flex-col gap-6">
+                  <div>
+                    <h3 className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-3">Products</h3>
+                    <div className="space-y-1">
+                      {productLinks.map(({ href, label, icon: Icon, color }) => (
+                        <Link
+                          key={href}
+                          href={href}
+                          onClick={() => setMobileOpen(false)}
+                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition"
+                        >
+                          <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center`}>
+                            <Icon className="h-4 w-4 text-white" />
+                          </div>
+                          <span className="text-white/80 text-sm">{label}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-3">Solutions</h3>
+                    <div className="space-y-1">
+                      {solutionLinks.map(({ href, label, icon: Icon, color }) => (
+                        <Link
+                          key={href}
+                          href={href}
+                          onClick={() => setMobileOpen(false)}
+                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition"
+                        >
+                          <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center`}>
+                            <Icon className="h-4 w-4 text-white" />
+                          </div>
+                          <span className="text-white/80 text-sm">{label}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Link href="/story" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Our Story</Link>
+                    <Link href="/mission" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Mission</Link>
+                    <Link href="/manifesto" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Engineering OS</Link>
+                    <Link href="/pricing" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Pricing</Link>
+                    <a href="https://github.com/aexy-io/aexy" className="flex items-center gap-2 p-2 text-white/70 hover:text-white text-sm transition">
+                      <SiGithub className="h-4 w-4" />
+                      GitHub
+                    </a>
+                  </div>
+                  <div className="pt-4 border-t border-white/10 space-y-3">
+                    <a
+                      href={githubLoginUrl}
+                      className="flex items-center justify-center gap-2 w-full px-4 py-2.5 border border-white/20 rounded-full text-white text-sm font-medium hover:bg-white/5 transition"
+                    >
+                      <SiGithub className="h-4 w-4" />
+                      Sign In with GitHub
+                    </a>
+                    <a
+                      href={googleLoginUrl}
+                      className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-white text-black rounded-full text-sm font-semibold hover:bg-white/90 transition"
+                    >
+                      Get Started
+                      <ArrowRight className="h-4 w-4" />
+                    </a>
+                  </div>
+                </nav>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-24 px-6 relative">
+      <section className="pt-24 sm:pt-32 pb-16 sm:pb-24 px-4 sm:px-6 relative">
         <div className="max-w-7xl mx-auto relative">
           <div className="max-w-4xl mx-auto text-center">
             {/* Open Source Badge */}
@@ -354,7 +438,7 @@ export default function Home() {
               </a>
             </div>
 
-            <div className="flex items-center justify-center gap-8 text-sm text-white/40">
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:gap-8 text-xs sm:text-sm text-white/40">
               <span className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                 No credit card required
@@ -388,19 +472,19 @@ export default function Home() {
               </div>
             </div>
             {/* Floating badges */}
-            <div className="absolute -left-4 top-1/4 bg-gradient-to-r from-emerald-500/20 to-emerald-500/10 backdrop-blur-sm border border-emerald-500/20 rounded-xl px-4 py-3 animate-float">
+            <div className="hidden sm:block absolute -left-4 top-1/4 bg-gradient-to-r from-emerald-500/20 to-emerald-500/10 backdrop-blur-sm border border-emerald-500/20 rounded-xl px-4 py-3 animate-float">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
                 <span className="text-emerald-400 text-sm font-medium">3 commits synced</span>
               </div>
             </div>
-            <div className="absolute -right-4 top-1/3 bg-gradient-to-r from-purple-500/20 to-purple-500/10 backdrop-blur-sm border border-purple-500/20 rounded-xl px-4 py-3 animate-float delay-500">
+            <div className="hidden sm:block absolute -right-4 top-1/3 bg-gradient-to-r from-purple-500/20 to-purple-500/10 backdrop-blur-sm border border-purple-500/20 rounded-xl px-4 py-3 animate-float delay-500">
               <div className="flex items-center gap-2">
                 <Zap className="h-4 w-4 text-purple-400" />
                 <span className="text-purple-400 text-sm font-medium">Skills analyzed</span>
               </div>
             </div>
-            <div className="absolute -left-4 bottom-1/4 bg-gradient-to-r from-amber-500/20 to-amber-500/10 backdrop-blur-sm border border-amber-500/20 rounded-xl px-4 py-3 animate-float delay-700">
+            <div className="hidden sm:block absolute -left-4 bottom-1/4 bg-gradient-to-r from-amber-500/20 to-amber-500/10 backdrop-blur-sm border border-amber-500/20 rounded-xl px-4 py-3 animate-float delay-700">
               <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-amber-400" />
                 <span className="text-amber-400 text-sm font-medium">12 emails synced</span>
@@ -1545,7 +1629,7 @@ function DashboardPreview() {
         <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full" />
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white/5 rounded-xl p-4 border border-white/5">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white text-sm font-bold">JD</div>

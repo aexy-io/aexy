@@ -153,7 +153,7 @@ export default function RecordDetailPage() {
                   <div className="h-4 w-24 bg-slate-800 rounded" />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="h-20 bg-slate-800 rounded-xl" />
                 <div className="h-20 bg-slate-800 rounded-xl" />
                 <div className="h-20 bg-slate-800 rounded-xl" />

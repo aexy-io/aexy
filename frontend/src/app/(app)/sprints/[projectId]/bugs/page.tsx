@@ -217,7 +217,7 @@ export default function BugsPage() {
       {/* Header */}
       <header className="flex-shrink-0 border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="max-w-[1800px] mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href={`/sprints/${projectId}`}
@@ -384,7 +384,7 @@ export default function BugsPage() {
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
-            <div className="flex items-center justify-between p-4 border-b border-slate-700">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-700">
               <h2 className="text-lg font-semibold text-white">Report Bug</h2>
               <button
                 onClick={() => setShowCreateModal(false)}
@@ -408,7 +408,7 @@ export default function BugsPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1">
                     Severity
@@ -704,7 +704,7 @@ function BugDetailModal({ bug, workspaceId, onClose }: BugDetailModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto m-4">
-        <div className="flex items-center justify-between p-4 border-b border-slate-700">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-700">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <BugIcon className="h-5 w-5 text-red-400" />
@@ -725,7 +725,7 @@ function BugDetailModal({ bug, workspaceId, onClose }: BugDetailModalProps) {
 
         <div className="p-4 space-y-6">
           {/* Status and Actions */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <span className={`px-2 py-1 rounded text-sm font-medium text-white ${getStatusColor(currentBug.status)}`}>
                 {currentBug.status.replace("_", " ")}
@@ -834,7 +834,7 @@ function BugDetailModal({ bug, workspaceId, onClose }: BugDetailModalProps) {
           )}
 
           {/* Environment Info */}
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="bg-slate-800/50 rounded-lg p-3">
               <div className="text-xs text-slate-500 uppercase mb-1">Environment</div>
               <p className="text-white text-sm">{currentBug.environment || "Not specified"}</p>
@@ -862,7 +862,7 @@ function BugDetailModal({ bug, workspaceId, onClose }: BugDetailModalProps) {
           )}
 
           {/* Metadata */}
-          <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-700">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-700">
             <div>
               <span className="text-xs text-slate-500">Created</span>
               <p className="text-sm text-white">{formatDate(currentBug.created_at)}</p>

@@ -269,7 +269,7 @@ export default function OnCallSettingsPage() {
                 <h3 className="text-sm font-medium text-slate-400 mb-2">Google Calendar</h3>
                 <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
                   {isCalendarConnected ? (
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-green-400" />
                         <span className="text-sm text-white">{calendarStatus?.calendar_email}</span>

@@ -367,7 +367,7 @@ export default function CandidateDetailPage() {
 
             {activeTab === "activity" && (
               <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <h3 className="text-lg font-semibold text-white">Activity Timeline</h3>
                   <button
                     onClick={() => setShowAddNote(!showAddNote)}
@@ -417,7 +417,7 @@ export default function CandidateDetailPage() {
                 <h3 className="text-lg font-semibold text-white mb-4">Assessment Results</h3>
                 <div className="space-y-4">
                   <div className="p-4 bg-slate-800/50 rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
                           <ClipboardCheck className="h-5 w-5 text-green-400" />
@@ -432,7 +432,7 @@ export default function CandidateDetailPage() {
                         <p className="text-xs text-slate-400">Score</p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-4 gap-4 pt-3 border-t border-slate-700">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-3 border-t border-slate-700">
                       <div>
                         <p className="text-xs text-slate-500">React</p>
                         <p className="text-sm font-medium text-white">90%</p>
@@ -500,7 +500,7 @@ export default function CandidateDetailPage() {
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
               <h3 className="text-sm font-semibold text-white mb-4">Documents</h3>
               <div className="space-y-2">
-                <button className="w-full flex items-center justify-between p-3 bg-slate-800/50 rounded-lg hover:bg-slate-800 transition">
+                <button className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-slate-800/50 rounded-lg hover:bg-slate-800 transition">
                   <div className="flex items-center gap-3">
                     <FileText className="h-4 w-4 text-blue-400" />
                     <span className="text-sm text-white">Resume.pdf</span>

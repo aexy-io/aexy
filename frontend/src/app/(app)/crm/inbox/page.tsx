@@ -157,7 +157,7 @@ function EmailListItem({
           {email.from_name?.[0]?.toUpperCase() || email.from_email?.[0]?.toUpperCase() || "?"}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2 mb-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-1">
             <span
               className={`truncate text-sm ${
                 isUnread ? "font-semibold text-white" : "text-slate-300"
@@ -225,7 +225,7 @@ function EmailDetail({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-800">
         <button
           onClick={onClose}
           className="lg:hidden flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
@@ -393,7 +393,7 @@ function LinkToRecordModal({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-slate-800 rounded-xl p-6 w-full max-w-md border border-slate-700">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <h3 className="text-xl font-semibold text-white">Link to Record</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white">
             <X className="w-5 h-5" />
@@ -762,7 +762,7 @@ function InboxPageContent() {
 <div className="p-0">
         {/* Header */}
         <div className="border-b border-slate-800 px-6 py-4">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => router.push("/crm")}
@@ -801,7 +801,7 @@ function InboxPageContent() {
 
         {(error || syncError) && (
           <div className="px-6 py-3 bg-red-500/10 border-b border-red-500/30">
-            <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-2 text-red-400">
                 <AlertCircle className="w-4 h-4" />
                 {error || syncError}

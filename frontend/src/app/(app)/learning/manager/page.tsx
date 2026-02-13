@@ -256,7 +256,7 @@ export default function ManagerLearningPage() {
                 {/* Budget Overview */}
                 <div className="bg-slate-900 rounded-lg p-6">
                   <h2 className="text-lg font-semibold mb-4">Budget Summary</h2>
-                  <div className="grid grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                     <div>
                       <p className="text-slate-400 text-sm">Total Budget</p>
                       <p className="text-2xl font-bold text-white">
@@ -541,7 +541,7 @@ function BudgetCard({ budget }: { budget: LearningBudgetWithDetails }) {
           {budget.is_active ? "Active" : "Inactive"}
         </span>
       </div>
-      <div className="grid grid-cols-3 gap-4 mb-4 text-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 text-sm">
         <div>
           <p className="text-slate-400">Total</p>
           <p className="font-semibold">{formatCurrency(budget.budget_cents)}</p>

@@ -127,7 +127,7 @@ function ConfigurationTab({
     <div className="space-y-6">
       {/* Basic Info */}
       <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <h3 className="text-lg font-semibold text-white">Basic Information</h3>
           {!isEditing ? (
             <button
@@ -228,7 +228,7 @@ function ConfigurationTab({
       {/* Statistics */}
       <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
         <h3 className="text-lg font-semibold text-white mb-4">Statistics</h3>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="p-4 bg-slate-700/30 rounded-lg">
             <p className="text-2xl font-bold text-white">{object.record_count}</p>
             <p className="text-sm text-slate-400">Records</p>
@@ -623,7 +623,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
       >
         {/* Header */}
         <div className="p-6 border-b border-slate-700/50">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-xl bg-white flex items-center justify-center shadow-lg">
                 <GoogleIcon className="w-8 h-8" />
@@ -654,7 +654,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
           <>
             {/* Connected email */}
             <div className="p-6 border-b border-slate-700/50">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <Mail className="w-5 h-5 text-slate-400" />
                   <div>
@@ -976,7 +976,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                       <label className="block text-sm font-medium text-slate-300 mb-2">
                         Deal Creation Mode
                       </label>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <button
                           onClick={() => handleUpdateDealSettings({ deal_creation_mode: "auto" })}
                           className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-colors ${
@@ -1017,7 +1017,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                     </div>
 
                     {/* Skip Personal Domains */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
                         <p className="text-sm font-medium text-slate-300">Skip personal email domains</p>
                         <p className="text-xs text-slate-500">Gmail, Yahoo, Outlook, etc.</p>

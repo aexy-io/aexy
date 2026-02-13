@@ -275,7 +275,7 @@ export default function GoalsPage() {
       {/* Header */}
       <header className="flex-shrink-0 border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm sticky top-0 z-30 -mx-4 -mt-2 mb-6 sm:-mx-6 lg:-mx-8">
         <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href={`/sprints/${projectId}`}
@@ -422,7 +422,7 @@ export default function GoalsPage() {
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto m-4">
-            <div className="flex items-center justify-between p-4 border-b border-slate-700">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-700">
               <h2 className="text-lg font-semibold text-white">
                 {editingGoal ? "Edit Goal" : "Create Goal"}
               </h2>
@@ -695,7 +695,7 @@ function GoalDetailModal({ goal, workspaceId, onClose }: GoalDetailModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto m-4">
-        <div className="flex items-center justify-between p-4 border-b border-slate-700">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-700">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-sm font-mono text-slate-400">{currentGoal.key}</span>
@@ -716,7 +716,7 @@ function GoalDetailModal({ goal, workspaceId, onClose }: GoalDetailModalProps) {
         <div className="p-4 space-y-6">
           {/* Progress Section */}
           <div className="bg-slate-800/50 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
               <span className="text-sm font-medium text-white">Progress</span>
               <div className="flex items-center gap-2">
                 {getTrendIcon()}
@@ -806,7 +806,7 @@ function GoalDetailModal({ goal, workspaceId, onClose }: GoalDetailModalProps) {
           )}
 
           {/* Period and Dates */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-slate-800/50 rounded-lg p-3">
               <div className="text-xs text-slate-500 uppercase mb-1">Period</div>
               <p className="text-white capitalize">{currentGoal.period_type || "Not set"}</p>
@@ -824,7 +824,7 @@ function GoalDetailModal({ goal, workspaceId, onClose }: GoalDetailModalProps) {
           {/* Confidence */}
           {currentGoal.confidence_level > 0 && (
             <div className="bg-slate-800/50 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                 <span className="text-sm font-medium text-white">Confidence Level</span>
                 <span className="text-white font-bold">{currentGoal.confidence_level}/10</span>
               </div>

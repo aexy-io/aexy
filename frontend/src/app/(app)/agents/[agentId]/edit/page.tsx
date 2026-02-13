@@ -307,7 +307,7 @@ export default function EditAgentPage() {
               <label className="block text-sm font-medium text-slate-300 mb-2">
                 Agent Type
               </label>
-              <div className="flex items-center gap-2">
+              <div className="flex sm:flex-row flex-col sm:items-center items-start gap-2">
                 <AgentTypeBadge type={agentType} />
                 <span className="text-sm text-slate-400">
                   (Cannot be changed after creation)
@@ -642,7 +642,7 @@ export default function EditAgentPage() {
             {/* Email Setup Modal */}
             {showEmailSetup && !agent?.email_enabled && !isSystemAgent && (
               <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                   <h3 className="font-medium text-white flex items-center gap-2">
                     <AtSign className="h-4 w-4 text-purple-400" />
                     Configure Email Address
@@ -727,7 +727,7 @@ export default function EditAgentPage() {
 
             {/* Email Status */}
             <div className="p-4 bg-slate-700/50 rounded-lg border border-slate-600">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className={cn(
                     "p-2 rounded-lg",
@@ -833,7 +833,7 @@ export default function EditAgentPage() {
 
                 {/* Inbox Link */}
                 <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <h4 className="font-medium text-blue-300">Agent Inbox</h4>
                       <p className="text-sm text-slate-400 mt-1">
@@ -864,31 +864,31 @@ export default function EditAgentPage() {
     <div className="min-h-screen bg-slate-900">
       {/* Header */}
       <header className="border-b border-slate-700 bg-slate-800/50 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
+        <div className="max-w-5xl mx-auto px-4 py-3 sm:py-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <Link
               href={`/agents/${agentId}`}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition flex-shrink-0"
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>
-            <div className="flex items-center gap-3 flex-1">
+            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
               <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center"
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0"
                 style={{
                   backgroundColor: `${getAgentTypeConfig(agentType).color}20`,
                 }}
               >
                 <Bot
-                  className="h-5 w-5"
+                  className="h-4 w-4 sm:h-5 sm:w-5"
                   style={{
                     color: getAgentTypeConfig(agentType).color,
                   }}
                 />
               </div>
-              <div>
-                <h1 className="text-xl font-semibold text-white">Edit {agent.name}</h1>
-                <p className="text-slate-400 text-sm">
+              <div className="min-w-0">
+                <h1 className="text-base sm:text-xl font-semibold text-white truncate">Edit {agent.name}</h1>
+                <p className="text-slate-400 text-sm hidden sm:block">
                   Configure your agent settings
                 </p>
               </div>
@@ -897,7 +897,7 @@ export default function EditAgentPage() {
               onClick={handleSave}
               disabled={!hasChanges || isUpdating}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg transition text-sm font-medium",
+                "flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition text-sm font-medium flex-shrink-0",
                 hasChanges
                   ? "bg-purple-600 hover:bg-purple-700 text-white"
                   : "bg-slate-700 text-slate-400 cursor-not-allowed"
@@ -906,17 +906,17 @@ export default function EditAgentPage() {
               {isUpdating ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Saving...
+                  <span className="hidden sm:inline">Saving...</span>
                 </>
               ) : saveSuccess ? (
                 <>
                   <Check className="h-4 w-4" />
-                  Saved!
+                  <span className="hidden sm:inline">Saved!</span>
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4" />
-                  Save Changes
+                  <span className="hidden sm:inline">Save Changes</span>
                 </>
               )}
             </button>
@@ -931,10 +931,10 @@ export default function EditAgentPage() {
           </div>
         )}
 
-        <div className="flex gap-6">
+        <div className="flex gap-6 flex-col sm:flex-row">
           {/* Tabs sidebar */}
-          <nav className="w-48 flex-shrink-0">
-            <div className="bg-slate-800 rounded-xl border border-slate-700 p-2 sticky top-24">
+          <nav className="w-full sm:w-48 flex-shrink-0">
+            <div className="bg-slate-800 rounded-xl border border-slate-700 p-2 sticky top-24 flex sm:block overflow-x-auto gap-1 sm:gap-0">
               {TABS.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -943,13 +943,13 @@ export default function EditAgentPage() {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={cn(
-                      "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition",
+                      "flex items-center gap-2 sm:gap-3 px-3 py-2 rounded-lg text-left transition whitespace-nowrap sm:w-full",
                       isActive
                         ? "bg-purple-500/20 text-purple-400"
                         : "text-slate-400 hover:text-white hover:bg-slate-700"
                     )}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className="h-4 w-4 flex-shrink-0" />
                     <span className="text-sm font-medium">{tab.label}</span>
                   </button>
                 );

@@ -206,7 +206,7 @@ export default function ReviewsManagePage() {
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white">Review Management</h1>
             <p className="text-slate-400 mt-1">
@@ -362,7 +362,7 @@ export default function ReviewsManagePage() {
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4 mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                       <div className="text-center">
                         <p className="text-white font-semibold">{member.goalsCount}</p>
                         <p className="text-slate-500 text-xs">Goals</p>
@@ -379,7 +379,7 @@ export default function ReviewsManagePage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-700">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-slate-700">
                       <span className="text-slate-500 text-xs">Active {member.lastActivity}</span>
                       <div className="flex items-center gap-2">
                         <button className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition">

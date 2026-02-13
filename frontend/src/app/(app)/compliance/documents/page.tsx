@@ -85,7 +85,7 @@ export default function DocumentCenterPage() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Document Center</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">
@@ -196,7 +196,7 @@ export default function DocumentCenterPage() {
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-6 text-sm text-gray-500 dark:text-gray-400">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-6 text-sm text-gray-500 dark:text-gray-400">
                   <span>
                     Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} of {total}
                   </span>

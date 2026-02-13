@@ -149,7 +149,7 @@ export default function InsightsPage() {
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex flex-col justify-between gap-6">
-        <div className="flex justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-white flex items-center gap-2">
               <TrendingUp className="h-6 w-6 text-indigo-400" />
@@ -502,7 +502,7 @@ export default function InsightsPage() {
             </h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[600px]">
               <thead>
                 <tr className="text-left text-xs text-slate-400 border-b border-slate-700">
                   <th className="px-6 py-3 font-medium">Developer</th>

@@ -267,7 +267,7 @@ export default function ProjectSettingsPage() {
 
         {/* Settings Form */}
         <div className="bg-slate-800 rounded-xl p-6 space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h2 className="text-lg font-medium text-white flex items-center gap-2">
               <FolderKanban className="h-5 w-5 text-slate-400" />
               General Settings
@@ -393,7 +393,7 @@ export default function ProjectSettingsPage() {
         {/* Public Page Configuration - Only shown when project is public */}
         {project.is_public && isAdmin && (
           <div className="bg-slate-800 rounded-xl p-6 mt-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <div>
                 <h2 className="text-lg font-medium text-white flex items-center gap-2">
                   <Globe className="h-5 w-5 text-green-400" />

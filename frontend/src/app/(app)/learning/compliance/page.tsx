@@ -182,7 +182,7 @@ export default function CompliancePage() {
     <div className="min-h-screen bg-slate-950">
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-gradient-to-br from-blue-500/20 to-indigo-500/20 rounded-xl">
               <Shield className="h-7 w-7 text-blue-400" />
@@ -437,7 +437,7 @@ export default function CompliancePage() {
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 mt-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4">
                       <div className="text-center p-2 bg-slate-700/50 rounded-lg">
                         <div className="text-lg font-bold text-white">{training.total_assignments}</div>
                         <div className="text-xs text-slate-400">Assigned</div>
@@ -571,7 +571,7 @@ export default function CompliancePage() {
                 <div className="divide-y divide-slate-700">
                   {myAssignments.map((assignment) => (
                     <div key={assignment.id} className="p-4 hover:bg-slate-700/30 transition">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3">
                             <h3 className="text-white font-medium truncate">{assignment.training_name}</h3>
@@ -663,7 +663,7 @@ export default function CompliancePage() {
                 <div className="divide-y divide-slate-700">
                   {myCertifications.map((cert) => (
                     <div key={cert.id} className="p-4 hover:bg-slate-700/30 transition">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3">
                             <h3 className="text-white font-medium truncate">{cert.certification_name}</h3>
@@ -717,7 +717,7 @@ export default function CompliancePage() {
           <div className="space-y-6">
             {/* Overdue Training Report */}
             <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-              <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+              <div className="p-4 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                   <AlertTriangle className="h-5 w-5 text-red-400" />
                   Overdue Training Report
@@ -736,7 +736,7 @@ export default function CompliancePage() {
                 <div className="divide-y divide-slate-700 max-h-[400px] overflow-y-auto">
                   {overdueReport.assignments.map((assignment) => (
                     <div key={assignment.id} className="p-4 hover:bg-slate-700/30 transition">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
                           <h3 className="text-white font-medium">{assignment.training_name}</h3>
                           <p className="text-slate-400 text-sm">{assignment.developer_name} ({assignment.developer_email})</p>
@@ -756,7 +756,7 @@ export default function CompliancePage() {
 
             {/* Expiring Certifications Report */}
             <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-              <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+              <div className="p-4 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                   <Clock className="h-5 w-5 text-orange-400" />
                   Expiring Certifications (Next 30 Days)
@@ -775,7 +775,7 @@ export default function CompliancePage() {
                 <div className="divide-y divide-slate-700 max-h-[400px] overflow-y-auto">
                   {expiringReport.certifications.map((cert) => (
                     <div key={cert.id} className="p-4 hover:bg-slate-700/30 transition">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
                           <h3 className="text-white font-medium">{cert.certification_name}</h3>
                           <p className="text-slate-400 text-sm">{cert.developer_name} ({cert.developer_email})</p>

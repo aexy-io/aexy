@@ -203,7 +203,7 @@ export default function NewAutomationPage() {
     <div className="min-h-screen bg-slate-900">
       <div className="h-[calc(100vh-64px)] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700 bg-slate-800/50 relative z-10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-4 py-3 border-b border-slate-700 bg-slate-800/50 relative z-10">
           <div className="flex items-center gap-4">
             <button
               onClick={handleBack}
