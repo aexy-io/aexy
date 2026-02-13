@@ -60,7 +60,7 @@ export default function LeaderboardPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Link
             href="/insights"
@@ -96,7 +96,7 @@ export default function LeaderboardPage() {
       </div>
 
       {/* Metric Selector */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {METRIC_OPTIONS.map((opt) => {
           const Icon = opt.icon;
           return (

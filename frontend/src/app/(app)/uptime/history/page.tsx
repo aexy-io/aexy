@@ -114,7 +114,7 @@ export default function HistoryPage() {
     <div className="min-h-screen bg-slate-950">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-white flex items-center gap-3">
               <History className="h-7 w-7 text-blue-400" />
@@ -234,7 +234,7 @@ export default function HistoryPage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full min-w-[600px]">
                     <thead>
                       <tr className="border-b border-slate-700">
                         <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">

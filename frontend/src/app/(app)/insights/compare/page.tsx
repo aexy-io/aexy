@@ -199,7 +199,7 @@ export default function ComparePage() {
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Link
@@ -334,7 +334,7 @@ export default function ComparePage() {
               <h2 className="text-lg font-semibold text-white mb-4">
                 Side-by-Side Metrics
               </h2>
-              <table className="w-full">
+              <table className="w-full min-w-[600px]">
                 <thead>
                   <tr className="text-left text-xs text-slate-400 border-b border-slate-700">
                     <th className="pb-2 font-medium">Metric</th>
