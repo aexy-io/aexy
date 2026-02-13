@@ -416,34 +416,35 @@ export default function AgentDetailPage() {
     <div className="min-h-screen bg-slate-900">
       {/* Header */}
       <header className="border-b border-slate-700 bg-slate-800/50">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4 space-y-3 sm:space-y-0">
+          {/* Desktop: single row / Mobile: two rows */}
+          <div className="flex items-center gap-2 sm:gap-4">
             <Link
               href="/agents"
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition flex-shrink-0"
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>
-            <div className="flex items-center gap-3 flex-1">
+            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
               <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center"
+                className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0"
                 style={{
                   backgroundColor: `${getAgentTypeConfig(agent.agent_type).color}20`,
                 }}
               >
                 <Bot
-                  className="h-6 w-6"
+                  className="h-5 w-5 sm:h-6 sm:w-6"
                   style={{
                     color: getAgentTypeConfig(agent.agent_type).color,
                   }}
                 />
               </div>
-              <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-xl font-semibold text-white">{agent.name}</h1>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <h1 className="text-base sm:text-xl font-semibold text-white truncate">{agent.name}</h1>
                   <AgentStatusBadge isActive={agent.is_active} size="sm" />
                 </div>
-                <div className="flex items-center gap-2 text-sm text-slate-400">
+                <div className="hidden sm:flex items-center gap-2 text-sm text-slate-400">
                   <AgentTypeBadge type={agent.agent_type} size="sm" showLabel={false} />
                   <span>{getAgentTypeConfig(agent.agent_type).label}</span>
                   {agent.mention_handle && (
@@ -456,8 +457,8 @@ export default function AgentDetailPage() {
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-2">
+            {/* Actions - desktop only (inline) */}
+            <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
               <Link
                 href={`/agents/${agent.id}/chat`}
                 className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition text-sm font-medium"
@@ -534,6 +535,81 @@ export default function AgentDetailPage() {
                   </>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Actions - mobile only (second row) */}
+          <div className="flex sm:hidden items-center gap-1">
+            <Link
+              href={`/agents/${agent.id}/chat`}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition text-xs font-medium"
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              Chat
+            </Link>
+            <button
+              onClick={() => setShowRunDialog(true)}
+              disabled={isExecuting || !agent.is_active}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isExecuting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Zap className="h-3.5 w-3.5" />
+              )}
+              Run
+            </button>
+            <button
+              onClick={handleToggle}
+              disabled={isToggling}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition text-xs font-medium",
+                agent.is_active
+                  ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
+                  : "bg-green-500/20 text-green-400 hover:bg-green-500/30"
+              )}
+            >
+              {isToggling ? (
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              ) : agent.is_active ? (
+                <Pause className="h-3.5 w-3.5" />
+              ) : (
+                <Play className="h-3.5 w-3.5" />
+              )}
+              {agent.is_active ? "Pause" : "Activate"}
+            </button>
+            <Link
+              href={`/agents/${agent.id}/edit`}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition text-xs font-medium"
+            >
+              <Settings className="h-3.5 w-3.5" />
+              Edit
+            </Link>
+            <div className="relative ml-auto">
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
+              {showMenu && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-slate-700 rounded-lg shadow-xl z-20 py-1">
+                    <button
+                      onClick={() => {
+                        handleDelete();
+                        setShowMenu(false);
+                      }}
+                      disabled={isDeleting}
+                      className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-600 flex items-center gap-2"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete Agent
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

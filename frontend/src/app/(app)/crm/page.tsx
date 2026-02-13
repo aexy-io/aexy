@@ -489,7 +489,7 @@ export default function CRMPage() {
     <div className="min-h-screen bg-slate-950">
 <div className="p-8">
         <div className="max-w-7xl mx-auto">
-          <div className="flex gap-8">
+          <div className="flex gap-8 md:flex-row flex-col-reverse">
             {/* Main content */}
             <div className="flex-1">
               {/* Header */}
@@ -635,7 +635,7 @@ export default function CRMPage() {
 
           {/* Sidebar with Getting Started Checklist */}
           {showChecklist && (
-            <div className="w-80 flex-shrink-0">
+            <div className="w-full md:w-80 flex-shrink-0">
               <GettingStartedChecklist
                 onDismiss={() => setShowChecklist(false)}
               />

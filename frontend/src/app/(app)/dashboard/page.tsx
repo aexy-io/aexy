@@ -141,7 +141,7 @@ export default function DashboardPage() {
   const avgPRSize = workPatterns?.average_pr_size || 0;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className="max-w-7xl mx-auto space-y-8 p-4">
       {/* Welcome Section */}
       <div>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

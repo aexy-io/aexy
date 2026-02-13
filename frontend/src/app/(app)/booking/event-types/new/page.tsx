@@ -170,7 +170,7 @@ export default function NewEventTypePage() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 URL Slug *
               </label>
-              <div className="flex items-center">
+              <div className="flex sm:flex-row flex-col sm:items-center items-start">
                 <span className="text-sm text-gray-500 dark:text-gray-400 mr-1">
                   /book/{currentWorkspace?.slug}/
                 </span>
