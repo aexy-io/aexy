@@ -150,7 +150,7 @@ function CollapsibleSection({
 
   return (
     <div className="bg-slate-800 rounded-xl overflow-hidden">
-      <div className="p-4 flex items-center justify-between border-b border-slate-700">
+      <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-700">
         <button
           onClick={() => setExpanded(!expanded)}
           className="flex items-center gap-3 flex-1 text-left"
@@ -373,7 +373,7 @@ export default function RepositorySettingsPage() {
       <main className="max-w-5xl mx-auto px-4 py-8">
         {/* Stats & Actions Bar */}
         {installationStatus?.has_installation && repositories.length > 0 && (
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-6">
               <div className="text-slate-300">
                 <span className="text-2xl font-bold text-white">{enabledCount}</span>

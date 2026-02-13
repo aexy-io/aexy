@@ -459,7 +459,7 @@ export default function ReviewsPage() {
               ) : contributionSummary ? (
                 <div className="space-y-4">
                   {/* Metrics Grid */}
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="bg-slate-800/50 rounded-lg p-3 text-center">
                       <p className="text-lg font-bold text-white">
                         {contributionSummary.metrics?.commits?.total || 0}

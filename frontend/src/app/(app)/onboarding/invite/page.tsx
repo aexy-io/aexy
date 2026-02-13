@@ -173,7 +173,7 @@ export default function InviteTeam() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.2, delay: index * 0.05 }}
-                  className="flex items-center justify-between p-3 bg-slate-800/30 border border-slate-700/50 rounded-lg"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-slate-800/30 border border-slate-700/50 rounded-lg"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center">
@@ -213,7 +213,7 @@ export default function InviteTeam() {
         </div>
 
         {/* Navigation */}
-        <div className="flex items-center justify-between pt-6 border-t border-slate-800 max-w-xl mx-auto">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 border-t border-slate-800 max-w-xl mx-auto">
           <button
             onClick={() => {
               if (data.connections.google) {

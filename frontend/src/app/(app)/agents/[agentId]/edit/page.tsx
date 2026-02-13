@@ -642,7 +642,7 @@ export default function EditAgentPage() {
             {/* Email Setup Modal */}
             {showEmailSetup && !agent?.email_enabled && !isSystemAgent && (
               <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                   <h3 className="font-medium text-white flex items-center gap-2">
                     <AtSign className="h-4 w-4 text-purple-400" />
                     Configure Email Address
@@ -727,7 +727,7 @@ export default function EditAgentPage() {
 
             {/* Email Status */}
             <div className="p-4 bg-slate-700/50 rounded-lg border border-slate-600">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className={cn(
                     "p-2 rounded-lg",
@@ -833,7 +833,7 @@ export default function EditAgentPage() {
 
                 {/* Inbox Link */}
                 <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <h4 className="font-medium text-blue-300">Agent Inbox</h4>
                       <p className="text-sm text-slate-400 mt-1">

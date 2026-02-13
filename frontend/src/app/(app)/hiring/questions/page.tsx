@@ -358,7 +358,7 @@ export default function QuestionsPage() {
     <div className="min-h-screen bg-background">
       <main className="w-full px-6 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Question Bank</h1>
             <p className="text-muted-foreground mt-1">
@@ -376,7 +376,7 @@ export default function QuestionsPage() {
         {/* Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-card rounded-lg border border-border p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Questions</p>
                 <p className="text-2xl font-bold text-foreground mt-1">{metrics.total}</p>
@@ -387,7 +387,7 @@ export default function QuestionsPage() {
             </div>
           </div>
           <div className="bg-card rounded-lg border border-border p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Avg Score</p>
                 <p className="text-2xl font-bold text-foreground mt-1">{metrics.avgScore.toFixed(0)}%</p>
@@ -398,7 +398,7 @@ export default function QuestionsPage() {
             </div>
           </div>
           <div className="bg-card rounded-lg border border-border p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Avg Time</p>
                 <p className="text-2xl font-bold text-foreground mt-1">{formatTime(Math.round(metrics.avgTime))}</p>
@@ -409,7 +409,7 @@ export default function QuestionsPage() {
             </div>
           </div>
           <div className="bg-card rounded-lg border border-border p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">AI Generated</p>
                 <p className="text-2xl font-bold text-foreground mt-1">{metrics.aiGenerated}</p>
@@ -496,7 +496,7 @@ export default function QuestionsPage() {
 
           {/* Bulk Actions */}
           {selectedIds.size > 0 && (
-            <div className="px-4 py-3 bg-primary/10 border-t border-border flex items-center justify-between">
+            <div className="px-4 py-3 bg-primary/10 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <span className="text-sm text-primary">
                 {selectedIds.size} question{selectedIds.size > 1 ? "s" : ""} selected
               </span>
@@ -521,7 +521,7 @@ export default function QuestionsPage() {
         </div>
 
         {/* Questions Table */}
-        <div className="bg-card rounded-lg border border-border overflow-hidden">
+        <div className="bg-card rounded-lg border border-border overflow-hidden overflow-x-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -537,7 +537,7 @@ export default function QuestionsPage() {
               </p>
             </div>
           ) : (
-            <table className="w-full">
+            <table className="w-full min-w-[600px]">
               <thead className="bg-muted/50 border-b border-border">
                 <tr>
                   <th className="px-4 py-3 text-left">
@@ -590,7 +590,7 @@ export default function QuestionsPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="px-4 py-3 border-t border-border flex items-center justify-between">
+            <div className="px-4 py-3 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <span className="text-sm text-muted-foreground">
                 Showing {(page - 1) * 20 + 1} to {Math.min(page * 20, total)} of {total} questions
               </span>

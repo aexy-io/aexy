@@ -293,7 +293,7 @@ export default function GoalDetailPage() {
                 <div className="space-y-4">
                   {goal.key_results.map((kr, index) => (
                     <div key={kr.id || index} className="bg-slate-700/50 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                         <span className="text-white">{kr.description}</span>
                         <span className="text-sm text-slate-400">
                           {kr.current || 0} / {kr.target} {kr.unit}

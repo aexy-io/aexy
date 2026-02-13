@@ -191,7 +191,7 @@ function TaskCard({ task, isDragging, onDelete, onClick, suggestion }: TaskCardP
       )}
 
       {/* Assignee */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {task.assignee_id ? (
           <div className="flex items-center gap-2">
             {task.assignee_avatar_url ? (
@@ -287,7 +287,7 @@ function KanbanColumn({ column, tasks, onDelete, onAssign, onTaskClick, suggesti
       className={`flex-1 min-w-[280px] rounded-xl p-3 ${!column.customColor ? column.bgColor : ''}`}
       style={bgStyle}
     >
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
         <div className="flex items-center gap-2">
           <h3
             className={`font-medium ${!column.customColor ? column.color : ''}`}
@@ -691,7 +691,7 @@ function TaskDetailModal({ task, sprintId, onClose, onUpdate, onDelete, isUpdati
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-slate-800 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-700">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-700">
           <div className="flex items-center gap-3">
             {task.source_type && SOURCE_ICONS[task.source_type]}
             <span className={`text-xs px-2 py-1 rounded ${statusConfig.bgColor} ${statusConfig.color}`}>
@@ -1236,7 +1236,7 @@ export default function SprintBoardPage({
       {/* Header */}
       <header className="border-b border-slate-700 bg-slate-800/50">
         <div className="max-w-[1600px] mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href={`/sprints/${projectId}`}

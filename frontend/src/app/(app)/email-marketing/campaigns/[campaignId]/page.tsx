@@ -435,8 +435,8 @@ export default function CampaignDetailPage() {
           )}
 
           {activeTab === "recipients" && (
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-              <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+            <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden overflow-x-auto">
+              <div className="p-4 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h3 className="text-lg font-medium text-white">Recipients</h3>
                 <span className="text-sm text-slate-400">
                   {recipientsData?.total || 0} total
@@ -452,7 +452,7 @@ export default function CampaignDetailPage() {
                   <p className="text-slate-400">No recipients yet</p>
                 </div>
               ) : (
-                <table className="w-full">
+                <table className="w-full min-w-[600px]">
                   <thead className="border-b border-slate-800">
                     <tr className="text-left text-sm text-slate-400">
                       <th className="px-4 py-3 font-medium">Email</th>
@@ -514,7 +514,7 @@ export default function CampaignDetailPage() {
                       {analytics.device_stats ? (
                         <div className="space-y-3">
                           {Object.entries(analytics.device_stats).map(([device, count]) => (
-                            <div key={device} className="flex items-center justify-between">
+                            <div key={device} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                               <span className="text-slate-400 capitalize">{device}</span>
                               <span className="text-white">{count as number}</span>
                             </div>
@@ -530,7 +530,7 @@ export default function CampaignDetailPage() {
                       <h3 className="text-lg font-medium text-white mb-4">Link Performance</h3>
                       <div className="space-y-3">
                         {analytics.link_stats.map((link: { url: string; clicks: number }, idx: number) => (
-                          <div key={idx} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
+                          <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-slate-800/50 rounded-lg">
                             <span className="text-slate-300 truncate max-w-md">{link.url}</span>
                             <span className="text-purple-400 font-medium">{link.clicks} clicks</span>
                           </div>

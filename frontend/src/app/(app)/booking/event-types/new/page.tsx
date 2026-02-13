@@ -339,7 +339,7 @@ export default function NewEventTypePage() {
 
         {/* Custom Questions */}
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Custom Questions
             </h2>
@@ -408,7 +408,7 @@ export default function NewEventTypePage() {
 
         {/* Payment (Optional) */}
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Payment

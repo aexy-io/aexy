@@ -317,7 +317,7 @@ export default function MonitorDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent Checks */}
           <div className="bg-slate-800 rounded-xl border border-slate-700">
-            <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+            <div className="p-4 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h2 className="text-lg font-semibold text-white">Recent Checks</h2>
               <Link
                 href="/uptime/history"
@@ -369,7 +369,7 @@ export default function MonitorDetailPage() {
 
           {/* Recent Incidents */}
           <div className="bg-slate-800 rounded-xl border border-slate-700">
-            <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+            <div className="p-4 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h2 className="text-lg font-semibold text-white">Recent Incidents</h2>
               <Link
                 href="/uptime/incidents"

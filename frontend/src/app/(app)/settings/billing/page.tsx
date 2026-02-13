@@ -151,7 +151,7 @@ function BillingContent() {
         {/* Current Plan Card */}
         <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
           <div className={`p-6 bg-gradient-to-r ${getTierColor(tier)}`}>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white/20 rounded-lg">
                   <TierIcon className="h-6 w-6 text-white" />
@@ -222,7 +222,7 @@ function BillingContent() {
 
                 {/* Quick upgrade card */}
                 <div className="mt-6 p-4 bg-gradient-to-r from-primary-500/10 to-primary-600/10 border border-primary-500/30 rounded-xl">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-primary-500/20 rounded-lg">
                         <Sparkles className="h-5 w-5 text-primary-400" />
@@ -342,7 +342,7 @@ function BillingContent() {
           <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
             <h3 className="text-lg font-semibold text-white mb-4">Payment Method</h3>
             {subscriptionStatus.customer.stripe_customer_id ? (
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-slate-700 rounded-lg">
                     <CreditCard className="h-5 w-5 text-slate-300" />

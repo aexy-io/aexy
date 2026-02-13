@@ -50,7 +50,7 @@ function MetricCard({
 }) {
   return (
     <div className="bg-card rounded-lg border border-border p-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
           <p className="text-3xl font-bold text-foreground mt-1">{value}</p>
@@ -165,7 +165,7 @@ function AssessmentCard({
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-4 mt-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
           <div>
             <p className="text-xs text-muted-foreground">Questions</p>
             <p className="text-lg font-semibold text-foreground">
@@ -194,7 +194,7 @@ function AssessmentCard({
           </div>
         </div>
 
-        <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-6 pt-4 border-t border-border">
           <p className="text-xs text-muted-foreground">
             Created {new Date(assessment.created_at).toLocaleDateString()}
           </p>
@@ -292,7 +292,7 @@ export default function AssessmentsPage() {
     <div className="min-h-screen bg-background">
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Assessments</h1>
             <p className="text-muted-foreground mt-1">

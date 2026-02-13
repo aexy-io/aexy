@@ -88,7 +88,7 @@ function RunAgentDialog({
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-lg mx-4">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-700">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 border-b border-slate-700">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-purple-500/20 rounded-lg">
               <Zap className="h-5 w-5 text-purple-400" />
@@ -196,7 +196,7 @@ function ExecutionItem({ execution, isSelected, onClick }: ExecutionItemProps) {
           : "bg-slate-700/30 border-transparent hover:border-slate-600"
       )}
     >
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
         <ExecutionStatusBadge status={execution.status} size="sm" />
         <span className="text-xs text-slate-500">
           {formatDate(execution.started_at || execution.created_at)}
@@ -221,7 +221,7 @@ interface ExecutionDetailProps {
 function ExecutionDetail({ execution }: ExecutionDetailProps) {
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <ExecutionStatusBadge status={execution.status} />
         <span className="text-sm text-slate-400">
           {formatDate(execution.started_at || execution.created_at)}
@@ -229,7 +229,7 @@ function ExecutionDetail({ execution }: ExecutionDetailProps) {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-slate-700/50 rounded-lg p-3">
           <div className="text-xl font-semibold text-white">
             {execution.steps?.length || 0}
@@ -271,7 +271,7 @@ function ExecutionDetail({ execution }: ExecutionDetailProps) {
                 key={index}
                 className="bg-slate-700/50 rounded-lg p-3 text-sm"
               >
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                   <span className="text-slate-300 font-medium">
                     Step {step.step_number}
                     {step.tool_name && (
@@ -559,7 +559,7 @@ export default function AgentDetailPage() {
                 Statistics
               </h3>
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-2 text-slate-400">
                     <Activity className="h-4 w-4" />
                     <span className="text-sm">Total Runs</span>
@@ -568,7 +568,7 @@ export default function AgentDetailPage() {
                     {agent.total_executions}
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-2 text-slate-400">
                     <TrendingUp className="h-4 w-4" />
                     <span className="text-sm">Success Rate</span>
@@ -586,7 +586,7 @@ export default function AgentDetailPage() {
                     {successRate}%
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-2 text-slate-400">
                     <Clock className="h-4 w-4" />
                     <span className="text-sm">Avg Duration</span>
@@ -641,7 +641,7 @@ export default function AgentDetailPage() {
           {/* Center: Executions List */}
           <div className="col-span-12 lg:col-span-4">
             <div className="bg-slate-800 rounded-xl border border-slate-700 h-full">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-4 py-3 border-b border-slate-700">
                 <h3 className="font-medium text-white">Execution History</h3>
                 <button
                   onClick={() => refetchExecutions()}

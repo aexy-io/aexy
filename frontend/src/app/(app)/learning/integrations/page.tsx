@@ -252,7 +252,7 @@ export default function LearningIntegrationsPage() {
     <div className="min-h-screen bg-slate-950">
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl">
               <Plug className="h-7 w-7 text-cyan-400" />
@@ -404,7 +404,7 @@ export default function LearningIntegrationsPage() {
         {/* HR Integrations Tab */}
         {activeTab === "hr" && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h2 className="text-lg font-semibold text-white">HR System Integrations</h2>
               <button className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition">
                 <Plus className="h-4 w-4" />
@@ -478,7 +478,7 @@ export default function LearningIntegrationsPage() {
         {/* LMS Integrations Tab */}
         {activeTab === "lms" && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h2 className="text-lg font-semibold text-white">LMS Integrations</h2>
               <button className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition">
                 <Plus className="h-4 w-4" />
@@ -545,7 +545,7 @@ export default function LearningIntegrationsPage() {
         {/* SCORM Packages Tab */}
         {activeTab === "scorm" && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h2 className="text-lg font-semibold text-white">SCORM Packages</h2>
               <button className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition">
                 <Plus className="h-4 w-4" />
@@ -581,7 +581,7 @@ export default function LearningIntegrationsPage() {
                       <p className="text-slate-400 text-sm mb-3 line-clamp-2">{pkg.description}</p>
                     )}
 
-                    <div className="grid grid-cols-3 gap-2 mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
                       <div className="text-center p-2 bg-slate-700/50 rounded-lg">
                         <div className="text-lg font-bold text-white">{pkg.total_enrollments}</div>
                         <div className="text-xs text-slate-400">Enrolled</div>
@@ -625,7 +625,7 @@ export default function LearningIntegrationsPage() {
         {/* Calendar Tab */}
         {activeTab === "calendar" && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h2 className="text-lg font-semibold text-white">Calendar Integrations</h2>
               <button className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition">
                 <Plus className="h-4 w-4" />

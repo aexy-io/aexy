@@ -109,7 +109,7 @@ export default function CRMOnboardingWelcome() {
             {/* Preview card */}
             <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden shadow-2xl">
               {/* Header */}
-              <div className="px-6 py-4 border-b border-slate-700/50 flex items-center justify-between">
+              <div className="px-6 py-4 border-b border-slate-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
                     <Users className="w-4 h-4 text-white" />
@@ -124,7 +124,7 @@ export default function CRMOnboardingWelcome() {
               {/* Table preview */}
               <div className="p-4">
                 {/* Column headers */}
-                <div className="grid grid-cols-4 gap-4 px-4 py-2 text-xs text-slate-500 border-b border-slate-800">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 px-4 py-2 text-xs text-slate-500 border-b border-slate-800">
                   <div>Name</div>
                   <div>Company</div>
                   <div>Status</div>
@@ -143,7 +143,7 @@ export default function CRMOnboardingWelcome() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: 0.5 + 0.1 * i }}
-                    className="grid grid-cols-4 gap-4 px-4 py-3 hover:bg-slate-800/50 rounded-lg transition-colors"
+                    className="grid grid-cols-2 sm:grid-cols-4 gap-4 px-4 py-3 hover:bg-slate-800/50 rounded-lg transition-colors"
                   >
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center text-xs text-white">

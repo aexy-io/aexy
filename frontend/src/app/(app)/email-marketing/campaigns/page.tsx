@@ -166,7 +166,7 @@ function CampaignCard({
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-4 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
         <div className="text-center p-3 bg-slate-800/50 rounded-lg">
           <p className="text-lg font-semibold text-white">{campaign.sent_count.toLocaleString()}</p>
           <p className="text-xs text-slate-500">Sent</p>

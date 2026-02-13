@@ -202,7 +202,7 @@ export default function CandidateDetailsPage() {
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-card rounded-lg border border-border p-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Score</p>
                 <p className="text-3xl font-bold text-foreground">
@@ -215,7 +215,7 @@ export default function CandidateDetailsPage() {
           </div>
 
           <div className="bg-card rounded-lg border border-border p-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Trust Score</p>
                 <p className={`text-3xl font-bold ${details.proctoring ? getTrustScoreColor(details.proctoring.trust_score) : "text-muted-foreground"}`}>
@@ -228,7 +228,7 @@ export default function CandidateDetailsPage() {
           </div>
 
           <div className="bg-card rounded-lg border border-border p-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Time Taken</p>
                 <p className="text-3xl font-bold text-foreground">
@@ -242,7 +242,7 @@ export default function CandidateDetailsPage() {
           </div>
 
           <div className="bg-card rounded-lg border border-border p-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Questions</p>
                 <p className="text-3xl font-bold text-foreground">
@@ -341,7 +341,7 @@ export default function CandidateDetailsPage() {
               <h3 className="font-semibold text-foreground mb-4">Performance Summary</h3>
               <div className="space-y-4">
                 <div>
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                     <span className="text-sm text-muted-foreground">Overall Score</span>
                     <span className="font-semibold text-foreground">
                       {details.attempt?.total_score?.toFixed(1) ?? "0"}%
@@ -357,7 +357,7 @@ export default function CandidateDetailsPage() {
 
                 {details.proctoring && (
                   <div>
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                       <span className="text-sm text-muted-foreground">Trust Score</span>
                       <span className={`font-semibold ${getTrustScoreColor(details.proctoring.trust_score)}`}>
                         {details.proctoring.trust_score}%
@@ -406,8 +406,8 @@ export default function CandidateDetailsPage() {
         )}
 
         {activeTab === "questions" && (
-          <div className="bg-card rounded-lg border border-border">
-            <table className="w-full">
+          <div className="bg-card rounded-lg border border-border overflow-x-auto">
+            <table className="w-full min-w-[600px]">
               <thead className="bg-muted border-b border-border">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -499,7 +499,7 @@ export default function CandidateDetailsPage() {
           <div className="space-y-6">
             {/* Trust Score Overview */}
             <div className="bg-card rounded-lg border border-border p-6">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                 <h3 className="font-semibold text-foreground">Trust Score Overview</h3>
                 <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${getTrustScoreBg(details.proctoring.trust_score)}`}>
                   <Shield className={`h-5 w-5 ${getTrustScoreColor(details.proctoring.trust_score)}`} />
@@ -537,7 +537,7 @@ export default function CandidateDetailsPage() {
                 <h3 className="font-semibold text-foreground mb-4">Violation Summary</h3>
                 <div className="space-y-3">
                   {Object.entries(details.proctoring.event_summary).map(([eventType, data]: [string, any]) => (
-                    <div key={eventType} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                    <div key={eventType} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-muted rounded-lg">
                       <div className="flex items-center gap-3">
                         <AlertTriangle
                           className={`h-5 w-5 ${

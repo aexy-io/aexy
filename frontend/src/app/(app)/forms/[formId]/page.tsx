@@ -575,7 +575,7 @@ function TicketingTab({
   return (
     <div className="space-y-6">
       <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-blue-500/20">
               <Ticket className="h-5 w-5 text-blue-400" />
@@ -791,7 +791,7 @@ function CRMTab({
   return (
     <div className="space-y-6">
       <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-green-500/20">
               <Users className="h-5 w-5 text-green-400" />
@@ -1003,7 +1003,7 @@ function DealsTab({
   return (
     <div className="space-y-6">
       <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-orange-500/20">
               <DollarSign className="h-5 w-5 text-orange-400" />
@@ -1179,7 +1179,7 @@ function AutomationsTab({
             {linkedAutomations.map((link) => (
               <div
                 key={link.id}
-                className="flex items-center justify-between p-4 bg-slate-900/50 rounded-lg border border-slate-700"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-900/50 rounded-lg border border-slate-700"
               >
                 <div className="flex items-center gap-3">
                   <Link2 className="h-4 w-4 text-purple-400" />
@@ -1213,7 +1213,7 @@ function AutomationsTab({
             {availableAutomations.map((automation) => (
               <div
                 key={automation.id}
-                className="flex items-center justify-between p-4 bg-slate-900/50 rounded-lg border border-slate-700"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-900/50 rounded-lg border border-slate-700"
               >
                 <div>
                   <span className="text-white">{automation.name}</span>
@@ -1270,7 +1270,7 @@ function SubmissionsTab({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h3 className="text-white font-medium">Submissions ({submissions.length})</h3>
         <button
           onClick={() => refetch()}
@@ -1287,8 +1287,8 @@ function SubmissionsTab({
           <p className="text-slate-400">Share your form to start collecting responses</p>
         </div>
       ) : (
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
-          <table className="w-full">
+        <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden overflow-x-auto">
+          <table className="w-full min-w-[600px]">
             <thead className="bg-slate-900/50">
               <tr>
                 <th className="text-left px-4 py-3 text-sm font-medium text-slate-400">Email</th>
@@ -1564,7 +1564,7 @@ export default function FormEditorPage() {
         {/* Tab Content */}
         {activeTab === "fields" && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h3 className="text-white font-medium">Form Fields ({form.fields?.length || 0})</h3>
               <button
                 onClick={handleAddField}

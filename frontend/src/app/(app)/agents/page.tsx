@@ -185,7 +185,7 @@ function AgentCard({
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-700">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-700">
           <div className="text-center">
             <div className="text-lg font-semibold text-white">
               {formatNumber(agent.total_executions)}
@@ -350,7 +350,7 @@ export default function AgentsListPage() {
 
       <main className="max-w-6xl mx-auto px-4 py-8">
         {/* Stats Summary */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
             <div className="text-2xl font-bold text-white">{agents.length}</div>
             <div className="text-sm text-slate-400">Total Agents</div>

@@ -390,7 +390,7 @@ export default function TemplateDetailPage() {
       {previewHtml && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
           <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-800">
               <h3 className="text-lg font-medium text-white">Template Preview</h3>
               <button
                 onClick={() => setPreviewHtml(null)}

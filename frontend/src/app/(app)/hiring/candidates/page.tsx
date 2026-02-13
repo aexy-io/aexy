@@ -167,7 +167,7 @@ function CandidateCard({ candidate, onDragStart, onDragEnd }: { candidate: Candi
       )}
 
       {/* Footer */}
-      <div className="flex items-center justify-between text-xs text-slate-500">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-slate-500">
         <span className="flex items-center gap-1">
           <Clock className="h-3 w-3" />
           {getTimeAgo(candidate.appliedAt)}
@@ -243,7 +243,7 @@ function StageColumn({
     >
       {/* Column Header */}
       <div className={cn("p-4 border-b", config.borderColor)}>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <div className={cn("w-2 h-2 rounded-full", config.bgColor.replace("/10", ""))} />
             <span className={cn("font-medium", config.color)}>{config.label}</span>
@@ -439,7 +439,7 @@ export default function CandidatesPage() {
   return (
     <main className="w-full px-6 py-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-xl">
               <Users className="h-7 w-7 text-blue-400" />
@@ -542,8 +542,8 @@ export default function CandidatesPage() {
 
         {/* List View */}
         {viewMode === "list" && (
-          <div className="bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden">
-            <table className="w-full">
+          <div className="bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden overflow-x-auto">
+            <table className="w-full min-w-[600px]">
               <thead>
                 <tr className="border-b border-slate-800">
                   <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wide px-4 py-3">Candidate</th>
@@ -633,7 +633,7 @@ export default function CandidatesPage() {
                 className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-6"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <h2 className="text-xl font-bold text-white">Add Candidate</h2>
                   <button
                     onClick={() => setShowAddModal(false)}

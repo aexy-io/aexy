@@ -865,7 +865,7 @@ export default function LearningPage() {
                   </div>
 
                   {/* Stats */}
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-white">
                         {Math.round((selectedPath.estimated_success_probability || 0.7) * 100)}%

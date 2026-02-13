@@ -196,7 +196,7 @@ function SprintCard({ sprint, projectId, onDelete, isActive }: SprintCardProps) 
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 text-center">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
           <div className="bg-slate-700/50 rounded-lg p-2">
             <div className="text-lg font-semibold text-white">{sprint.tasks_count}</div>
             <div className="text-xs text-slate-400">Total Tasks</div>
@@ -402,7 +402,7 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
       {/* Header */}
       <header className="flex-shrink-0 border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="max-w-[1800px] mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href="/sprints"
@@ -441,7 +441,7 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
             href={`/sprints/${projectId}/stories`}
             className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-blue-500/50 transition group"
           >
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
               <div className="p-2 bg-blue-500/20 rounded-lg">
                 <BookOpen className="h-5 w-5 text-blue-400" />
               </div>
@@ -459,7 +459,7 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
             href={`/sprints/${projectId}/bugs`}
             className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-red-500/50 transition group"
           >
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
               <div className="p-2 bg-red-500/20 rounded-lg">
                 <Bug className="h-5 w-5 text-red-400" />
               </div>
@@ -479,7 +479,7 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
             href={`/sprints/${projectId}/releases`}
             className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-green-500/50 transition group"
           >
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
               <div className="p-2 bg-green-500/20 rounded-lg">
                 <Package className="h-5 w-5 text-green-400" />
               </div>
@@ -497,7 +497,7 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
             href={`/sprints/${projectId}/goals`}
             className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-purple-500/50 transition group"
           >
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
               <div className="p-2 bg-purple-500/20 rounded-lg">
                 <TrendingUp className="h-5 w-5 text-purple-400" />
               </div>
@@ -516,7 +516,7 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
         {/* Sprint Progress Overview */}
         {activeSprint && (
           <div className="bg-gradient-to-r from-primary-900/30 to-slate-800 rounded-xl p-6 border border-primary-500/30 mb-8">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <div>
                 <div className="text-sm text-primary-400 mb-1">Current Sprint</div>
                 <h3 className="text-xl font-semibold text-white">{activeSprint.name}</h3>
@@ -532,7 +532,7 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
             {activeSprint.goal && (
               <p className="text-slate-400 text-sm mb-4">{activeSprint.goal}</p>
             )}
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="bg-slate-800/50 rounded-lg p-3 text-center">
                 <div className="text-2xl font-bold text-white">{activeSprint.tasks_count}</div>
                 <div className="text-xs text-slate-400">Total Tasks</div>

@@ -69,7 +69,7 @@ function StatCard({ title, value, subtitle, icon, trend, trendValue, color = "de
 
   return (
     <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
         <span className="text-slate-400 text-sm">{title}</span>
         <div className="p-2 bg-slate-700 rounded-lg">{icon}</div>
       </div>
@@ -316,7 +316,7 @@ export default function SprintAnalyticsPage({
               </div>
             ) : capacity ? (
               <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="bg-slate-700/50 rounded-lg p-3 text-center">
                     <div className="text-2xl font-bold text-white">
                       {Math.round(capacity.total_capacity_hours)}h

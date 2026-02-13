@@ -121,7 +121,7 @@ function KanbanColumn({
       )}
     >
       {/* Column header */}
-      <div className="flex items-center justify-between px-3 py-3 border-b border-slate-700/30">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-3 py-3 border-b border-slate-700/30">
         <div className="flex items-center gap-2">
           <h3 className={cn("font-medium text-sm", color)}>{title}</h3>
           <Badge variant="default" size="sm">
@@ -353,7 +353,7 @@ function KeyboardShortcutsModal({ onClose }: KeyboardShortcutsModalProps) {
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-2xl max-h-[80vh] overflow-hidden shadow-2xl"
       >
-        <div className="flex items-center justify-between p-4 border-b border-slate-700">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-700">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary-500/20 rounded-lg">
               <Keyboard className="h-5 w-5 text-primary-400" />
@@ -383,7 +383,7 @@ function KeyboardShortcutsModal({ onClose }: KeyboardShortcutsModalProps) {
                   {section.shortcuts.map((shortcut, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between py-1.5"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-1.5"
                     >
                       <span className="text-sm text-slate-400">{shortcut.description}</span>
                       <div className="flex items-center gap-1">
@@ -407,7 +407,7 @@ function KeyboardShortcutsModal({ onClose }: KeyboardShortcutsModalProps) {
         </div>
 
         <div className="p-4 border-t border-slate-700 bg-slate-800/80">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <p className="text-sm text-slate-500">
               Press <kbd className="px-1.5 py-0.5 bg-slate-700 border border-slate-600 rounded text-xs">?</kbd> anytime to show this panel
             </p>
@@ -560,7 +560,7 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-lg p-6 shadow-2xl"
       >
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <h3 className="text-xl font-semibold text-white">
             {mode === "select" ? "Create Task" : selectedTemplate ? `New Task from "${selectedTemplate.name}"` : "Create Task"}
           </h3>
@@ -1252,7 +1252,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
 
         {/* Restored from draft notice */}
         {showRestoredNotice && (
-          <div className="flex items-center justify-between px-4 py-2 bg-blue-500/10 border-t border-blue-500/30 text-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-4 py-2 bg-blue-500/10 border-t border-blue-500/30 text-sm">
             <span className="text-blue-400">Draft restored from previous session</span>
             <button
               onClick={() => setShowRestoredNotice(false)}
@@ -1695,7 +1695,7 @@ export default function ProjectBoardPage({
       {/* Header */}
       <header className="flex-shrink-0 border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="max-w-[1800px] mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href={`/sprints/${projectId}`}
@@ -1853,7 +1853,7 @@ export default function ProjectBoardPage({
             exit={{ height: 0, opacity: 0 }}
             className="border-b border-slate-700 bg-primary-900/30 overflow-hidden z-50 relative"
           >
-            <div className="max-w-[1800px] mx-auto px-4 py-2 flex items-center justify-between">
+            <div className="max-w-[1800px] mx-auto px-4 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <span className="text-sm text-white font-medium">
                   {selectedCount} task{selectedCount > 1 ? "s" : ""} selected
@@ -2125,7 +2125,7 @@ export default function ProjectBoardPage({
 
       {/* Keyboard shortcuts hint */}
       <div className="flex-shrink-0 border-t border-slate-700 bg-slate-800/30 px-4 py-2">
-        <div className="max-w-[1800px] mx-auto flex items-center justify-between text-xs text-slate-500">
+        <div className="max-w-[1800px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-slate-500">
           <div className="flex items-center gap-4">
             <span>
               <kbd className="px-1.5 py-0.5 bg-slate-700 rounded text-slate-400">⌘K</kbd> Search

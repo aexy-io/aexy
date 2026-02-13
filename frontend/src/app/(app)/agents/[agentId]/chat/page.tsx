@@ -108,7 +108,7 @@ export default function AgentChatPage() {
     <div className="h-screen flex flex-col bg-slate-900">
       {/* Header */}
       <header className="flex-shrink-0 border-b border-slate-700 bg-slate-800/50">
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-4">
             <Link
               href={`/agents/${agentId}`}

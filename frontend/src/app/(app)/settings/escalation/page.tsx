@@ -61,7 +61,7 @@ interface RuleEditorProps {
 function RuleEditor({ rule, onChange, onRemove, members, teams }: RuleEditorProps) {
   return (
     <div className="bg-slate-700 rounded-lg p-4 space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <select
             value={rule.level || "level_1"}
@@ -317,7 +317,7 @@ export default function EscalationSettingsPage() {
           Back to Settings
         </button>
 
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl font-bold text-white flex items-center gap-3">
               <AlertTriangle className="h-7 w-7 text-orange-400" />
@@ -442,7 +442,7 @@ export default function EscalationSettingsPage() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
                   <label className="text-sm font-medium text-slate-400 flex items-center gap-2">
                     <Clock className="h-4 w-4" />
                     Escalation Rules

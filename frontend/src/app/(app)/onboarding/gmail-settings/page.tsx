@@ -176,7 +176,7 @@ export default function GmailSettings() {
         </div>
 
         {/* Navigation */}
-        <div className="flex items-center justify-between pt-6 mt-8 border-t border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 mt-8 border-t border-slate-800">
           <button
             onClick={() => {
               if (data.connections.github) {

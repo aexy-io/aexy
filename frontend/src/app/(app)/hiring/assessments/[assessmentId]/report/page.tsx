@@ -60,7 +60,7 @@ function MetricCard({
 
   return (
     <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
           <p className="text-3xl font-bold text-foreground mt-1">{value}</p>
@@ -354,7 +354,7 @@ export default function AssessmentReportPage() {
     <div className="min-h-screen bg-background">
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
             <Link
               href="/hiring/assessments"
@@ -416,19 +416,19 @@ export default function AssessmentReportPage() {
           <div className="bg-card rounded-lg border border-border p-6">
             <h3 className="font-semibold text-foreground mb-4">Quick Stats</h3>
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <span className="text-muted-foreground">Highest Score</span>
                 <span className="font-semibold text-success">
                   {scores.length > 0 ? Math.max(...scores) : 0}%
                 </span>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <span className="text-muted-foreground">Lowest Score</span>
                 <span className="font-semibold text-destructive">
                   {scores.length > 0 ? Math.min(...scores) : 0}%
                 </span>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <span className="text-muted-foreground">Passing Rate (60%+)</span>
                 <span className="font-semibold text-info">
                   {scores.length > 0
@@ -437,7 +437,7 @@ export default function AssessmentReportPage() {
                   %
                 </span>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <span className="text-muted-foreground">Completion Rate</span>
                 <span className="font-semibold text-purple-500">
                   {candidates.length > 0
@@ -451,8 +451,8 @@ export default function AssessmentReportPage() {
         </div>
 
         {/* Candidates Table */}
-        <div className="bg-card rounded-lg border border-border shadow-sm">
-          <div className="p-4 border-b border-border flex items-center justify-between">
+        <div className="bg-card rounded-lg border border-border shadow-sm overflow-x-auto">
+          <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h3 className="font-semibold text-foreground">Candidates</h3>
             <div className="flex items-center gap-4">
               <div className="relative">
@@ -498,7 +498,7 @@ export default function AssessmentReportPage() {
               <p className="text-muted-foreground">No candidates found</p>
             </div>
           ) : (
-            <table className="w-full">
+            <table className="w-full min-w-[600px]">
               <thead className="bg-muted border-b border-border">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">

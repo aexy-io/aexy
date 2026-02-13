@@ -52,7 +52,7 @@ function ProgressCard({ label, value, max, color }: { label: string; value: numb
 
   return (
     <div className="bg-slate-800 rounded-lg border border-slate-700 p-4">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
         <span className="text-slate-400 text-sm">{label}</span>
         <span className="text-white font-medium">
           {value}/{max}
@@ -122,7 +122,7 @@ export default function EpicDetailPage() {
     <div className="min-h-screen bg-slate-900">
       {/* Header */}
       <header className="border-b border-slate-700 bg-slate-800">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Link href="/dashboard" className="flex items-center gap-2">
               <GitBranch className="h-8 w-8 text-primary-500" />
@@ -309,7 +309,7 @@ export default function EpicDetailPage() {
 
                   return (
                     <div key={status}>
-                      <div className="flex items-center justify-between mb-1">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-1">
                         <span className={`text-sm capitalize ${style.text}`}>
                           {status.replace("_", " ")}
                         </span>
@@ -345,7 +345,7 @@ export default function EpicDetailPage() {
                     href={`/sprints/${sprint.team_id}/${sprint.sprint_id}`}
                     className="block p-3 bg-slate-700/50 rounded-lg hover:bg-slate-700 transition"
                   >
-                    <div className="flex items-center justify-between mb-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-1">
                       <span className="text-white font-medium text-sm">
                         {sprint.sprint_name}
                       </span>
@@ -370,7 +370,7 @@ export default function EpicDetailPage() {
 
             {timeline && (
               <div className="mt-4 pt-4 border-t border-slate-700">
-                <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center text-xs">
                   <div>
                     <div className="text-lg font-bold text-green-400">
                       {timeline.completed_sprints}

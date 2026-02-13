@@ -216,7 +216,7 @@ export default function StandupsPage() {
             <ArrowLeft className="h-4 w-4" />
             Back to Tracking
           </button>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
                 <MessageSquare className="h-8 w-8 text-info" />
@@ -439,7 +439,7 @@ export default function StandupsPage() {
               {/* Selected Standup */}
               {selectedStandup ? (
                 <div>
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                     <h3 className="text-lg font-semibold text-foreground">Selected Standup</h3>
                     <button
                       onClick={() => setSelectedStandup(null)}

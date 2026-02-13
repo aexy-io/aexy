@@ -514,7 +514,7 @@ export default function EmailMarketingPage() {
                   <Loader2 className="h-6 w-6 text-slate-500 animate-spin" />
                 </div>
               ) : (
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="text-center p-4 bg-slate-800/50 rounded-lg">
                     <p className="text-2xl font-bold text-white">{analyticsOverview?.active_subscribers?.toLocaleString() || 0}</p>
                     <p className="text-slate-400 text-sm">Active subscribers</p>

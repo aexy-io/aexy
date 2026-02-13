@@ -143,7 +143,7 @@ export default function ApprovalsPage() {
               <>
                 {/* Summary */}
                 <div className="bg-slate-900 rounded-lg p-4 mb-6">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <span className="text-slate-400">
                         {queue.total} pending request{queue.total !== 1 ? "s" : ""}
@@ -197,8 +197,8 @@ export default function ApprovalsPage() {
                 Loading requests...
               </div>
             ) : allRequests && allRequests.items.length > 0 ? (
-              <div className="bg-slate-900 rounded-lg overflow-hidden">
-                <table className="w-full">
+              <div className="bg-slate-900 rounded-lg overflow-hidden overflow-x-auto">
+                <table className="w-full min-w-[600px]">
                   <thead>
                     <tr className="border-b border-slate-800">
                       <th className="text-left px-4 py-3 text-sm font-medium text-slate-400">

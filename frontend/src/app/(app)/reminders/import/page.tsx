@@ -269,7 +269,7 @@ export default function ImportQuestionnairePage() {
                 {importResult.domains.map((domain) => (
                   <div
                     key={domain}
-                    className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
                   >
                     <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
                       {domain}
@@ -289,7 +289,7 @@ export default function ImportQuestionnairePage() {
           )}
 
           {/* Actions */}
-          <div className="flex items-center justify-between pt-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4">
             <button
               onClick={() => {
                 setStep("upload");
@@ -400,7 +400,7 @@ export default function ImportQuestionnairePage() {
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h3 className="text-sm font-medium text-gray-900 dark:text-white">
                   Pending Suggestions ({pendingSuggestions.length})
                 </h3>
@@ -499,7 +499,7 @@ function QuestionsList({ questions }: { questions: QuestionnaireQuestion[] }) {
           <div key={domain}>
             <button
               onClick={() => toggleDomain(domain)}
-              className="w-full flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-left"
+              className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-left"
             >
               <div className="flex items-center gap-2">
                 {expandedDomains.has(domain) ? (
@@ -562,7 +562,7 @@ function DuplicatesSection({ duplicates }: { duplicates: SkippedDuplicate[] }) {
     <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between p-4 text-left"
+        className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 text-left"
       >
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />

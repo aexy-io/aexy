@@ -237,7 +237,7 @@ export default function CycleDetailPage() {
                 Phase Deadlines
               </h2>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-slate-700/50 rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-cyan-500/10">
                       <UserCheck className="h-4 w-4 text-cyan-400" />
@@ -248,7 +248,7 @@ export default function CycleDetailPage() {
                     {formatDate(cycle.self_review_deadline)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-slate-700/50 rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-purple-500/10">
                       <MessageSquare className="h-4 w-4 text-purple-400" />
@@ -259,7 +259,7 @@ export default function CycleDetailPage() {
                     {formatDate(cycle.peer_review_deadline)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-slate-700/50 rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-amber-500/10">
                       <Users className="h-4 w-4 text-amber-400" />
@@ -316,37 +316,37 @@ export default function CycleDetailPage() {
               </h2>
               {cycle.settings ? (
                 <div className="space-y-3 text-sm">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <span className="text-slate-400">Self Review</span>
                     <span className={cycle.settings.enable_self_review ? "text-emerald-400" : "text-slate-500"}>
                       {cycle.settings.enable_self_review ? "Enabled" : "Disabled"}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <span className="text-slate-400">Peer Review</span>
                     <span className={cycle.settings.enable_peer_review ? "text-emerald-400" : "text-slate-500"}>
                       {cycle.settings.enable_peer_review ? "Enabled" : "Disabled"}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <span className="text-slate-400">Manager Review</span>
                     <span className={cycle.settings.enable_manager_review ? "text-emerald-400" : "text-slate-500"}>
                       {cycle.settings.enable_manager_review ? "Enabled" : "Disabled"}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <span className="text-slate-400">Anonymous Peer</span>
                     <span className={cycle.settings.anonymous_peer_reviews ? "text-emerald-400" : "text-slate-500"}>
                       {cycle.settings.anonymous_peer_reviews ? "Yes" : "No"}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <span className="text-slate-400">GitHub Metrics</span>
                     <span className={cycle.settings.include_github_metrics ? "text-emerald-400" : "text-slate-500"}>
                       {cycle.settings.include_github_metrics ? "Included" : "Not included"}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <span className="text-slate-400">Peer Reviewers</span>
                     <span className="text-slate-300">
                       {cycle.settings.min_peer_reviewers} - {cycle.settings.max_peer_reviewers}

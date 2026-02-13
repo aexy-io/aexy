@@ -309,7 +309,7 @@ export default function DataImport() {
         )}
 
         {/* Navigation */}
-        <div className="flex items-center justify-between pt-6 border-t border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 border-t border-slate-800">
           <button
             onClick={() => router.push("/crm/onboarding/template")}
             className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-white transition-colors"

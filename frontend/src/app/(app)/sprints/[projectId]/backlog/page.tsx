@@ -239,7 +239,7 @@ function SprintCapacityBar({ sprint, className }: SprintCapacityBarProps) {
 
   return (
     <div className={cn("space-y-1.5", className)}>
-      <div className="flex items-center justify-between text-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
         <span className="text-slate-400">{sprint.total_points} SP committed</span>
         <span className="text-slate-500">{completionRate}% done</span>
       </div>
@@ -328,7 +328,7 @@ function AddBacklogItemModal({ onClose, onAdd, isAdding, sprints, epics }: AddBa
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-lg p-6 shadow-2xl"
       >
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <h3 className="text-xl font-semibold text-white">Add Backlog Item</h3>
           <button
             onClick={onClose}
@@ -679,7 +679,7 @@ export default function BacklogPage({
       {/* Header */}
       <header className="flex-shrink-0 border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href={`/sprints/${projectId}`}
@@ -784,7 +784,7 @@ export default function BacklogPage({
             </div>
 
             {/* Select all / bulk actions */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <div className="flex items-center gap-3">
                 <button
                   onClick={selectAll}
@@ -896,7 +896,7 @@ export default function BacklogPage({
                     <h3 className="text-sm font-medium text-white truncate">{activeSprint.name}</h3>
                   </div>
                   <SprintCapacityBar sprint={activeSprint} />
-                  <div className="flex items-center justify-between mt-2 text-xs text-slate-500">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-2 text-xs text-slate-500">
                     <span>{activeSprint.tasks_count} tasks</span>
                     <Link
                       href={`/sprints/${projectId}/${activeSprint.id}`}
@@ -923,7 +923,7 @@ export default function BacklogPage({
                         <div className="w-2 h-2 rounded-full bg-blue-500" />
                         <h3 className="text-sm font-medium text-white truncate">{sprint.name}</h3>
                       </div>
-                      <div className="flex items-center justify-between text-xs text-slate-500">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-slate-500">
                         <span>{sprint.tasks_count} tasks • {sprint.total_points} SP</span>
                       </div>
                     </div>

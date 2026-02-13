@@ -149,7 +149,7 @@ export default function ReleasesPage() {
       {/* Header */}
       <header className="flex-shrink-0 border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="max-w-[1800px] mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href={`/sprints/${projectId}`}
@@ -273,7 +273,7 @@ export default function ReleasesPage() {
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto m-4">
-            <div className="flex items-center justify-between p-4 border-b border-slate-700">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-700">
               <h2 className="text-lg font-semibold text-white">Create Release</h2>
               <button
                 onClick={() => setShowCreateModal(false)}
@@ -432,7 +432,7 @@ function ReleaseDetailModal({ release, workspaceId, onClose }: ReleaseDetailModa
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto m-4">
-        <div className="flex items-center justify-between p-4 border-b border-slate-700">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-700">
           <div>
             <div className="flex items-center gap-2">
               <Package className="h-5 w-5 text-green-400" />
@@ -452,7 +452,7 @@ function ReleaseDetailModal({ release, workspaceId, onClose }: ReleaseDetailModa
 
         <div className="p-4 space-y-6">
           {/* Status and Actions */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <span className="px-2 py-1 rounded text-sm font-medium bg-slate-700 text-white capitalize">
                 {currentRelease.status.replace("_", " ")}
@@ -523,7 +523,7 @@ function ReleaseDetailModal({ release, workspaceId, onClose }: ReleaseDetailModa
           {/* Readiness */}
           {readiness && (
             <div className="bg-slate-800/50 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
                 <h4 className="text-sm font-medium text-white">Release Readiness</h4>
                 <span className={`text-sm font-medium ${readiness.is_ready ? "text-green-400" : "text-amber-400"}`}>
                   {readiness.story_readiness_percentage.toFixed(0)}% ready
@@ -535,7 +535,7 @@ function ReleaseDetailModal({ release, workspaceId, onClose }: ReleaseDetailModa
                   style={{ width: `${readiness.story_readiness_percentage}%` }}
                 />
               </div>
-              <div className="flex items-center justify-between text-xs text-slate-400">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-slate-400">
                 <span>Required: {readiness.required_completed}/{readiness.required_items}</span>
                 <span>Total: {readiness.completed_items}/{readiness.total_items}</span>
               </div>

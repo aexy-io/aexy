@@ -375,7 +375,7 @@ export default function NewGoalPage() {
 
           {/* Key Results */}
           <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <div>
                 <h2 className="text-lg font-semibold text-white">Key Results (OKRs)</h2>
                 <p className="text-slate-400 text-sm mt-1">
@@ -395,7 +395,7 @@ export default function NewGoalPage() {
             <div className="space-y-4">
               {keyResults.map((kr, index) => (
                 <div key={kr.id} className="bg-slate-900 rounded-lg p-4 border border-slate-700">
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
                     <span className="text-slate-400 text-sm">Key Result #{index + 1}</span>
                     {keyResults.length > 1 && (
                       <button

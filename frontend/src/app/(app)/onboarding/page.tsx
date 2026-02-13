@@ -116,7 +116,7 @@ export default function OnboardingWelcome() {
             {/* Preview card */}
             <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden shadow-2xl">
               {/* Header */}
-              <div className="px-6 py-4 border-b border-slate-700/50 flex items-center justify-between">
+              <div className="px-6 py-4 border-b border-slate-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
                     <BarChart3 className="w-4 h-4 text-white" />
@@ -126,7 +126,7 @@ export default function OnboardingWelcome() {
               </div>
 
               {/* Stats preview */}
-              <div className="p-6 grid grid-cols-3 gap-4">
+              <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
                   { label: "Commits", value: "847", change: "+12%" },
                   { label: "PRs Merged", value: "156", change: "+8%" },

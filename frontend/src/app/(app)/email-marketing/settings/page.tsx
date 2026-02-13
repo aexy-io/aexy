@@ -66,7 +66,7 @@ function DNSRecordRow({
 
   return (
     <div className="bg-slate-800/50 rounded-lg p-4 space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded text-xs font-medium">
             {record.record_type}
@@ -249,7 +249,7 @@ function DomainCard({
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
         <div className="text-center p-3 bg-slate-800/50 rounded-lg">
           <p className="text-lg font-semibold text-white">{domain.health_score}%</p>
           <p className="text-xs text-slate-500">Health Score</p>
@@ -269,7 +269,7 @@ function DomainCard({
         <div className="border-t border-slate-800 pt-4 mt-4">
           <button
             onClick={() => setShowDnsRecords(!showDnsRecords)}
-            className="flex items-center justify-between w-full text-left"
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full text-left"
           >
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4 text-slate-400" />
@@ -287,7 +287,7 @@ function DomainCard({
 
           {showDnsRecords && (
             <div className="mt-4 space-y-4">
-              <div className="flex items-center justify-between text-xs text-slate-500">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-slate-500">
                 <p>Add these DNS records to your domain registrar to enable email sending.</p>
                 <a
                   href="https://github.com/bhanuc/aexy"
@@ -334,7 +334,7 @@ function DomainCard({
               )}
 
               {!domain.is_verified && (
-                <div className="flex items-center justify-between p-3 bg-slate-800/30 rounded-lg">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-slate-800/30 rounded-lg">
                   <p className="text-sm text-slate-400">
                     After adding DNS records, click verify to check configuration.
                   </p>
@@ -869,7 +869,7 @@ export default function EmailSettingsPage() {
           {/* Domains Tab */}
           {activeTab === "domains" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <p className="text-slate-400">
                   Manage your sending domains and warming schedules
                 </p>
@@ -931,7 +931,7 @@ export default function EmailSettingsPage() {
           {/* Providers Tab */}
           {activeTab === "providers" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <p className="text-slate-400">
                   Configure email service providers for sending
                 </p>
@@ -995,7 +995,7 @@ export default function EmailSettingsPage() {
           {/* Categories Tab */}
           {activeTab === "categories" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <p className="text-slate-400">
                   Manage subscription categories for your emails
                 </p>

@@ -482,7 +482,7 @@ export default function MonitorsPage() {
                 )}
 
                 {formData.check_type === "tcp" && (
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="col-span-2">
                       <label className="block text-sm font-medium text-slate-300 mb-1">Host</label>
                       <input

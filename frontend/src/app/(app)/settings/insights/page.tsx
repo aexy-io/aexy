@@ -365,7 +365,7 @@ export default function InsightsSettingsPage() {
 
         {/* Health Score Weights */}
         <section className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+          <div className="px-6 py-4 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Shield className="h-5 w-5 text-blue-400" />
               <h2 className="text-lg font-semibold text-white">
@@ -457,7 +457,7 @@ export default function InsightsSettingsPage() {
             </h2>
           </div>
           <div className="p-6 space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="text-sm text-white">Auto-generate snapshots</p>
                 <p className="text-xs text-slate-500">
@@ -519,7 +519,7 @@ export default function InsightsSettingsPage() {
         </section>
 
         {/* Actions */}
-        <div className="flex items-center justify-between pt-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4">
           <button
             onClick={() => {
               setSettings(DEFAULT_SETTINGS);

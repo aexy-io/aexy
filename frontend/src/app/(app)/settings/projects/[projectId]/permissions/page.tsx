@@ -243,7 +243,7 @@ export default function ProjectPermissionsPage() {
         {/* Members Section */}
         <div className="bg-slate-800 rounded-xl">
           <div className="p-4 border-b border-slate-700">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h2 className="text-lg font-medium text-white flex items-center gap-2">
                 <Users className="h-5 w-5 text-slate-400" />
                 Project Members
@@ -260,7 +260,7 @@ export default function ProjectPermissionsPage() {
             {members.map((member) => (
               <div
                 key={member.id}
-                className="p-4 flex items-center justify-between hover:bg-slate-700/30"
+                className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-700/30"
               >
                 <div className="flex items-center gap-3">
                   {member.developer_avatar_url ? (

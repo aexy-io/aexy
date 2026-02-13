@@ -236,7 +236,7 @@ export default function ReminderDetailPage() {
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
         <button
           onClick={() => setShowInstances(!showInstances)}
-          className="w-full flex items-center justify-between p-4 text-left"
+          className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 text-left"
         >
           <h2 className="text-sm font-medium text-gray-900 dark:text-white">
             Occurrences ({instances.length})
@@ -262,7 +262,7 @@ export default function ReminderDetailPage() {
                 {instances.map((instance: ReminderInstance) => (
                   <div
                     key={instance.id}
-                    className="px-4 py-3 flex items-center justify-between"
+                    className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                   >
                     <div className="flex items-center gap-3">
                       <span className={`px-2 py-0.5 rounded text-xs font-medium ${INSTANCE_STATUS_BADGE[instance.status] || INSTANCE_STATUS_BADGE.pending}`}>

@@ -73,7 +73,7 @@ function RetroColumn({ title, icon, color, items, onAdd, onVote, onDelete }: Ret
 
   return (
     <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <h3 className={`font-semibold flex items-center gap-2 ${color}`}>
           {icon}
           {title}
@@ -90,7 +90,7 @@ function RetroColumn({ title, icon, color, items, onAdd, onVote, onDelete }: Ret
             className="bg-slate-700/50 rounded-lg p-3 border border-slate-600"
           >
             <p className="text-white text-sm mb-2">{item.content}</p>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <button
                 onClick={() => onVote(item.id)}
                 className="flex items-center gap-1 text-xs text-slate-400 hover:text-primary-400 transition"
@@ -178,7 +178,7 @@ function ActionItemsColumn({ items, onAdd, onUpdateStatus, onDelete }: ActionIte
 
   return (
     <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <h3 className="font-semibold flex items-center gap-2 text-purple-400">
           <CheckCircle className="h-5 w-5" />
           Action Items
@@ -391,7 +391,7 @@ export default function RetrospectivePage({
       {/* Header */}
       <header className="border-b border-slate-700 bg-slate-800/50">
         <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href={`/sprints/${projectId}/${sprintId}`}

@@ -234,7 +234,7 @@ export default function NewTemplatePage() {
               {/* Template Type */}
               <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
                 <h2 className="text-lg font-medium text-white mb-4">Template Type</h2>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {templateTypes.map((type) => {
                     const Icon = type.icon;
                     return (

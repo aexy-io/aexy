@@ -295,7 +295,7 @@ export default function TimelinePage({
       {/* Header */}
       <header className="flex-shrink-0 border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="max-w-[1800px] mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href={`/sprints/${projectId}`}
@@ -439,7 +439,7 @@ export default function TimelinePage({
 
       {/* Legend */}
       <footer className="flex-shrink-0 border-t border-slate-700 bg-slate-800/30 px-4 py-2">
-        <div className="max-w-[1800px] mx-auto flex items-center justify-between">
+        <div className="max-w-[1800px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <span className="text-xs text-slate-500">Status:</span>
             {Object.entries(SPRINT_STATUS_COLORS).map(([status, color]) => (
@@ -463,7 +463,7 @@ export default function TimelinePage({
           exit={{ opacity: 0, x: 100 }}
           className="fixed right-0 top-0 bottom-0 w-96 bg-slate-800 border-l border-slate-700 shadow-2xl z-40 overflow-y-auto"
         >
-          <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+          <div className="p-4 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h3 className="font-medium text-white">Sprint Details</h3>
             <button
               onClick={() => setSelectedSprintId(null)}

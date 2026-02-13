@@ -181,7 +181,7 @@ function MessageDetail({
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="p-4 border-b border-slate-700">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
           <div className="flex items-center gap-2">
             <div className={cn("p-1.5 rounded-lg", status.bgColor)}>
               <status.icon className={cn("h-4 w-4", status.color)} />
@@ -448,7 +448,7 @@ export default function AgentInboxPage() {
       {/* Header */}
       <div className="border-b border-slate-700 bg-slate-800/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href={`/agents/${agentId}`}
