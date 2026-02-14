@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   X,
   Calendar,
@@ -59,6 +59,21 @@ export function LeaveRequestForm({ isOpen, onClose }: LeaveRequestFormProps) {
     }
   }, [isHalfDay, startDate]);
 
+  // Close on Escape key
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    },
+    [onClose]
+  );
+
+  useEffect(() => {
+    if (isOpen) {
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [isOpen, handleKeyDown]);
+
   const selectedType = leaveTypes?.find((t) => t.id === leaveTypeId);
   const selectedBalance = balances?.find((b) => b.leave_type_id === leaveTypeId);
 
@@ -94,7 +109,12 @@ export function LeaveRequestForm({ isOpen, onClose }: LeaveRequestFormProps) {
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg mx-4 bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="leave-request-title"
+        className="relative w-full max-w-lg mx-4 bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden"
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-800">
           <div className="flex items-center gap-3">
@@ -102,7 +122,7 @@ export function LeaveRequestForm({ isOpen, onClose }: LeaveRequestFormProps) {
               <Calendar className="h-5 w-5 text-blue-400" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-white">Request Leave</h2>
+              <h2 id="leave-request-title" className="text-lg font-semibold text-white">Request Leave</h2>
               <p className="text-xs text-slate-400 mt-0.5">
                 Submit a new leave request
               </p>

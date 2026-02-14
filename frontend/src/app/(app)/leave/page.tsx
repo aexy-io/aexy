@@ -9,6 +9,7 @@ import {
   CheckSquare,
   Settings,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 import {
   useLeaveBalances,
@@ -62,13 +63,16 @@ export default function LeavePage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-1 border-b border-slate-800 mb-6">
+        <div role="tablist" aria-label="Leave management" className="flex items-center gap-1 border-b border-slate-800 mb-6">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
+                role="tab"
+                aria-selected={isActive}
+                aria-controls={`tabpanel-${tab.id}`}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition relative ${
                   isActive
@@ -87,10 +91,12 @@ export default function LeavePage() {
         </div>
 
         {/* Tab Content */}
-        {activeTab === "my-leaves" && <MyLeavesTab />}
-        {activeTab === "team-leaves" && <TeamLeavesTab />}
-        {activeTab === "approvals" && <ApprovalsTab />}
-        {activeTab === "settings" && <SettingsTab />}
+        <div role="tabpanel" id={`tabpanel-${activeTab}`}>
+          {activeTab === "my-leaves" && <MyLeavesTab />}
+          {activeTab === "team-leaves" && <TeamLeavesTab />}
+          {activeTab === "approvals" && <ApprovalsTab />}
+          {activeTab === "settings" && <SettingsTab />}
+        </div>
 
         {/* Request Leave Modal */}
         <LeaveRequestForm
@@ -105,15 +111,20 @@ export default function LeavePage() {
 // ─── My Leaves Tab ─────────────────────────────────────────────────────────────
 
 function MyLeavesTab() {
-  const { data: balances, isLoading: balancesLoading } = useLeaveBalances();
-  const { data: requests, isLoading: requestsLoading } = useMyLeaveRequests();
+  const { data: balances, isLoading: balancesLoading, isError: balancesError } = useLeaveBalances();
+  const { data: requests, isLoading: requestsLoading, isError: requestsError } = useMyLeaveRequests();
 
   return (
     <div className="space-y-8">
       {/* Balances */}
       <section>
         <h2 className="text-lg font-semibold text-white mb-4">Leave Balances</h2>
-        {balancesLoading ? (
+        {balancesError ? (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center">
+            <AlertCircle className="h-6 w-6 text-red-400 mx-auto mb-2" />
+            <p className="text-sm text-red-400">Failed to load leave balances. Please try again.</p>
+          </div>
+        ) : balancesLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
               <div
@@ -144,7 +155,12 @@ function MyLeavesTab() {
       {/* My Requests */}
       <section>
         <h2 className="text-lg font-semibold text-white mb-4">My Requests</h2>
-        {requestsLoading ? (
+        {requestsError ? (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center">
+            <AlertCircle className="h-6 w-6 text-red-400 mx-auto mb-2" />
+            <p className="text-sm text-red-400">Failed to load leave requests. Please try again.</p>
+          </div>
+        ) : requestsLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[1, 2].map((i) => (
               <div
@@ -190,7 +206,7 @@ function TeamLeavesTab() {
 // ─── Approvals Tab ─────────────────────────────────────────────────────────────
 
 function ApprovalsTab() {
-  const { data: pendingRequests, isLoading } = usePendingApprovals();
+  const { data: pendingRequests, isLoading, isError } = usePendingApprovals();
   const { approve, reject } = useLeaveRequestMutations();
 
   const handleApprove = (id: string) => {
@@ -212,7 +228,12 @@ function ApprovalsTab() {
         )}
       </h2>
 
-      {isLoading ? (
+      {isError ? (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center">
+          <AlertCircle className="h-6 w-6 text-red-400 mx-auto mb-2" />
+          <p className="text-sm text-red-400">Failed to load pending approvals. Please try again.</p>
+        </div>
+      ) : isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 text-slate-400 animate-spin" />
         </div>

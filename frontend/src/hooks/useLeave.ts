@@ -31,6 +31,7 @@ export function useLeaveTypes(includeInactive = false) {
     queryKey: ["leaveTypes", workspaceId, includeInactive],
     queryFn: () => leaveApi.types.list(workspaceId!, includeInactive),
     enabled: !!workspaceId,
+    staleTime: 5 * 60 * 1000, // 5 minutes — leave types rarely change
   });
 }
 
@@ -73,6 +74,7 @@ export function useLeaveBalances(year?: number) {
     queryKey: ["leaveBalances", workspaceId, year],
     queryFn: () => leaveApi.balances.my(workspaceId!, year),
     enabled: !!workspaceId,
+    staleTime: 60 * 1000, // 1 minute
   });
 }
 
@@ -82,6 +84,7 @@ export function useDeveloperLeaveBalances(developerId: string, year?: number) {
     queryKey: ["leaveBalances", workspaceId, developerId, year],
     queryFn: () => leaveApi.balances.developer(workspaceId!, developerId, year),
     enabled: !!workspaceId && !!developerId,
+    staleTime: 60 * 1000,
   });
 }
 
@@ -91,6 +94,7 @@ export function useTeamLeaveBalances(teamId: string, year?: number) {
     queryKey: ["leaveBalances", "team", workspaceId, teamId, year],
     queryFn: () => leaveApi.balances.team(workspaceId!, teamId, year),
     enabled: !!workspaceId && !!teamId,
+    staleTime: 60 * 1000,
   });
 }
 
@@ -102,6 +106,7 @@ export function useMyLeaveRequests(status?: string) {
     queryKey: ["leaveRequests", "my", workspaceId, status],
     queryFn: () => leaveApi.requests.listMy(workspaceId!, status),
     enabled: !!workspaceId,
+    staleTime: 30 * 1000, // 30 seconds
   });
 }
 
@@ -116,6 +121,7 @@ export function useLeaveRequests(params?: {
     queryKey: ["leaveRequests", workspaceId, params],
     queryFn: () => leaveApi.requests.list(workspaceId!, params),
     enabled: !!workspaceId,
+    staleTime: 30 * 1000,
   });
 }
 
@@ -123,10 +129,14 @@ export function useLeaveRequestMutations() {
   const queryClient = useQueryClient();
   const workspaceId = useWorkspaceId();
 
-  const invalidateAll = () => {
+  const invalidateRequestsAndBalances = () => {
     queryClient.invalidateQueries({ queryKey: ["leaveRequests"] });
     queryClient.invalidateQueries({ queryKey: ["leaveBalances"] });
     queryClient.invalidateQueries({ queryKey: ["pendingApprovals"] });
+  };
+
+  const invalidateAll = () => {
+    invalidateRequestsAndBalances();
     queryClient.invalidateQueries({ queryKey: ["whoIsOut"] });
     queryClient.invalidateQueries({ queryKey: ["teamCalendar"] });
   };
@@ -134,31 +144,31 @@ export function useLeaveRequestMutations() {
   const submit = useMutation({
     mutationFn: (data: LeaveRequestCreate) =>
       leaveApi.requests.submit(workspaceId!, data),
-    onSuccess: invalidateAll,
+    onSuccess: invalidateRequestsAndBalances, // submit doesn't affect calendar until approved
   });
 
   const approve = useMutation({
     mutationFn: (requestId: string) =>
       leaveApi.requests.approve(workspaceId!, requestId),
-    onSuccess: invalidateAll,
+    onSuccess: invalidateAll, // approval affects calendar/availability
   });
 
   const reject = useMutation({
     mutationFn: ({ requestId, reason }: { requestId: string; reason?: string }) =>
       leaveApi.requests.reject(workspaceId!, requestId, reason),
-    onSuccess: invalidateAll,
+    onSuccess: invalidateRequestsAndBalances, // rejection doesn't affect calendar
   });
 
   const cancel = useMutation({
     mutationFn: (requestId: string) =>
       leaveApi.requests.cancel(workspaceId!, requestId),
-    onSuccess: invalidateAll,
+    onSuccess: invalidateAll, // cancel removes from calendar
   });
 
   const withdraw = useMutation({
     mutationFn: (requestId: string) =>
       leaveApi.requests.withdraw(workspaceId!, requestId),
-    onSuccess: invalidateAll,
+    onSuccess: invalidateRequestsAndBalances, // withdraw doesn't affect calendar
   });
 
   return { submit, approve, reject, cancel, withdraw };
@@ -172,6 +182,7 @@ export function usePendingApprovals() {
     queryKey: ["pendingApprovals", workspaceId],
     queryFn: () => leaveApi.approvals.pending(workspaceId!),
     enabled: !!workspaceId,
+    staleTime: 30 * 1000,
   });
 }
 
@@ -183,6 +194,7 @@ export function useHolidays(year?: number) {
     queryKey: ["holidays", workspaceId, year],
     queryFn: () => leaveApi.holidays.list(workspaceId!, year),
     enabled: !!workspaceId,
+    staleTime: 5 * 60 * 1000, // 5 minutes — holidays rarely change
   });
 }
 
@@ -225,6 +237,7 @@ export function useLeavePolicies() {
     queryKey: ["leavePolicies", workspaceId],
     queryFn: () => leaveApi.policies.list(workspaceId!),
     enabled: !!workspaceId,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -272,6 +285,7 @@ export function useTeamCalendar(params: {
     queryKey: ["teamCalendar", workspaceId, params],
     queryFn: () => leaveApi.calendar.team(workspaceId!, params),
     enabled: !!workspaceId && !!params.start_date && !!params.end_date,
+    staleTime: 60 * 1000,
   });
 }
 
@@ -281,6 +295,7 @@ export function useWhoIsOut(date?: string, teamId?: string) {
     queryKey: ["whoIsOut", workspaceId, date, teamId],
     queryFn: () => leaveApi.calendar.whoIsOut(workspaceId!, date, teamId),
     enabled: !!workspaceId,
+    staleTime: 60 * 1000,
   });
 }
 
@@ -290,5 +305,6 @@ export function useAvailabilitySummary(date?: string, teamId?: string) {
     queryKey: ["availabilitySummary", workspaceId, date, teamId],
     queryFn: () => leaveApi.calendar.availabilitySummary(workspaceId!, date, teamId),
     enabled: !!workspaceId,
+    staleTime: 60 * 1000,
   });
 }

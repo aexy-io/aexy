@@ -1,6 +1,6 @@
 """Leave request service - core workflow for submitting, approving, and managing leave."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from uuid import uuid4
 
 from sqlalchemy import and_, select, or_
@@ -76,22 +76,30 @@ class LeaveRequestService:
         if total_days <= 0:
             raise ValueError("No working days in the selected date range")
 
-        # Check balance
+        # Check balance with row-level lock to prevent race conditions
         from aexy.services.leave_balance_service import LeaveBalanceService
 
         balance_service = LeaveBalanceService(self.db)
-        balance = await balance_service.get_balance(
-            developer_id, leave_type_id, start_date.year
+
+        # Try to initialize balances if they don't exist yet
+        await balance_service.initialize_yearly_balances(
+            workspace_id, developer_id, start_date.year
         )
 
-        if not balance:
-            # Try to initialize
-            await balance_service.initialize_yearly_balances(
-                workspace_id, developer_id, start_date.year
+        # Lock the balance row for atomic check-and-update
+        balance_stmt = (
+            select(LeaveBalance)
+            .where(
+                and_(
+                    LeaveBalance.developer_id == developer_id,
+                    LeaveBalance.leave_type_id == leave_type_id,
+                    LeaveBalance.year == start_date.year,
+                )
             )
-            balance = await balance_service.get_balance(
-                developer_id, leave_type_id, start_date.year
-            )
+            .with_for_update()
+        )
+        balance_result = await self.db.execute(balance_stmt)
+        balance = balance_result.scalar_one_or_none()
 
         if balance:
             available = balance.available
@@ -124,7 +132,7 @@ class LeaveRequestService:
         # Auto-approve if no approval required
         if not leave_type.requires_approval:
             request.status = LeaveRequestStatus.APPROVED.value
-            request.approved_at = datetime.utcnow()
+            request.approved_at = datetime.now(timezone.utc)
 
         self.db.add(request)
         await self.db.flush()
@@ -274,8 +282,10 @@ class LeaveRequestService:
         status: str | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
+        limit: int = 50,
+        offset: int = 0,
     ) -> list[LeaveRequest]:
-        """Get leave requests with optional filters."""
+        """Get leave requests with optional filters and pagination."""
         conditions = [LeaveRequest.workspace_id == workspace_id]
 
         if developer_id:
@@ -291,6 +301,8 @@ class LeaveRequestService:
             select(LeaveRequest)
             .where(and_(*conditions))
             .order_by(LeaveRequest.created_at.desc())
+            .limit(limit)
+            .offset(offset)
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
@@ -328,42 +340,44 @@ class LeaveRequestService:
         """Find the approver for a developer's leave request.
 
         Looks for team lead first, then falls back to workspace manager.
+        Uses a single query to find leads across all of the developer's teams.
         """
-        # Find developer's teams
-        team_stmt = select(TeamMember).where(
+        # Get team IDs for this developer
+        team_id_stmt = select(TeamMember.team_id).where(
             TeamMember.developer_id == developer_id
         )
-        team_result = await self.db.execute(team_stmt)
-        memberships = list(team_result.scalars().all())
 
-        # Look for team leads
-        for membership in memberships:
-            lead_stmt = select(TeamMember).where(
+        # Find any lead in those teams (single query, no N+1)
+        lead_stmt = (
+            select(TeamMember.developer_id)
+            .where(
                 and_(
-                    TeamMember.team_id == membership.team_id,
+                    TeamMember.team_id.in_(team_id_stmt),
                     TeamMember.role == "lead",
                     TeamMember.developer_id != developer_id,
                 )
             )
-            lead_result = await self.db.execute(lead_stmt)
-            lead = lead_result.scalar_one_or_none()
-            if lead:
-                return lead.developer_id
+            .limit(1)
+        )
+        lead_result = await self.db.execute(lead_stmt)
+        lead_id = lead_result.scalar_one_or_none()
+        if lead_id:
+            return lead_id
 
         # Fallback to workspace manager
-        manager_stmt = select(WorkspaceMember).where(
-            and_(
-                WorkspaceMember.workspace_id == workspace_id,
-                WorkspaceMember.role == "manager",
-                WorkspaceMember.developer_id != developer_id,
+        manager_stmt = (
+            select(WorkspaceMember.developer_id)
+            .where(
+                and_(
+                    WorkspaceMember.workspace_id == workspace_id,
+                    WorkspaceMember.role == "manager",
+                    WorkspaceMember.developer_id != developer_id,
+                )
             )
+            .limit(1)
         )
         manager_result = await self.db.execute(manager_stmt)
-        manager = manager_result.scalars().first()
-        if manager:
-            return manager.developer_id
-
-        return None
+        return manager_result.scalar_one_or_none()
 
     async def _calculate_business_days(
         self, start_date: date, end_date: date, workspace_id: str
@@ -400,23 +414,21 @@ class LeaveRequestService:
                     user_id=request.developer_id,
                     date=current,
                     is_available=False,
-                    reason=f"Leave: {request.leave_type.name if request.leave_type else 'Leave'}",
+                    reason=f"Leave[{request.id}]: {request.leave_type.name if request.leave_type else 'Leave'}",
                 )
                 self.db.add(override)
             current += timedelta(days=1)
         await self.db.flush()
 
     async def _remove_availability_overrides(self, request: LeaveRequest) -> None:
-        """Remove AvailabilityOverride records for a cancelled leave."""
+        """Remove AvailabilityOverride records for a specific leave request."""
         from sqlalchemy import delete
 
         stmt = delete(AvailabilityOverride).where(
             and_(
                 AvailabilityOverride.user_id == request.developer_id,
-                AvailabilityOverride.date >= request.start_date,
-                AvailabilityOverride.date <= request.end_date,
                 AvailabilityOverride.is_available == False,  # noqa: E712
-                AvailabilityOverride.reason.like("Leave:%"),
+                AvailabilityOverride.reason.like(f"Leave[{request.id}]:%"),
             )
         )
         await self.db.execute(stmt)

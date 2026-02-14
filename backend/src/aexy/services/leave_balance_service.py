@@ -1,8 +1,10 @@
 """Leave balance service for managing yearly leave balances."""
 
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import and_, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.models.leave import LeaveBalance, LeaveType, LeavePolicy
@@ -95,11 +97,6 @@ class LeaveBalanceService:
 
         created = []
         for lt in leave_types:
-            # Check if balance already exists
-            existing = await self.get_balance(developer_id, lt.id, year)
-            if existing:
-                continue
-
             # Find applicable policy
             policy = await policy_service.get_applicable_policy(
                 workspace_id, lt.id
@@ -110,8 +107,10 @@ class LeaveBalanceService:
                 else 0
             )
 
-            balance = LeaveBalance(
-                id=str(uuid4()),
+            balance_id = str(uuid4())
+            # Use INSERT ... ON CONFLICT DO NOTHING to avoid race conditions
+            stmt = pg_insert(LeaveBalance).values(
+                id=balance_id,
                 workspace_id=workspace_id,
                 developer_id=developer_id,
                 leave_type_id=lt.id,
@@ -120,16 +119,16 @@ class LeaveBalanceService:
                 used=0,
                 pending=0,
                 carried_forward=0,
+            ).on_conflict_do_nothing(
+                index_elements=["developer_id", "leave_type_id", "year"]
             )
-            self.db.add(balance)
-            created.append(balance)
+            await self.db.execute(stmt)
 
-        if created:
-            await self.db.flush()
-            for b in created:
-                await self.db.refresh(b)
+        await self.db.flush()
 
-        return created
+        # Re-fetch all balances for this developer/year
+        all_balances = await self.get_all_balances(workspace_id, developer_id, year)
+        return all_balances
 
     async def process_carry_forward(
         self, workspace_id: str, developer_id: str, from_year: int, to_year: int
@@ -193,8 +192,12 @@ class LeaveBalanceService:
     async def update_balance_on_request(
         self, balance_id: str, pending_delta: float = 0, used_delta: float = 0
     ) -> LeaveBalance | None:
-        """Update balance when a request changes state."""
-        stmt = select(LeaveBalance).where(LeaveBalance.id == balance_id)
+        """Update balance when a request changes state. Uses SELECT FOR UPDATE to prevent races."""
+        stmt = (
+            select(LeaveBalance)
+            .where(LeaveBalance.id == balance_id)
+            .with_for_update()
+        )
         result = await self.db.execute(stmt)
         balance = result.scalar_one_or_none()
 

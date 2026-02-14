@@ -1,6 +1,6 @@
 """Leave management API endpoints."""
 
-from datetime import date
+from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -63,7 +63,7 @@ async def create_leave_type(
     try:
         leave_type = await service.create(workspace_id=workspace_id, **data.model_dump())
         return LeaveTypeResponse.model_validate(leave_type)
-    except Exception as e:
+    except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -124,7 +124,7 @@ async def create_leave_policy(
     try:
         policy = await service.create(workspace_id=workspace_id, **data.model_dump())
         return LeavePolicyResponse.model_validate(policy)
-    except Exception as e:
+    except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -193,6 +193,8 @@ async def list_leave_requests(
     request_status: str | None = Query(None, alias="status"),
     start_date: date | None = Query(None),
     end_date: date | None = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_developer: Developer = Depends(get_current_developer),
 ):
@@ -204,6 +206,8 @@ async def list_leave_requests(
         status=request_status,
         start_date=start_date,
         end_date=end_date,
+        limit=limit,
+        offset=offset,
     )
     return [LeaveRequestResponse.model_validate(r) for r in requests]
 
@@ -296,14 +300,12 @@ async def withdraw_leave_request(
 @router.get("/balance", response_model=list[LeaveBalanceResponse])
 async def get_my_balance(
     workspace_id: str,
-    year: int | None = Query(None),
+    year: int | None = Query(None, ge=2020, le=2100),
     db: AsyncSession = Depends(get_db),
     current_developer: Developer = Depends(get_current_developer),
 ):
     """Get current developer's leave balances."""
-    from datetime import datetime as dt
-
-    effective_year = year or dt.now().year
+    effective_year = year or datetime.now().year
     service = LeaveBalanceService(db)
     balances = await service.get_all_balances(workspace_id, current_developer.id, effective_year)
     return [LeaveBalanceResponse.model_validate(b) for b in balances]
@@ -313,14 +315,12 @@ async def get_my_balance(
 async def get_developer_balance(
     workspace_id: str,
     developer_id: str,
-    year: int | None = Query(None),
+    year: int | None = Query(None, ge=2020, le=2100),
     db: AsyncSession = Depends(get_db),
     current_developer: Developer = Depends(get_current_developer),
 ):
     """Get a specific developer's leave balances (managers only)."""
-    from datetime import datetime as dt
-
-    effective_year = year or dt.now().year
+    effective_year = year or datetime.now().year
     service = LeaveBalanceService(db)
     balances = await service.get_all_balances(workspace_id, developer_id, effective_year)
     return [LeaveBalanceResponse.model_validate(b) for b in balances]
@@ -330,14 +330,12 @@ async def get_developer_balance(
 async def get_team_balances(
     workspace_id: str,
     team_id: str,
-    year: int | None = Query(None),
+    year: int | None = Query(None, ge=2020, le=2100),
     db: AsyncSession = Depends(get_db),
     current_developer: Developer = Depends(get_current_developer),
 ):
     """Get leave balances for all members of a team."""
-    from datetime import datetime as dt
-
-    effective_year = year or dt.now().year
+    effective_year = year or datetime.now().year
     service = LeaveBalanceService(db)
     balances = await service.get_team_balances(workspace_id, team_id, effective_year)
     return [LeaveBalanceResponse.model_validate(b) for b in balances]

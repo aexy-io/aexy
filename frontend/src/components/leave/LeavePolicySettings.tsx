@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Plus,
   Pencil,
@@ -111,13 +111,14 @@ export function LeavePolicySettings() {
     }
   };
 
-  const getLeaveTypeName = (typeId: string) => {
-    return leaveTypes?.find((t) => t.id === typeId)?.name || "Unknown";
-  };
+  const leaveTypeMap = useMemo(() => {
+    const map = new Map<string, { name: string; color: string }>();
+    leaveTypes?.forEach((t) => map.set(t.id, { name: t.name, color: t.color || "#6366f1" }));
+    return map;
+  }, [leaveTypes]);
 
-  const getLeaveTypeColor = (typeId: string) => {
-    return leaveTypes?.find((t) => t.id === typeId)?.color || "#6366f1";
-  };
+  const getLeaveTypeName = (typeId: string) => leaveTypeMap.get(typeId)?.name || "Unknown";
+  const getLeaveTypeColor = (typeId: string) => leaveTypeMap.get(typeId)?.color || "#6366f1";
 
   if (isLoading) {
     return (

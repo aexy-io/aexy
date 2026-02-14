@@ -32,6 +32,11 @@ async def get_team_calendar(
     current_developer: Developer = Depends(get_current_developer),
 ):
     """Get unified team calendar events (leaves + bookings + holidays)."""
+    if (end_date - start_date).days > 366:
+        from fastapi import HTTPException as CalHTTPException
+        raise CalHTTPException(
+            status_code=400, detail="Date range cannot exceed 366 days"
+        )
     service = TeamCalendarService(db)
     events = await service.get_team_calendar_events(
         workspace_id=workspace_id,

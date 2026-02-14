@@ -32,31 +32,22 @@ export function LeaveApprovalCard({
 }: LeaveApprovalCardProps) {
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
-  const [isApproving, setIsApproving] = useState(false);
-  const [isRejecting, setIsRejecting] = useState(false);
+  const [actionTaken, setActionTaken] = useState<"approve" | "reject" | null>(null);
 
   const leaveType = request.leave_type;
   const developer = request.developer;
   const isSingleDay = request.start_date === request.end_date;
 
-  const handleApprove = async () => {
-    setIsApproving(true);
-    try {
-      onApprove(request.id);
-    } finally {
-      setIsApproving(false);
-    }
+  const handleApprove = () => {
+    setActionTaken("approve");
+    onApprove(request.id);
   };
 
-  const handleReject = async () => {
-    setIsRejecting(true);
-    try {
-      onReject(request.id, rejectReason || undefined);
-      setShowRejectInput(false);
-      setRejectReason("");
-    } finally {
-      setIsRejecting(false);
-    }
+  const handleReject = () => {
+    setActionTaken("reject");
+    onReject(request.id, rejectReason || undefined);
+    setShowRejectInput(false);
+    setRejectReason("");
   };
 
   return (
@@ -143,7 +134,7 @@ export function LeaveApprovalCard({
           <>
             <button
               onClick={handleApprove}
-              disabled={isApproving}
+              disabled={actionTaken !== null}
               className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 transition disabled:opacity-50"
             >
               <Check className="h-4 w-4" />
@@ -161,7 +152,7 @@ export function LeaveApprovalCard({
           <>
             <button
               onClick={handleReject}
-              disabled={isRejecting}
+              disabled={actionTaken !== null}
               className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-500 transition disabled:opacity-50"
             >
               <X className="h-4 w-4" />

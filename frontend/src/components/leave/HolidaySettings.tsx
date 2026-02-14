@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Plus,
   Pencil,
@@ -105,17 +105,19 @@ export function HolidaySettings() {
     }
   };
 
-  // Sort holidays by date
-  const sortedHolidays = holidays
-    ? [...holidays].sort((a, b) => a.date.localeCompare(b.date))
-    : [];
+  // Sort holidays by date (memoized)
+  const sortedHolidays = useMemo(
+    () => (holidays ? [...holidays].sort((a, b) => a.date.localeCompare(b.date)) : []),
+    [holidays]
+  );
 
-  // Check if a holiday date is in the past
-  const isPast = (dateStr: string) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return new Date(dateStr + "T00:00:00") < today;
-  };
+  // Today's date string for past comparison (avoids creating Date objects every render)
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }, []);
+
+  const isPast = (dateStr: string) => dateStr < todayStr;
 
   if (isLoading) {
     return (
