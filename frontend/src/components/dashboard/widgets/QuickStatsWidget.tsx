@@ -73,7 +73,7 @@ export function QuickStatsWidget({
               </div>
               <span className="text-muted-foreground text-xs truncate">{stat.label}</span>
             </div>
-            <p className={`${stat.smallValue ? "text-base" : "text-2xl"} font-bold text-foreground truncate`}>
+            <p className={`${stat.smallValue ? "text-base" : "text-xl"} font-bold text-foreground truncate capitalize`}>
               {stat.value}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5 truncate">{stat.description}</p>

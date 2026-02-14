@@ -1,6 +1,8 @@
 """Leave management schemas for API request/response validation."""
 
 import datetime as _dt
+from __future__ import annotations
+
 from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
