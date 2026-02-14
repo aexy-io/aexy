@@ -35,6 +35,7 @@ export const DASHBOARD_PRESETS: Record<PresetType, DashboardPreset> = {
       'myGoals',
       'performanceReviews',
       'learningPath',
+      'leaveBalance',
     ],
   },
   manager: {
@@ -63,6 +64,9 @@ export const DASHBOARD_PRESETS: Record<PresetType, DashboardPreset> = {
       'myGoals',
       'upcomingDeadlines',
       'recentDocs',
+      'teamCalendar',
+      'pendingLeaveApprovals',
+      'teamAvailability',
     ],
   },
   product: {
@@ -106,6 +110,9 @@ export const DASHBOARD_PRESETS: Record<PresetType, DashboardPreset> = {
       'aiAgents',
       'upcomingDeadlines',
       'myGoals',
+      'teamCalendar',
+      'pendingLeaveApprovals',
+      'teamAvailability',
     ],
   },
   support: {
@@ -164,6 +171,8 @@ export const DASHBOARD_PRESETS: Record<PresetType, DashboardPreset> = {
       'myGoals',
       'upcomingDeadlines',
       'recentDocs',
+      'teamCalendar',
+      'teamAvailability',
     ],
   },
   custom: {

@@ -427,6 +427,16 @@ from aexy.models.reminder import (
     AssignmentStrategy,
     ReminderCategory,
 )
+from aexy.models.leave import (
+    LeaveType,
+    LeavePolicy,
+    LeaveRequest,
+    LeaveBalance,
+    Holiday,
+    LeaveRequestStatus,
+    AccrualType,
+    DEFAULT_LEAVE_TYPES,
+)
 
 __all__ = [
     # Plan
@@ -843,4 +853,13 @@ __all__ = [
     "ReminderEscalationLevel",
     "AssignmentStrategy",
     "ReminderCategory",
+    # Leave Management
+    "LeaveType",
+    "LeavePolicy",
+    "LeaveRequest",
+    "LeaveBalance",
+    "Holiday",
+    "LeaveRequestStatus",
+    "AccrualType",
+    "DEFAULT_LEAVE_TYPES",
 ]

@@ -475,6 +475,48 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     requiredPermissions: ['can_manage_workspace_settings'],
   },
 
+  // === LEAVE ===
+  teamCalendar: {
+    id: 'teamCalendar',
+    name: 'Team Calendar',
+    category: 'leave',
+    personas: ['manager', 'hr', 'admin'],
+    defaultSize: 'large',
+    icon: 'Calendar',
+    description: 'Mini monthly calendar with leave, booking, and holiday events',
+    requiredPermissions: ['can_view_leaves'],
+  },
+  leaveBalance: {
+    id: 'leaveBalance',
+    name: 'Leave Balance',
+    category: 'leave',
+    personas: ['all'],
+    defaultSize: 'small',
+    icon: 'Palmtree',
+    description: 'Personal remaining leaves per type',
+    requiredPermissions: ['can_request_leaves'],
+  },
+  pendingLeaveApprovals: {
+    id: 'pendingLeaveApprovals',
+    name: 'Leave Approvals',
+    category: 'leave',
+    personas: ['manager', 'hr'],
+    defaultSize: 'medium',
+    icon: 'CheckSquare',
+    description: 'Pending leave requests with inline approve/reject',
+    requiredPermissions: ['can_approve_leaves'],
+  },
+  teamAvailability: {
+    id: 'teamAvailability',
+    name: 'Team Availability',
+    category: 'leave',
+    personas: ['manager', 'hr', 'admin'],
+    defaultSize: 'small',
+    icon: 'Users',
+    description: "Who's in and who's out today",
+    requiredPermissions: ['can_view_leaves'],
+  },
+
   // === AI AGENTS ===
   aiAgents: {
     id: 'aiAgents',
@@ -585,6 +627,7 @@ export const WIDGET_CATEGORIES: Record<string, WidgetCategory> = {
   crm: { id: 'crm', name: 'CRM', icon: 'Building2' },
   team: { id: 'team', name: 'Team', icon: 'Users' },
   admin: { id: 'admin', name: 'Admin', icon: 'Settings' },
+  leave: { id: 'leave', name: 'Leave & Calendar', icon: 'Palmtree' },
   agents: { id: 'agents', name: 'AI Agents', icon: 'Bot' },
 };
 

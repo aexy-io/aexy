@@ -144,6 +144,9 @@ from aexy.api.questionnaires import router as questionnaires_router
 # Compliance Document Center
 from aexy.api.compliance_documents import router as compliance_documents_router
 from aexy.api.compliance_documents import folder_router as compliance_folders_router
+# Leave Management & Team Calendar
+from aexy.api.leave import router as leave_router
+from aexy.api.team_calendar import router as team_calendar_router
 
 api_router = APIRouter()
 
@@ -294,3 +297,6 @@ api_router.include_router(questionnaires_router, tags=["questionnaires"])
 # Compliance Document Center
 api_router.include_router(compliance_documents_router, tags=["compliance-documents"])
 api_router.include_router(compliance_folders_router, tags=["compliance-folders"])
+# Leave Management & Team Calendar
+api_router.include_router(leave_router, tags=["leave"])
+api_router.include_router(team_calendar_router, tags=["team-calendar"])
