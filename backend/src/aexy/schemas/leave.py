@@ -1,7 +1,7 @@
 """Leave management schemas for API request/response validation."""
-
-import datetime as _dt
 from __future__ import annotations
+import datetime as _dt
+
 
 from datetime import date, datetime
 
