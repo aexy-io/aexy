@@ -52,25 +52,25 @@ export function SprintOverviewWidget() {
 
   return (
     <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-green-500/10 rounded-lg">
-            <Calendar className="h-5 w-5 text-green-400" />
+      <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="p-1.5 bg-green-500/10 rounded-lg shrink-0">
+            <Calendar className="h-4 w-4 text-green-400" />
           </div>
-          <h3 className="text-lg font-semibold text-white">Sprint Overview</h3>
+          <h3 className="text-sm font-semibold text-white truncate">Sprint Overview</h3>
         </div>
         <Link
           href="/sprints"
-          className="text-green-400 hover:text-green-300 text-sm flex items-center gap-1 transition"
+          className="text-green-400 hover:text-green-300 text-xs flex items-center gap-1 transition shrink-0 whitespace-nowrap"
         >
-          View all <ChevronRight className="w-4 h-4" />
+          View all <ChevronRight className="w-3.5 h-3.5" />
         </Link>
       </div>
-      <div className="p-6">
+      <div className="p-4">
         {!currentWorkspace ? (
           <div className="text-center py-6">
-            <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Calendar className="w-8 h-8 text-slate-600" />
+            <div className="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Calendar className="w-7 h-7 text-slate-600" />
             </div>
             <p className="text-slate-400 text-sm">
               Select a workspace to view sprint data.
@@ -78,10 +78,10 @@ export function SprintOverviewWidget() {
           </div>
         ) : !hasActiveSprint ? (
           <div className="text-center py-6">
-            <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-              <PlayCircle className="w-8 h-8 text-slate-600" />
+            <div className="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
+              <PlayCircle className="w-7 h-7 text-slate-600" />
             </div>
-            <p className="text-slate-400 text-sm mb-4">
+            <p className="text-slate-400 text-sm mb-3">
               No active sprint. Start a new sprint to track progress.
             </p>
             <Link

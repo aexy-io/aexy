@@ -220,19 +220,11 @@ export default function DashboardPage() {
     const props = getWidgetProps(widgetId);
 
     if (!(widgetId in widgetRegistry)) {
-      return (
-        <div key={widgetId} className={getWidgetGridClass(widgetId)}>
-          <ComingSoonWidget widgetId={widgetId} />
-        </div>
-      );
+      return <ComingSoonWidget key={widgetId} widgetId={widgetId} />;
     }
 
     const Widget = widgetRegistry[widgetId];
-    return (
-      <div key={widgetId} className={getWidgetGridClass(widgetId)}>
-        <Widget {...props} />
-      </div>
-    );
+    return <Widget key={widgetId} {...props} />;
   };
 
   return (
@@ -267,6 +259,7 @@ export default function DashboardPage() {
         onReorder={handleReorder}
         isEditing={isCustomizing}
         renderWidget={renderWidget}
+        getGridClass={getWidgetGridClass}
       />
 
       {/* Dashboard Customize Modal */}
