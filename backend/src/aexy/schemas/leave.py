@@ -1,5 +1,6 @@
 """Leave management schemas for API request/response validation."""
 
+import datetime as _dt
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -206,7 +207,7 @@ class HolidayUpdate(BaseModel):
     """Schema for updating a holiday."""
 
     name: str | None = Field(default=None, min_length=1, max_length=255)
-    date: date | None = None
+    date: _dt.date | None = None
     description: str | None = None
     is_optional: bool | None = None
     applicable_team_ids: list[str] | None = None

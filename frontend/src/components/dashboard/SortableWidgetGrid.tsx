@@ -113,9 +113,7 @@ export function SortableWidgetGrid({
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {renderableWidgets.map((widgetId) => (
-          <div key={widgetId} className={getGridClass?.(widgetId) || ""}>
-            {renderWidget(widgetId)}
-          </div>
+          <div key={widgetId} className={getGridClass?.(widgetId) || ""}>{renderWidget(widgetId)}</div>
         ))}
       </div>
     );

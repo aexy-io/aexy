@@ -18,9 +18,9 @@ interface WelcomeWidgetProps {
 
 export function WelcomeWidget({ user, onCustomize }: WelcomeWidgetProps) {
   return (
-    <div>
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-4 min-w-0">
+    <div className="min-w-0">
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           {user?.avatar_url && (
             <div className="relative shrink-0">
               <Image
@@ -41,7 +41,7 @@ export function WelcomeWidget({ user, onCustomize }: WelcomeWidgetProps) {
               {user?.github_connection ? (
                 <span className="flex items-center gap-1">
                   <span className="w-2 h-2 bg-success rounded-full shrink-0"></span>
-                  Connected as @{user.github_connection.github_username}
+                  <span className="truncate">@{user.github_connection.github_username}</span>
                 </span>
               ) : (
                 "Connect your GitHub to get started"
@@ -53,9 +53,9 @@ export function WelcomeWidget({ user, onCustomize }: WelcomeWidgetProps) {
           <CustomizeButton onClick={onCustomize} />
           <Link
             href="/reviews"
-            className="px-3 py-1.5 bg-card hover:bg-accent text-muted-foreground hover:text-foreground rounded-lg text-sm font-medium transition flex items-center gap-1.5 whitespace-nowrap"
+            className="px-3 py-1.5 bg-card hover:bg-accent text-muted-foreground hover:text-foreground rounded-lg text-sm font-medium transition flex items-center gap-1.5"
           >
-            <ClipboardCheck className="w-3.5 h-3.5 shrink-0" />
+            <ClipboardCheck className="w-3.5 h-3.5" />
             Reviews
           </Link>
         </div>
