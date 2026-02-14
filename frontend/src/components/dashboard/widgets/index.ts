@@ -21,3 +21,14 @@ export { SprintBurndownWidget } from "./SprintBurndownWidget";
 export { BacklogOverviewWidget } from "./BacklogOverviewWidget";
 export { TicketPipelineWidget } from "./TicketPipelineWidget";
 export { BlockersOverviewWidget } from "./BlockersOverviewWidget";
+
+// Phase 1 extracted widgets
+export { WelcomeWidget } from "./WelcomeWidget";
+export { QuickStatsWidget } from "./QuickStatsWidget";
+export { LanguageProficiencyWidget } from "./LanguageProficiencyWidget";
+export { WorkPatternsWidget } from "./WorkPatternsWidget";
+export { DomainExpertiseWidget } from "./DomainExpertiseWidget";
+export { FrameworksToolsWidget } from "./FrameworksToolsWidget";
+export { AIInsightsWidget } from "./AIInsightsWidget";
+export { SoftSkillsWidget } from "./SoftSkillsWidget";
+export { ComingSoonWidget } from "./ComingSoonWidget";

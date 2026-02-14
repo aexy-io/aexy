@@ -6,6 +6,7 @@
 export { DashboardCustomizeModal } from "./DashboardCustomizeModal";
 export { PresetSelector } from "./PresetSelector";
 export { WidgetToggleList } from "./WidgetToggleList";
+export { WidgetReorderList } from "./WidgetReorderList";
 export { CustomizeButton } from "./CustomizeButton";
 export {
   WidgetRenderer,
@@ -35,4 +36,13 @@ export {
   BacklogOverviewWidget,
   TicketPipelineWidget,
   BlockersOverviewWidget,
+  WelcomeWidget,
+  QuickStatsWidget,
+  LanguageProficiencyWidget,
+  WorkPatternsWidget,
+  DomainExpertiseWidget,
+  FrameworksToolsWidget,
+  AIInsightsWidget,
+  SoftSkillsWidget,
+  ComingSoonWidget,
 } from "./widgets";

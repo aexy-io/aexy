@@ -5,6 +5,7 @@ import { X, RotateCcw, Info } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { PresetSelector } from "./PresetSelector";
 import { WidgetToggleList } from "./WidgetToggleList";
+import { WidgetReorderList } from "./WidgetReorderList";
 import { useDashboardPreferences } from "@/hooks/useDashboardPreferences";
 import { useDashboardStore } from "@/stores/dashboardStore";
 import { PresetType } from "@/config/dashboardPresets";
@@ -14,7 +15,7 @@ interface DashboardCustomizeModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type TabType = "presets" | "widgets";
+type TabType = "presets" | "widgets" | "reorder";
 
 export function DashboardCustomizeModal({
   open,
@@ -28,6 +29,7 @@ export function DashboardCustomizeModal({
     isUpdating,
     setPreset,
     toggleWidget,
+    reorderWidgets,
     resetToPreset,
   } = useDashboardPreferences();
 
@@ -45,12 +47,37 @@ export function DashboardCustomizeModal({
     [toggleWidget]
   );
 
+  const handleReorder = useCallback(
+    async (newOrder: string[]) => {
+      // Compute the reorder as a from/to index operation
+      // by finding the first difference and moving it
+      const currentOrder = preferences?.widget_order || preferences?.visible_widgets || [];
+      // Find what moved
+      for (let i = 0; i < newOrder.length; i++) {
+        if (newOrder[i] !== currentOrder[i]) {
+          const movedItem = newOrder[i];
+          const fromIndex = currentOrder.indexOf(movedItem);
+          await reorderWidgets(fromIndex, i);
+          break;
+        }
+      }
+    },
+    [preferences, reorderWidgets]
+  );
+
   const handleReset = useCallback(async () => {
     await resetToPreset("developer");
   }, [resetToPreset]);
 
   const currentPreset = (preferences?.preset_type as PresetType) || "developer";
   const visibleWidgets = preferences?.visible_widgets || [];
+  const widgetOrder = preferences?.widget_order || visibleWidgets;
+
+  const tabs: { id: TabType; label: string }[] = [
+    { id: "presets", label: "Choose Preset" },
+    { id: "widgets", label: "Customize Widgets" },
+    { id: "reorder", label: "Reorder" },
+  ];
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -64,7 +91,7 @@ export function DashboardCustomizeModal({
                 Customize Dashboard
               </Dialog.Title>
               <Dialog.Description className="text-sm text-slate-400 mt-0.5">
-                Choose a preset or customize which widgets appear
+                Choose a preset, toggle widgets, or reorder your layout
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
@@ -79,32 +106,22 @@ export function DashboardCustomizeModal({
 
           {/* Tabs */}
           <div className="flex border-b border-slate-700/50">
-            <button
-              onClick={() => setActiveTab("presets")}
-              className={`flex-1 px-4 py-3 text-sm font-medium transition relative ${
-                activeTab === "presets"
-                  ? "text-white"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              Choose Preset
-              {activeTab === "presets" && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500" />
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab("widgets")}
-              className={`flex-1 px-4 py-3 text-sm font-medium transition relative ${
-                activeTab === "widgets"
-                  ? "text-white"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              Customize Widgets
-              {activeTab === "widgets" && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500" />
-              )}
-            </button>
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 px-4 py-3 text-sm font-medium transition relative ${
+                  activeTab === tab.id
+                    ? "text-white"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                {tab.label}
+                {activeTab === tab.id && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500" />
+                )}
+              </button>
+            ))}
           </div>
 
           {/* Content */}
@@ -130,10 +147,16 @@ export function DashboardCustomizeModal({
                   isLoading={isUpdating}
                 />
               </div>
-            ) : (
+            ) : activeTab === "widgets" ? (
               <WidgetToggleList
                 visibleWidgets={visibleWidgets}
                 onToggleWidget={handleToggleWidget}
+                isLoading={isUpdating}
+              />
+            ) : (
+              <WidgetReorderList
+                widgetOrder={widgetOrder}
+                onReorder={handleReorder}
                 isLoading={isUpdating}
               />
             )}

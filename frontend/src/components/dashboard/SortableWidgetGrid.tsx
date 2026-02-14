@@ -13,7 +13,6 @@ import {
   DragOverlay,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
@@ -26,7 +25,7 @@ interface SortableWidgetGridProps {
   widgetOrder: string[];
   onReorder: (fromIndex: number, toIndex: number) => void;
   isEditing: boolean;
-  children: (widgetId: string) => ReactNode;
+  children?: (widgetId: string) => ReactNode;
   renderWidget: (widgetId: string) => ReactNode;
 }
 
@@ -56,7 +55,7 @@ function SortableWidget({ id, isEditing, children }: SortableWidgetProps) {
     <div ref={setNodeRef} style={style} className="relative group">
       {isEditing && (
         <button
-          className="absolute -top-2 -left-2 z-10 p-1.5 bg-slate-800 border border-slate-700 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+          className="absolute top-2 right-2 z-10 p-1.5 bg-slate-800 border border-slate-700 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
           {...attributes}
           {...listeners}
         >
@@ -102,11 +101,15 @@ export function SortableWidgetGrid({
     }
   };
 
+  // Filter out null renders (composite children that get skipped)
+  const renderableWidgets = widgetOrder.filter(
+    (id) => renderWidget(id) !== null
+  );
+
   if (!isEditing) {
-    // When not editing, just render widgets without drag functionality
     return (
-      <div className="space-y-6">
-        {widgetOrder.map((widgetId) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {renderableWidgets.map((widgetId) => (
           <div key={widgetId}>{renderWidget(widgetId)}</div>
         ))}
       </div>
@@ -120,9 +123,9 @@ export function SortableWidgetGrid({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <SortableContext items={widgetOrder} strategy={rectSortingStrategy}>
-        <div className="space-y-6">
-          {widgetOrder.map((widgetId) => (
+      <SortableContext items={renderableWidgets} strategy={rectSortingStrategy}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {renderableWidgets.map((widgetId) => (
             <SortableWidget key={widgetId} id={widgetId} isEditing={isEditing}>
               {renderWidget(widgetId)}
             </SortableWidget>
