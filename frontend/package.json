@@ -1,6 +1,6 @@
 {
   "name": "aexy-frontend",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,6 +9,8 @@
     "lint": "next lint",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "changelog": "node scripts/generate-changelog.mjs",
     "prebuild": "node scripts/generate-changelog.mjs"
   },
@@ -71,6 +73,7 @@
     "zustand": "^4.5.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@testing-library/jest-dom": "^6.3.0",
     "@testing-library/react": "^14.1.2",
     "@types/canvas-confetti": "^1.9.0",

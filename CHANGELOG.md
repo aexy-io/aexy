@@ -5,6 +5,75 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.6] - 2026-02-14
+
+### Added
+
+#### Dynamic Dashboard Widget System
+
+Replaced the hardcoded dashboard layout with a fully dynamic, preference-driven widget rendering system. Widgets now render from `widget_order` and `visible_widgets` stored in user preferences, with drag-and-drop reordering support.
+
+**Widget Extraction (9 new components):**
+- `WelcomeWidget` — greeting, GitHub connection status, quick action links
+- `QuickStatsWidget` — language count, framework count, avg PR size, work style
+- `LanguageProficiencyWidget` — language bars with proficiency scores, commit counts, trends
+- `WorkPatternsWidget` — complexity preference, peak hours, review turnaround
+- `DomainExpertiseWidget` — domain tags with confidence scores
+- `FrameworksToolsWidget` — framework/tool tags with proficiency scores
+- `AIInsightsWidget` — composite widget wrapping InsightsCard, SoftSkillsCard, GrowthTrajectory, PeerBenchmark
+- `SoftSkillsWidget` — Reviews & Goals section with My Goals and Performance Reviews
+- `ComingSoonWidget` — placeholder for unimplemented widget IDs
+
+**Widget Registry (`widgetRegistry.tsx`):**
+- Maps 23 widget IDs to React components (developer, engineering manager, and product manager widgets)
+- `getWidgetComponent()` helper with ComingSoonWidget fallback
+- `isWidgetImplemented()` check for registry membership
+
+**Dashboard Page Rewrite (`page.tsx`):**
+- Dynamic rendering from `orderedVisibleWidgets` computed via `widget_order` intersected with `visible_widgets`
+- `getWidgetProps()` switch maps widget IDs to their specific data props
+- `getWidgetGridClass()` maps widget sizes to CSS grid column spans
+- `renderWidget()` skips composite children and renders from registry or ComingSoonWidget
+- Edit Layout toggle button (Pencil/Check icons) for entering/exiting drag mode
+
+**SortableWidgetGrid Updates:**
+- Changed layout from `space-y-6` vertical stack to CSS grid: `grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6`
+- Added `renderableWidgets` filter to skip null renders from composite children
+- Drag handle repositioned to `top-2 right-2`
+
+**Customize Modal — Reorder Tab:**
+- Added third tab "Reorder" to `DashboardCustomizeModal`
+- New `WidgetReorderList` component — dnd-kit vertical list showing widget icon, name, size badge, and drag handle
+- Tabs now rendered from data array; description updated
+
+**Enriched Non-Developer Presets:**
+- Manager: added `aiAgents`, `upcomingDeadlines`, `recentDocs`
+- Product: added `aiInsights`, `aiAgents`
+- HR: added `quickStats`, `aiAgents`, `upcomingDeadlines`, `myGoals`
+- Support: added `quickStats`, `aiAgents`, `teamOverview`, `myGoals`
+- Sales: added `quickStats`, `aiAgents`, `teamOverview`, `upcomingDeadlines`
+- Admin: added `quickStats`, `aiAgents`, `myGoals`, `upcomingDeadlines`, `recentDocs`
+
+#### Playwright E2E Test Suite
+
+Added end-to-end testing infrastructure for the dashboard.
+
+- `playwright.config.ts` — Chromium project, baseURL localhost:3000, auto-start dev server
+- `e2e/fixtures/mock-data.ts` — mock user, preferences, insights, soft skills fixtures
+- `e2e/dashboard.spec.ts` — 18 tests across 6 describe blocks:
+  - Widget Rendering (7 tests): welcome, quickStats, languageProficiency, workPatterns, domainExpertise, frameworksTools, ComingSoon
+  - Widget Ordering (2 tests): order from preferences, only visible widgets rendered
+  - Edit Layout Toggle (2 tests): button toggle, drag handles in edit mode
+  - Customize Modal (4 tests): three tabs, tab switching, reorder tab content, close
+  - Manager Preset (1 test): cross-cutting widgets present
+  - Grid Layout (2 tests): CSS grid container, full-span widgets
+
+### Changed
+
+- Bumped frontend version from `0.5.5` to `0.5.6`
+- Added `@playwright/test` dev dependency
+- Added `test:e2e` and `test:e2e:ui` npm scripts
+
 ## [0.5.5] - 2026-02-13
 
 ### Added
