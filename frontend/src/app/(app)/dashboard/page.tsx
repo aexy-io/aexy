@@ -40,6 +40,15 @@ import {
   TrackingSummaryWidget,
   CRMPipelineWidget,
   AIAgentsWidget,
+  TeamStatsSummaryWidget,
+  TasksCompletedChartWidget,
+  TicketChartWidget,
+  VelocityTrendWidget,
+  WorkloadDistributionWidget,
+  SprintBurndownWidget,
+  BacklogOverviewWidget,
+  TicketPipelineWidget,
+  BlockersOverviewWidget,
 } from "@/components/dashboard";
 
 export default function DashboardPage() {
@@ -617,6 +626,41 @@ export default function DashboardPage() {
         <div className="grid lg:grid-cols-2 gap-6 mt-10">
           {showWidget("trackingSummary") && <TrackingSummaryWidget />}
           {showWidget("sprintOverview") && <SprintOverviewWidget />}
+        </div>
+      )}
+
+      {/* Team Analytics Section (Engineering Manager) */}
+      {(showWidget("teamStatsSummary") || showWidget("velocityTrend") || showWidget("tasksCompletedChart") || showWidget("workloadDistribution") || showWidget("ticketChart")) && (
+        <div className="mt-10 space-y-6">
+          {showWidget("teamStatsSummary") && <TeamStatsSummaryWidget />}
+          <div className="grid lg:grid-cols-2 gap-6">
+            {showWidget("velocityTrend") && <VelocityTrendWidget />}
+            {showWidget("tasksCompletedChart") && <TasksCompletedChartWidget />}
+            {showWidget("workloadDistribution") && <WorkloadDistributionWidget />}
+            {showWidget("ticketChart") && <TicketChartWidget />}
+          </div>
+        </div>
+      )}
+
+      {/* Sprint Burndown (Manager / Product) */}
+      {showWidget("sprintBurndown") && (
+        <div className="grid lg:grid-cols-2 gap-6 mt-10">
+          <SprintBurndownWidget />
+        </div>
+      )}
+
+      {/* Product Backlog & Pipeline (Product Manager) */}
+      {(showWidget("backlogOverview") || showWidget("ticketPipeline")) && (
+        <div className="grid lg:grid-cols-2 gap-6 mt-10">
+          {showWidget("backlogOverview") && <BacklogOverviewWidget />}
+          {showWidget("ticketPipeline") && <TicketPipelineWidget />}
+        </div>
+      )}
+
+      {/* Blockers Overview (Manager / Product) */}
+      {showWidget("blockersOverview") && (
+        <div className="grid lg:grid-cols-2 gap-6 mt-10">
+          <BlockersOverviewWidget />
         </div>
       )}
 

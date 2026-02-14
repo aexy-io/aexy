@@ -26,4 +26,13 @@ export {
   TrackingSummaryWidget,
   CRMPipelineWidget,
   AIAgentsWidget,
+  TeamStatsSummaryWidget,
+  TasksCompletedChartWidget,
+  TicketChartWidget,
+  VelocityTrendWidget,
+  WorkloadDistributionWidget,
+  SprintBurndownWidget,
+  BacklogOverviewWidget,
+  TicketPipelineWidget,
+  BlockersOverviewWidget,
 } from "./widgets";
