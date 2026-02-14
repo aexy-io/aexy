@@ -24,6 +24,7 @@ class PermissionCategory(str, Enum):
     ONCALL = "oncall"
     INSIGHTS = "insights"
     COMPLIANCE = "compliance"
+    LEAVES = "leaves"
 
 
 # Master permission catalog
@@ -270,6 +271,27 @@ PERMISSIONS: dict[str, dict] = {
         "description": "Upload documents, manage folders, and configure compliance",
         "default_for": ["admin", "hr"],
     },
+    # Leaves
+    "can_request_leaves": {
+        "category": PermissionCategory.LEAVES,
+        "description": "Submit leave requests",
+        "default_for": ["admin", "manager", "developer", "hr", "support", "sales"],
+    },
+    "can_approve_leaves": {
+        "category": PermissionCategory.LEAVES,
+        "description": "Approve or reject leave requests",
+        "default_for": ["admin", "manager", "hr"],
+    },
+    "can_view_leaves": {
+        "category": PermissionCategory.LEAVES,
+        "description": "View team leave requests and balances",
+        "default_for": ["admin", "manager", "hr"],
+    },
+    "can_manage_leaves": {
+        "category": PermissionCategory.LEAVES,
+        "description": "Configure leave types, policies, and holidays",
+        "default_for": ["admin", "hr"],
+    },
     # Billing
     "can_view_billing": {
         "category": PermissionCategory.BILLING,
@@ -481,6 +503,11 @@ WIDGET_PERMISSIONS: dict[str, list[str]] = {
     # Billing widgets
     "billingOverview": ["can_view_billing"],
     "seatUsage": ["can_view_billing"],
+    # Leave widgets
+    "teamCalendar": ["can_view_leaves"],
+    "leaveBalance": [],
+    "pendingLeaveApprovals": ["can_approve_leaves"],
+    "teamAvailability": ["can_view_leaves"],
 }
 
 

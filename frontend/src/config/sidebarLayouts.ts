@@ -49,6 +49,8 @@ import {
     UserCheck,
     FolderGit2,
     RefreshCw,
+    Palmtree,
+    CheckSquare,
 } from "lucide-react";
 
 export type SidebarLayoutType = "grouped" | "flat";
@@ -142,6 +144,12 @@ const insightsItems: SidebarItemConfig[] = [
     { href: "/insights/leaderboard", label: "Leaderboard", icon: BarChart },
     { href: "/insights/repositories", label: "Repositories", icon: FolderGit2 },
     { href: "/insights/sync-status", label: "Sync Status", icon: RefreshCw },
+];
+
+const leaveItems: SidebarItemConfig[] = [
+    { href: "/leave", label: "My Leaves", icon: Palmtree },
+    { href: "/leave?tab=approvals", label: "Approvals", icon: CheckSquare },
+    { href: "/leave?tab=settings", label: "Settings", icon: Settings },
 ];
 
 const complianceItems: SidebarItemConfig[] = [
@@ -246,6 +254,12 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
                     label: "Hiring",
                     icon: Users,
                     items: hiringItems,
+                },
+                {
+                    href: "/leave",
+                    label: "Leave",
+                    icon: Palmtree,
+                    items: leaveItems,
                 },
                 { href: "/learning", label: "Learning", icon: GraduationCap },
             ],
@@ -367,6 +381,12 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                     items: insightsItems,
                 },
                 { href: "/learning", label: "Learning", icon: GraduationCap },
+                {
+                    href: "/leave",
+                    label: "Leave",
+                    icon: Palmtree,
+                    items: leaveItems,
+                },
                 { href: "/docs", label: "Docs", icon: FileText },
                 { href: "/forms", label: "Forms", icon: FormInput },
             ],

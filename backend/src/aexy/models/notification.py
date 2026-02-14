@@ -64,6 +64,12 @@ class NotificationEventType(str, Enum):
     INSIGHT_ALERT_WARNING = "insight_alert_warning"
     INSIGHT_ALERT_CRITICAL = "insight_alert_critical"
 
+    # Leave related
+    LEAVE_REQUEST_SUBMITTED = "leave_request_submitted"
+    LEAVE_REQUEST_APPROVED = "leave_request_approved"
+    LEAVE_REQUEST_REJECTED = "leave_request_rejected"
+    LEAVE_REQUEST_CANCELLED = "leave_request_cancelled"
+
     # Reminder related
     REMINDER_DUE = "reminder_due"  # Reminder is due
     REMINDER_ACKNOWLEDGED = "reminder_acknowledged"  # Reminder was acknowledged
@@ -263,6 +269,11 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     NotificationEventType.INSIGHT_ALERT_WARNING: {"in_app": True, "email": False, "slack": False},
     NotificationEventType.INSIGHT_ALERT_CRITICAL: {"in_app": True, "email": True, "slack": False},
     # Reminders
+    # Leave notifications
+    NotificationEventType.LEAVE_REQUEST_SUBMITTED: {"in_app": True, "email": True, "slack": False},
+    NotificationEventType.LEAVE_REQUEST_APPROVED: {"in_app": True, "email": True, "slack": False},
+    NotificationEventType.LEAVE_REQUEST_REJECTED: {"in_app": True, "email": True, "slack": False},
+    NotificationEventType.LEAVE_REQUEST_CANCELLED: {"in_app": True, "email": False, "slack": False},
     NotificationEventType.REMINDER_DUE: {"in_app": True, "email": True, "slack": False},
     NotificationEventType.REMINDER_ACKNOWLEDGED: {"in_app": True, "email": False, "slack": False},
     NotificationEventType.REMINDER_COMPLETED: {"in_app": True, "email": False, "slack": False},

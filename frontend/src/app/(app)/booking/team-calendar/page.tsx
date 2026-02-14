@@ -9,6 +9,9 @@ import {
   TeamBookingBrief,
 } from "@/lib/booking-api";
 import { TeamCalendarView } from "@/components/booking/TeamCalendarView";
+import { TeamCalendar } from "@/components/calendar/TeamCalendar";
+import { CalendarFilters, EventTypeFilter } from "@/components/calendar/CalendarFilters";
+import { WhoIsOutPanel } from "@/components/calendar/WhoIsOutPanel";
 import { format, addDays, startOfWeek } from "date-fns";
 import { toast } from "sonner";
 import { Calendar, Users, RefreshCw, ExternalLink, Plus, Copy, Check } from "lucide-react";
@@ -16,15 +19,19 @@ import Link from "next/link";
 import { useTeams } from "@/hooks/useTeams";
 import { TeamListItem } from "@/lib/api";
 
+type ViewTab = "unified" | "booking";
+
 export default function TeamCalendarPage() {
   const { currentWorkspace } = useWorkspace();
   const { teams } = useTeams(currentWorkspace?.id || null);
+  const [activeTab, setActiveTab] = useState<ViewTab>("unified");
   const [loading, setLoading] = useState(true);
   const [availability, setAvailability] = useState<TeamAvailability | null>(null);
   const [eventTypes, setEventTypes] = useState<EventType[]>([]);
   const [selectedEventTypeId, setSelectedEventTypeId] = useState<string | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [enabledEventTypes, setEnabledEventTypes] = useState<EventTypeFilter[]>(["leave", "booking", "holiday"]);
   const [currentWeekStart, setCurrentWeekStart] = useState(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
@@ -164,6 +171,8 @@ export default function TeamCalendarPage() {
     );
   }
 
+  const teamList = teams.map((t) => ({ id: t.id, name: t.name }));
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -177,96 +186,151 @@ export default function TeamCalendarPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Event type selector */}
-          <select
-            value={selectedEventTypeId || ""}
-            onChange={(e) => setSelectedEventTypeId(e.target.value || null)}
-            className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-          >
-            <option value="">Select team event...</option>
-            {eventTypes.map((et) => (
-              <option key={et.id} value={et.id}>
-                {et.name}
-              </option>
-            ))}
-          </select>
-
-          {/* Team selector */}
-          {selectedEventTypeId && teams.length > 0 && (
-            <select
-              value={selectedTeamId || ""}
-              onChange={(e) => setSelectedTeamId(e.target.value || null)}
-              className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-            >
-              <option value="">All assigned members</option>
-              {teams.map((team) => (
-                <option key={team.id} value={team.id}>
-                  {team.name}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {/* Refresh button */}
+        {/* Tab switcher */}
+        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
           <button
-            onClick={loadAvailability}
-            disabled={loading}
-            className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50"
-            title="Refresh"
+            onClick={() => setActiveTab("unified")}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition ${
+              activeTab === "unified"
+                ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+            }`}
           >
-            <RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
+            Unified
           </button>
-
-          {/* Copy Link button */}
-          {selectedEventTypeId && currentWorkspace?.slug && (
-            <button
-              onClick={copyBookingLink}
-              className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg"
-              title="Copy booking link"
-            >
-              {copied ? <Check className="h-5 w-5 text-green-500" /> : <Copy className="h-5 w-5" />}
-            </button>
-          )}
-
-          {/* Book Meeting button */}
-          {selectedEventTypeId && currentWorkspace?.slug && (
-            <Link
-              href={getBookingUrl() || "#"}
-              target="_blank"
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Book Meeting
-              <ExternalLink className="h-3 w-3" />
-            </Link>
-          )}
+          <button
+            onClick={() => setActiveTab("booking")}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition ${
+              activeTab === "booking"
+                ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+            }`}
+          >
+            Booking
+          </button>
         </div>
       </div>
 
-      {/* Calendar */}
-      {loading && !availability ? (
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-        </div>
-      ) : availability ? (
-        <TeamCalendarView
-          availability={availability}
-          onSlotClick={handleSlotClick}
-          onBookingClick={handleBookingClick}
-          startDate={currentWeekStart}
-          onDateChange={handleDateChange}
-        />
+      {activeTab === "unified" ? (
+        <>
+          {/* Unified calendar filters */}
+          <div className="mb-4">
+            <CalendarFilters
+              selectedTeamId={selectedTeamId}
+              onTeamChange={setSelectedTeamId}
+              teams={teamList}
+              enabledEventTypes={enabledEventTypes}
+              onEventTypesChange={setEnabledEventTypes}
+            />
+          </div>
+
+          {/* Unified calendar with who-is-out sidebar */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <div className="lg:col-span-3">
+              <TeamCalendar
+                teamId={selectedTeamId || undefined}
+                eventTypes={enabledEventTypes}
+              />
+            </div>
+            <div className="lg:col-span-1">
+              <WhoIsOutPanel teamId={selectedTeamId || undefined} />
+            </div>
+          </div>
+        </>
       ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
-          <Calendar className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            Select an event type
-          </h3>
-          <p className="text-gray-500 dark:text-gray-400">
-            Choose a team event type above to view team availability
-          </p>
-        </div>
+        <>
+          {/* Booking calendar controls */}
+          <div className="flex flex-wrap items-center gap-3 mb-6">
+            {/* Event type selector */}
+            <select
+              value={selectedEventTypeId || ""}
+              onChange={(e) => setSelectedEventTypeId(e.target.value || null)}
+              className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            >
+              <option value="">Select team event...</option>
+              {eventTypes.map((et) => (
+                <option key={et.id} value={et.id}>
+                  {et.name}
+                </option>
+              ))}
+            </select>
+
+            {/* Team selector */}
+            {selectedEventTypeId && teams.length > 0 && (
+              <select
+                value={selectedTeamId || ""}
+                onChange={(e) => setSelectedTeamId(e.target.value || null)}
+                className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              >
+                <option value="">All assigned members</option>
+                {teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Refresh button */}
+            <button
+              onClick={loadAvailability}
+              disabled={loading}
+              className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50"
+              title="Refresh"
+            >
+              <RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
+            </button>
+
+            {/* Copy Link button */}
+            {selectedEventTypeId && currentWorkspace?.slug && (
+              <button
+                onClick={copyBookingLink}
+                className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg"
+                title="Copy booking link"
+              >
+                {copied ? <Check className="h-5 w-5 text-green-500" /> : <Copy className="h-5 w-5" />}
+              </button>
+            )}
+
+            {/* Book Meeting button */}
+            {selectedEventTypeId && currentWorkspace?.slug && (
+              <Link
+                href={getBookingUrl() || "#"}
+                target="_blank"
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Book Meeting
+                <ExternalLink className="h-3 w-3" />
+              </Link>
+            )}
+          </div>
+
+          {/* Booking Calendar */}
+          {loading && !availability ? (
+            <div className="flex items-center justify-center min-h-[400px]">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+            </div>
+          ) : availability ? (
+            <TeamCalendarView
+              availability={availability}
+              onSlotClick={handleSlotClick}
+              onBookingClick={handleBookingClick}
+              startDate={currentWeekStart}
+              onDateChange={handleDateChange}
+            />
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
+              <Calendar className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                Select an event type
+              </h3>
+              <p className="text-gray-500 dark:text-gray-400">
+                Choose a team event type above to view team availability
+              </p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -11,6 +11,9 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "test:e2e:leave": "playwright test e2e/leave.spec.ts",
+    "test:e2e:leave:headed": "playwright test e2e/leave.spec.ts --headed",
+    "test:e2e:leave:ui": "playwright test e2e/leave.spec.ts --ui",
     "changelog": "node scripts/generate-changelog.mjs",
     "prebuild": "node scripts/generate-changelog.mjs"
   },

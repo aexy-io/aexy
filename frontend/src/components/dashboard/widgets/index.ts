@@ -22,6 +22,12 @@ export { BacklogOverviewWidget } from "./BacklogOverviewWidget";
 export { TicketPipelineWidget } from "./TicketPipelineWidget";
 export { BlockersOverviewWidget } from "./BlockersOverviewWidget";
 
+// Leave & Calendar widgets
+export { LeaveBalanceWidget } from "./LeaveBalanceWidget";
+export { TeamCalendarWidget } from "./TeamCalendarWidget";
+export { PendingLeaveApprovalsWidget } from "./PendingLeaveApprovalsWidget";
+export { TeamAvailabilityWidget } from "./TeamAvailabilityWidget";
+
 // Phase 1 extracted widgets
 export { WelcomeWidget } from "./WelcomeWidget";
 export { QuickStatsWidget } from "./QuickStatsWidget";

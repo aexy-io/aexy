@@ -25,6 +25,10 @@ import {
   BacklogOverviewWidget,
   TicketPipelineWidget,
   BlockersOverviewWidget,
+  LeaveBalanceWidget,
+  TeamCalendarWidget,
+  PendingLeaveApprovalsWidget,
+  TeamAvailabilityWidget,
 } from "@/components/dashboard/widgets";
 import { TaskMatcherCard } from "@/components/TaskMatcherCard";
 
@@ -56,6 +60,11 @@ export const widgetRegistry: Record<string, ComponentType<any>> = {
   backlogOverview: BacklogOverviewWidget,
   ticketPipeline: TicketPipelineWidget,
   blockersOverview: BlockersOverviewWidget,
+  // Leave & Calendar widgets
+  leaveBalance: LeaveBalanceWidget,
+  teamCalendar: TeamCalendarWidget,
+  pendingLeaveApprovals: PendingLeaveApprovalsWidget,
+  teamAvailability: TeamAvailabilityWidget,
 };
 
 /**
