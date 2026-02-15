@@ -7,3 +7,7 @@ celerybeat-schedule
 backend-rust
 gtm
 prds/crm
+
+# UI test screenshots (managed by /test-ui skill)
+frontend/e2e/screenshots/*.png
+frontend/e2e/screenshots/*.gif

@@ -1,0 +1,205 @@
+# UI/UX Test State - Auto-managed by /test-ui skill
+# Do not edit manually unless fixing state corruption
+last_updated: "2026-02-14T00:00:00Z"
+session_count: 0
+
+pages:
+  dashboard:
+    path: /dashboard
+    last_tested: null
+    status: untested
+    spec_file: e2e/dashboard.spec.ts
+    spec_status: null
+    flows_tested: []
+    issues: []
+    screenshots: []
+
+  leave:
+    path: /leave
+    last_tested: null
+    status: untested
+    spec_file: e2e/leave.spec.ts
+    spec_status: null
+    flows_tested: []
+    issues: []
+    screenshots: []
+
+  calendar:
+    path: /booking/team-calendar
+    last_tested: null
+    status: untested
+    spec_file: e2e/leave.spec.ts
+    spec_status: null
+    flows_tested: []
+    issues: []
+    screenshots: []
+
+  agents:
+    path: /agents
+    last_tested: null
+    status: untested
+    spec_file: null
+    spec_status: null
+    flows_tested: []
+    issues: []
+    screenshots: []
+
+  tracking:
+    path: /tracking
+    last_tested: null
+    status: untested
+    spec_file: null
+    spec_status: null
+    flows_tested: []
+    issues: []
+    screenshots: []
+
+  settings:
+    path: /settings
+    last_tested: null
+    status: untested
+    spec_file: null
+    spec_status: null
+    flows_tested: []
+    issues: []
+    screenshots: []
+
+  sprints:
+    path: /tickets
+    last_tested: null
+    status: untested
+    spec_file: null
+    spec_status: null
+    flows_tested: []
+    issues: []
+    screenshots: []
+
+  compliance:
+    path: /compliance
+    last_tested: null
+    status: untested
+    spec_file: null
+    spec_status: null
+    flows_tested: []
+    issues: []
+    screenshots: []
+
+  insights:
+    path: /insights
+    last_tested: null
+    status: untested
+    spec_file: null
+    spec_status: null
+    flows_tested: []
+    issues: []
+    screenshots: []
+
+  crm:
+    path: /crm
+    last_tested: null
+    status: untested
+    spec_file: null
+    spec_status: null
+    flows_tested: []
+    issues: []
+    screenshots: []
+
+  docs:
+    path: /docs
+    last_tested: null
+    status: untested
+    spec_file: null
+    spec_status: null
+    flows_tested: []
+    issues: []
+    screenshots: []
+
+  hiring:
+    path: /hiring
+    last_tested: null
+    status: untested
+    spec_file: null
+    spec_status: null
+    flows_tested: []
+    issues: []
+    screenshots: []
+
+  reviews:
+    path: /reviews
+    last_tested: null
+    status: untested
+    spec_file: null
+    spec_status: null
+    flows_tested: []
+    issues: []
+    screenshots: []
+
+  learning:
+    path: /learning
+    last_tested: null
+    status: untested
+    spec_file: null
+    spec_status: null
+    flows_tested: []
+    issues: []
+    screenshots: []
+
+  automations:
+    path: /automations
+    last_tested: null
+    status: untested
+    spec_file: null
+    spec_status: null
+    flows_tested: []
+    issues: []
+    screenshots: []
+
+  email-marketing:
+    path: /email-marketing
+    last_tested: null
+    status: untested
+    spec_file: null
+    spec_status: null
+    flows_tested: []
+    issues: []
+    screenshots: []
+
+  uptime:
+    path: /uptime
+    last_tested: null
+    status: untested
+    spec_file: null
+    spec_status: null
+    flows_tested: []
+    issues: []
+    screenshots: []
+
+  forms:
+    path: /forms
+    last_tested: null
+    status: untested
+    spec_file: null
+    spec_status: null
+    flows_tested: []
+    issues: []
+    screenshots: []
+
+  booking:
+    path: /booking
+    last_tested: null
+    status: untested
+    spec_file: null
+    spec_status: null
+    flows_tested: []
+    issues: []
+    screenshots: []
+
+summary:
+  total_pages: 19
+  tested: 0
+  passing: 0
+  failing: 0
+  partial: 0
+  untested: 19
+  open_issues: 0
+  critical_issues: 0

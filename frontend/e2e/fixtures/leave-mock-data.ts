@@ -54,6 +54,23 @@ export const mockLeaveTypes = [
     created_at: "2025-01-01T00:00:00Z",
     updated_at: "2025-01-01T00:00:00Z",
   },
+  {
+    id: "lt-4",
+    workspace_id: "ws-1",
+    name: "Comp Off",
+    slug: "comp_off",
+    description: "Compensatory off for extra work",
+    color: "#8b5cf6",
+    icon: null,
+    is_paid: false,
+    requires_approval: true,
+    min_notice_days: 1,
+    allows_half_day: true,
+    is_active: true,
+    sort_order: 3,
+    created_at: "2025-01-01T00:00:00Z",
+    updated_at: "2025-01-01T00:00:00Z",
+  },
 ];
 
 export const mockLeaveBalances = [
@@ -164,6 +181,73 @@ export const mockLeaveRequests = [
     calendar_event_id: null,
     created_at: "2025-12-10T09:00:00Z",
     updated_at: "2025-12-12T11:00:00Z",
+  },
+];
+
+// Extended requests including cancelled/withdrawn statuses for team leave table tests
+export const mockLeaveRequestsExtended = [
+  ...mockLeaveRequests,
+  {
+    id: "lr-4",
+    workspace_id: "ws-1",
+    developer_id: "dev-5",
+    leave_type_id: "lt-1",
+    developer: { id: "dev-5", name: "Diana Prince", email: "diana@example.com", avatar_url: null },
+    leave_type: mockLeaveTypes[0],
+    approver: null,
+    start_date: "2026-02-25",
+    end_date: "2026-02-25",
+    is_half_day: true,
+    half_day_period: "second_half",
+    total_days: 0.5,
+    reason: "Personal errand",
+    status: "cancelled" as const,
+    approver_id: null,
+    approved_at: null,
+    rejection_reason: null,
+    calendar_event_id: null,
+    created_at: "2026-02-15T09:00:00Z",
+    updated_at: "2026-02-16T10:00:00Z",
+  },
+  {
+    id: "lr-5",
+    workspace_id: "ws-1",
+    developer_id: "dev-6",
+    leave_type_id: "lt-2",
+    developer: { id: "dev-6", name: "Eve Wilson", email: "eve@example.com", avatar_url: null },
+    leave_type: mockLeaveTypes[1],
+    approver: null,
+    start_date: "2026-03-20",
+    end_date: "2026-03-20",
+    is_half_day: false,
+    half_day_period: null,
+    total_days: 1,
+    reason: "Withdrawn request",
+    status: "withdrawn" as const,
+    approver_id: null,
+    approved_at: null,
+    rejection_reason: null,
+    calendar_event_id: null,
+    created_at: "2026-02-14T09:00:00Z",
+    updated_at: "2026-02-14T11:00:00Z",
+  },
+];
+
+// Balance including unpaid leave type
+export const mockLeaveBalancesExtended = [
+  ...mockLeaveBalances,
+  {
+    id: "lb-4",
+    workspace_id: "ws-1",
+    developer_id: "test-user-123",
+    leave_type_id: "lt-4",
+    leave_type: mockLeaveTypes[3],
+    year: 2026,
+    total_allocated: 5,
+    used: 0,
+    pending: 0,
+    carried_forward: 0,
+    available: 5,
   },
 ];
 

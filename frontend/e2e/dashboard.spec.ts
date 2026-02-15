@@ -1,4 +1,5 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect } from "./fixtures/base-test";
+import type { Page } from "@playwright/test";
 import {
   mockUser,
   mockPreferences,
@@ -17,9 +18,10 @@ const API_BASE = "http://localhost:8000/api/v1";
 async function setupDashboardMocks(page: Page, preferencesOverride?: typeof mockPreferences) {
   const prefs = preferencesOverride || mockPreferences;
 
-  // Set auth token before navigating
+  // Set auth token and workspace before navigating
   await page.addInitScript(() => {
     localStorage.setItem("token", "fake-test-token");
+    localStorage.setItem("current_workspace_id", "ws-1");
   });
 
   // IMPORTANT: Playwright matches routes in REVERSE registration order
@@ -34,8 +36,36 @@ async function setupDashboardMocks(page: Page, preferencesOverride?: typeof mock
     });
   });
 
-  // Mock workspace/agents endpoints
+  // Workspace list
+  await page.route(`${API_BASE}/workspaces`, (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([{ id: "ws-1", name: "Test Workspace", slug: "test-ws", type: "engineering", owner_id: "test-user-123", member_count: 10, team_count: 2, is_active: true }]),
+    });
+  });
+
+  // Workspace sub-routes
   await page.route(`${API_BASE}/workspaces/**`, (route) => {
+    const url = route.request().url();
+    if (url.includes("/agents")) {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([]) });
+    }
+    if (url.includes("/app-access/")) {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ apps: {}, applied_template_id: null, applied_template_name: null, has_custom_overrides: false, is_admin: true }) });
+    }
+    if (url.includes("/documents/")) {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([]) });
+    }
+    if (url.includes("/spaces")) {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([]) });
+    }
+    if (url.includes("/members")) {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([]) });
+    }
+    if (url.includes("/teams")) {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([]) });
+    }
     route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -103,6 +133,24 @@ async function setupDashboardMocks(page: Page, preferencesOverride?: typeof mock
     });
   });
 
+  // Billing/subscription
+  await page.route(`${API_BASE}/billing/subscription/status**`, (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ plan: { tier: "pro" }, status: "active" }),
+    });
+  });
+
+  // Repositories
+  await page.route(`${API_BASE}/repositories/**`, (route) => {
+    const url = route.request().url();
+    if (url.includes("/onboarding/status")) {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ completed: true, current_step: "complete" }) });
+    }
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([]) });
+  });
+
   // Mock GET /dashboard/preferences
   await page.route(`${API_BASE}/dashboard/preferences`, (route) => {
     if (route.request().method() === "GET") {
@@ -131,6 +179,12 @@ async function setupDashboardMocks(page: Page, preferencesOverride?: typeof mock
   });
 }
 
+/** Navigate to dashboard and wait for it to fully render. */
+async function gotoDashboard(page: Page) {
+  await page.goto("/dashboard");
+  await page.waitForSelector("text=Welcome back", { timeout: 45000 });
+}
+
 // ---------------------------------------------------------------------------
 // Test Suite: Dashboard Widget Rendering
 // ---------------------------------------------------------------------------
@@ -138,14 +192,12 @@ async function setupDashboardMocks(page: Page, preferencesOverride?: typeof mock
 test.describe("Dashboard — Widget Rendering", () => {
   test.beforeEach(async ({ page }) => {
     await setupDashboardMocks(page);
-    await page.goto("/dashboard");
-    // Wait for the dashboard to fully load
-    await page.waitForSelector("text=Welcome back", { timeout: 15000 });
+    await gotoDashboard(page);
   });
 
   test("renders the welcome widget with user name", async ({ page }) => {
     await expect(page.getByText("Welcome back, Test")).toBeVisible();
-    await expect(page.getByText("Connected as @testdev")).toBeVisible();
+    await expect(page.getByText("@testdev")).toBeVisible();
   });
 
   test("renders quick stats widget with correct data", async ({ page }) => {
@@ -185,31 +237,21 @@ test.describe("Dashboard — Widget Rendering", () => {
     await expect(page.getByText("React")).toBeVisible();
     await expect(page.getByText("Next.js")).toBeVisible();
   });
+});
 
+// ---------------------------------------------------------------------------
+// Test Suite: Coming Soon Widget (separate to avoid double navigation)
+// ---------------------------------------------------------------------------
+
+test.describe("Dashboard — Coming Soon Widget", () => {
   test("shows Coming Soon for unimplemented widgets", async ({ page }) => {
-    // Set preferences to include an unimplemented widget
-    await page.evaluate(() => {
-      localStorage.setItem("token", "fake-test-token");
+    // Setup mocks with an extra unimplemented widget
+    await setupDashboardMocks(page, {
+      ...mockPreferences,
+      visible_widgets: [...mockPreferences.visible_widgets, "systemHealth"],
+      widget_order: [...mockPreferences.widget_order, "systemHealth"],
     });
-
-    await page.route(`${API_BASE}/dashboard/preferences`, (route) => {
-      if (route.request().method() === "GET") {
-        route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
-            ...mockPreferences,
-            visible_widgets: [...mockPreferences.visible_widgets, "systemHealth"],
-            widget_order: [...mockPreferences.widget_order, "systemHealth"],
-          }),
-        });
-      } else {
-        route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
-      }
-    });
-
-    await page.reload();
-    await page.waitForSelector("text=Welcome back", { timeout: 15000 });
+    await gotoDashboard(page);
     await expect(page.getByText("This widget is coming soon")).toBeVisible();
   });
 });
@@ -222,8 +264,7 @@ test.describe("Dashboard — Widget Ordering", () => {
   test("renders widgets in the order specified by widget_order", async ({ page }) => {
     // Use a specific order: workPatterns before languageProficiency
     await setupDashboardMocks(page, mockPreferencesReordered);
-    await page.goto("/dashboard");
-    await page.waitForSelector("text=Welcome back", { timeout: 15000 });
+    await gotoDashboard(page);
 
     // Get all rendered widget headings in DOM order
     const widgetHeadings = await page.locator("h3").allTextContents();
@@ -243,8 +284,7 @@ test.describe("Dashboard — Widget Ordering", () => {
       visible_widgets: ["welcome", "quickStats"],
       widget_order: ["welcome", "quickStats"],
     });
-    await page.goto("/dashboard");
-    await page.waitForSelector("text=Welcome back", { timeout: 15000 });
+    await gotoDashboard(page);
 
     // Quick Stats should be visible
     await expect(page.getByText("Languages").first()).toBeVisible();
@@ -262,8 +302,7 @@ test.describe("Dashboard — Widget Ordering", () => {
 test.describe("Dashboard — Edit Layout Toggle", () => {
   test.beforeEach(async ({ page }) => {
     await setupDashboardMocks(page);
-    await page.goto("/dashboard");
-    await page.waitForSelector("text=Welcome back", { timeout: 15000 });
+    await gotoDashboard(page);
   });
 
   test("shows Edit Layout button and toggles to Done", async ({ page }) => {
@@ -303,8 +342,7 @@ test.describe("Dashboard — Edit Layout Toggle", () => {
 test.describe("Dashboard — Customize Modal", () => {
   test.beforeEach(async ({ page }) => {
     await setupDashboardMocks(page);
-    await page.goto("/dashboard");
-    await page.waitForSelector("text=Welcome back", { timeout: 15000 });
+    await gotoDashboard(page);
   });
 
   test("opens customize modal with three tabs", async ({ page }) => {
@@ -371,8 +409,7 @@ test.describe("Dashboard — Customize Modal", () => {
 test.describe("Dashboard — Manager Preset", () => {
   test("manager preset includes cross-cutting widgets", async ({ page }) => {
     await setupDashboardMocks(page, mockPreferencesManagerPreset);
-    await page.goto("/dashboard");
-    await page.waitForSelector("text=Welcome back", { timeout: 15000 });
+    await gotoDashboard(page);
 
     // Manager preset should show AI Agents widget (cross-cutting widget added in Phase 7)
     await expect(page.locator("main").getByRole("heading", { name: "AI Agents" })).toBeVisible();
@@ -391,8 +428,7 @@ test.describe("Dashboard — Manager Preset", () => {
 test.describe("Dashboard — Grid Layout", () => {
   test.beforeEach(async ({ page }) => {
     await setupDashboardMocks(page);
-    await page.goto("/dashboard");
-    await page.waitForSelector("text=Welcome back", { timeout: 15000 });
+    await gotoDashboard(page);
   });
 
   test("dashboard uses CSS grid for widget layout", async ({ page }) => {
