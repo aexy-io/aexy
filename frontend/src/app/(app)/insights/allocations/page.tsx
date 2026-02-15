@@ -54,7 +54,7 @@ export default function AllocationsPage() {
   // Build a cross-project developer map
   const developerProjects = new Map<
     string,
-    { projectId: string; projectName: string; commits: number; prs: number; reviews: number; lines: number }[]
+    { projectId: string; projectName: string; commits: number; prs: number; reviews: number; lines: number; developerName: string }[]
   >();
 
   projectData.forEach((pd) => {
@@ -69,6 +69,7 @@ export default function AllocationsPage() {
         prs: m.prs_merged,
         reviews: m.reviews_given,
         lines: m.lines_changed,
+        developerName: m.developer_name || m.developer_id.slice(0, 8),
       });
       developerProjects.set(m.developer_id, existing);
     });
@@ -391,7 +392,7 @@ export default function AllocationsPage() {
                                         href={`/insights/developers/${m.developer_id}`}
                                         className="text-sm text-white hover:text-indigo-300"
                                       >
-                                        {m.developer_id.slice(0, 8)}
+                                        {m.developer_name || m.developer_id.slice(0, 8)}
                                       </Link>
                                       {isMultiProject && (
                                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400">
@@ -487,7 +488,7 @@ export default function AllocationsPage() {
                           href={`/insights/developers/${devId}`}
                           className="text-sm text-white hover:text-indigo-300"
                         >
-                          {devId.slice(0, 8)}
+                          {projs[0]?.developerName || devId.slice(0, 8)}
                         </Link>
                       </td>
                       <td className="px-6 py-3">
