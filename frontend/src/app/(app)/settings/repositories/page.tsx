@@ -1,10 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import Link from "next/link";
 import Image from "next/image";
 import {
-  ArrowLeft,
   Building2,
   ChevronDown,
   ChevronRight,
@@ -16,6 +14,7 @@ import {
   Check,
   AlertCircle,
   Clock,
+  ExternalLink,
   Loader2,
   User,
   Zap,
@@ -195,6 +194,8 @@ export default function RepositorySettingsPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [installationStatus, setInstallationStatus] = useState<InstallationStatus | null>(null);
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(false);
+  const [autoSyncFrequency, setAutoSyncFrequency] = useState("1h");
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchData = useCallback(async (isPolling = false) => {
@@ -326,6 +327,37 @@ export default function RepositorySettingsPage() {
     }
   };
 
+  // Fetch autosync settings
+  useEffect(() => {
+    if (installationStatus?.has_installation) {
+      repositoriesApi.getAutoSyncSettings().then((settings) => {
+        setAutoSyncEnabled(settings.enabled);
+        setAutoSyncFrequency(settings.frequency);
+      }).catch(() => {});
+    }
+  }, [installationStatus]);
+
+  const handleAutoSyncToggle = async (enabled: boolean) => {
+    setAutoSyncEnabled(enabled);
+    try {
+      await repositoriesApi.updateAutoSyncSettings({ enabled, frequency: autoSyncFrequency });
+    } catch (error) {
+      console.error("Failed to update auto-sync:", error);
+      setAutoSyncEnabled(!enabled);
+    }
+  };
+
+  const handleAutoSyncFrequencyChange = async (frequency: string) => {
+    const prev = autoSyncFrequency;
+    setAutoSyncFrequency(frequency);
+    try {
+      await repositoriesApi.updateAutoSyncSettings({ enabled: autoSyncEnabled, frequency });
+    } catch (error) {
+      console.error("Failed to update sync frequency:", error);
+      setAutoSyncFrequency(prev);
+    }
+  };
+
   // Separate enabled and disabled repos
   const enabledRepos = repositories.filter(r => r.is_enabled);
   const disabledPersonalRepos = repositories.filter(r => r.owner_type === "User" && !r.is_enabled);
@@ -334,7 +366,7 @@ export default function RepositorySettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
           <p className="text-white">Loading repositories...</p>
@@ -344,33 +376,15 @@ export default function RepositorySettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800/50">
-        <div className="max-w-5xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/dashboard"
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-slate-700 rounded-lg">
-                <Settings className="h-5 w-5 text-slate-300" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-white">Repository Settings</h1>
-                <p className="text-slate-400 text-sm">
-                  Manage which repositories are synced and analyzed
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-semibold text-foreground">Repository Settings</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Manage which repositories are synced and analyzed
+        </p>
+      </div>
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <div>
         {/* Stats & Actions Bar */}
         {installationStatus?.has_installation && repositories.length > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -381,14 +395,27 @@ export default function RepositorySettingsPage() {
                 <span className="ml-1 text-sm">repositories enabled</span>
               </div>
             </div>
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition disabled:opacity-50"
-            >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-              Refresh from GitHub
-            </button>
+            <div className="flex items-center gap-2">
+              {installationStatus.installations.length > 0 && (
+                <a
+                  href={`https://github.com/settings/installations/${installationStatus.installations[0].installation_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Manage access
+                </a>
+              )}
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition disabled:opacity-50"
+              >
+                <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+                Refresh from GitHub
+              </button>
+            </div>
           </div>
         )}
 
@@ -515,17 +542,80 @@ export default function RepositorySettingsPage() {
             <p className="text-slate-400 mb-6">
               We couldn&apos;t find any repositories. Try refreshing from GitHub or check your app installation permissions.
             </p>
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition disabled:opacity-50"
-            >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-              Refresh from GitHub
-            </button>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition disabled:opacity-50"
+              >
+                <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+                Refresh from GitHub
+              </button>
+              {installationStatus.installations.length > 0 && (
+                <a
+                  href={`https://github.com/settings/installations/${installationStatus.installations[0].installation_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Manage access on GitHub
+                </a>
+              )}
+            </div>
           </div>
         )}
-      </main>
+
+        {/* Auto-sync Settings */}
+        {installationStatus?.has_installation && enabledRepos.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-lg font-medium text-white flex items-center gap-2 mb-4">
+              <Settings className="h-5 w-5 text-slate-400" />
+              Sync Settings
+            </h2>
+            <div className="bg-slate-800 rounded-xl divide-y divide-slate-700">
+              <div className="p-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-white font-medium">Auto-sync</h3>
+                  <p className="text-slate-400 text-sm mt-0.5">
+                    Automatically sync enabled repositories on a schedule
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={autoSyncEnabled}
+                    onChange={(e) => handleAutoSyncToggle(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-600 peer-focus:ring-2 peer-focus:ring-primary-500 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                </label>
+              </div>
+              {autoSyncEnabled && (
+                <div className="p-4 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-white font-medium">Sync frequency</h3>
+                    <p className="text-slate-400 text-sm mt-0.5">
+                      How often to sync commits, PRs, and reviews
+                    </p>
+                  </div>
+                  <select
+                    value={autoSyncFrequency}
+                    onChange={(e) => handleAutoSyncFrequencyChange(e.target.value)}
+                    className="bg-slate-700 text-white border border-slate-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  >
+                    <option value="30m">Every 30 minutes</option>
+                    <option value="1h">Every hour</option>
+                    <option value="6h">Every 6 hours</option>
+                    <option value="12h">Every 12 hours</option>
+                    <option value="24h">Once a day</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

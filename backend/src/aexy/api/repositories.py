@@ -1,6 +1,6 @@
 """Repository and organization management API endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.api.developers import get_current_developer_id
@@ -135,6 +135,56 @@ async def sync_installations(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
         )
+
+
+# === AUTO-SYNC SETTINGS (must be before parameterized routes) ===
+
+VALID_FREQUENCIES = {"30m", "1h", "6h", "12h", "24h"}
+
+
+@router.get("/auto-sync/settings")
+async def get_auto_sync_settings(
+    developer_id: str = Depends(get_current_developer_id),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Get auto-sync settings for the current developer."""
+    from aexy.models.developer import Developer
+
+    result = await db.get(Developer, developer_id)
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Developer not found")
+
+    settings = result.repo_sync_settings or {}
+    return {
+        "enabled": settings.get("enabled", False),
+        "frequency": settings.get("frequency", "1h"),
+    }
+
+
+@router.put("/auto-sync/settings")
+async def update_auto_sync_settings(
+    enabled: bool = Body(...),
+    frequency: str = Body("1h"),
+    developer_id: str = Depends(get_current_developer_id),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Update auto-sync settings. Connected to Temporal scheduling."""
+    if frequency not in VALID_FREQUENCIES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid frequency. Must be one of: {', '.join(sorted(VALID_FREQUENCIES))}",
+        )
+
+    from aexy.models.developer import Developer
+
+    developer = await db.get(Developer, developer_id)
+    if not developer:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Developer not found")
+
+    developer.repo_sync_settings = {"enabled": enabled, "frequency": frequency}
+    await db.commit()
+
+    return {"enabled": enabled, "frequency": frequency}
 
 
 # === SYNC (must be before parameterized routes) ===

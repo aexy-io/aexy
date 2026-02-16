@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft,
   Sparkles,
   Github,
   Users,
@@ -110,7 +109,7 @@ export default function PlansPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary-500 mx-auto mb-4" />
           <p className="text-slate-400">Loading plans...</p>
@@ -120,33 +119,15 @@ export default function PlansPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800/50">
-        <div className="max-w-5xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/settings"
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg">
-                <Sparkles className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-white">Subscription Plans</h1>
-                <p className="text-slate-400 text-sm">
-                  Compare plans and upgrade or downgrade your subscription
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-semibold text-foreground">Subscription Plans</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Compare plans and upgrade or downgrade your subscription
+        </p>
+      </div>
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <div>
         {/* Billing Toggle */}
         <div className="mb-8">
           <BillingToggle billingPeriod={billingPeriod} onToggle={setBillingPeriod} />
@@ -314,7 +295,7 @@ export default function PlansPage() {
             </a>
           </p>
         </div>
-      </main>
+      </div>
 
       {/* Change Plan Modal */}
       {selectedPlan && (

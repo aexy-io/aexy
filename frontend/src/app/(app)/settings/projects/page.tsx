@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  ArrowLeft,
   ChevronDown,
   ChevronRight,
   Crown,
@@ -631,7 +630,7 @@ export default function ProjectsSettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="py-20 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
           <p className="text-white">Loading projects...</p>
@@ -641,33 +640,13 @@ export default function ProjectsSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800/50">
-        <div className="max-w-5xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/dashboard"
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-slate-700 rounded-lg">
-                <FolderKanban className="h-5 w-5 text-slate-300" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-white">Project Settings</h1>
-                <p className="text-slate-400 text-sm">
-                  Manage projects and team access within your workspace
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-semibold text-foreground">Projects</h1>
+        <p className="text-muted-foreground text-sm mt-1">Manage projects, members, and permissions</p>
+      </div>
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <div>
         {!hasWorkspaces ? (
           <div className="bg-slate-800 rounded-xl p-12 text-center">
             <FolderKanban className="h-16 w-16 text-slate-600 mx-auto mb-4" />
@@ -739,7 +718,7 @@ export default function ProjectsSettingsPage() {
             )}
           </>
         )}
-      </main>
+      </div>
 
       {/* Modals */}
       {showCreateModal && (

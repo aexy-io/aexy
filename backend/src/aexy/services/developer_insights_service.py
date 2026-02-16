@@ -1127,6 +1127,78 @@ class DeveloperInsightsService:
         "architect": 1.1,
     }
 
+    async def _build_developer_alias_map(
+        self,
+        developer_ids: list[str],
+    ) -> dict[str, str]:
+        """Build a mapping from ghost/duplicate developer IDs to canonical workspace member IDs.
+
+        When commits are synced, they may be attributed to auto-created ghost developers
+        (matched by email) rather than the workspace member record. This finds those
+        duplicates by matching on email and maps ghost_id -> member_id so stats can be merged.
+        """
+        if not developer_ids:
+            return {}
+
+        # Get emails for all developer IDs
+        email_stmt = select(Developer.id, Developer.email).where(
+            and_(Developer.id.in_(developer_ids), Developer.email.isnot(None))
+        )
+        email_result = await self.db.execute(email_stmt)
+        dev_emails = {row[0]: row[1] for row in email_result.all()}
+
+        # Find other developer records with matching emails that aren't in our list
+        emails = list(set(dev_emails.values()))
+        if not emails:
+            return {}
+
+        dup_stmt = select(Developer.id, Developer.email).where(
+            and_(
+                Developer.email.in_(emails),
+                Developer.id.notin_(developer_ids),
+            )
+        )
+        dup_result = await self.db.execute(dup_stmt)
+        # Build reverse map: email -> canonical developer_id (from our list)
+        email_to_canonical: dict[str, str] = {}
+        for dev_id, email in dev_emails.items():
+            if email:
+                email_to_canonical[email.lower()] = dev_id
+
+        # Map duplicate IDs to canonical IDs
+        alias_map: dict[str, str] = {}
+        for dup_id, dup_email in dup_result.all():
+            if dup_email and dup_email.lower() in email_to_canonical:
+                alias_map[dup_id] = email_to_canonical[dup_email.lower()]
+
+        # Also check via github_username matching
+        from aexy.models.developer import GitHubConnection
+        gh_stmt = select(GitHubConnection.developer_id, GitHubConnection.github_username).where(
+            GitHubConnection.developer_id.in_(developer_ids)
+        )
+        gh_result = await self.db.execute(gh_stmt)
+        member_gh_logins: dict[str, str] = {}  # github_login -> member_id
+        for dev_id, gh_username in gh_result.all():
+            if gh_username:
+                member_gh_logins[gh_username.lower()] = dev_id
+
+        if member_gh_logins:
+            # Find commits by non-member developers with matching github logins
+            ghost_stmt = select(
+                distinct(Commit.developer_id), Commit.author_github_login
+            ).where(
+                and_(
+                    Commit.developer_id.notin_(developer_ids),
+                    func.lower(Commit.author_github_login).in_(list(member_gh_logins.keys())),
+                )
+            )
+            ghost_result = await self.db.execute(ghost_stmt)
+            for ghost_id, gh_login in ghost_result.all():
+                if gh_login and gh_login.lower() in member_gh_logins:
+                    alias_map[ghost_id] = member_gh_logins[gh_login.lower()]
+
+        return alias_map
+
     async def compute_team_distribution(
         self,
         developer_ids: list[str],
@@ -1141,54 +1213,77 @@ class DeveloperInsightsService:
         member_summaries: list[MemberSummary] = []
         total_loads: list[float] = []
 
+        # Build alias map: ghost developer IDs -> canonical workspace member IDs
+        alias_map = await self._build_developer_alias_map(developer_ids)
+        # Query IDs = workspace members + their ghost aliases
+        all_query_ids = list(set(developer_ids) | set(alias_map.keys()))
+
         # Batch query: developer names
         name_stmt = select(Developer.id, Developer.name).where(Developer.id.in_(developer_ids))
         name_result = await self.db.execute(name_stmt)
         dev_names: dict[str, str | None] = {row[0]: row[1] for row in name_result.all()}
 
-        # Batch query: commits per developer
+        # Batch query: commits per developer (include ghost aliases)
         c_stmt = select(
             Commit.developer_id,
             func.count(Commit.id),
             func.coalesce(func.sum(Commit.additions + Commit.deletions), 0),
         ).where(
             and_(
-                Commit.developer_id.in_(developer_ids),
+                Commit.developer_id.in_(all_query_ids),
                 Commit.committed_at >= start,
                 Commit.committed_at <= end,
             )
         ).group_by(Commit.developer_id)
         c_result = await self.db.execute(c_stmt)
-        commit_data = {row[0]: (row[1], row[2]) for row in c_result.all()}
+        commit_data_raw = {row[0]: (row[1], row[2]) for row in c_result.all()}
 
-        # Batch query: PRs merged per developer
+        # Batch query: PRs merged per developer (include ghost aliases)
         pr_stmt = select(
             PullRequest.developer_id,
             func.count(PullRequest.id),
         ).where(
             and_(
-                PullRequest.developer_id.in_(developer_ids),
+                PullRequest.developer_id.in_(all_query_ids),
                 PullRequest.merged_at.isnot(None),
                 PullRequest.merged_at >= start,
                 PullRequest.merged_at <= end,
             )
         ).group_by(PullRequest.developer_id)
         pr_result = await self.db.execute(pr_stmt)
-        pr_data = {row[0]: row[1] for row in pr_result.all()}
+        pr_data_raw = {row[0]: row[1] for row in pr_result.all()}
 
-        # Batch query: reviews given per developer
+        # Batch query: reviews given per developer (include ghost aliases)
         rv_stmt = select(
             CodeReview.developer_id,
             func.count(CodeReview.id),
         ).where(
             and_(
-                CodeReview.developer_id.in_(developer_ids),
+                CodeReview.developer_id.in_(all_query_ids),
                 CodeReview.submitted_at >= start,
                 CodeReview.submitted_at <= end,
             )
         ).group_by(CodeReview.developer_id)
         rv_result = await self.db.execute(rv_stmt)
-        review_data = {row[0]: row[1] for row in rv_result.all()}
+        review_data_raw = {row[0]: row[1] for row in rv_result.all()}
+
+        # Merge ghost alias stats into canonical member stats
+        commit_data: dict[str, tuple[int, int]] = {}
+        pr_data: dict[str, int] = {}
+        review_data: dict[str, int] = {}
+
+        for raw_id, (cnt, lines) in commit_data_raw.items():
+            canonical = alias_map.get(raw_id, raw_id)
+            prev_cnt, prev_lines = commit_data.get(canonical, (0, 0))
+            commit_data[canonical] = (prev_cnt + cnt, prev_lines + lines)
+
+        for raw_id, cnt in pr_data_raw.items():
+            canonical = alias_map.get(raw_id, raw_id)
+            pr_data[canonical] = pr_data.get(canonical, 0) + cnt
+
+        for raw_id, cnt in review_data_raw.items():
+            canonical = alias_map.get(raw_id, raw_id)
+            review_data[canonical] = review_data.get(canonical, 0) + cnt
 
         for dev_id in developer_ids:
             commits_count, lines = commit_data.get(dev_id, (0, 0))

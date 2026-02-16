@@ -295,6 +295,16 @@ SCHEDULES: list[dict] = [
         "interval": timedelta(seconds=60),
         "queue": TaskQueue.SYNC,
     },
+
+    # === Repository Auto-Sync ===
+    {
+        "id": "check-repo-auto-sync",
+        "activity": "check_repo_auto_sync",
+        "input_module": "aexy.temporal.activities.sync",
+        "input_class": "CheckRepoAutoSyncInput",
+        "interval": timedelta(minutes=5),
+        "queue": TaskQueue.SYNC,
+    },
 ]
 
 

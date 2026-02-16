@@ -129,7 +129,7 @@ def get_all_activities() -> list:
         calculate_isp_metrics,
         process_unprocessed_events,
     )
-    from aexy.temporal.activities.sync import sync_commits, sync_repository
+    from aexy.temporal.activities.sync import check_repo_auto_sync, sync_commits, sync_repository
     from aexy.temporal.activities.tracking import (
         aggregate_daily_standups,
         aggregate_time_entries,
@@ -173,6 +173,7 @@ def get_all_activities() -> list:
         # Sync
         sync_repository,
         sync_commits,
+        check_repo_auto_sync,
         # Email
         send_campaign,
         send_campaign_email,

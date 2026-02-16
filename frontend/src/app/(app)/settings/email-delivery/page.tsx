@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   Mail,
   Crown,
   Loader2,
@@ -121,34 +120,15 @@ function EnterpriseUpgradePrompt() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800/50">
-        <div className="max-w-3xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/settings"
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-slate-700 rounded-lg">
-                <Mail className="h-5 w-5 text-slate-300" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-white">Email Delivery</h1>
-                <p className="text-slate-400 text-sm">
-                  Monitor email delivery status and logs
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-semibold text-foreground">Email Delivery</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Monitor email delivery status and logs
+        </p>
+      </div>
 
-      {/* Upgrade Prompt */}
-      <main className="max-w-3xl mx-auto px-4 py-16">
+      <div className="py-8">
         <div className="flex flex-col items-center justify-center text-center">
           <div className="p-4 bg-amber-500/20 rounded-full mb-6">
             <Crown className="h-12 w-12 text-amber-500" />
@@ -167,7 +147,7 @@ function EnterpriseUpgradePrompt() {
             </button>
             <p className="text-slate-500 text-sm">
               Or{" "}
-              <Link href="/settings" className="text-blue-400 hover:underline">
+              <Link href="/settings/appearance" className="text-blue-400 hover:underline">
                 return to settings
               </Link>
             </p>
@@ -206,7 +186,7 @@ function EnterpriseUpgradePrompt() {
             </ul>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
@@ -256,7 +236,7 @@ export default function EmailDeliverySettingsPage() {
   // Loading state
   if (subscriptionLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="py-20 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
       </div>
     );
@@ -270,38 +250,21 @@ export default function EmailDeliverySettingsPage() {
   // Not a workspace admin - show access denied
   if (!isWorkspaceAdmin) {
     return (
-      <div className="min-h-screen bg-slate-900">
-        <header className="border-b border-slate-700 bg-slate-800/50">
-          <div className="max-w-3xl mx-auto px-4 py-4">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/settings"
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-slate-700 rounded-lg">
-                  <Mail className="h-5 w-5 text-slate-300" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-white">Email Delivery</h1>
-                  <p className="text-slate-400 text-sm">Access Denied</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </header>
-        <main className="max-w-3xl mx-auto px-4 py-16 text-center">
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Email Delivery</h1>
+          <p className="text-muted-foreground text-sm mt-1">Access Denied</p>
+        </div>
+        <div className="py-8 text-center">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-white mb-2">Admin Access Required</h2>
           <p className="text-slate-400 mb-6">
             Only workspace owners and admins can access email delivery monitoring.
           </p>
-          <Link href="/settings" className="text-blue-400 hover:underline">
+          <Link href="/settings/appearance" className="text-blue-400 hover:underline">
             Return to settings
           </Link>
-        </main>
+        </div>
       </div>
     );
   }
@@ -312,42 +275,24 @@ export default function EmailDeliverySettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800/50">
-        <div className="max-w-5xl mx-auto px-4 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/settings"
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-500/20 rounded-lg">
-                  <Mail className="h-5 w-5 text-blue-400" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-white">Email Delivery</h1>
-                  <p className="text-slate-400 text-sm">
-                    Monitor email delivery for {currentWorkspace?.name}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={handleRefresh}
-              className="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Refresh
-            </button>
-          </div>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Email Delivery</h1>
+          <p className="text-muted-foreground text-sm mt-1">Monitor email delivery status and logs</p>
         </div>
-      </header>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleRefresh}
+            className="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </button>
+        </div>
+      </div>
 
-      <main className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+      <div className="space-y-6">
         {/* Stats */}
         {statsLoading ? (
           <div className="flex justify-center py-8">
@@ -506,7 +451,7 @@ export default function EmailDeliverySettingsPage() {
             </div>
           )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }

@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   Plus,
   Trash2,
   Edit2,
@@ -307,26 +305,13 @@ export default function EscalationSettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950">
-<main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <button
-          onClick={() => router.push("/settings")}
-          className="flex items-center gap-2 text-slate-400 hover:text-white mb-6 transition"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Settings
-        </button>
-
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-              <AlertTriangle className="h-7 w-7 text-orange-400" />
-              Escalation Matrix
-            </h1>
-            <p className="text-slate-400 mt-1">
-              Configure automatic escalation rules based on ticket severity
-            </p>
-          </div>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Escalation Matrix</h1>
+          <p className="text-muted-foreground text-sm mt-1">Configure automatic escalation rules based on ticket severity</p>
+        </div>
+        <div className="flex items-center gap-3">
           {!isCreating && (
             <button
               onClick={() => setIsCreating(true)}
@@ -337,6 +322,9 @@ export default function EscalationSettingsPage() {
             </button>
           )}
         </div>
+      </div>
+
+      <div>
 
         {/* Create/Edit Form */}
         {isCreating && (
@@ -607,7 +595,7 @@ export default function EscalationSettingsPage() {
             ))}
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }

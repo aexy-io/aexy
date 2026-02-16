@@ -1811,6 +1811,19 @@ export const repositoriesApi = {
     const response = await api.get(`/repositories/${repoId}/branches`);
     return response.data;
   },
+
+  // Auto-sync settings
+  getAutoSyncSettings: async (): Promise<{ enabled: boolean; frequency: string }> => {
+    const response = await api.get("/repositories/auto-sync/settings");
+    return response.data;
+  },
+
+  updateAutoSyncSettings: async (
+    settings: { enabled: boolean; frequency: string }
+  ): Promise<{ enabled: boolean; frequency: string }> => {
+    const response = await api.put("/repositories/auto-sync/settings", settings);
+    return response.data;
+  },
 };
 
 // ============================================================================

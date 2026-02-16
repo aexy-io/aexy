@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  ArrowLeft,
   Package,
   Plus,
   Loader2,
@@ -160,42 +159,22 @@ export default function AccessTemplatesPage() {
   const isSaving = isCreating || isUpdating;
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800/50">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/settings/access"
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-slate-700 rounded-lg">
-                  <Package className="h-5 w-5 text-violet-400" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-white">
-                    Access Templates
-                  </h1>
-                  <p className="text-slate-400 text-sm">
-                    Create and manage app access bundles
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <Button onClick={() => setShowCreateModal(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Create Template
-            </Button>
-          </div>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Access Templates</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Create and manage access permission templates
+          </p>
         </div>
-      </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-8">
+        <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+          <Plus className="h-4 w-4" />
+          Create Template
+        </Button>
+      </div>
+
+      <div>
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
@@ -352,7 +331,7 @@ export default function AccessTemplatesPage() {
             </section>
           </div>
         )}
-      </main>
+      </div>
 
       {/* Create/Edit Modal */}
       <Dialog

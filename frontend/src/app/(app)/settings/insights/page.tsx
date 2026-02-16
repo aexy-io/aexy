@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import {
-  ArrowLeft,
   TrendingUp,
   Clock,
   Users,
@@ -186,35 +185,15 @@ export default function InsightsSettingsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800/50">
-        <div className="max-w-3xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/settings"
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-slate-700 rounded-lg">
-                <TrendingUp className="h-5 w-5 text-indigo-400" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-white">
-                  Insights Settings
-                </h1>
-                <p className="text-slate-400 text-sm">
-                  Configure metrics, working hours, and team overrides
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-semibold text-foreground">Insights</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Configure developer insights, team metrics, and working hours
+        </p>
+      </div>
 
-      <main className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+      <div className="space-y-6">
         {/* Tab Selector */}
         <div className="flex gap-2">
           <button
@@ -544,7 +523,7 @@ export default function InsightsSettingsPage() {
             </button>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

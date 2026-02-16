@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  ArrowLeft,
   Shield,
   ChevronRight,
   Loader2,
@@ -93,55 +92,32 @@ export default function AccessControlPage() {
   const isLoading = isLoadingMatrix || templatesLoading;
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800/50 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/settings"
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-slate-700 rounded-lg">
-                  <Shield className="h-5 w-5 text-violet-400" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-white">
-                    Access Control
-                  </h1>
-                  <p className="text-slate-400 text-sm">
-                    Manage app access for workspace members
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Link href="/settings/access/logs">
-                <Button variant="outline" className="gap-2">
-                  <FileText className="h-4 w-4" />
-                  Access Logs
-                  {!isEnterprise && (
-                    <Crown className="h-3 w-3 text-amber-400" />
-                  )}
-                </Button>
-              </Link>
-              <Link href="/settings/access/templates">
-                <Button variant="outline" className="gap-2">
-                  <Package className="h-4 w-4" />
-                  Manage Templates
-                </Button>
-              </Link>
-            </div>
-          </div>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Access Control</h1>
+          <p className="text-muted-foreground text-sm mt-1">Manage app access for workspace members</p>
         </div>
-      </header>
+        <div className="flex items-center gap-3">
+          <Link href="/settings/access/logs">
+            <Button variant="outline" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Access Logs
+              {!isEnterprise && (
+                <Crown className="h-3 w-3 text-amber-400" />
+              )}
+            </Button>
+          </Link>
+          <Link href="/settings/access/templates">
+            <Button variant="outline" className="gap-2">
+              <Package className="h-4 w-4" />
+              Manage Templates
+            </Button>
+          </Link>
+        </div>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <div>
         {/* Bulk Actions */}
         {selectedMembers.length > 0 && (
           <div className="mb-4 p-4 bg-slate-800 border border-slate-700 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -324,7 +300,7 @@ export default function AccessControlPage() {
             No Access
           </div>
         </div>
-      </main>
+      </div>
 
       {/* Edit Member Modal */}
       {editingMember && (

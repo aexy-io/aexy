@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  ArrowLeft,
   FileText,
   Loader2,
   ChevronLeft,
@@ -71,7 +70,7 @@ export default function AccessLogsPage() {
 
   if (subscriptionLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
       </div>
     );
@@ -79,92 +78,55 @@ export default function AccessLogsPage() {
 
   if (!isEnterprise) {
     return (
-      <div className="min-h-screen bg-slate-900">
-        <header className="border-b border-slate-700 bg-slate-800/50">
-          <div className="max-w-5xl mx-auto px-4 py-4">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/settings/access"
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-slate-700 rounded-lg">
-                  <FileText className="h-5 w-5 text-violet-400" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-white">Access Logs</h1>
-                  <p className="text-slate-400 text-sm">
-                    View access control audit logs
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </header>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Access Logs</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            View audit trail of access control changes
+          </p>
+        </div>
 
-        <main className="max-w-5xl mx-auto px-4 py-16">
-          <div className="text-center">
-            <div className="mx-auto w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center mb-6">
-              <Crown className="h-10 w-10 text-amber-400" />
-            </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Enterprise Feature</h2>
-            <p className="text-slate-400 mb-6 max-w-md mx-auto">
-              Access logs are available on the Enterprise plan. Upgrade to track
-              all access control changes and security events.
-            </p>
-            <Link href="/settings/plans">
-              <Button>View Plans</Button>
-            </Link>
+        <div className="text-center py-16">
+          <div className="mx-auto w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center mb-6">
+            <Crown className="h-10 w-10 text-amber-400" />
           </div>
-        </main>
+          <h2 className="text-2xl font-bold text-white mb-2">Enterprise Feature</h2>
+          <p className="text-slate-400 mb-6 max-w-md mx-auto">
+            Access logs are available on the Enterprise plan. Upgrade to track
+            all access control changes and security events.
+          </p>
+          <Link href="/settings/plans">
+            <Button>View Plans</Button>
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800/50 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/settings/access"
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-slate-700 rounded-lg">
-                  <FileText className="h-5 w-5 text-violet-400" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-white">Access Logs</h1>
-                  <p className="text-slate-400 text-sm">
-                    Track all access control changes
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => refetch()}
-                disabled={isLoading}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-                Refresh
-              </Button>
-            </div>
-          </div>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Access Logs</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            View audit trail of access control changes
+          </p>
         </div>
-      </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-6">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
+      </div>
+
+      <div>
         {/* Summary Cards */}
         {summary && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -343,7 +305,7 @@ export default function AccessLogsPage() {
             )}
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }

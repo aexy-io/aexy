@@ -159,7 +159,7 @@ export default function OnCallSettingsPage() {
 
   if (currentWorkspaceLoading || teamLoading || configLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="flex items-center gap-3 text-slate-400">
           <RefreshCw className="h-5 w-5 animate-spin" />
           <span>Loading...</span>
@@ -171,7 +171,7 @@ export default function OnCallSettingsPage() {
   // Ensure workspace is loaded before rendering
   if (!workspaceId) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="text-center text-slate-400">
           <p>No workspace selected</p>
           <Link href="/settings/organization" className="text-blue-400 hover:underline mt-2 block">
@@ -183,40 +183,39 @@ export default function OnCallSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 pb-12">
-      {/* Header */}
-      <div className="bg-slate-800 border-b border-slate-700">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/settings/projects"
-              className="p-2 hover:bg-slate-700 rounded-lg transition"
-            >
-              <ArrowLeft className="h-5 w-5 text-slate-400" />
-            </Link>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <Phone className="h-5 w-5 text-green-400" />
-                <h1 className="text-xl font-semibold text-white">On-Call Settings</h1>
-              </div>
-              <p className="text-sm text-slate-400 mt-0.5">
-                {team?.name || "Team"}
-              </p>
-            </div>
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
-                showSettings ? "bg-blue-600 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"
-              }`}
-            >
-              <Settings className="h-4 w-4" />
-              Settings
-            </button>
+    <div className="space-y-6">
+      {/* Back Link */}
+      <Link
+        href={`/settings/projects/${teamId}`}
+        className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+      >
+        <ArrowLeft className="h-3 w-3" />
+        Back to Project
+      </Link>
+
+      {/* Title and Settings Button */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Phone className="h-6 w-6 text-green-400" />
+          <div>
+            <h1 className="text-2xl font-semibold text-white">On-Call Settings</h1>
+            <p className="text-sm text-slate-400 mt-0.5">
+              {team?.name || "Team"}
+            </p>
           </div>
         </div>
+        <button
+          onClick={() => setShowSettings(!showSettings)}
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
+            showSettings ? "bg-blue-600 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+          }`}
+        >
+          <Settings className="h-4 w-4" />
+          Settings
+        </button>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-6">
+      <div>
         {/* Not Enabled State */}
         {!config?.is_enabled && (
           <div className="bg-slate-800 rounded-xl p-8 text-center">
