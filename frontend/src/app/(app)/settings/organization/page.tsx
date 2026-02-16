@@ -4,7 +4,6 @@ import { useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  ArrowLeft,
   Building2,
   ChevronDown,
   CreditCard,
@@ -716,7 +715,7 @@ export default function OrganizationSettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
           <p className="text-white">Loading workspace...</p>
@@ -726,7 +725,7 @@ export default function OrganizationSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="space-y-6">
       {/* Success Toast */}
       {successMessage && (
         <div className="fixed top-4 right-4 z-50 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
@@ -735,32 +734,14 @@ export default function OrganizationSettingsPage() {
         </div>
       )}
 
-      {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800/50">
-        <div className="max-w-5xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/dashboard"
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-slate-700 rounded-lg">
-                <Settings className="h-5 w-5 text-slate-300" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-white">Organization Settings</h1>
-                <p className="text-slate-400 text-sm">
-                  Manage your workspace and team members
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      <div>
+        <h1 className="text-xl font-semibold text-foreground">Organization Settings</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Manage your workspace and team members
+        </p>
+      </div>
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <div>
         {/* Workspace Selector */}
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
@@ -1015,7 +996,7 @@ export default function OrganizationSettingsPage() {
             </div>
           </>
         )}
-      </main>
+      </div>
 
       {/* Modals */}
       {showInviteModal && (

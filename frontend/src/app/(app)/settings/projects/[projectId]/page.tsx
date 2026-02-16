@@ -189,7 +189,7 @@ export default function ProjectSettingsPage() {
 
   if (currentWorkspaceLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
           <p className="text-white">Loading project...</p>
@@ -200,7 +200,7 @@ export default function ProjectSettingsPage() {
 
   if (!project) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <FolderKanban className="h-16 w-16 text-slate-600 mx-auto mb-4" />
           <h3 className="text-xl font-medium text-white mb-2">Project Not Found</h3>
@@ -220,34 +220,31 @@ export default function ProjectSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800/50">
-        <div className="max-w-3xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/settings/projects"
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            <div className="flex items-center gap-3 flex-1">
-              <div
-                className="p-2 rounded-lg"
-                style={{ backgroundColor: project.color + "20" }}
-              >
-                <FolderKanban className="h-5 w-5" style={{ color: project.color }} />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-white">{project.name}</h1>
-                <p className="text-slate-400 text-sm">Project Settings</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="space-y-6">
+      {/* Back Link */}
+      <Link
+        href="/settings/projects"
+        className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+      >
+        <ArrowLeft className="h-3 w-3" />
+        Back to Projects
+      </Link>
 
-      <main className="max-w-3xl mx-auto px-4 py-8">
+      {/* Title */}
+      <div className="flex items-center gap-3">
+        <div
+          className="p-2 rounded-lg"
+          style={{ backgroundColor: project.color + "20" }}
+        >
+          <FolderKanban className="h-5 w-5" style={{ color: project.color }} />
+        </div>
+        <div>
+          <h1 className="text-2xl font-semibold text-white">{project.name}</h1>
+          <p className="text-slate-400 text-sm">Project Settings</p>
+        </div>
+      </div>
+
+      <div>
         {/* Navigation Tabs */}
         <div className="flex gap-2 mb-8">
           <Link
@@ -544,7 +541,7 @@ export default function ProjectSettingsPage() {
             </div>
           </dl>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

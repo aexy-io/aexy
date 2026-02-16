@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   AlertCircle,
-  ArrowLeft,
   ArrowRight,
   Check,
   CheckCircle,
@@ -19,7 +18,6 @@ import {
   MessageSquare,
   MoreVertical,
   RefreshCw,
-  Settings,
   Slack,
   Trash2,
   Users,
@@ -639,7 +637,7 @@ function IntegrationsPageContent() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
           <p className="text-white">Loading integrations...</p>
@@ -649,33 +647,15 @@ function IntegrationsPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800/50">
-        <div className="max-w-5xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/dashboard"
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-slate-700 rounded-lg">
-                <Settings className="h-5 w-5 text-slate-300" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-white">Integrations</h1>
-                <p className="text-slate-400 text-sm">
-                  Connect external tools to sync issues and tasks
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-semibold text-foreground">Integrations</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Connect Jira, Linear, Slack, and other external tools
+        </p>
+      </div>
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <div>
         {!hasWorkspaces ? (
           <div className="bg-slate-800 rounded-xl p-12 text-center">
             <Link2 className="h-16 w-16 text-slate-600 mx-auto mb-4" />
@@ -1194,14 +1174,14 @@ function IntegrationsPageContent() {
             )}
           </>
         )}
-      </main>
+      </div>
     </div>
   );
 }
 
 export default function IntegrationsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-900 flex items-center justify-center"><div className="animate-spin h-8 w-8 border-2 border-primary-500 border-t-transparent rounded-full" /></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="animate-spin h-8 w-8 border-2 border-primary-500 border-t-transparent rounded-full" /></div>}>
       <IntegrationsPageContent />
     </Suspense>
   );

@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowLeft, Palette, LayoutGrid, List, Check, Moon, Sun, Monitor } from "lucide-react";
+import { LayoutGrid, List, Check, Moon, Sun, Monitor } from "lucide-react";
 import { useSidebarLayout } from "@/hooks/useSidebarLayout";
 import { SidebarLayoutType, SIDEBAR_LAYOUTS } from "@/config/sidebarLayouts";
 import { useTheme, ThemeMode } from "@/hooks/useTheme";
@@ -68,33 +67,15 @@ export default function AppearanceSettingsPage() {
     };
 
     return (
-        <div className="min-h-screen bg-background">
-            {/* Header */}
-            <header className="border-b border-border bg-card/50">
-                <div className="max-w-3xl mx-auto px-4 py-4">
-                    <div className="flex items-center gap-4">
-                        <Link
-                            href="/settings"
-                            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
-                        >
-                            <ArrowLeft className="h-5 w-5" />
-                        </Link>
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary/10 rounded-lg">
-                                <Palette className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                                <h1 className="text-xl font-semibold text-foreground">Appearance</h1>
-                                <p className="text-muted-foreground text-sm">
-                                    Customize how the application looks
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </header>
+        <div className="space-y-6">
+            <div>
+                <h1 className="text-xl font-semibold text-foreground">Appearance</h1>
+                <p className="text-muted-foreground text-sm mt-1">
+                    Customize how the application looks
+                </p>
+            </div>
 
-            <main className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+            <div className="space-y-6">
                 {/* Theme Section */}
                 <div className="bg-card rounded-xl overflow-hidden border border-border">
                     <div className="p-4 border-b border-border">
@@ -241,7 +222,7 @@ export default function AppearanceSettingsPage() {
                         </p>
                     </div>
                 </div>
-            </main>
+            </div>
         </div>
     );
 }

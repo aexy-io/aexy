@@ -76,6 +76,9 @@ class Developer(Base):
     # Onboarding state
     has_completed_onboarding: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    # Repository auto-sync settings: {"enabled": bool, "frequency": "1h"|"30m"|"6h"|"12h"|"24h"}
+    repo_sync_settings: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
     # LLM analysis tracking
     last_llm_analysis_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),

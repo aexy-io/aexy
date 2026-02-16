@@ -1,13 +1,11 @@
-import { Metadata } from "next";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Settings",
-};
+import { SettingsShell } from "@/components/settings/SettingsShell";
 
 export default function SettingsLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return <SettingsShell>{children}</SettingsShell>;
 }
