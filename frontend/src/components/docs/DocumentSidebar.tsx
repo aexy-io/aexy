@@ -179,7 +179,7 @@ export function DocumentSidebar({
       </div>
 
       {/* Document Tree */}
-      <div className="flex-1 overflow-auto p-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+      <div className="flex-1 overflow-auto p-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
         {isLoadingTree ? (
           <div className="flex flex-col items-center justify-center py-12">
             <div className="relative mb-3">
@@ -190,7 +190,7 @@ export function DocumentSidebar({
           </div>
         ) : filteredTree.length === 0 ? (
           <div className="text-center py-12 px-4">
-            <div className="w-14 h-14 bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <div className="w-14 h-14 bg-gradient-to-br from-muted to-accent rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
               {searchQuery ? (
                 <Search className="h-6 w-6 text-muted-foreground" />
               ) : (
@@ -287,7 +287,7 @@ function DocumentTreeNode({
     const parts = text.split(regex);
     return parts.map((part, i) =>
       regex.test(part) ? (
-        <span key={i} className="bg-primary-500/30 text-primary-300 rounded px-0.5">
+        <span key={i} className="bg-primary-500/20 text-primary-700 dark:text-primary-300 rounded px-0.5">
           {part}
         </span>
       ) : (
