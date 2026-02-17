@@ -457,6 +457,26 @@ class WorkspaceService:
         await self.db.refresh(invite)
         return invite
 
+    async def get_pending_invites_for_email(
+        self, email: str
+    ) -> list[WorkspacePendingInvite]:
+        """Get all pending, non-expired invites across all workspaces for a given email."""
+        stmt = (
+            select(WorkspacePendingInvite)
+            .where(
+                func.lower(WorkspacePendingInvite.email) == email.lower(),
+                WorkspacePendingInvite.status == "pending",
+                WorkspacePendingInvite.expires_at > datetime.now(timezone.utc),
+            )
+            .options(
+                selectinload(WorkspacePendingInvite.workspace),
+                selectinload(WorkspacePendingInvite.invited_by),
+            )
+            .order_by(WorkspacePendingInvite.created_at.desc())
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
     async def get_pending_invite_by_email(
         self, workspace_id: str, email: str
     ) -> WorkspacePendingInvite | None:
@@ -594,18 +614,15 @@ class WorkspaceService:
 
     async def get_workspace_app_settings(self, workspace_id: str) -> dict:
         """Get workspace-level app settings."""
+        from aexy.models.app_definitions import APP_CATALOG
+
+        defaults = {app_id: True for app_id in APP_CATALOG}
         workspace = await self.get_workspace(workspace_id)
         if not workspace:
-            return {}
+            return defaults
 
-        return workspace.settings.get("app_settings", {
-            "hiring": True,
-            "tracking": True,
-            "oncall": True,
-            "sprints": True,
-            "documents": True,
-            "ticketing": True,
-        })
+        stored = workspace.settings.get("app_settings", {})
+        return {**defaults, **stored}
 
     async def update_workspace_app_settings(
         self, workspace_id: str, app_settings: dict
@@ -615,7 +632,8 @@ class WorkspaceService:
         if not workspace:
             return None
 
-        settings = workspace.settings or {}
+        # Create a new dict to ensure SQLAlchemy detects the change
+        settings = dict(workspace.settings or {})
         settings["app_settings"] = app_settings
         workspace.settings = settings
 

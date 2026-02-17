@@ -14,7 +14,6 @@ import {
   MessageSquare,
   UserCircle,
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useTeams } from "@/hooks/useTeams";
 import { useTicketForms } from "@/hooks/useTicketing";
@@ -59,13 +58,13 @@ interface RuleEditorProps {
 
 function RuleEditor({ rule, onChange, onRemove, members, teams }: RuleEditorProps) {
   return (
-    <div className="bg-slate-700 rounded-lg p-4 space-y-4">
+    <div className="bg-muted rounded-lg p-4 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <select
             value={rule.level || "level_1"}
             onChange={(e) => onChange({ ...rule, level: e.target.value as EscalationLevel })}
-            className="px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
             {LEVEL_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -73,26 +72,26 @@ function RuleEditor({ rule, onChange, onRemove, members, teams }: RuleEditorProp
               </option>
             ))}
           </select>
-          <span className="text-slate-400 text-sm">after</span>
+          <span className="text-muted-foreground text-sm">after</span>
           <input
             type="number"
             value={rule.delay_minutes || 0}
             onChange={(e) => onChange({ ...rule, delay_minutes: parseInt(e.target.value) || 0 })}
             min={0}
-            className="w-20 px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-20 px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
           />
-          <span className="text-slate-400 text-sm">minutes</span>
+          <span className="text-muted-foreground text-sm">minutes</span>
         </div>
         <button
           onClick={onRemove}
-          className="p-2 text-slate-400 hover:text-red-400 transition"
+          className="p-2 text-muted-foreground hover:text-red-400 transition"
         >
           <Trash2 className="h-4 w-4" />
         </button>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-slate-400 mb-2">Notification Channels</label>
+        <label className="block text-sm font-medium text-muted-foreground mb-2">Notification Channels</label>
         <div className="flex flex-wrap gap-2">
           {CHANNEL_OPTIONS.map((opt) => (
             <button
@@ -107,7 +106,7 @@ function RuleEditor({ rule, onChange, onRemove, members, teams }: RuleEditorProp
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition ${
                 (rule.channels || []).includes(opt.value)
                   ? "bg-purple-600 border-purple-500 text-white"
-                  : "bg-slate-800 border-slate-600 text-slate-400 hover:border-purple-500"
+                  : "bg-card border-border text-muted-foreground hover:border-purple-500"
               }`}
             >
               {opt.icon}
@@ -119,7 +118,7 @@ function RuleEditor({ rule, onChange, onRemove, members, teams }: RuleEditorProp
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-slate-400 mb-2">Notify Users</label>
+          <label className="block text-sm font-medium text-muted-foreground mb-2">Notify Users</label>
           <select
             multiple
             value={rule.notify_users || []}
@@ -127,7 +126,7 @@ function RuleEditor({ rule, onChange, onRemove, members, teams }: RuleEditorProp
               const selected = Array.from(e.target.selectedOptions, (opt) => opt.value);
               onChange({ ...rule, notify_users: selected });
             }}
-            className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[100px]"
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[100px]"
           >
             {members.map((member) => (
               <option key={member.id} value={member.id}>
@@ -138,7 +137,7 @@ function RuleEditor({ rule, onChange, onRemove, members, teams }: RuleEditorProp
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-400 mb-2">Notify Teams</label>
+          <label className="block text-sm font-medium text-muted-foreground mb-2">Notify Teams</label>
           <select
             multiple
             value={rule.notify_teams || []}
@@ -146,7 +145,7 @@ function RuleEditor({ rule, onChange, onRemove, members, teams }: RuleEditorProp
               const selected = Array.from(e.target.selectedOptions, (opt) => opt.value);
               onChange({ ...rule, notify_teams: selected });
             }}
-            className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[100px]"
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[100px]"
           >
             {teams.map((team) => (
               <option key={team.id} value={team.id}>
@@ -163,9 +162,9 @@ function RuleEditor({ rule, onChange, onRemove, members, teams }: RuleEditorProp
           id={`oncall-${rule.level}`}
           checked={rule.notify_oncall || false}
           onChange={(e) => onChange({ ...rule, notify_oncall: e.target.checked })}
-          className="rounded border-slate-600 bg-slate-700 text-purple-500 focus:ring-purple-500"
+          className="rounded border-border bg-muted text-purple-500 focus:ring-purple-500"
         />
-        <label htmlFor={`oncall-${rule.level}`} className="text-sm text-slate-300 flex items-center gap-2">
+        <label htmlFor={`oncall-${rule.level}`} className="text-sm text-foreground flex items-center gap-2">
           <UserCircle className="h-4 w-4" />
           Also notify on-call person
         </label>
@@ -175,9 +174,7 @@ function RuleEditor({ rule, onChange, onRemove, members, teams }: RuleEditorProp
 }
 
 export default function EscalationSettingsPage() {
-  const router = useRouter();
   const queryClient = useQueryClient();
-  const { user, logout } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
 
@@ -329,37 +326,37 @@ export default function EscalationSettingsPage() {
 
         {/* Create/Edit Form */}
         {isCreating && (
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 mb-8">
-            <h2 className="text-lg font-semibold text-white mb-6">
+          <div className="bg-card rounded-xl border border-border p-6 mb-8">
+            <h2 className="text-lg font-semibold text-foreground mb-6">
               {editingMatrix ? "Edit Escalation Matrix" : "Create Escalation Matrix"}
             </h2>
 
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">Name</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-2">Name</label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="e.g., Critical Issue Escalation"
-                    className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">Description</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-2">Description</label>
                   <input
                     type="text"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Optional description"
-                    className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-400 mb-2 flex items-center gap-2">
+                <label className="block text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
                   <Zap className="h-4 w-4" />
                   Apply to Severity Levels
                 </label>
@@ -377,7 +374,7 @@ export default function EscalationSettingsPage() {
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition ${
                         formData.severity_levels.includes(opt.value)
                           ? `${opt.color} border-transparent text-white`
-                          : "bg-slate-800 border-slate-600 text-slate-400 hover:border-purple-500"
+                          : "bg-card border-border text-muted-foreground hover:border-purple-500"
                       }`}
                     >
                       {opt.label}
@@ -387,12 +384,12 @@ export default function EscalationSettingsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-400 mb-2">
+                <label className="block text-sm font-medium text-muted-foreground mb-2">
                   Scope (Optional - leave empty to apply to all)
                 </label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-slate-500 mb-1">Forms</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Forms</label>
                     <select
                       multiple
                       value={formData.form_ids}
@@ -400,7 +397,7 @@ export default function EscalationSettingsPage() {
                         const selected = Array.from(e.target.selectedOptions, (opt) => opt.value);
                         setFormData({ ...formData, form_ids: selected });
                       }}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[80px]"
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[80px]"
                     >
                       {forms.map((form) => (
                         <option key={form.id} value={form.id}>
@@ -410,7 +407,7 @@ export default function EscalationSettingsPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-500 mb-1">Teams</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Teams</label>
                     <select
                       multiple
                       value={formData.team_ids}
@@ -418,7 +415,7 @@ export default function EscalationSettingsPage() {
                         const selected = Array.from(e.target.selectedOptions, (opt) => opt.value);
                         setFormData({ ...formData, team_ids: selected });
                       }}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[80px]"
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[80px]"
                     >
                       {teams.map((team) => (
                         <option key={team.id} value={team.id}>
@@ -432,7 +429,7 @@ export default function EscalationSettingsPage() {
 
               <div>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
-                  <label className="text-sm font-medium text-slate-400 flex items-center gap-2">
+                  <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                     <Clock className="h-4 w-4" />
                     Escalation Rules
                   </label>
@@ -463,7 +460,7 @@ export default function EscalationSettingsPage() {
               <div className="flex justify-end gap-3">
                 <button
                   onClick={resetForm}
-                  className="px-4 py-2 text-slate-400 hover:text-white transition"
+                  className="px-4 py-2 text-muted-foreground hover:text-foreground transition"
                 >
                   Cancel
                 </button>
@@ -491,12 +488,12 @@ export default function EscalationSettingsPage() {
 
         {/* Existing Matrices */}
         {isLoading ? (
-          <div className="text-center text-slate-400 py-12">Loading...</div>
+          <div className="text-center text-muted-foreground py-12">Loading...</div>
         ) : matrices.length === 0 && !isCreating ? (
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-12 text-center">
+          <div className="bg-card rounded-xl border border-border p-12 text-center">
             <AlertTriangle className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-white mb-2">No escalation matrices</h3>
-            <p className="text-slate-400 mb-6">
+            <h3 className="text-lg font-medium text-foreground mb-2">No escalation matrices</h3>
+            <p className="text-muted-foreground mb-6">
               Create an escalation matrix to automatically notify people based on ticket severity
             </p>
             <button
@@ -512,28 +509,28 @@ export default function EscalationSettingsPage() {
             {matrices.map((matrix) => (
               <div
                 key={matrix.id}
-                className={`bg-slate-800 rounded-xl border p-6 ${
-                  matrix.is_active ? "border-slate-700" : "border-slate-700/50 opacity-60"
+                className={`bg-card rounded-xl border p-6 ${
+                  matrix.is_active ? "border-border" : "border-border/50 opacity-60"
                 }`}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                       {matrix.name}
                       {!matrix.is_active && (
-                        <span className="text-xs px-2 py-0.5 bg-slate-700 text-slate-400 rounded">
+                        <span className="text-xs px-2 py-0.5 bg-muted text-muted-foreground rounded">
                           Inactive
                         </span>
                       )}
                     </h3>
                     {matrix.description && (
-                      <p className="text-slate-400 text-sm mt-1">{matrix.description}</p>
+                      <p className="text-muted-foreground text-sm mt-1">{matrix.description}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => startEditing(matrix)}
-                      className="p-2 text-slate-400 hover:text-white transition"
+                      className="p-2 text-muted-foreground hover:text-foreground transition"
                     >
                       <Edit2 className="h-4 w-4" />
                     </button>
@@ -543,7 +540,7 @@ export default function EscalationSettingsPage() {
                           deleteMutation.mutate(matrix.id);
                         }
                       }}
-                      className="p-2 text-slate-400 hover:text-red-400 transition"
+                      className="p-2 text-muted-foreground hover:text-red-400 transition"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -568,17 +565,17 @@ export default function EscalationSettingsPage() {
                   {matrix.rules.map((rule, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center gap-4 text-sm text-slate-300 bg-slate-700/50 rounded-lg px-4 py-2"
+                      className="flex items-center gap-4 text-sm text-foreground bg-muted/50 rounded-lg px-4 py-2"
                     >
                       <span className="font-medium text-purple-400">
                         {LEVEL_OPTIONS.find((l) => l.value === rule.level)?.label}
                       </span>
-                      <span className="text-slate-500">after {rule.delay_minutes} min</span>
+                      <span className="text-muted-foreground">after {rule.delay_minutes} min</span>
                       <div className="flex items-center gap-2">
                         {rule.channels?.map((ch) => {
                           const opt = CHANNEL_OPTIONS.find((c) => c.value === ch);
                           return (
-                            <span key={ch} className="text-slate-400">
+                            <span key={ch} className="text-muted-foreground">
                               {opt?.icon}
                             </span>
                           );

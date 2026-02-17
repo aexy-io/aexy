@@ -43,11 +43,6 @@ export function useAppAccess(workspaceId: string | null, developerId: string | n
         return true;
       }
 
-      // Admins have access to all apps
-      if (effectiveAccess.is_admin) {
-        return true;
-      }
-
       const appAccess = effectiveAccess.apps[appId];
       return appAccess?.enabled ?? false;
     },
@@ -58,10 +53,6 @@ export function useAppAccess(workspaceId: string | null, developerId: string | n
   const hasModuleAccess = useCallback(
     (appId: string, moduleId: string): boolean => {
       if (!effectiveAccess) {
-        return true;
-      }
-
-      if (effectiveAccess.is_admin) {
         return true;
       }
 
@@ -100,10 +91,6 @@ export function useAppAccess(workspaceId: string | null, developerId: string | n
       return Object.keys(APP_CATALOG);
     }
 
-    if (effectiveAccess.is_admin) {
-      return Object.keys(APP_CATALOG);
-    }
-
     return Object.entries(effectiveAccess.apps)
       .filter(([, access]) => access.enabled)
       .map(([appId]) => appId);
@@ -114,10 +101,6 @@ export function useAppAccess(workspaceId: string | null, developerId: string | n
     (appId: string): string[] => {
       if (!effectiveAccess) {
         // Return all modules if access data hasn't loaded
-        return APP_CATALOG[appId]?.modules.map((m) => m.id) ?? [];
-      }
-
-      if (effectiveAccess.is_admin) {
         return APP_CATALOG[appId]?.modules.map((m) => m.id) ?? [];
       }
 

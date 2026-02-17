@@ -25,6 +25,7 @@ from aexy.schemas.workspace import (
     GitHubOrgLink,
     InviteInfoResponse,
     AcceptInviteResponse,
+    MyInvitationResponse,
 )
 from aexy.services.workspace_service import WorkspaceService
 from aexy.services.developer_service import DeveloperService
@@ -1178,6 +1179,32 @@ async def get_member_effective_permissions(
 # =============================================================================
 # Invite Token Endpoints (Public routes for accepting invites)
 # =============================================================================
+
+
+@invites_router.get("/my-invitations", response_model=list[MyInvitationResponse])
+async def get_my_invitations(
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get all pending invitations for the current user's email."""
+    if not current_user.email:
+        return []
+
+    service = WorkspaceService(db)
+    invites = await service.get_pending_invites_for_email(current_user.email)
+
+    return [
+        MyInvitationResponse(
+            token=invite.token,
+            workspace_name=invite.workspace.name,
+            workspace_slug=invite.workspace.slug,
+            invited_by_name=invite.invited_by.name if invite.invited_by else None,
+            role=invite.role,
+            expires_at=invite.expires_at,
+            created_at=invite.created_at,
+        )
+        for invite in invites
+    ]
 
 
 @invites_router.get("/{token}", response_model=InviteInfoResponse)

@@ -177,20 +177,20 @@ export default function AccessTemplatesPage() {
       <div>
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : (
           <div className="space-y-8">
             {/* System Templates */}
             <section>
-              <h2 className="text-lg font-semibold text-white mb-4">
+              <h2 className="text-lg font-semibold text-foreground mb-4">
                 System Templates
               </h2>
               <div className="grid gap-4 sm:grid-cols-2">
                 {systemTemplates.map((template) => (
                   <div
                     key={template.id}
-                    className="p-4 bg-slate-800 border border-slate-700 rounded-lg"
+                    className="p-4 bg-card border border-border rounded-lg"
                   >
                     <div className="flex items-start gap-3">
                       <div
@@ -205,14 +205,14 @@ export default function AccessTemplatesPage() {
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <h3 className="font-medium text-white">
+                          <h3 className="font-medium text-foreground">
                             {template.name}
                           </h3>
-                          <span className="px-2 py-0.5 text-xs rounded-full bg-slate-700 text-slate-300">
+                          <span className="px-2 py-0.5 text-xs rounded-full bg-muted text-foreground">
                             System
                           </span>
                         </div>
-                        <p className="text-sm text-slate-400 mt-1">
+                        <p className="text-sm text-muted-foreground mt-1">
                           {template.description}
                         </p>
                         <div className="mt-3 flex flex-wrap gap-1">
@@ -224,7 +224,7 @@ export default function AccessTemplatesPage() {
                               return (
                                 <span
                                   key={appId}
-                                  className="px-2 py-0.5 text-xs rounded bg-slate-700/50 text-slate-400"
+                                  className="px-2 py-0.5 text-xs rounded bg-muted/50 text-muted-foreground"
                                 >
                                   {app?.name || appId}
                                 </span>
@@ -233,7 +233,7 @@ export default function AccessTemplatesPage() {
                           {Object.entries(template.app_config).filter(
                             ([, config]) => config.enabled
                           ).length > 5 && (
-                            <span className="px-2 py-0.5 text-xs rounded bg-slate-700/50 text-slate-400">
+                            <span className="px-2 py-0.5 text-xs rounded bg-muted/50 text-muted-foreground">
                               +
                               {Object.entries(template.app_config).filter(
                                 ([, config]) => config.enabled
@@ -251,14 +251,14 @@ export default function AccessTemplatesPage() {
 
             {/* Custom Templates */}
             <section>
-              <h2 className="text-lg font-semibold text-white mb-4">
+              <h2 className="text-lg font-semibold text-foreground mb-4">
                 Custom Templates
               </h2>
               {customTemplates.length === 0 ? (
-                <div className="text-center py-12 bg-slate-800 border border-slate-700 border-dashed rounded-lg">
-                  <Package className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-                  <p className="text-slate-400">No custom templates yet</p>
-                  <p className="text-sm text-slate-500">
+                <div className="text-center py-12 bg-card border border-border border-dashed rounded-lg">
+                  <Package className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-muted-foreground">No custom templates yet</p>
+                  <p className="text-sm text-muted-foreground">
                     Create a template to quickly assign app access to members
                   </p>
                 </div>
@@ -267,7 +267,7 @@ export default function AccessTemplatesPage() {
                   {customTemplates.map((template) => (
                     <div
                       key={template.id}
-                      className="p-4 bg-slate-800 border border-slate-700 rounded-lg"
+                      className="p-4 bg-card border border-border rounded-lg"
                     >
                       <div className="flex items-start gap-3">
                         <div
@@ -281,11 +281,11 @@ export default function AccessTemplatesPage() {
                           </span>
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-medium text-white">
+                          <h3 className="font-medium text-foreground">
                             {template.name}
                           </h3>
                           {template.description && (
-                            <p className="text-sm text-slate-400 mt-1">
+                            <p className="text-sm text-muted-foreground mt-1">
                               {template.description}
                             </p>
                           )}
@@ -298,7 +298,7 @@ export default function AccessTemplatesPage() {
                                 return (
                                   <span
                                     key={appId}
-                                    className="px-2 py-0.5 text-xs rounded bg-slate-700/50 text-slate-400"
+                                    className="px-2 py-0.5 text-xs rounded bg-muted/50 text-muted-foreground"
                                   >
                                     {app?.name || appId}
                                   </span>
@@ -356,20 +356,20 @@ export default function AccessTemplatesPage() {
 
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium text-slate-300">Name</label>
+              <label className="text-sm font-medium text-foreground">Name</label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, name: e.target.value }))
                 }
-                className="mt-1 w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-white"
+                className="mt-1 w-full rounded-md border border-border bg-muted px-3 py-2 text-foreground"
                 placeholder="e.g., Engineering Team"
               />
             </div>
 
             <div>
-              <label className="text-sm font-medium text-slate-300">
+              <label className="text-sm font-medium text-foreground">
                 Description
               </label>
               <input
@@ -381,13 +381,13 @@ export default function AccessTemplatesPage() {
                     description: e.target.value,
                   }))
                 }
-                className="mt-1 w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-white"
+                className="mt-1 w-full rounded-md border border-border bg-muted px-3 py-2 text-foreground"
                 placeholder="Optional description"
               />
             </div>
 
             <div>
-              <label className="text-sm font-medium text-slate-300">Color</label>
+              <label className="text-sm font-medium text-foreground">Color</label>
               <div className="mt-1 flex gap-2">
                 {["#2563eb", "#f43f5e", "#06b6d4", "#9333ea", "#10b981", "#f59e0b"].map(
                   (color) => (
@@ -409,7 +409,7 @@ export default function AccessTemplatesPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-slate-300">
+              <label className="text-sm font-medium text-foreground">
                 Included Apps
               </label>
               <div className="mt-2 grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
@@ -423,8 +423,8 @@ export default function AccessTemplatesPage() {
                       disabled={app.id === "dashboard"} // Dashboard always enabled
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm transition ${
                         isEnabled
-                          ? "bg-violet-500/20 border border-violet-500/50 text-white"
-                          : "bg-slate-700 border border-slate-600 text-slate-300 hover:bg-slate-600"
+                          ? "bg-violet-500/20 border border-violet-500/50 text-foreground"
+                          : "bg-muted border border-border text-foreground hover:bg-accent"
                       } ${app.id === "dashboard" ? "opacity-50" : ""}`}
                     >
                       <Icon className="h-4 w-4" />

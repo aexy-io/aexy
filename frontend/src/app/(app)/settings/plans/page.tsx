@@ -112,7 +112,7 @@ export default function PlansPage() {
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary-500 mx-auto mb-4" />
-          <p className="text-slate-400">Loading plans...</p>
+          <p className="text-muted-foreground">Loading plans...</p>
         </div>
       </div>
     );
@@ -171,51 +171,51 @@ export default function PlansPage() {
                 )}
 
                 <div
-                  className={`h-full bg-slate-800 border rounded-xl p-6 transition-all ${
+                  className={`h-full bg-card border rounded-xl p-6 transition-all ${
                     isCurrentPlan
                       ? "border-emerald-500/50 shadow-lg shadow-emerald-500/10"
                       : plan.tier === "pro"
                       ? "border-primary-500/50"
-                      : "border-slate-700 hover:border-slate-600"
+                      : "border-border hover:border-border"
                   }`}
                 >
                   {/* Plan Header */}
                   <div className="flex items-center gap-3 mb-4">
                     <div className={`p-2 bg-gradient-to-br ${config?.color || "from-slate-500 to-slate-600"} rounded-lg`}>
-                      <Icon className="h-5 w-5 text-white" />
+                      <Icon className="h-5 w-5 text-foreground" />
                     </div>
                     <div>
-                      <span className={`text-xs font-semibold tracking-wider ${config?.textColor || "text-slate-400"}`}>
+                      <span className={`text-xs font-semibold tracking-wider ${config?.textColor || "text-muted-foreground"}`}>
                         {config?.tagline?.toUpperCase() || plan.tier.toUpperCase()}
                       </span>
                     </div>
                   </div>
 
-                  <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
-                  <p className="text-slate-400 text-sm mb-4">{plan.description}</p>
+                  <h3 className="text-xl font-bold text-foreground mb-2">{plan.name}</h3>
+                  <p className="text-muted-foreground text-sm mb-4">{plan.description}</p>
 
                   {/* Price */}
                   <div className="mb-6">
                     {isCustomPrice ? (
                       <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-bold text-white">Custom</span>
+                        <span className="text-3xl font-bold text-foreground">Custom</span>
                       </div>
                     ) : plan.price_monthly_cents === 0 ? (
                       <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-bold text-white">Free</span>
+                        <span className="text-3xl font-bold text-foreground">Free</span>
                       </div>
                     ) : (
                       <div className="flex items-baseline gap-1">
-                        <span className="text-slate-400 text-xl">$</span>
+                        <span className="text-muted-foreground text-xl">$</span>
                         <motion.span
                           key={displayPrice}
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="text-3xl font-bold text-white"
+                          className="text-3xl font-bold text-foreground"
                         >
                           {displayPrice}
                         </motion.span>
-                        <span className="text-slate-400 text-sm">/month</span>
+                        <span className="text-muted-foreground text-sm">/month</span>
                       </div>
                     )}
                   </div>
@@ -231,7 +231,7 @@ export default function PlansPage() {
                         ? "bg-primary-600 hover:bg-primary-700 text-white"
                         : plan.tier === "enterprise"
                         ? "bg-gradient-to-r from-purple-500 to-violet-500 text-white hover:from-purple-600 hover:to-violet-600"
-                        : "bg-slate-700 hover:bg-slate-600 text-white"
+                        : "bg-muted hover:bg-accent text-foreground"
                     } disabled:opacity-50`}
                   >
                     {changePlan.isPending && selectedPlan?.tier === plan.tier ? (
@@ -257,8 +257,8 @@ export default function PlansPage() {
                   <div className="mt-6 space-y-2">
                     {(config?.features || []).map((feature, idx) => (
                       <div key={idx} className="flex items-start gap-2">
-                        <CheckCircle2 className={`h-4 w-4 ${config?.textColor || "text-slate-400"} flex-shrink-0 mt-0.5`} />
-                        <span className="text-slate-300 text-sm">{feature}</span>
+                        <CheckCircle2 className={`h-4 w-4 ${config?.textColor || "text-muted-foreground"} flex-shrink-0 mt-0.5`} />
+                        <span className="text-foreground text-sm">{feature}</span>
                       </div>
                     ))}
                   </div>
@@ -285,7 +285,7 @@ export default function PlansPage() {
 
         {/* Help Text */}
         <div className="text-center">
-          <p className="text-slate-400 text-sm">
+          <p className="text-muted-foreground text-sm">
             Questions about plans?{" "}
             <a
               href="mailto:billing@aexy.io"

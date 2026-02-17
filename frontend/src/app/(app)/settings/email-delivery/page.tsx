@@ -53,10 +53,10 @@ function DeliveryRateBar({ rate }: { rate: number }) {
   return (
     <div className="space-y-2">
       <div className="flex justify-between text-sm">
-        <span className="text-slate-400">Delivery Rate</span>
-        <span className="text-white font-medium">{percentage}%</span>
+        <span className="text-muted-foreground">Delivery Rate</span>
+        <span className="text-foreground font-medium">{percentage}%</span>
       </div>
-      <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+      <div className="h-2 bg-muted rounded-full overflow-hidden">
         <div
           className={`h-full ${getColor()} transition-all duration-500`}
           style={{ width: `${percentage}%` }}
@@ -70,7 +70,7 @@ function StatCard({
   label,
   value,
   subValue,
-  color = "text-white",
+  color = "text-foreground",
 }: {
   label: string;
   value: number;
@@ -78,37 +78,37 @@ function StatCard({
   color?: string;
 }) {
   return (
-    <div className="bg-slate-800/50 rounded-lg p-4">
-      <p className="text-slate-400 text-sm">{label}</p>
+    <div className="bg-card/50 rounded-lg p-4">
+      <p className="text-muted-foreground text-sm">{label}</p>
       <p className={`text-2xl font-bold mt-1 ${color}`}>{value.toLocaleString()}</p>
-      {subValue && <p className="text-slate-500 text-xs mt-1">{subValue}</p>}
+      {subValue && <p className="text-muted-foreground text-xs mt-1">{subValue}</p>}
     </div>
   );
 }
 
 function EmailRow({ email }: { email: WorkspaceEmailLog }) {
   return (
-    <tr className="border-b border-slate-700 hover:bg-slate-800/50">
+    <tr className="border-b border-border hover:bg-card/50">
       <td className="px-4 py-3">
-        <p className="text-white">{email.recipient_email}</p>
+        <p className="text-foreground">{email.recipient_email}</p>
       </td>
       <td className="px-4 py-3">
-        <p className="text-slate-300 max-w-xs truncate">{email.subject}</p>
+        <p className="text-foreground max-w-xs truncate">{email.subject}</p>
       </td>
       <td className="px-4 py-3">
         <StatusBadge status={email.status} />
       </td>
       <td className="px-4 py-3">
         {email.notification_type ? (
-          <span className="text-slate-400 text-sm">
+          <span className="text-muted-foreground text-sm">
             {email.notification_type.replace(/_/g, " ")}
           </span>
         ) : (
-          <span className="text-slate-600 text-sm">-</span>
+          <span className="text-muted-foreground text-sm">-</span>
         )}
       </td>
       <td className="px-4 py-3">
-        <span className="text-slate-400 text-sm" title={email.created_at}>
+        <span className="text-muted-foreground text-sm" title={email.created_at}>
           {formatDistanceToNow(new Date(email.created_at), { addSuffix: true })}
         </span>
       </td>
@@ -133,8 +133,8 @@ function EnterpriseUpgradePrompt() {
           <div className="p-4 bg-amber-500/20 rounded-full mb-6">
             <Crown className="h-12 w-12 text-amber-500" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-3">Enterprise Feature</h2>
-          <p className="text-slate-400 mb-8 max-w-md">
+          <h2 className="text-2xl font-bold text-foreground mb-3">Enterprise Feature</h2>
+          <p className="text-muted-foreground mb-8 max-w-md">
             Email Delivery monitoring is available on the Enterprise plan. Upgrade to monitor
             email delivery status, view logs, and track deliverability metrics.
           </p>
@@ -145,7 +145,7 @@ function EnterpriseUpgradePrompt() {
             >
               Upgrade to Enterprise
             </button>
-            <p className="text-slate-500 text-sm">
+            <p className="text-muted-foreground text-sm">
               Or{" "}
               <Link href="/settings/appearance" className="text-blue-400 hover:underline">
                 return to settings
@@ -155,31 +155,31 @@ function EnterpriseUpgradePrompt() {
 
           {/* Feature Preview */}
           <div className="mt-12 w-full max-w-lg">
-            <h3 className="text-sm font-medium text-slate-400 mb-4">
+            <h3 className="text-sm font-medium text-muted-foreground mb-4">
               What you&apos;ll get with Enterprise:
             </h3>
             <ul className="text-left space-y-3">
               <li className="flex items-start gap-3">
                 <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
-                <span className="text-slate-300">
+                <span className="text-foreground">
                   Real-time email delivery monitoring and status tracking
                 </span>
               </li>
               <li className="flex items-start gap-3">
                 <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
-                <span className="text-slate-300">
+                <span className="text-foreground">
                   Delivery rate analytics and bounce tracking
                 </span>
               </li>
               <li className="flex items-start gap-3">
                 <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
-                <span className="text-slate-300">
+                <span className="text-foreground">
                   Email log history for all workspace notifications
                 </span>
               </li>
               <li className="flex items-start gap-3">
                 <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
-                <span className="text-slate-300">
+                <span className="text-foreground">
                   Filter and search by status, recipient, and type
                 </span>
               </li>
@@ -257,8 +257,8 @@ export default function EmailDeliverySettingsPage() {
         </div>
         <div className="py-8 text-center">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-white mb-2">Admin Access Required</h2>
-          <p className="text-slate-400 mb-6">
+          <h2 className="text-xl font-semibold text-foreground mb-2">Admin Access Required</h2>
+          <p className="text-muted-foreground mb-6">
             Only workspace owners and admins can access email delivery monitoring.
           </p>
           <Link href="/settings/appearance" className="text-blue-400 hover:underline">
@@ -284,7 +284,7 @@ export default function EmailDeliverySettingsPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={handleRefresh}
-            className="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition"
+            className="flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg text-foreground hover:text-foreground hover:bg-accent transition"
           >
             <RefreshCw className="h-4 w-4" />
             Refresh
@@ -296,7 +296,7 @@ export default function EmailDeliverySettingsPage() {
         {/* Stats */}
         {statsLoading ? (
           <div className="flex justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : statsError ? (
           <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-400 flex items-center gap-2">
@@ -306,7 +306,7 @@ export default function EmailDeliverySettingsPage() {
         ) : stats ? (
           <>
             {/* Delivery Rate */}
-            <div className="bg-slate-800 rounded-xl border border-slate-700 p-5">
+            <div className="bg-card rounded-xl border border-border p-5">
               <DeliveryRateBar rate={stats.delivery_rate} />
               <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard
@@ -334,43 +334,43 @@ export default function EmailDeliverySettingsPage() {
 
             {/* Status Breakdown */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+              <div className="bg-card rounded-lg p-4 border border-border">
                 <p className="text-emerald-400 text-2xl font-bold">{stats.total_delivered}</p>
-                <p className="text-slate-400 text-sm">Delivered</p>
+                <p className="text-muted-foreground text-sm">Delivered</p>
               </div>
-              <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+              <div className="bg-card rounded-lg p-4 border border-border">
                 <p className="text-blue-400 text-2xl font-bold">{stats.total_sent}</p>
-                <p className="text-slate-400 text-sm">Sent</p>
+                <p className="text-muted-foreground text-sm">Sent</p>
               </div>
-              <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+              <div className="bg-card rounded-lg p-4 border border-border">
                 <p className="text-yellow-400 text-2xl font-bold">{stats.total_pending}</p>
-                <p className="text-slate-400 text-sm">Pending</p>
+                <p className="text-muted-foreground text-sm">Pending</p>
               </div>
-              <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+              <div className="bg-card rounded-lg p-4 border border-border">
                 <p className="text-orange-400 text-2xl font-bold">{stats.total_bounced}</p>
-                <p className="text-slate-400 text-sm">Bounced</p>
+                <p className="text-muted-foreground text-sm">Bounced</p>
               </div>
-              <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+              <div className="bg-card rounded-lg p-4 border border-border">
                 <p className="text-red-400 text-2xl font-bold">{stats.total_failed}</p>
-                <p className="text-slate-400 text-sm">Failed</p>
+                <p className="text-muted-foreground text-sm">Failed</p>
               </div>
             </div>
           </>
         ) : null}
 
         {/* Email Logs */}
-        <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold text-white">Email Logs</h2>
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <h2 className="text-lg font-semibold text-foreground">Email Logs</h2>
             <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-slate-400" />
+              <Filter className="h-4 w-4 text-muted-foreground" />
               <select
                 value={statusFilter}
                 onChange={(e) => {
                   setStatusFilter(e.target.value);
                   setPage(1);
                 }}
-                className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                className="bg-muted border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:border-blue-500"
               >
                 {STATUS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -391,8 +391,8 @@ export default function EmailDeliverySettingsPage() {
               Failed to load email logs
             </div>
           ) : emailLogs?.items?.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-slate-400">
-              <Mail className="h-12 w-12 mb-3 text-slate-600" />
+            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+              <Mail className="h-12 w-12 mb-3 text-muted-foreground" />
               <p>No email logs found</p>
               {statusFilter && (
                 <button
@@ -406,8 +406,8 @@ export default function EmailDeliverySettingsPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[600px]">
-                <thead className="bg-slate-900/50">
-                  <tr className="text-left text-slate-400 text-sm">
+                <thead className="bg-background/50">
+                  <tr className="text-left text-muted-foreground text-sm">
                     <th className="px-4 py-3 font-medium">Recipient</th>
                     <th className="px-4 py-3 font-medium">Subject</th>
                     <th className="px-4 py-3 font-medium">Status</th>
@@ -424,8 +424,8 @@ export default function EmailDeliverySettingsPage() {
 
               {/* Pagination */}
               {emailLogs && emailLogs.total > 25 && (
-                <div className="px-4 py-3 border-t border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <span className="text-slate-400 text-sm">
+                <div className="px-4 py-3 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <span className="text-muted-foreground text-sm">
                     Showing {(page - 1) * 25 + 1} - {Math.min(page * 25, emailLogs.total)} of{" "}
                     {emailLogs.total} emails
                   </span>
@@ -433,15 +433,15 @@ export default function EmailDeliverySettingsPage() {
                     <button
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={page === 1}
-                      className="p-2 rounded-lg bg-slate-700 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-600"
+                      className="p-2 rounded-lg bg-muted text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
-                    <span className="text-slate-300 px-3">Page {page}</span>
+                    <span className="text-foreground px-3">Page {page}</span>
                     <button
                       onClick={() => setPage((p) => p + 1)}
                       disabled={!emailLogs.has_next}
-                      className="p-2 rounded-lg bg-slate-700 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-600"
+                      className="p-2 rounded-lg bg-muted text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </button>

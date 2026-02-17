@@ -1,6 +1,7 @@
 """Authentication endpoints for GitHub and Google OAuth."""
 
 import json
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
@@ -8,6 +9,8 @@ from urllib.parse import urlencode
 import httpx
 import redis
 from fastapi import APIRouter, Depends, HTTPException, status
+
+logger = logging.getLogger(__name__)
 from fastapi.responses import RedirectResponse
 from jose import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -403,6 +406,8 @@ async def google_callback(
                 return RedirectResponse(url=f"{frontend_url}/auth/callback?token={jwt_token}")
 
     except httpx.RequestError as e:
+        logger.error(f"Google OAuth request error: {e}", exc_info=True)
         return RedirectResponse(url=f"{frontend_url}/?error=request_failed")
     except Exception as e:
+        logger.error(f"Google OAuth callback failed: {e}", exc_info=True)
         return RedirectResponse(url=f"{frontend_url}/?error=auth_failed")
