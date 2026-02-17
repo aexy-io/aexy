@@ -276,8 +276,9 @@ async def update_preferences(
     for field, value in update_data.items():
         setattr(preferences, field, value)
 
-    # If preset_type changed and widgets weren't explicitly set, apply preset defaults
-    if data.preset_type and data.visible_widgets is None:
+    # If preset_type changed to a real preset and widgets weren't explicitly set, apply preset defaults
+    # Skip for 'custom' — that means user is manually reordering/resizing, not applying a preset
+    if data.preset_type and data.preset_type != "custom" and data.visible_widgets is None:
         defaults = get_default_preferences_for_preset(data.preset_type)
         preferences.visible_widgets = defaults["visible_widgets"]
         preferences.widget_order = defaults["widget_order"]

@@ -174,9 +174,9 @@ export function PeerBenchmarkCard({ developerId }: PeerBenchmarkCardProps) {
             Strengths
           </div>
           <div className="space-y-1">
-            {benchmark.strengths.slice(0, 3).map((s) => (
+            {benchmark.strengths.slice(0, 3).map((s, i) => (
               <div
-                key={s}
+                key={`${s}-${i}`}
                 className="text-xs text-slate-300 bg-green-900/20 px-2 py-1 rounded"
               >
                 {s}
@@ -192,9 +192,9 @@ export function PeerBenchmarkCard({ developerId }: PeerBenchmarkCardProps) {
             Growth Areas
           </div>
           <div className="space-y-1">
-            {benchmark.growth_opportunities.slice(0, 3).map((g) => (
+            {benchmark.growth_opportunities.slice(0, 3).map((g, i) => (
               <div
-                key={g}
+                key={`${g}-${i}`}
                 className="text-xs text-slate-300 bg-amber-900/20 px-2 py-1 rounded"
               >
                 {g}

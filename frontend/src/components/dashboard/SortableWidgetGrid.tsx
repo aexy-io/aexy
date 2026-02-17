@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import {
   DndContext,
   closestCenter,
@@ -17,13 +17,14 @@ import {
   sortableKeyboardCoordinates,
   useSortable,
   rectSortingStrategy,
+  arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 
 interface SortableWidgetGridProps {
   widgetOrder: string[];
-  onReorder: (fromIndex: number, toIndex: number) => void;
+  onReorder: (activeId: string, overId: string) => void;
   isEditing: boolean;
   children?: (widgetId: string) => ReactNode;
   renderWidget: (widgetId: string) => ReactNode;
@@ -77,6 +78,12 @@ export function SortableWidgetGrid({
   getGridClass,
 }: SortableWidgetGridProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [localOrder, setLocalOrder] = useState(widgetOrder);
+
+  // Sync local state when the prop changes (e.g. after server confirms)
+  useEffect(() => {
+    setLocalOrder(widgetOrder);
+  }, [widgetOrder]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -98,22 +105,27 @@ export function SortableWidgetGrid({
     setActiveId(null);
 
     if (over && active.id !== over.id) {
-      const oldIndex = widgetOrder.indexOf(active.id as string);
-      const newIndex = widgetOrder.indexOf(over.id as string);
-      onReorder(oldIndex, newIndex);
+      const oldIndex = localOrder.indexOf(active.id as string);
+      const newIndex = localOrder.indexOf(over.id as string);
+
+      // Update local state immediately so the DOM reorders before dnd-kit resets transforms
+      setLocalOrder((prev) => arrayMove(prev, oldIndex, newIndex));
+
+      // Propagate widget IDs to parent for persistence
+      onReorder(active.id as string, over.id as string);
     }
   };
 
   // Filter out null renders (composite children that get skipped)
-  const renderableWidgets = widgetOrder.filter(
+  const renderableWidgets = localOrder.filter(
     (id) => renderWidget(id) !== null
   );
 
   if (!isEditing) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {renderableWidgets.map((widgetId) => (
-          <div key={widgetId} className={getGridClass?.(widgetId) || ""}>{renderWidget(widgetId)}</div>
+        {renderableWidgets.map((widgetId,index) => (
+          <div key={widgetId+index} className={getGridClass?.(widgetId) || ""}>{renderWidget(widgetId)}</div>
         ))}
       </div>
     );
@@ -128,8 +140,8 @@ export function SortableWidgetGrid({
     >
       <SortableContext items={renderableWidgets} strategy={rectSortingStrategy}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {renderableWidgets.map((widgetId) => (
-            <SortableWidget key={widgetId} id={widgetId} isEditing={isEditing} className={getGridClass?.(widgetId) || ""}>
+          {renderableWidgets.map((widgetId,index) => (
+            <SortableWidget key={widgetId+index} id={widgetId} isEditing={isEditing} className={getGridClass?.(widgetId) || ""}>
               {renderWidget(widgetId)}
             </SortableWidget>
           ))}

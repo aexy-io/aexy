@@ -13,7 +13,7 @@ import {
   SortableWidgetGrid,
 } from "@/components/dashboard";
 import { ComingSoonWidget } from "@/components/dashboard/widgets/ComingSoonWidget";
-import { Pencil, Check } from "lucide-react";
+import { Pencil, Check, Settings2 } from "lucide-react";
 
 export default function DashboardPage() {
   const { user, isLoading, isAuthenticated } = useAuth();
@@ -203,8 +203,10 @@ export default function DashboardPage() {
   };
 
   // Handle reorder from SortableWidgetGrid
-  const handleReorder = (fromIndex: number, toIndex: number) => {
-    reorderWidgets(fromIndex, toIndex);
+  const handleReorder = (activeId: string, overId: string) => {
+    console.log("ACTIVE ID",activeId);
+    console.log("OVER ID ",overId);
+    reorderWidgets(activeId, overId);
   };
 
   // Render a single widget by ID
@@ -229,8 +231,15 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 p-4">
-      {/* Edit Layout Toggle */}
-      <div className="flex justify-end">
+      {/* Dashboard Controls */}
+      <div className="flex justify-end gap-2">
+        <button
+          onClick={() => setModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-card hover:bg-accent text-muted-foreground hover:text-foreground border border-border transition"
+        >
+          <Settings2 className="w-4 h-4" />
+          Customize
+        </button>
         <button
           onClick={() => setCustomizing(!isCustomizing)}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
@@ -254,13 +263,30 @@ export default function DashboardPage() {
       </div>
 
       {/* Dynamic Widget Rendering */}
-      <SortableWidgetGrid
-        widgetOrder={orderedVisibleWidgets}
-        onReorder={handleReorder}
-        isEditing={isCustomizing}
-        renderWidget={renderWidget}
-        getGridClass={getWidgetGridClass}
-      />
+      {orderedVisibleWidgets.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <Settings2 className="w-12 h-12 text-muted-foreground/40 mb-4" />
+          <h3 className="text-lg font-medium text-foreground mb-2">No widgets visible</h3>
+          <p className="text-muted-foreground text-sm mb-6">
+            Your dashboard is empty. Add widgets to get started.
+          </p>
+          <button
+            onClick={() => setModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition"
+          >
+            <Settings2 className="w-4 h-4" />
+            Customize Dashboard
+          </button>
+        </div>
+      ) : (
+        <SortableWidgetGrid
+          widgetOrder={orderedVisibleWidgets}
+          onReorder={handleReorder}
+          isEditing={isCustomizing}
+          renderWidget={renderWidget}
+          getGridClass={getWidgetGridClass}
+        />
+      )}
 
       {/* Dashboard Customize Modal */}
       <DashboardCustomizeModal
