@@ -13,25 +13,45 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  Mail,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useOnboarding } from "../OnboardingContext";
-import { workspaceApi } from "@/lib/api";
+import { workspaceApi, type MyInvitation } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
 
 type WorkspaceMode = "select" | "create" | "join";
 
 export default function WorkspaceStep() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { data, updateWorkspace, setCurrentStep } = useOnboarding();
   const [mode, setMode] = useState<WorkspaceMode>("select");
   const [workspaceName, setWorkspaceName] = useState("");
   const [workspaceId, setWorkspaceId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [invitations, setInvitations] = useState<MyInvitation[]>([]);
+  const [loadingInvitations, setLoadingInvitations] = useState(true);
+  const [acceptingToken, setAcceptingToken] = useState<string | null>(null);
 
   useEffect(() => {
     setCurrentStep(3);
   }, [setCurrentStep]);
+
+  useEffect(() => {
+    const fetchInvitations = async () => {
+      try {
+        const data = await workspaceApi.getMyInvitations();
+        setInvitations(data);
+      } catch {
+        // Silently fail — invitations are optional
+      } finally {
+        setLoadingInvitations(false);
+      }
+    };
+    fetchInvitations();
+  }, []);
 
   // If already has workspace, show continue
   const hasWorkspace = data.workspace.id !== null;
@@ -58,6 +78,10 @@ export default function WorkspaceStep() {
         type: "create",
         joinRequestStatus: "none",
       });
+
+      // Update sidebar workspace list and switch to the new workspace
+      localStorage.setItem("current_workspace_id", workspace.id);
+      await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
 
       router.push("/onboarding/connect");
     } catch (err) {
@@ -96,6 +120,33 @@ export default function WorkspaceStep() {
       setError(errorMessage);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAcceptInvite = async (invitation: MyInvitation) => {
+    setAcceptingToken(invitation.token);
+    setError(null);
+
+    try {
+      const result = await workspaceApi.acceptInvite(invitation.token);
+
+      updateWorkspace({
+        id: result.workspace_id,
+        name: result.workspace_name,
+        type: "join",
+        joinRequestStatus: "none",
+      });
+
+      // Update sidebar workspace list and switch to the accepted workspace
+      localStorage.setItem("current_workspace_id", result.workspace_id);
+      await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+
+      router.push("/onboarding/connect");
+    } catch (err) {
+      console.error("Failed to accept invitation:", err);
+      setError("Failed to accept invitation. Please try again.");
+    } finally {
+      setAcceptingToken(null);
     }
   };
 
@@ -180,6 +231,71 @@ export default function WorkspaceStep() {
               </div>
             </div>
           </motion.div>
+        )}
+
+        {/* Pending Invitations */}
+        {!hasWorkspace && mode === "select" && !loadingInvitations && invitations.length > 0 && (
+          <div className="max-w-2xl mx-auto mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Mail className="w-4 h-4 text-primary-400" />
+              <h2 className="text-sm font-medium text-primary-400 uppercase tracking-wide">
+                You&apos;ve been invited
+              </h2>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              {invitations.map((invitation) => (
+                <motion.div
+                  key={invitation.token}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center justify-between p-4 rounded-xl bg-primary-500/5 border border-primary-500/20"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-lg bg-primary-500/10 flex items-center justify-center flex-shrink-0">
+                      <Building2 className="w-5 h-5 text-primary-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-medium text-white truncate">
+                        {invitation.workspace_name}
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        {invitation.invited_by_name
+                          ? `Invited by ${invitation.invited_by_name}`
+                          : "Invited to join"}
+                        {" \u00B7 "}
+                        <span className="capitalize">{invitation.role}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleAcceptInvite(invitation)}
+                    disabled={acceptingToken === invitation.token}
+                    className="flex-shrink-0 ml-4 flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary-500 text-white text-sm font-medium hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {acceptingToken === invitation.token ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      "Accept"
+                    )}
+                  </button>
+                </motion.div>
+              ))}
+            </div>
+
+            {error && (
+              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-2 text-sm text-red-400">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                {error}
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1 h-px bg-slate-700/50" />
+              <span className="text-xs text-slate-500 uppercase tracking-wide">Or start fresh</span>
+              <div className="flex-1 h-px bg-slate-700/50" />
+            </div>
+          </div>
         )}
 
         {/* Mode Selection or Forms */}

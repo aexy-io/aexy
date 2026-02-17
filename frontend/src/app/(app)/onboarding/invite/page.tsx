@@ -11,19 +11,23 @@ import {
   Plus,
   UserPlus,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useOnboarding } from "../OnboardingContext";
 import { workspaceApi } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function InviteTeam() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { data, updateData, setCurrentStep } = useOnboarding();
   const [email, setEmail] = useState("");
   const [emails, setEmails] = useState<string[]>(data.invitedEmails);
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [sentCount, setSentCount] = useState(0);
+  const [failedEmails, setFailedEmails] = useState<string[]>([]);
 
   useEffect(() => {
     setCurrentStep(6);
@@ -68,24 +72,42 @@ export default function InviteTeam() {
 
   const handleContinue = async () => {
     updateData({ invitedEmails: emails });
+    setFailedEmails([]);
 
     // Send invites if we have a workspace and emails
     if (data.workspace.id && emails.length > 0) {
       setIsSending(true);
       setSentCount(0);
+      const failed: string[] = [];
 
       try {
         for (const inviteEmail of emails) {
           try {
             await workspaceApi.inviteMember(data.workspace.id, inviteEmail, "member");
             setSentCount((prev) => prev + 1);
-          } catch {
-            // Continue with other emails even if one fails
-            console.error(`Failed to invite ${inviteEmail}`);
+          } catch (err) {
+            console.error(`Failed to invite ${inviteEmail}:`, err);
+            failed.push(inviteEmail);
           }
         }
       } finally {
         setIsSending(false);
+      }
+
+      // Invalidate pending invites cache so org settings page shows them
+      if (failed.length < emails.length) {
+        queryClient.invalidateQueries({ queryKey: ["pendingInvites", data.workspace.id] });
+      }
+
+      // If some invites failed, show errors instead of navigating
+      if (failed.length > 0) {
+        setFailedEmails(failed);
+        if (failed.length === emails.length) {
+          setError("Failed to send invitations. You may not have permission to invite members to this workspace.");
+        } else {
+          setError(`Failed to invite: ${failed.join(", ")}. ${emails.length - failed.length} invite(s) sent successfully.`);
+        }
+        return;
       }
     }
 
@@ -156,10 +178,28 @@ export default function InviteTeam() {
                 Add
               </button>
             </div>
-            {error && (
+            {error && !failedEmails.length && (
               <p className="mt-2 text-sm text-red-400">{error}</p>
             )}
           </div>
+
+          {/* Failed invites error */}
+          {failedEmails.length > 0 && error && (
+            <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm text-red-400">{error}</p>
+                  <button
+                    onClick={() => router.push("/onboarding/complete")}
+                    className="mt-2 text-sm text-slate-400 hover:text-white underline transition-colors"
+                  >
+                    Continue anyway
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Email list */}
           {emails.length > 0 && (
@@ -173,7 +213,11 @@ export default function InviteTeam() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.2, delay: index * 0.05 }}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-slate-800/30 border border-slate-700/50 rounded-lg"
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 rounded-lg ${
+                    failedEmails.includes(inviteEmail)
+                      ? "bg-red-500/10 border border-red-500/30"
+                      : "bg-slate-800/30 border border-slate-700/50"
+                  }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center">

@@ -457,6 +457,26 @@ class WorkspaceService:
         await self.db.refresh(invite)
         return invite
 
+    async def get_pending_invites_for_email(
+        self, email: str
+    ) -> list[WorkspacePendingInvite]:
+        """Get all pending, non-expired invites across all workspaces for a given email."""
+        stmt = (
+            select(WorkspacePendingInvite)
+            .where(
+                func.lower(WorkspacePendingInvite.email) == email.lower(),
+                WorkspacePendingInvite.status == "pending",
+                WorkspacePendingInvite.expires_at > datetime.now(timezone.utc),
+            )
+            .options(
+                selectinload(WorkspacePendingInvite.workspace),
+                selectinload(WorkspacePendingInvite.invited_by),
+            )
+            .order_by(WorkspacePendingInvite.created_at.desc())
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
     async def get_pending_invite_by_email(
         self, workspace_id: str, email: str
     ) -> WorkspacePendingInvite | None:
