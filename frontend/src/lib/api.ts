@@ -16696,23 +16696,34 @@ export interface ReminderInstanceListResponse {
   page_size: number;
 }
 
+export interface CategoryStats {
+  category: string;
+  total: number;
+  pending: number;
+  completed: number;
+  overdue: number;
+}
+
 export interface ReminderDashboardStats {
   total_reminders: number;
   active_reminders: number;
   paused_reminders: number;
-  pending_instances: number;
-  overdue_instances: number;
+  archived_reminders: number;
+  total_pending_instances: number;
+  total_overdue_instances: number;
   completed_this_week: number;
-  completion_rate_7d: number;
-  by_category: Record<string, number>;
-  by_priority: Record<string, number>;
-  upcoming_7_days: ReminderInstance[];
+  completed_this_month: number;
+  by_category: CategoryStats[];
+  critical_overdue: number;
+  high_overdue: number;
 }
 
 export interface MyRemindersResponse {
   assigned_to_me: ReminderInstance[];
-  created_by_me: Reminder[];
+  my_team_reminders: ReminderInstance[];
   overdue: ReminderInstance[];
+  due_today: ReminderInstance[];
+  due_this_week: ReminderInstance[];
 }
 
 export interface ReminderCalendarEvent {

@@ -36,7 +36,7 @@ export default function RemindersPage() {
   const workspaceId = currentWorkspace?.id || null;
 
   const { stats, isLoading: statsLoading } = useReminderDashboard(workspaceId);
-  const { assignedToMe, overdue, isLoading: myRemindersLoading } = useMyReminders(workspaceId);
+  const { assignedToMe, overdue, dueToday, dueThisWeek, isLoading: myRemindersLoading } = useMyReminders(workspaceId);
   const { reminders, isLoading: remindersLoading } = useReminders(workspaceId, {
     status: "active",
     pageSize: 5,
@@ -111,7 +111,7 @@ export default function RemindersPage() {
             <span>Pending</span>
           </div>
           <div className="text-2xl font-bold text-amber-600 mt-1">
-            {stats?.pending_instances || 0}
+            {stats?.total_pending_instances || 0}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-red-200 dark:border-red-900/50 p-4">
@@ -120,7 +120,7 @@ export default function RemindersPage() {
             <span>Overdue</span>
           </div>
           <div className="text-2xl font-bold text-red-600 mt-1">
-            {stats?.overdue_instances || 0}
+            {stats?.total_overdue_instances || 0}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
@@ -257,17 +257,17 @@ export default function RemindersPage() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Upcoming 7 Days */}
+          {/* Upcoming This Week */}
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
             <div className="p-4 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Upcoming (7 Days)
+                Upcoming This Week
               </h2>
             </div>
 
-            {stats?.upcoming_7_days && stats.upcoming_7_days.length > 0 ? (
+            {[...dueToday, ...dueThisWeek].length > 0 ? (
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {stats.upcoming_7_days.slice(0, 5).map((instance) => (
+                {[...dueToday, ...dueThisWeek].slice(0, 5).map((instance) => (
                   <div
                     key={instance.id}
                     className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50"
@@ -297,7 +297,7 @@ export default function RemindersPage() {
           </div>
 
           {/* Category Breakdown */}
-          {stats?.by_category && Object.keys(stats.by_category).length > 0 && (
+          {stats?.by_category && stats.by_category.length > 0 && (
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
               <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex items-center gap-2">
@@ -308,11 +308,11 @@ export default function RemindersPage() {
                 </div>
               </div>
               <div className="p-4 space-y-3">
-                {Object.entries(stats.by_category).map(([category, total]) => (
-                  <div key={category} className="flex items-center justify-between">
-                    <ReminderCategoryBadge category={category as ReminderCategory} />
+                {stats.by_category.map((cat) => (
+                  <div key={cat.category} className="flex items-center justify-between">
+                    <ReminderCategoryBadge category={cat.category as ReminderCategory} />
                     <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                      {total}
+                      {cat.total}
                     </span>
                   </div>
                 ))}

@@ -5,6 +5,383 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.6] - 2026-02-14
+
+### Added
+
+#### Dynamic Dashboard Widget System
+
+Replaced the hardcoded dashboard layout with a fully dynamic, preference-driven widget rendering system. Widgets now render from `widget_order` and `visible_widgets` stored in user preferences, with drag-and-drop reordering support.
+
+**Widget Extraction (9 new components):**
+- `WelcomeWidget` — greeting, GitHub connection status, quick action links
+- `QuickStatsWidget` — language count, framework count, avg PR size, work style
+- `LanguageProficiencyWidget` — language bars with proficiency scores, commit counts, trends
+- `WorkPatternsWidget` — complexity preference, peak hours, review turnaround
+- `DomainExpertiseWidget` — domain tags with confidence scores
+- `FrameworksToolsWidget` — framework/tool tags with proficiency scores
+- `AIInsightsWidget` — composite widget wrapping InsightsCard, SoftSkillsCard, GrowthTrajectory, PeerBenchmark
+- `SoftSkillsWidget` — Reviews & Goals section with My Goals and Performance Reviews
+- `ComingSoonWidget` — placeholder for unimplemented widget IDs
+
+**Widget Registry (`widgetRegistry.tsx`):**
+- Maps 23 widget IDs to React components (developer, engineering manager, and product manager widgets)
+- `getWidgetComponent()` helper with ComingSoonWidget fallback
+- `isWidgetImplemented()` check for registry membership
+
+**Dashboard Page Rewrite (`page.tsx`):**
+- Dynamic rendering from `orderedVisibleWidgets` computed via `widget_order` intersected with `visible_widgets`
+- `getWidgetProps()` switch maps widget IDs to their specific data props
+- `getWidgetGridClass()` maps widget sizes to CSS grid column spans
+- `renderWidget()` skips composite children and renders from registry or ComingSoonWidget
+- Edit Layout toggle button (Pencil/Check icons) for entering/exiting drag mode
+
+**SortableWidgetGrid Updates:**
+- Changed layout from `space-y-6` vertical stack to CSS grid: `grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6`
+- Added `renderableWidgets` filter to skip null renders from composite children
+- Drag handle repositioned to `top-2 right-2`
+
+**Customize Modal — Reorder Tab:**
+- Added third tab "Reorder" to `DashboardCustomizeModal`
+- New `WidgetReorderList` component — dnd-kit vertical list showing widget icon, name, size badge, and drag handle
+- Tabs now rendered from data array; description updated
+
+**Enriched Non-Developer Presets:**
+- Manager: added `aiAgents`, `upcomingDeadlines`, `recentDocs`
+- Product: added `aiInsights`, `aiAgents`
+- HR: added `quickStats`, `aiAgents`, `upcomingDeadlines`, `myGoals`
+- Support: added `quickStats`, `aiAgents`, `teamOverview`, `myGoals`
+- Sales: added `quickStats`, `aiAgents`, `teamOverview`, `upcomingDeadlines`
+- Admin: added `quickStats`, `aiAgents`, `myGoals`, `upcomingDeadlines`, `recentDocs`
+
+#### Playwright E2E Test Suite
+
+Added end-to-end testing infrastructure for the dashboard.
+
+- `playwright.config.ts` — Chromium project, baseURL localhost:3000, auto-start dev server
+- `e2e/fixtures/mock-data.ts` — mock user, preferences, insights, soft skills fixtures
+- `e2e/dashboard.spec.ts` — 18 tests across 6 describe blocks:
+  - Widget Rendering (7 tests): welcome, quickStats, languageProficiency, workPatterns, domainExpertise, frameworksTools, ComingSoon
+  - Widget Ordering (2 tests): order from preferences, only visible widgets rendered
+  - Edit Layout Toggle (2 tests): button toggle, drag handles in edit mode
+  - Customize Modal (4 tests): three tabs, tab switching, reorder tab content, close
+  - Manager Preset (1 test): cross-cutting widgets present
+  - Grid Layout (2 tests): CSS grid container, full-span widgets
+
+### Changed
+
+- Bumped frontend version from `0.5.5` to `0.5.6`
+- Added `@playwright/test` dev dependency
+- Added `test:e2e` and `test:e2e:ui` npm scripts
+
+## [0.5.5] - 2026-02-13
+
+### Added
+
+#### All-Contributors Sync
+
+Extended GitHub sync to capture all contributors' commits, PRs, and reviews — not just the connecting user. External contributors are auto-created as "ghost" Developer records.
+
+**Backend:**
+- New model fields: `author_github_login` and `author_email` on `Commit` for preserving original author identity
+- New helpers: `_resolve_developer_for_commit()` and `_resolve_developer_for_pr()` in `SyncService` to match or auto-create Developer records by GitHub ID or email
+- In-memory developer lookup cache within each sync session to avoid N+1 queries
+- Removed `author=github_username` filter from `_sync_commits_with_session()` — now fetches all commits
+- Removed `login != github_username` filter from `_sync_pull_requests_with_session()` and `_sync_reviews_with_session()`
+- Migration: `migrate_commit_author_fields.sql` — adds `author_github_login`, `author_email` columns with indexes
+
+**Ghost Developer Support Across Insights:**
+- New helper: `_get_all_contributor_ids()` in `developer_insights.py` — discovers external contributors by querying commits/PRs/reviews in workspace repos
+- Leaderboard, team insights, executive summary, and all 6 AI insight endpoints (team narrative, sprint retro, trajectory, root cause, composition, hiring forecast) now include ghost developers
+- Ghost developers appear in all rankings, comparisons, and AI-generated narratives alongside workspace members
+
+#### Metric Explanation Tooltips
+
+Added hover tooltips with explanations across all insights pages.
+
+**Compare Page (`/insights/compare`):**
+- Info icon + CSS hover popover on each row in the Side-by-Side Metrics table (commits, PRs merged, merge rate, cycle time, lines added, review rate, health score, focus time)
+- Radar chart axis labels show native browser tooltips via SVG `<title>` element
+- Extended `RadarDataPoint` interface with optional `desc` field
+- New `CustomAngleTick` component in `MetricsRadar.tsx` for tooltip-enabled axis labels
+- `RADAR_METRICS` config includes `desc` for each metric
+
+**Executive Dashboard (`/insights/executive`):**
+- Org Health metrics: Gini Coefficient, Workload Balance, Avg Commits/Dev, Avg PRs/Dev
+- Burnout Risks: WE (weekend commit %) and LN (late night commit %) with explanations
+- Bottlenecks: explanation of the 2x average threshold
+
+### Fixed
+
+#### Developer Names Instead of UUID Hashes
+
+Multiple insights pages displayed truncated UUIDs (e.g., `8f983e00-386...`) instead of developer names.
+
+- **Compare page** — dropdown items, selected pills, radar chart legends, heatmap labels, and table headers now show developer names via `devNameMap` lookup
+- **Executive dashboard** — top contributors table, burnout risks, and bottlenecks now show `developer_name` from API
+- **Sprint capacity** — per-developer breakdown table now shows `developer_name` from API
+- Added `developer_name` field to backend responses: `compute_executive_summary()`, `estimate_sprint_capacity()`
+- Updated TypeScript interfaces: `ExecutiveSummaryResponse`, `SprintCapacityDeveloper`
+
+#### Developer Detail Page Crash
+
+Fixed `/insights/developers/[id]` crashing on gaming flags section due to API schema mismatch.
+
+- Backend returns `{type, severity, description, evidence(object)}` but frontend expected `{pattern, severity: "low"|"medium"|"high", evidence: string}`
+- Fixed with `Record<string, unknown>` type and proper field fallbacks (`flag.type || flag.pattern`, severity includes "warning")
+- Added optional chaining for `flag.pattern?.replace()` to prevent `TypeError`
+
+#### Analytics Dashboard Broken Joins
+
+Fixed `analytics_dashboard.py` using stale `CodeReview.pull_request_id` column (renamed to `pull_request_github_id`).
+
+- Updated two join clauses to use `CodeReview.pull_request_github_id == PullRequest.github_id`
+- Fixed `conftest.py` test fixture using the same stale field name
+
+#### Ghost Developer Creation for PRs/Reviews
+
+`_resolve_developer_for_pr()` now auto-creates ghost Developer records (by GitHub login) when no existing developer matches, consistent with `_resolve_developer_for_commit()` behavior.
+
+### Changed
+
+- Bumped frontend version from `0.5.4` to `0.5.5`
+- Moved inline `from sqlalchemy import or_` to top-level import in `developer_insights.py`
+
+---
+
+## [0.5.4] - 2026-02-09
+
+### Added
+
+#### Developer Insights (Enterprise Analytics)
+
+Comprehensive developer productivity analytics platform with AI-powered insights, alerting, and forecasting.
+
+**Backend:**
+- New models: `DeveloperMetricsSnapshot`, `TeamMetricsSnapshot`, `InsightSettings`, `DeveloperWorkingSchedule`, `InsightAlertRule`, `InsightAlertHistory`, `InsightReportSchedule`, `SavedInsightDashboard`
+- New API: `api/developer_insights.py` - 25+ endpoints for individual developer metrics, team insights, leaderboard, executive summary, sprint capacity, bus factor, rotation impact, project insights, alert rules, and AI narratives
+- New service: `services/developer_insights_service.py` - Metric computation across 6 dimensions (velocity, efficiency, quality, sustainability, collaboration, sprint productivity), forecasting, gaming detection, health scoring, percentile rankings, role benchmarking, and executive summaries
+- New service: `services/insights_ai_service.py` - LLM-powered narrative generation for team/developer performance, anomaly detection, root cause analysis, 1:1 prep notes, sprint retro insights, trajectory forecasting, team composition recommendations, and hiring timeline estimation
+- New cache: `cache/insights_cache.py` - Redis caching with 5-min TTL, deterministic key generation, and pattern-based invalidation
+- New schemas: `schemas/developer_insights.py` - Complete Pydantic schemas for all metrics, responses, settings, and alerts
+- Migrations: `migrate_developer_insights.sql`, `migrate_developer_insights_v2.sql`, `migrate_developer_insights_v3.sql`
+- Integration tests: `tests/integration/test_developer_insights_api.py`
+- Unit tests: `tests/unit/test_developer_insights_service.py`
+
+**Metrics Computed:**
+- Velocity: commits, PRs merged, lines added/removed, commit frequency, PR throughput, average commit size
+- Efficiency: PR cycle time, time to first review, PR merge rate, rework ratio
+- Quality: review participation rate, review depth, review turnaround, self-merge rate
+- Sustainability: weekend/late-night commit ratios, work streaks, active hours, focus score
+- Collaboration: unique collaborators, cross-team PR ratio, knowledge sharing score
+- Sprint: task completion rate, story points, cycle/lead time, carry-over tasks
+
+**Advanced Features:**
+- Velocity forecasting via weighted moving average
+- Metric gaming detection (suspicious patterns)
+- Code churn/rework analysis
+- PR size distribution analysis
+- Composite health scores with configurable weights
+- Percentile rankings within peer group
+- Role-based benchmarking (by engineering level)
+- Gini coefficient for workload distribution analysis
+- Bus factor per repository
+- Rotation impact simulation (velocity loss prediction)
+- Sprint capacity estimation
+- GDPR-compliant data export
+
+**Alert System:**
+- Configurable alert rules with conditions (gt, lt, gte, lte, eq, change_pct)
+- Scope: workspace, team, or individual developer
+- Severity levels: info, warning, critical
+- Multi-channel notifications (in-app, email, Slack)
+- Alert history with acknowledge/resolve workflow
+- Seed templates for common alerts
+- New notification event types: `INSIGHT_ALERT_WARNING`, `INSIGHT_ALERT_CRITICAL`
+
+**Frontend:**
+- New routes:
+  - `/insights` - Team overview with stat cards and workload distribution chart
+  - `/insights/leaderboard` - Ranked developer metrics
+  - `/insights/developers/[developerId]` - Individual developer drill-down
+  - `/insights/compare` - Side-by-side developer comparison
+  - `/insights/allocations` - Resource allocation view
+  - `/insights/alerts` - Alert management
+  - `/insights/executive` - Executive dashboard
+  - `/insights/sprint-capacity` - Sprint planning with capacity estimation
+  - `/insights/ai` - AI-powered insights (narratives, anomalies, recommendations)
+  - `/insights/me` - Personal insights
+  - `/settings/insights` - Insights configuration (working hours, metric weights, snapshot frequency)
+- `useInsights` hook - React Query integration with 10+ hooks for metrics, trends, leaderboard, alerts, and AI narratives
+- Components: `ActivityHeatmap`, `MetricsRadar`
+
+#### Permissions & Navigation
+
+- New permission category: `INSIGHTS` with `can_view_insights` and `can_manage_insights`
+- New app definition: `insights` in app catalog with `team_overview`, `leaderboard`, and `developer_drilldown` modules
+- Insights enabled in `full_access` bundle
+- Insights section added to sidebar in both grouped and flat layouts
+- New widget permissions: `teamInsights`, `developerInsights`, `insightsLeaderboard`, `workloadDistribution`
+
+### Changed
+
+- Deprecated Celery app configuration (`celery_app.py`) - all background processing now uses Temporal; `celery_app` set to `None` with deprecation warning
+- Updated admin API references from Celery to Temporal (renamed `get_celery_stats` to `get_temporal_stats`)
+- Updated repository sync API parameter from `use_celery` to `use_background`
+- Renamed `developer` to `user` in auth hook (`useAuth`) - updated `AppAccessGuard` and `Sidebar`
+- Changed `GoogleIcon` export from named to local function in landing page (moved to dedicated `components/icons/GoogleIcon.tsx`)
+- Added `formatRelativeTime` utility function to `lib/utils.ts`
+- Bumped frontend version from `0.5.3` to `0.5.4`
+
+### Fixed
+
+- Fixed mock implementations and minor bugs across test suite
+
+---
+
+## [0.5.3] - 2026-02-09
+
+### Added
+
+#### Compliance Center
+
+New top-level Compliance module for managing regulatory compliance, documents, reminders, training, and certifications.
+
+**New Routes:**
+- `/compliance` - Compliance dashboard with overview stats, upcoming reminders, and category breakdown
+- `/compliance/reminders` - Recurring compliance reminder management with list and calendar views
+- `/compliance/reminders/new` - Multi-step reminder creation wizard (basic info, schedule, assignment, review)
+- `/compliance/reminders/[reminderId]` - Reminder detail and instance history
+- `/compliance/reminders/calendar` - Calendar view of upcoming reminder instances
+- `/compliance/reminders/compliance` - Questionnaire import and analysis
+- `/compliance/documents` - Document Center with folder tree, search, filtering, and upload
+- `/compliance/documents/[documentId]` - Document detail with metadata, tags, and entity linking
+- `/compliance/training` - Mandatory training management with assignment tracking
+- `/compliance/certifications` - Certification tracking with developer enrollment and progress
+- `/compliance/calendar` - Unified compliance calendar
+
+---
+
+#### Recurring Reminders System
+
+Full-featured recurring reminder engine for compliance tasks with escalation, assignment, and scheduling.
+
+**Backend:**
+- New models: `Reminder`, `ReminderInstance`, `ReminderEscalation`, `ControlOwner`, `DomainTeamMapping`, `AssignmentRule`, `ReminderSuggestion`
+- New API: `api/reminders.py` - 30+ endpoints for reminders, instances, control owners, assignment rules, domain mappings, suggestions, dashboard stats, calendar, and bulk operations
+- New service: `services/reminder_service.py` - Reminder CRUD, instance generation, acknowledgment, completion, skip, reassignment, escalation, and dashboard statistics
+- New schemas: `schemas/reminder.py` - Complete Pydantic schemas for all reminder operations
+- Migration: `migrate_reminders.sql` - 7 tables with proper indexes, triggers, and constraints
+
+**Temporal Activities** (`temporal/activities/reminders.py`):
+- `generate_reminder_instances` - Daily task to generate upcoming instances from recurrence rules
+- `check_overdue_reminders` - Hourly check for overdue instances with automatic escalation
+- `send_reminder_notifications` - Sends due/upcoming reminder notifications
+- `send_weekly_slack_summary` - Weekly compliance status summary (logging only for now)
+- `check_evidence_freshness` - Daily check for stale evidence on completed instances
+
+**Features:**
+- Recurrence: daily, weekly, biweekly, monthly, quarterly, semi-annual, annual frequencies
+- Priority levels: low, medium, high, critical
+- Categories: regulatory, security, financial, hr, operational, it, legal, environmental, quality, data_privacy, health_safety, custom
+- Auto-assignment via control owners, domain-team mappings, and configurable assignment rules
+- 3-level escalation: manager, director, VP with configurable timeframes
+- Evidence collection with link attachments on instance completion
+- Bulk operations: assign and complete multiple instances at once
+
+**Frontend:**
+- `useReminders` hook - React Query integration with 10+ hooks for all reminder operations
+- Shared components: `ReminderCard`, `ReminderInstanceCard`, `ReminderStatusBadge`, `ReminderPriorityBadge`, `ReminderCategoryBadge`, `InstanceStatusBadge`, `RecurrenceDisplay`
+- `ReminderCreationWizard` - 4-step wizard with validation and team/owner assignment
+
+---
+
+#### Questionnaire Import & Analysis
+
+Import compliance questionnaires from Excel/CSV with AI-powered column detection and automatic reminder generation.
+
+**Backend:**
+- New models: `QuestionnaireResponse`, `QuestionnaireQuestion` with status tracking
+- New API: `api/questionnaires.py` - Upload, analyze, accept/reject suggestions, list responses
+- New service: `services/questionnaire_service.py` - 3-tier column detection (exact alias match, fuzzy substring, LLM fallback), cross-questionnaire deduplication, and automatic reminder suggestion generation
+- Migration: `migrate_questionnaire.sql` - Questionnaire tables with proper indexing
+
+**Frontend:**
+- `useQuestionnaires` hook - Upload, analysis, and suggestion management
+- Compliance questionnaire import page with file upload and analysis results
+
+---
+
+#### Compliance Document Center
+
+Upload, organize, and manage compliance documents with folder hierarchy, tagging, and entity linking.
+
+**Backend:**
+- New models: `ComplianceFolder`, `ComplianceDocument`, `ComplianceDocumentTag`, `ComplianceDocumentLink`
+- New API: `api/compliance_documents.py` - Document CRUD, folder management, tag operations, entity linking, search with filtering
+- New service: `services/compliance_document_service.py` - Document upload, folder tree management, tag operations, entity linking
+- Migration: `migrate_compliance_documents.sql` - Document and folder tables with S3 key storage
+
+**Frontend:**
+- `useComplianceDocuments` hook - React Query integration for documents, folders, tags, and entity links
+- Components: `DocumentCard`, `FolderTree`, `CreateFolderModal`, `UploadModal`, `DocumentFilters`, `DocumentLinkPanel`
+- File type detection with appropriate icons (PDF, spreadsheet, image, generic)
+- Folder nesting up to 3 levels deep
+
+---
+
+#### S3-Compatible Storage Service
+
+Replaced R2-specific storage with a generic S3-compatible `StorageService` supporting RustFS (dev) and any S3-compatible provider (production).
+
+**Backend:**
+- New service: `services/storage_service.py` - Generic S3 client with presigned URL generation, direct upload, multipart upload, and download
+- Backward-compatible shim: `r2_upload_service.py` re-exports `StorageService` as `R2UploadService`
+- New config fields: `S3_ENDPOINT_URL`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET_NAME`, `S3_REGION`, `S3_PUBLIC_ENDPOINT_URL`, `S3_RECORDINGS_PREFIX`, `S3_COMPLIANCE_PREFIX`, `COMPLIANCE_MAX_FILE_SIZE_MB`
+- Deprecated R2-specific config fields (still functional for backward compatibility)
+
+**Docker:**
+- Added RustFS service (S3-compatible object storage) for local development
+- Auto-creates `aexy-storage` bucket on startup via `rustfs-init` helper container
+- Environment variables wired for backend container
+
+---
+
+#### Permissions & Navigation
+
+- New permission category: `COMPLIANCE` with `can_view_compliance` and `can_manage_compliance`
+- New app definition: `compliance` in app catalog with `reminders`, `document_center`, `training`, and `certifications` modules
+- Updated system app bundles: compliance enabled in `people` and `full_access` bundles, disabled in `engineering` and `sales_marketing`
+- New notification event types: `REMINDER_DUE`, `REMINDER_ACKNOWLEDGED`, `REMINDER_COMPLETED`, `REMINDER_ESCALATED`, `REMINDER_OVERDUE`, `REMINDER_ASSIGNED`
+- Compliance section added to sidebar in both grouped and flat layouts
+- Compliance widget permissions: `complianceOverview`, `complianceDocuments`
+
+### Changed
+
+- Refactored `R2UploadService` into generic `StorageService` with S3-compatible backend support
+- Storage configuration moved from R2-specific to S3-generic fields with backward compatibility
+
+### Fixed
+
+- Fixed reminder creation bug (commit `f4e79d9`)
+- Fixed miscellaneous TypeScript errors across frontend (commit `73e7641`)
+
+### Dependencies
+
+- Added `croniter>=2.0.0` for cron expression parsing
+- Added RustFS Docker service for local S3-compatible storage
+
+---
+
+## [0.5.2] - 2026-02-09
+
+### Fixed
+
+- Set default `github_app_install_url` to production GitHub App URL in `config.py` instead of empty string
+- Added `GITHUB_APP_INSTALL_URL` environment variable to `docker-compose.prod.yml` backend service
+
+---
+
 ## [0.5.1] - 2026-02-08
 
 ### Changed
@@ -50,6 +427,8 @@ Replaced Celery 5.3+ task queue with Temporal Python SDK for all background proc
 - Onboarding activity input dataclasses now match `OnboardingService` API signatures
 - Warming metrics dispatch uses proper `UpdateWarmingMetricsInput` dataclass instead of raw dict
 - Workflow action callers updated to pass correct field names to Temporal activities
+
+---
 
 ## [0.5.0] - 2026-02-02
 

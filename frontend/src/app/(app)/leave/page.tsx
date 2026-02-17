@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   CalendarDays,
   Plus,
@@ -25,8 +25,10 @@ import { TeamLeaveTable } from "@/components/leave/TeamLeaveTable";
 import { LeaveTypeSettings } from "@/components/leave/LeaveTypeSettings";
 import { LeavePolicySettings } from "@/components/leave/LeavePolicySettings";
 import { HolidaySettings } from "@/components/leave/HolidaySettings";
+import { useSearchParams, useRouter } from "next/navigation";
 
 type Tab = "my-leaves" | "team-leaves" | "approvals" | "settings";
+const validTabs: Tab[] = ["my-leaves", "team-leaves", "approvals", "settings"];
 
 const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "my-leaves", label: "My Leaves", icon: Briefcase },
@@ -36,8 +38,21 @@ const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
 ];
 
 export default function LeavePage() {
-  const [activeTab, setActiveTab] = useState<Tab>("my-leaves");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const tabParam = searchParams.get("tab");
+  const initialTab = validTabs.includes(tabParam as Tab) ? (tabParam as Tab) : "my-leaves";
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [showRequestForm, setShowRequestForm] = useState(false);
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab && validTabs.includes(tab as Tab)) {
+      setActiveTab(tab as Tab);
+    } else {
+      setActiveTab("my-leaves");
+    }
+  }, [searchParams]);
 
   return (
     <div className="min-h-screen bg-slate-950">
@@ -73,7 +88,16 @@ export default function LeavePage() {
                 role="tab"
                 aria-selected={isActive}
                 aria-controls={`tabpanel-${tab.id}`}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  const params = new URLSearchParams(searchParams.toString());
+                  if (tab.id === "my-leaves") {
+                    params.delete("tab");
+                  } else {
+                    params.set("tab", tab.id);
+                  }
+                  router.replace(`/leave${params.toString() ? `?${params.toString()}` : ""}`);
+                }}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition relative ${
                   isActive
                     ? "text-white"

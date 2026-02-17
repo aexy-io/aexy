@@ -131,10 +131,14 @@ export function useDashboardPreferences() {
   );
 
   const reorderWidgets = useCallback(
-    async (fromIndex: number, toIndex: number) => {
+    async (activeId: string, overId: string) => {
       if (!effectivePreferences) return;
 
       const widgets = [...(effectivePreferences.widget_order || effectivePreferences.visible_widgets || [])];
+      const fromIndex = widgets.indexOf(activeId);
+      const toIndex = widgets.indexOf(overId);
+      if (fromIndex === -1 || toIndex === -1) return;
+
       const [removed] = widgets.splice(fromIndex, 1);
       widgets.splice(toIndex, 0, removed);
 
