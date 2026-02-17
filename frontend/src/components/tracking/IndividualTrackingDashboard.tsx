@@ -87,7 +87,7 @@ export function IndividualTrackingDashboard({
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-muted rounded-xl p-6 border border-border">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-blue-900/30 rounded-lg">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
               <MessageSquare className="h-5 w-5 text-blue-400" />
             </div>
             <span className="text-muted-foreground">Standups This Week</span>
@@ -102,7 +102,7 @@ export function IndividualTrackingDashboard({
 
         <div className="bg-muted rounded-xl p-6 border border-border">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-green-900/30 rounded-lg">
+            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
               <Clock className="h-5 w-5 text-green-400" />
             </div>
             <span className="text-muted-foreground">Time This Week</span>
@@ -117,7 +117,7 @@ export function IndividualTrackingDashboard({
 
         <div className="bg-muted rounded-xl p-6 border border-border">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-red-900/30 rounded-lg">
+            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
               <AlertTriangle className="h-5 w-5 text-red-400" />
             </div>
             <span className="text-muted-foreground">Active Blockers</span>
@@ -132,7 +132,7 @@ export function IndividualTrackingDashboard({
 
         <div className="bg-muted rounded-xl p-6 border border-border">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-purple-900/30 rounded-lg">
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
               <Activity className="h-5 w-5 text-purple-400" />
             </div>
             <span className="text-muted-foreground">Work Logs</span>

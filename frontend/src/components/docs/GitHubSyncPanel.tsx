@@ -335,7 +335,7 @@ export function GitHubSyncPanel({
                         className={cn(
                           "flex flex-col items-center gap-1 p-2 rounded-lg border transition",
                           newSync.sync_direction === direction
-                            ? "border-primary-500 bg-primary-900/30 text-primary-400"
+                            ? "border-primary-500 bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
                             : "border-border text-muted-foreground hover:border-border"
                         )}
                       >

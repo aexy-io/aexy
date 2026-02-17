@@ -383,7 +383,7 @@ export function LeaveTypeSettings() {
                   <span
                     className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                       type.is_active
-                        ? "bg-emerald-500/10 text-emerald-400"
+                        ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
                         : "bg-muted-foreground/10 text-muted-foreground"
                     }`}
                   >

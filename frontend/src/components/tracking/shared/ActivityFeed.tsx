@@ -40,38 +40,38 @@ export interface ActivityItem {
 const activityConfig: Record<ActivityType, { icon: LucideIcon; color: string; bgColor: string }> = {
   standup_submitted: {
     icon: MessageSquare,
-    color: "text-blue-400",
-    bgColor: "bg-blue-900/30",
+    color: "text-blue-600 dark:text-blue-400",
+    bgColor: "bg-blue-100 dark:bg-blue-900/30",
   },
   time_logged: {
     icon: Clock,
-    color: "text-green-400",
-    bgColor: "bg-green-900/30",
+    color: "text-green-600 dark:text-green-400",
+    bgColor: "bg-green-100 dark:bg-green-900/30",
   },
   blocker_reported: {
     icon: AlertTriangle,
-    color: "text-red-400",
-    bgColor: "bg-red-900/30",
+    color: "text-red-600 dark:text-red-400",
+    bgColor: "bg-red-100 dark:bg-red-900/30",
   },
   blocker_resolved: {
     icon: CheckCircle2,
-    color: "text-green-400",
-    bgColor: "bg-green-900/30",
+    color: "text-green-600 dark:text-green-400",
+    bgColor: "bg-green-100 dark:bg-green-900/30",
   },
   blocker_escalated: {
     icon: ArrowUpCircle,
-    color: "text-amber-400",
-    bgColor: "bg-amber-900/30",
+    color: "text-amber-600 dark:text-amber-400",
+    bgColor: "bg-amber-100 dark:bg-amber-900/30",
   },
   task_completed: {
     icon: CheckCircle2,
-    color: "text-purple-400",
-    bgColor: "bg-purple-900/30",
+    color: "text-purple-600 dark:text-purple-400",
+    bgColor: "bg-purple-100 dark:bg-purple-900/30",
   },
   task_started: {
     icon: Clock,
-    color: "text-blue-400",
-    bgColor: "bg-blue-900/30",
+    color: "text-blue-600 dark:text-blue-400",
+    bgColor: "bg-blue-100 dark:bg-blue-900/30",
   },
 };
 

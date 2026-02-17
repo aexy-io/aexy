@@ -73,7 +73,7 @@ function ProjectCard({
                     {project.name}
                   </h3>
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1 px-2 py-0.5 bg-green-500/10 text-green-400 text-xs rounded-full border border-green-500/20 hover:bg-green-500/20 transition-colors">
+                    <div className="flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400 text-xs rounded-full border border-green-500/20 hover:bg-green-500/20 transition-colors">
                       <Globe className="h-3 w-3" />
                       {project.is_public ? "Public" : "Private"}
                     </div>

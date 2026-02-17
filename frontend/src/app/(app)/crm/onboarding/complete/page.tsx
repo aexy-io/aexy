@@ -163,10 +163,10 @@ export default function OnboardingComplete() {
   }, [status, router]);
 
   const features = [
-    { icon: Building2, label: "Objects & Records", color: "text-blue-400" },
-    { icon: Users, label: "Contact Management", color: "text-green-400" },
-    { icon: Target, label: "Deal Pipeline", color: "text-amber-400" },
-    { icon: Zap, label: "Automations", color: "text-purple-400" },
+    { icon: Building2, label: "Objects & Records", color: "text-blue-600 dark:text-blue-400" },
+    { icon: Users, label: "Contact Management", color: "text-green-600 dark:text-green-400" },
+    { icon: Target, label: "Deal Pipeline", color: "text-amber-600 dark:text-amber-400" },
+    { icon: Zap, label: "Automations", color: "text-purple-600 dark:text-purple-400" },
   ];
 
   if (status === "loading") {

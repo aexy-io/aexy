@@ -24,7 +24,7 @@ export function MetricCard({
   subtitle,
   icon: Icon,
   iconColor = "text-blue-400",
-  iconBgColor = "bg-blue-900/30",
+  iconBgColor = "bg-blue-100 dark:bg-blue-900/30",
   trend,
   loading = false,
   onClick,
@@ -97,22 +97,22 @@ export function MetricCard({
 export const metricPresets = {
   standup: {
     iconColor: "text-blue-400",
-    iconBgColor: "bg-blue-900/30",
+    iconBgColor: "bg-blue-100 dark:bg-blue-900/30",
   },
   time: {
     iconColor: "text-green-400",
-    iconBgColor: "bg-green-900/30",
+    iconBgColor: "bg-green-100 dark:bg-green-900/30",
   },
   blocker: {
     iconColor: "text-red-400",
-    iconBgColor: "bg-red-900/30",
+    iconBgColor: "bg-red-100 dark:bg-red-900/30",
   },
   score: {
     iconColor: "text-purple-400",
-    iconBgColor: "bg-purple-900/30",
+    iconBgColor: "bg-purple-100 dark:bg-purple-900/30",
   },
   activity: {
     iconColor: "text-amber-400",
-    iconBgColor: "bg-amber-900/30",
+    iconBgColor: "bg-amber-100 dark:bg-amber-900/30",
   },
 };

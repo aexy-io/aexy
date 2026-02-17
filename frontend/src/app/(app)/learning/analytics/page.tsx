@@ -180,13 +180,13 @@ export default function LearningAnalyticsPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
-        return "bg-green-900/50 text-green-400 border-green-700";
+        return "bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-400 border-green-200 dark:border-green-700";
       case "running":
-        return "bg-blue-900/50 text-blue-400 border-blue-700";
+        return "bg-blue-50 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400 border-blue-200 dark:border-blue-700";
       case "pending":
-        return "bg-yellow-900/50 text-yellow-400 border-yellow-700";
+        return "bg-yellow-50 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-400 border-yellow-200 dark:border-yellow-700";
       case "failed":
-        return "bg-red-900/50 text-red-400 border-red-700";
+        return "bg-red-50 text-red-600 dark:bg-red-900/50 dark:text-red-400 border-red-200 dark:border-red-700";
       default:
         return "bg-accent text-foreground border-border";
     }
@@ -282,7 +282,7 @@ export default function LearningAnalyticsPage() {
             <div className="grid md:grid-cols-4 gap-4">
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="p-2 bg-blue-900/50 rounded-lg">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
                     <Clock className="h-5 w-5 text-blue-400" />
                   </div>
                   {formatChange(dashboard.metrics.learning_hours_change)}
@@ -293,7 +293,7 @@ export default function LearningAnalyticsPage() {
 
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="p-2 bg-green-900/50 rounded-lg">
+                  <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg">
                     <Users className="h-5 w-5 text-green-400" />
                   </div>
                   {formatChange(dashboard.metrics.active_learners_change)}
@@ -304,7 +304,7 @@ export default function LearningAnalyticsPage() {
 
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="p-2 bg-purple-900/50 rounded-lg">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
                     <Target className="h-5 w-5 text-purple-400" />
                   </div>
                   <span className="text-sm text-muted-foreground">{dashboard.metrics.completed_goals}/{dashboard.metrics.total_goals}</span>
@@ -315,7 +315,7 @@ export default function LearningAnalyticsPage() {
 
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="p-2 bg-amber-900/50 rounded-lg">
+                  <div className="p-2 bg-amber-100 dark:bg-amber-900/50 rounded-lg">
                     <Award className="h-5 w-5 text-amber-400" />
                   </div>
                   {formatChange(dashboard.metrics.certifications_earned_change)}
@@ -329,7 +329,7 @@ export default function LearningAnalyticsPage() {
             <div className="grid md:grid-cols-3 gap-4">
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="p-2 bg-teal-900/50 rounded-lg">
+                  <div className="p-2 bg-teal-100 dark:bg-teal-900/50 rounded-lg">
                     <CheckCircle2 className="h-5 w-5 text-teal-400" />
                   </div>
                   {formatChange(dashboard.metrics.compliance_rate_change)}
@@ -343,7 +343,7 @@ export default function LearningAnalyticsPage() {
 
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="p-2 bg-indigo-900/50 rounded-lg">
+                  <div className="p-2 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg">
                     <DollarSign className="h-5 w-5 text-indigo-400" />
                   </div>
                   <span className="text-sm text-muted-foreground">{formatPercent(dashboard.metrics.budget_utilization)}</span>
@@ -354,7 +354,7 @@ export default function LearningAnalyticsPage() {
 
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="p-2 bg-red-900/50 rounded-lg">
+                  <div className="p-2 bg-red-100 dark:bg-red-900/50 rounded-lg">
                     <AlertTriangle className="h-5 w-5 text-red-400" />
                   </div>
                 </div>
@@ -642,7 +642,7 @@ export default function LearningAnalyticsPage() {
                         <h3 className="text-foreground font-medium">{report.name}</h3>
                         <p className="text-muted-foreground text-sm mt-1">{getReportTypeLabel(report.report_type)}</p>
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded border ${report.is_active ? "bg-green-900/50 text-green-400 border-green-700" : "bg-accent text-muted-foreground border-border"}`}>
+                      <span className={`text-xs px-2 py-1 rounded border ${report.is_active ? "bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-400 border-green-200 dark:border-green-700" : "bg-accent text-muted-foreground border-border"}`}>
                         {report.is_active ? "Active" : "Inactive"}
                       </span>
                     </div>

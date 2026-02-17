@@ -146,21 +146,21 @@ export default function CompliancePage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
-        return "bg-green-900/50 text-green-400 border-green-700";
+        return "bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-400 border-green-200 dark:border-green-700";
       case "in_progress":
-        return "bg-blue-900/50 text-blue-400 border-blue-700";
+        return "bg-blue-50 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400 border-blue-200 dark:border-blue-700";
       case "overdue":
-        return "bg-red-900/50 text-red-400 border-red-700";
+        return "bg-red-50 text-red-600 dark:bg-red-900/50 dark:text-red-400 border-red-200 dark:border-red-700";
       case "pending":
-        return "bg-yellow-900/50 text-yellow-400 border-yellow-700";
+        return "bg-yellow-50 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-400 border-yellow-200 dark:border-yellow-700";
       case "waived":
         return "bg-accent text-foreground border-border";
       case "active":
-        return "bg-green-900/50 text-green-400 border-green-700";
+        return "bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-400 border-green-200 dark:border-green-700";
       case "expired":
-        return "bg-red-900/50 text-red-400 border-red-700";
+        return "bg-red-50 text-red-600 dark:bg-red-900/50 dark:text-red-400 border-red-200 dark:border-red-700";
       case "expiring_soon":
-        return "bg-orange-900/50 text-orange-400 border-orange-700";
+        return "bg-orange-50 text-orange-600 dark:bg-orange-900/50 dark:text-orange-400 border-orange-200 dark:border-orange-700";
       default:
         return "bg-accent text-foreground border-border";
     }
@@ -204,7 +204,7 @@ export default function CompliancePage() {
         {(myOverdue.length > 0 || myExpiring.length > 0) && (
           <div className="mb-6">
             {myOverdue.length > 0 && (
-              <div className="bg-red-900/20 border border-red-700/50 rounded-lg p-4 mb-3">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-700/50 rounded-lg p-4 mb-3">
                 <div className="flex items-center gap-3">
                   <AlertTriangle className="h-5 w-5 text-red-400" />
                   <div>
@@ -215,7 +215,7 @@ export default function CompliancePage() {
               </div>
             )}
             {myExpiring.length > 0 && (
-              <div className="bg-orange-900/20 border border-orange-700/50 rounded-lg p-4">
+              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-700/50 rounded-lg p-4">
                 <div className="flex items-center gap-3">
                   <Clock className="h-5 w-5 text-orange-400" />
                   <div>
@@ -259,7 +259,7 @@ export default function CompliancePage() {
             <div className="grid md:grid-cols-4 gap-4">
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-blue-900/50 rounded-lg">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
                     <BookOpen className="h-5 w-5 text-blue-400" />
                   </div>
                   <span className="text-muted-foreground text-sm">Total Training</span>
@@ -270,7 +270,7 @@ export default function CompliancePage() {
 
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-green-900/50 rounded-lg">
+                  <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg">
                     <CheckCircle2 className="h-5 w-5 text-green-400" />
                   </div>
                   <span className="text-muted-foreground text-sm">Completion Rate</span>
@@ -283,7 +283,7 @@ export default function CompliancePage() {
 
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-red-900/50 rounded-lg">
+                  <div className="p-2 bg-red-100 dark:bg-red-900/50 rounded-lg">
                     <AlertTriangle className="h-5 w-5 text-red-400" />
                   </div>
                   <span className="text-muted-foreground text-sm">Overdue</span>
@@ -294,7 +294,7 @@ export default function CompliancePage() {
 
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-amber-900/50 rounded-lg">
+                  <div className="p-2 bg-amber-100 dark:bg-amber-900/50 rounded-lg">
                     <Award className="h-5 w-5 text-amber-400" />
                   </div>
                   <span className="text-muted-foreground text-sm">Certifications</span>
@@ -432,7 +432,7 @@ export default function CompliancePage() {
                           <p className="text-muted-foreground text-sm mt-1 line-clamp-2">{training.description}</p>
                         )}
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded border ${training.is_active ? "bg-green-900/50 text-green-400 border-green-700" : "bg-accent text-muted-foreground border-border"}`}>
+                      <span className={`text-xs px-2 py-1 rounded border ${training.is_active ? "bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-400 border-green-200 dark:border-green-700" : "bg-accent text-muted-foreground border-border"}`}>
                         {training.is_active ? "Active" : "Inactive"}
                       </span>
                     </div>
@@ -502,7 +502,7 @@ export default function CompliancePage() {
                       {cert.logo_url ? (
                         <img src={cert.logo_url} alt={cert.name} className="w-12 h-12 rounded-lg object-cover" />
                       ) : (
-                        <div className="w-12 h-12 bg-amber-900/30 rounded-lg flex items-center justify-center">
+                        <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center">
                           <Award className="h-6 w-6 text-amber-400" />
                         </div>
                       )}

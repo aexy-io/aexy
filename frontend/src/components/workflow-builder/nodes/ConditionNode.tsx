@@ -84,7 +84,7 @@ export const ConditionNode = memo(({ data, selected }: NodeProps<ConditionNodeTy
       )}
 
       {!data.hasError && !isSuccess && conditions.length > 0 && (
-        <div className="mt-2 text-xs text-amber-300/70 bg-amber-900/30 rounded px-2 py-1">
+        <div className="mt-2 text-xs text-amber-300/70 bg-amber-100 dark:bg-amber-900/30 rounded px-2 py-1">
           {conditions.length} condition{conditions.length > 1 ? "s" : ""}
         </div>
       )}

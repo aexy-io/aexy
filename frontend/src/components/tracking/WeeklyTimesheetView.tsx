@@ -162,7 +162,7 @@ export function WeeklyTimesheetView({
                     key={i}
                     className={`text-center text-xs font-medium p-3 min-w-[80px] ${
                       isToday
-                        ? "text-blue-400 bg-blue-900/20"
+                        ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
                         : isWeekend
                         ? "text-muted-foreground"
                         : "text-muted-foreground"
@@ -239,7 +239,7 @@ export function WeeklyTimesheetView({
                   <td
                     key={i}
                     className={`text-center text-sm font-medium p-3 ${
-                      isToday ? "bg-blue-900/20" : ""
+                      isToday ? "bg-blue-50 dark:bg-blue-900/20" : ""
                     } ${
                       isOver
                         ? "text-amber-400"

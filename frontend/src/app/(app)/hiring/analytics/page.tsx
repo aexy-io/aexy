@@ -214,9 +214,9 @@ export default function HiringAnalyticsPage() {
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case "critical":
-        return "bg-red-900/50 text-red-400 border-red-700";
+        return "bg-red-50 text-red-600 dark:bg-red-900/50 dark:text-red-400 border-red-200 dark:border-red-700";
       case "moderate":
-        return "bg-yellow-900/50 text-yellow-400 border-yellow-700";
+        return "bg-yellow-50 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-400 border-yellow-200 dark:border-yellow-700";
       default:
         return "bg-accent text-foreground border-border";
     }
@@ -236,11 +236,11 @@ export default function HiringAnalyticsPage() {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "critical":
-        return "bg-red-900/50 text-red-400";
+        return "bg-red-50 text-red-600 dark:bg-red-900/50 dark:text-red-400";
       case "high":
-        return "bg-orange-900/50 text-orange-400";
+        return "bg-orange-50 text-orange-600 dark:bg-orange-900/50 dark:text-orange-400";
       case "medium":
-        return "bg-yellow-900/50 text-yellow-400";
+        return "bg-yellow-50 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-400";
       default:
         return "bg-accent text-muted-foreground";
     }
@@ -562,7 +562,7 @@ export default function HiringAnalyticsPage() {
                               {generatedJD.must_have_skills.map((skill, idx) => (
                                 <span
                                   key={idx}
-                                  className="bg-red-900/50 text-red-300 px-2 py-1 rounded text-xs"
+                                  className="bg-red-100 dark:bg-red-900/50 text-red-300 px-2 py-1 rounded text-xs"
                                 >
                                   {skill.skill} ({skill.level}%)
                                 </span>

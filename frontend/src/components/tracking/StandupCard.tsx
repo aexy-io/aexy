@@ -10,9 +10,9 @@ interface StandupCardProps {
 }
 
 const sourceConfig = {
-  slack_command: { icon: Slack, label: "Slack Command", color: "text-purple-400" },
-  slack_channel: { icon: Slack, label: "Slack Channel", color: "text-purple-400" },
-  web: { icon: Globe, label: "Web", color: "text-blue-400" },
+  slack_command: { icon: Slack, label: "Slack Command", color: "text-purple-600 dark:text-purple-400" },
+  slack_channel: { icon: Slack, label: "Slack Channel", color: "text-purple-600 dark:text-purple-400" },
+  web: { icon: Globe, label: "Web", color: "text-blue-600 dark:text-blue-400" },
 };
 
 export function StandupCard({ standup, showAuthor = false, compact = false }: StandupCardProps) {
@@ -119,7 +119,7 @@ export function StandupCard({ standup, showAuthor = false, compact = false }: St
 
         {/* Blockers */}
         {standup.blockers_summary && (
-          <div className="bg-amber-900/20 border border-amber-700/50 rounded-lg p-3">
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-700/50 rounded-lg p-3">
             <h4 className="text-xs font-medium text-amber-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
               <AlertTriangle className="h-3.5 w-3.5" />
               Blockers

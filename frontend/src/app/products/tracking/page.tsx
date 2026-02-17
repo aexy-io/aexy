@@ -133,10 +133,10 @@ export default function TrackingProductPage() {
                   </div>
                 </div>
                 {[
-                  { user: "Sarah", action: "Merged PR #234", time: "2m ago", icon: GitPullRequest, color: "text-purple-400" },
-                  { user: "Mike", action: "Pushed 3 commits", time: "5m ago", icon: GitCommit, color: "text-emerald-400" },
-                  { user: "Alex", action: "Started code review", time: "8m ago", icon: Eye, color: "text-blue-400" },
-                  { user: "Jordan", action: "Closed issue #89", time: "12m ago", icon: CheckCircle2, color: "text-amber-400" },
+                  { user: "Sarah", action: "Merged PR #234", time: "2m ago", icon: GitPullRequest, color: "text-purple-600 dark:text-purple-400" },
+                  { user: "Mike", action: "Pushed 3 commits", time: "5m ago", icon: GitCommit, color: "text-emerald-600 dark:text-emerald-400" },
+                  { user: "Alex", action: "Started code review", time: "8m ago", icon: Eye, color: "text-blue-600 dark:text-blue-400" },
+                  { user: "Jordan", action: "Closed issue #89", time: "12m ago", icon: CheckCircle2, color: "text-amber-600 dark:text-amber-400" },
                 ].map((item, idx) => (
                   <div key={idx} className="flex items-center gap-4 p-3 bg-white/5 rounded-xl">
                     <div className="w-10 h-10 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-full flex items-center justify-center">

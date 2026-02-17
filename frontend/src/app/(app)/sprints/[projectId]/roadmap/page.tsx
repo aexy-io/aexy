@@ -62,19 +62,19 @@ interface RoadmapComment {
 }
 
 const CATEGORY_CONFIG: Record<RoadmapCategory, { label: string; icon: typeof Lightbulb; color: string }> = {
-  feature: { label: "Feature", icon: Lightbulb, color: "text-blue-400 bg-blue-900/30" },
-  improvement: { label: "Improvement", icon: Zap, color: "text-yellow-400 bg-yellow-900/30" },
-  integration: { label: "Integration", icon: Link2, color: "text-purple-400 bg-purple-900/30" },
-  bug_fix: { label: "Bug Fix", icon: Bug, color: "text-red-400 bg-red-900/30" },
+  feature: { label: "Feature", icon: Lightbulb, color: "text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30" },
+  improvement: { label: "Improvement", icon: Zap, color: "text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30" },
+  integration: { label: "Integration", icon: Link2, color: "text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30" },
+  bug_fix: { label: "Bug Fix", icon: Bug, color: "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30" },
   other: { label: "Other", icon: MoreHorizontal, color: "text-muted-foreground bg-accent" },
 };
 
 const STATUS_CONFIG: Record<RoadmapStatus, { label: string; icon: typeof Clock; color: string; bgColor: string }> = {
   under_review: { label: "Under Review", icon: Clock, color: "text-muted-foreground", bgColor: "bg-accent" },
-  planned: { label: "Planned", icon: CheckCircle2, color: "text-blue-400", bgColor: "bg-blue-900/50" },
-  in_progress: { label: "In Progress", icon: Loader2, color: "text-yellow-400", bgColor: "bg-yellow-900/50" },
-  completed: { label: "Completed", icon: CheckCircle2, color: "text-green-400", bgColor: "bg-green-900/50" },
-  declined: { label: "Declined", icon: XCircle, color: "text-red-400", bgColor: "bg-red-900/50" },
+  planned: { label: "Planned", icon: CheckCircle2, color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-100 dark:bg-blue-900/50" },
+  in_progress: { label: "In Progress", icon: Loader2, color: "text-yellow-600 dark:text-yellow-400", bgColor: "bg-yellow-100 dark:bg-yellow-900/50" },
+  completed: { label: "Completed", icon: CheckCircle2, color: "text-green-600 dark:text-green-400", bgColor: "bg-green-100 dark:bg-green-900/50" },
+  declined: { label: "Declined", icon: XCircle, color: "text-red-600 dark:text-red-400", bgColor: "bg-red-100 dark:bg-red-900/50" },
 };
 
 function StatusDropdown({

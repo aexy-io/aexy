@@ -25,19 +25,19 @@ function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { bg: string; text: string; icon: React.ReactNode; label: string }> = {
     synced: {
       bg: "bg-green-500/10",
-      text: "text-green-400",
+      text: "text-green-600 dark:text-green-400",
       icon: <CheckCircle2 className="h-3 w-3" />,
       label: "Synced",
     },
     syncing: {
       bg: "bg-yellow-500/10",
-      text: "text-yellow-400",
+      text: "text-yellow-600 dark:text-yellow-400",
       icon: <Loader2 className="h-3 w-3 animate-spin" />,
       label: "Syncing",
     },
     failed: {
       bg: "bg-red-500/10",
-      text: "text-red-400",
+      text: "text-red-600 dark:text-red-400",
       icon: <AlertCircle className="h-3 w-3" />,
       label: "Failed",
     },
@@ -103,7 +103,7 @@ function DeveloperRow({ developer }: { developer: DeveloperSyncStatusData }) {
             {developer.developer_name || developer.developer_id.slice(0, 12)}
           </span>
           {!developer.is_workspace_member && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-medium ml-2">
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 font-medium ml-2">
               External
             </span>
           )}

@@ -36,15 +36,15 @@ export function CollaborationAwareness({
     connecting: {
       icon: RefreshCw,
       label: "Connecting...",
-      color: "text-amber-400",
-      bgColor: "bg-amber-900/30",
+      color: "text-amber-600 dark:text-amber-400",
+      bgColor: "bg-amber-100 dark:bg-amber-900/30",
       animate: true,
     },
     connected: {
       icon: Wifi,
       label: "Connected",
-      color: "text-green-400",
-      bgColor: "bg-green-900/30",
+      color: "text-green-600 dark:text-green-400",
+      bgColor: "bg-green-100 dark:bg-green-900/30",
       animate: false,
     },
     disconnected: {
@@ -57,8 +57,8 @@ export function CollaborationAwareness({
     error: {
       icon: AlertCircle,
       label: "Connection error",
-      color: "text-red-400",
-      bgColor: "bg-red-900/30",
+      color: "text-red-600 dark:text-red-400",
+      bgColor: "bg-red-100 dark:bg-red-900/30",
       animate: false,
     },
   };
@@ -254,7 +254,7 @@ export function CollaborationBadge({
       <div
         className={cn(
           "flex items-center gap-1 px-2 py-1 rounded-lg text-xs",
-          connectionStatus === "error" ? "bg-red-900/30 text-red-400" : "bg-accent text-muted-foreground",
+          connectionStatus === "error" ? "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400" : "bg-accent text-muted-foreground",
           className
         )}
       >

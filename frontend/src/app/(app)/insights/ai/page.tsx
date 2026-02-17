@@ -307,7 +307,7 @@ export default function AIInsightsPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition ${
                 isActive
-                  ? "bg-indigo-900/50 border-indigo-500 text-white"
+                  ? "bg-indigo-100 dark:bg-indigo-900/50 border-indigo-500 text-white"
                   : "bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-750 hover:text-gray-200"
               }`}
             >

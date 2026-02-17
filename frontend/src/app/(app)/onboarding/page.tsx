@@ -150,9 +150,9 @@ export default function OnboardingWelcome() {
               <div className="px-6 pb-6">
                 <p className="text-xs text-muted-foreground mb-3">Recent Activity</p>
                 {[
-                  { icon: GitBranch, text: "PR #234 merged to main", time: "2m ago", color: "text-green-400" },
-                  { icon: Mail, text: "New email from Acme Corp", time: "15m ago", color: "text-blue-400" },
-                  { icon: Zap, text: "Deal moved to Negotiation", time: "1h ago", color: "text-amber-400" },
+                  { icon: GitBranch, text: "PR #234 merged to main", time: "2m ago", color: "text-green-600 dark:text-green-400" },
+                  { icon: Mail, text: "New email from Acme Corp", time: "15m ago", color: "text-blue-600 dark:text-blue-400" },
+                  { icon: Zap, text: "Deal moved to Negotiation", time: "1h ago", color: "text-amber-600 dark:text-amber-400" },
                 ].map((item, i) => (
                   <motion.div
                     key={i}

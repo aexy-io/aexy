@@ -34,28 +34,28 @@ function getRoleBadgeColor(roleName: string | null) {
 
   const name = roleName.toLowerCase();
   if (name.includes("admin") || name.includes("owner")) {
-    return "bg-amber-900/30 text-amber-400";
+    return "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400";
   }
   if (name.includes("manager") || name.includes("lead")) {
-    return "bg-purple-900/30 text-purple-400";
+    return "bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400";
   }
   if (name.includes("developer") || name.includes("dev")) {
-    return "bg-blue-900/30 text-blue-400";
+    return "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400";
   }
   if (name.includes("viewer") || name.includes("read")) {
     return "bg-muted text-foreground";
   }
-  return "bg-green-900/30 text-green-400";
+  return "bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400";
 }
 
 function getStatusBadgeColor(status: Project["status"]) {
   switch (status) {
     case "active":
-      return "bg-green-900/30 text-green-400";
+      return "bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400";
     case "on_hold":
-      return "bg-amber-900/30 text-amber-400";
+      return "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400";
     case "completed":
-      return "bg-blue-900/30 text-blue-400";
+      return "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400";
     case "archived":
       return "bg-muted text-muted-foreground";
     default:
@@ -181,7 +181,7 @@ function ProjectCard({
                   {project.status.replace("_", " ")}
                 </span>
                 <span
-                  className={`px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap bg-yellow-900/30 text-yellow-400`}
+                  className={`px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap bg-yellow-50 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400`}
                 >
                   {project.is_public? 'Public':'Private'}
                 </span>

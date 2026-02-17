@@ -32,9 +32,9 @@ type WebhookStatus = "none" | "pending" | "active" | "failed";
 function SyncStatusBadge({ status }: { status: SyncStatus }) {
   const config = {
     pending: { icon: Clock, color: "text-muted-foreground", bg: "bg-muted", label: "Pending" },
-    syncing: { icon: Loader2, color: "text-blue-400", bg: "bg-blue-900/30", label: "Syncing" },
-    synced: { icon: Check, color: "text-green-400", bg: "bg-green-900/30", label: "Synced" },
-    failed: { icon: AlertCircle, color: "text-red-400", bg: "bg-red-900/30", label: "Failed" },
+    syncing: { icon: Loader2, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-900/30", label: "Syncing" },
+    synced: { icon: Check, color: "text-green-600 dark:text-green-400", bg: "bg-green-50 dark:bg-green-900/30", label: "Synced" },
+    failed: { icon: AlertCircle, color: "text-red-600 dark:text-red-400", bg: "bg-red-50 dark:bg-red-900/30", label: "Failed" },
   };
 
   const { icon: Icon, color, bg, label } = config[status];
@@ -50,9 +50,9 @@ function SyncStatusBadge({ status }: { status: SyncStatus }) {
 function WebhookStatusBadge({ status }: { status: WebhookStatus }) {
   const config = {
     none: { color: "text-muted-foreground", label: "No webhook" },
-    pending: { color: "text-yellow-400", label: "Webhook pending" },
-    active: { color: "text-green-400", label: "Webhook active" },
-    failed: { color: "text-red-400", label: "Webhook failed" },
+    pending: { color: "text-yellow-600 dark:text-yellow-400", label: "Webhook pending" },
+    active: { color: "text-green-600 dark:text-green-400", label: "Webhook active" },
+    failed: { color: "text-red-600 dark:text-red-400", label: "Webhook failed" },
   };
 
   const { color, label } = config[status];

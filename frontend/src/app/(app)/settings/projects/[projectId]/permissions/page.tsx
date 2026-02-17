@@ -34,18 +34,18 @@ function getRoleBadgeColor(roleName: string | null) {
 
   const name = roleName.toLowerCase();
   if (name.includes("admin") || name.includes("owner")) {
-    return "bg-amber-900/30 text-amber-400";
+    return "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400";
   }
   if (name.includes("manager") || name.includes("lead")) {
-    return "bg-purple-900/30 text-purple-400";
+    return "bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400";
   }
   if (name.includes("developer") || name.includes("dev")) {
-    return "bg-blue-900/30 text-blue-400";
+    return "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400";
   }
   if (name.includes("viewer") || name.includes("read")) {
     return "bg-muted text-foreground";
   }
-  return "bg-green-900/30 text-green-400";
+  return "bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400";
 }
 
 export default function ProjectPermissionsPage() {
@@ -511,7 +511,7 @@ export default function ProjectPermissionsPage() {
                       {inviteResult && (
                         <div className="space-y-2">
                           {inviteResult.invited.length > 0 && (
-                            <div className="flex items-start gap-2 p-3 bg-green-900/20 border border-green-800/50 rounded-lg">
+                            <div className="flex items-start gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-800/50 rounded-lg">
                               <CheckCircle className="h-4 w-4 text-green-400 mt-0.5 shrink-0" />
                               <div>
                                 <p className="text-sm text-green-400 font-medium">
@@ -537,7 +537,7 @@ export default function ProjectPermissionsPage() {
                             </div>
                           )}
                           {inviteResult.failed.length > 0 && (
-                            <div className="flex items-start gap-2 p-3 bg-red-900/20 border border-red-800/50 rounded-lg">
+                            <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-800/50 rounded-lg">
                               <AlertCircle className="h-4 w-4 text-red-400 mt-0.5 shrink-0" />
                               <div>
                                 <p className="text-sm text-red-400 font-medium">

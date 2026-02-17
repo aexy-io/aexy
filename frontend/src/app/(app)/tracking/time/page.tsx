@@ -198,7 +198,7 @@ export default function TimeTrackingPage() {
             subtitle={`${stats.weekEntries} entries`}
             icon={TrendingUp}
             iconColor="text-blue-400"
-            iconBgColor="bg-blue-900/30"
+            iconBgColor="bg-blue-100 dark:bg-blue-900/30"
             loading={isLoading}
           />
           <MetricCard
@@ -207,7 +207,7 @@ export default function TimeTrackingPage() {
             subtitle={`${stats.uniqueDays} days logged`}
             icon={Clock}
             iconColor="text-purple-400"
-            iconBgColor="bg-purple-900/30"
+            iconBgColor="bg-purple-100 dark:bg-purple-900/30"
             loading={isLoading}
           />
           <UtilizationGauge

@@ -271,7 +271,7 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
                       <span className="text-sm text-foreground">Standup</span>
                     </div>
                     {standupSubmitted ? (
-                      <span className="text-xs text-green-400 bg-green-900/30 px-2 py-0.5 rounded">
+                      <span className="text-xs text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded">
                         Done
                       </span>
                     ) : (
@@ -304,7 +304,7 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
                     </div>
                     <span className={`text-xs px-2 py-0.5 rounded ${
                       activeBlockersCount > 0
-                        ? "text-orange-400 bg-orange-900/30"
+                        ? "text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30"
                         : "text-muted-foreground bg-muted"
                     }`}>
                       {activeBlockersCount}
@@ -335,7 +335,7 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
                         </div>
                         <span className={`text-xs px-2 py-0.5 rounded ${
                           (ticketStats.assigned_to_me || 0) > 0
-                            ? "text-pink-400 bg-pink-900/30"
+                            ? "text-pink-600 dark:text-pink-400 bg-pink-100 dark:bg-pink-900/30"
                             : "text-muted-foreground bg-muted"
                         }`}>
                           {ticketStats.assigned_to_me || 0}
@@ -348,7 +348,7 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
                         </div>
                         <span className={`text-xs px-2 py-0.5 rounded ${
                           ticketStats.sla_breached > 0
-                            ? "text-red-400 bg-red-900/30"
+                            ? "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30"
                             : "text-muted-foreground bg-muted"
                         }`}>
                           {ticketStats.sla_breached}
@@ -466,9 +466,9 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
                       setShowUserMenu(false);
                       logout();
                     }}
-                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-900/20 transition"
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-red-900/30 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                       <LogOut className="h-4 w-4 text-red-400" />
                     </div>
                     Sign Out

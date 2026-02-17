@@ -70,11 +70,11 @@ interface Actionable {
 
 const reviewStatusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
   pending: { label: "Pending", color: "text-muted-foreground", bgColor: "bg-muted-foreground/20" },
-  self_review_submitted: { label: "Self Review Done", color: "text-blue-400", bgColor: "bg-blue-500/20" },
-  peer_review_in_progress: { label: "Peer Review", color: "text-purple-400", bgColor: "bg-purple-500/20" },
-  manager_review_in_progress: { label: "Manager Review", color: "text-amber-400", bgColor: "bg-amber-500/20" },
-  completed: { label: "Completed", color: "text-emerald-400", bgColor: "bg-emerald-500/20" },
-  acknowledged: { label: "Acknowledged", color: "text-cyan-400", bgColor: "bg-cyan-500/20" },
+  self_review_submitted: { label: "Self Review Done", color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-500/20" },
+  peer_review_in_progress: { label: "Peer Review", color: "text-purple-600 dark:text-purple-400", bgColor: "bg-purple-500/20" },
+  manager_review_in_progress: { label: "Manager Review", color: "text-amber-600 dark:text-amber-400", bgColor: "bg-amber-500/20" },
+  completed: { label: "Completed", color: "text-emerald-600 dark:text-emerald-400", bgColor: "bg-emerald-500/20" },
+  acknowledged: { label: "Acknowledged", color: "text-cyan-600 dark:text-cyan-400", bgColor: "bg-cyan-500/20" },
 };
 
 export default function ReviewsManagePage() {

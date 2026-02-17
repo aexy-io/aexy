@@ -40,7 +40,7 @@ type TabType = "github" | "jira" | "linear" | "slack";
 function ConnectionStatusBadge({ connected }: { connected: boolean }) {
   if (connected) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-green-900/30 text-green-400">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400">
         <CheckCircle className="h-3 w-3" />
         Connected
       </span>
@@ -1028,12 +1028,12 @@ function IntegrationsPageContent() {
                               <Hash className="h-4 w-4 text-muted-foreground" />
                               <span className="text-foreground">{channel.channel_name}</span>
                               {channel.auto_parse_standups && (
-                                <span className="px-2 py-0.5 bg-green-900/30 text-green-400 rounded text-xs">
+                                <span className="px-2 py-0.5 bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400 rounded text-xs">
                                   Standups
                                 </span>
                               )}
                               {channel.auto_parse_blockers && (
-                                <span className="px-2 py-0.5 bg-orange-900/30 text-orange-400 rounded text-xs">
+                                <span className="px-2 py-0.5 bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 rounded text-xs">
                                   Blockers
                                 </span>
                               )}

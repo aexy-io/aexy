@@ -37,9 +37,9 @@ interface Template {
 }
 
 const TYPE_CONFIG: Record<TemplateType, { label: string; icon: any; color: string; bgColor: string }> = {
-  jd: { label: "Job Description", icon: FileText, color: "text-blue-400", bgColor: "bg-blue-500/20" },
-  rubric: { label: "Interview Rubric", icon: ClipboardCheck, color: "text-purple-400", bgColor: "bg-purple-500/20" },
-  email: { label: "Email Template", icon: Mail, color: "text-green-400", bgColor: "bg-green-500/20" },
+  jd: { label: "Job Description", icon: FileText, color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-500/20" },
+  rubric: { label: "Interview Rubric", icon: ClipboardCheck, color: "text-purple-600 dark:text-purple-400", bgColor: "bg-purple-500/20" },
+  email: { label: "Email Template", icon: Mail, color: "text-green-600 dark:text-green-400", bgColor: "bg-green-500/20" },
 };
 
 // Mock templates

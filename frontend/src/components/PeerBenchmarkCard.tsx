@@ -177,7 +177,7 @@ export function PeerBenchmarkCard({ developerId }: PeerBenchmarkCardProps) {
             {benchmark.strengths.slice(0, 3).map((s, i) => (
               <div
                 key={`${s}-${i}`}
-                className="text-xs text-foreground bg-green-900/20 px-2 py-1 rounded"
+                className="text-xs text-foreground bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded"
               >
                 {s}
               </div>
@@ -195,7 +195,7 @@ export function PeerBenchmarkCard({ developerId }: PeerBenchmarkCardProps) {
             {benchmark.growth_opportunities.slice(0, 3).map((g, i) => (
               <div
                 key={`${g}-${i}`}
-                className="text-xs text-foreground bg-amber-900/20 px-2 py-1 rounded"
+                className="text-xs text-foreground bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded"
               >
                 {g}
               </div>

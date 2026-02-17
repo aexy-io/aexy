@@ -138,8 +138,8 @@ export function StandupCalendarView({
                 relative aspect-square p-1 rounded-lg transition flex flex-col items-center justify-center
                 ${day.isCurrentMonth ? "text-foreground" : "text-muted-foreground"}
                 ${day.isToday ? "ring-2 ring-blue-500" : ""}
-                ${hasStandup ? "bg-green-900/30 hover:bg-green-900/50" : "hover:bg-accent"}
-                ${isMissed ? "bg-red-900/20" : ""}
+                ${hasStandup ? "bg-green-100 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50" : "hover:bg-accent"}
+                ${isMissed ? "bg-red-50 dark:bg-red-900/20" : ""}
               `}
             >
               <span
@@ -167,11 +167,11 @@ export function StandupCalendarView({
       {/* Legend */}
       <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-border">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <div className="w-3 h-3 rounded bg-green-900/30" />
+          <div className="w-3 h-3 rounded bg-green-100 dark:bg-green-900/30" />
           <span>Submitted</span>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <div className="w-3 h-3 rounded bg-red-900/20" />
+          <div className="w-3 h-3 rounded bg-red-50 dark:bg-red-900/20" />
           <span>Missed</span>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">

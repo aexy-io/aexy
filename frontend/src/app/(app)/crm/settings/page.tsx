@@ -678,7 +678,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
               {/* Gmail Sync */}
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-lg bg-blue-500/10 text-blue-400">
+                  <div className="p-3 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
                     <Mail className="w-5 h-5" />
                   </div>
                   <div>
@@ -788,7 +788,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
               {/* Calendar Sync */}
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-lg bg-green-500/10 text-green-400">
+                  <div className="p-3 rounded-lg bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400">
                     <Calendar className="w-5 h-5" />
                   </div>
                   <div>
@@ -898,7 +898,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
               {/* AI Enrichment */}
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-lg bg-purple-500/10 text-purple-400">
+                  <div className="p-3 rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400">
                     <Sparkles className="w-5 h-5" />
                   </div>
                   <div>
@@ -922,7 +922,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
               <div className="border-t border-border/50 pt-6">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-lg bg-amber-500/10 text-amber-400">
+                    <div className="p-3 rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400">
                       <DollarSign className="w-5 h-5" />
                     </div>
                     <div>
@@ -981,7 +981,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                           onClick={() => handleUpdateDealSettings({ deal_creation_mode: "auto" })}
                           className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-colors ${
                             dealSettings.deal_creation_mode === "auto"
-                              ? "border-amber-500 bg-amber-500/10 text-amber-400"
+                              ? "border-amber-500 bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"
                               : "border-border hover:border-border text-muted-foreground"
                           }`}
                         >
@@ -993,7 +993,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                           onClick={() => handleUpdateDealSettings({ deal_creation_mode: "ai" })}
                           className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-colors ${
                             dealSettings.deal_creation_mode === "ai"
-                              ? "border-purple-500 bg-purple-500/10 text-purple-400"
+                              ? "border-purple-500 bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400"
                               : "border-border hover:border-border text-muted-foreground"
                           }`}
                         >
@@ -1005,7 +1005,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                           onClick={() => handleUpdateDealSettings({ deal_creation_mode: "criteria" })}
                           className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-colors ${
                             dealSettings.deal_creation_mode === "criteria"
-                              ? "border-blue-500 bg-blue-500/10 text-blue-400"
+                              ? "border-blue-500 bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
                               : "border-border hover:border-border text-muted-foreground"
                           }`}
                         >
@@ -1239,7 +1239,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
             onClick={() => router.push("/crm/inbox")}
             className="flex items-center gap-4 p-4 bg-muted/30 border border-border/50 rounded-xl hover:border-border transition-colors text-left"
           >
-            <div className="p-3 rounded-lg bg-blue-500/10 text-blue-400">
+            <div className="p-3 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
               <Mail className="w-5 h-5" />
             </div>
             <div>
@@ -1251,7 +1251,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
             onClick={() => router.push("/crm/person")}
             className="flex items-center gap-4 p-4 bg-muted/30 border border-border/50 rounded-xl hover:border-border transition-colors text-left"
           >
-            <div className="p-3 rounded-lg bg-purple-500/10 text-purple-400">
+            <div className="p-3 rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400">
               <Users className="w-5 h-5" />
             </div>
             <div>
@@ -1263,7 +1263,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
             onClick={() => router.push("/crm/deal")}
             className="flex items-center gap-4 p-4 bg-muted/30 border border-border/50 rounded-xl hover:border-border transition-colors text-left"
           >
-            <div className="p-3 rounded-lg bg-amber-500/10 text-amber-400">
+            <div className="p-3 rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400">
               <DollarSign className="w-5 h-5" />
             </div>
             <div>

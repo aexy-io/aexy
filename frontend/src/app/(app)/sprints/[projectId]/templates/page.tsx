@@ -30,10 +30,10 @@ import { Badge, Skeleton } from "@/components/ui/premium-card";
 
 // Priority configuration
 const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string; bgColor: string }> = {
-  critical: { label: "Critical", color: "text-red-400", bgColor: "bg-red-500/20" },
-  high: { label: "High", color: "text-orange-400", bgColor: "bg-orange-500/20" },
-  medium: { label: "Medium", color: "text-yellow-400", bgColor: "bg-yellow-500/20" },
-  low: { label: "Low", color: "text-blue-400", bgColor: "bg-blue-500/20" },
+  critical: { label: "Critical", color: "text-red-600 dark:text-red-400", bgColor: "bg-red-500/20" },
+  high: { label: "High", color: "text-orange-600 dark:text-orange-400", bgColor: "bg-orange-500/20" },
+  medium: { label: "Medium", color: "text-yellow-600 dark:text-yellow-400", bgColor: "bg-yellow-500/20" },
+  low: { label: "Low", color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-500/20" },
 };
 
 interface TemplateCardProps {

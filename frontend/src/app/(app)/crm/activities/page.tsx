@@ -30,16 +30,16 @@ type ActivityType = "all" | "email" | "meeting" | "call" | "note" | "task" | "re
 
 const activityTypeConfig: Record<string, { icon: React.ElementType; label: string; color: string; bgColor: string }> = {
   all: { icon: Clock, label: "All", color: "text-muted-foreground", bgColor: "bg-muted-foreground/20" },
-  email: { icon: Mail, label: "Emails", color: "text-blue-400", bgColor: "bg-blue-500/20" },
-  meeting: { icon: Calendar, label: "Meetings", color: "text-green-400", bgColor: "bg-green-500/20" },
-  call: { icon: Phone, label: "Calls", color: "text-amber-400", bgColor: "bg-amber-500/20" },
-  note: { icon: FileText, label: "Notes", color: "text-purple-400", bgColor: "bg-purple-500/20" },
-  task: { icon: MessageSquare, label: "Tasks", color: "text-pink-400", bgColor: "bg-pink-500/20" },
-  record_created: { icon: Plus, label: "Created", color: "text-emerald-400", bgColor: "bg-emerald-500/20" },
+  email: { icon: Mail, label: "Emails", color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-500/20" },
+  meeting: { icon: Calendar, label: "Meetings", color: "text-green-600 dark:text-green-400", bgColor: "bg-green-500/20" },
+  call: { icon: Phone, label: "Calls", color: "text-amber-600 dark:text-amber-400", bgColor: "bg-amber-500/20" },
+  note: { icon: FileText, label: "Notes", color: "text-purple-600 dark:text-purple-400", bgColor: "bg-purple-500/20" },
+  task: { icon: MessageSquare, label: "Tasks", color: "text-pink-600 dark:text-pink-400", bgColor: "bg-pink-500/20" },
+  record_created: { icon: Plus, label: "Created", color: "text-emerald-600 dark:text-emerald-400", bgColor: "bg-emerald-500/20" },
   record_updated: { icon: Edit, label: "Updated", color: "text-sky-400", bgColor: "bg-sky-500/20" },
-  record_deleted: { icon: Trash, label: "Deleted", color: "text-red-400", bgColor: "bg-red-500/20" },
+  record_deleted: { icon: Trash, label: "Deleted", color: "text-red-600 dark:text-red-400", bgColor: "bg-red-500/20" },
   record_viewed: { icon: Eye, label: "Viewed", color: "text-muted-foreground", bgColor: "bg-muted-foreground/20" },
-  link_created: { icon: Link2, label: "Linked", color: "text-indigo-400", bgColor: "bg-indigo-500/20" },
+  link_created: { icon: Link2, label: "Linked", color: "text-indigo-600 dark:text-indigo-400", bgColor: "bg-indigo-500/20" },
 };
 
 function getActivityConfig(type: string) {

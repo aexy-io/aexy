@@ -79,7 +79,7 @@ export function LeaveApprovalCard({
             </span>
           </div>
         </div>
-        <span className="text-xs font-medium px-2.5 py-1 rounded-full border bg-yellow-500/10 text-yellow-400 border-yellow-500/20 flex-shrink-0">
+        <span className="text-xs font-medium px-2.5 py-1 rounded-full border bg-yellow-50 text-yellow-600 dark:bg-yellow-500/10 dark:text-yellow-400 border-yellow-200 dark:border-yellow-500/20 flex-shrink-0">
           Pending
         </span>
       </div>

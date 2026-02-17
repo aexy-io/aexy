@@ -40,7 +40,7 @@ export function WhoIsOutPanel({ date, teamId }: WhoIsOutPanelProps) {
           )}
         </h4>
         {whoIsOut && whoIsOut.total_out > 0 && (
-          <span className="ml-auto text-xs bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full font-medium">
+          <span className="ml-auto text-xs bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 px-2 py-0.5 rounded-full font-medium">
             {whoIsOut.total_out}
           </span>
         )}

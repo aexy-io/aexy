@@ -128,7 +128,7 @@ export function TemplateSelector({
                   Use AI to generate documentation from your source code
                 </p>
               </div>
-              <span className="px-2 py-1 text-xs font-medium text-purple-300 bg-purple-900/50 rounded-full">
+              <span className="px-2 py-1 text-xs font-medium text-purple-300 bg-purple-100 dark:bg-purple-900/50 rounded-full">
                 AI Powered
               </span>
             </button>

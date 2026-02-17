@@ -77,18 +77,18 @@ function GoalCard({ goal }: { goal: WorkGoal }) {
 function CycleCard({ cycle }: { cycle: ReviewCycle }) {
   const statusColors: Record<string, { text: string; bg: string }> = {
     draft: { text: "text-muted-foreground", bg: "bg-muted-foreground/10" },
-    active: { text: "text-green-400", bg: "bg-green-500/10" },
-    self_review: { text: "text-blue-400", bg: "bg-blue-500/10" },
-    peer_review: { text: "text-purple-400", bg: "bg-purple-500/10" },
-    manager_review: { text: "text-amber-400", bg: "bg-amber-500/10" },
-    completed: { text: "text-emerald-400", bg: "bg-emerald-500/10" },
+    active: { text: "text-green-600 dark:text-green-400", bg: "bg-green-500/10" },
+    self_review: { text: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10" },
+    peer_review: { text: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10" },
+    manager_review: { text: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10" },
+    completed: { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10" },
   };
   const colors = statusColors[cycle.status] || statusColors.draft;
 
   return (
     <Link
       href={`/reviews/cycles/${cycle.id}`}
-      className="block bg-purple-900/20 border border-purple-800/50 rounded-lg p-4 hover:bg-purple-900/30 transition"
+      className="block bg-purple-50 dark:bg-purple-900/20 border border-purple-800/50 rounded-lg p-4 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition"
     >
       <div className="flex items-center gap-2 mb-2">
         <Calendar className="h-4 w-4 text-purple-400" />

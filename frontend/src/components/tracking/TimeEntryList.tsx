@@ -109,7 +109,7 @@ export function TimeEntryList({
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-3">
-                        <div className="p-2 bg-green-900/30 rounded-lg">
+                        <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
                           <Clock className="h-5 w-5 text-green-400" />
                         </div>
                         <div>
@@ -118,7 +118,7 @@ export function TimeEntryList({
                               {formatDuration(entry.duration_minutes)}
                             </span>
                             {entry.is_inferred && (
-                              <span className="text-xs px-2 py-0.5 bg-purple-900/30 text-purple-400 rounded">
+                              <span className="text-xs px-2 py-0.5 bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 rounded">
                                 Inferred
                               </span>
                             )}
@@ -136,7 +136,7 @@ export function TimeEntryList({
                       {onDelete && (
                         <button
                           onClick={() => onDelete(entry.id)}
-                          className="p-1.5 text-muted-foreground hover:text-red-400 hover:bg-red-900/20 rounded transition"
+                          className="p-1.5 text-muted-foreground hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>

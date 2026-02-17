@@ -202,7 +202,7 @@ export function ActivityList({
                         onClick={() => setNewActivity({ ...newActivity, activity_type: opt.value })}
                         className={`flex flex-col items-center gap-1 p-3 rounded-lg border transition ${
                           newActivity.activity_type === opt.value
-                            ? "border-blue-500 bg-blue-900/30"
+                            ? "border-blue-500 bg-blue-100 dark:bg-blue-900/30"
                             : "border-border hover:border-border"
                         }`}
                       >

@@ -21,19 +21,19 @@ function UsageAlertBanner({ warning, onDismiss }: UsageAlertBannerProps) {
 
   const severityStyles = {
     warning: {
-      bg: isOverage ? "bg-amber-900/40" : "bg-amber-900/30",
+      bg: isOverage ? "bg-amber-900/40" : "bg-amber-100 dark:bg-amber-900/30",
       border: "border-amber-700",
-      text: "text-amber-400",
+      text: "text-amber-600 dark:text-amber-400",
       icon: isOverage ? <Coins className="h-5 w-5 text-amber-400" /> : <AlertTriangle className="h-5 w-5 text-amber-400" />,
-      progressBg: "bg-amber-900/50",
+      progressBg: "bg-amber-100 dark:bg-amber-900/50",
       progressBar: "bg-amber-500",
     },
     critical: {
-      bg: "bg-red-900/30",
+      bg: "bg-red-50 dark:bg-red-900/30",
       border: "border-red-700",
-      text: "text-red-400",
+      text: "text-red-600 dark:text-red-400",
       icon: <TrendingUp className="h-5 w-5 text-red-400" />,
-      progressBg: "bg-red-900/50",
+      progressBg: "bg-red-100 dark:bg-red-900/50",
       progressBar: "bg-red-500",
     },
     limit_reached: {

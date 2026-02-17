@@ -91,7 +91,7 @@ export function InsightsCard({
             {insights.strengths.map((strength) => (
               <span
                 key={strength}
-                className="bg-green-900/30 text-green-300 px-2 py-1 rounded text-xs"
+                className="bg-green-100 dark:bg-green-900/30 text-green-300 px-2 py-1 rounded text-xs"
               >
                 {strength}
               </span>
@@ -110,7 +110,7 @@ export function InsightsCard({
             {insights.growth_areas.map((area) => (
               <span
                 key={area}
-                className="bg-amber-900/30 text-amber-300 px-2 py-1 rounded text-xs"
+                className="bg-amber-100 dark:bg-amber-900/30 text-amber-300 px-2 py-1 rounded text-xs"
               >
                 {area}
               </span>

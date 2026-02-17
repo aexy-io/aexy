@@ -10,10 +10,10 @@ interface BugsTabProps {
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
-  blocker: "text-red-400 bg-red-900/30",
-  critical: "text-red-400 bg-red-900/30",
-  major: "text-orange-400 bg-orange-900/30",
-  minor: "text-yellow-400 bg-yellow-900/30",
+  blocker: "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30",
+  critical: "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30",
+  major: "text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30",
+  minor: "text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30",
   trivial: "text-muted-foreground bg-accent",
 };
 
@@ -38,7 +38,7 @@ export function BugsTab({ publicSlug }: BugsTabProps) {
               <div className="flex items-center gap-2">
                 <h3 className="text-foreground font-medium">{bug.title}</h3>
                 {bug.is_regression && (
-                  <span className="text-xs text-red-400 bg-red-900/30 px-1.5 py-0.5 rounded flex items-center gap-1">
+                  <span className="text-xs text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-1.5 py-0.5 rounded flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3" />
                     Regression
                   </span>

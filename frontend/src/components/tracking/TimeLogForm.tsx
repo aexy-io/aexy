@@ -62,7 +62,7 @@ export function TimeLogForm({
       </h3>
 
       {showSuccess && (
-        <div className="mb-4 p-3 bg-green-900/30 border border-green-700 rounded-lg flex items-center gap-2 text-green-400">
+        <div className="mb-4 p-3 bg-green-100 dark:bg-green-900/30 border border-green-700 rounded-lg flex items-center gap-2 text-green-600 dark:text-green-400">
           <CheckCircle2 className="h-5 w-5" />
           <span>Time logged successfully!</span>
         </div>

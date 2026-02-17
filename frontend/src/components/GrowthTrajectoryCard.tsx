@@ -55,7 +55,7 @@ export function GrowthTrajectoryCard({ growth }: GrowthTrajectoryCardProps) {
               {growth.skills_acquired_6m.map((skill) => (
                 <span
                   key={skill}
-                  className="bg-green-900/30 text-green-300 px-2 py-1 rounded text-xs"
+                  className="bg-green-100 dark:bg-green-900/30 text-green-300 px-2 py-1 rounded text-xs"
                 >
                   {skill}
                 </span>
@@ -75,7 +75,7 @@ export function GrowthTrajectoryCard({ growth }: GrowthTrajectoryCardProps) {
               {growth.skills_declining.map((skill) => (
                 <span
                   key={skill}
-                  className="bg-red-900/30 text-red-300 px-2 py-1 rounded text-xs"
+                  className="bg-red-100 dark:bg-red-900/30 text-red-300 px-2 py-1 rounded text-xs"
                 >
                   {skill}
                 </span>

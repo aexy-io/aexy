@@ -164,7 +164,7 @@ export default function AIAgentsProductPage() {
                 {/* Tools */}
                 <div className="flex flex-wrap gap-2 mb-4">
                   {["reply", "escalate", "search_contacts", "create_task"].map((tool) => (
-                    <span key={tool} className="px-2 py-1 bg-purple-500/10 text-purple-400 text-xs rounded-full">
+                    <span key={tool} className="px-2 py-1 bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400 text-xs rounded-full">
                       {tool}
                     </span>
                   ))}

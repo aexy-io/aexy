@@ -12,7 +12,7 @@ function getStatusBadge(status: string) {
   switch (status) {
     case "paid":
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-900/30 text-green-400 text-xs font-medium rounded-full">
+        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400 text-xs font-medium rounded-full">
           <CheckCircle className="h-3 w-3" />
           Paid
         </span>
@@ -20,7 +20,7 @@ function getStatusBadge(status: string) {
     case "open":
     case "draft":
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-900/30 text-amber-400 text-xs font-medium rounded-full">
+        <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 text-xs font-medium rounded-full">
           <Clock className="h-3 w-3" />
           {status === "open" ? "Pending" : "Draft"}
         </span>
@@ -28,7 +28,7 @@ function getStatusBadge(status: string) {
     case "uncollectible":
     case "void":
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-900/30 text-red-400 text-xs font-medium rounded-full">
+        <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400 text-xs font-medium rounded-full">
           <XCircle className="h-3 w-3" />
           {status.charAt(0).toUpperCase() + status.slice(1)}
         </span>

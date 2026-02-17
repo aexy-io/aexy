@@ -116,7 +116,7 @@ export function BlockerAnalyticsDashboard({
           subtitle={`of ${summary.total_reported} total`}
           icon={CheckCircle2}
           iconColor="text-green-400"
-          iconBgColor="bg-green-900/30"
+          iconBgColor="bg-green-100 dark:bg-green-900/30"
         />
         <MetricCard
           title="Escalated"
@@ -124,7 +124,7 @@ export function BlockerAnalyticsDashboard({
           subtitle="Waiting for help"
           icon={ArrowUpCircle}
           iconColor="text-purple-400"
-          iconBgColor="bg-purple-900/30"
+          iconBgColor="bg-purple-100 dark:bg-purple-900/30"
         />
         <MetricCard
           title="Avg Resolution"
@@ -132,7 +132,7 @@ export function BlockerAnalyticsDashboard({
           subtitle="Time to resolve"
           icon={Clock}
           iconColor="text-blue-400"
-          iconBgColor="bg-blue-900/30"
+          iconBgColor="bg-blue-100 dark:bg-blue-900/30"
         />
       </div>
 

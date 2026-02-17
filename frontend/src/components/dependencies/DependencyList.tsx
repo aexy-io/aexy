@@ -14,10 +14,10 @@ import { StoryDependency, TaskDependency, DependencyType, DependencyStatus } fro
 import { cn } from "@/lib/utils";
 
 const DEPENDENCY_TYPE_CONFIG: Record<DependencyType, { label: string; icon: React.ReactNode; color: string }> = {
-  blocks: { label: "Blocks", icon: <ArrowRight className="h-4 w-4" />, color: "text-red-400" },
-  is_blocked_by: { label: "Blocked by", icon: <ArrowLeft className="h-4 w-4" />, color: "text-amber-400" },
-  relates_to: { label: "Relates to", icon: <Link className="h-4 w-4" />, color: "text-blue-400" },
-  duplicates: { label: "Duplicates", icon: <Copy className="h-4 w-4" />, color: "text-purple-400" },
+  blocks: { label: "Blocks", icon: <ArrowRight className="h-4 w-4" />, color: "text-red-600 dark:text-red-400" },
+  is_blocked_by: { label: "Blocked by", icon: <ArrowLeft className="h-4 w-4" />, color: "text-amber-600 dark:text-amber-400" },
+  relates_to: { label: "Relates to", icon: <Link className="h-4 w-4" />, color: "text-blue-600 dark:text-blue-400" },
+  duplicates: { label: "Duplicates", icon: <Copy className="h-4 w-4" />, color: "text-purple-600 dark:text-purple-400" },
   is_child_of: { label: "Child of", icon: <ArrowLeft className="h-4 w-4" />, color: "text-muted-foreground" },
   is_parent_of: { label: "Parent of", icon: <ArrowRight className="h-4 w-4" />, color: "text-muted-foreground" },
 };

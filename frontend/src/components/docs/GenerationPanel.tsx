@@ -326,7 +326,7 @@ export function GenerationPanel({
 
           {/* Error Message */}
           {error && (
-            <div className="flex items-center gap-3 p-4 bg-red-900/20 border border-red-800 rounded-lg">
+            <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-800 rounded-lg">
               <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
               <p className="text-sm text-red-300">{error}</p>
             </div>
@@ -334,7 +334,7 @@ export function GenerationPanel({
 
           {/* Success Message */}
           {success && (
-            <div className="flex items-center gap-3 p-4 bg-green-900/20 border border-green-800 rounded-lg">
+            <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/20 border border-green-800 rounded-lg">
               <CheckCircle className="h-5 w-5 text-green-400 shrink-0" />
               <p className="text-sm text-green-300">Documentation generated successfully!</p>
             </div>

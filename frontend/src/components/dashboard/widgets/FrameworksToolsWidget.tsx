@@ -33,9 +33,9 @@ export function FrameworksToolsWidget({ frameworks }: FrameworksToolsWidgetProps
                 key={fw.name}
                 content={`${fw.proficiency_score}% proficiency | ${fw.category} | ${fw.usage_count} uses`}
               >
-                <span className="inline-flex items-center gap-2 bg-primary-900/30 hover:bg-primary-900/50 text-primary-300 px-4 py-2 rounded-lg text-sm cursor-help transition">
+                <span className="inline-flex items-center gap-2 bg-primary-100 dark:bg-primary-900/30 hover:bg-primary-900/50 text-primary-300 px-4 py-2 rounded-lg text-sm cursor-help transition">
                   {fw.name}
-                  <span className="text-xs text-primary-400/60 bg-primary-900/50 px-2 py-0.5 rounded-full">
+                  <span className="text-xs text-primary-400/60 bg-primary-100 dark:bg-primary-900/50 px-2 py-0.5 rounded-full">
                     {fw.proficiency_score}%
                   </span>
                 </span>

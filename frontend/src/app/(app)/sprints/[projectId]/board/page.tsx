@@ -60,10 +60,10 @@ import { X, Loader2, FileText, Zap } from "lucide-react";
 // Status column configuration
 const STATUS_CONFIG: Record<TaskStatus, { label: string; color: string; bgColor: string }> = {
   backlog: { label: "Backlog", color: "text-muted-foreground", bgColor: "bg-accent/30" },
-  todo: { label: "To Do", color: "text-blue-400", bgColor: "bg-blue-900/20" },
-  in_progress: { label: "In Progress", color: "text-amber-400", bgColor: "bg-amber-900/20" },
-  review: { label: "Review", color: "text-purple-400", bgColor: "bg-purple-900/20" },
-  done: { label: "Done", color: "text-green-400", bgColor: "bg-green-900/20" },
+  todo: { label: "To Do", color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-50 dark:bg-blue-900/20" },
+  in_progress: { label: "In Progress", color: "text-amber-600 dark:text-amber-400", bgColor: "bg-amber-50 dark:bg-amber-900/20" },
+  review: { label: "Review", color: "text-purple-600 dark:text-purple-400", bgColor: "bg-purple-50 dark:bg-purple-900/20" },
+  done: { label: "Done", color: "text-green-600 dark:text-green-400", bgColor: "bg-green-50 dark:bg-green-900/20" },
 };
 
 // Sprint status colors
@@ -284,10 +284,10 @@ function SprintColumn({
 
 // Priority configuration for the modal
 const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string }> = {
-  critical: { label: "Critical", color: "text-red-400" },
-  high: { label: "High", color: "text-orange-400" },
-  medium: { label: "Medium", color: "text-yellow-400" },
-  low: { label: "Low", color: "text-blue-400" },
+  critical: { label: "Critical", color: "text-red-600 dark:text-red-400" },
+  high: { label: "High", color: "text-orange-600 dark:text-orange-400" },
+  medium: { label: "Medium", color: "text-yellow-600 dark:text-yellow-400" },
+  low: { label: "Low", color: "text-blue-600 dark:text-blue-400" },
 };
 
 // Keyboard Shortcuts Modal
@@ -1851,7 +1851,7 @@ export default function ProjectBoardPage({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="border-b border-border bg-primary-900/30 overflow-hidden z-50 relative"
+            className="border-b border-border bg-primary-100 dark:bg-primary-900/30 overflow-hidden z-50 relative"
           >
             <div className="max-w-[1800px] mx-auto px-4 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">

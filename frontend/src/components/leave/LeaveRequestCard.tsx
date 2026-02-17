@@ -13,9 +13,9 @@ const statusConfig: Record<
   LeaveRequest["status"],
   { label: string; className: string }
 > = {
-  pending: { label: "Pending", className: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
-  approved: { label: "Approved", className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
-  rejected: { label: "Rejected", className: "bg-red-500/10 text-red-400 border-red-500/20" },
+  pending: { label: "Pending", className: "bg-yellow-50 text-yellow-600 dark:bg-yellow-500/10 dark:text-yellow-400 border-yellow-200 dark:border-yellow-500/20" },
+  approved: { label: "Approved", className: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20" },
+  rejected: { label: "Rejected", className: "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 border-red-200 dark:border-red-500/20" },
   cancelled: { label: "Cancelled", className: "bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20" },
   withdrawn: { label: "Withdrawn", className: "bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20" },
 };

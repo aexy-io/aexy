@@ -342,7 +342,7 @@ export default function SprintAnalyticsPage({
                 </div>
 
                 {capacity.overcommitted && (
-                  <div className="flex items-center gap-2 p-3 bg-red-900/20 border border-red-900/50 rounded-lg">
+                  <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-900/50 rounded-lg">
                     <AlertTriangle className="h-5 w-5 text-red-400 flex-shrink-0" />
                     <div>
                       <p className="text-red-400 font-medium text-sm">Sprint is overcommitted</p>

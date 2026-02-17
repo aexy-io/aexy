@@ -8,11 +8,11 @@ import { cn } from "@/lib/utils";
 const STATUS_CONFIG: Record<OKRGoalStatus, { label: string; color: string }> = {
   not_started: { label: "Not Started", color: "text-muted-foreground" },
   draft: { label: "Draft", color: "text-muted-foreground" },
-  active: { label: "Active", color: "text-blue-400" },
-  on_track: { label: "On Track", color: "text-green-400" },
-  at_risk: { label: "At Risk", color: "text-amber-400" },
-  behind: { label: "Behind", color: "text-red-400" },
-  achieved: { label: "Achieved", color: "text-green-400" },
+  active: { label: "Active", color: "text-blue-600 dark:text-blue-400" },
+  on_track: { label: "On Track", color: "text-green-600 dark:text-green-400" },
+  at_risk: { label: "At Risk", color: "text-amber-600 dark:text-amber-400" },
+  behind: { label: "Behind", color: "text-red-600 dark:text-red-400" },
+  achieved: { label: "Achieved", color: "text-green-600 dark:text-green-400" },
   missed: { label: "Missed", color: "text-red-500" },
   cancelled: { label: "Cancelled", color: "text-muted-foreground" },
 };

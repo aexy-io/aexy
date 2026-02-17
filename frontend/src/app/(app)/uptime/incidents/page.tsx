@@ -18,9 +18,9 @@ import {
 } from "lucide-react";
 
 const STATUS_COLORS: Record<UptimeIncidentStatus, { bg: string; text: string; dot: string; label: string }> = {
-  ongoing: { bg: "bg-red-900/30", text: "text-red-400", dot: "bg-red-500", label: "Ongoing" },
-  acknowledged: { bg: "bg-amber-900/30", text: "text-amber-400", dot: "bg-amber-500", label: "Acknowledged" },
-  resolved: { bg: "bg-emerald-900/30", text: "text-emerald-400", dot: "bg-emerald-500", label: "Resolved" },
+  ongoing: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400", dot: "bg-red-500", label: "Ongoing" },
+  acknowledged: { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500", label: "Acknowledged" },
+  resolved: { bg: "bg-emerald-50 dark:bg-emerald-900/30", text: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500", label: "Resolved" },
 };
 
 export default function IncidentsPage() {
@@ -140,7 +140,7 @@ export default function IncidentsPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="bg-muted rounded-xl p-4 border border-border">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-red-900/30">
+              <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
                 <AlertTriangle className="h-5 w-5 text-red-400" />
               </div>
               <div>
@@ -153,7 +153,7 @@ export default function IncidentsPage() {
           </div>
           <div className="bg-muted rounded-xl p-4 border border-border">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-amber-900/30">
+              <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
                 <Eye className="h-5 w-5 text-amber-400" />
               </div>
               <div>
@@ -166,7 +166,7 @@ export default function IncidentsPage() {
           </div>
           <div className="bg-muted rounded-xl p-4 border border-border">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-emerald-900/30">
+              <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
                 <CheckCircle2 className="h-5 w-5 text-emerald-400" />
               </div>
               <div>
@@ -264,7 +264,7 @@ export default function IncidentsPage() {
                           {incident.ticket_id && (
                             <Link
                               href={`/tickets/${incident.ticket_id}`}
-                              className="px-2 py-0.5 rounded text-xs font-medium bg-purple-900/30 text-purple-400 flex items-center gap-1 hover:bg-purple-900/50 transition"
+                              className="px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 flex items-center gap-1 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition"
                             >
                               <ExternalLink className="h-3 w-3" />
                               Ticket
