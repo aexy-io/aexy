@@ -198,15 +198,15 @@ export function CreateAttributeModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-slate-700 flex flex-col">
+      <div className="bg-muted rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-border flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
-          <h2 className="text-xl font-semibold text-white">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <h2 className="text-xl font-semibold text-foreground">
             {step === "type" ? "Select attribute type" : "Configure attribute"}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors"
+            className="p-2 hover:bg-accent rounded-lg text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -218,7 +218,7 @@ export function CreateAttributeModal({
             <div className="space-y-6">
               {(["basic", "select", "contact", "advanced"] as const).map((category) => (
                 <div key={category}>
-                  <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3">
+                  <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">
                     {categoryLabels[category]}
                   </h3>
                   <div className="grid grid-cols-2 gap-2">
@@ -230,15 +230,15 @@ export function CreateAttributeModal({
                           onClick={() => handleSelectType(type.value)}
                           className={cn(
                             "flex items-center gap-3 p-3 rounded-lg border transition-colors text-left",
-                            "border-slate-700 hover:border-purple-500 hover:bg-purple-500/10"
+                            "border-border hover:border-purple-500 hover:bg-purple-500/10"
                           )}
                         >
-                          <div className="p-2 bg-slate-700/50 rounded-lg text-slate-400">
+                          <div className="p-2 bg-accent/50 rounded-lg text-muted-foreground">
                             {typeIcons[type.value]}
                           </div>
                           <div>
-                            <div className="font-medium text-white">{type.label}</div>
-                            <div className="text-xs text-slate-500">{type.description}</div>
+                            <div className="font-medium text-foreground">{type.label}</div>
+                            <div className="text-xs text-muted-foreground">{type.description}</div>
                           </div>
                         </button>
                       ))}
@@ -251,13 +251,13 @@ export function CreateAttributeModal({
           {step === "configure" && selectedType && (
             <div className="space-y-6">
               {/* Type info */}
-              <div className="flex items-center gap-3 p-3 bg-slate-700/30 rounded-lg">
+              <div className="flex items-center gap-3 p-3 bg-accent/30 rounded-lg">
                 <div className="p-2 bg-purple-500/20 rounded-lg text-purple-400">
                   {typeIcons[selectedType]}
                 </div>
                 <div>
-                  <div className="font-medium text-white">{typeInfo?.label}</div>
-                  <div className="text-sm text-slate-400">{typeInfo?.description}</div>
+                  <div className="font-medium text-foreground">{typeInfo?.label}</div>
+                  <div className="text-sm text-muted-foreground">{typeInfo?.description}</div>
                 </div>
                 <button
                   onClick={() => setStep("type")}
@@ -270,7 +270,7 @@ export function CreateAttributeModal({
               {/* Basic info */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Attribute name *
                   </label>
                   <input
@@ -278,13 +278,13 @@ export function CreateAttributeModal({
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g., Company Name, Deal Value"
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                     autoFocus
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Description (optional)
                   </label>
                   <input
@@ -292,7 +292,7 @@ export function CreateAttributeModal({
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="What is this attribute for?"
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
               </div>
@@ -300,7 +300,7 @@ export function CreateAttributeModal({
               {/* Options for select types */}
               {needsOptions && (
                 <div className="space-y-3">
-                  <label className="block text-sm font-medium text-slate-300">
+                  <label className="block text-sm font-medium text-foreground">
                     Options
                   </label>
                   <div className="space-y-2">
@@ -316,12 +316,12 @@ export function CreateAttributeModal({
                           value={option.label}
                           onChange={(e) => handleOptionChange(index, "label", e.target.value)}
                           placeholder="Option label"
-                          className="flex-1 px-3 py-1.5 bg-slate-700 border border-slate-600 rounded text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          className="flex-1 px-3 py-1.5 bg-accent border border-border rounded text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                         />
                         {options.length > 1 && (
                           <button
                             onClick={() => handleRemoveOption(index)}
-                            className="p-1.5 hover:bg-red-500/20 rounded text-slate-400 hover:text-red-400"
+                            className="p-1.5 hover:bg-red-500/20 rounded text-muted-foreground hover:text-red-400"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -340,37 +340,37 @@ export function CreateAttributeModal({
               )}
 
               {/* Constraints */}
-              <div className="space-y-3 pt-4 border-t border-slate-700">
-                <label className="block text-sm font-medium text-slate-300">
+              <div className="space-y-3 pt-4 border-t border-border">
+                <label className="block text-sm font-medium text-foreground">
                   Constraints
                 </label>
                 <div className="space-y-2">
-                  <label className="flex items-center gap-3 p-3 rounded-lg border border-slate-700 cursor-pointer hover:bg-slate-700/30">
+                  <label className="flex items-center gap-3 p-3 rounded-lg border border-border cursor-pointer hover:bg-accent/30">
                     <input
                       type="checkbox"
                       checked={isRequired}
                       onChange={(e) => setIsRequired(e.target.checked)}
-                      className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-purple-500 focus:ring-purple-500"
+                      className="w-4 h-4 rounded border-border bg-accent text-purple-500 focus:ring-purple-500"
                     />
                     <div>
-                      <div className="font-medium text-white">Required</div>
-                      <div className="text-xs text-slate-500">
+                      <div className="font-medium text-foreground">Required</div>
+                      <div className="text-xs text-muted-foreground">
                         This field must have a value
                       </div>
                     </div>
                   </label>
 
                   {["text", "email", "phone", "url", "number"].includes(selectedType) && (
-                    <label className="flex items-center gap-3 p-3 rounded-lg border border-slate-700 cursor-pointer hover:bg-slate-700/30">
+                    <label className="flex items-center gap-3 p-3 rounded-lg border border-border cursor-pointer hover:bg-accent/30">
                       <input
                         type="checkbox"
                         checked={isUnique}
                         onChange={(e) => setIsUnique(e.target.checked)}
-                        className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-purple-500 focus:ring-purple-500"
+                        className="w-4 h-4 rounded border-border bg-accent text-purple-500 focus:ring-purple-500"
                       />
                       <div>
-                        <div className="font-medium text-white">Unique</div>
-                        <div className="text-xs text-slate-500">
+                        <div className="font-medium text-foreground">Unique</div>
+                        <div className="text-xs text-muted-foreground">
                           No two records can have the same value
                         </div>
                       </div>
@@ -384,10 +384,10 @@ export function CreateAttributeModal({
 
         {/* Footer */}
         {step === "configure" && (
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-700">
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
             <button
               onClick={onClose}
-              className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors"
+              className="px-4 py-2 border border-border text-foreground rounded-lg hover:bg-accent transition-colors"
             >
               Cancel
             </button>

@@ -59,7 +59,7 @@ function UsageAlertBanner({ warning, onDismiss }: UsageAlertBannerProps) {
             {onDismiss && warning.severity !== "limit_reached" && (
               <button
                 onClick={onDismiss}
-                className="flex-shrink-0 p-1 text-slate-400 hover:text-white transition"
+                className="flex-shrink-0 p-1 text-muted-foreground hover:text-foreground transition"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -69,8 +69,8 @@ function UsageAlertBanner({ warning, onDismiss }: UsageAlertBannerProps) {
           {/* Overage details for token warnings */}
           {isTokenWarning && warning.isOverage && warning.overageCostCents > 0 && (
             <div className="mt-2 flex items-center gap-4 text-sm">
-              <span className="text-slate-400">
-                Overage: <span className="text-white font-medium">{formatNumber(warning.overageTokens)} tokens</span>
+              <span className="text-muted-foreground">
+                Overage: <span className="text-foreground font-medium">{formatNumber(warning.overageTokens)} tokens</span>
               </span>
               <span className="text-amber-400 font-medium">
                 {formatCurrency(warning.overageCostCents)} charged
@@ -87,7 +87,7 @@ function UsageAlertBanner({ warning, onDismiss }: UsageAlertBannerProps) {
                   style={{ width: `${percentage}%` }}
                 />
               </div>
-              <p className="text-slate-400 text-sm mt-1">
+              <p className="text-muted-foreground text-sm mt-1">
                 {Math.round(percentage)}% used
                 {isTokenWarning && warning.freeTokensRemaining > 0 && (
                   <span> - {formatNumber(warning.freeTokensRemaining)} free tokens remaining</span>
@@ -103,7 +103,7 @@ function UsageAlertBanner({ warning, onDismiss }: UsageAlertBannerProps) {
               warning.severity === "limit_reached"
                 ? "bg-red-600 hover:bg-red-700"
                 : "bg-primary-600 hover:bg-primary-700"
-            } text-white text-sm font-medium rounded-lg transition`}
+            } text-foreground text-sm font-medium rounded-lg transition`}
           >
             {warning.ctaText}
           </Link>

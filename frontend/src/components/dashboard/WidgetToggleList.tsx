@@ -149,18 +149,18 @@ export function WidgetToggleList({
       {/* Search and count */}
       <div className="space-y-3">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search widgets..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+            className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
           />
         </div>
 
         <div className="flex items-center justify-between text-sm">
-          <span className="text-slate-400">
+          <span className="text-muted-foreground">
             {visibleCount} of {totalCount} widgets visible
           </span>
           <button
@@ -196,32 +196,32 @@ export function WidgetToggleList({
           return (
             <div
               key={categoryId}
-              className="border border-slate-700/50 rounded-lg overflow-hidden"
+              className="border border-border/50 rounded-lg overflow-hidden"
             >
               {/* Category header */}
               <button
                 onClick={() => toggleCategory(categoryId)}
-                className="w-full flex items-center justify-between p-3 bg-slate-800/30 hover:bg-slate-800/50 transition"
+                className="w-full flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 transition"
               >
                 <div className="flex items-center gap-2">
-                  <CategoryIcon className="h-4 w-4 text-slate-400" />
-                  <span className="font-medium text-white text-sm">
+                  <CategoryIcon className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium text-foreground text-sm">
                     {category.name}
                   </span>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-muted-foreground">
                     ({visibleInCategory}/{widgets.length})
                   </span>
                 </div>
                 {isExpanded ? (
-                  <ChevronUp className="h-4 w-4 text-slate-400" />
+                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
                 ) : (
-                  <ChevronDown className="h-4 w-4 text-slate-400" />
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 )}
               </button>
 
               {/* Widgets */}
               {isExpanded && (
-                <div className="p-2 space-y-1 bg-slate-900/30">
+                <div className="p-2 space-y-1 bg-background/30">
                   {widgets.map((widget) => {
                     const WidgetIcon = ICON_MAP[widget.icon] || Settings;
                     const isVisible = visibleWidgets.includes(widget.id);
@@ -236,7 +236,7 @@ export function WidgetToggleList({
                         } ${
                           isVisible
                             ? "bg-primary-500/10 hover:bg-primary-500/20"
-                            : "hover:bg-slate-800/50"
+                            : "hover:bg-muted/50"
                         }`}
                       >
                         {/* Checkbox */}
@@ -244,11 +244,11 @@ export function WidgetToggleList({
                           className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition ${
                             isVisible
                               ? "bg-primary-500 border-primary-500"
-                              : "border-slate-600 bg-slate-800"
+                              : "border-border bg-muted"
                           }`}
                         >
                           {isVisible && (
-                            <CheckCircle className="h-3 w-3 text-white" />
+                            <CheckCircle className="h-3 w-3 text-foreground" />
                           )}
                         </div>
 
@@ -257,12 +257,12 @@ export function WidgetToggleList({
                           className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                             isVisible
                               ? "bg-primary-500/20"
-                              : "bg-slate-800"
+                              : "bg-muted"
                           }`}
                         >
                           <WidgetIcon
                             className={`h-4 w-4 ${
-                              isVisible ? "text-primary-400" : "text-slate-500"
+                              isVisible ? "text-primary-400" : "text-muted-foreground"
                             }`}
                           />
                         </div>
@@ -271,20 +271,20 @@ export function WidgetToggleList({
                         <div className="flex-1 min-w-0">
                           <span
                             className={`text-sm ${
-                              isVisible ? "text-white" : "text-slate-300"
+                              isVisible ? "text-foreground" : "text-foreground"
                             }`}
                           >
                             {widget.name}
                           </span>
                           {widget.description && (
-                            <p className="text-xs text-slate-500 truncate">
+                            <p className="text-xs text-muted-foreground truncate">
                               {widget.description}
                             </p>
                           )}
                         </div>
 
                         {/* Size badge */}
-                        <span className="text-[10px] px-1.5 py-0.5 bg-slate-800 text-slate-500 rounded flex-shrink-0">
+                        <span className="text-[10px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded flex-shrink-0">
                           {widget.defaultSize}
                         </span>
                       </button>
@@ -298,7 +298,7 @@ export function WidgetToggleList({
       </div>
 
       {Object.keys(filteredWidgetsByCategory).length === 0 && (
-        <div className="text-center py-8 text-slate-500 text-sm">
+        <div className="text-center py-8 text-muted-foreground text-sm">
           No widgets found matching &ldquo;{searchQuery}&rdquo;
         </div>
       )}

@@ -14,9 +14,9 @@ export default function IntegrationsRedirectPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
 <div className="flex items-center justify-center" style={{ minHeight: 'calc(100vh - 64px)' }}>
-        <div className="text-slate-400">Redirecting to settings...</div>
+        <div className="text-muted-foreground">Redirecting to settings...</div>
       </div>
     </div>
   );

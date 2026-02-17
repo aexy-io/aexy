@@ -141,70 +141,70 @@ function JiraModal({
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="relative w-full max-w-md mx-4 bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl"
+        className="relative w-full max-w-md mx-4 bg-background border border-border rounded-2xl p-6 shadow-2xl"
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white"
+          className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
         >
           <X className="w-5 h-5" />
         </button>
 
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center">
-            <JiraIcon className="w-5 h-5 text-white" />
+            <JiraIcon className="w-5 h-5 text-foreground" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white">Connect Jira</h3>
-            <p className="text-sm text-slate-400">Enter your Jira credentials</p>
+            <h3 className="text-lg font-semibold text-foreground">Connect Jira</h3>
+            <p className="text-sm text-muted-foreground">Enter your Jira credentials</p>
           </div>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-foreground mb-1.5">
               Jira Site URL
             </label>
             <div className="relative">
-              <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="url"
                 value={siteUrl}
                 onChange={(e) => setSiteUrl(e.target.value)}
                 placeholder="https://yourcompany.atlassian.net"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500"
+                className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary-500"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-foreground mb-1.5">
               Email Address
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your.email@company.com"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500"
+                className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary-500"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-foreground mb-1.5">
               API Token
             </label>
             <div className="relative">
-              <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="password"
                 value={apiToken}
                 onChange={(e) => setApiToken(e.target.value)}
                 placeholder="Enter your Jira API token"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500"
+                className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary-500"
               />
             </div>
             <a
@@ -273,38 +273,38 @@ function LinearModal({
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="relative w-full max-w-md mx-4 bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl"
+        className="relative w-full max-w-md mx-4 bg-background border border-border rounded-2xl p-6 shadow-2xl"
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white"
+          className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
         >
           <X className="w-5 h-5" />
         </button>
 
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-600 to-indigo-700 flex items-center justify-center">
-            <LinearIcon className="w-5 h-5 text-white" />
+            <LinearIcon className="w-5 h-5 text-foreground" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white">Connect Linear</h3>
-            <p className="text-sm text-slate-400">Enter your Linear API key</p>
+            <h3 className="text-lg font-semibold text-foreground">Connect Linear</h3>
+            <p className="text-sm text-muted-foreground">Enter your Linear API key</p>
           </div>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-foreground mb-1.5">
               API Key
             </label>
             <div className="relative">
-              <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="password"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="lin_api_..."
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500"
+                className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary-500"
               />
             </div>
             <a
@@ -545,7 +545,7 @@ export default function ConnectIntegrations() {
             className={`h-1.5 rounded-full transition-all ${
               step <= 4
                 ? "w-8 bg-primary-500"
-                : "w-4 bg-slate-700"
+                : "w-4 bg-accent"
             }`}
           />
         ))}
@@ -558,10 +558,10 @@ export default function ConnectIntegrations() {
       >
         {/* Header */}
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold text-white mb-3">
+          <h1 className="text-3xl font-bold text-foreground mb-3">
             Connect your tools
           </h1>
-          <p className="text-slate-400 max-w-lg mx-auto">
+          <p className="text-muted-foreground max-w-lg mx-auto">
             Connect the services you use. All integrations are optional -
             you can always add more later from settings.
           </p>
@@ -581,10 +581,10 @@ export default function ConnectIntegrations() {
                 transition={{ duration: 0.3, delay: 0.05 * index }}
                 className={`relative p-5 rounded-xl border transition-all ${
                   isConnected
-                    ? "bg-slate-800/80 border-green-500/50 ring-2 ring-green-500/20"
+                    ? "bg-muted/80 border-green-500/50 ring-2 ring-green-500/20"
                     : recommended
-                    ? "bg-slate-800/50 border-primary-500/30"
-                    : "bg-slate-800/30 border-slate-700/50"
+                    ? "bg-muted/50 border-primary-500/30"
+                    : "bg-muted/30 border-border/50"
                 }`}
               >
                 {/* Recommended badge */}
@@ -603,11 +603,11 @@ export default function ConnectIntegrations() {
                 )}
 
                 <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${integration.color} flex items-center justify-center mb-4 ${integration.id === 'google' ? '' : ''}`}>
-                  <integration.icon className={`w-6 h-6 ${integration.id === 'google' ? '' : 'text-white'}`} />
+                  <integration.icon className={`w-6 h-6 ${integration.id === 'google' ? '' : 'text-foreground'}`} />
                 </div>
 
-                <h3 className="font-semibold text-white mb-1">{integration.name}</h3>
-                <p className="text-sm text-slate-400 mb-4">{integration.description}</p>
+                <h3 className="font-semibold text-foreground mb-1">{integration.name}</h3>
+                <p className="text-sm text-muted-foreground mb-4">{integration.description}</p>
 
                 {isConnected ? (
                   <div className="text-sm text-green-400 flex items-center gap-2">
@@ -618,7 +618,7 @@ export default function ConnectIntegrations() {
                   <button
                     onClick={() => handleConnect(integration.id)}
                     disabled={connecting === integration.id}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium transition-colors disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-accent hover:bg-muted text-foreground text-sm font-medium transition-colors disabled:opacity-50"
                   >
                     {connecting === integration.id ? (
                       <>
@@ -639,18 +639,18 @@ export default function ConnectIntegrations() {
         </div>
 
         {/* Info box */}
-        <div className="bg-slate-800/20 border border-slate-700/30 rounded-xl p-4 mb-8">
-          <p className="text-sm text-slate-400 text-center">
+        <div className="bg-muted/20 border border-border/30 rounded-xl p-4 mb-8">
+          <p className="text-sm text-muted-foreground text-center">
             Don&apos;t see your tool? We&apos;re adding new integrations regularly.
             You can also connect more tools from Settings after onboarding.
           </p>
         </div>
 
         {/* Navigation */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 border-t border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 border-t border-border">
           <button
             onClick={() => router.push("/onboarding/workspace")}
-            className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-white transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
@@ -659,7 +659,7 @@ export default function ConnectIntegrations() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push("/onboarding/invite")}
-              className="text-slate-400 hover:text-white transition-colors"
+              className="text-muted-foreground hover:text-foreground transition-colors"
             >
               Skip all
             </button>

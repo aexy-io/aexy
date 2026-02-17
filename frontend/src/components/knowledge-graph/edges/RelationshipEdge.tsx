@@ -124,7 +124,7 @@ export const RelationshipEdge = memo(
                 borderColor: `${color}50`,
                 color,
               }}
-              className="px-1.5 py-0.5 rounded text-[10px] bg-slate-800/90 border"
+              className="px-1.5 py-0.5 rounded text-[10px] bg-muted/90 border"
             >
               {label}
             </div>

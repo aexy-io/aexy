@@ -30,11 +30,11 @@ function StatCard({
   trend?: string;
 }) {
   const content = (
-    <div className="bg-slate-800 rounded-xl border border-slate-700 p-5 hover:border-slate-600 transition group">
+    <div className="bg-muted rounded-xl border border-border p-5 hover:border-border transition group">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-slate-400 text-sm">{title}</p>
-          <p className="text-2xl font-bold text-white mt-1">{value}</p>
+          <p className="text-muted-foreground text-sm">{title}</p>
+          <p className="text-2xl font-bold text-foreground mt-1">{value}</p>
           {trend && (
             <p className="text-emerald-400 text-sm mt-1 flex items-center gap-1">
               <TrendingUp className="h-3 w-3" />
@@ -42,8 +42,8 @@ function StatCard({
             </p>
           )}
         </div>
-        <div className="p-2.5 bg-slate-700 rounded-lg group-hover:bg-slate-600 transition">
-          <Icon className="h-5 w-5 text-slate-300" />
+        <div className="p-2.5 bg-accent rounded-lg group-hover:bg-muted transition">
+          <Icon className="h-5 w-5 text-foreground" />
         </div>
       </div>
     </div>
@@ -67,10 +67,10 @@ function DeliveryRateBar({ rate }: { rate: number }) {
   return (
     <div className="space-y-2">
       <div className="flex justify-between text-sm">
-        <span className="text-slate-400">Email Delivery Rate (30 days)</span>
-        <span className="text-white font-medium">{percentage}%</span>
+        <span className="text-muted-foreground">Email Delivery Rate (30 days)</span>
+        <span className="text-foreground font-medium">{percentage}%</span>
       </div>
-      <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+      <div className="h-2 bg-accent rounded-full overflow-hidden">
         <div
           className={`h-full ${getColor()} transition-all duration-500`}
           style={{ width: `${percentage}%` }}
@@ -128,8 +128,8 @@ export default function AdminDashboardPage() {
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
-        <p className="text-slate-400 mt-1">Platform-wide monitoring and management</p>
+        <h1 className="text-2xl font-bold text-foreground">Admin Dashboard</h1>
+        <p className="text-muted-foreground mt-1">Platform-wide monitoring and management</p>
       </div>
 
       {/* Stats Grid */}
@@ -162,24 +162,24 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Delivery Rate */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-5">
+      <div className="bg-muted rounded-xl border border-border p-5">
         <DeliveryRateBar rate={stats?.email_delivery_rate || 1} />
         <div className="mt-4 flex gap-6 text-sm">
           <div>
-            <span className="text-slate-400">Sent Today:</span>
-            <span className="text-white ml-2">{stats?.emails_sent_today || 0}</span>
+            <span className="text-muted-foreground">Sent Today:</span>
+            <span className="text-foreground ml-2">{stats?.emails_sent_today || 0}</span>
           </div>
           <div>
-            <span className="text-slate-400">This Week:</span>
-            <span className="text-white ml-2">{stats?.emails_sent_this_week || 0}</span>
+            <span className="text-muted-foreground">This Week:</span>
+            <span className="text-foreground ml-2">{stats?.emails_sent_this_week || 0}</span>
           </div>
           <div>
-            <span className="text-slate-400">Failed Today:</span>
+            <span className="text-muted-foreground">Failed Today:</span>
             <span className="text-red-400 ml-2">{stats?.emails_failed_today || 0}</span>
           </div>
           <div>
-            <span className="text-slate-400">Active Workspaces (30d):</span>
-            <span className="text-white ml-2">{stats?.active_workspaces_30d || 0}</span>
+            <span className="text-muted-foreground">Active Workspaces (30d):</span>
+            <span className="text-foreground ml-2">{stats?.active_workspaces_30d || 0}</span>
           </div>
         </div>
       </div>
@@ -188,61 +188,61 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Link
           href="/admin/emails"
-          className="flex items-center justify-between bg-slate-800 rounded-xl border border-slate-700 p-4 hover:border-blue-500/50 transition group"
+          className="flex items-center justify-between bg-muted rounded-xl border border-border p-4 hover:border-blue-500/50 transition group"
         >
           <div className="flex items-center gap-3">
             <Mail className="h-5 w-5 text-blue-400" />
-            <span className="text-white">Email Delivery</span>
+            <span className="text-foreground">Email Delivery</span>
           </div>
-          <ChevronRight className="h-4 w-4 text-slate-500 group-hover:text-white transition" />
+          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition" />
         </Link>
         <Link
           href="/admin/notifications"
-          className="flex items-center justify-between bg-slate-800 rounded-xl border border-slate-700 p-4 hover:border-purple-500/50 transition group"
+          className="flex items-center justify-between bg-muted rounded-xl border border-border p-4 hover:border-purple-500/50 transition group"
         >
           <div className="flex items-center gap-3">
             <Bell className="h-5 w-5 text-purple-400" />
-            <span className="text-white">Notifications</span>
+            <span className="text-foreground">Notifications</span>
           </div>
-          <ChevronRight className="h-4 w-4 text-slate-500 group-hover:text-white transition" />
+          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition" />
         </Link>
         <Link
           href="/admin/workspaces"
-          className="flex items-center justify-between bg-slate-800 rounded-xl border border-slate-700 p-4 hover:border-emerald-500/50 transition group"
+          className="flex items-center justify-between bg-muted rounded-xl border border-border p-4 hover:border-emerald-500/50 transition group"
         >
           <div className="flex items-center gap-3">
             <Building2 className="h-5 w-5 text-emerald-400" />
-            <span className="text-white">Workspaces</span>
+            <span className="text-foreground">Workspaces</span>
           </div>
-          <ChevronRight className="h-4 w-4 text-slate-500 group-hover:text-white transition" />
+          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition" />
         </Link>
         <Link
           href="/admin/users"
-          className="flex items-center justify-between bg-slate-800 rounded-xl border border-slate-700 p-4 hover:border-amber-500/50 transition group"
+          className="flex items-center justify-between bg-muted rounded-xl border border-border p-4 hover:border-amber-500/50 transition group"
         >
           <div className="flex items-center gap-3">
             <Users className="h-5 w-5 text-amber-400" />
-            <span className="text-white">Users</span>
+            <span className="text-foreground">Users</span>
           </div>
-          <ChevronRight className="h-4 w-4 text-slate-500 group-hover:text-white transition" />
+          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition" />
         </Link>
       </div>
 
       {/* Recent Failed Emails */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700">
-        <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">Recent Failed Emails</h2>
+      <div className="bg-muted rounded-xl border border-border">
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-foreground">Recent Failed Emails</h2>
           <Link href="/admin/emails?status=failed" className="text-sm text-blue-400 hover:underline">
             View All
           </Link>
         </div>
-        <div className="divide-y divide-slate-700">
+        <div className="divide-y divide-border">
           {emailsLoading ? (
             <div className="p-8 flex justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : recentEmails?.items?.length === 0 ? (
-            <div className="p-8 text-center text-slate-400">
+            <div className="p-8 text-center text-muted-foreground">
               <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-emerald-500" />
               <p>No failed emails</p>
             </div>
@@ -250,12 +250,12 @@ export default function AdminDashboardPage() {
             recentEmails?.items?.map((email) => (
               <div key={email.id} className="px-5 py-4 flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="text-white truncate">{email.recipient_email}</p>
-                  <p className="text-slate-400 text-sm truncate">{email.subject}</p>
+                  <p className="text-foreground truncate">{email.recipient_email}</p>
+                  <p className="text-muted-foreground text-sm truncate">{email.subject}</p>
                 </div>
                 <div className="flex items-center gap-4">
                   <StatusBadge status={email.status} />
-                  <span className="text-slate-500 text-sm whitespace-nowrap">
+                  <span className="text-muted-foreground text-sm whitespace-nowrap">
                     {formatDistanceToNow(new Date(email.created_at), { addSuffix: true })}
                   </span>
                 </div>

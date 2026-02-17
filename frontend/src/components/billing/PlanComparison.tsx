@@ -121,15 +121,15 @@ export function PlanComparison({ currentPlan, targetPlan, isUpgrade }: PlanCompa
 
   if (changes.length === 0) {
     return (
-      <div className="text-center text-slate-400 py-4">
+      <div className="text-center text-muted-foreground py-4">
         No changes between plans
       </div>
     );
   }
 
   return (
-    <div className="bg-slate-800/50 rounded-xl border border-slate-700 p-6">
-      <h3 className="text-lg font-semibold text-white mb-4">
+    <div className="bg-muted/50 rounded-xl border border-border p-6">
+      <h3 className="text-lg font-semibold text-foreground mb-4">
         {isUpgrade ? "What you'll gain with " : "Changes when switching to "}
         <span className={isUpgrade ? "text-primary-400" : "text-amber-400"}>
           {targetPlan.name}
@@ -149,13 +149,13 @@ export function PlanComparison({ currentPlan, targetPlan, isUpgrade }: PlanCompa
             <div className="p-1 bg-emerald-500/20 rounded-full">
               <Check className="h-4 w-4 text-emerald-400" />
             </div>
-            <span className="text-slate-300 flex-1">{item.label}</span>
+            <span className="text-foreground flex-1">{item.label}</span>
             {item.type === "number" && (
               <span className="flex items-center gap-2 text-sm">
-                <span className="text-slate-500">
+                <span className="text-muted-foreground">
                   {formatValue(item.currentValue, item.type, item.isUnlimited)}
                 </span>
-                <ArrowRight className="h-3 w-3 text-slate-500" />
+                <ArrowRight className="h-3 w-3 text-muted-foreground" />
                 <span className="text-emerald-400 font-medium">
                   {formatValue(item.newValue, item.type, item.isUnlimited)}
                 </span>
@@ -171,7 +171,7 @@ export function PlanComparison({ currentPlan, targetPlan, isUpgrade }: PlanCompa
 
         {/* Separator if both gains and losses */}
         {gains.length > 0 && losses.length > 0 && (
-          <div className="border-t border-slate-700 my-4" />
+          <div className="border-t border-border my-4" />
         )}
 
         {/* Losses */}
@@ -186,13 +186,13 @@ export function PlanComparison({ currentPlan, targetPlan, isUpgrade }: PlanCompa
             <div className="p-1 bg-red-500/20 rounded-full">
               <X className="h-4 w-4 text-red-400" />
             </div>
-            <span className="text-slate-300 flex-1">{item.label}</span>
+            <span className="text-foreground flex-1">{item.label}</span>
             {item.type === "number" && (
               <span className="flex items-center gap-2 text-sm">
-                <span className="text-slate-500">
+                <span className="text-muted-foreground">
                   {formatValue(item.currentValue, item.type, item.isUnlimited)}
                 </span>
-                <ArrowRight className="h-3 w-3 text-slate-500" />
+                <ArrowRight className="h-3 w-3 text-muted-foreground" />
                 <span className="text-red-400 font-medium">
                   {formatValue(item.newValue, item.type, item.isUnlimited)}
                 </span>

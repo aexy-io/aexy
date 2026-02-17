@@ -58,11 +58,11 @@ function SortableWidget({ id, isEditing, children, className = "" }: SortableWid
     <div ref={setNodeRef} style={style} className={`relative group ${className}`}>
       {isEditing && (
         <button
-          className="absolute top-2 right-2 z-10 p-1.5 bg-slate-800 border border-slate-700 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+          className="absolute top-2 right-2 z-10 p-1.5 bg-muted border border-border rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
           {...attributes}
           {...listeners}
         >
-          <GripVertical className="h-4 w-4 text-slate-400" />
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
         </button>
       )}
       {children}
@@ -194,11 +194,11 @@ export function SortableGridItem({
     <div ref={setNodeRef} style={style} className={`relative group ${className}`}>
       {isEditing && (
         <div
-          className="absolute top-2 right-2 z-10 p-1.5 bg-slate-800/90 border border-slate-700 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+          className="absolute top-2 right-2 z-10 p-1.5 bg-muted/90 border border-border rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
           {...attributes}
           {...listeners}
         >
-          <GripVertical className="h-4 w-4 text-slate-400" />
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
         </div>
       )}
       {children}

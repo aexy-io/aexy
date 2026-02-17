@@ -48,17 +48,17 @@ export function TaskMatcherCard() {
   };
 
   return (
-    <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+    <div className="bg-muted rounded-xl p-6 border border-border">
       <div className="flex items-center gap-2 mb-6">
         <Target className="h-5 w-5 text-primary-400" />
-        <h3 className="text-lg font-semibold text-white">Task Matcher</h3>
+        <h3 className="text-lg font-semibold text-foreground">Task Matcher</h3>
       </div>
 
       <div className="space-y-4">
         <div>
           <label
             htmlFor="taskTitle"
-            className="block text-sm text-slate-300 mb-1"
+            className="block text-sm text-foreground mb-1"
           >
             Task Title
           </label>
@@ -68,14 +68,14 @@ export function TaskMatcherCard() {
             value={taskTitle}
             onChange={(e) => setTaskTitle(e.target.value)}
             placeholder="e.g., Implement OAuth authentication"
-            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full bg-accent border border-border rounded-lg px-4 py-2 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
 
         <div>
           <label
             htmlFor="taskDescription"
-            className="block text-sm text-slate-300 mb-1"
+            className="block text-sm text-foreground mb-1"
           >
             Description (optional)
           </label>
@@ -85,14 +85,14 @@ export function TaskMatcherCard() {
             onChange={(e) => setTaskDescription(e.target.value)}
             placeholder="Add details about requirements, tech stack, complexity..."
             rows={3}
-            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+            className="w-full bg-accent border border-border rounded-lg px-4 py-2 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
           />
         </div>
 
         <button
           onClick={handleMatch}
           disabled={isMatching}
-          className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-slate-600 text-white font-medium py-2 px-4 rounded-lg transition flex items-center justify-center gap-2"
+          className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-muted text-foreground font-medium py-2 px-4 rounded-lg transition flex items-center justify-center gap-2"
         >
           {isMatching ? (
             <>
@@ -115,10 +115,10 @@ export function TaskMatcherCard() {
       </div>
 
       {result && (
-        <div className="mt-6 pt-6 border-t border-slate-700">
+        <div className="mt-6 pt-6 border-t border-border">
           {/* Task Signals */}
           <div className="mb-4">
-            <div className="text-xs text-slate-400 mb-2">Detected signals:</div>
+            <div className="text-xs text-muted-foreground mb-2">Detected signals:</div>
             <div className="flex flex-wrap gap-1">
               {result.task_signals.required_skills.map((skill) => (
                 <span
@@ -129,11 +129,11 @@ export function TaskMatcherCard() {
                 </span>
               ))}
               {result.task_signals.domain && (
-                <span className="bg-slate-700 text-slate-300 px-2 py-0.5 rounded text-xs">
+                <span className="bg-accent text-foreground px-2 py-0.5 rounded text-xs">
                   {result.task_signals.domain}
                 </span>
               )}
-              <span className="bg-slate-700 text-slate-300 px-2 py-0.5 rounded text-xs capitalize">
+              <span className="bg-accent text-foreground px-2 py-0.5 rounded text-xs capitalize">
                 {result.task_signals.complexity} complexity
               </span>
             </div>
@@ -141,14 +141,14 @@ export function TaskMatcherCard() {
 
           {/* Candidates */}
           <div className="flex items-center gap-2 mb-3">
-            <Users className="h-4 w-4 text-slate-400" />
-            <span className="text-sm text-slate-300">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-foreground">
               Top Matches ({result.candidates.length})
             </span>
           </div>
 
           {result.candidates.length === 0 ? (
-            <p className="text-slate-400 text-sm">
+            <p className="text-muted-foreground text-sm">
               No suitable candidates found for this task.
             </p>
           ) : (
@@ -156,14 +156,14 @@ export function TaskMatcherCard() {
               {result.candidates.slice(0, 5).map((candidate) => (
                 <div
                   key={candidate.developer_id}
-                  className="bg-slate-700/50 rounded-lg p-3"
+                  className="bg-accent/50 rounded-lg p-3"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-muted-foreground">
                         #{candidate.rank}
                       </span>
-                      <span className="text-white font-medium">
+                      <span className="text-foreground font-medium">
                         {candidate.developer_name || "Unknown Developer"}
                       </span>
                     </div>
@@ -177,8 +177,8 @@ export function TaskMatcherCard() {
                   {/* Score breakdown */}
                   <div className="grid grid-cols-3 gap-2 mb-2">
                     <div>
-                      <div className="text-xs text-slate-400">Skills</div>
-                      <div className="h-1.5 bg-slate-600 rounded-full mt-1">
+                      <div className="text-xs text-muted-foreground">Skills</div>
+                      <div className="h-1.5 bg-muted rounded-full mt-1">
                         <div
                           className={`h-full ${getScoreBgColor(candidate.match_score.skill_match)} rounded-full`}
                           style={{
@@ -188,8 +188,8 @@ export function TaskMatcherCard() {
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs text-slate-400">Experience</div>
-                      <div className="h-1.5 bg-slate-600 rounded-full mt-1">
+                      <div className="text-xs text-muted-foreground">Experience</div>
+                      <div className="h-1.5 bg-muted rounded-full mt-1">
                         <div
                           className={`h-full ${getScoreBgColor(candidate.match_score.experience_match)} rounded-full`}
                           style={{
@@ -199,8 +199,8 @@ export function TaskMatcherCard() {
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs text-slate-400">Growth</div>
-                      <div className="h-1.5 bg-slate-600 rounded-full mt-1">
+                      <div className="text-xs text-muted-foreground">Growth</div>
+                      <div className="h-1.5 bg-muted rounded-full mt-1">
                         <div
                           className={`h-full ${getScoreBgColor(candidate.match_score.growth_opportunity)} rounded-full`}
                           style={{
@@ -258,7 +258,7 @@ export function TaskMatcherCard() {
 
           {/* Recommendations */}
           {result.recommendations.length > 0 && (
-            <div className="mt-4 text-xs text-slate-400">
+            <div className="mt-4 text-xs text-muted-foreground">
               <span className="font-medium">Recommendations:</span>
               <ul className="mt-1 space-y-1">
                 {result.recommendations.slice(0, 2).map((rec, i) => (

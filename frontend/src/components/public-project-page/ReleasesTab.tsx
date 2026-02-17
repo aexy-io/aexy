@@ -10,7 +10,7 @@ interface ReleasesTabProps {
 }
 
 const RELEASE_STATUS_COLORS: Record<string, string> = {
-  planning: "text-slate-400 bg-slate-700",
+  planning: "text-muted-foreground bg-accent",
   in_progress: "text-blue-400 bg-blue-900/30",
   code_freeze: "text-purple-400 bg-purple-900/30",
   testing: "text-yellow-400 bg-yellow-900/30",
@@ -32,26 +32,26 @@ export function ReleasesTab({ publicSlug }: ReleasesTabProps) {
   return (
     <div className="space-y-3">
       {releases.map((release) => (
-        <div key={release.id} className="bg-slate-800 rounded-lg p-4">
+        <div key={release.id} className="bg-muted rounded-lg p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="text-white font-medium">{release.name}</h3>
+                <h3 className="text-foreground font-medium">{release.name}</h3>
                 {release.version && (
-                  <span className="text-xs font-mono text-slate-500 bg-slate-700 px-1.5 py-0.5 rounded">
+                  <span className="text-xs font-mono text-muted-foreground bg-accent px-1.5 py-0.5 rounded">
                     v{release.version}
                   </span>
                 )}
               </div>
               {release.description && (
-                <p className="text-slate-400 text-sm mt-1 line-clamp-2">{release.description}</p>
+                <p className="text-muted-foreground text-sm mt-1 line-clamp-2">{release.description}</p>
               )}
               <div className="flex items-center gap-3 mt-2">
                 <span className={`px-2 py-0.5 rounded text-xs font-medium ${RELEASE_STATUS_COLORS[release.status] || RELEASE_STATUS_COLORS.planning}`}>
                   {release.status.replace("_", " ")}
                 </span>
                 {release.target_date && (
-                  <span className="flex items-center gap-1 text-xs text-slate-500">
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Clock className="h-3 w-3" />
                     {new Date(release.target_date).toLocaleDateString()}
                   </span>

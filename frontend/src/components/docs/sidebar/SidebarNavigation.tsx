@@ -19,11 +19,11 @@ export function SidebarNavigation({
       {/* Search */}
       <button
         onClick={onOpenSearch}
-        className="w-full flex items-center gap-3 px-3 py-1.5 rounded-md hover:bg-white/5 transition-colors text-slate-400 hover:text-slate-200"
+        className="w-full flex items-center gap-3 px-3 py-1.5 rounded-md hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground"
       >
         <Search className="h-4 w-4" />
         <span className="flex-1 text-left text-sm">Search</span>
-        <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono text-slate-500 bg-slate-800 rounded border border-slate-700">
+        <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground bg-muted rounded border border-border">
           <span className="text-xs">Cmd</span>
           <span>K</span>
         </kbd>
@@ -32,7 +32,7 @@ export function SidebarNavigation({
       {/* Home */}
       <Link
         href="/docs"
-        className="flex items-center gap-3 px-3 py-1.5 rounded-md hover:bg-white/5 transition-colors text-slate-400 hover:text-slate-200"
+        className="flex items-center gap-3 px-3 py-1.5 rounded-md hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground"
       >
         <Home className="h-4 w-4" />
         <span className="text-sm">Home</span>
@@ -41,7 +41,7 @@ export function SidebarNavigation({
       {/* Inbox */}
       <button
         onClick={onOpenInbox}
-        className="w-full flex items-center gap-3 px-3 py-1.5 rounded-md hover:bg-white/5 transition-colors text-slate-400 hover:text-slate-200"
+        className="w-full flex items-center gap-3 px-3 py-1.5 rounded-md hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground"
       >
         <Inbox className="h-4 w-4" />
         <span className="flex-1 text-left text-sm">Inbox</span>

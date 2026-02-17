@@ -97,32 +97,32 @@ export function KnowledgeGraphToolbar({
     (!filters.includeDocuments || !filters.includeEntities ? 1 : 0);
 
   return (
-    <div className="border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm">
+    <div className="border-b border-border bg-muted/50 backdrop-blur-sm">
       <div className="px-4 py-3 flex items-center gap-4">
         {/* Search */}
         <div className="relative flex-1 max-w-md">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search entities..."
               value={searchQuery}
               onChange={(e) => onSearch(e.target.value)}
               onFocus={() => setShowSearch(true)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+              className="w-full pl-10 pr-4 py-2 bg-accent/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
             />
             {searchLoading && (
-              <RefreshCw className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 animate-spin" />
+              <RefreshCw className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
             )}
           </div>
 
           {/* Search results dropdown */}
           {showSearch && searchResults.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 max-h-[300px] overflow-auto">
+            <div className="absolute top-full left-0 right-0 mt-1 bg-muted border border-border rounded-lg shadow-xl z-50 max-h-[300px] overflow-auto">
               {searchResults.map((result) => (
                 <button
                   key={result.id}
-                  className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-700/50 text-left"
+                  className="w-full px-4 py-3 flex items-center gap-3 hover:bg-accent/50 text-left"
                   onClick={() => {
                     // TODO: Focus on node in graph
                     setShowSearch(false);
@@ -151,10 +151,10 @@ export function KnowledgeGraphToolbar({
                     })()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">
+                    <p className="text-sm font-medium text-foreground truncate">
                       {result.name}
                     </p>
-                    <p className="text-xs text-slate-400 truncate">
+                    <p className="text-xs text-muted-foreground truncate">
                       {result.type} - {result.occurrence_count} mentions
                     </p>
                   </div>
@@ -171,7 +171,7 @@ export function KnowledgeGraphToolbar({
             flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors text-sm
             ${showFilters || activeFiltersCount > 0
               ? "bg-indigo-500/20 border-indigo-500/50 text-indigo-400"
-              : "bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-slate-700"
+              : "bg-accent/50 border-border text-foreground hover:bg-accent"
             }
           `}
         >
@@ -187,11 +187,11 @@ export function KnowledgeGraphToolbar({
 
         {/* Statistics */}
         {statistics && (
-          <div className="hidden md:flex items-center gap-4 text-sm text-slate-400">
+          <div className="hidden md:flex items-center gap-4 text-sm text-muted-foreground">
             <span>{statistics.total_entities} entities</span>
-            <span className="text-slate-600">|</span>
+            <span className="text-muted-foreground">|</span>
             <span>{statistics.total_documents} documents</span>
-            <span className="text-slate-600">|</span>
+            <span className="text-muted-foreground">|</span>
             <span>{statistics.total_relationships} relationships</span>
           </div>
         )}
@@ -200,7 +200,7 @@ export function KnowledgeGraphToolbar({
         <button
           onClick={onTriggerExtraction}
           disabled={extractionLoading}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white rounded-lg transition-colors text-sm font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-foreground rounded-lg transition-colors text-sm font-medium"
         >
           {extractionLoading ? (
             <RefreshCw className="h-4 w-4 animate-spin" />
@@ -213,11 +213,11 @@ export function KnowledgeGraphToolbar({
 
       {/* Expanded filters */}
       {showFilters && (
-        <div className="px-4 py-3 border-t border-slate-700 bg-slate-800/30">
+        <div className="px-4 py-3 border-t border-border bg-muted/30">
           <div className="flex flex-wrap gap-6">
             {/* Entity type filters */}
             <div>
-              <p className="text-xs font-medium text-slate-400 mb-2">Entity Types</p>
+              <p className="text-xs font-medium text-muted-foreground mb-2">Entity Types</p>
               <div className="flex flex-wrap gap-2">
                 {ENTITY_TYPES.map((type) => {
                   const isActive = filters.entityTypes.includes(type.value);
@@ -231,7 +231,7 @@ export function KnowledgeGraphToolbar({
                         flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs transition-colors
                         ${isActive
                           ? "border-transparent"
-                          : "bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700"
+                          : "bg-muted border-border text-muted-foreground hover:bg-accent"
                         }
                       `}
                       style={isActive ? {
@@ -253,32 +253,32 @@ export function KnowledgeGraphToolbar({
 
             {/* Include toggles */}
             <div>
-              <p className="text-xs font-medium text-slate-400 mb-2">Show</p>
+              <p className="text-xs font-medium text-muted-foreground mb-2">Show</p>
               <div className="flex gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={filters.includeEntities}
                     onChange={(e) => onFilterChange({ includeEntities: e.target.checked })}
-                    className="w-4 h-4 rounded border-slate-600 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-800"
+                    className="w-4 h-4 rounded border-border text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-800"
                   />
-                  <span className="text-sm text-slate-300">Entities</span>
+                  <span className="text-sm text-foreground">Entities</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={filters.includeDocuments}
                     onChange={(e) => onFilterChange({ includeDocuments: e.target.checked })}
-                    className="w-4 h-4 rounded border-slate-600 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-800"
+                    className="w-4 h-4 rounded border-border text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-800"
                   />
-                  <span className="text-sm text-slate-300">Documents</span>
+                  <span className="text-sm text-foreground">Documents</span>
                 </label>
               </div>
             </div>
 
             {/* Confidence slider */}
             <div>
-              <p className="text-xs font-medium text-slate-400 mb-2">
+              <p className="text-xs font-medium text-muted-foreground mb-2">
                 Min Confidence: {Math.round(filters.minConfidence * 100)}%
               </p>
               <input
@@ -287,13 +287,13 @@ export function KnowledgeGraphToolbar({
                 max="100"
                 value={filters.minConfidence * 100}
                 onChange={(e) => onFilterChange({ minConfidence: parseInt(e.target.value) / 100 })}
-                className="w-32 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                className="w-32 h-2 bg-accent rounded-lg appearance-none cursor-pointer"
               />
             </div>
 
             {/* Max nodes */}
             <div>
-              <p className="text-xs font-medium text-slate-400 mb-2">
+              <p className="text-xs font-medium text-muted-foreground mb-2">
                 Max Nodes: {filters.maxNodes}
               </p>
               <input
@@ -303,7 +303,7 @@ export function KnowledgeGraphToolbar({
                 step="50"
                 value={filters.maxNodes}
                 onChange={(e) => onFilterChange({ maxNodes: parseInt(e.target.value) })}
-                className="w-32 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                className="w-32 h-2 bg-accent rounded-lg appearance-none cursor-pointer"
               />
             </div>
 
@@ -323,7 +323,7 @@ export function KnowledgeGraphToolbar({
                     maxNodes: 200,
                   })
                 }
-                className="flex items-center gap-1 text-xs text-slate-400 hover:text-white"
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
               >
                 <X className="h-3 w-3" />
                 Clear all

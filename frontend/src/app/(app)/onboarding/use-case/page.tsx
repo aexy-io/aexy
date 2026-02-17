@@ -80,7 +80,7 @@ export default function UseCaseSelection() {
             className={`h-1.5 rounded-full transition-all ${
               step <= 2
                 ? "w-8 bg-primary-500"
-                : "w-4 bg-slate-700"
+                : "w-4 bg-accent"
             }`}
           />
         ))}
@@ -93,10 +93,10 @@ export default function UseCaseSelection() {
       >
         {/* Header */}
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold text-white mb-3">
+          <h1 className="text-3xl font-bold text-foreground mb-3">
             What will you use Aexy for?
           </h1>
-          <p className="text-slate-400 max-w-lg mx-auto">
+          <p className="text-muted-foreground max-w-lg mx-auto">
             Select all that apply. This helps us recommend the right integrations
             and customize your experience.
           </p>
@@ -114,8 +114,8 @@ export default function UseCaseSelection() {
                 onClick={() => toggleUseCase(useCase.id)}
                 className={`relative p-5 rounded-xl border text-left transition-all ${
                   isSelected
-                    ? "bg-slate-800/80 border-primary-500/50 ring-2 ring-primary-500/20"
-                    : "bg-slate-800/30 border-slate-700/50 hover:border-slate-600/50"
+                    ? "bg-muted/80 border-primary-500/50 ring-2 ring-primary-500/20"
+                    : "bg-muted/30 border-border/50 hover:border-border/50"
                 }`}
               >
                 {isSelected && (
@@ -124,20 +124,20 @@ export default function UseCaseSelection() {
                   </div>
                 )}
                 <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${useCase.color} flex items-center justify-center mb-4`}>
-                  <useCase.icon className="w-6 h-6 text-white" />
+                  <useCase.icon className="w-6 h-6 text-foreground" />
                 </div>
-                <h3 className="font-semibold text-white mb-1">{useCase.title}</h3>
-                <p className="text-sm text-slate-400">{useCase.description}</p>
+                <h3 className="font-semibold text-foreground mb-1">{useCase.title}</h3>
+                <p className="text-sm text-muted-foreground">{useCase.description}</p>
               </motion.button>
             );
           })}
         </div>
 
         {/* Navigation */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 border-t border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 border-t border-border">
           <button
             onClick={() => router.push("/onboarding")}
-            className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-white transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
@@ -149,7 +149,7 @@ export default function UseCaseSelection() {
             className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
               data.useCases.length > 0
                 ? "bg-gradient-to-r from-primary-500 to-primary-600 text-white hover:from-primary-600 hover:to-primary-700 shadow-lg shadow-primary-500/25"
-                : "bg-slate-800 text-slate-500 cursor-not-allowed"
+                : "bg-muted text-muted-foreground cursor-not-allowed"
             }`}
           >
             Continue

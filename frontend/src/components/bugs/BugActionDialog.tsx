@@ -73,12 +73,12 @@ export function BugActionDialog({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-md m-4">
-        <div className="flex items-center justify-between p-4 border-b border-slate-700">
-          <h3 className="text-lg font-semibold text-white">{title}</h3>
+      <div className="bg-background border border-border rounded-xl w-full max-w-md m-4">
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <h3 className="text-lg font-semibold text-foreground">{title}</h3>
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-white transition-colors"
+            className="p-1 text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -86,12 +86,12 @@ export function BugActionDialog({
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           {description && (
-            <p className="text-sm text-slate-400">{description}</p>
+            <p className="text-sm text-muted-foreground">{description}</p>
           )}
 
           {fields.map((field) => (
             <div key={field.name}>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 {field.label}
                 {field.required && <span className="text-red-400 ml-1">*</span>}
               </label>
@@ -102,7 +102,7 @@ export function BugActionDialog({
                     setFormData({ ...formData, [field.name]: e.target.value })
                   }
                   required={field.required}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                 >
                   {field.options?.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -119,7 +119,7 @@ export function BugActionDialog({
                   placeholder={field.placeholder}
                   required={field.required}
                   rows={3}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
                 />
               ) : (
                 <input
@@ -130,7 +130,7 @@ export function BugActionDialog({
                   }
                   placeholder={field.placeholder}
                   required={field.required}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                 />
               )}
             </div>
@@ -140,14 +140,14 @@ export function BugActionDialog({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+              className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className={`px-4 py-2 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${getButtonStyles()}`}
+              className={`px-4 py-2 text-foreground rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${getButtonStyles()}`}
             >
               {isLoading ? "..." : confirmLabel}
             </button>

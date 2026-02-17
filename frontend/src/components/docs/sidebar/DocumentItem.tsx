@@ -46,8 +46,8 @@ export function DocumentItem({
       <div
         className={`group relative flex items-center py-1 px-2 rounded-md cursor-pointer transition-colors ${
           isSelected
-            ? "bg-primary-500/20 text-white"
-            : "hover:bg-white/5 text-slate-300"
+            ? "bg-primary-500/20 text-foreground"
+            : "hover:bg-white/5 text-foreground"
         }`}
         style={{ paddingLeft }}
       >
@@ -61,7 +61,7 @@ export function DocumentItem({
             className="p-0.5 hover:bg-white/10 rounded mr-1"
           >
             <ChevronRight
-              className={`h-3.5 w-3.5 text-slate-500 transition-transform duration-200 ${
+              className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${
                 isExpanded ? "rotate-90" : ""
               }`}
             />
@@ -75,7 +75,7 @@ export function DocumentItem({
           {document.icon ? (
             <span className="text-base">{document.icon}</span>
           ) : (
-            <File className="h-4 w-4 text-slate-500" />
+            <File className="h-4 w-4 text-muted-foreground" />
           )}
         </span>
 
@@ -104,7 +104,7 @@ export function DocumentItem({
                 className={`h-3.5 w-3.5 ${
                   document.is_favorited
                     ? "text-yellow-400 fill-yellow-400"
-                    : "text-slate-500"
+                    : "text-muted-foreground"
                 }`}
               />
             </button>
@@ -120,7 +120,7 @@ export function DocumentItem({
               className="p-1 hover:bg-white/10 rounded"
               title="Add subpage"
             >
-              <Plus className="h-3.5 w-3.5 text-slate-500" />
+              <Plus className="h-3.5 w-3.5 text-muted-foreground" />
             </button>
           )}
 
@@ -133,7 +133,7 @@ export function DocumentItem({
               }}
               className="p-1 hover:bg-white/10 rounded"
             >
-              <MoreHorizontal className="h-3.5 w-3.5 text-slate-500" />
+              <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
             </button>
 
             {/* Dropdown Menu */}
@@ -143,7 +143,7 @@ export function DocumentItem({
                   className="fixed inset-0 z-10"
                   onClick={() => setShowMenu(false)}
                 />
-                <div className="absolute right-0 top-full mt-1 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-20 py-1">
+                <div className="absolute right-0 top-full mt-1 w-40 bg-muted border border-border rounded-lg shadow-xl z-20 py-1">
                   {onDuplicate && (
                     <button
                       onClick={(e) => {
@@ -151,7 +151,7 @@ export function DocumentItem({
                         onDuplicate(document.id);
                         setShowMenu(false);
                       }}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700"
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-foreground hover:bg-accent"
                     >
                       <Copy className="h-4 w-4" />
                       Duplicate
@@ -164,7 +164,7 @@ export function DocumentItem({
                         onDelete(document.id);
                         setShowMenu(false);
                       }}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-400 hover:bg-slate-700"
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-400 hover:bg-accent"
                     >
                       <Trash2 className="h-4 w-4" />
                       Delete

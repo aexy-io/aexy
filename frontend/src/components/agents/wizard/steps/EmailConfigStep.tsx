@@ -68,14 +68,14 @@ export function EmailConfigStep({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-white mb-2">Email Configuration</h2>
-        <p className="text-slate-400">
+        <h2 className="text-xl font-semibold text-foreground mb-2">Email Configuration</h2>
+        <p className="text-muted-foreground">
           Enable email for this agent to receive and respond to emails automatically.
         </p>
       </div>
 
       {/* Enable Email Toggle */}
-      <div className="bg-slate-700/50 rounded-xl p-6 border border-slate-600">
+      <div className="bg-accent/50 rounded-xl p-6 border border-border">
         <label className="flex items-start gap-4 cursor-pointer">
           <div className="relative mt-1">
             <input
@@ -87,7 +87,7 @@ export function EmailConfigStep({
             <div
               className={cn(
                 "w-11 h-6 rounded-full transition-colors",
-                emailEnabled ? "bg-purple-500" : "bg-slate-600"
+                emailEnabled ? "bg-purple-500" : "bg-muted"
               )}
             />
             <div
@@ -100,9 +100,9 @@ export function EmailConfigStep({
           <div>
             <div className="flex items-center gap-2">
               <Mail className="h-5 w-5 text-purple-400" />
-              <span className="font-medium text-white">Enable Email</span>
+              <span className="font-medium text-foreground">Enable Email</span>
             </div>
-            <p className="text-sm text-slate-400 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Give this agent its own email address to receive and process emails
             </p>
           </div>
@@ -112,8 +112,8 @@ export function EmailConfigStep({
       {emailEnabled && (
         <>
           {/* Email Address Configuration */}
-          <div className="bg-slate-700/50 rounded-xl p-6 border border-slate-600 space-y-4">
-            <h3 className="font-medium text-white flex items-center gap-2">
+          <div className="bg-accent/50 rounded-xl p-6 border border-border space-y-4">
+            <h3 className="font-medium text-foreground flex items-center gap-2">
               <AtSign className="h-4 w-4 text-blue-400" />
               Email Address
             </h3>
@@ -121,7 +121,7 @@ export function EmailConfigStep({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Handle Input */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Email Handle
                 </label>
                 <input
@@ -129,25 +129,25 @@ export function EmailConfigStep({
                   value={localHandle}
                   onChange={(e) => handleLocalHandleChange(e.target.value)}
                   placeholder="support"
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Letters, numbers, and hyphens only
                 </p>
               </div>
 
               {/* Domain Selector */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Domain
                 </label>
                 <div className="relative">
-                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <select
                     value={emailDomain}
                     onChange={(e) => onEmailDomainChange(e.target.value)}
                     disabled={isLoading}
-                    className="w-full pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none"
+                    className="w-full pl-10 pr-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none"
                   >
                     {domains.map((d) => (
                       <option key={d.domain} value={d.domain}>
@@ -161,10 +161,10 @@ export function EmailConfigStep({
 
             {/* Email Preview */}
             {previewEmail && (
-              <div className="mt-4 p-3 bg-slate-800 rounded-lg border border-slate-700">
+              <div className="mt-4 p-3 bg-muted rounded-lg border border-border">
                 <div className="flex items-center gap-2">
                   <Info className="h-4 w-4 text-blue-400" />
-                  <span className="text-sm text-slate-400">Email address preview:</span>
+                  <span className="text-sm text-muted-foreground">Email address preview:</span>
                 </div>
                 <code className="block mt-1 text-blue-400 font-mono">{previewEmail}</code>
               </div>
@@ -172,7 +172,7 @@ export function EmailConfigStep({
           </div>
 
           {/* Auto-Reply Settings */}
-          <div className="bg-slate-700/50 rounded-xl p-6 border border-slate-600">
+          <div className="bg-accent/50 rounded-xl p-6 border border-border">
             <label className="flex items-start gap-4 cursor-pointer">
               <div className="relative mt-1">
                 <input
@@ -184,7 +184,7 @@ export function EmailConfigStep({
                 <div
                   className={cn(
                     "w-11 h-6 rounded-full transition-colors",
-                    autoReplyEnabled ? "bg-purple-500" : "bg-slate-600"
+                    autoReplyEnabled ? "bg-purple-500" : "bg-muted"
                   )}
                 />
                 <div
@@ -197,9 +197,9 @@ export function EmailConfigStep({
               <div>
                 <div className="flex items-center gap-2">
                   <MessageSquare className="h-5 w-5 text-green-400" />
-                  <span className="font-medium text-white">Enable Auto-Reply</span>
+                  <span className="font-medium text-foreground">Enable Auto-Reply</span>
                 </div>
-                <p className="text-sm text-slate-400 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   Automatically respond to emails when AI confidence is above threshold
                 </p>
               </div>
@@ -207,9 +207,9 @@ export function EmailConfigStep({
           </div>
 
           {/* Email Signature */}
-          <div className="bg-slate-700/50 rounded-xl p-6 border border-slate-600 space-y-3">
-            <label className="flex items-center gap-2 font-medium text-white">
-              <FileText className="h-4 w-4 text-slate-400" />
+          <div className="bg-accent/50 rounded-xl p-6 border border-border space-y-3">
+            <label className="flex items-center gap-2 font-medium text-foreground">
+              <FileText className="h-4 w-4 text-muted-foreground" />
               Email Signature
             </label>
             <textarea
@@ -217,9 +217,9 @@ export function EmailConfigStep({
               onChange={(e) => onEmailSignatureChange(e.target.value)}
               rows={4}
               placeholder={`Best regards,\n${agentName}`}
-              className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+              className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
             />
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted-foreground">
               This signature will be appended to all outgoing emails from this agent.
               Use {"{agent_name}"} to insert the agent name dynamically.
             </p>

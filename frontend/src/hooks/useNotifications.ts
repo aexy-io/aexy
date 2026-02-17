@@ -270,7 +270,7 @@ export function getNotificationColor(eventType: string): string {
     case "manager_review_completed":
       return "text-green-400";
     case "review_acknowledged":
-      return "text-slate-400";
+      return "text-muted-foreground";
     case "deadline_reminder_1_day":
       return "text-amber-400";
     case "deadline_reminder_day_of":
@@ -286,7 +286,7 @@ export function getNotificationColor(eventType: string): string {
     case "team_added":
       return "text-purple-400";
     default:
-      return "text-slate-400";
+      return "text-muted-foreground";
   }
 }
 

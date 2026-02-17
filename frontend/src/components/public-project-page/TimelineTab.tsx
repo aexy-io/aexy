@@ -120,20 +120,20 @@ export function TimelineTab({ publicSlug }: TimelineTabProps) {
     <div className="space-y-4">
       {/* Controls */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium text-white">Sprint Timeline</h3>
+        <h3 className="text-lg font-medium text-foreground">Sprint Timeline</h3>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-lg">
+          <div className="flex items-center gap-1 bg-muted border border-border rounded-lg">
             <button
               onClick={() => {
                 if (zoomLevel === "quarter") setZoomLevel("month");
                 else if (zoomLevel === "month") setZoomLevel("week");
               }}
               disabled={zoomLevel === "week"}
-              className="p-2 text-slate-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+              className="p-2 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               <ZoomIn className="h-4 w-4" />
             </button>
-            <span className="px-2 text-xs text-slate-400 capitalize min-w-[60px] text-center">
+            <span className="px-2 text-xs text-muted-foreground capitalize min-w-[60px] text-center">
               {zoomLevel}
             </span>
             <button
@@ -142,7 +142,7 @@ export function TimelineTab({ publicSlug }: TimelineTabProps) {
                 else if (zoomLevel === "month") setZoomLevel("quarter");
               }}
               disabled={zoomLevel === "quarter"}
-              className="p-2 text-slate-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+              className="p-2 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               <ZoomOut className="h-4 w-4" />
             </button>
@@ -151,17 +151,17 @@ export function TimelineTab({ publicSlug }: TimelineTabProps) {
       </div>
 
       {/* Timeline */}
-      <div className="bg-slate-800 rounded-lg overflow-hidden">
+      <div className="bg-muted rounded-lg overflow-hidden">
         {/* Header */}
-        <div className="border-b border-slate-700 overflow-x-auto">
+        <div className="border-b border-border overflow-x-auto">
           <div className="flex relative" style={{ width: `${totalWidth}px`, minWidth: "100%" }}>
             {dateHeaders.map((date, index) => (
               <div
                 key={index}
-                className="flex-shrink-0 px-2 py-2 text-center border-r border-slate-700/30"
+                className="flex-shrink-0 px-2 py-2 text-center border-r border-border/30"
                 style={{ width: `${columnWidth}px` }}
               >
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-muted-foreground">
                   {formatDateHeader(date, zoomLevel)}
                 </span>
               </div>
@@ -173,7 +173,7 @@ export function TimelineTab({ publicSlug }: TimelineTabProps) {
                 className="absolute top-0 bottom-0 w-0.5 bg-primary-500 z-10"
                 style={{ left: `${todayPosition}px` }}
               >
-                <div className="absolute -top-0 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-primary-500 rounded-b text-[10px] text-white whitespace-nowrap">
+                <div className="absolute -top-0 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-primary-500 rounded-b text-[10px] text-foreground whitespace-nowrap">
                   Today
                 </div>
               </div>
@@ -191,7 +191,7 @@ export function TimelineTab({ publicSlug }: TimelineTabProps) {
                 : 0;
 
               return (
-                <div key={sprint.id} className="relative h-14 border-b border-slate-700/30">
+                <div key={sprint.id} className="relative h-14 border-b border-border/30">
                   <div
                     className={cn(
                       "absolute top-2 h-10 rounded-lg transition-all",
@@ -211,9 +211,9 @@ export function TimelineTab({ publicSlug }: TimelineTabProps) {
 
                     {/* Content */}
                     <div className="relative h-full flex items-center px-3 overflow-hidden">
-                      <span className="text-xs font-medium text-white truncate">{sprint.name}</span>
+                      <span className="text-xs font-medium text-foreground truncate">{sprint.name}</span>
                       {position.width > 100 && (
-                        <span className="ml-2 text-[10px] text-white/70">{completionRate}%</span>
+                        <span className="ml-2 text-[10px] text-foreground/70">{completionRate}%</span>
                       )}
                     </div>
                   </div>
@@ -233,12 +233,12 @@ export function TimelineTab({ publicSlug }: TimelineTabProps) {
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 text-xs text-slate-500">
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span>Status:</span>
         {Object.entries(SPRINT_STATUS_COLORS).map(([status, color]) => (
           <div key={status} className="flex items-center gap-1.5">
             <div className={cn("w-3 h-3 rounded", color)} />
-            <span className="text-slate-400 capitalize">{status}</span>
+            <span className="text-muted-foreground capitalize">{status}</span>
           </div>
         ))}
       </div>

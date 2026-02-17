@@ -44,7 +44,7 @@ export default function DocumentPage() {
             <div className="w-10 h-10 border-4 border-primary-500/20 rounded-full"></div>
             <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
           </div>
-          <p className="text-slate-400 text-sm">Loading document...</p>
+          <p className="text-muted-foreground text-sm">Loading document...</p>
         </div>
       </div>
     );
@@ -59,8 +59,8 @@ export default function DocumentPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <h2 className="text-lg font-semibold text-white mb-2">Document Not Found</h2>
-          <p className="text-slate-400 text-sm">
+          <h2 className="text-lg font-semibold text-foreground mb-2">Document Not Found</h2>
+          <p className="text-muted-foreground text-sm">
             This document may have been deleted or you don&apos;t have access to it.
           </p>
         </div>

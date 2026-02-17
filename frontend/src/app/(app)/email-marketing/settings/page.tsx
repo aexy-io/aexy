@@ -65,13 +65,13 @@ function DNSRecordRow({
   };
 
   return (
-    <div className="bg-slate-800/50 rounded-lg p-4 space-y-3">
+    <div className="bg-muted/50 rounded-lg p-4 space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded text-xs font-medium">
             {record.record_type}
           </span>
-          <span className="text-sm font-medium text-white">{label}</span>
+          <span className="text-sm font-medium text-foreground">{label}</span>
           {record.verified ? (
             <CheckCircle className="h-4 w-4 text-emerald-400" />
           ) : (
@@ -82,17 +82,17 @@ function DNSRecordRow({
           {record.verified ? "Verified" : "Pending"}
         </span>
       </div>
-      {description && <p className="text-xs text-slate-500">{description}</p>}
+      {description && <p className="text-xs text-muted-foreground">{description}</p>}
       <div className="space-y-2">
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Host / Name</label>
+          <label className="block text-xs text-muted-foreground mb-1">Host / Name</label>
           <div className="flex items-center gap-2">
-            <code className="flex-1 px-3 py-2 bg-slate-900 rounded text-sm text-slate-300 font-mono overflow-x-auto">
+            <code className="flex-1 px-3 py-2 bg-background rounded text-sm text-foreground font-mono overflow-x-auto">
               {record.name}
             </code>
             <button
               onClick={() => copyToClipboard(record.name, "name")}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition flex-shrink-0"
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition flex-shrink-0"
               title="Copy host"
             >
               {copied === "name" ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
@@ -100,14 +100,14 @@ function DNSRecordRow({
           </div>
         </div>
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Value / Content</label>
+          <label className="block text-xs text-muted-foreground mb-1">Value / Content</label>
           <div className="flex items-center gap-2">
-            <code className="flex-1 px-3 py-2 bg-slate-900 rounded text-sm text-slate-300 font-mono overflow-x-auto break-all">
+            <code className="flex-1 px-3 py-2 bg-background rounded text-sm text-foreground font-mono overflow-x-auto break-all">
               {record.value}
             </code>
             <button
               onClick={() => copyToClipboard(record.value, "value")}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition flex-shrink-0"
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition flex-shrink-0"
               title="Copy value"
             >
               {copied === "value" ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
@@ -115,7 +115,7 @@ function DNSRecordRow({
           </div>
         </div>
       </div>
-      {record.note && <p className="text-xs text-slate-500 italic">{record.note}</p>}
+      {record.note && <p className="text-xs text-muted-foreground italic">{record.note}</p>}
     </div>
   );
 }
@@ -151,7 +151,7 @@ function DomainCard({
   };
 
   const getStatusIcon = () => {
-    if (!domain.is_active) return <Pause className="h-4 w-4 text-slate-400" />;
+    if (!domain.is_active) return <Pause className="h-4 w-4 text-muted-foreground" />;
     if (!domain.is_verified) return <AlertCircle className="h-4 w-4 text-amber-400" />;
     if (domain.warming_status === "in_progress") return <TrendingUp className="h-4 w-4 text-amber-400" />;
     if (domain.health_score >= 90) return <CheckCircle className="h-4 w-4 text-emerald-400" />;
@@ -176,7 +176,7 @@ function DomainCard({
   );
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
+    <div className="bg-background/50 border border-border rounded-xl p-5">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-purple-500/20 rounded-lg">
@@ -184,7 +184,7 @@ function DomainCard({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-white font-medium">{domain.domain}</h3>
+              <h3 className="text-foreground font-medium">{domain.domain}</h3>
               {!domain.is_verified && (
                 <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded text-xs font-medium">
                   Action Required
@@ -198,7 +198,7 @@ function DomainCard({
             </div>
             <div className="flex items-center gap-2 mt-1">
               {getStatusIcon()}
-              <span className="text-sm text-slate-400">{getStatusText()}</span>
+              <span className="text-sm text-muted-foreground">{getStatusText()}</span>
             </div>
           </div>
         </div>
@@ -225,7 +225,7 @@ function DomainCard({
           {domain.is_active ? (
             <button
               onClick={onPause}
-              className="p-2 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-lg transition"
+              className="p-2 text-muted-foreground hover:text-amber-400 hover:bg-muted rounded-lg transition"
               title="Pause"
             >
               <Pause className="h-4 w-4" />
@@ -233,7 +233,7 @@ function DomainCard({
           ) : (
             <button
               onClick={onResume}
-              className="p-2 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-lg transition"
+              className="p-2 text-muted-foreground hover:text-emerald-400 hover:bg-muted rounded-lg transition"
               title="Resume"
             >
               <Play className="h-4 w-4" />
@@ -241,7 +241,7 @@ function DomainCard({
           )}
           <button
             onClick={onDelete}
-            className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition"
+            className="p-2 text-muted-foreground hover:text-red-400 hover:bg-muted rounded-lg transition"
             title="Delete"
           >
             <Trash2 className="h-4 w-4" />
@@ -250,44 +250,44 @@ function DomainCard({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-        <div className="text-center p-3 bg-slate-800/50 rounded-lg">
-          <p className="text-lg font-semibold text-white">{domain.health_score}%</p>
-          <p className="text-xs text-slate-500">Health Score</p>
+        <div className="text-center p-3 bg-muted/50 rounded-lg">
+          <p className="text-lg font-semibold text-foreground">{domain.health_score}%</p>
+          <p className="text-xs text-muted-foreground">Health Score</p>
         </div>
-        <div className="text-center p-3 bg-slate-800/50 rounded-lg">
-          <p className="text-lg font-semibold text-white">{domain.daily_limit.toLocaleString()}</p>
-          <p className="text-xs text-slate-500">Daily Limit</p>
+        <div className="text-center p-3 bg-muted/50 rounded-lg">
+          <p className="text-lg font-semibold text-foreground">{domain.daily_limit.toLocaleString()}</p>
+          <p className="text-xs text-muted-foreground">Daily Limit</p>
         </div>
-        <div className="text-center p-3 bg-slate-800/50 rounded-lg">
-          <p className="text-lg font-semibold text-white">{domain.daily_sent.toLocaleString()}</p>
-          <p className="text-xs text-slate-500">Sent Today</p>
+        <div className="text-center p-3 bg-muted/50 rounded-lg">
+          <p className="text-lg font-semibold text-foreground">{domain.daily_sent.toLocaleString()}</p>
+          <p className="text-xs text-muted-foreground">Sent Today</p>
         </div>
       </div>
 
       {/* DNS Records Section */}
       {hasDnsRecords && (
-        <div className="border-t border-slate-800 pt-4 mt-4">
+        <div className="border-t border-border pt-4 mt-4">
           <button
             onClick={() => setShowDnsRecords(!showDnsRecords)}
             className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full text-left"
           >
             <div className="flex items-center gap-2">
-              <Shield className="h-4 w-4 text-slate-400" />
-              <span className="text-sm font-medium text-white">DNS Records</span>
+              <Shield className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">DNS Records</span>
               {!domain.is_verified && (
                 <span className="text-xs text-amber-400">Configuration required</span>
               )}
             </div>
             {showDnsRecords ? (
-              <ChevronUp className="h-4 w-4 text-slate-400" />
+              <ChevronUp className="h-4 w-4 text-muted-foreground" />
             ) : (
-              <ChevronDown className="h-4 w-4 text-slate-400" />
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
             )}
           </button>
 
           {showDnsRecords && (
             <div className="mt-4 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-slate-500">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-muted-foreground">
                 <p>Add these DNS records to your domain registrar to enable email sending.</p>
                 <a
                   href="https://github.com/bhanuc/aexy"
@@ -334,8 +334,8 @@ function DomainCard({
               )}
 
               {!domain.is_verified && (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-slate-800/30 rounded-lg">
-                  <p className="text-sm text-slate-400">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-muted/30 rounded-lg">
+                  <p className="text-sm text-muted-foreground">
                     After adding DNS records, click verify to check configuration.
                   </p>
                   <button
@@ -361,9 +361,9 @@ function DomainCard({
       {!hasDnsRecords && !domain.is_verified && (
         <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
           <p className="text-sm text-amber-400 mb-2">DNS records need verification</p>
-          <div className="text-xs text-slate-400 space-y-1">
+          <div className="text-xs text-muted-foreground space-y-1">
             <p>Add these DNS records to verify your domain:</p>
-            <code className="block p-2 bg-slate-800 rounded mt-2 text-slate-300">
+            <code className="block p-2 bg-muted rounded mt-2 text-foreground">
               TXT @ aexy-verification={domain.verification_token || domain.id?.slice(0, 8)}
             </code>
           </div>
@@ -400,15 +400,15 @@ function ProviderCard({
   const hasCredentials = provider.has_credentials;
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
+    <div className="bg-background/50 border border-border rounded-xl p-5">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-amber-500/20 rounded-lg">
             <Zap className="h-5 w-5 text-amber-400" />
           </div>
           <div>
-            <h3 className="text-white font-medium">{provider.name}</h3>
-            <p className="text-sm text-slate-500 capitalize">{provider.provider_type}</p>
+            <h3 className="text-foreground font-medium">{provider.name}</h3>
+            <p className="text-sm text-muted-foreground capitalize">{provider.provider_type}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -420,7 +420,7 @@ function ProviderCard({
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
             provider.is_active
               ? "bg-emerald-500/20 text-emerald-400"
-              : "bg-slate-500/20 text-slate-400"
+              : "bg-muted text-muted-foreground"
           }`}>
             {provider.is_active ? "Active" : "Inactive"}
           </span>
@@ -433,7 +433,7 @@ function ProviderCard({
       </div>
 
       {provider.description && (
-        <p className="text-sm text-slate-400 mb-4">{provider.description}</p>
+        <p className="text-sm text-muted-foreground mb-4">{provider.description}</p>
       )}
 
       <div className="flex items-center gap-2">
@@ -447,7 +447,7 @@ function ProviderCard({
         <button
           onClick={handleTest}
           disabled={isTesting || !hasCredentials}
-          className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-lg transition text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-3 py-1.5 bg-muted text-foreground hover:text-foreground rounded-lg transition text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           title={!hasCredentials ? "Configure credentials first" : "Test connection"}
         >
           {isTesting ? (
@@ -469,7 +469,7 @@ function ProviderCard({
         </button>
         <button
           onClick={onDelete}
-          className="p-1.5 text-slate-400 hover:text-red-400 transition"
+          className="p-1.5 text-muted-foreground hover:text-red-400 transition"
         >
           <Trash2 className="h-4 w-4" />
         </button>
@@ -490,22 +490,22 @@ function CategoryCard({
   onDelete: () => void;
 }) {
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
+    <div className="bg-background/50 border border-border rounded-xl p-5">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-purple-500/20 rounded-lg">
             <Tags className="h-5 w-5 text-purple-400" />
           </div>
           <div>
-            <h3 className="text-white font-medium">{category.name}</h3>
-            <p className="text-xs text-slate-500 font-mono">{category.slug}</p>
+            <h3 className="text-foreground font-medium">{category.name}</h3>
+            <p className="text-xs text-muted-foreground font-mono">{category.slug}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
             category.is_active
               ? "bg-emerald-500/20 text-emerald-400"
-              : "bg-slate-500/20 text-slate-400"
+              : "bg-muted text-muted-foreground"
           }`}>
             {category.is_active ? "Active" : "Inactive"}
           </span>
@@ -523,13 +523,13 @@ function CategoryCard({
       </div>
 
       {category.description && (
-        <p className="text-sm text-slate-400 mb-4">{category.description}</p>
+        <p className="text-sm text-muted-foreground mb-4">{category.description}</p>
       )}
 
       <div className="flex items-center gap-2">
         <button
           onClick={onEdit}
-          className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-lg transition text-sm"
+          className="flex items-center gap-2 px-3 py-1.5 bg-muted text-foreground hover:text-foreground rounded-lg transition text-sm"
         >
           <Edit3 className="h-4 w-4" />
           Edit
@@ -547,7 +547,7 @@ function CategoryCard({
         {!category.required && (
           <button
             onClick={onDelete}
-            className="p-1.5 text-slate-400 hover:text-red-400 transition"
+            className="p-1.5 text-muted-foreground hover:text-red-400 transition"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -792,12 +792,12 @@ export default function EmailSettingsPage() {
 
   if (!currentWorkspace) {
     return (
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen bg-background">
 <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <div className="text-center">
-            <AlertCircle className="h-12 w-12 text-slate-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-white mb-2">No Workspace Selected</h2>
-            <p className="text-slate-400">Please select a workspace to manage email settings.</p>
+            <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-foreground mb-2">No Workspace Selected</h2>
+            <p className="text-muted-foreground">Please select a workspace to manage email settings.</p>
           </div>
         </div>
       </div>
@@ -805,14 +805,14 @@ export default function EmailSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
 <div className="p-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="flex items-center gap-4 mb-6">
             <button
               onClick={() => router.push("/settings")}
-              className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition"
+              className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
@@ -822,21 +822,21 @@ export default function EmailSettingsPage() {
                   <Mail className="h-5 w-5 text-sky-400" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-white">Email Settings</h1>
-                  <p className="text-sm text-slate-400">Configure email infrastructure and providers</p>
+                  <h1 className="text-2xl font-bold text-foreground">Email Settings</h1>
+                  <p className="text-sm text-muted-foreground">Configure email infrastructure and providers</p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Tabs */}
-          <div className="flex items-center gap-1 p-1 bg-slate-900/50 border border-slate-800 rounded-xl mb-6 w-fit">
+          <div className="flex items-center gap-1 p-1 bg-background/50 border border-border rounded-xl mb-6 w-fit">
             <button
               onClick={() => setActiveTab("domains")}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
                 activeTab === "domains"
-                  ? "bg-slate-800 text-white"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Globe className="h-4 w-4" />
@@ -846,8 +846,8 @@ export default function EmailSettingsPage() {
               onClick={() => setActiveTab("providers")}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
                 activeTab === "providers"
-                  ? "bg-slate-800 text-white"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Zap className="h-4 w-4" />
@@ -857,8 +857,8 @@ export default function EmailSettingsPage() {
               onClick={() => setActiveTab("categories")}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
                 activeTab === "categories"
-                  ? "bg-slate-800 text-white"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Tags className="h-4 w-4" />
@@ -870,7 +870,7 @@ export default function EmailSettingsPage() {
           {activeTab === "domains" && (
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <p className="text-slate-400">
+                <p className="text-muted-foreground">
                   Manage your sending domains and warming schedules
                 </p>
                 <button
@@ -894,14 +894,14 @@ export default function EmailSettingsPage() {
                   </button>
                 </div>
               ) : domainsLoading ? (
-                <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-12 text-center">
-                  <Loader2 className="h-8 w-8 text-slate-500 animate-spin mx-auto" />
+                <div className="bg-background/50 border border-border rounded-xl p-12 text-center">
+                  <Loader2 className="h-8 w-8 text-muted-foreground animate-spin mx-auto" />
                 </div>
               ) : domains.length === 0 ? (
-                <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-12 text-center">
-                  <Globe className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-white mb-2">No sending domains</h3>
-                  <p className="text-slate-400 mb-4">Add a domain to start sending emails</p>
+                <div className="bg-background/50 border border-border rounded-xl p-12 text-center">
+                  <Globe className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-foreground mb-2">No sending domains</h3>
+                  <p className="text-muted-foreground mb-4">Add a domain to start sending emails</p>
                   <button
                     onClick={() => setShowAddDomain(true)}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition"
@@ -932,7 +932,7 @@ export default function EmailSettingsPage() {
           {activeTab === "providers" && (
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <p className="text-slate-400">
+                <p className="text-muted-foreground">
                   Configure email service providers for sending
                 </p>
                 <button
@@ -956,14 +956,14 @@ export default function EmailSettingsPage() {
                   </button>
                 </div>
               ) : providersLoading ? (
-                <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-12 text-center">
-                  <Loader2 className="h-8 w-8 text-slate-500 animate-spin mx-auto" />
+                <div className="bg-background/50 border border-border rounded-xl p-12 text-center">
+                  <Loader2 className="h-8 w-8 text-muted-foreground animate-spin mx-auto" />
                 </div>
               ) : providers.length === 0 ? (
-                <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-12 text-center">
-                  <Zap className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-white mb-2">No email providers</h3>
-                  <p className="text-slate-400 mb-4">Add a provider to start sending emails</p>
+                <div className="bg-background/50 border border-border rounded-xl p-12 text-center">
+                  <Zap className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-foreground mb-2">No email providers</h3>
+                  <p className="text-muted-foreground mb-4">Add a provider to start sending emails</p>
                   <button
                     onClick={() => setShowAddProvider(true)}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition"
@@ -996,7 +996,7 @@ export default function EmailSettingsPage() {
           {activeTab === "categories" && (
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <p className="text-slate-400">
+                <p className="text-muted-foreground">
                   Manage subscription categories for your emails
                 </p>
                 <button
@@ -1020,14 +1020,14 @@ export default function EmailSettingsPage() {
                   </button>
                 </div>
               ) : categoriesLoading ? (
-                <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-12 text-center">
-                  <Loader2 className="h-8 w-8 text-slate-500 animate-spin mx-auto" />
+                <div className="bg-background/50 border border-border rounded-xl p-12 text-center">
+                  <Loader2 className="h-8 w-8 text-muted-foreground animate-spin mx-auto" />
                 </div>
               ) : categories.length === 0 ? (
-                <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-12 text-center">
-                  <Tags className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-white mb-2">No subscription categories</h3>
-                  <p className="text-slate-400 mb-4">Create categories to let users manage their email preferences</p>
+                <div className="bg-background/50 border border-border rounded-xl p-12 text-center">
+                  <Tags className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-foreground mb-2">No subscription categories</h3>
+                  <p className="text-muted-foreground mb-4">Create categories to let users manage their email preferences</p>
                   <button
                     onClick={() => setShowAddCategory(true)}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition"
@@ -1060,27 +1060,27 @@ export default function EmailSettingsPage() {
       {/* Add Domain Modal */}
       {showAddDomain && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md">
-            <div className="p-4 border-b border-slate-800">
-              <h3 className="text-lg font-medium text-white">Add Sending Domain</h3>
+          <div className="bg-background border border-border rounded-xl w-full max-w-md">
+            <div className="p-4 border-b border-border">
+              <h3 className="text-lg font-medium text-foreground">Add Sending Domain</h3>
             </div>
             <div className="p-4">
-              <label className="block text-sm text-slate-400 mb-2">Domain</label>
+              <label className="block text-sm text-muted-foreground mb-2">Domain</label>
               <input
                 type="text"
                 value={newDomain}
                 onChange={(e) => setNewDomain(e.target.value)}
                 placeholder="mail.example.com"
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
-              <p className="text-xs text-slate-500 mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 You'll need to add DNS records to verify ownership
               </p>
             </div>
-            <div className="p-4 border-t border-slate-800 flex justify-end gap-2">
+            <div className="p-4 border-t border-border flex justify-end gap-2">
               <button
                 onClick={() => setShowAddDomain(false)}
-                className="px-4 py-2 text-slate-400 hover:text-white transition"
+                className="px-4 py-2 text-muted-foreground hover:text-foreground transition"
               >
                 Cancel
               </button>
@@ -1099,27 +1099,27 @@ export default function EmailSettingsPage() {
       {/* Add Provider Modal */}
       {showAddProvider && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md">
-            <div className="p-4 border-b border-slate-800">
-              <h3 className="text-lg font-medium text-white">Add Email Provider</h3>
+          <div className="bg-background border border-border rounded-xl w-full max-w-md">
+            <div className="p-4 border-b border-border">
+              <h3 className="text-lg font-medium text-foreground">Add Email Provider</h3>
             </div>
             <div className="p-4 space-y-4">
               <div>
-                <label className="block text-sm text-slate-400 mb-2">Provider Name</label>
+                <label className="block text-sm text-muted-foreground mb-2">Provider Name</label>
                 <input
                   type="text"
                   value={newProviderName}
                   onChange={(e) => setNewProviderName(e.target.value)}
                   placeholder="My SES Provider"
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
               <div>
-                <label className="block text-sm text-slate-400 mb-2">Provider Type</label>
+                <label className="block text-sm text-muted-foreground mb-2">Provider Type</label>
                 <select
                   value={newProviderType}
                   onChange={(e) => setNewProviderType(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
                 >
                   <option value="ses">Amazon SES</option>
                   <option value="sendgrid">SendGrid</option>
@@ -1128,14 +1128,14 @@ export default function EmailSettingsPage() {
                   <option value="smtp">SMTP</option>
                 </select>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 You can configure credentials after adding the provider
               </p>
             </div>
-            <div className="p-4 border-t border-slate-800 flex justify-end gap-2">
+            <div className="p-4 border-t border-border flex justify-end gap-2">
               <button
                 onClick={() => setShowAddProvider(false)}
-                className="px-4 py-2 text-slate-400 hover:text-white transition"
+                className="px-4 py-2 text-muted-foreground hover:text-foreground transition"
               >
                 Cancel
               </button>
@@ -1154,40 +1154,40 @@ export default function EmailSettingsPage() {
       {/* Edit Provider Modal */}
       {editingProvider && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="p-4 border-b border-slate-800">
-              <h3 className="text-lg font-medium text-white">
+          <div className="bg-background border border-border rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="p-4 border-b border-border">
+              <h3 className="text-lg font-medium text-foreground">
                 Configure {editingProvider.provider_type.toUpperCase()} Provider
               </h3>
             </div>
             <div className="p-4 space-y-4">
               <div>
-                <label className="block text-sm text-slate-400 mb-2">Provider Name</label>
+                <label className="block text-sm text-muted-foreground mb-2">Provider Name</label>
                 <input
                   type="text"
                   value={newProviderName}
                   onChange={(e) => setNewProviderName(e.target.value)}
                   placeholder="My Provider"
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
               <div>
-                <label className="block text-sm text-slate-400 mb-2">Description (optional)</label>
+                <label className="block text-sm text-muted-foreground mb-2">Description (optional)</label>
                 <input
                   type="text"
                   value={providerDescription}
                   onChange={(e) => setProviderDescription(e.target.value)}
                   placeholder="Production email provider"
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
 
-              <div className="border-t border-slate-800 pt-4">
-                <h4 className="text-sm font-medium text-white mb-3">Credentials</h4>
+              <div className="border-t border-border pt-4">
+                <h4 className="text-sm font-medium text-foreground mb-3">Credentials</h4>
                 <div className="space-y-3">
                   {getCredentialFields(editingProvider.provider_type).map((field) => (
                     <div key={field.key}>
-                      <label className="block text-sm text-slate-400 mb-1">{field.label}</label>
+                      <label className="block text-sm text-muted-foreground mb-1">{field.label}</label>
                       {field.type === "select" && field.options ? (
                         <select
                           value={providerCredentials[field.key] || ""}
@@ -1195,7 +1195,7 @@ export default function EmailSettingsPage() {
                             ...providerCredentials,
                             [field.key]: e.target.value,
                           })}
-                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                          className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
                         >
                           <option value="">Select...</option>
                           {field.options.map((opt) => (
@@ -1211,9 +1211,9 @@ export default function EmailSettingsPage() {
                               ...providerCredentials,
                               [field.key]: e.target.checked ? "true" : "false",
                             })}
-                            className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-sky-500"
+                            className="w-4 h-4 rounded border-border bg-muted text-sky-500 focus:ring-sky-500"
                           />
-                          <span className="text-sm text-slate-300">Enable TLS encryption</span>
+                          <span className="text-sm text-foreground">Enable TLS encryption</span>
                         </label>
                       ) : (
                         <input
@@ -1224,7 +1224,7 @@ export default function EmailSettingsPage() {
                             [field.key]: e.target.value,
                           })}
                           placeholder={field.placeholder}
-                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                          className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
                         />
                       )}
                     </div>
@@ -1232,17 +1232,17 @@ export default function EmailSettingsPage() {
                 </div>
               </div>
 
-              <div className="bg-slate-800/50 rounded-lg p-3">
-                <p className="text-xs text-slate-400">
-                  <strong className="text-slate-300">Security note:</strong> Credentials are encrypted and stored securely.
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-xs text-muted-foreground">
+                  <strong className="text-foreground">Security note:</strong> Credentials are encrypted and stored securely.
                   After saving, some credential values may be masked for security.
                 </p>
               </div>
             </div>
-            <div className="p-4 border-t border-slate-800 flex justify-end gap-2">
+            <div className="p-4 border-t border-border flex justify-end gap-2">
               <button
                 onClick={closeEditProvider}
-                className="px-4 py-2 text-slate-400 hover:text-white transition"
+                className="px-4 py-2 text-muted-foreground hover:text-foreground transition"
               >
                 Cancel
               </button>
@@ -1261,40 +1261,40 @@ export default function EmailSettingsPage() {
       {/* Add Category Modal */}
       {showAddCategory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md">
-            <div className="p-4 border-b border-slate-800">
-              <h3 className="text-lg font-medium text-white">Add Subscription Category</h3>
+          <div className="bg-background border border-border rounded-xl w-full max-w-md">
+            <div className="p-4 border-b border-border">
+              <h3 className="text-lg font-medium text-foreground">Add Subscription Category</h3>
             </div>
             <div className="p-4 space-y-4">
               <div>
-                <label className="block text-sm text-slate-400 mb-2">Category Name *</label>
+                <label className="block text-sm text-muted-foreground mb-2">Category Name *</label>
                 <input
                   type="text"
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
                   placeholder="Product Updates"
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
               <div>
-                <label className="block text-sm text-slate-400 mb-2">Slug (optional)</label>
+                <label className="block text-sm text-muted-foreground mb-2">Slug (optional)</label>
                 <input
                   type="text"
                   value={newCategorySlug}
                   onChange={(e) => setNewCategorySlug(e.target.value)}
                   placeholder="product-updates"
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
-                <p className="text-xs text-slate-500 mt-1">Auto-generated from name if left empty</p>
+                <p className="text-xs text-muted-foreground mt-1">Auto-generated from name if left empty</p>
               </div>
               <div>
-                <label className="block text-sm text-slate-400 mb-2">Description (optional)</label>
+                <label className="block text-sm text-muted-foreground mb-2">Description (optional)</label>
                 <textarea
                   value={newCategoryDescription}
                   onChange={(e) => setNewCategoryDescription(e.target.value)}
                   placeholder="Get notified about new features and improvements"
                   rows={3}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
               <div className="flex items-center gap-3">
@@ -1303,14 +1303,14 @@ export default function EmailSettingsPage() {
                   id="defaultSubscribed"
                   checked={newCategoryDefaultSubscribed}
                   onChange={(e) => setNewCategoryDefaultSubscribed(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500"
+                  className="w-4 h-4 rounded border-border bg-muted text-sky-500 focus:ring-sky-500"
                 />
-                <label htmlFor="defaultSubscribed" className="text-sm text-slate-300">
+                <label htmlFor="defaultSubscribed" className="text-sm text-foreground">
                   Subscribe new users by default
                 </label>
               </div>
             </div>
-            <div className="p-4 border-t border-slate-800 flex justify-end gap-2">
+            <div className="p-4 border-t border-border flex justify-end gap-2">
               <button
                 onClick={() => {
                   setShowAddCategory(false);
@@ -1319,7 +1319,7 @@ export default function EmailSettingsPage() {
                   setNewCategoryDescription("");
                   setNewCategoryDefaultSubscribed(true);
                 }}
-                className="px-4 py-2 text-slate-400 hover:text-white transition"
+                className="px-4 py-2 text-muted-foreground hover:text-foreground transition"
               >
                 Cancel
               </button>
@@ -1338,50 +1338,50 @@ export default function EmailSettingsPage() {
       {/* Edit Category Modal */}
       {editingCategory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md">
-            <div className="p-4 border-b border-slate-800">
-              <h3 className="text-lg font-medium text-white">Edit Category</h3>
+          <div className="bg-background border border-border rounded-xl w-full max-w-md">
+            <div className="p-4 border-b border-border">
+              <h3 className="text-lg font-medium text-foreground">Edit Category</h3>
             </div>
             <div className="p-4 space-y-4">
               <div>
-                <label className="block text-sm text-slate-400 mb-2">Category Name *</label>
+                <label className="block text-sm text-muted-foreground mb-2">Category Name *</label>
                 <input
                   type="text"
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
                   placeholder="Product Updates"
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
               <div>
-                <label className="block text-sm text-slate-400 mb-2">Slug</label>
+                <label className="block text-sm text-muted-foreground mb-2">Slug</label>
                 <input
                   type="text"
                   value={editingCategory.slug}
                   disabled
-                  className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-500 cursor-not-allowed"
+                  className="w-full px-3 py-2 bg-muted/50 border border-border rounded-lg text-muted-foreground cursor-not-allowed"
                 />
-                <p className="text-xs text-slate-500 mt-1">Slug cannot be changed after creation</p>
+                <p className="text-xs text-muted-foreground mt-1">Slug cannot be changed after creation</p>
               </div>
               <div>
-                <label className="block text-sm text-slate-400 mb-2">Description (optional)</label>
+                <label className="block text-sm text-muted-foreground mb-2">Description (optional)</label>
                 <textarea
                   value={newCategoryDescription}
                   onChange={(e) => setNewCategoryDescription(e.target.value)}
                   placeholder="Get notified about new features and improvements"
                   rows={3}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
             </div>
-            <div className="p-4 border-t border-slate-800 flex justify-end gap-2">
+            <div className="p-4 border-t border-border flex justify-end gap-2">
               <button
                 onClick={() => {
                   setEditingCategory(null);
                   setNewCategoryName("");
                   setNewCategoryDescription("");
                 }}
-                className="px-4 py-2 text-slate-400 hover:text-white transition"
+                className="px-4 py-2 text-muted-foreground hover:text-foreground transition"
               >
                 Cancel
               </button>

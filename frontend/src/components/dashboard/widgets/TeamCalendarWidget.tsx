@@ -57,11 +57,11 @@ export function TeamCalendarWidget() {
 
   if (isLoading) {
     return (
-      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 animate-pulse">
-        <div className="h-6 w-48 bg-slate-800 rounded mb-4" />
+      <div className="bg-background/50 border border-border rounded-xl p-6 animate-pulse">
+        <div className="h-6 w-48 bg-muted rounded mb-4" />
         <div className="grid grid-cols-7 gap-1">
           {Array.from({ length: 35 }).map((_, i) => (
-            <div key={i} className="h-8 bg-slate-800 rounded" />
+            <div key={i} className="h-8 bg-muted rounded" />
           ))}
         </div>
       </div>
@@ -69,13 +69,13 @@ export function TeamCalendarWidget() {
   }
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+    <div className="bg-background/50 border border-border rounded-xl overflow-hidden">
+      <div className="px-6 py-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-indigo-500/10 rounded-lg">
             <Calendar className="h-5 w-5 text-indigo-400" />
           </div>
-          <h3 className="text-lg font-semibold text-white">Team Calendar</h3>
+          <h3 className="text-lg font-semibold text-foreground">Team Calendar</h3>
         </div>
         <Link
           href="/booking/team-calendar"
@@ -90,14 +90,14 @@ export function TeamCalendarWidget() {
         <div className="flex items-center justify-between mb-3">
           <button
             onClick={prevMonth}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="text-sm font-medium text-white">{monthLabel}</span>
+          <span className="text-sm font-medium text-foreground">{monthLabel}</span>
           <button
             onClick={nextMonth}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -108,7 +108,7 @@ export function TeamCalendarWidget() {
           {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
             <div
               key={d}
-              className="text-center text-xs font-medium text-slate-500 py-1"
+              className="text-center text-xs font-medium text-muted-foreground py-1"
             >
               {d}
             </div>
@@ -135,7 +135,7 @@ export function TeamCalendarWidget() {
                 className={`h-9 flex flex-col items-center justify-center rounded-lg text-xs transition ${
                   isToday
                     ? "bg-indigo-600/20 text-indigo-300 font-semibold"
-                    : "text-slate-400 hover:bg-slate-800/50"
+                    : "text-muted-foreground hover:bg-muted/50"
                 }`}
               >
                 <span>{day}</span>
@@ -157,7 +157,7 @@ export function TeamCalendarWidget() {
 
         {/* Legend */}
         {calendarData && calendarData.total > 0 && (
-          <div className="mt-3 pt-3 border-t border-slate-800 flex items-center gap-4 text-xs text-slate-500">
+          <div className="mt-3 pt-3 border-t border-border flex items-center gap-4 text-xs text-muted-foreground">
             <span>{calendarData.total} events this month</span>
           </div>
         )}

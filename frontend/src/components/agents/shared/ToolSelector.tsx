@@ -83,19 +83,19 @@ export function ToolSelector({
     <div className={cn("space-y-4", className)}>
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search tools..."
           disabled={disabled}
-          className="w-full pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+          className="w-full pl-10 pr-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
         />
       </div>
 
       {/* Selected count */}
-      <div className="text-sm text-slate-400">
+      <div className="text-sm text-muted-foreground">
         {selectedTools.length} tool{selectedTools.length !== 1 ? "s" : ""} selected
       </div>
 
@@ -103,7 +103,7 @@ export function ToolSelector({
       {filteredTools ? (
         <div className="space-y-1">
           {filteredTools.length === 0 ? (
-            <div className="text-center py-8 text-slate-400">
+            <div className="text-center py-8 text-muted-foreground">
               No tools found matching "{searchQuery}"
             </div>
           ) : (
@@ -134,27 +134,27 @@ export function ToolSelector({
             return (
               <div
                 key={key}
-                className="border border-slate-700 rounded-lg overflow-hidden"
+                className="border border-border rounded-lg overflow-hidden"
               >
                 <button
                   onClick={() => toggleCategory(key)}
-                  className="w-full flex items-center justify-between p-3 hover:bg-slate-700/50 transition"
+                  className="w-full flex items-center justify-between p-3 hover:bg-accent/50 transition"
                 >
                   <div className="flex items-center gap-3">
                     {isExpanded ? (
-                      <ChevronDown className="h-4 w-4 text-slate-400" />
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
                     ) : (
-                      <ChevronRight className="h-4 w-4 text-slate-400" />
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     )}
                     <div className="text-left">
-                      <div className="font-medium text-white">{category.label}</div>
-                      <div className="text-xs text-slate-400">
+                      <div className="font-medium text-foreground">{category.label}</div>
+                      <div className="text-xs text-muted-foreground">
                         {category.description}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-slate-400">
+                    <span className="text-sm text-muted-foreground">
                       {selectedCount}/{categoryTools.length}
                     </span>
                     <button
@@ -167,7 +167,7 @@ export function ToolSelector({
                         "px-2 py-1 text-xs rounded transition",
                         allSelected
                           ? "bg-purple-500/20 text-purple-400"
-                          : "bg-slate-600 text-slate-300 hover:bg-slate-500"
+                          : "bg-muted text-foreground hover:bg-accent"
                       )}
                     >
                       {allSelected ? "Deselect all" : "Select all"}
@@ -176,7 +176,7 @@ export function ToolSelector({
                 </button>
 
                 {isExpanded && (
-                  <div className="border-t border-slate-700 p-2 space-y-1">
+                  <div className="border-t border-border p-2 space-y-1">
                     {categoryTools.map((tool) => (
                       <ToolItem
                         key={tool.name}
@@ -213,7 +213,7 @@ function ToolItem({ tool, isSelected, onToggle, disabled }: ToolItemProps) {
         "w-full flex items-start gap-3 p-3 rounded-lg transition text-left",
         isSelected
           ? "bg-purple-500/10 border border-purple-500/30"
-          : "bg-slate-700/30 border border-transparent hover:border-slate-600",
+          : "bg-accent/30 border border-transparent hover:border-border",
         disabled && "opacity-50 cursor-not-allowed"
       )}
     >
@@ -222,14 +222,14 @@ function ToolItem({ tool, isSelected, onToggle, disabled }: ToolItemProps) {
           "flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center mt-0.5",
           isSelected
             ? "bg-purple-500 border-purple-500"
-            : "border-slate-500 bg-transparent"
+            : "border-muted-foreground bg-transparent"
         )}
       >
-        {isSelected && <Check className="h-3 w-3 text-white" />}
+        {isSelected && <Check className="h-3 w-3 text-foreground" />}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-white">{tool.name}</span>
+          <span className="font-medium text-foreground">{tool.name}</span>
           {tool.is_dangerous && (
             <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
           )}
@@ -239,7 +239,7 @@ function ToolItem({ tool, isSelected, onToggle, disabled }: ToolItemProps) {
             </span>
           )}
         </div>
-        <p className="text-sm text-slate-400 line-clamp-2">{tool.description}</p>
+        <p className="text-sm text-muted-foreground line-clamp-2">{tool.description}</p>
       </div>
     </button>
   );
@@ -268,7 +268,7 @@ export function ToolBadges({ tools, max = 3, size = "sm", className }: ToolBadge
         <span
           key={tool}
           className={cn(
-            "bg-slate-700 text-slate-300 rounded",
+            "bg-accent text-foreground rounded",
             sizeClasses[size]
           )}
         >
@@ -278,7 +278,7 @@ export function ToolBadges({ tools, max = 3, size = "sm", className }: ToolBadge
       {remaining > 0 && (
         <span
           className={cn(
-            "bg-slate-600 text-slate-400 rounded",
+            "bg-muted text-muted-foreground rounded",
             sizeClasses[size]
           )}
         >

@@ -13,11 +13,11 @@ export function WhoIsOutPanel({ date, teamId }: WhoIsOutPanelProps) {
 
   if (isLoading) {
     return (
-      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 animate-pulse">
-        <div className="h-5 w-32 bg-slate-800 rounded mb-3" />
+      <div className="bg-background/50 border border-border rounded-xl p-4 animate-pulse">
+        <div className="h-5 w-32 bg-muted rounded mb-3" />
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-8 bg-slate-800 rounded" />
+            <div key={i} className="h-8 bg-muted rounded" />
           ))}
         </div>
       </div>
@@ -25,13 +25,13 @@ export function WhoIsOutPanel({ date, teamId }: WhoIsOutPanelProps) {
   }
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-      <div className="px-4 py-3 border-b border-slate-800 flex items-center gap-2">
+    <div className="bg-background/50 border border-border rounded-xl overflow-hidden">
+      <div className="px-4 py-3 border-b border-border flex items-center gap-2">
         <Palmtree className="h-4 w-4 text-amber-400" />
-        <h4 className="text-sm font-semibold text-white">
+        <h4 className="text-sm font-semibold text-foreground">
           Who&apos;s Out{" "}
           {whoIsOut?.date && (
-            <span className="font-normal text-slate-400">
+            <span className="font-normal text-muted-foreground">
               {new Date(whoIsOut.date + "T00:00:00").toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
@@ -48,7 +48,7 @@ export function WhoIsOutPanel({ date, teamId }: WhoIsOutPanelProps) {
 
       <div className="p-3">
         {!whoIsOut || whoIsOut.entries.length === 0 ? (
-          <p className="text-xs text-slate-500 text-center py-3">
+          <p className="text-xs text-muted-foreground text-center py-3">
             Everyone&apos;s available
           </p>
         ) : (
@@ -56,7 +56,7 @@ export function WhoIsOutPanel({ date, teamId }: WhoIsOutPanelProps) {
             {whoIsOut.entries.map((entry) => (
               <div
                 key={entry.developer_id}
-                className="flex items-center gap-2.5 p-2 bg-slate-800/50 rounded-lg"
+                className="flex items-center gap-2.5 p-2 bg-muted/50 rounded-lg"
               >
                 {entry.developer_avatar ? (
                   <img
@@ -65,12 +65,12 @@ export function WhoIsOutPanel({ date, teamId }: WhoIsOutPanelProps) {
                     className="w-6 h-6 rounded-full flex-shrink-0"
                   />
                 ) : (
-                  <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px] text-slate-400 flex-shrink-0">
+                  <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center text-[10px] text-muted-foreground flex-shrink-0">
                     {entry.developer_name?.[0] || "?"}
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-white truncate">
+                  <p className="text-xs font-medium text-foreground truncate">
                     {entry.developer_name || "Unknown"}
                   </p>
                   <div className="flex items-center gap-1 mt-0.5">
@@ -78,7 +78,7 @@ export function WhoIsOutPanel({ date, teamId }: WhoIsOutPanelProps) {
                       className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                       style={{ backgroundColor: entry.leave_type_color }}
                     />
-                    <span className="text-[10px] text-slate-500 truncate">
+                    <span className="text-[10px] text-muted-foreground truncate">
                       {entry.leave_type}
                       {entry.is_half_day && ` (${entry.half_day_period === "first_half" ? "AM" : "PM"})`}
                     </span>

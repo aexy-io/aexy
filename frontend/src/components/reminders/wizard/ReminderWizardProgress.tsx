@@ -25,7 +25,7 @@ export function ReminderWizardProgress({
   return (
     <div className={cn("relative", className)}>
       {/* Progress line */}
-      <div className="absolute top-5 left-5 right-5 h-0.5 bg-slate-700">
+      <div className="absolute top-5 left-5 right-5 h-0.5 bg-accent">
         <div
           className="h-full bg-blue-500 transition-all duration-300"
           style={{
@@ -58,17 +58,17 @@ export function ReminderWizardProgress({
                   isCompleted
                     ? "bg-blue-500 border-blue-500"
                     : isCurrent
-                    ? "bg-slate-800 border-blue-500"
-                    : "bg-slate-800 border-slate-600"
+                    ? "bg-muted border-blue-500"
+                    : "bg-muted border-border"
                 )}
               >
                 {isCompleted ? (
-                  <Check className="h-5 w-5 text-white" />
+                  <Check className="h-5 w-5 text-foreground" />
                 ) : (
                   <span
                     className={cn(
                       "text-sm font-medium",
-                      isCurrent ? "text-blue-400" : "text-slate-500"
+                      isCurrent ? "text-blue-400" : "text-muted-foreground"
                     )}
                   >
                     {index + 1}
@@ -81,13 +81,13 @@ export function ReminderWizardProgress({
                 <div
                   className={cn(
                     "text-sm font-medium",
-                    isCompleted || isCurrent ? "text-white" : "text-slate-500"
+                    isCompleted || isCurrent ? "text-foreground" : "text-muted-foreground"
                   )}
                 >
                   {step.title}
                 </div>
                 {step.description && (
-                  <div className="text-xs text-slate-500 mt-0.5 hidden sm:block">
+                  <div className="text-xs text-muted-foreground mt-0.5 hidden sm:block">
                     {step.description}
                   </div>
                 )}

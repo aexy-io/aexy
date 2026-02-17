@@ -238,7 +238,7 @@ export default function AccessLogsPage() {
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                          ACTION_COLORS[log.action] || "bg-slate-600 text-foreground"
+                          ACTION_COLORS[log.action] || "bg-muted text-foreground"
                         }`}
                       >
                         {ACTION_LABELS[log.action] || log.action}

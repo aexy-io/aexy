@@ -149,15 +149,15 @@ function CreateScheduleModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-slate-800 rounded-xl p-6 w-full max-w-md mx-4">
-        <h3 className="text-lg font-semibold text-white mb-4">Create On-Call Schedule</h3>
+      <div className="bg-muted rounded-xl p-6 w-full max-w-md mx-4">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Create On-Call Schedule</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Team Member</label>
+            <label className="block text-sm text-muted-foreground mb-1">Team Member</label>
             <select
               value={developerId}
               onChange={(e) => setDeveloperId(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             >
               <option value="">Select a member...</option>
@@ -170,44 +170,44 @@ function CreateScheduleModal({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Start Date</label>
+              <label className="block text-sm text-muted-foreground mb-1">Start Date</label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Start Time</label>
+              <label className="block text-sm text-muted-foreground mb-1">Start Time</label>
               <input
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-slate-400 mb-1">End Date</label>
+              <label className="block text-sm text-muted-foreground mb-1">End Date</label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">End Time</label>
+              <label className="block text-sm text-muted-foreground mb-1">End Time</label>
               <input
                 type="time"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
             </div>
@@ -216,7 +216,7 @@ function CreateScheduleModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition"
+              className="px-4 py-2 bg-accent text-foreground rounded-lg hover:bg-muted transition"
             >
               Cancel
             </button>
@@ -271,18 +271,18 @@ function SwapRequestModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-slate-800 rounded-xl p-6 w-full max-w-md mx-4">
-        <h3 className="text-lg font-semibold text-white mb-4">Request Swap</h3>
-        <p className="text-sm text-slate-400 mb-4">
+      <div className="bg-muted rounded-xl p-6 w-full max-w-md mx-4">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Request Swap</h3>
+        <p className="text-sm text-muted-foreground mb-4">
           Request to swap your on-call shift with another team member.
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Swap with</label>
+            <label className="block text-sm text-muted-foreground mb-1">Swap with</label>
             <select
               value={targetId}
               onChange={(e) => setTargetId(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             >
               <option value="">Select a member...</option>
@@ -294,12 +294,12 @@ function SwapRequestModal({
             </select>
           </div>
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Message (optional)</label>
+            <label className="block text-sm text-muted-foreground mb-1">Message (optional)</label>
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Why do you need to swap?"
-              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-3 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               rows={3}
             />
           </div>
@@ -307,7 +307,7 @@ function SwapRequestModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition"
+              className="px-4 py-2 bg-accent text-foreground rounded-lg hover:bg-muted transition"
             >
               Cancel
             </button>
@@ -376,23 +376,23 @@ export default function OnCallScheduleEditor({
       {/* Calendar Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Calendar className="h-5 w-5 text-slate-400" />
-          <h3 className="text-lg font-semibold text-white">
+          <Calendar className="h-5 w-5 text-muted-foreground" />
+          <h3 className="text-lg font-semibold text-foreground">
             {MONTHS[month]} {year}
           </h3>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={goToPrevMonth}
-            className="p-2 hover:bg-slate-700 rounded-lg transition"
+            className="p-2 hover:bg-accent rounded-lg transition"
           >
-            <ChevronLeft className="h-5 w-5 text-slate-400" />
+            <ChevronLeft className="h-5 w-5 text-muted-foreground" />
           </button>
           <button
             onClick={goToNextMonth}
-            className="p-2 hover:bg-slate-700 rounded-lg transition"
+            className="p-2 hover:bg-accent rounded-lg transition"
           >
-            <ChevronRight className="h-5 w-5 text-slate-400" />
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </button>
           {isAdmin && (
             <button
@@ -414,17 +414,17 @@ export default function OnCallScheduleEditor({
         {teamMembers.map((member) => (
           <div key={member.developer_id} className="flex items-center gap-2 text-sm">
             <div className={`w-3 h-3 rounded ${getMemberColor(member.developer_id, teamMembers)}`} />
-            <span className="text-slate-400">{member.developer_name || member.developer_email}</span>
+            <span className="text-muted-foreground">{member.developer_name || member.developer_email}</span>
           </div>
         ))}
       </div>
 
       {/* Calendar Grid */}
-      <div className="bg-slate-800 rounded-xl overflow-hidden">
+      <div className="bg-muted rounded-xl overflow-hidden">
         {/* Day headers */}
-        <div className="grid grid-cols-7 bg-slate-700/50">
+        <div className="grid grid-cols-7 bg-accent/50">
           {DAYS.map((day) => (
-            <div key={day} className="py-2 text-center text-sm font-medium text-slate-400">
+            <div key={day} className="py-2 text-center text-sm font-medium text-muted-foreground">
               {day}
             </div>
           ))}
@@ -443,17 +443,17 @@ export default function OnCallScheduleEditor({
                 key={index}
                 onClick={() => handleDayClick(date)}
                 className={`
-                  min-h-[80px] p-2 border-t border-slate-700 cursor-pointer transition
-                  ${isCurrentMonth ? "bg-slate-800" : "bg-slate-800/50"}
+                  min-h-[80px] p-2 border-t border-border cursor-pointer transition
+                  ${isCurrentMonth ? "bg-muted" : "bg-muted/50"}
                   ${isToday ? "ring-2 ring-blue-500 ring-inset" : ""}
-                  hover:bg-slate-700/50
+                  hover:bg-accent/50
                 `}
               >
                 <div className="flex items-start justify-between">
                   <span
                     className={`
                       text-sm font-medium
-                      ${isCurrentMonth ? "text-white" : "text-slate-600"}
+                      ${isCurrentMonth ? "text-foreground" : "text-muted-foreground"}
                       ${isToday ? "text-blue-400" : ""}
                     `}
                   >
@@ -469,7 +469,7 @@ export default function OnCallScheduleEditor({
                     `}
                     title={schedule.developer?.name || schedule.developer?.email || "Unknown"}
                   >
-                    <span className="text-white font-medium">
+                    <span className="text-foreground font-medium">
                       {schedule.developer?.name?.split(" ")[0] ||
                         schedule.developer?.email?.split("@")[0] ||
                         "Unknown"}
@@ -484,7 +484,7 @@ export default function OnCallScheduleEditor({
 
       {/* Selected Schedule Details */}
       {selectedSchedule && !showSwapModal && (
-        <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+        <div className="bg-muted rounded-xl p-4 border border-border">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
               <div
@@ -493,13 +493,13 @@ export default function OnCallScheduleEditor({
                   teamMembers
                 )}`}
               >
-                <User className="h-5 w-5 text-white" />
+                <User className="h-5 w-5 text-foreground" />
               </div>
               <div>
-                <h4 className="font-medium text-white">
+                <h4 className="font-medium text-foreground">
                   {selectedSchedule.developer?.name || selectedSchedule.developer?.email}
                 </h4>
-                <div className="flex items-center gap-2 text-sm text-slate-400">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Clock className="h-4 w-4" />
                   <span>
                     {new Date(selectedSchedule.start_time).toLocaleDateString()} -{" "}
@@ -518,7 +518,7 @@ export default function OnCallScheduleEditor({
               {selectedSchedule.developer_id === currentUserId && (
                 <button
                   onClick={() => handleSwapRequest(selectedSchedule)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition text-sm"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-foreground rounded-lg hover:bg-muted transition text-sm"
                 >
                   <ArrowRightLeft className="h-4 w-4" />
                   Request Swap
@@ -536,7 +536,7 @@ export default function OnCallScheduleEditor({
               )}
               <button
                 onClick={() => setSelectedSchedule(null)}
-                className="px-3 py-1.5 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition text-sm"
+                className="px-3 py-1.5 bg-accent text-foreground rounded-lg hover:bg-muted transition text-sm"
               >
                 Close
               </button>

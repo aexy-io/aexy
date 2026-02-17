@@ -21,21 +21,21 @@ function CollapsibleSection({ title, icon, children, defaultOpen = false }: Coll
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="border border-slate-700 rounded-lg overflow-hidden">
+    <div className="border border-border rounded-lg overflow-hidden">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-3 flex items-center gap-3 bg-slate-800/50 hover:bg-slate-800 transition-colors"
+        className="w-full px-4 py-3 flex items-center gap-3 bg-muted/50 hover:bg-muted transition-colors"
       >
         {isOpen ? (
-          <ChevronDown className="w-4 h-4 text-slate-400" />
+          <ChevronDown className="w-4 h-4 text-muted-foreground" />
         ) : (
-          <ChevronRight className="w-4 h-4 text-slate-400" />
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
         )}
-        <span className="text-slate-400">{icon}</span>
-        <span className="text-sm font-medium text-white">{title}</span>
+        <span className="text-muted-foreground">{icon}</span>
+        <span className="text-sm font-medium text-foreground">{title}</span>
       </button>
-      {isOpen && <div className="p-4 bg-slate-900/50 space-y-4">{children}</div>}
+      {isOpen && <div className="p-4 bg-background/50 space-y-4">{children}</div>}
     </div>
   );
 }
@@ -73,7 +73,7 @@ export function ElementStyleEditor({ settings = {}, onChange }: ElementStyleEdit
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-medium text-slate-300">Element Styles</h3>
+      <h3 className="text-sm font-medium text-foreground">Element Styles</h3>
 
       {/* Form Container */}
       <CollapsibleSection title="Form Container" icon={<Layout className="w-4 h-4" />}>
@@ -84,11 +84,11 @@ export function ElementStyleEditor({ settings = {}, onChange }: ElementStyleEdit
             onChange={(v) => updateElement("form", { background_color: v })}
           />
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Shadow</label>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Shadow</label>
             <select
               value={settings.form?.shadow || ""}
               onChange={(e) => updateElement("form", { shadow: (e.target.value || undefined) as ShadowOption })}
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
             >
               <option value="">Default</option>
               {SHADOW_OPTIONS.map((opt) => (
@@ -99,23 +99,23 @@ export function ElementStyleEditor({ settings = {}, onChange }: ElementStyleEdit
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Padding</label>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Padding</label>
             <input
               type="text"
               value={settings.form?.padding || ""}
               onChange={(e) => updateElement("form", { padding: e.target.value || undefined })}
               placeholder="32px"
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Max Width</label>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Max Width</label>
             <input
               type="text"
               value={settings.form?.max_width || ""}
               onChange={(e) => updateElement("form", { max_width: e.target.value || undefined })}
               placeholder="640px"
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
             />
           </div>
         </div>
@@ -125,13 +125,13 @@ export function ElementStyleEditor({ settings = {}, onChange }: ElementStyleEdit
       <CollapsibleSection title="Header" icon={<Type className="w-4 h-4" />}>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Header Text</label>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Header Text</label>
             <input
               type="text"
               value={settings.header?.text || ""}
               onChange={(e) => updateElement("header", { text: e.target.value || undefined })}
               placeholder="Contact Us"
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -141,11 +141,11 @@ export function ElementStyleEditor({ settings = {}, onChange }: ElementStyleEdit
               onChange={(v) => updateElement("header", { text_color: v })}
             />
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Alignment</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Alignment</label>
               <select
                 value={settings.header?.alignment || ""}
                 onChange={(e) => updateElement("header", { alignment: (e.target.value || undefined) as AlignmentOption })}
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
               >
                 <option value="">Default</option>
                 {ALIGNMENT_OPTIONS.map((opt) => (
@@ -156,21 +156,21 @@ export function ElementStyleEditor({ settings = {}, onChange }: ElementStyleEdit
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Font Size</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Font Size</label>
               <input
                 type="text"
                 value={settings.header?.font_size || ""}
                 onChange={(e) => updateElement("header", { font_size: e.target.value || undefined })}
                 placeholder="28px"
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Font Weight</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Font Weight</label>
               <select
                 value={settings.header?.font_weight || ""}
                 onChange={(e) => updateElement("header", { font_weight: e.target.value || undefined })}
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
               >
                 <option value="">Default</option>
                 <option value="400">Normal (400)</option>
@@ -182,21 +182,21 @@ export function ElementStyleEditor({ settings = {}, onChange }: ElementStyleEdit
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Logo URL</label>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Logo URL</label>
             <input
               type="url"
               value={settings.header?.logo_url || ""}
               onChange={(e) => updateElement("header", { logo_url: e.target.value || undefined })}
               placeholder="https://example.com/logo.png"
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Logo Position</label>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Logo Position</label>
             <select
               value={settings.header?.logo_position || ""}
               onChange={(e) => updateElement("header", { logo_position: (e.target.value || undefined) as LogoPosition })}
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
             >
               <option value="">Default (Above)</option>
               {LOGO_POSITION_OPTIONS.map((opt) => (
@@ -223,21 +223,21 @@ export function ElementStyleEditor({ settings = {}, onChange }: ElementStyleEdit
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Font Size</label>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Font Size</label>
             <input
               type="text"
               value={settings.labels?.font_size || ""}
               onChange={(e) => updateElement("labels", { font_size: e.target.value || undefined })}
               placeholder="14px"
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Font Weight</label>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Font Weight</label>
             <select
               value={settings.labels?.font_weight || ""}
               onChange={(e) => updateElement("labels", { font_weight: e.target.value || undefined })}
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
             >
               <option value="">Default</option>
               <option value="400">Normal (400)</option>
@@ -289,23 +289,23 @@ export function ElementStyleEditor({ settings = {}, onChange }: ElementStyleEdit
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Border Radius</label>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Border Radius</label>
             <input
               type="text"
               value={settings.inputs?.border_radius || ""}
               onChange={(e) => updateElement("inputs", { border_radius: e.target.value || undefined })}
               placeholder="6px"
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Padding</label>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Padding</label>
             <input
               type="text"
               value={settings.inputs?.padding || ""}
               onChange={(e) => updateElement("inputs", { padding: e.target.value || undefined })}
               placeholder="12px 16px"
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
             />
           </div>
         </div>
@@ -314,7 +314,7 @@ export function ElementStyleEditor({ settings = {}, onChange }: ElementStyleEdit
       {/* Buttons */}
       <CollapsibleSection title="Buttons" icon={<MousePointer className="w-4 h-4" />}>
         <div className="space-y-4">
-          <p className="text-xs text-slate-400">Primary Button</p>
+          <p className="text-xs text-muted-foreground">Primary Button</p>
           <div className="grid grid-cols-2 gap-4">
             <ColorPickerField
               label="Background"
@@ -334,18 +334,18 @@ export function ElementStyleEditor({ settings = {}, onChange }: ElementStyleEdit
               onChange={(v) => updateElement("buttons", { primary: { ...settings.buttons?.primary, hover_background_color: v } })}
             />
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Border Radius</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Border Radius</label>
               <input
                 type="text"
                 value={settings.buttons?.primary?.border_radius || ""}
                 onChange={(e) => updateElement("buttons", { primary: { ...settings.buttons?.primary, border_radius: e.target.value || undefined } })}
                 placeholder="6px"
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
               />
             </div>
           </div>
 
-          <p className="text-xs text-slate-400 pt-2">Secondary Button</p>
+          <p className="text-xs text-muted-foreground pt-2">Secondary Button</p>
           <div className="grid grid-cols-2 gap-4">
             <ColorPickerField
               label="Background"
@@ -398,13 +398,13 @@ export function ElementStyleEditor({ settings = {}, onChange }: ElementStyleEdit
             onChange={(v) => updateElement("help_text", { text_color: v })}
           />
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Font Size</label>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Font Size</label>
             <input
               type="text"
               value={settings.help_text?.font_size || ""}
               onChange={(e) => updateElement("help_text", { font_size: e.target.value || undefined })}
               placeholder="12px"
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
             />
           </div>
         </div>

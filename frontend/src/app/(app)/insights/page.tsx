@@ -79,7 +79,7 @@ function GiniIndicator({ value }: { value: number }) {
   return (
     <div className="flex items-center gap-2">
       <span className={`text-sm font-medium ${color}`}>{label}</span>
-      <span className="text-xs text-slate-500">({value.toFixed(2)})</span>
+      <span className="text-xs text-muted-foreground">({value.toFixed(2)})</span>
     </div>
   );
 }
@@ -151,16 +151,16 @@ export default function InsightsPage() {
       <div className="flex flex-col justify-between gap-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <TrendingUp className="h-6 w-6 text-indigo-400" />
               Team Insights
             </h1>
-            <p className="text-slate-400 text-sm mt-1">
+            <p className="text-muted-foreground text-sm mt-1">
               Metrics-driven view of team velocity, efficiency, and workload
               distribution
             </p>
           </div>
-          <div className="flex bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+          <div className="flex bg-muted rounded-lg border border-border overflow-hidden">
             {PERIOD_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
@@ -168,7 +168,7 @@ export default function InsightsPage() {
                 className={`px-3 py-1.5 text-sm font-medium transition ${
                   periodType === opt.value
                     ? "bg-indigo-600 text-white"
-                    : "text-slate-400 hover:text-white"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {opt.label}
@@ -181,35 +181,35 @@ export default function InsightsPage() {
 
           <Link
             href="/insights/compare"
-            className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition"
+            className="flex items-center gap-2 px-3 py-1.5 bg-accent hover:bg-muted text-foreground text-sm rounded-lg transition"
           >
             <Users className="h-4 w-4" />
             Compare
           </Link>
           <Link
             href="/insights/allocations"
-            className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition"
+            className="flex items-center gap-2 px-3 py-1.5 bg-accent hover:bg-muted text-foreground text-sm rounded-lg transition"
           >
             <FolderKanban className="h-4 w-4" />
             Allocations
           </Link>
           <Link
             href="/insights/alerts"
-            className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition"
+            className="flex items-center gap-2 px-3 py-1.5 bg-accent hover:bg-muted text-foreground text-sm rounded-lg transition"
           >
             <Bell className="h-4 w-4" />
             Alerts
           </Link>
           <Link
             href="/insights/executive"
-            className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition"
+            className="flex items-center gap-2 px-3 py-1.5 bg-accent hover:bg-muted text-foreground text-sm rounded-lg transition"
           >
             <Building2 className="h-4 w-4" />
             Executive
           </Link>
           <Link
             href="/insights/sprint-capacity"
-            className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition"
+            className="flex items-center gap-2 px-3 py-1.5 bg-accent hover:bg-muted text-foreground text-sm rounded-lg transition"
           >
             <Gauge className="h-4 w-4" />
             Capacity
@@ -244,12 +244,12 @@ export default function InsightsPage() {
 
       {/* GitHub App not installed */}
       {!reposLoading && !hasInstallation && (
-        <div className="bg-slate-800 rounded-xl p-8 border border-slate-700 text-center">
-          <FolderGit2 className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-white mb-2">
+        <div className="bg-muted rounded-xl p-8 border border-border text-center">
+          <FolderGit2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-2">
             Connect your GitHub account
           </h3>
-          <p className="text-slate-400 text-sm mb-6 max-w-md mx-auto">
+          <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
             Install the Aexy GitHub App to grant access to your repositories. This is required to generate team insights, velocity metrics, and workload analysis.
           </p>
           {installUrl ? (
@@ -274,12 +274,12 @@ export default function InsightsPage() {
 
       {/* Installation exists but no repos enabled */}
       {!reposLoading && hasInstallation && !hasEnabledRepos && (
-        <div className="bg-slate-800 rounded-xl p-8 border border-slate-700 text-center">
-          <FolderGit2 className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-white mb-2">
+        <div className="bg-muted rounded-xl p-8 border border-border text-center">
+          <FolderGit2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-2">
             No repositories enabled
           </h3>
-          <p className="text-slate-400 text-sm mb-6 max-w-md mx-auto">
+          <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
             Your GitHub App is connected but you haven&apos;t enabled any repositories yet. Enable at least one repository to see team velocity, efficiency, and workload distribution.
           </p>
           <Link
@@ -298,7 +298,7 @@ export default function InsightsPage() {
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className="bg-slate-800 rounded-xl p-4 border border-slate-700 animate-pulse h-24"
+              className="bg-muted rounded-xl p-4 border border-border animate-pulse h-24"
             />
           ))}
         </div>
@@ -344,8 +344,8 @@ export default function InsightsPage() {
           />
         </div>
       ) : (
-        <div className="bg-slate-800 rounded-xl p-8 border border-slate-700 text-center">
-          <p className="text-slate-400">
+        <div className="bg-muted rounded-xl p-8 border border-border text-center">
+          <p className="text-muted-foreground">
             No insights data yet. Click &quot;Generate Snapshots&quot; to
             compute metrics.
           </p>
@@ -355,9 +355,9 @@ export default function InsightsPage() {
       {/* Main Content Grid */}
       {hasEnabledRepos && <div className="grid lg:grid-cols-3 gap-6">
         {/* Workload Distribution Chart */}
-        <div className="lg:col-span-2 bg-slate-800 rounded-xl p-6 border border-slate-700">
+        <div className="lg:col-span-2 bg-muted rounded-xl p-6 border border-border">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-foreground">
               Workload Distribution
             </h2>
             {dist && dist.bottleneck_developers.length > 0 && (
@@ -405,22 +405,22 @@ export default function InsightsPage() {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center h-64 text-slate-500">
+            <div className="flex items-center justify-center h-64 text-muted-foreground">
               No workload data available
             </div>
           )}
           {dist && (
-            <div className="mt-3 flex items-center gap-4 text-xs text-slate-400">
+            <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
               <span>
                 Top contributor:{" "}
-                <span className="text-white">
+                <span className="text-foreground">
                   {(dist.top_contributor_share * 100).toFixed(0)}%
                 </span>{" "}
                 of work
               </span>
               <span>
                 Gini:{" "}
-                <span className="text-white">
+                <span className="text-foreground">
                   {dist.gini_coefficient.toFixed(2)}
                 </span>
               </span>
@@ -429,9 +429,9 @@ export default function InsightsPage() {
         </div>
 
         {/* Leaderboard */}
-        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+        <div className="bg-muted rounded-xl p-6 border border-border">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <Crown className="h-5 w-5 text-amber-400" />
               Top Contributors
             </h2>
@@ -447,7 +447,7 @@ export default function InsightsPage() {
               {Array.from({ length: 5 }).map((_, i) => (
                 <div
                   key={i}
-                  className="h-10 bg-slate-700 rounded animate-pulse"
+                  className="h-10 bg-accent rounded animate-pulse"
                 />
               ))}
             </div>
@@ -456,17 +456,17 @@ export default function InsightsPage() {
               {leaderboard.entries.map((entry, i) => (
                 <div
                   key={entry.developer_id}
-                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-700/50 transition"
+                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/50 transition"
                 >
                   <span
                     className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                       i === 0
                         ? "bg-amber-500/20 text-amber-400"
                         : i === 1
-                          ? "bg-slate-400/20 text-slate-300"
+                          ? "bg-muted/20 text-foreground"
                           : i === 2
                             ? "bg-orange-500/20 text-orange-400"
-                            : "bg-slate-700 text-slate-400"
+                            : "bg-accent text-muted-foreground"
                     }`}
                   >
                     {entry.rank}
@@ -474,19 +474,19 @@ export default function InsightsPage() {
                   <div className="flex-1 min-w-0">
                     <Link
                       href={`/insights/developers/${entry.developer_id}`}
-                      className="text-sm text-white hover:text-indigo-300 truncate block"
+                      className="text-sm text-foreground hover:text-indigo-300 truncate block"
                     >
                       {entry.developer_name || entry.developer_id.slice(0, 8)}
                     </Link>
                   </div>
-                  <span className="text-sm font-mono text-slate-300">
+                  <span className="text-sm font-mono text-foreground">
                     {entry.value}
                   </span>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-slate-500 text-sm text-center py-4">
+            <p className="text-muted-foreground text-sm text-center py-4">
               No leaderboard data
             </p>
           )}
@@ -495,16 +495,16 @@ export default function InsightsPage() {
 
       {/* Member Summary Table */}
       {hasEnabledRepos && members.length > 0 && (
-        <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-700">
-            <h2 className="text-lg font-semibold text-white">
+        <div className="bg-muted rounded-xl border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-border">
+            <h2 className="text-lg font-semibold text-foreground">
               Developer Summary
             </h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[600px]">
               <thead>
-                <tr className="text-left text-xs text-slate-400 border-b border-slate-700">
+                <tr className="text-left text-xs text-muted-foreground border-b border-border">
                   <th className="px-6 py-3 font-medium">Developer</th>
                   <th className="px-6 py-3 font-medium text-right">Commits</th>
                   <th className="px-6 py-3 font-medium text-right">
@@ -527,11 +527,11 @@ export default function InsightsPage() {
                   return (
                     <tr
                       key={m.developer_id}
-                      className="border-b border-slate-700/50 hover:bg-slate-700/30 transition"
+                      className="border-b border-border/50 hover:bg-accent/30 transition"
                     >
                       <td className="px-6 py-3">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-white">
+                          <span className="text-sm text-foreground">
                             {m.developer_name || m.developer_id.slice(0, 8)}
                           </span>
                           {isBottleneck && (
@@ -541,16 +541,16 @@ export default function InsightsPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-3 text-right text-sm text-slate-300 font-mono">
+                      <td className="px-6 py-3 text-right text-sm text-foreground font-mono">
                         {m.commits_count}
                       </td>
-                      <td className="px-6 py-3 text-right text-sm text-slate-300 font-mono">
+                      <td className="px-6 py-3 text-right text-sm text-foreground font-mono">
                         {m.prs_merged}
                       </td>
-                      <td className="px-6 py-3 text-right text-sm text-slate-300 font-mono">
+                      <td className="px-6 py-3 text-right text-sm text-foreground font-mono">
                         {formatNumber(m.lines_changed)}
                       </td>
-                      <td className="px-6 py-3 text-right text-sm text-slate-300 font-mono">
+                      <td className="px-6 py-3 text-right text-sm text-foreground font-mono">
                         {m.reviews_given}
                       </td>
                       <td className="px-6 py-3 text-right">
@@ -587,13 +587,13 @@ function StatCard({
   color: string;
 }) {
   return (
-    <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+    <div className="bg-muted rounded-xl p-4 border border-border">
       <div className="flex items-center gap-2 mb-2">
         <Icon className={`h-4 w-4 ${color}`} />
-        <span className="text-xs text-slate-400">{label}</span>
+        <span className="text-xs text-muted-foreground">{label}</span>
       </div>
-      <div className="text-xl font-bold text-white">{value}</div>
-      {sub && <div className="text-xs text-slate-500 mt-1">{sub}</div>}
+      <div className="text-xl font-bold text-foreground">{value}</div>
+      {sub && <div className="text-xs text-muted-foreground mt-1">{sub}</div>}
     </div>
   );
 }

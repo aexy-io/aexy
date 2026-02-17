@@ -14,7 +14,7 @@ export function ThemePresetSelector({ selectedPreset, onSelect }: ThemePresetSel
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-medium text-slate-300">Theme Presets</h3>
+      <h3 className="text-sm font-medium text-foreground">Theme Presets</h3>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {presets.map((preset) => {
           const isSelected = selectedPreset === preset.id;
@@ -29,12 +29,12 @@ export function ThemePresetSelector({ selectedPreset, onSelect }: ThemePresetSel
               className={`relative p-3 rounded-xl border-2 transition-all text-left ${
                 isSelected
                   ? "border-purple-500 bg-purple-500/10"
-                  : "border-slate-700 hover:border-slate-600 bg-slate-800/50"
+                  : "border-border hover:border-border bg-muted/50"
               }`}
             >
               {isSelected && (
                 <div className="absolute top-2 right-2 w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center">
-                  <Check className="w-3 h-3 text-white" />
+                  <Check className="w-3 h-3 text-foreground" />
                 </div>
               )}
 
@@ -72,14 +72,14 @@ export function ThemePresetSelector({ selectedPreset, onSelect }: ThemePresetSel
                 ].map((color, i) => (
                   <div
                     key={i}
-                    className="w-4 h-4 rounded-full border border-slate-600"
+                    className="w-4 h-4 rounded-full border border-border"
                     style={{ backgroundColor: color }}
                   />
                 ))}
               </div>
 
-              <div className="text-sm font-medium text-white">{preset.name}</div>
-              <div className="text-xs text-slate-400 line-clamp-1">{preset.description}</div>
+              <div className="text-sm font-medium text-foreground">{preset.name}</div>
+              <div className="text-xs text-muted-foreground line-clamp-1">{preset.description}</div>
             </button>
           );
         })}

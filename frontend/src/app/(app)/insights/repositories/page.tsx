@@ -62,21 +62,21 @@ export default function RepositoriesPage() {
         <div className="flex items-center gap-4">
           <Link
             href="/insights"
-            className="text-slate-400 hover:text-white transition"
+            className="text-muted-foreground hover:text-foreground transition"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <FolderGit2 className="h-6 w-6 text-indigo-400" />
               Repositories
             </h1>
-            <p className="text-slate-400 text-sm mt-1">
+            <p className="text-muted-foreground text-sm mt-1">
               Activity breakdown by repository
             </p>
           </div>
         </div>
-        <div className="flex bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+        <div className="flex bg-muted rounded-lg border border-border overflow-hidden">
           {PERIOD_OPTIONS.map((opt) => (
             <button
               key={opt.value}
@@ -84,7 +84,7 @@ export default function RepositoriesPage() {
               className={`px-3 py-1.5 text-sm font-medium transition ${
                 periodType === opt.value
                   ? "bg-indigo-600 text-white"
-                  : "text-slate-400 hover:text-white"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {opt.label}
@@ -95,7 +95,7 @@ export default function RepositoriesPage() {
 
       {/* Summary */}
       {repositoryInsights && (
-        <div className="text-sm text-slate-400">
+        <div className="text-sm text-muted-foreground">
           {repositoryInsights.total_repositories} repositories with activity
         </div>
       )}
@@ -106,36 +106,36 @@ export default function RepositoriesPage() {
           {Array.from({ length: 8 }).map((_, i) => (
             <div
               key={i}
-              className="h-16 bg-slate-800 rounded-xl animate-pulse border border-slate-700"
+              className="h-16 bg-muted rounded-xl animate-pulse border border-border"
             />
           ))}
         </div>
       ) : repos.length > 0 ? (
-        <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden overflow-x-auto">
+        <div className="bg-muted rounded-xl border border-border overflow-hidden overflow-x-auto">
           <table className="w-full min-w-[600px]">
             <thead>
-              <tr className="border-b border-slate-700 text-left">
-                <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
+              <tr className="border-b border-border text-left">
+                <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Repository
                 </th>
-                <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider text-right">
+                <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">
                   <span className="inline-flex items-center gap-1"><GitCommit className="h-3 w-3" /> Commits</span>
                 </th>
-                <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider text-right">
+                <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">
                   <span className="inline-flex items-center gap-1"><GitPullRequest className="h-3 w-3" /> PRs Merged</span>
                 </th>
-                <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider text-right">
+                <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">
                   <span className="inline-flex items-center gap-1"><MessageSquare className="h-3 w-3" /> Reviews</span>
                 </th>
-                <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider text-right">
+                <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">
                   <span className="inline-flex items-center gap-1"><Code className="h-3 w-3" /> Lines</span>
                 </th>
-                <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider text-right">
+                <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">
                   <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" /> Contributors</span>
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-700/50">
+            <tbody className="divide-y divide-border/50">
               {repos.map((repo) => (
                 <tr
                   key={repo.repository}
@@ -144,38 +144,38 @@ export default function RepositoriesPage() {
                       `/insights/repositories/${encodeURIComponent(repo.repository)}`
                     )
                   }
-                  className="hover:bg-slate-700/30 cursor-pointer transition"
+                  className="hover:bg-accent/30 cursor-pointer transition"
                 >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-white">
+                      <span className="text-sm font-medium text-foreground">
                         {repo.repository}
                       </span>
                       {repo.is_private && (
-                        <Lock className="h-3 w-3 text-slate-500" />
+                        <Lock className="h-3 w-3 text-muted-foreground" />
                       )}
                       {repo.language && (
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-accent text-foreground">
                           {repo.language}
                         </span>
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-right text-sm font-mono text-white">
+                  <td className="px-4 py-3 text-right text-sm font-mono text-foreground">
                     {formatNumber(repo.commits_count)}
                   </td>
-                  <td className="px-4 py-3 text-right text-sm font-mono text-white">
+                  <td className="px-4 py-3 text-right text-sm font-mono text-foreground">
                     {formatNumber(repo.prs_merged)}
                   </td>
-                  <td className="px-4 py-3 text-right text-sm font-mono text-white">
+                  <td className="px-4 py-3 text-right text-sm font-mono text-foreground">
                     {formatNumber(repo.reviews_count)}
                   </td>
-                  <td className="px-4 py-3 text-right text-sm font-mono text-white">
+                  <td className="px-4 py-3 text-right text-sm font-mono text-foreground">
                     <span className="text-green-400">+{formatNumber(repo.lines_added)}</span>
                     {" / "}
                     <span className="text-red-400">-{formatNumber(repo.lines_removed)}</span>
                   </td>
-                  <td className="px-4 py-3 text-right text-sm font-mono text-white">
+                  <td className="px-4 py-3 text-right text-sm font-mono text-foreground">
                     {repo.unique_contributors}
                   </td>
                 </tr>
@@ -184,12 +184,12 @@ export default function RepositoriesPage() {
           </table>
         </div>
       ) : (
-        <div className="bg-slate-800 rounded-xl p-8 border border-slate-700 text-center">
-          <FolderGit2 className="h-12 w-12 text-slate-600 mx-auto mb-3" />
-          <p className="text-slate-400">
+        <div className="bg-muted rounded-xl p-8 border border-border text-center">
+          <FolderGit2 className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground">
             No repository activity found for this period.
           </p>
-          <p className="text-slate-500 text-sm mt-1">
+          <p className="text-muted-foreground text-sm mt-1">
             Enable repositories and sync data to see insights here.
           </p>
         </div>

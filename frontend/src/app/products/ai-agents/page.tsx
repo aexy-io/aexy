@@ -87,7 +87,7 @@ export default function AIAgentsProductPage() {
                 <span>AI Agents</span>
               </div>
 
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight leading-tight">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 tracking-tight leading-tight">
                 Intelligent{" "}
                 <span className="bg-gradient-to-r from-purple-400 to-violet-400 bg-clip-text text-transparent">
                   automation
@@ -95,7 +95,7 @@ export default function AIAgentsProductPage() {
                 across your stack
               </h1>
 
-              <p className="text-xl text-white/60 mb-8 leading-relaxed">
+              <p className="text-xl text-foreground/60 mb-8 leading-relaxed">
                 Create custom AI agents to handle email, support, scheduling, and CRM tasks.
                 Configure LLM providers, tools, and behavior. Works across your entire workflow.
               </p>
@@ -110,13 +110,13 @@ export default function AIAgentsProductPage() {
                 </a>
                 <Link
                   href="/manifesto"
-                  className="group inline-flex items-center justify-center gap-2 bg-white/5 text-white px-8 py-4 rounded-full text-lg font-medium border border-white/10 hover:border-white/20 transition-all"
+                  className="group inline-flex items-center justify-center gap-2 bg-white/5 text-foreground px-8 py-4 rounded-full text-lg font-medium border border-white/10 hover:border-white/20 transition-all"
                 >
                   Learn More
                 </Link>
               </div>
 
-              <div className="flex items-center gap-6 text-sm text-white/40">
+              <div className="flex items-center gap-6 text-sm text-foreground/40">
                 <span className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-purple-500" />
                   Multi-LLM support
@@ -138,8 +138,8 @@ export default function AIAgentsProductPage() {
                       <Bot className="h-5 w-5 text-purple-400" />
                     </div>
                     <div>
-                      <h3 className="text-white font-medium">Support Agent</h3>
-                      <span className="text-xs text-slate-400">@support</span>
+                      <h3 className="text-foreground font-medium">Support Agent</h3>
+                      <span className="text-xs text-muted-foreground">@support</span>
                     </div>
                   </div>
                   <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">Active</span>
@@ -148,16 +148,16 @@ export default function AIAgentsProductPage() {
                 {/* Stats */}
                 <div className="grid grid-cols-3 gap-3 mb-6">
                   <div className="text-center p-3 bg-white/5 rounded-xl">
-                    <div className="text-xl font-bold text-white">847</div>
-                    <div className="text-xs text-slate-400">Runs</div>
+                    <div className="text-xl font-bold text-foreground">847</div>
+                    <div className="text-xs text-muted-foreground">Runs</div>
                   </div>
                   <div className="text-center p-3 bg-white/5 rounded-xl">
                     <div className="text-xl font-bold text-green-400">94%</div>
-                    <div className="text-xs text-slate-400">Success</div>
+                    <div className="text-xs text-muted-foreground">Success</div>
                   </div>
                   <div className="text-center p-3 bg-white/5 rounded-xl">
-                    <div className="text-xl font-bold text-white">1.2s</div>
-                    <div className="text-xs text-slate-400">Avg Time</div>
+                    <div className="text-xl font-bold text-foreground">1.2s</div>
+                    <div className="text-xs text-muted-foreground">Avg Time</div>
                   </div>
                 </div>
 
@@ -173,7 +173,7 @@ export default function AIAgentsProductPage() {
                 {/* Activity */}
                 <div className="p-3 bg-purple-500/10 rounded-xl border border-purple-500/20 flex items-center gap-3">
                   <Sparkles className="h-5 w-5 text-purple-400" />
-                  <span className="text-white/70 text-sm">Processed 12 emails in the last hour</span>
+                  <span className="text-foreground/70 text-sm">Processed 12 emails in the last hour</span>
                 </div>
               </div>
             </div>
@@ -185,10 +185,10 @@ export default function AIAgentsProductPage() {
       <section className="py-20 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
               Build agents that work for you
             </h2>
-            <p className="text-white/50 text-lg max-w-2xl mx-auto">
+            <p className="text-foreground/50 text-lg max-w-2xl mx-auto">
               Configure intelligent automation with fine-grained control over behavior, tools, and confidence thresholds.
             </p>
           </div>
@@ -199,10 +199,10 @@ export default function AIAgentsProductPage() {
                 <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} rounded-3xl opacity-0 group-hover:opacity-10 blur-xl transition-all duration-500`} />
                 <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-white/20 transition-all h-full">
                   <div className={`p-4 bg-gradient-to-br ${feature.color} rounded-2xl w-fit mb-6`}>
-                    <feature.icon className="h-6 w-6 text-white" />
+                    <feature.icon className="h-6 w-6 text-foreground" />
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-3">{feature.title}</h3>
-                  <p className="text-white/60">{feature.description}</p>
+                  <h3 className="text-xl font-bold text-foreground mb-3">{feature.title}</h3>
+                  <p className="text-foreground/60">{feature.description}</p>
                 </div>
               </div>
             ))}
@@ -217,10 +217,10 @@ export default function AIAgentsProductPage() {
             <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-violet-500/10 rounded-3xl blur-xl" />
             <div className="relative bg-white/5 backdrop-blur-sm rounded-3xl p-10 md:p-12 border border-white/10">
               <div className="text-center mb-10">
-                <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
+                <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
                   Pre-built agent types
                 </h2>
-                <p className="text-white/60">
+                <p className="text-foreground/60">
                   Start with a template or build fully custom agents from scratch.
                 </p>
               </div>
@@ -229,10 +229,10 @@ export default function AIAgentsProductPage() {
                 {agentTypes.map((agent, idx) => (
                   <div key={idx} className="text-center p-6 bg-white/5 rounded-2xl border border-white/10 hover:border-purple-500/30 transition-all">
                     <div className={`w-12 h-12 ${agent.color} rounded-xl flex items-center justify-center mx-auto mb-3`}>
-                      <Bot className="h-6 w-6 text-white" />
+                      <Bot className="h-6 w-6 text-foreground" />
                     </div>
-                    <h3 className="text-white font-medium mb-1">{agent.type}</h3>
-                    <p className="text-white/40 text-xs">{agent.desc}</p>
+                    <h3 className="text-foreground font-medium mb-1">{agent.type}</h3>
+                    <p className="text-foreground/40 text-xs">{agent.desc}</p>
                   </div>
                 ))}
               </div>
@@ -250,10 +250,10 @@ export default function AIAgentsProductPage() {
                 <Wrench className="h-3 w-3" />
                 EXTENSIBLE TOOLS
               </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
                 Grant access to powerful tools
               </h2>
-              <p className="text-white/60 mb-6">
+              <p className="text-foreground/60 mb-6">
                 Each agent can access a curated set of tools. Control what actions agents can take
                 with granular permissions.
               </p>
@@ -264,7 +264,7 @@ export default function AIAgentsProductPage() {
                   "Actions: reply, escalate, create tasks",
                   "Enrichment: company & person data",
                 ].map((item, idx) => (
-                  <li key={idx} className="flex items-center gap-3 text-white/70">
+                  <li key={idx} className="flex items-center gap-3 text-foreground/70">
                     <CheckCircle2 className="h-5 w-5 text-purple-400" />
                     {item}
                   </li>
@@ -274,13 +274,13 @@ export default function AIAgentsProductPage() {
             <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
               <div className="flex items-center gap-3 mb-4">
                 <Wrench className="h-5 w-5 text-purple-400" />
-                <span className="text-white font-medium">Available Tools</span>
+                <span className="text-foreground font-medium">Available Tools</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {tools.map((tool, idx) => (
                   <div key={idx} className="p-3 bg-white/5 rounded-lg">
-                    <div className="text-white text-sm font-medium">{tool.name}</div>
-                    <div className="text-white/40 text-xs">{tool.category}</div>
+                    <div className="text-foreground text-sm font-medium">{tool.name}</div>
+                    <div className="text-foreground/40 text-xs">{tool.category}</div>
                   </div>
                 ))}
               </div>
@@ -296,29 +296,29 @@ export default function AIAgentsProductPage() {
             <div className="bg-white/5 rounded-2xl p-6 border border-white/10 order-2 md:order-1">
               <div className="flex items-center gap-3 mb-4">
                 <Clock className="h-5 w-5 text-purple-400" />
-                <span className="text-white font-medium">Behavior Settings</span>
+                <span className="text-foreground font-medium">Behavior Settings</span>
               </div>
               <div className="space-y-4">
                 <div className="p-3 bg-white/5 rounded-lg">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-white/60 text-sm">Confidence Threshold</span>
-                    <span className="text-white font-medium">70%</span>
+                    <span className="text-foreground/60 text-sm">Confidence Threshold</span>
+                    <span className="text-foreground font-medium">70%</span>
                   </div>
-                  <div className="h-2 bg-slate-700 rounded-full">
+                  <div className="h-2 bg-accent rounded-full">
                     <div className="h-2 bg-purple-500 rounded-full" style={{ width: "70%" }} />
                   </div>
                 </div>
                 <div className="p-3 bg-white/5 rounded-lg flex items-center justify-between">
-                  <span className="text-white/60 text-sm">Working Hours</span>
-                  <span className="text-white">9:00 - 17:00 EST</span>
+                  <span className="text-foreground/60 text-sm">Working Hours</span>
+                  <span className="text-foreground">9:00 - 17:00 EST</span>
                 </div>
                 <div className="p-3 bg-white/5 rounded-lg flex items-center justify-between">
-                  <span className="text-white/60 text-sm">Max Daily Responses</span>
-                  <span className="text-white">100</span>
+                  <span className="text-foreground/60 text-sm">Max Daily Responses</span>
+                  <span className="text-foreground">100</span>
                 </div>
                 <div className="p-3 bg-white/5 rounded-lg flex items-center justify-between">
-                  <span className="text-white/60 text-sm">Response Delay</span>
-                  <span className="text-white">5 minutes</span>
+                  <span className="text-foreground/60 text-sm">Response Delay</span>
+                  <span className="text-foreground">5 minutes</span>
                 </div>
               </div>
             </div>
@@ -327,10 +327,10 @@ export default function AIAgentsProductPage() {
                 <Shield className="h-3 w-3" />
                 SAFETY CONTROLS
               </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
                 Fine-grained behavior control
               </h2>
-              <p className="text-white/60 mb-6">
+              <p className="text-foreground/60 mb-6">
                 Set confidence thresholds, working hours, response limits, and escalation rules.
                 Agents only act when you want them to.
               </p>
@@ -341,7 +341,7 @@ export default function AIAgentsProductPage() {
                   "Set daily response limits",
                   "Add response delays for natural timing",
                 ].map((item, idx) => (
-                  <li key={idx} className="flex items-center gap-3 text-white/70">
+                  <li key={idx} className="flex items-center gap-3 text-foreground/70">
                     <CheckCircle2 className="h-5 w-5 text-purple-400" />
                     {item}
                   </li>
@@ -355,10 +355,10 @@ export default function AIAgentsProductPage() {
       {/* CTA */}
       <section className="py-24 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
             Automate intelligently
           </h2>
-          <p className="text-xl text-white/50 mb-10">
+          <p className="text-xl text-foreground/50 mb-10">
             Create AI agents that work across your entire workflow.
           </p>
 
@@ -372,7 +372,7 @@ export default function AIAgentsProductPage() {
             </a>
             <a
               href="https://github.com/aexy-io/aexy"
-              className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
+              className="group bg-white/5 hover:bg-white/10 text-foreground px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
             >
               <SiGithub className="h-5 w-5" />
               View on GitHub

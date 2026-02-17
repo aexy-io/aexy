@@ -67,8 +67,8 @@ export function KanbanCard({
       style={style}
       {...dragAttributes}
       className={cn(
-        "bg-slate-800 border border-slate-700 rounded-lg p-3 cursor-pointer",
-        "hover:border-slate-600 hover:bg-slate-800/80 transition-all",
+        "bg-muted border border-border rounded-lg p-3 cursor-pointer",
+        "hover:border-border hover:bg-muted/80 transition-all",
         "group",
         isDragging && "opacity-50 shadow-lg ring-2 ring-purple-500/50",
         className
@@ -79,13 +79,13 @@ export function KanbanCard({
       <div className="flex items-start gap-2 mb-2">
         <button
           {...listeners}
-          className="p-0.5 -ml-1 cursor-grab opacity-0 group-hover:opacity-100 text-slate-500 hover:text-slate-300 transition-opacity"
+          className="p-0.5 -ml-1 cursor-grab opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
           onClick={(e) => e.stopPropagation()}
         >
           <GripVertical className="h-4 w-4" />
         </button>
 
-        <h4 className="flex-1 font-medium text-white text-sm truncate">
+        <h4 className="flex-1 font-medium text-foreground text-sm truncate">
           {record.display_name || "Untitled"}
         </h4>
 
@@ -94,7 +94,7 @@ export function KanbanCard({
             e.stopPropagation();
             onMenuClick?.(record, e);
           }}
-          className="p-0.5 opacity-0 group-hover:opacity-100 text-slate-500 hover:text-slate-300 transition-opacity"
+          className="p-0.5 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
         >
           <MoreHorizontal className="h-4 w-4" />
         </button>
@@ -105,8 +105,8 @@ export function KanbanCard({
         <div className="space-y-1 mb-2">
           {displayValues.map(({ attr, value }) => (
             <div key={attr.slug} className="flex items-center gap-2 text-xs">
-              <span className="text-slate-500 truncate">{attr.name}:</span>
-              <span className="text-slate-300 truncate">{formatValue(value, attr)}</span>
+              <span className="text-muted-foreground truncate">{attr.name}:</span>
+              <span className="text-foreground truncate">{formatValue(value, attr)}</span>
             </div>
           ))}
         </div>
@@ -114,11 +114,11 @@ export function KanbanCard({
 
       {/* Footer with owner */}
       {showOwner && record.owner && (
-        <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-700/50">
+        <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-border/50">
           <div className="w-5 h-5 rounded-full bg-purple-500/20 flex items-center justify-center">
             <User className="h-3 w-3 text-purple-400" />
           </div>
-          <span className="text-xs text-slate-400 truncate">
+          <span className="text-xs text-muted-foreground truncate">
             {record.owner.name || "Unknown"}
           </span>
         </div>
@@ -130,10 +130,10 @@ export function KanbanCard({
 // Skeleton for loading state
 export function KanbanCardSkeleton() {
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 animate-pulse">
-      <div className="h-4 w-3/4 bg-slate-700 rounded mb-2" />
-      <div className="h-3 w-1/2 bg-slate-700 rounded mb-1" />
-      <div className="h-3 w-2/3 bg-slate-700 rounded" />
+    <div className="bg-muted border border-border rounded-lg p-3 animate-pulse">
+      <div className="h-4 w-3/4 bg-accent rounded mb-2" />
+      <div className="h-3 w-1/2 bg-accent rounded mb-1" />
+      <div className="h-3 w-2/3 bg-accent rounded" />
     </div>
   );
 }

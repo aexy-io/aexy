@@ -86,24 +86,24 @@ export default function TrackingAnalyticsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => router.push("/tracking")}
-            className="flex items-center gap-2 text-slate-400 hover:text-white mb-4 transition"
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 transition"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Tracking
           </button>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+              <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
                 <BarChart3 className="h-8 w-8 text-purple-400" />
                 Team Analytics
               </h1>
-              <p className="text-slate-400 mt-2">
+              <p className="text-muted-foreground mt-2">
                 Team productivity metrics and insights
               </p>
             </div>
@@ -111,11 +111,11 @@ export default function TrackingAnalyticsPage() {
               {/* Team Selector */}
               {teams.length > 1 && (
                 <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-slate-400" />
+                  <Users className="h-4 w-4 text-muted-foreground" />
                   <select
                     value={selectedTeamId || ""}
                     onChange={(e) => setSelectedTeamId(e.target.value)}
-                    className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
+                    className="px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-purple-500"
                   >
                     {teams.map((team) => (
                       <option key={team.id} value={team.id}>
@@ -128,9 +128,9 @@ export default function TrackingAnalyticsPage() {
               <button
                 onClick={handleRefresh}
                 disabled={isLoading}
-                className="p-2 bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 transition disabled:opacity-50"
+                className="p-2 bg-muted border border-border rounded-lg hover:bg-accent transition disabled:opacity-50"
               >
-                <RefreshCw className={`h-4 w-4 text-slate-400 ${isLoading ? "animate-spin" : ""}`} />
+                <RefreshCw className={`h-4 w-4 text-muted-foreground ${isLoading ? "animate-spin" : ""}`} />
               </button>
             </div>
           </div>
@@ -172,13 +172,13 @@ export default function TrackingAnalyticsPage() {
 
         {/* Insights Section */}
         {!isLoading && teamDashboard.data && (
-          <div className="mt-8 bg-slate-800 rounded-xl border border-slate-700 p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Insights</h3>
+          <div className="mt-8 bg-muted rounded-xl border border-border p-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Insights</h3>
             <ul className="space-y-3">
               {teamDashboard.data.participation_rate < 80 && (
                 <li className="flex items-start gap-3">
                   <span className="w-2 h-2 mt-2 rounded-full bg-amber-400 shrink-0" />
-                  <span className="text-slate-300">
+                  <span className="text-foreground">
                     Standup participation is at {Math.round(teamDashboard.data.participation_rate)}%.
                     Consider sending reminders to improve engagement.
                   </span>
@@ -187,7 +187,7 @@ export default function TrackingAnalyticsPage() {
               {teamDashboard.data.active_blockers && teamDashboard.data.active_blockers.length > 3 && (
                 <li className="flex items-start gap-3">
                   <span className="w-2 h-2 mt-2 rounded-full bg-red-400 shrink-0" />
-                  <span className="text-slate-300">
+                  <span className="text-foreground">
                     There are {teamDashboard.data.active_blockers.length} active blockers.
                     Consider a team sync to address these.
                   </span>
@@ -196,7 +196,7 @@ export default function TrackingAnalyticsPage() {
               {teamDashboard.data.participation_rate >= 90 && (
                 <li className="flex items-start gap-3">
                   <span className="w-2 h-2 mt-2 rounded-full bg-green-400 shrink-0" />
-                  <span className="text-slate-300">
+                  <span className="text-foreground">
                     Great standup participation! The team is staying engaged.
                   </span>
                 </li>
@@ -204,7 +204,7 @@ export default function TrackingAnalyticsPage() {
               {teamDashboard.data.active_blockers?.length === 0 && (
                 <li className="flex items-start gap-3">
                   <span className="w-2 h-2 mt-2 rounded-full bg-green-400 shrink-0" />
-                  <span className="text-slate-300">
+                  <span className="text-foreground">
                     No active blockers. The team is operating smoothly.
                   </span>
                 </li>
@@ -212,7 +212,7 @@ export default function TrackingAnalyticsPage() {
               {standups.data?.standups && standups.data.standups.length > 0 && (
                 <li className="flex items-start gap-3">
                   <span className="w-2 h-2 mt-2 rounded-full bg-blue-400 shrink-0" />
-                  <span className="text-slate-300">
+                  <span className="text-foreground">
                     {standups.data.standups.length} standups submitted in the selected period.
                   </span>
                 </li>

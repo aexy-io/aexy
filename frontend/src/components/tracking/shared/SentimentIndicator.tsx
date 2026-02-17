@@ -104,7 +104,7 @@ export function SentimentIndicator({
         )}
 
         {showBar && (
-          <div className={`w-full ${sizes.bar} bg-slate-700 rounded-full overflow-hidden`}>
+          <div className={`w-full ${sizes.bar} bg-accent rounded-full overflow-hidden`}>
             <div
               className={`h-full rounded-full transition-all ${config.bgColor}`}
               style={{ width: `${Math.round(score * 100)}%` }}
@@ -114,7 +114,7 @@ export function SentimentIndicator({
       </div>
 
       {showPercentage && (
-        <span className={`${sizes.text} text-slate-400 tabular-nums`}>
+        <span className={`${sizes.text} text-muted-foreground tabular-nums`}>
           {Math.round(score * 100)}%
         </span>
       )}
@@ -122,7 +122,7 @@ export function SentimentIndicator({
       {TrendIcon && (
         <TrendIcon
           className={`${sizes.emoji} ${
-            trend && trend > 0 ? "text-green-400" : trend && trend < 0 ? "text-red-400" : "text-slate-400"
+            trend && trend > 0 ? "text-green-400" : trend && trend < 0 ? "text-red-400" : "text-muted-foreground"
           }`}
         />
       )}
@@ -164,7 +164,7 @@ export function TeamSentimentOverview({
 }) {
   if (scores.length === 0) {
     return (
-      <div className="text-sm text-slate-500">No sentiment data available</div>
+      <div className="text-sm text-muted-foreground">No sentiment data available</div>
     );
   }
 
@@ -189,7 +189,7 @@ export function TeamSentimentOverview({
             return (
               <div key={level} className={`p-2 ${config.bgLight} rounded-lg text-center`}>
                 <p className={`text-lg font-semibold ${config.color}`}>{count}</p>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-muted-foreground">
                   {config.label} ({percentage}%)
                 </p>
               </div>

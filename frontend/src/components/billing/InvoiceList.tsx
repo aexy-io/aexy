@@ -35,7 +35,7 @@ function getStatusBadge(status: string) {
       );
     default:
       return (
-        <span className="inline-flex items-center px-2 py-1 bg-slate-700 text-slate-300 text-xs font-medium rounded-full">
+        <span className="inline-flex items-center px-2 py-1 bg-accent text-foreground text-xs font-medium rounded-full">
           {status.charAt(0).toUpperCase() + status.slice(1)}
         </span>
       );
@@ -63,8 +63,8 @@ export function InvoiceList({ limit = 10, className = "" }: InvoiceListProps) {
 
   if (isLoading) {
     return (
-      <div className={`bg-slate-800 rounded-xl border border-slate-700 p-6 ${className}`}>
-        <h3 className="text-lg font-semibold text-white mb-4">Invoice History</h3>
+      <div className={`bg-muted rounded-xl border border-border p-6 ${className}`}>
+        <h3 className="text-lg font-semibold text-foreground mb-4">Invoice History</h3>
         <div className="flex items-center justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
         </div>
@@ -74,21 +74,21 @@ export function InvoiceList({ limit = 10, className = "" }: InvoiceListProps) {
 
   if (error) {
     return (
-      <div className={`bg-slate-800 rounded-xl border border-slate-700 p-6 ${className}`}>
-        <h3 className="text-lg font-semibold text-white mb-4">Invoice History</h3>
-        <p className="text-slate-400 text-center py-8">Failed to load invoices</p>
+      <div className={`bg-muted rounded-xl border border-border p-6 ${className}`}>
+        <h3 className="text-lg font-semibold text-foreground mb-4">Invoice History</h3>
+        <p className="text-muted-foreground text-center py-8">Failed to load invoices</p>
       </div>
     );
   }
 
   if (!invoices || invoices.length === 0) {
     return (
-      <div className={`bg-slate-800 rounded-xl border border-slate-700 p-6 ${className}`}>
-        <h3 className="text-lg font-semibold text-white mb-4">Invoice History</h3>
+      <div className={`bg-muted rounded-xl border border-border p-6 ${className}`}>
+        <h3 className="text-lg font-semibold text-foreground mb-4">Invoice History</h3>
         <div className="text-center py-8">
-          <FileText className="h-12 w-12 text-slate-600 mx-auto mb-3" />
-          <p className="text-slate-400">No invoices yet</p>
-          <p className="text-slate-500 text-sm mt-1">
+          <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground">No invoices yet</p>
+          <p className="text-muted-foreground text-sm mt-1">
             Invoices will appear here after your first billing cycle
           </p>
         </div>
@@ -97,57 +97,57 @@ export function InvoiceList({ limit = 10, className = "" }: InvoiceListProps) {
   }
 
   return (
-    <div className={`bg-slate-800 rounded-xl border border-slate-700 overflow-hidden ${className}`}>
-      <div className="p-6 border-b border-slate-700">
-        <h3 className="text-lg font-semibold text-white">Invoice History</h3>
+    <div className={`bg-muted rounded-xl border border-border overflow-hidden ${className}`}>
+      <div className="p-6 border-b border-border">
+        <h3 className="text-lg font-semibold text-foreground">Invoice History</h3>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-slate-700/50">
+          <thead className="bg-accent/50">
             <tr>
-              <th className="text-left px-6 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
+              <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Invoice
               </th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
+              <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Period
               </th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
+              <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Status
               </th>
-              <th className="text-right px-6 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
+              <th className="text-right px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Amount
               </th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
+              <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Paid Date
               </th>
-              <th className="text-right px-6 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
+              <th className="text-right px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-700">
+          <tbody className="divide-y divide-border">
             {invoices.map((invoice) => (
-              <tr key={invoice.id} className="hover:bg-slate-700/30 transition">
+              <tr key={invoice.id} className="hover:bg-accent/30 transition">
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-slate-700 rounded-lg">
-                      <FileText className="h-4 w-4 text-slate-300" />
+                    <div className="p-2 bg-accent rounded-lg">
+                      <FileText className="h-4 w-4 text-foreground" />
                     </div>
-                    <span className="text-white font-medium">
+                    <span className="text-foreground font-medium">
                       {invoice.number || `INV-${invoice.id.slice(0, 8)}`}
                     </span>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-slate-300">
+                <td className="px-6 py-4 text-foreground">
                   {formatDateRange(invoice.period_start, invoice.period_end)}
                 </td>
                 <td className="px-6 py-4">{getStatusBadge(invoice.status)}</td>
                 <td className="px-6 py-4 text-right">
-                  <span className="text-white font-medium">
+                  <span className="text-foreground font-medium">
                     {formatCurrency(invoice.amount_due, invoice.currency.toUpperCase())}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-slate-300">
+                <td className="px-6 py-4 text-foreground">
                   {formatDate(invoice.paid_at)}
                 </td>
                 <td className="px-6 py-4">
@@ -157,7 +157,7 @@ export function InvoiceList({ limit = 10, className = "" }: InvoiceListProps) {
                         href={invoice.invoice_pdf}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
                         title="Download PDF"
                       >
                         <Download className="h-4 w-4" />
@@ -168,7 +168,7 @@ export function InvoiceList({ limit = 10, className = "" }: InvoiceListProps) {
                         href={invoice.hosted_invoice_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
                         title="View Online"
                       >
                         <ExternalLink className="h-4 w-4" />

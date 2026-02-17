@@ -152,17 +152,17 @@ export function DateRangePicker({
     <div className={`relative ${className}`} ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-200 hover:border-slate-600 transition-colors"
+        className="flex items-center gap-2 px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground hover:border-border transition-colors"
       >
-        <Calendar className="h-4 w-4 text-slate-400" />
+        <Calendar className="h-4 w-4 text-muted-foreground" />
         <span>{formatDateRange()}</span>
-        <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute top-full mt-2 right-0 z-50 bg-slate-800 border border-slate-700 rounded-lg shadow-lg min-w-[240px]">
+        <div className="absolute top-full mt-2 right-0 z-50 bg-muted border border-border rounded-lg shadow-lg min-w-[240px]">
           {/* Preset options */}
-          <div className="p-2 border-b border-slate-700">
+          <div className="p-2 border-b border-border">
             {presets.map((preset) => (
               <button
                 key={preset}
@@ -170,7 +170,7 @@ export function DateRangePicker({
                 className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
                   value.preset === preset
                     ? "bg-blue-600 text-white"
-                    : "text-slate-300 hover:bg-slate-700"
+                    : "text-foreground hover:bg-accent"
                 }`}
               >
                 {presetLabels[preset]}
@@ -181,24 +181,24 @@ export function DateRangePicker({
           {/* Custom range */}
           {showCustomRange && (
             <div className="p-3">
-              <p className="text-xs text-slate-400 mb-2">Custom Range</p>
+              <p className="text-xs text-muted-foreground mb-2">Custom Range</p>
               <div className="space-y-2">
                 <div>
-                  <label className="text-xs text-slate-500">Start Date</label>
+                  <label className="text-xs text-muted-foreground">Start Date</label>
                   <input
                     type="date"
                     value={customStartDate}
                     onChange={(e) => setCustomStartDate(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-slate-900 border border-slate-600 rounded text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                    className="w-full px-2 py-1.5 bg-background border border-border rounded text-sm text-foreground focus:outline-none focus:border-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500">End Date</label>
+                  <label className="text-xs text-muted-foreground">End Date</label>
                   <input
                     type="date"
                     value={customEndDate}
                     onChange={(e) => setCustomEndDate(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-slate-900 border border-slate-600 rounded text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                    className="w-full px-2 py-1.5 bg-background border border-border rounded text-sm text-foreground focus:outline-none focus:border-blue-500"
                   />
                 </div>
                 <button

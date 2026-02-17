@@ -38,14 +38,14 @@ export function ProductivityChart({
   if (isLoading) {
     return (
       <div className="animate-pulse">
-        <div className="h-72 bg-slate-700 rounded-lg" />
+        <div className="h-72 bg-accent rounded-lg" />
       </div>
     );
   }
 
   if (!data || data.periods.length === 0) {
     return (
-      <div className="flex items-center justify-center h-72 text-slate-400">
+      <div className="flex items-center justify-center h-72 text-muted-foreground">
         No productivity data available
       </div>
     );
@@ -131,14 +131,14 @@ export function ProductivityChart({
 
       {/* Trend indicator */}
       <div className="flex items-center justify-end mt-2 text-sm">
-        <span className="text-slate-400 mr-2">Overall trend:</span>
+        <span className="text-muted-foreground mr-2">Overall trend:</span>
         <span
           className={`font-medium ${
             data.overall_trend === "increasing"
               ? "text-green-400"
               : data.overall_trend === "decreasing"
               ? "text-red-400"
-              : "text-slate-400"
+              : "text-muted-foreground"
           }`}
         >
           {data.overall_trend}

@@ -70,7 +70,7 @@ export function FilterPanel({
           <select
             value={(values[filter.key] as string) || ""}
             onChange={(e) => handleFilterChange(filter.key, e.target.value || undefined)}
-            className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-blue-500"
           >
             <option value="">{filter.placeholder || `All ${filter.label}`}</option>
             {filter.options?.map((opt) => (
@@ -116,7 +116,7 @@ export function FilterPanel({
                   handleFilterChange(filter.key, [...selectedValues, e.target.value]);
                 }
               }}
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-blue-500"
             >
               <option value="">{filter.placeholder || `Select ${filter.label}`}</option>
               {filter.options
@@ -137,7 +137,7 @@ export function FilterPanel({
             value={(values[filter.key] as string) || ""}
             onChange={(e) => handleFilterChange(filter.key, e.target.value || undefined)}
             placeholder={filter.placeholder || `Search ${filter.label.toLowerCase()}`}
-            className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-blue-500"
           />
         );
 
@@ -148,9 +148,9 @@ export function FilterPanel({
               type="checkbox"
               checked={(values[filter.key] as boolean) || false}
               onChange={(e) => handleFilterChange(filter.key, e.target.checked || undefined)}
-              className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-800"
+              className="w-4 h-4 rounded border-border bg-background text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-800"
             />
-            <span className="text-sm text-slate-300">{filter.label}</span>
+            <span className="text-sm text-foreground">{filter.label}</span>
           </label>
         );
 
@@ -160,16 +160,16 @@ export function FilterPanel({
   };
 
   return (
-    <div className={`bg-slate-800 border border-slate-700 rounded-xl overflow-hidden ${className}`}>
+    <div className={`bg-muted border border-border rounded-xl overflow-hidden ${className}`}>
       {/* Header */}
       {collapsible && (
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full flex items-center justify-between p-4 hover:bg-slate-700/50 transition-colors"
+          className="w-full flex items-center justify-between p-4 hover:bg-accent/50 transition-colors"
         >
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-slate-400" />
-            <span className="text-sm font-medium text-slate-200">Filters</span>
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium text-foreground">Filters</span>
             {activeFiltersCount > 0 && (
               <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
                 {activeFiltersCount}
@@ -177,19 +177,19 @@ export function FilterPanel({
             )}
           </div>
           <ChevronDown
-            className={`h-4 w-4 text-slate-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+            className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`}
           />
         </button>
       )}
 
       {/* Content */}
       {(isExpanded || !collapsible) && (
-        <div className={`p-4 ${collapsible ? "border-t border-slate-700" : ""}`}>
+        <div className={`p-4 ${collapsible ? "border-t border-border" : ""}`}>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filters.map((filter) => (
               <div key={filter.key}>
                 {filter.type !== "boolean" && (
-                  <label className="block text-xs text-slate-400 mb-1.5">{filter.label}</label>
+                  <label className="block text-xs text-muted-foreground mb-1.5">{filter.label}</label>
                 )}
                 {renderFilter(filter)}
               </div>
@@ -197,11 +197,11 @@ export function FilterPanel({
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-700">
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
             <button
               onClick={handleClear}
               disabled={activeFiltersCount === 0}
-              className="text-sm text-slate-400 hover:text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Clear all filters
             </button>
@@ -224,10 +224,10 @@ export function FilterBadge({
   onClear: () => void;
 }) {
   return (
-    <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-700 text-slate-200 text-xs rounded-lg">
-      <span className="text-slate-400">{label}:</span>
+    <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-accent text-foreground text-xs rounded-lg">
+      <span className="text-muted-foreground">{label}:</span>
       <span>{value}</span>
-      <button onClick={onClear} className="hover:text-white transition-colors">
+      <button onClick={onClear} className="hover:text-foreground transition-colors">
         <X className="h-3 w-3" />
       </button>
     </span>

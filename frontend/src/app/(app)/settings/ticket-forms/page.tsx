@@ -311,7 +311,7 @@ export default function TicketFormsPage() {
       <div>
         {forms.length === 0 ? (
           <div className="bg-card rounded-xl p-12 text-center border border-border">
-            <Ticket className="h-16 w-16 text-slate-600 mx-auto mb-4" />
+            <Ticket className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-xl font-medium text-foreground mb-2">No forms yet</h3>
             <p className="text-muted-foreground mb-6">
               Create your first ticket form to start collecting submissions

@@ -57,11 +57,11 @@ export default function CRMOnboardingWelcome() {
             <span>Welcome to CRM</span>
           </div>
 
-          <h1 className="text-4xl font-bold text-white mb-4">
+          <h1 className="text-4xl font-bold text-foreground mb-4">
             Build stronger customer relationships
           </h1>
 
-          <p className="text-lg text-slate-400 mb-8">
+          <p className="text-lg text-muted-foreground mb-8">
             Aexy CRM helps you manage your contacts, track deals, and automate
             your workflows. Let&apos;s set up your workspace in just a few steps.
           </p>
@@ -73,14 +73,14 @@ export default function CRMOnboardingWelcome() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: 0.1 * index }}
-                className="flex items-start gap-4 p-4 rounded-xl bg-slate-800/30 border border-slate-700/50 hover:border-slate-600/50 transition-colors"
+                className="flex items-start gap-4 p-4 rounded-xl bg-muted/30 border border-border/50 hover:border-border/50 transition-colors"
               >
                 <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${feature.color} flex items-center justify-center flex-shrink-0`}>
                   <feature.icon className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-white">{feature.title}</h3>
-                  <p className="text-sm text-slate-400">{feature.description}</p>
+                  <h3 className="font-medium text-foreground">{feature.title}</h3>
+                  <p className="text-sm text-muted-foreground">{feature.description}</p>
                 </div>
               </motion.div>
             ))}
@@ -107,24 +107,24 @@ export default function CRMOnboardingWelcome() {
             <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-blue-500/20 blur-3xl rounded-full" />
 
             {/* Preview card */}
-            <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden shadow-2xl">
+            <div className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl overflow-hidden shadow-2xl">
               {/* Header */}
-              <div className="px-6 py-4 border-b border-slate-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="px-6 py-4 border-b border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
                     <Users className="w-4 h-4 text-white" />
                   </div>
-                  <span className="font-medium text-white">People</span>
+                  <span className="font-medium text-foreground">People</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="px-3 py-1 rounded-lg bg-slate-800 text-xs text-slate-400">+ Add Person</div>
+                  <div className="px-3 py-1 rounded-lg bg-muted text-xs text-muted-foreground">+ Add Person</div>
                 </div>
               </div>
 
               {/* Table preview */}
               <div className="p-4">
                 {/* Column headers */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 px-4 py-2 text-xs text-slate-500 border-b border-slate-800">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 px-4 py-2 text-xs text-muted-foreground border-b border-muted">
                   <div>Name</div>
                   <div>Company</div>
                   <div>Status</div>
@@ -143,21 +143,21 @@ export default function CRMOnboardingWelcome() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: 0.5 + 0.1 * i }}
-                    className="grid grid-cols-2 sm:grid-cols-4 gap-4 px-4 py-3 hover:bg-slate-800/50 rounded-lg transition-colors"
+                    className="grid grid-cols-2 sm:grid-cols-4 gap-4 px-4 py-3 hover:bg-muted/50 rounded-lg transition-colors"
                   >
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center text-xs text-white">
                         {row.name.split(" ").map(n => n[0]).join("")}
                       </div>
-                      <span className="text-sm text-white">{row.name}</span>
+                      <span className="text-sm text-foreground">{row.name}</span>
                     </div>
-                    <div className="text-sm text-slate-400 flex items-center">{row.company}</div>
+                    <div className="text-sm text-muted-foreground flex items-center">{row.company}</div>
                     <div className="flex items-center">
                       <span className={`px-2 py-0.5 rounded-full text-xs bg-${row.statusColor}-500/10 text-${row.statusColor}-400 border border-${row.statusColor}-500/20`}>
                         {row.status}
                       </span>
                     </div>
-                    <div className="text-sm text-slate-500 flex items-center">{row.time}</div>
+                    <div className="text-sm text-muted-foreground flex items-center">{row.time}</div>
                   </motion.div>
                 ))}
               </div>

@@ -32,7 +32,7 @@ export function ToolSelectionStep({
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <Loader2 className="h-8 w-8 text-purple-400 animate-spin mx-auto mb-4" />
-          <p className="text-slate-400">Loading available tools...</p>
+          <p className="text-muted-foreground">Loading available tools...</p>
         </div>
       </div>
     );
@@ -49,10 +49,10 @@ export function ToolSelectionStep({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-white mb-2">
+        <h2 className="text-xl font-semibold text-foreground mb-2">
           Select Tools
         </h2>
-        <p className="text-slate-400">
+        <p className="text-muted-foreground">
           Choose which capabilities your agent should have. Tools determine what
           actions the agent can take.
         </p>
@@ -65,7 +65,7 @@ export function ToolSelectionStep({
             <p className="text-purple-400 font-medium">
               Start with recommended tools?
             </p>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-muted-foreground">
               {defaultTools.length} tools pre-selected for{" "}
               {getAgentTypeConfig(agentType).label}
             </p>

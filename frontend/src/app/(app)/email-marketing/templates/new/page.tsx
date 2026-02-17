@@ -191,12 +191,12 @@ export default function NewTemplatePage() {
 
   if (!currentWorkspace) {
     return (
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen bg-background">
 <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <div className="text-center">
-            <AlertCircle className="h-12 w-12 text-slate-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-white mb-2">No Workspace Selected</h2>
-            <p className="text-slate-400">Please select a workspace to create a template.</p>
+            <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-foreground mb-2">No Workspace Selected</h2>
+            <p className="text-muted-foreground">Please select a workspace to create a template.</p>
           </div>
         </div>
       </div>
@@ -204,20 +204,20 @@ export default function NewTemplatePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
 <div className="p-8">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="flex items-center gap-4 mb-8">
             <button
               onClick={() => router.push("/email-marketing/templates")}
-              className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition"
+              className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-white">Create Template</h1>
-              <p className="text-sm text-slate-400">Design a reusable email template</p>
+              <h1 className="text-2xl font-bold text-foreground">Create Template</h1>
+              <p className="text-sm text-muted-foreground">Design a reusable email template</p>
             </div>
           </div>
 
@@ -232,8 +232,8 @@ export default function NewTemplatePage() {
             {/* Main Content - 3 columns */}
             <div className="lg:col-span-3 space-y-6">
               {/* Template Type */}
-              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-                <h2 className="text-lg font-medium text-white mb-4">Template Type</h2>
+              <div className="bg-background/50 border border-border rounded-xl p-6">
+                <h2 className="text-lg font-medium text-foreground mb-4">Template Type</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {templateTypes.map((type) => {
                     const Icon = type.icon;
@@ -243,15 +243,15 @@ export default function NewTemplatePage() {
                         onClick={() => setTemplateType(type.value)}
                         className={`p-4 rounded-lg border transition text-left ${
                           templateType === type.value
-                            ? "bg-sky-500/20 border-sky-500 text-white"
-                            : "bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600"
+                            ? "bg-sky-500/20 border-sky-500 text-foreground"
+                            : "bg-muted border-border text-foreground hover:border-border"
                         }`}
                       >
                         <Icon className={`h-6 w-6 mb-2 ${
-                          templateType === type.value ? "text-sky-400" : "text-slate-400"
+                          templateType === type.value ? "text-sky-400" : "text-muted-foreground"
                         }`} />
                         <p className="font-medium">{type.label}</p>
-                        <p className="text-xs text-slate-400 mt-1">{type.desc}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{type.desc}</p>
                       </button>
                     );
                   })}
@@ -259,33 +259,33 @@ export default function NewTemplatePage() {
               </div>
 
               {/* Basic Info */}
-              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-                <h2 className="text-lg font-medium text-white mb-4">Basic Information</h2>
+              <div className="bg-background/50 border border-border rounded-xl p-6">
+                <h2 className="text-lg font-medium text-foreground mb-4">Basic Information</h2>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm text-slate-400 mb-2">Template Name *</label>
+                    <label className="block text-sm text-muted-foreground mb-2">Template Name *</label>
                     <input
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="e.g., Welcome Email"
-                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm text-slate-400 mb-2">Description</label>
+                    <label className="block text-sm text-muted-foreground mb-2">Description</label>
                     <input
                       type="text"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder="Brief description of the template"
-                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm text-slate-400 mb-2">Subject Line *</label>
+                    <label className="block text-sm text-muted-foreground mb-2">Subject Line *</label>
                     <input
                       ref={subjectInputRef}
                       type="text"
@@ -296,9 +296,9 @@ export default function NewTemplatePage() {
                       onKeyUp={handleSubjectSelect}
                       onClick={handleSubjectSelect}
                       placeholder="e.g., Welcome to {{company_name}}!"
-                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
                     />
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       Click a variable from the sidebar to insert it here
                     </p>
                   </div>
@@ -307,19 +307,19 @@ export default function NewTemplatePage() {
 
               {/* Content */}
               {templateType === "visual" ? (
-                <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-                  <h2 className="text-lg font-medium text-white mb-4">Visual Builder</h2>
-                  <div className="h-64 flex items-center justify-center border border-dashed border-slate-700 rounded-lg">
+                <div className="bg-background/50 border border-border rounded-xl p-6">
+                  <h2 className="text-lg font-medium text-foreground mb-4">Visual Builder</h2>
+                  <div className="h-64 flex items-center justify-center border border-dashed border-border rounded-lg">
                     <div className="text-center">
-                      <Wand2 className="h-10 w-10 text-slate-600 mx-auto mb-2" />
-                      <p className="text-slate-400">Visual builder will be available after creation</p>
-                      <p className="text-xs text-slate-500 mt-1">Create the template first, then edit with the visual builder</p>
+                      <Wand2 className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-muted-foreground">Visual builder will be available after creation</p>
+                      <p className="text-xs text-muted-foreground mt-1">Create the template first, then edit with the visual builder</p>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-                  <h2 className="text-lg font-medium text-white mb-4">
+                <div className="bg-background/50 border border-border rounded-xl p-6">
+                  <h2 className="text-lg font-medium text-foreground mb-4">
                     {templateType === "mjml" ? "MJML Content" : "HTML Content"} *
                   </h2>
                   <textarea
@@ -335,9 +335,9 @@ export default function NewTemplatePage() {
                       : `<!DOCTYPE html>\n<html>\n<body>\n  <h1>Hello {{first_name}}</h1>\n  <p>Welcome to {{company_name}}!</p>\n</body>\n</html>`
                     }
                     rows={18}
-                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono text-sm"
+                    className="w-full px-4 py-3 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono text-sm"
                   />
-                  <p className="text-xs text-slate-500 mt-2">
+                  <p className="text-xs text-muted-foreground mt-2">
                     {templateType === "mjml"
                       ? "MJML will be compiled to responsive HTML. Click a variable from the sidebar to insert it."
                       : "Click a variable from the sidebar to insert it at your cursor position"
@@ -350,7 +350,7 @@ export default function NewTemplatePage() {
               <div className="flex items-center justify-end gap-3">
                 <button
                   onClick={() => router.push("/email-marketing/templates")}
-                  className="px-4 py-2 text-slate-400 hover:text-white transition"
+                  className="px-4 py-2 text-muted-foreground hover:text-foreground transition"
                 >
                   Cancel
                 </button>
@@ -371,12 +371,12 @@ export default function NewTemplatePage() {
 
             {/* Variables Sidebar - 1 column */}
             <div className="lg:col-span-1">
-              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 sticky top-8">
+              <div className="bg-background/50 border border-border rounded-xl p-4 sticky top-8">
                 <div className="flex items-center gap-2 mb-4">
                   <Variable className="h-5 w-5 text-purple-400" />
-                  <h3 className="text-lg font-medium text-white">Variables</h3>
+                  <h3 className="text-lg font-medium text-foreground">Variables</h3>
                 </div>
-                <p className="text-xs text-slate-500 mb-4">
+                <p className="text-xs text-muted-foreground mb-4">
                   Click to insert at cursor position
                 </p>
 
@@ -386,8 +386,8 @@ export default function NewTemplatePage() {
                     return (
                       <div key={category.name}>
                         <div className="flex items-center gap-2 mb-2">
-                          <CategoryIcon className="h-4 w-4 text-slate-500" />
-                          <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                          <CategoryIcon className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                             {category.name}
                           </span>
                         </div>
@@ -396,12 +396,12 @@ export default function NewTemplatePage() {
                             <button
                               key={variable.name}
                               onClick={() => insertVariable(variable.name)}
-                              className="w-full text-left px-3 py-2 rounded-lg bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 hover:border-slate-600 transition group"
+                              className="w-full text-left px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted border border-border/50 hover:border-border transition group"
                             >
                               <code className="text-sm text-purple-400 group-hover:text-purple-300">
                                 {`{{${variable.name}}}`}
                               </code>
-                              <p className="text-xs text-slate-500 mt-0.5">{variable.description}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">{variable.description}</p>
                             </button>
                           ))}
                         </div>

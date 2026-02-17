@@ -73,13 +73,13 @@ export default function ApprovalsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-6">
+    <div className="min-h-screen bg-background text-foreground p-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Link
             href="/learning/manager"
-            className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+            className="p-2 hover:bg-muted rounded-lg transition-colors"
           >
             <svg
               className="w-5 h-5"
@@ -97,20 +97,20 @@ export default function ApprovalsPage() {
           </Link>
           <div>
             <h1 className="text-3xl font-bold">Approval Queue</h1>
-            <p className="text-slate-400 mt-1">
+            <p className="text-muted-foreground mt-1">
               Review and manage course approval requests
             </p>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 bg-slate-900 p-1 rounded-lg w-fit">
+        <div className="flex gap-1 mb-6 bg-background p-1 rounded-lg w-fit">
           <button
             onClick={() => setActiveTab("pending")}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               activeTab === "pending"
-                ? "bg-slate-700 text-white"
-                : "text-slate-400 hover:text-white hover:bg-slate-800"
+                ? "bg-accent text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >
             Pending
@@ -124,8 +124,8 @@ export default function ApprovalsPage() {
             onClick={() => setActiveTab("all")}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               activeTab === "all"
-                ? "bg-slate-700 text-white"
-                : "text-slate-400 hover:text-white hover:bg-slate-800"
+                ? "bg-accent text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >
             All Requests
@@ -136,21 +136,21 @@ export default function ApprovalsPage() {
         {activeTab === "pending" && (
           <div className="space-y-4">
             {queueLoading ? (
-              <div className="text-center py-12 text-slate-400">
+              <div className="text-center py-12 text-muted-foreground">
                 Loading approval queue...
               </div>
             ) : queue && queue.items.length > 0 ? (
               <>
                 {/* Summary */}
-                <div className="bg-slate-900 rounded-lg p-4 mb-6">
+                <div className="bg-background rounded-lg p-4 mb-6">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                      <span className="text-slate-400">
+                      <span className="text-muted-foreground">
                         {queue.total} pending request{queue.total !== 1 ? "s" : ""}
                       </span>
                     </div>
                     <div className="text-right">
-                      <span className="text-slate-400">Total requested:</span>
+                      <span className="text-muted-foreground">Total requested:</span>
                       <span className="ml-2 font-semibold">
                         {formatCurrency(queue.total_pending_cost_cents)}
                       </span>
@@ -168,9 +168,9 @@ export default function ApprovalsPage() {
                 ))}
               </>
             ) : (
-              <div className="text-center py-12 text-slate-400">
+              <div className="text-center py-12 text-muted-foreground">
                 <svg
-                  className="w-16 h-16 mx-auto mb-4 text-slate-600"
+                  className="w-16 h-16 mx-auto mb-4 text-muted-foreground"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -193,27 +193,27 @@ export default function ApprovalsPage() {
         {activeTab === "all" && (
           <div className="space-y-4">
             {allLoading ? (
-              <div className="text-center py-12 text-slate-400">
+              <div className="text-center py-12 text-muted-foreground">
                 Loading requests...
               </div>
             ) : allRequests && allRequests.items.length > 0 ? (
-              <div className="bg-slate-900 rounded-lg overflow-hidden overflow-x-auto">
+              <div className="bg-background rounded-lg overflow-hidden overflow-x-auto">
                 <table className="w-full min-w-[600px]">
                   <thead>
-                    <tr className="border-b border-slate-800">
-                      <th className="text-left px-4 py-3 text-sm font-medium text-slate-400">
+                    <tr className="border-b border-border">
+                      <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">
                         Course
                       </th>
-                      <th className="text-left px-4 py-3 text-sm font-medium text-slate-400">
+                      <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">
                         Requester
                       </th>
-                      <th className="text-left px-4 py-3 text-sm font-medium text-slate-400">
+                      <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">
                         Cost
                       </th>
-                      <th className="text-left px-4 py-3 text-sm font-medium text-slate-400">
+                      <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">
                         Status
                       </th>
-                      <th className="text-left px-4 py-3 text-sm font-medium text-slate-400">
+                      <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">
                         Date
                       </th>
                     </tr>
@@ -222,14 +222,14 @@ export default function ApprovalsPage() {
                     {allRequests.items.map((request) => (
                       <tr
                         key={request.id}
-                        className="border-b border-slate-800 hover:bg-slate-800/50 cursor-pointer"
+                        className="border-b border-border hover:bg-muted/50 cursor-pointer"
                         onClick={() => setSelectedRequest(request)}
                       >
                         <td className="px-4 py-3">
                           <div>
                             <p className="font-medium">{request.course_title}</p>
                             {request.course_provider && (
-                              <p className="text-sm text-slate-400">
+                              <p className="text-sm text-muted-foreground">
                                 {request.course_provider}
                               </p>
                             )}
@@ -250,7 +250,7 @@ export default function ApprovalsPage() {
                             {request.status}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-slate-400 text-sm">
+                        <td className="px-4 py-3 text-muted-foreground text-sm">
                           {new Date(request.created_at).toLocaleDateString()}
                         </td>
                       </tr>
@@ -259,7 +259,7 @@ export default function ApprovalsPage() {
                 </table>
               </div>
             ) : (
-              <div className="text-center py-12 text-slate-400">
+              <div className="text-center py-12 text-muted-foreground">
                 No approval requests found
               </div>
             )}
@@ -270,18 +270,18 @@ export default function ApprovalsPage() {
       {/* Request Detail Modal */}
       {selectedRequest && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-background rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <h2 className="text-xl font-bold">{selectedRequest.course_title}</h2>
                   {selectedRequest.course_provider && (
-                    <p className="text-slate-400">{selectedRequest.course_provider}</p>
+                    <p className="text-muted-foreground">{selectedRequest.course_provider}</p>
                   )}
                 </div>
                 <button
                   onClick={() => setSelectedRequest(null)}
-                  className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+                  className="p-2 hover:bg-muted rounded-lg transition-colors"
                 >
                   <svg
                     className="w-5 h-5"
@@ -310,7 +310,7 @@ export default function ApprovalsPage() {
                     {selectedRequest.status}
                   </span>
                   {selectedRequest.days_pending !== null && selectedRequest.status === "pending" && (
-                    <span className="text-slate-400 text-sm">
+                    <span className="text-muted-foreground text-sm">
                       Pending for {selectedRequest.days_pending} day
                       {selectedRequest.days_pending !== 1 ? "s" : ""}
                     </span>
@@ -318,26 +318,26 @@ export default function ApprovalsPage() {
                 </div>
 
                 {/* Details Grid */}
-                <div className="grid grid-cols-2 gap-4 bg-slate-800 rounded-lg p-4">
+                <div className="grid grid-cols-2 gap-4 bg-muted rounded-lg p-4">
                   <div>
-                    <p className="text-sm text-slate-400">Requester</p>
+                    <p className="text-sm text-muted-foreground">Requester</p>
                     <p className="font-medium">{selectedRequest.requester_name}</p>
-                    <p className="text-sm text-slate-400">{selectedRequest.requester_email}</p>
+                    <p className="text-sm text-muted-foreground">{selectedRequest.requester_email}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-slate-400">Estimated Cost</p>
+                    <p className="text-sm text-muted-foreground">Estimated Cost</p>
                     <p className="font-medium text-lg">
                       {formatCurrency(selectedRequest.estimated_cost_cents, selectedRequest.currency)}
                     </p>
                   </div>
                   {selectedRequest.estimated_hours && (
                     <div>
-                      <p className="text-sm text-slate-400">Estimated Hours</p>
+                      <p className="text-sm text-muted-foreground">Estimated Hours</p>
                       <p className="font-medium">{selectedRequest.estimated_hours} hours</p>
                     </div>
                   )}
                   <div>
-                    <p className="text-sm text-slate-400">Request Type</p>
+                    <p className="text-sm text-muted-foreground">Request Type</p>
                     <p className="font-medium capitalize">{selectedRequest.request_type}</p>
                   </div>
                 </div>
@@ -345,7 +345,7 @@ export default function ApprovalsPage() {
                 {/* URL */}
                 {selectedRequest.course_url && (
                   <div>
-                    <p className="text-sm text-slate-400 mb-1">Course URL</p>
+                    <p className="text-sm text-muted-foreground mb-1">Course URL</p>
                     <a
                       href={selectedRequest.course_url}
                       target="_blank"
@@ -360,28 +360,28 @@ export default function ApprovalsPage() {
                 {/* Description */}
                 {selectedRequest.course_description && (
                   <div>
-                    <p className="text-sm text-slate-400 mb-1">Description</p>
-                    <p className="text-slate-300">{selectedRequest.course_description}</p>
+                    <p className="text-sm text-muted-foreground mb-1">Description</p>
+                    <p className="text-foreground">{selectedRequest.course_description}</p>
                   </div>
                 )}
 
                 {/* Justification */}
                 {selectedRequest.justification && (
                   <div>
-                    <p className="text-sm text-slate-400 mb-1">Business Justification</p>
-                    <p className="text-slate-300">{selectedRequest.justification}</p>
+                    <p className="text-sm text-muted-foreground mb-1">Business Justification</p>
+                    <p className="text-foreground">{selectedRequest.justification}</p>
                   </div>
                 )}
 
                 {/* Skills */}
                 {selectedRequest.skills_to_gain.length > 0 && (
                   <div>
-                    <p className="text-sm text-slate-400 mb-2">Skills to Gain</p>
+                    <p className="text-sm text-muted-foreground mb-2">Skills to Gain</p>
                     <div className="flex flex-wrap gap-2">
                       {selectedRequest.skills_to_gain.map((skill, index) => (
                         <span
                           key={index}
-                          className="px-2 py-1 bg-slate-800 rounded text-sm"
+                          className="px-2 py-1 bg-muted rounded text-sm"
                         >
                           {skill}
                         </span>
@@ -393,18 +393,18 @@ export default function ApprovalsPage() {
                 {/* Linked Goal */}
                 {selectedRequest.linked_goal_title && (
                   <div>
-                    <p className="text-sm text-slate-400 mb-1">Linked Learning Goal</p>
-                    <p className="text-slate-300">{selectedRequest.linked_goal_title}</p>
+                    <p className="text-sm text-muted-foreground mb-1">Linked Learning Goal</p>
+                    <p className="text-foreground">{selectedRequest.linked_goal_title}</p>
                   </div>
                 )}
 
                 {/* Decision Info (if already decided) */}
                 {selectedRequest.status !== "pending" && selectedRequest.decision_reason && (
-                  <div className="bg-slate-800 rounded-lg p-4">
-                    <p className="text-sm text-slate-400 mb-1">Decision Reason</p>
-                    <p className="text-slate-300">{selectedRequest.decision_reason}</p>
+                  <div className="bg-muted rounded-lg p-4">
+                    <p className="text-sm text-muted-foreground mb-1">Decision Reason</p>
+                    <p className="text-foreground">{selectedRequest.decision_reason}</p>
                     {selectedRequest.decided_by_name && (
-                      <p className="text-sm text-slate-400 mt-2">
+                      <p className="text-sm text-muted-foreground mt-2">
                         Decided by {selectedRequest.decided_by_name}
                       </p>
                     )}
@@ -413,15 +413,15 @@ export default function ApprovalsPage() {
 
                 {/* Decision Actions (if pending) */}
                 {selectedRequest.status === "pending" && (
-                  <div className="border-t border-slate-800 pt-4 mt-6">
+                  <div className="border-t border-border pt-4 mt-6">
                     <div className="mb-4">
-                      <label className="block text-sm text-slate-400 mb-1">
+                      <label className="block text-sm text-muted-foreground mb-1">
                         Decision Reason (optional)
                       </label>
                       <textarea
                         value={decisionReason}
                         onChange={(e) => setDecisionReason(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-800 rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
+                        className="w-full px-3 py-2 bg-muted rounded-lg border border-border focus:border-blue-500 focus:outline-none"
                         rows={2}
                         placeholder="Add a note about your decision..."
                       />
@@ -464,13 +464,13 @@ function ApprovalRequestCard({
 
   return (
     <div
-      className="bg-slate-900 rounded-lg p-5 hover:bg-slate-800/50 cursor-pointer transition-colors"
+      className="bg-background rounded-lg p-5 hover:bg-muted/50 cursor-pointer transition-colors"
       onClick={onSelect}
     >
       <div className="flex justify-between items-start mb-3">
         <div>
           <h3 className="font-semibold">{request.course_title}</h3>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted-foreground">
             {request.requester_name}
             {request.course_provider && ` • ${request.course_provider}`}
           </p>
@@ -480,20 +480,20 @@ function ApprovalRequestCard({
             {formatCurrency(request.estimated_cost_cents, request.currency)}
           </p>
           {request.estimated_hours && (
-            <p className="text-sm text-slate-400">{request.estimated_hours} hours</p>
+            <p className="text-sm text-muted-foreground">{request.estimated_hours} hours</p>
           )}
         </div>
       </div>
 
       {request.justification && (
-        <p className="text-sm text-slate-400 mb-3 line-clamp-2">
+        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
           {request.justification}
         </p>
       )}
 
       <div className="flex items-center gap-3 text-sm">
         {request.days_pending !== null && (
-          <span className="text-slate-400">
+          <span className="text-muted-foreground">
             Pending {request.days_pending} day{request.days_pending !== 1 ? "s" : ""}
           </span>
         )}
@@ -508,7 +508,7 @@ function ApprovalRequestCard({
           </span>
         )}
         {budget_remaining_cents !== null && (
-          <span className="text-slate-400">
+          <span className="text-muted-foreground">
             Budget remaining: {formatCurrency(budget_remaining_cents)}
           </span>
         )}

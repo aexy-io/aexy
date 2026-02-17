@@ -28,18 +28,18 @@ const STATUS_COLORS: Record<TicketStatus, { bg: string; text: string; label: str
   in_progress: { bg: "bg-yellow-900/30", text: "text-yellow-400", label: "In Progress" },
   waiting_on_submitter: { bg: "bg-orange-900/30", text: "text-orange-400", label: "Waiting" },
   resolved: { bg: "bg-green-900/30", text: "text-green-400", label: "Resolved" },
-  closed: { bg: "bg-slate-700/50", text: "text-slate-400", label: "Closed" },
+  closed: { bg: "bg-accent/50", text: "text-muted-foreground", label: "Closed" },
 };
 
 const PRIORITY_COLORS: Record<TicketPriority, { bg: string; text: string }> = {
-  low: { bg: "bg-slate-700", text: "text-slate-300" },
+  low: { bg: "bg-accent", text: "text-foreground" },
   medium: { bg: "bg-blue-900/30", text: "text-blue-400" },
   high: { bg: "bg-orange-900/30", text: "text-orange-400" },
   urgent: { bg: "bg-red-900/30", text: "text-red-400" },
 };
 
 const TASK_STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  backlog: { bg: "bg-slate-700/50", text: "text-slate-400", label: "Backlog" },
+  backlog: { bg: "bg-accent/50", text: "text-muted-foreground", label: "Backlog" },
   todo: { bg: "bg-blue-900/30", text: "text-blue-400", label: "To Do" },
   in_progress: { bg: "bg-yellow-900/30", text: "text-yellow-400", label: "In Progress" },
   review: { bg: "bg-purple-900/30", text: "text-purple-400", label: "Review" },
@@ -98,24 +98,24 @@ export default function TicketsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
 <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+              <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
                 <Ticket className="h-8 w-8 text-purple-400" />
                 My Work
               </h1>
-              <p className="text-slate-400 mt-2">
+              <p className="text-muted-foreground mt-2">
                 Track your assigned tasks and incoming tickets
               </p>
             </div>
             <div className="flex gap-3">
               <button
                 onClick={() => router.push("/settings/ticket-forms")}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 transition border border-slate-700"
+                className="flex items-center gap-2 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-accent transition border border-border"
               >
                 <Settings className="h-4 w-4" />
                 Manage Forms
@@ -131,14 +131,14 @@ export default function TicketsPage() {
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
               activeTab === "my-tasks"
                 ? "bg-purple-600 text-white"
-                : "bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700"
+                : "bg-muted text-muted-foreground hover:bg-accent border border-border"
             }`}
           >
             <ListTodo className="h-4 w-4" />
             My Assigned Tasks
             {myTasks.length > 0 && (
               <span className={`px-2 py-0.5 rounded-full text-xs ${
-                activeTab === "my-tasks" ? "bg-purple-500" : "bg-slate-700"
+                activeTab === "my-tasks" ? "bg-purple-500" : "bg-accent"
               }`}>
                 {myTasks.length}
               </span>
@@ -149,14 +149,14 @@ export default function TicketsPage() {
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
               activeTab === "tickets"
                 ? "bg-purple-600 text-white"
-                : "bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700"
+                : "bg-muted text-muted-foreground hover:bg-accent border border-border"
             }`}
           >
             <Ticket className="h-4 w-4" />
             Form Tickets
             {(stats?.open_tickets || 0) > 0 && (
               <span className={`px-2 py-0.5 rounded-full text-xs ${
-                activeTab === "tickets" ? "bg-purple-500" : "bg-slate-700"
+                activeTab === "tickets" ? "bg-purple-500" : "bg-accent"
               }`}>
                 {stats?.open_tickets}
               </span>
@@ -169,72 +169,72 @@ export default function TicketsPage() {
           <>
             {/* Tasks Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-purple-900/30">
                     <ListTodo className="h-5 w-5 text-purple-400" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-white">{myTasks.length}</p>
-                    <p className="text-sm text-slate-400">Assigned Tasks</p>
+                    <p className="text-2xl font-bold text-foreground">{myTasks.length}</p>
+                    <p className="text-sm text-muted-foreground">Assigned Tasks</p>
                   </div>
                 </div>
               </div>
-              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-yellow-900/30">
                     <Clock className="h-5 w-5 text-yellow-400" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-white">
+                    <p className="text-2xl font-bold text-foreground">
                       {myTasks.filter(t => t.status === "in_progress").length}
                     </p>
-                    <p className="text-sm text-slate-400">In Progress</p>
+                    <p className="text-sm text-muted-foreground">In Progress</p>
                   </div>
                 </div>
               </div>
-              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-blue-900/30">
                     <Layers className="h-5 w-5 text-blue-400" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-white">
+                    <p className="text-2xl font-bold text-foreground">
                       {myTasks.filter(t => t.status === "backlog" || t.status === "todo").length}
                     </p>
-                    <p className="text-sm text-slate-400">To Do</p>
+                    <p className="text-sm text-muted-foreground">To Do</p>
                   </div>
                 </div>
               </div>
-              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-purple-900/30">
                     <CheckCircle2 className="h-5 w-5 text-purple-400" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-white">
+                    <p className="text-2xl font-bold text-foreground">
                       {myTasks.filter(t => t.status === "review").length}
                     </p>
-                    <p className="text-sm text-slate-400">In Review</p>
+                    <p className="text-sm text-muted-foreground">In Review</p>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Tasks List */}
-            <div className="bg-slate-800 rounded-xl border border-slate-700">
+            <div className="bg-muted rounded-xl border border-border">
               {isLoadingTasks ? (
-                <div className="p-8 text-center text-slate-400">Loading tasks...</div>
+                <div className="p-8 text-center text-muted-foreground">Loading tasks...</div>
               ) : myTasks.length === 0 ? (
                 <div className="p-8 text-center">
-                  <ListTodo className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-                  <p className="text-slate-400">No tasks assigned to you</p>
-                  <p className="text-sm text-slate-500 mt-1">
+                  <ListTodo className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No tasks assigned to you</p>
+                  <p className="text-sm text-muted-foreground mt-1">
                     Tasks assigned to you from sprints will appear here
                   </p>
                 </div>
               ) : (
-                <div className="divide-y divide-slate-700">
+                <div className="divide-y divide-border">
                   {myTasks.map((task) => (
                     <button
                       key={task.id}
@@ -245,36 +245,36 @@ export default function TicketsPage() {
                           router.push(`/sprints`);
                         }
                       }}
-                      className="w-full p-4 hover:bg-slate-700/50 transition flex items-center gap-4 text-left"
+                      className="w-full p-4 hover:bg-accent/50 transition flex items-center gap-4 text-left"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span
                             className={`px-2 py-0.5 rounded text-xs font-medium ${
-                              TASK_STATUS_COLORS[task.status]?.bg || "bg-slate-700"
-                            } ${TASK_STATUS_COLORS[task.status]?.text || "text-slate-300"}`}
+                              TASK_STATUS_COLORS[task.status]?.bg || "bg-accent"
+                            } ${TASK_STATUS_COLORS[task.status]?.text || "text-foreground"}`}
                           >
                             {TASK_STATUS_COLORS[task.status]?.label || task.status}
                           </span>
                           <span
                             className={`px-2 py-0.5 rounded text-xs font-medium ${
-                              PRIORITY_COLORS[task.priority as TicketPriority]?.bg || "bg-slate-700"
-                            } ${PRIORITY_COLORS[task.priority as TicketPriority]?.text || "text-slate-300"}`}
+                              PRIORITY_COLORS[task.priority as TicketPriority]?.bg || "bg-accent"
+                            } ${PRIORITY_COLORS[task.priority as TicketPriority]?.text || "text-foreground"}`}
                           >
                             {task.priority}
                           </span>
                           {task.story_points && (
-                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-700 text-slate-300">
+                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-accent text-foreground">
                               {task.story_points} pts
                             </span>
                           )}
                         </div>
-                        <p className="text-white font-medium truncate">{task.title}</p>
-                        <p className="text-sm text-slate-400">
+                        <p className="text-foreground font-medium truncate">{task.title}</p>
+                        <p className="text-sm text-muted-foreground">
                           {task.sprint_name || "No Sprint"} • {formatDate(task.created_at)}
                         </p>
                       </div>
-                      <ChevronRight className="h-5 w-5 text-slate-500" />
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
                     </button>
                   ))}
                 </div>
@@ -288,70 +288,70 @@ export default function TicketsPage() {
           <>
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-purple-900/30">
                     <Ticket className="h-5 w-5 text-purple-400" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-white">{stats?.total_tickets || 0}</p>
-                    <p className="text-sm text-slate-400">Total Tickets</p>
+                    <p className="text-2xl font-bold text-foreground">{stats?.total_tickets || 0}</p>
+                    <p className="text-sm text-muted-foreground">Total Tickets</p>
                   </div>
                 </div>
               </div>
-              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-blue-900/30">
                     <Clock className="h-5 w-5 text-blue-400" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-white">{stats?.open_tickets || 0}</p>
-                    <p className="text-sm text-slate-400">Open Tickets</p>
+                    <p className="text-2xl font-bold text-foreground">{stats?.open_tickets || 0}</p>
+                    <p className="text-sm text-muted-foreground">Open Tickets</p>
                   </div>
                 </div>
               </div>
-              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-red-900/30">
                     <AlertTriangle className="h-5 w-5 text-red-400" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-white">{stats?.sla_breached || 0}</p>
-                    <p className="text-sm text-slate-400">SLA Breached</p>
+                    <p className="text-2xl font-bold text-foreground">{stats?.sla_breached || 0}</p>
+                    <p className="text-sm text-muted-foreground">SLA Breached</p>
                   </div>
                 </div>
               </div>
-              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-green-900/30">
                     <FileText className="h-5 w-5 text-green-400" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-white">{forms.length}</p>
-                    <p className="text-sm text-slate-400">Active Forms</p>
+                    <p className="text-2xl font-bold text-foreground">{forms.length}</p>
+                    <p className="text-sm text-muted-foreground">Active Forms</p>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Filters */}
-            <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 mb-6">
+            <div className="bg-muted rounded-xl border border-border p-4 mb-6">
               <div className="flex flex-wrap items-center gap-4">
                 <div className="flex-1 min-w-[200px]">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <input
                       type="text"
                       placeholder="Search tickets..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-slate-400" />
-                  <span className="text-sm text-slate-400">Status:</span>
+                  <Filter className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Status:</span>
                   <div className="flex gap-1">
                     {(["new", "in_progress", "waiting_on_submitter", "resolved"] as TicketStatus[]).map((status) => (
                       <button
@@ -366,7 +366,7 @@ export default function TicketsPage() {
                         className={`px-2 py-1 rounded text-xs font-medium transition ${
                           statusFilter.includes(status)
                             ? `${STATUS_COLORS[status].bg} ${STATUS_COLORS[status].text}`
-                            : "bg-slate-700 text-slate-400 hover:bg-slate-600"
+                            : "bg-accent text-muted-foreground hover:bg-muted"
                         }`}
                       >
                         {STATUS_COLORS[status].label}
@@ -378,24 +378,24 @@ export default function TicketsPage() {
             </div>
 
             {/* Tickets List */}
-            <div className="bg-slate-800 rounded-xl border border-slate-700">
+            <div className="bg-muted rounded-xl border border-border">
               {isLoading ? (
-                <div className="p-8 text-center text-slate-400">Loading tickets...</div>
+                <div className="p-8 text-center text-muted-foreground">Loading tickets...</div>
               ) : filteredTickets.length === 0 ? (
                 <div className="p-8 text-center">
-                  <Ticket className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-                  <p className="text-slate-400">No tickets found</p>
-                  <p className="text-sm text-slate-500 mt-1">
+                  <Ticket className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No tickets found</p>
+                  <p className="text-sm text-muted-foreground mt-1">
                     Create a form to start receiving tickets
                   </p>
                 </div>
               ) : (
-                <div className="divide-y divide-slate-700">
+                <div className="divide-y divide-border">
                   {filteredTickets.map((ticket) => (
                     <button
                       key={ticket.id}
                       onClick={() => router.push(`/tickets/${ticket.id}`)}
-                      className="w-full p-4 hover:bg-slate-700/50 transition flex items-center gap-4 text-left"
+                      className="w-full p-4 hover:bg-accent/50 transition flex items-center gap-4 text-left"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
@@ -424,20 +424,20 @@ export default function TicketsPage() {
                             </span>
                           )}
                         </div>
-                        <p className="text-white font-medium truncate">
+                        <p className="text-foreground font-medium truncate">
                           {ticket.submitter_name || ticket.submitter_email || "Anonymous"}
                         </p>
-                        <p className="text-sm text-slate-400">
+                        <p className="text-sm text-muted-foreground">
                           {ticket.form_name} • {formatDate(ticket.created_at)}
                         </p>
                       </div>
                       {ticket.assignee_name && (
-                        <div className="flex items-center gap-2 text-sm text-slate-400">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <User className="h-4 w-4" />
                           {ticket.assignee_name}
                         </div>
                       )}
-                      <ChevronRight className="h-5 w-5 text-slate-500" />
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
                     </button>
                   ))}
                 </div>
@@ -447,7 +447,7 @@ export default function TicketsPage() {
             {/* Pagination */}
             {total > 50 && (
               <div className="mt-4 flex justify-center">
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-muted-foreground">
                   Showing {filteredTickets.length} of {total} tickets
                 </p>
               </div>

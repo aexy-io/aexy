@@ -164,7 +164,7 @@ export default function WorkspaceStep() {
             className={`h-1.5 rounded-full transition-all ${
               step <= 3
                 ? "w-8 bg-primary-500"
-                : "w-4 bg-slate-700"
+                : "w-4 bg-accent"
             }`}
           />
         ))}
@@ -178,12 +178,12 @@ export default function WorkspaceStep() {
         {/* Header */}
         <div className="text-center mb-10">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center mx-auto mb-6">
-            <Building2 className="w-8 h-8 text-white" />
+            <Building2 className="w-8 h-8 text-foreground" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-3">
+          <h1 className="text-3xl font-bold text-foreground mb-3">
             Set up your workspace
           </h1>
-          <p className="text-slate-400 max-w-lg mx-auto">
+          <p className="text-muted-foreground max-w-lg mx-auto">
             A workspace is where your team collaborates. Create a new one or join an existing workspace.
           </p>
         </div>
@@ -200,11 +200,11 @@ export default function WorkspaceStep() {
                 <Clock className="w-5 h-5 text-amber-400" />
               </div>
               <div>
-                <h3 className="font-medium text-white mb-1">Join Request Pending</h3>
-                <p className="text-sm text-slate-400 mb-3">
+                <h3 className="font-medium text-foreground mb-1">Join Request Pending</h3>
+                <p className="text-sm text-muted-foreground mb-3">
                   Your request to join the workspace is awaiting approval. You&apos;ll receive an email once accepted.
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   Workspace ID: {data.workspace.id}
                 </p>
               </div>
@@ -224,8 +224,8 @@ export default function WorkspaceStep() {
                 <CheckCircle2 className="w-5 h-5 text-green-400" />
               </div>
               <div>
-                <h3 className="font-medium text-white mb-1">Workspace Ready</h3>
-                <p className="text-sm text-slate-400">
+                <h3 className="font-medium text-foreground mb-1">Workspace Ready</h3>
+                <p className="text-sm text-muted-foreground">
                   {data.workspace.name || "Your workspace"} has been set up.
                 </p>
               </div>
@@ -256,10 +256,10 @@ export default function WorkspaceStep() {
                       <Building2 className="w-5 h-5 text-primary-400" />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="font-medium text-white truncate">
+                      <h3 className="font-medium text-foreground truncate">
                         {invitation.workspace_name}
                       </h3>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-muted-foreground">
                         {invitation.invited_by_name
                           ? `Invited by ${invitation.invited_by_name}`
                           : "Invited to join"}
@@ -291,9 +291,9 @@ export default function WorkspaceStep() {
             )}
 
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex-1 h-px bg-slate-700/50" />
-              <span className="text-xs text-slate-500 uppercase tracking-wide">Or start fresh</span>
-              <div className="flex-1 h-px bg-slate-700/50" />
+              <div className="flex-1 h-px bg-accent/50" />
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Or start fresh</span>
+              <div className="flex-1 h-px bg-accent/50" />
             </div>
           </div>
         )}
@@ -306,15 +306,15 @@ export default function WorkspaceStep() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3, delay: 0.1 }}
               onClick={() => setMode("create")}
-              className="p-6 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:border-primary-500/50 transition-all text-left group"
+              className="p-6 rounded-xl bg-muted/50 border border-border/50 hover:border-primary-500/50 transition-all text-left group"
             >
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center mb-4">
-                <Plus className="w-6 h-6 text-white" />
+                <Plus className="w-6 h-6 text-foreground" />
               </div>
-              <h3 className="font-semibold text-white mb-2 group-hover:text-primary-400 transition-colors">
+              <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary-400 transition-colors">
                 Create new workspace
               </h3>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-muted-foreground">
                 Start fresh with a new workspace for your team or project.
               </p>
             </motion.button>
@@ -324,15 +324,15 @@ export default function WorkspaceStep() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3, delay: 0.2 }}
               onClick={() => setMode("join")}
-              className="p-6 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:border-primary-500/50 transition-all text-left group"
+              className="p-6 rounded-xl bg-muted/50 border border-border/50 hover:border-primary-500/50 transition-all text-left group"
             >
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center mb-4">
-                <Users className="w-6 h-6 text-white" />
+                <Users className="w-6 h-6 text-foreground" />
               </div>
-              <h3 className="font-semibold text-white mb-2 group-hover:text-primary-400 transition-colors">
+              <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary-400 transition-colors">
                 Join existing workspace
               </h3>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-muted-foreground">
                 Request to join a workspace if you have the workspace ID.
               </p>
             </motion.button>
@@ -347,7 +347,7 @@ export default function WorkspaceStep() {
             className="max-w-md mx-auto"
           >
             <div className="mb-6">
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Workspace name
               </label>
               <input
@@ -358,7 +358,7 @@ export default function WorkspaceStep() {
                   setError(null);
                 }}
                 placeholder="e.g., Acme Engineering"
-                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50"
+                className="w-full px-4 py-3 bg-muted/50 border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary-500/50"
                 autoFocus
               />
             </div>
@@ -376,7 +376,7 @@ export default function WorkspaceStep() {
                   setMode("select");
                   setError(null);
                 }}
-                className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+                className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
               >
                 Back
               </button>
@@ -409,11 +409,11 @@ export default function WorkspaceStep() {
             className="max-w-md mx-auto"
           >
             <div className="mb-6">
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Workspace ID
               </label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   type="text"
                   value={workspaceId}
@@ -422,11 +422,11 @@ export default function WorkspaceStep() {
                     setError(null);
                   }}
                   placeholder="Enter the workspace ID"
-                  className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50"
+                  className="w-full pl-10 pr-4 py-3 bg-muted/50 border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary-500/50"
                   autoFocus
                 />
               </div>
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-2 text-xs text-muted-foreground">
                 Ask your team admin for the workspace ID.
               </p>
             </div>
@@ -444,7 +444,7 @@ export default function WorkspaceStep() {
                   setMode("select");
                   setError(null);
                 }}
-                className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+                className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
               >
                 Back
               </button>
@@ -470,10 +470,10 @@ export default function WorkspaceStep() {
         )}
 
         {/* Navigation */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 mt-8 border-t border-slate-800 max-w-2xl mx-auto">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 mt-8 border-t border-border max-w-2xl mx-auto">
           <button
             onClick={() => router.push("/onboarding/use-case")}
-            className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-white transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
@@ -490,7 +490,7 @@ export default function WorkspaceStep() {
           )}
 
           {isPendingJoin && (
-            <div className="text-sm text-slate-400">
+            <div className="text-sm text-muted-foreground">
               Waiting for approval...
             </div>
           )}

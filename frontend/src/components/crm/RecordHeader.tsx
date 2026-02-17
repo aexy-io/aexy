@@ -54,7 +54,7 @@ function getInitials(name: string | undefined): string {
 
 // Get avatar color based on name
 function getAvatarColor(name: string | undefined): string {
-  if (!name) return "bg-slate-600";
+  if (!name) return "bg-muted";
   const colors = [
     "bg-purple-600",
     "bg-blue-600",
@@ -112,22 +112,22 @@ export function RecordHeader({
       <div className="flex items-center gap-1">
         <button
           onClick={onBack}
-          className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+          className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors"
           title="Back to list"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
 
         {/* Prev/Next navigation */}
-        <div className="flex items-center border-l border-slate-700 ml-1 pl-1">
+        <div className="flex items-center border-l border-border ml-1 pl-1">
           <button
             onClick={onPrev}
             disabled={!hasPrev}
             className={cn(
               "p-1.5 rounded-lg transition-colors",
               hasPrev
-                ? "hover:bg-slate-800 text-slate-400 hover:text-white"
-                : "text-slate-600 cursor-not-allowed"
+                ? "hover:bg-muted text-muted-foreground hover:text-foreground"
+                : "text-muted-foreground cursor-not-allowed"
             )}
             title="Previous record"
           >
@@ -139,8 +139,8 @@ export function RecordHeader({
             className={cn(
               "p-1.5 rounded-lg transition-colors",
               hasNext
-                ? "hover:bg-slate-800 text-slate-400 hover:text-white"
-                : "text-slate-600 cursor-not-allowed"
+                ? "hover:bg-muted text-muted-foreground hover:text-foreground"
+                : "text-muted-foreground cursor-not-allowed"
             )}
             title="Next record"
           >
@@ -152,7 +152,7 @@ export function RecordHeader({
       {/* Avatar */}
       <div
         className={cn(
-          "w-12 h-12 rounded-xl flex items-center justify-center text-white font-semibold text-lg",
+          "w-12 h-12 rounded-xl flex items-center justify-center text-foreground font-semibold text-lg",
           getAvatarColor(displayName)
         )}
       >
@@ -161,8 +161,8 @@ export function RecordHeader({
 
       {/* Title and breadcrumb */}
       <div className="flex-1 min-w-0">
-        <h1 className="text-xl font-bold text-white truncate">{displayName}</h1>
-        <div className="flex items-center gap-2 text-sm text-slate-400">
+        <h1 className="text-xl font-bold text-foreground truncate">{displayName}</h1>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Icon className="h-3.5 w-3.5" />
           <span>{object?.name || "Record"}</span>
         </div>
@@ -174,7 +174,7 @@ export function RecordHeader({
           <>
             <button
               onClick={onCancel}
-              className="flex items-center gap-2 px-3 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors text-sm"
+              className="flex items-center gap-2 px-3 py-2 border border-border text-foreground rounded-lg hover:bg-accent transition-colors text-sm"
             >
               <X className="h-4 w-4" />
               Cancel
@@ -182,7 +182,7 @@ export function RecordHeader({
             <button
               onClick={onSave}
               disabled={isUpdating}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white rounded-lg transition-colors text-sm"
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-foreground rounded-lg transition-colors text-sm"
             >
               <Save className="h-4 w-4" />
               {isUpdating ? "Saving..." : "Save"}
@@ -198,7 +198,7 @@ export function RecordHeader({
                   "p-2 rounded-lg transition-colors",
                   isStarred
                     ? "text-yellow-400 hover:bg-yellow-400/10"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 )}
                 title={isStarred ? "Remove from favorites" : "Add to favorites"}
               >
@@ -210,7 +210,7 @@ export function RecordHeader({
             {onShare && (
               <button
                 onClick={onShare}
-                className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 title="Share"
               >
                 <Share2 className="h-5 w-5" />
@@ -220,7 +220,7 @@ export function RecordHeader({
             {/* Edit */}
             <button
               onClick={onEdit}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg transition-colors text-sm"
+              className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors text-sm"
             >
               <Edit2 className="h-4 w-4" />
               Edit
@@ -230,7 +230,7 @@ export function RecordHeader({
             <div className="relative">
               <button
                 onClick={() => setShowMenu(!showMenu)}
-                className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               >
                 <MoreHorizontal className="h-5 w-5" />
               </button>
@@ -241,18 +241,18 @@ export function RecordHeader({
                     className="fixed inset-0 z-10"
                     onClick={() => setShowMenu(false)}
                   />
-                  <div className="absolute right-0 top-full mt-1 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-20 py-1">
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-muted border border-border rounded-lg shadow-xl z-20 py-1">
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(window.location.href);
                         setShowMenu(false);
                       }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent"
                     >
                       <Link className="h-4 w-4" />
                       Copy link
                     </button>
-                    <hr className="border-slate-700 my-1" />
+                    <hr className="border-border my-1" />
                     <button
                       onClick={() => {
                         onDelete?.();

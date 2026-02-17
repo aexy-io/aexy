@@ -16,7 +16,7 @@ interface ActivityHeatmapProps {
 }
 
 function getIntensityClass(value: number, max: number): string {
-  if (max === 0 || value === 0) return "bg-slate-800";
+  if (max === 0 || value === 0) return "bg-muted";
   const ratio = value / max;
   if (ratio < 0.15) return "bg-indigo-950";
   if (ratio < 0.3) return "bg-indigo-900";
@@ -34,7 +34,7 @@ export function ActivityHeatmap({
 
   if (!data.length) {
     return (
-      <div className="flex items-center justify-center h-48 text-slate-500 text-sm">
+      <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
         No heatmap data available
       </div>
     );
@@ -62,7 +62,7 @@ export function ActivityHeatmap({
           {weeks.map((week) => (
             <div
               key={week}
-              className="w-8 text-[9px] text-slate-500 text-center truncate"
+              className="w-8 text-[9px] text-muted-foreground text-center truncate"
               title={week}
             >
               {week.split("-W")[1] ? `W${week.split("-W")[1]}` : week}
@@ -73,7 +73,7 @@ export function ActivityHeatmap({
         {/* Developer rows */}
         {developers.map(([devId, devName]) => (
           <div key={devId} className="flex items-center gap-0.5 mb-0.5">
-            <div className="w-24 text-xs text-slate-400 truncate pr-2 text-right">
+            <div className="w-24 text-xs text-muted-foreground truncate pr-2 text-right">
               {devName || devId.slice(0, 8)}
             </div>
             {weeks.map((week) => {
@@ -103,22 +103,22 @@ export function ActivityHeatmap({
 
         {/* Legend */}
         <div className="flex items-center gap-2 mt-3 pl-24">
-          <span className="text-[10px] text-slate-500">Less</span>
+          <span className="text-[10px] text-muted-foreground">Less</span>
           <div className="flex gap-0.5">
-            {["bg-slate-800", "bg-indigo-950", "bg-indigo-900", "bg-indigo-800", "bg-indigo-600", "bg-indigo-500", "bg-indigo-400"].map(
+            {["bg-muted", "bg-indigo-950", "bg-indigo-900", "bg-indigo-800", "bg-indigo-600", "bg-indigo-500", "bg-indigo-400"].map(
               (cls, i) => (
                 <div key={i} className={`w-4 h-4 rounded-sm ${cls}`} />
               )
             )}
           </div>
-          <span className="text-[10px] text-slate-500">More</span>
+          <span className="text-[10px] text-muted-foreground">More</span>
         </div>
       </div>
 
       {/* Tooltip */}
       {hoveredCell && (
-        <div className="mt-2 text-xs text-slate-400">
-          <span className="text-white">
+        <div className="mt-2 text-xs text-muted-foreground">
+          <span className="text-foreground">
             {hoveredCell.developerName || hoveredCell.developerId.slice(0, 8)}
           </span>{" "}
           - {hoveredCell.week}:{" "}

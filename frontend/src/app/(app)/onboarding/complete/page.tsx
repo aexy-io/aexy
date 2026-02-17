@@ -136,7 +136,7 @@ export default function OnboardingComplete() {
           transition={{ duration: 0.5, type: "spring" }}
           className="w-20 h-20 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center mx-auto mb-6"
         >
-          <CheckCircle2 className="w-10 h-10 text-white" />
+          <CheckCircle2 className="w-10 h-10 text-foreground" />
         </motion.div>
 
         <motion.div
@@ -149,11 +149,11 @@ export default function OnboardingComplete() {
             <span>Setup Complete</span>
           </div>
 
-          <h1 className="text-4xl font-bold text-white mb-4">
+          <h1 className="text-4xl font-bold text-foreground mb-4">
             You&apos;re all set!
           </h1>
 
-          <p className="text-lg text-slate-400 mb-10 max-w-lg mx-auto">
+          <p className="text-lg text-muted-foreground mb-10 max-w-lg mx-auto">
             Your workspace is ready. Here are some quick ways to get started
             with Aexy.
           </p>
@@ -170,18 +170,18 @@ export default function OnboardingComplete() {
               onClick={() => {
                 router.push(link.href);
               }}
-              className="flex items-start gap-4 p-5 rounded-xl bg-slate-800/30 border border-slate-700/50 hover:border-slate-600/50 transition-all text-left group"
+              className="flex items-start gap-4 p-5 rounded-xl bg-muted/30 border border-border/50 hover:border-border/50 transition-all text-left group"
             >
               <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${link.color} flex items-center justify-center flex-shrink-0`}>
-                <link.icon className="w-5 h-5 text-white" />
+                <link.icon className="w-5 h-5 text-foreground" />
               </div>
               <div className="flex-1">
-                <h3 className="font-medium text-white group-hover:text-primary-400 transition-colors">
+                <h3 className="font-medium text-foreground group-hover:text-primary-400 transition-colors">
                   {link.title}
                 </h3>
-                <p className="text-sm text-slate-400">{link.description}</p>
+                <p className="text-sm text-muted-foreground">{link.description}</p>
               </div>
-              <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-primary-400 transition-colors mt-1" />
+              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary-400 transition-colors mt-1" />
             </motion.button>
           ))}
         </div>
@@ -191,9 +191,9 @@ export default function OnboardingComplete() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.6 }}
-          className="bg-slate-800/20 border border-slate-700/30 rounded-xl p-6 mb-10 max-w-2xl mx-auto"
+          className="bg-muted/20 border border-border/30 rounded-xl p-6 mb-10 max-w-2xl mx-auto"
         >
-          <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-4">
+          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">
             Setup Summary
           </h3>
           <div className="flex flex-wrap justify-center gap-3">
@@ -216,7 +216,7 @@ export default function OnboardingComplete() {
                 </span>
               ))}
             {data.githubRepos.length > 0 && (
-              <span className="px-3 py-1 rounded-full bg-slate-500/10 border border-slate-500/20 text-slate-400 text-sm">
+              <span className="px-3 py-1 rounded-full bg-muted-foreground/10 border border-muted-foreground/20 text-muted-foreground text-sm">
                 {data.githubRepos.length} Repos Selected
               </span>
             )}

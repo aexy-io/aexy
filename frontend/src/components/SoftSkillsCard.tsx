@@ -11,12 +11,12 @@ interface SoftSkillsCardProps {
 export function SoftSkillsCard({ softSkills, isLoading }: SoftSkillsCardProps) {
   if (isLoading) {
     return (
-      <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+      <div className="bg-muted rounded-xl p-6 border border-border">
         <div className="animate-pulse">
-          <div className="h-6 bg-slate-700 rounded w-32 mb-4"></div>
+          <div className="h-6 bg-accent rounded w-32 mb-4"></div>
           <div className="space-y-3">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-8 bg-slate-700 rounded"></div>
+              <div key={i} className="h-8 bg-accent rounded"></div>
             ))}
           </div>
         </div>
@@ -26,9 +26,9 @@ export function SoftSkillsCard({ softSkills, isLoading }: SoftSkillsCardProps) {
 
   if (!softSkills) {
     return (
-      <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-        <h3 className="text-lg font-semibold text-white mb-4">Soft Skills</h3>
-        <p className="text-slate-400 text-sm">
+      <div className="bg-muted rounded-xl p-6 border border-border">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Soft Skills</h3>
+        <p className="text-muted-foreground text-sm">
           Soft skills analysis not available yet.
           More activity is needed for analysis.
         </p>
@@ -75,14 +75,14 @@ export function SoftSkillsCard({ softSkills, isLoading }: SoftSkillsCardProps) {
   );
 
   return (
-    <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+    <div className="bg-muted rounded-xl p-6 border border-border">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-white">Soft Skills</h3>
+        <h3 className="text-lg font-semibold text-foreground">Soft Skills</h3>
         <div className="text-right">
-          <div className="text-2xl font-bold text-white">
+          <div className="text-2xl font-bold text-foreground">
             {Math.round(overallScore * 100)}%
           </div>
-          <div className="text-xs text-slate-400">Overall</div>
+          <div className="text-xs text-muted-foreground">Overall</div>
         </div>
       </div>
 
@@ -96,11 +96,11 @@ export function SoftSkillsCard({ softSkills, isLoading }: SoftSkillsCardProps) {
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                   <Icon className={`h-4 w-4 ${skill.color}`} />
-                  <span className="text-sm text-white">{skill.name}</span>
+                  <span className="text-sm text-foreground">{skill.name}</span>
                 </div>
-                <span className="text-sm text-slate-400">{percentage}%</span>
+                <span className="text-sm text-muted-foreground">{percentage}%</span>
               </div>
-              <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+              <div className="h-2 bg-accent rounded-full overflow-hidden">
                 <div
                   className={`h-full ${skill.bgColor} rounded-full transition-all duration-500`}
                   style={{ width: `${percentage}%` }}
@@ -112,8 +112,8 @@ export function SoftSkillsCard({ softSkills, isLoading }: SoftSkillsCardProps) {
       </div>
 
       {softSkills.samples_analyzed > 0 && (
-        <div className="mt-4 pt-4 border-t border-slate-700">
-          <p className="text-xs text-slate-500">
+        <div className="mt-4 pt-4 border-t border-border">
+          <p className="text-xs text-muted-foreground">
             Based on {softSkills.samples_analyzed} samples analyzed
           </p>
         </div>

@@ -207,7 +207,7 @@ export default function BugsPage() {
   if (!user) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-slate-400">Please log in to view bugs.</p>
+        <p className="text-muted-foreground">Please log in to view bugs.</p>
       </div>
     );
   }
@@ -215,22 +215,22 @@ export default function BugsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <header className="flex-shrink-0 border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm sticky top-0 z-30">
+      <header className="flex-shrink-0 border-b border-border bg-muted/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="max-w-[1800px] mx-auto px-4 py-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href={`/sprints/${projectId}`}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Link>
               <div>
-                <h1 className="text-lg font-semibold text-white flex items-center gap-2">
+                <h1 className="text-lg font-semibold text-foreground flex items-center gap-2">
                   <BugIcon className="h-5 w-5 text-red-400" />
                   Bug Tracker
                 </h1>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   {total} {total === 1 ? "bug" : "bugs"} in this project
                 </p>
               </div>
@@ -249,29 +249,29 @@ export default function BugsPage() {
       {/* Stats Summary */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4">
-            <div className="text-2xl font-bold text-white">{stats.total}</div>
-            <div className="text-sm text-slate-400">Total</div>
+          <div className="bg-muted/50 border border-border/50 rounded-lg p-4">
+            <div className="text-2xl font-bold text-foreground">{stats.total}</div>
+            <div className="text-sm text-muted-foreground">Total</div>
           </div>
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4">
+          <div className="bg-muted/50 border border-border/50 rounded-lg p-4">
             <div className="text-2xl font-bold text-blue-400">{stats.by_status?.new || 0}</div>
-            <div className="text-sm text-slate-400">New</div>
+            <div className="text-sm text-muted-foreground">New</div>
           </div>
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4">
+          <div className="bg-muted/50 border border-border/50 rounded-lg p-4">
             <div className="text-2xl font-bold text-amber-400">{stats.by_status?.in_progress || 0}</div>
-            <div className="text-sm text-slate-400">In Progress</div>
+            <div className="text-sm text-muted-foreground">In Progress</div>
           </div>
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4">
+          <div className="bg-muted/50 border border-border/50 rounded-lg p-4">
             <div className="text-2xl font-bold text-cyan-400">{stats.by_status?.fixed || 0}</div>
-            <div className="text-sm text-slate-400">Fixed</div>
+            <div className="text-sm text-muted-foreground">Fixed</div>
           </div>
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4">
+          <div className="bg-muted/50 border border-border/50 rounded-lg p-4">
             <div className="text-2xl font-bold text-red-400">{stats.by_severity?.blocker || 0}</div>
-            <div className="text-sm text-slate-400">Blockers</div>
+            <div className="text-sm text-muted-foreground">Blockers</div>
           </div>
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4">
+          <div className="bg-muted/50 border border-border/50 rounded-lg p-4">
             <div className="text-2xl font-bold text-orange-400">{stats.regressions || 0}</div>
-            <div className="text-sm text-slate-400">Regressions</div>
+            <div className="text-sm text-muted-foreground">Regressions</div>
           </div>
         </div>
       )}
@@ -280,13 +280,13 @@ export default function BugsPage() {
       <div className="flex flex-wrap items-center gap-4">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search bugs..."
-            className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+            className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-500/50"
           />
         </div>
 
@@ -294,7 +294,7 @@ export default function BugsPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as BugStatus | "all")}
-          className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500/50"
+          className="px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-red-500/50"
         >
           {STATUS_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -307,7 +307,7 @@ export default function BugsPage() {
         <select
           value={severityFilter}
           onChange={(e) => setSeverityFilter(e.target.value as BugSeverity | "all")}
-          className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500/50"
+          className="px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-red-500/50"
         >
           {SEVERITY_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -320,7 +320,7 @@ export default function BugsPage() {
         <select
           value={priorityFilter}
           onChange={(e) => setPriorityFilter(e.target.value as BugPriority | "all")}
-          className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500/50"
+          className="px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-red-500/50"
         >
           {PRIORITY_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -330,16 +330,16 @@ export default function BugsPage() {
         </select>
 
         {/* View Toggle */}
-        <div className="flex items-center bg-slate-800 border border-slate-700 rounded-lg p-1">
+        <div className="flex items-center bg-muted border border-border rounded-lg p-1">
           <button
             onClick={() => setViewMode("grid")}
-            className={`p-2 rounded ${viewMode === "grid" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"}`}
+            className={`p-2 rounded ${viewMode === "grid" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Grid3X3 className="h-4 w-4" />
           </button>
           <button
             onClick={() => setViewMode("list")}
-            className={`p-2 rounded ${viewMode === "list" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"}`}
+            className={`p-2 rounded ${viewMode === "list" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             <List className="h-4 w-4" />
           </button>
@@ -353,9 +353,9 @@ export default function BugsPage() {
         </div>
       ) : filteredBugs.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 text-center">
-          <BugIcon className="h-12 w-12 text-slate-600 mb-4" />
-          <p className="text-slate-400 mb-2">No bugs found</p>
-          <p className="text-slate-500 text-sm">
+          <BugIcon className="h-12 w-12 text-muted-foreground mb-4" />
+          <p className="text-muted-foreground mb-2">No bugs found</p>
+          <p className="text-muted-foreground text-sm">
             {searchQuery || statusFilter !== "all" || severityFilter !== "all"
               ? "Try adjusting your filters"
               : "Report a bug when you find one"}
@@ -383,19 +383,19 @@ export default function BugsPage() {
       {/* Create Bug Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-700">
-              <h2 className="text-lg font-semibold text-white">Report Bug</h2>
+          <div className="bg-background border border-border rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-border">
+              <h2 className="text-lg font-semibold text-foreground">Report Bug</h2>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="p-1 text-slate-400 hover:text-white transition-colors"
+                className="p-1 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
             <form onSubmit={handleCreateBug} className="p-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Title *
                 </label>
                 <input
@@ -403,20 +403,20 @@ export default function BugsPage() {
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="Brief summary of the bug"
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-500/50"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Severity
                   </label>
                   <select
                     value={formData.severity}
                     onChange={(e) => setFormData({ ...formData, severity: e.target.value as BugSeverity })}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-red-500/50"
                   >
                     <option value="blocker">Blocker</option>
                     <option value="critical">Critical</option>
@@ -426,13 +426,13 @@ export default function BugsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Priority
                   </label>
                   <select
                     value={formData.priority}
                     onChange={(e) => setFormData({ ...formData, priority: e.target.value as BugPriority })}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-red-500/50"
                   >
                     <option value="critical">Critical</option>
                     <option value="high">High</option>
@@ -441,13 +441,13 @@ export default function BugsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Type
                   </label>
                   <select
                     value={formData.bug_type}
                     onChange={(e) => setFormData({ ...formData, bug_type: e.target.value as BugType })}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-red-500/50"
                   >
                     <option value="functional">Functional</option>
                     <option value="performance">Performance</option>
@@ -461,7 +461,7 @@ export default function BugsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Description
                 </label>
                 <textarea
@@ -469,13 +469,13 @@ export default function BugsPage() {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Detailed description of the bug..."
                   rows={3}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 resize-none"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-500/50 resize-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Expected Behavior
                   </label>
                   <textarea
@@ -483,11 +483,11 @@ export default function BugsPage() {
                     onChange={(e) => setFormData({ ...formData, expected_behavior: e.target.value })}
                     placeholder="What should happen?"
                     rows={2}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 resize-none"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-500/50 resize-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Actual Behavior
                   </label>
                   <textarea
@@ -495,31 +495,31 @@ export default function BugsPage() {
                     onChange={(e) => setFormData({ ...formData, actual_behavior: e.target.value })}
                     placeholder="What actually happens?"
                     rows={2}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 resize-none"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-500/50 resize-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Steps to Reproduce
                 </label>
                 <div className="space-y-2">
                   {formData.steps.map((step, index) => (
                     <div key={index} className="flex items-center gap-2">
-                      <span className="text-sm text-slate-500 w-6">{index + 1}.</span>
+                      <span className="text-sm text-muted-foreground w-6">{index + 1}.</span>
                       <input
                         type="text"
                         value={step}
                         onChange={(e) => updateStep(index, e.target.value)}
                         placeholder={`Step ${index + 1}`}
-                        className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                        className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-500/50"
                       />
                       {formData.steps.length > 1 && (
                         <button
                           type="button"
                           onClick={() => removeStep(index)}
-                          className="p-2 text-slate-400 hover:text-red-400"
+                          className="p-2 text-muted-foreground hover:text-red-400"
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -538,13 +538,13 @@ export default function BugsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Environment
                   </label>
                   <select
                     value={formData.environment}
                     onChange={(e) => setFormData({ ...formData, environment: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-red-500/50"
                   >
                     <option value="production">Production</option>
                     <option value="staging">Staging</option>
@@ -553,7 +553,7 @@ export default function BugsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Affected Version
                   </label>
                   <input
@@ -561,7 +561,7 @@ export default function BugsPage() {
                     value={formData.affected_version}
                     onChange={(e) => setFormData({ ...formData, affected_version: e.target.value })}
                     placeholder="e.g., 1.2.3"
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-500/50"
                   />
                 </div>
               </div>
@@ -572,9 +572,9 @@ export default function BugsPage() {
                   id="is_regression"
                   checked={formData.is_regression}
                   onChange={(e) => setFormData({ ...formData, is_regression: e.target.checked })}
-                  className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-red-500 focus:ring-red-500/50"
+                  className="w-4 h-4 rounded border-border bg-accent text-red-500 focus:ring-red-500/50"
                 />
-                <label htmlFor="is_regression" className="text-sm text-slate-300">
+                <label htmlFor="is_regression" className="text-sm text-foreground">
                   This is a regression (was working before)
                 </label>
               </div>
@@ -583,7 +583,7 @@ export default function BugsPage() {
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+                  className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Cancel
                 </button>
@@ -685,7 +685,7 @@ function BugDetailModal({ bug, workspaceId, onClose }: BugDetailModalProps) {
       case "critical": return "bg-red-500 text-white";
       case "major": return "bg-orange-500 text-white";
       case "minor": return "bg-yellow-500 text-black";
-      default: return "bg-slate-500 text-white";
+      default: return "bg-muted-foreground text-foreground";
     }
   };
 
@@ -696,28 +696,28 @@ function BugDetailModal({ bug, workspaceId, onClose }: BugDetailModalProps) {
       case "in_progress": return "bg-amber-500";
       case "fixed": return "bg-cyan-500";
       case "verified": return "bg-green-500";
-      case "closed": return "bg-slate-500";
-      default: return "bg-slate-600";
+      case "closed": return "bg-muted-foreground";
+      default: return "bg-muted";
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto m-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-700">
+      <div className="bg-background border border-border rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto m-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-border">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <BugIcon className="h-5 w-5 text-red-400" />
-              <span className="text-sm font-mono text-slate-400">{currentBug.key}</span>
+              <span className="text-sm font-mono text-muted-foreground">{currentBug.key}</span>
               <span className={`px-2 py-0.5 rounded text-xs font-medium ${getSeverityColor(currentBug.severity)}`}>
                 {currentBug.severity}
               </span>
             </div>
-            <h2 className="text-lg font-semibold text-white">{currentBug.title}</h2>
+            <h2 className="text-lg font-semibold text-foreground">{currentBug.title}</h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-white transition-colors"
+            className="p-1 text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -727,7 +727,7 @@ function BugDetailModal({ bug, workspaceId, onClose }: BugDetailModalProps) {
           {/* Status and Actions */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <span className={`px-2 py-1 rounded text-sm font-medium text-white ${getStatusColor(currentBug.status)}`}>
+              <span className={`px-2 py-1 rounded text-sm font-medium text-foreground ${getStatusColor(currentBug.status)}`}>
                 {currentBug.status.replace("_", " ")}
               </span>
               {currentBug.is_regression && (
@@ -771,7 +771,7 @@ function BugDetailModal({ bug, workspaceId, onClose }: BugDetailModalProps) {
                 <button
                   onClick={() => setActiveDialog("close")}
                   disabled={isClosing}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-slate-600 text-white rounded-lg text-sm hover:bg-slate-500 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1 px-3 py-1.5 bg-muted text-foreground rounded-lg text-sm hover:bg-accent transition-colors disabled:opacity-50"
                 >
                   <XCircle className="h-4 w-4" />
                   {isClosing ? "..." : "Close"}
@@ -793,8 +793,8 @@ function BugDetailModal({ bug, workspaceId, onClose }: BugDetailModalProps) {
           {/* Description */}
           {currentBug.description && (
             <div>
-              <h4 className="text-sm font-medium text-white mb-2">Description</h4>
-              <p className="text-slate-400 text-sm">{currentBug.description}</p>
+              <h4 className="text-sm font-medium text-foreground mb-2">Description</h4>
+              <p className="text-muted-foreground text-sm">{currentBug.description}</p>
             </div>
           )}
 
@@ -804,13 +804,13 @@ function BugDetailModal({ bug, workspaceId, onClose }: BugDetailModalProps) {
               {currentBug.expected_behavior && (
                 <div className="bg-green-500/10 rounded-lg p-3">
                   <h4 className="text-sm font-medium text-green-400 mb-2">Expected Behavior</h4>
-                  <p className="text-slate-300 text-sm">{currentBug.expected_behavior}</p>
+                  <p className="text-foreground text-sm">{currentBug.expected_behavior}</p>
                 </div>
               )}
               {currentBug.actual_behavior && (
                 <div className="bg-red-500/10 rounded-lg p-3">
                   <h4 className="text-sm font-medium text-red-400 mb-2">Actual Behavior</h4>
-                  <p className="text-slate-300 text-sm">{currentBug.actual_behavior}</p>
+                  <p className="text-foreground text-sm">{currentBug.actual_behavior}</p>
                 </div>
               )}
             </div>
@@ -819,14 +819,14 @@ function BugDetailModal({ bug, workspaceId, onClose }: BugDetailModalProps) {
           {/* Steps to Reproduce */}
           {currentBug.steps_to_reproduce && currentBug.steps_to_reproduce.length > 0 && (
             <div>
-              <h4 className="text-sm font-medium text-white mb-3">Steps to Reproduce</h4>
+              <h4 className="text-sm font-medium text-foreground mb-3">Steps to Reproduce</h4>
               <ol className="space-y-2">
                 {currentBug.steps_to_reproduce.map((step) => (
                   <li key={step.step_number} className="flex items-start gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 bg-slate-700 rounded-full flex items-center justify-center text-xs text-white">
+                    <span className="flex-shrink-0 w-6 h-6 bg-accent rounded-full flex items-center justify-center text-xs text-foreground">
                       {step.step_number}
                     </span>
-                    <span className="text-slate-300 text-sm">{step.description}</span>
+                    <span className="text-foreground text-sm">{step.description}</span>
                   </li>
                 ))}
               </ol>
@@ -835,51 +835,51 @@ function BugDetailModal({ bug, workspaceId, onClose }: BugDetailModalProps) {
 
           {/* Environment Info */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="bg-slate-800/50 rounded-lg p-3">
-              <div className="text-xs text-slate-500 uppercase mb-1">Environment</div>
-              <p className="text-white text-sm">{currentBug.environment || "Not specified"}</p>
+            <div className="bg-muted/50 rounded-lg p-3">
+              <div className="text-xs text-muted-foreground uppercase mb-1">Environment</div>
+              <p className="text-foreground text-sm">{currentBug.environment || "Not specified"}</p>
             </div>
-            <div className="bg-slate-800/50 rounded-lg p-3">
-              <div className="text-xs text-slate-500 uppercase mb-1">Affected Version</div>
-              <p className="text-white text-sm">{currentBug.affected_version || "Not specified"}</p>
+            <div className="bg-muted/50 rounded-lg p-3">
+              <div className="text-xs text-muted-foreground uppercase mb-1">Affected Version</div>
+              <p className="text-foreground text-sm">{currentBug.affected_version || "Not specified"}</p>
             </div>
-            <div className="bg-slate-800/50 rounded-lg p-3">
-              <div className="text-xs text-slate-500 uppercase mb-1">Fixed Version</div>
-              <p className="text-white text-sm">{currentBug.fixed_version || "Not fixed yet"}</p>
+            <div className="bg-muted/50 rounded-lg p-3">
+              <div className="text-xs text-muted-foreground uppercase mb-1">Fixed Version</div>
+              <p className="text-foreground text-sm">{currentBug.fixed_version || "Not fixed yet"}</p>
             </div>
-            <div className="bg-slate-800/50 rounded-lg p-3">
-              <div className="text-xs text-slate-500 uppercase mb-1">Bug Type</div>
-              <p className="text-white text-sm capitalize">{currentBug.bug_type || "Not specified"}</p>
+            <div className="bg-muted/50 rounded-lg p-3">
+              <div className="text-xs text-muted-foreground uppercase mb-1">Bug Type</div>
+              <p className="text-foreground text-sm capitalize">{currentBug.bug_type || "Not specified"}</p>
             </div>
           </div>
 
           {/* Resolution */}
           {currentBug.resolution && (
-            <div className="bg-slate-800/50 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-white mb-2">Resolution</h4>
-              <p className="text-slate-300 text-sm">{currentBug.resolution}</p>
+            <div className="bg-muted/50 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-foreground mb-2">Resolution</h4>
+              <p className="text-foreground text-sm">{currentBug.resolution}</p>
             </div>
           )}
 
           {/* Metadata */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-700">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-border">
             <div>
-              <span className="text-xs text-slate-500">Created</span>
-              <p className="text-sm text-white">{formatDate(currentBug.created_at)}</p>
+              <span className="text-xs text-muted-foreground">Created</span>
+              <p className="text-sm text-foreground">{formatDate(currentBug.created_at)}</p>
             </div>
             <div>
-              <span className="text-xs text-slate-500">Last Updated</span>
-              <p className="text-sm text-white">{formatDate(currentBug.updated_at)}</p>
+              <span className="text-xs text-muted-foreground">Last Updated</span>
+              <p className="text-sm text-foreground">{formatDate(currentBug.updated_at)}</p>
             </div>
             <div>
-              <span className="text-xs text-slate-500">Priority</span>
-              <p className="text-sm text-white capitalize">{currentBug.priority}</p>
+              <span className="text-xs text-muted-foreground">Priority</span>
+              <p className="text-sm text-foreground capitalize">{currentBug.priority}</p>
             </div>
           </div>
 
           {/* Activity Timeline */}
           {workspaceId && (
-            <div className="pt-4 border-t border-slate-700">
+            <div className="pt-4 border-t border-border">
               <BugTimeline workspaceId={workspaceId} bugId={currentBug.id} />
             </div>
           )}

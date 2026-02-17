@@ -275,22 +275,22 @@ export function CommandPalette({ workspaceId, projectId, onCreateTask }: Command
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -20 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
-              className="relative w-full max-w-xl mx-4 bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-2xl shadow-black/50 overflow-hidden pointer-events-auto"
+              className="relative w-full max-w-xl mx-4 bg-muted/95 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl shadow-black/50 overflow-hidden pointer-events-auto"
             >
           {/* Search input */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-700/50">
-            <Search className="h-5 w-5 text-slate-400 flex-shrink-0" />
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50">
+            <Search className="h-5 w-5 text-muted-foreground flex-shrink-0" />
             <input
               ref={inputRef}
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search commands, navigate, or type..."
-              className="flex-1 bg-transparent text-white placeholder-slate-500 text-sm focus:outline-none"
+              className="flex-1 bg-transparent text-foreground placeholder-muted-foreground text-sm focus:outline-none"
             />
             <button
               onClick={closePalette}
-              className="p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition"
+              className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition"
             >
               <X className="h-4 w-4" />
             </button>
@@ -299,7 +299,7 @@ export function CommandPalette({ workspaceId, projectId, onCreateTask }: Command
           {/* Results */}
           <div className="max-h-[60vh] overflow-y-auto">
             {filteredCommands.length === 0 ? (
-              <div className="py-12 text-center text-slate-500">
+              <div className="py-12 text-center text-muted-foreground">
                 <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">No results found for &quot;{query}&quot;</p>
               </div>
@@ -310,7 +310,7 @@ export function CommandPalette({ workspaceId, projectId, onCreateTask }: Command
 
                   return (
                     <div key={category}>
-                      <div className="px-4 py-1.5 text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      <div className="px-4 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         {categoryLabels[category]}
                       </div>
                       {items.map((item) => {
@@ -328,13 +328,13 @@ export function CommandPalette({ workspaceId, projectId, onCreateTask }: Command
                             onMouseEnter={() => setSelectedIndex(currentIndex)}
                             className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
                               isSelected
-                                ? "bg-primary-500/20 text-white"
-                                : "text-slate-300 hover:bg-slate-700/50"
+                                ? "bg-primary-500/20 text-foreground"
+                                : "text-foreground hover:bg-accent/50"
                             }`}
                           >
                             <span
                               className={`flex-shrink-0 ${
-                                isSelected ? "text-primary-400" : "text-slate-400"
+                                isSelected ? "text-primary-400" : "text-muted-foreground"
                               }`}
                             >
                               {item.icon}
@@ -342,7 +342,7 @@ export function CommandPalette({ workspaceId, projectId, onCreateTask }: Command
                             <div className="flex-1 min-w-0">
                               <div className="text-sm font-medium">{item.label}</div>
                               {item.description && (
-                                <div className="text-xs text-slate-500 truncate">
+                                <div className="text-xs text-muted-foreground truncate">
                                   {item.description}
                                 </div>
                               )}
@@ -364,7 +364,7 @@ export function CommandPalette({ workspaceId, projectId, onCreateTask }: Command
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between px-4 py-2 border-t border-slate-700/50 text-xs text-slate-500">
+          <div className="flex items-center justify-between px-4 py-2 border-t border-border/50 text-xs text-muted-foreground">
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1">
                 <Kbd keys={["↑", "↓"]} variant="ghost" />

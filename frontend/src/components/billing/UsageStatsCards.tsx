@@ -16,25 +16,25 @@ interface StatCardProps {
 
 function StatCard({ icon, label, value, subValue, trend }: StatCardProps) {
   return (
-    <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+    <div className="bg-muted rounded-xl border border-border p-6">
       <div className="flex items-center gap-3 mb-3">
-        <div className="p-2 bg-slate-700 rounded-lg">
+        <div className="p-2 bg-accent rounded-lg">
           {icon}
         </div>
-        <span className="text-slate-400 text-sm font-medium">{label}</span>
+        <span className="text-muted-foreground text-sm font-medium">{label}</span>
       </div>
       <div className="flex items-baseline justify-between">
         <div>
-          <p className="text-2xl font-bold text-white">{value}</p>
+          <p className="text-2xl font-bold text-foreground">{value}</p>
           {subValue && (
-            <p className="text-slate-400 text-sm mt-1">{subValue}</p>
+            <p className="text-muted-foreground text-sm mt-1">{subValue}</p>
           )}
         </div>
         {trend && (
           <div className={`flex items-center gap-1 text-sm ${
             trend.direction === "up" ? "text-red-400" :
             trend.direction === "down" ? "text-green-400" :
-            "text-slate-400"
+            "text-muted-foreground"
           }`}>
             {trend.direction === "up" && <TrendingUp className="h-4 w-4" />}
             {trend.direction === "down" && <TrendingUp className="h-4 w-4 rotate-180" />}
@@ -52,13 +52,13 @@ function TokenUsageCard() {
 
   if (isLoading || !limitsData?.tokens) {
     return (
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 animate-pulse">
+      <div className="bg-muted rounded-xl border border-border p-6 animate-pulse">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 bg-slate-700 rounded-lg" />
-          <div className="w-24 h-4 bg-slate-700 rounded" />
+          <div className="w-10 h-10 bg-accent rounded-lg" />
+          <div className="w-24 h-4 bg-accent rounded" />
         </div>
-        <div className="w-32 h-8 bg-slate-700 rounded mt-2" />
-        <div className="w-full h-2 bg-slate-700 rounded mt-4" />
+        <div className="w-32 h-8 bg-accent rounded mt-2" />
+        <div className="w-full h-2 bg-accent rounded mt-4" />
       </div>
     );
   }
@@ -81,26 +81,26 @@ function TokenUsageCard() {
   };
 
   return (
-    <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+    <div className="bg-muted rounded-xl border border-border p-6">
       <div className="flex items-center gap-3 mb-3">
-        <div className="p-2 bg-slate-700 rounded-lg">
+        <div className="p-2 bg-accent rounded-lg">
           <Zap className="h-5 w-5 text-primary-400" />
         </div>
-        <span className="text-slate-400 text-sm font-medium">Token Usage</span>
+        <span className="text-muted-foreground text-sm font-medium">Token Usage</span>
       </div>
 
       <div className="mb-3">
-        <p className="text-2xl font-bold text-white">
+        <p className="text-2xl font-bold text-foreground">
           {formatNumber(usedTokens)}
-          <span className="text-base font-normal text-slate-400"> / {formatNumber(freeTokens)} free</span>
+          <span className="text-base font-normal text-muted-foreground"> / {formatNumber(freeTokens)} free</span>
         </p>
-        <p className="text-slate-400 text-sm mt-1">
+        <p className="text-muted-foreground text-sm mt-1">
           {formatNumber(tokens.input_tokens_this_month)} in / {formatNumber(tokens.output_tokens_this_month)} out
         </p>
       </div>
 
       {/* Progress bar */}
-      <div className="w-full bg-slate-700 rounded-full h-2 mb-2">
+      <div className="w-full bg-accent rounded-full h-2 mb-2">
         <div
           className={`h-2 rounded-full transition-all ${getProgressColor()}`}
           style={{ width: `${freePercentage}%` }}
@@ -109,7 +109,7 @@ function TokenUsageCard() {
 
       {/* Status text */}
       <div className="flex justify-between items-center text-xs">
-        <span className="text-slate-400">
+        <span className="text-muted-foreground">
           {isOverage ? (
             <span className="text-amber-400">
               {formatNumber(tokens.tokens_remaining_free)} free remaining
@@ -120,27 +120,27 @@ function TokenUsageCard() {
             </span>
           )}
         </span>
-        <span className="text-slate-500">
+        <span className="text-muted-foreground">
           {Math.round(freePercentage)}% used
         </span>
       </div>
 
       {/* Overage info */}
       {isOverage && tokens.enable_overage_billing && (
-        <div className="mt-3 pt-3 border-t border-slate-700">
+        <div className="mt-3 pt-3 border-t border-border">
           <div className="flex justify-between items-center">
             <span className="text-sm text-amber-400">Overage Usage</span>
-            <span className="text-sm font-medium text-white">
+            <span className="text-sm font-medium text-foreground">
               {formatNumber(overageTokens)} tokens
             </span>
           </div>
           <div className="flex justify-between items-center mt-1">
-            <span className="text-sm text-slate-400">Overage Cost</span>
+            <span className="text-sm text-muted-foreground">Overage Cost</span>
             <span className="text-sm font-medium text-amber-400">
               {formatCurrency(overageCost)}
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-2">
+          <p className="text-xs text-muted-foreground mt-2">
             ${(tokens.input_cost_per_1k_cents / 100).toFixed(2)}/1K input, ${(tokens.output_cost_per_1k_cents / 100).toFixed(2)}/1K output
           </p>
         </div>
@@ -148,7 +148,7 @@ function TokenUsageCard() {
 
       {/* Overage disabled (free plan at limit) */}
       {isOverage && !tokens.enable_overage_billing && (
-        <div className="mt-3 pt-3 border-t border-slate-700">
+        <div className="mt-3 pt-3 border-t border-border">
           <p className="text-sm text-red-400">
             Monthly limit reached. Upgrade for more tokens.
           </p>
@@ -169,13 +169,13 @@ export function UsageStatsCards() {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="bg-slate-800 rounded-xl border border-slate-700 p-6 animate-pulse">
+          <div key={i} className="bg-muted rounded-xl border border-border p-6 animate-pulse">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-slate-700 rounded-lg" />
-              <div className="w-24 h-4 bg-slate-700 rounded" />
+              <div className="w-10 h-10 bg-accent rounded-lg" />
+              <div className="w-24 h-4 bg-accent rounded" />
             </div>
-            <div className="w-32 h-8 bg-slate-700 rounded mt-2" />
-            <div className="w-20 h-4 bg-slate-700 rounded mt-2" />
+            <div className="w-32 h-8 bg-accent rounded mt-2" />
+            <div className="w-20 h-4 bg-accent rounded mt-2" />
           </div>
         ))}
       </div>

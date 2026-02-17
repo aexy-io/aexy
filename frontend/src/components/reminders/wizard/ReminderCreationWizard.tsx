@@ -226,14 +226,14 @@ export function ReminderCreationWizard({
   };
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b border-slate-700 bg-slate-800/50">
+      <div className="border-b border-border bg-muted/50">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-white">Create Reminder</h1>
+          <h1 className="text-lg font-semibold text-foreground">Create Reminder</h1>
           <button
             onClick={handleClose}
-            className="p-2 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition"
+            className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition"
           >
             <X className="h-5 w-5" />
           </button>
@@ -264,7 +264,7 @@ export function ReminderCreationWizard({
           <button
             onClick={handlePrevious}
             disabled={currentStep === 0}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <ChevronLeft className="h-4 w-4" />
             Previous
@@ -274,7 +274,7 @@ export function ReminderCreationWizard({
             <button
               onClick={handleNext}
               disabled={!canProceed()}
-              className="flex items-center gap-2 px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-6 py-2 text-sm font-medium text-foreground bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Next
               <ChevronRight className="h-4 w-4" />
@@ -283,7 +283,7 @@ export function ReminderCreationWizard({
             <button
               onClick={handleSubmit}
               disabled={!canProceed() || isCreating}
-              className="flex items-center gap-2 px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-6 py-2 text-sm font-medium text-foreground bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isCreating ? (
                 <>

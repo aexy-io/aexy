@@ -89,8 +89,8 @@ export function OnCallIndicator({ userId }: OnCallIndicatorProps) {
           userOnCallTeams.length > 0
             ? "bg-green-600/20 text-green-400 hover:bg-green-600/30 border border-green-600/30"
             : teamsWithOnCall.length > 0
-            ? "bg-slate-800/70 text-slate-300 hover:bg-slate-700/70"
-            : "bg-slate-800/50 text-slate-500 hover:bg-slate-700/50"
+            ? "bg-muted/70 text-foreground hover:bg-accent/70"
+            : "bg-muted/50 text-muted-foreground hover:bg-accent/50"
         }`}
       >
         <Phone className={`h-4 w-4 ${userOnCallTeams.length > 0 ? "animate-pulse" : ""}`} />
@@ -105,9 +105,9 @@ export function OnCallIndicator({ userId }: OnCallIndicatorProps) {
       </button>
 
       {showDropdown && (
-        <div className="absolute right-0 mt-2 w-80 bg-slate-900/95 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-2xl shadow-black/40 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
-          <div className="p-3 border-b border-slate-700/50">
-            <h3 className="text-sm font-medium text-white flex items-center gap-2">
+        <div className="absolute right-0 mt-2 w-80 bg-background/95 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl shadow-black/40 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+          <div className="p-3 border-b border-border/50">
+            <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
               <Phone className="h-4 w-4 text-green-400" />
               On-Call Status
             </h3>
@@ -115,17 +115,17 @@ export function OnCallIndicator({ userId }: OnCallIndicatorProps) {
 
           <div className="max-h-80 overflow-y-auto">
             {teamStatuses.length === 0 ? (
-              <div className="p-4 text-center text-slate-500 text-sm">
+              <div className="p-4 text-center text-muted-foreground text-sm">
                 No teams have on-call enabled
               </div>
             ) : (
-              <div className="divide-y divide-slate-700/50">
+              <div className="divide-y divide-border/50">
                 {teamStatuses.map((status) => (
-                  <div key={status.teamId} className="p-3 hover:bg-slate-800/50 transition">
+                  <div key={status.teamId} className="p-3 hover:bg-muted/50 transition">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-white truncate">
+                          <span className="text-sm font-medium text-foreground truncate">
                             {status.teamName}
                           </span>
                           {status.isUserOnCall && (
@@ -144,7 +144,7 @@ export function OnCallIndicator({ userId }: OnCallIndicatorProps) {
                                   "Unknown"}
                               </span>
                             </div>
-                            <span className="text-xs text-slate-500">
+                            <span className="text-xs text-muted-foreground">
                               until{" "}
                               {new Date(status.current.schedule.end_time).toLocaleTimeString([], {
                                 hour: "2-digit",
@@ -153,7 +153,7 @@ export function OnCallIndicator({ userId }: OnCallIndicatorProps) {
                             </span>
                           </div>
                         ) : status.current?.next_schedule ? (
-                          <div className="flex items-center gap-1.5 mt-1 text-slate-500 text-xs">
+                          <div className="flex items-center gap-1.5 mt-1 text-muted-foreground text-xs">
                             <Clock className="h-3 w-3" />
                             <span>
                               Next: {status.current.next_schedule.developer?.name || "Unknown"} (
@@ -161,7 +161,7 @@ export function OnCallIndicator({ userId }: OnCallIndicatorProps) {
                             </span>
                           </div>
                         ) : (
-                          <div className="text-xs text-slate-500 mt-1">No one scheduled</div>
+                          <div className="text-xs text-muted-foreground mt-1">No one scheduled</div>
                         )}
                       </div>
                       <Link
@@ -178,11 +178,11 @@ export function OnCallIndicator({ userId }: OnCallIndicatorProps) {
             )}
           </div>
 
-          <div className="p-2 border-t border-slate-700/50 bg-slate-800/30">
+          <div className="p-2 border-t border-border/50 bg-muted/30">
             <Link
               href="/settings/projects"
               onClick={() => setShowDropdown(false)}
-              className="flex items-center justify-center gap-2 w-full px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition"
+              className="flex items-center justify-center gap-2 w-full px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition"
             >
               <Users className="h-4 w-4" />
               View All Projects

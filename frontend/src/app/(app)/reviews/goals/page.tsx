@@ -35,7 +35,7 @@ const goalStatusColors: Record<string, { text: string; bg: string; icon: React.R
   active: { text: "text-blue-400", bg: "bg-blue-500/10", icon: <Clock className="h-3.5 w-3.5" /> },
   in_progress: { text: "text-cyan-400", bg: "bg-cyan-500/10", icon: <TrendingUp className="h-3.5 w-3.5" /> },
   completed: { text: "text-emerald-400", bg: "bg-emerald-500/10", icon: <CheckCircle className="h-3.5 w-3.5" /> },
-  cancelled: { text: "text-slate-400", bg: "bg-slate-500/10", icon: <AlertCircle className="h-3.5 w-3.5" /> },
+  cancelled: { text: "text-muted-foreground", bg: "bg-muted-foreground/10", icon: <AlertCircle className="h-3.5 w-3.5" /> },
 };
 
 // Goal Card Component
@@ -45,7 +45,7 @@ function GoalCard({ goal, onDelete }: { goal: WorkGoal; onDelete: (id: string) =
   const statusColors = goalStatusColors[goal.status] || goalStatusColors.active;
 
   return (
-    <div className="bg-slate-800/70 rounded-xl border border-slate-700 hover:border-slate-600 transition overflow-hidden">
+    <div className="bg-muted/70 rounded-xl border border-border hover:border-border transition overflow-hidden">
       <Link href={`/reviews/goals/${goal.id}`} className="block p-5">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -62,24 +62,24 @@ function GoalCard({ goal, onDelete }: { goal: WorkGoal; onDelete: (id: string) =
               goal.priority === "critical" ? "text-red-400 bg-red-500/10" :
               goal.priority === "high" ? "text-orange-400 bg-orange-500/10" :
               goal.priority === "medium" ? "text-yellow-400 bg-yellow-500/10" :
-              "text-slate-400 bg-slate-500/10"
+              "text-muted-foreground bg-muted-foreground/10"
             }`}>
               {goal.priority}
             </span>
           )}
         </div>
-        <h3 className="text-lg font-medium text-white mb-2">{goal.title}</h3>
+        <h3 className="text-lg font-medium text-foreground mb-2">{goal.title}</h3>
         {goal.description && (
-          <p className="text-slate-400 text-sm mb-4 line-clamp-2">{goal.description}</p>
+          <p className="text-muted-foreground text-sm mb-4 line-clamp-2">{goal.description}</p>
         )}
 
         {/* Progress Bar */}
         <div className="mb-3">
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
             <span>Progress</span>
             <span>{progressPercent}%</span>
           </div>
-          <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+          <div className="h-2 bg-accent rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${
                 progressPercent >= 100 ? "bg-emerald-500" :
@@ -93,14 +93,14 @@ function GoalCard({ goal, onDelete }: { goal: WorkGoal; onDelete: (id: string) =
 
         {/* Key Results Preview */}
         {goal.key_results && goal.key_results.length > 0 && (
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-muted-foreground">
             {goal.key_results.length} key result{goal.key_results.length > 1 ? "s" : ""}
           </div>
         )}
 
         {/* Time bound */}
         {goal.time_bound && (
-          <div className="mt-3 text-xs text-slate-500 flex items-center gap-1">
+          <div className="mt-3 text-xs text-muted-foreground flex items-center gap-1">
             <Clock className="h-3 w-3" />
             Due: {new Date(goal.time_bound).toLocaleDateString("en-US", {
               month: "short",
@@ -113,7 +113,7 @@ function GoalCard({ goal, onDelete }: { goal: WorkGoal; onDelete: (id: string) =
 
       {/* Actions */}
       {goal.status !== "completed" && goal.status !== "cancelled" && (
-        <div className="border-t border-slate-700 px-5 py-3 flex items-center justify-between">
+        <div className="border-t border-border px-5 py-3 flex items-center justify-between">
           <Link
             href={`/reviews/goals/${goal.id}`}
             className="text-sm text-cyan-400 hover:text-cyan-300 transition"
@@ -127,7 +127,7 @@ function GoalCard({ goal, onDelete }: { goal: WorkGoal; onDelete: (id: string) =
                 onDelete(goal.id);
               }
             }}
-            className="text-slate-500 hover:text-red-400 transition"
+            className="text-muted-foreground hover:text-red-400 transition"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -181,13 +181,13 @@ export default function GoalsPage() {
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
             <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
           </div>
-          <p className="text-slate-400 text-sm">Loading goals...</p>
+          <p className="text-muted-foreground text-sm">Loading goals...</p>
         </div>
       </div>
     );
@@ -198,23 +198,23 @@ export default function GoalsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
 <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm mb-6">
-          <Link href="/reviews" className="text-slate-400 hover:text-white transition flex items-center gap-1">
+          <Link href="/reviews" className="text-muted-foreground hover:text-foreground transition flex items-center gap-1">
             <ArrowLeft className="h-4 w-4" />
             Reviews
           </Link>
-          <ChevronRight className="h-4 w-4 text-slate-600" />
-          <span className="text-white">Goals</span>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <span className="text-foreground">Goals</span>
         </div>
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">My Goals</h1>
-            <p className="text-slate-400 mt-1">
+            <h1 className="text-3xl font-bold text-foreground">My Goals</h1>
+            <p className="text-muted-foreground mt-1">
               Track your SMART goals and key results
             </p>
           </div>
@@ -229,15 +229,15 @@ export default function GoalsPage() {
 
         {/* Filters */}
         <div className="flex items-center gap-4 mb-6">
-          <div className="flex bg-slate-800 rounded-lg p-1">
+          <div className="flex bg-muted rounded-lg p-1">
             {(["all", "active", "completed"] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition capitalize ${
                   filter === f
-                    ? "bg-slate-700 text-white"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-accent text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {f}
@@ -245,13 +245,13 @@ export default function GoalsPage() {
             ))}
           </div>
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search goals..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 text-sm"
+              className="w-full bg-muted border border-border rounded-lg pl-10 pr-4 py-2 text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500 text-sm"
             />
           </div>
         </div>
@@ -268,25 +268,25 @@ export default function GoalsPage() {
             ))}
           </div>
         ) : goals.length > 0 && filteredGoals.length === 0 ? (
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-12">
+          <div className="bg-muted rounded-xl border border-border p-12">
             <div className="text-center">
-              <div className="w-16 h-16 bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Search className="w-8 h-8 text-slate-500" />
+              <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center mx-auto mb-4">
+                <Search className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-medium text-white mb-2">No matching goals</h3>
-              <p className="text-slate-400 text-sm">
+              <h3 className="text-lg font-medium text-foreground mb-2">No matching goals</h3>
+              <p className="text-muted-foreground text-sm">
                 Try adjusting your filters or search query
               </p>
             </div>
           </div>
         ) : (
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-12">
+          <div className="bg-muted rounded-xl border border-border p-12">
             <div className="text-center max-w-lg mx-auto">
-              <div className="w-20 h-20 bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Target className="w-10 h-10 text-slate-500" />
+              <div className="w-20 h-20 bg-accent rounded-full flex items-center justify-center mx-auto mb-6">
+                <Target className="w-10 h-10 text-muted-foreground" />
               </div>
-              <h3 className="text-xl font-medium text-white mb-3">No goals yet</h3>
-              <p className="text-slate-400 text-sm mb-8">
+              <h3 className="text-xl font-medium text-foreground mb-3">No goals yet</h3>
+              <p className="text-muted-foreground text-sm mb-8">
                 SMART goals help you track progress and automatically link your GitHub contributions.
                 Set Specific, Measurable, Achievable, Relevant, and Time-bound objectives.
               </p>
@@ -301,21 +301,21 @@ export default function GoalsPage() {
 
               {/* Goal Types */}
               <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-4 text-left">
-                <div className="bg-slate-700/50 rounded-lg p-4">
+                <div className="bg-accent/50 rounded-lg p-4">
                   <div className="text-cyan-400 text-sm font-medium mb-1">Performance</div>
-                  <p className="text-slate-400 text-xs">Delivery & quality targets</p>
+                  <p className="text-muted-foreground text-xs">Delivery & quality targets</p>
                 </div>
-                <div className="bg-slate-700/50 rounded-lg p-4">
+                <div className="bg-accent/50 rounded-lg p-4">
                   <div className="text-purple-400 text-sm font-medium mb-1">Skill Development</div>
-                  <p className="text-slate-400 text-xs">Learning new technologies</p>
+                  <p className="text-muted-foreground text-xs">Learning new technologies</p>
                 </div>
-                <div className="bg-slate-700/50 rounded-lg p-4">
+                <div className="bg-accent/50 rounded-lg p-4">
                   <div className="text-emerald-400 text-sm font-medium mb-1">Project</div>
-                  <p className="text-slate-400 text-xs">Feature & milestone goals</p>
+                  <p className="text-muted-foreground text-xs">Feature & milestone goals</p>
                 </div>
-                <div className="bg-slate-700/50 rounded-lg p-4">
+                <div className="bg-accent/50 rounded-lg p-4">
                   <div className="text-amber-400 text-sm font-medium mb-1">Leadership</div>
-                  <p className="text-slate-400 text-xs">Mentoring & team impact</p>
+                  <p className="text-muted-foreground text-xs">Mentoring & team impact</p>
                 </div>
               </div>
             </div>

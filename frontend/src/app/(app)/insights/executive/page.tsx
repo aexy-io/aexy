@@ -72,21 +72,21 @@ export default function ExecutiveDashboardPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/insights"
-            className="p-2 rounded-lg hover:bg-zinc-800 transition-colors"
+            className="p-2 rounded-lg hover:bg-muted transition-colors"
           >
-            <ArrowLeft className="w-5 h-5 text-zinc-400" />
+            <ArrowLeft className="w-5 h-5 text-muted-foreground" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <Building2 className="h-6 w-6 text-indigo-400" />
               Executive Dashboard
             </h1>
-            <p className="text-sm text-zinc-400 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Org-wide engineering health overview
             </p>
           </div>
         </div>
-        <div className="flex bg-zinc-800 rounded-lg border border-zinc-700 overflow-hidden">
+        <div className="flex bg-muted rounded-lg border border-border overflow-hidden">
           {PERIOD_OPTIONS.map((opt) => (
             <button
               key={opt.value}
@@ -94,7 +94,7 @@ export default function ExecutiveDashboardPage() {
               className={`px-3 py-1.5 text-sm font-medium transition ${
                 periodType === opt.value
                   ? "bg-indigo-600 text-white"
-                  : "text-zinc-400 hover:text-white"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {opt.label}
@@ -106,7 +106,7 @@ export default function ExecutiveDashboardPage() {
       {isLoading && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="bg-zinc-900 rounded-xl p-4 border border-zinc-800 animate-pulse h-24" />
+            <div key={i} className="bg-background rounded-xl p-4 border border-border animate-pulse h-24" />
           ))}
         </div>
       )}
@@ -143,29 +143,29 @@ export default function ExecutiveDashboardPage() {
 
           {/* Health Overview */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-4">
+            <div className="bg-background border border-border rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4">
                 <Activity className="h-4 w-4 text-indigo-400" />
                 Org Health
               </h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="group relative text-sm text-zinc-400 cursor-help inline-flex items-center gap-1">
+                  <span className="group relative text-sm text-muted-foreground cursor-help inline-flex items-center gap-1">
                     Gini Coefficient
-                    <Info className="h-3 w-3 text-zinc-600 group-hover:text-zinc-400 transition" />
-                    <span className="invisible group-hover:visible absolute left-0 bottom-full mb-1 w-52 px-3 py-2 text-xs text-slate-200 bg-slate-900 border border-slate-700 rounded-lg shadow-lg z-20">
+                    <Info className="h-3 w-3 text-muted-foreground group-hover:text-muted-foreground transition" />
+                    <span className="invisible group-hover:visible absolute left-0 bottom-full mb-1 w-52 px-3 py-2 text-xs text-foreground bg-background border border-border rounded-lg shadow-lg z-20">
                       Measures workload inequality (0 = perfectly equal, 1 = one person does everything). Based on commits + PRs + reviews.
                     </span>
                   </span>
-                  <span className="text-sm font-medium text-white">
+                  <span className="text-sm font-medium text-foreground">
                     {summary.health.gini_coefficient.toFixed(3)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="group relative text-sm text-zinc-400 cursor-help inline-flex items-center gap-1">
+                  <span className="group relative text-sm text-muted-foreground cursor-help inline-flex items-center gap-1">
                     Workload Balance
-                    <Info className="h-3 w-3 text-zinc-600 group-hover:text-zinc-400 transition" />
-                    <span className="invisible group-hover:visible absolute left-0 bottom-full mb-1 w-52 px-3 py-2 text-xs text-slate-200 bg-slate-900 border border-slate-700 rounded-lg shadow-lg z-20">
+                    <Info className="h-3 w-3 text-muted-foreground group-hover:text-muted-foreground transition" />
+                    <span className="invisible group-hover:visible absolute left-0 bottom-full mb-1 w-52 px-3 py-2 text-xs text-foreground bg-background border border-border rounded-lg shadow-lg z-20">
                       Good (&lt;0.3 Gini), Moderate (0.3–0.5), or Poor (&gt;0.5). Lower Gini means more evenly distributed work.
                     </span>
                   </span>
@@ -174,26 +174,26 @@ export default function ExecutiveDashboardPage() {
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="group relative text-sm text-zinc-400 cursor-help inline-flex items-center gap-1">
+                  <span className="group relative text-sm text-muted-foreground cursor-help inline-flex items-center gap-1">
                     Avg Commits/Dev
-                    <Info className="h-3 w-3 text-zinc-600 group-hover:text-zinc-400 transition" />
-                    <span className="invisible group-hover:visible absolute left-0 bottom-full mb-1 w-48 px-3 py-2 text-xs text-slate-200 bg-slate-900 border border-slate-700 rounded-lg shadow-lg z-20">
+                    <Info className="h-3 w-3 text-muted-foreground group-hover:text-muted-foreground transition" />
+                    <span className="invisible group-hover:visible absolute left-0 bottom-full mb-1 w-48 px-3 py-2 text-xs text-foreground bg-background border border-border rounded-lg shadow-lg z-20">
                       Average number of commits per developer during this period.
                     </span>
                   </span>
-                  <span className="text-sm font-medium text-white">
+                  <span className="text-sm font-medium text-foreground">
                     {summary.activity.avg_commits_per_dev}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="group relative text-sm text-zinc-400 cursor-help inline-flex items-center gap-1">
+                  <span className="group relative text-sm text-muted-foreground cursor-help inline-flex items-center gap-1">
                     Avg PRs/Dev
-                    <Info className="h-3 w-3 text-zinc-600 group-hover:text-zinc-400 transition" />
-                    <span className="invisible group-hover:visible absolute left-0 bottom-full mb-1 w-48 px-3 py-2 text-xs text-slate-200 bg-slate-900 border border-slate-700 rounded-lg shadow-lg z-20">
+                    <Info className="h-3 w-3 text-muted-foreground group-hover:text-muted-foreground transition" />
+                    <span className="invisible group-hover:visible absolute left-0 bottom-full mb-1 w-48 px-3 py-2 text-xs text-foreground bg-background border border-border rounded-lg shadow-lg z-20">
                       Average number of pull requests merged per developer during this period.
                     </span>
                   </span>
-                  <span className="text-sm font-medium text-white">
+                  <span className="text-sm font-medium text-foreground">
                     {summary.activity.avg_prs_per_dev}
                   </span>
                 </div>
@@ -201,13 +201,13 @@ export default function ExecutiveDashboardPage() {
             </div>
 
             {/* Burnout Risks */}
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-4">
+            <div className="bg-background border border-border rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4">
                 <AlertTriangle className="h-4 w-4 text-amber-400" />
                 Burnout Risks ({summary.health.burnout_risk_count})
               </h3>
               {summary.risks.burnout.length === 0 ? (
-                <p className="text-xs text-zinc-500">No burnout risks detected</p>
+                <p className="text-xs text-muted-foreground">No burnout risks detected</p>
               ) : (
                 <div className="space-y-2">
                   {summary.risks.burnout.map((risk) => (
@@ -221,18 +221,18 @@ export default function ExecutiveDashboardPage() {
                       >
                         {risk.developer_name || risk.developer_id.slice(0, 8)}
                       </Link>
-                      <span className="text-[10px] text-zinc-400 flex items-center gap-2">
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-2">
                         <span className="group relative cursor-help inline-flex items-center gap-0.5">
                           WE: {(risk.weekend_ratio * 100).toFixed(0)}%
-                          <Info className="h-2.5 w-2.5 text-zinc-600 group-hover:text-zinc-400 transition" />
-                          <span className="invisible group-hover:visible absolute right-0 bottom-full mb-1 w-44 px-2 py-1.5 text-[10px] text-slate-200 bg-slate-900 border border-slate-700 rounded-lg shadow-lg z-20">
+                          <Info className="h-2.5 w-2.5 text-muted-foreground group-hover:text-muted-foreground transition" />
+                          <span className="invisible group-hover:visible absolute right-0 bottom-full mb-1 w-44 px-2 py-1.5 text-[10px] text-foreground bg-background border border-border rounded-lg shadow-lg z-20">
                             Weekend commits — % of commits made on weekends. High values suggest overwork.
                           </span>
                         </span>
                         <span className="group relative cursor-help inline-flex items-center gap-0.5">
                           LN: {(risk.late_night_ratio * 100).toFixed(0)}%
-                          <Info className="h-2.5 w-2.5 text-zinc-600 group-hover:text-zinc-400 transition" />
-                          <span className="invisible group-hover:visible absolute right-0 bottom-full mb-1 w-44 px-2 py-1.5 text-[10px] text-slate-200 bg-slate-900 border border-slate-700 rounded-lg shadow-lg z-20">
+                          <Info className="h-2.5 w-2.5 text-muted-foreground group-hover:text-muted-foreground transition" />
+                          <span className="invisible group-hover:visible absolute right-0 bottom-full mb-1 w-44 px-2 py-1.5 text-[10px] text-foreground bg-background border border-border rounded-lg shadow-lg z-20">
                             Late night commits — % of commits after 10 PM. High values suggest unsustainable hours.
                           </span>
                         </span>
@@ -244,13 +244,13 @@ export default function ExecutiveDashboardPage() {
             </div>
 
             {/* Bottlenecks */}
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-4">
+            <div className="bg-background border border-border rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4">
                 <ShieldAlert className="h-4 w-4 text-red-400" />
                 Bottlenecks ({summary.health.bottleneck_count})
               </h3>
               {summary.risks.bottlenecks.length === 0 ? (
-                <p className="text-xs text-zinc-500">No bottleneck risks detected</p>
+                <p className="text-xs text-muted-foreground">No bottleneck risks detected</p>
               ) : (
                 <div className="space-y-2">
                   {summary.risks.bottlenecks.map((bn) => (
@@ -264,10 +264,10 @@ export default function ExecutiveDashboardPage() {
                       >
                         {bn.developer_name || bn.developer_id.slice(0, 8)}
                       </Link>
-                      <span className="group relative text-[10px] text-zinc-400 cursor-help inline-flex items-center gap-0.5">
+                      <span className="group relative text-[10px] text-muted-foreground cursor-help inline-flex items-center gap-0.5">
                         {bn.commits} commits ({bn.ratio_vs_avg}x avg)
-                        <Info className="h-2.5 w-2.5 text-zinc-600 group-hover:text-zinc-400 transition" />
-                        <span className="invisible group-hover:visible absolute right-0 bottom-full mb-1 w-48 px-2 py-1.5 text-[10px] text-slate-200 bg-slate-900 border border-slate-700 rounded-lg shadow-lg z-20">
+                        <Info className="h-2.5 w-2.5 text-muted-foreground group-hover:text-muted-foreground transition" />
+                        <span className="invisible group-hover:visible absolute right-0 bottom-full mb-1 w-48 px-2 py-1.5 text-[10px] text-foreground bg-background border border-border rounded-lg shadow-lg z-20">
                           This developer has more than 2x the team average commits — a potential single point of failure.
                         </span>
                       </span>
@@ -279,15 +279,15 @@ export default function ExecutiveDashboardPage() {
           </div>
 
           {/* Top Contributors */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-            <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-4">
+          <div className="bg-background border border-border rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4">
               <Crown className="h-4 w-4 text-yellow-400" />
               Top Contributors
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[600px] text-sm">
                 <thead>
-                  <tr className="text-zinc-400 text-xs border-b border-zinc-800">
+                  <tr className="text-muted-foreground text-xs border-b border-border">
                     <th className="text-left py-2 font-medium">#</th>
                     <th className="text-left py-2 font-medium">Developer</th>
                     <th className="text-right py-2 font-medium">Commits</th>
@@ -297,8 +297,8 @@ export default function ExecutiveDashboardPage() {
                 </thead>
                 <tbody>
                   {summary.top_contributors.map((dev, i) => (
-                    <tr key={dev.developer_id} className="border-b border-zinc-800/50">
-                      <td className="py-2 text-zinc-500">{i + 1}</td>
+                    <tr key={dev.developer_id} className="border-b border-border/50">
+                      <td className="py-2 text-muted-foreground">{i + 1}</td>
                       <td className="py-2">
                         <Link
                           href={`/insights/developers/${dev.developer_id}`}
@@ -307,9 +307,9 @@ export default function ExecutiveDashboardPage() {
                           {dev.developer_name || dev.developer_id.slice(0, 12)}
                         </Link>
                       </td>
-                      <td className="py-2 text-right text-white font-medium">{dev.commits}</td>
-                      <td className="py-2 text-right text-zinc-300">{dev.prs_merged}</td>
-                      <td className="py-2 text-right text-zinc-300">
+                      <td className="py-2 text-right text-foreground font-medium">{dev.commits}</td>
+                      <td className="py-2 text-right text-foreground">{dev.prs_merged}</td>
+                      <td className="py-2 text-right text-foreground">
                         {dev.lines_changed > 1000
                           ? `${(dev.lines_changed / 1000).toFixed(1)}K`
                           : dev.lines_changed}
@@ -338,12 +338,12 @@ function StatCard({
   value: number;
 }) {
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+    <div className="bg-background border border-border rounded-xl p-4">
       <div className="flex items-center gap-2 mb-2">
         <Icon className={`h-4 w-4 ${iconColor}`} />
-        <span className="text-xs text-zinc-400">{label}</span>
+        <span className="text-xs text-muted-foreground">{label}</span>
       </div>
-      <p className="text-2xl font-bold text-white">
+      <p className="text-2xl font-bold text-foreground">
         {value > 1000 ? `${(value / 1000).toFixed(1)}K` : value}
       </p>
     </div>

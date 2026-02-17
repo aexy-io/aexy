@@ -37,15 +37,15 @@ export function StandupCard({ standup, showAuthor = false, compact = false }: St
 
   if (compact) {
     return (
-      <div className="p-3 bg-slate-800 rounded-lg border border-slate-700">
+      <div className="p-3 bg-muted rounded-lg border border-border">
         <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2 text-xs text-slate-400">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Clock className="h-3 w-3" />
             <span>{formatDate(standup.standup_date)}</span>
           </div>
           <SourceIcon className={`h-3 w-3 ${source.color}`} />
         </div>
-        <p className="text-sm text-white line-clamp-2">
+        <p className="text-sm text-foreground line-clamp-2">
           {standup.today_plan || standup.yesterday_summary}
         </p>
       </div>
@@ -53,9 +53,9 @@ export function StandupCard({ standup, showAuthor = false, compact = false }: St
   }
 
   return (
-    <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+    <div className="bg-muted rounded-xl border border-border overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-slate-700">
+      <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {showAuthor && (standup.developer_name || standup.developer_avatar) ? (
@@ -67,27 +67,27 @@ export function StandupCard({ standup, showAuthor = false, compact = false }: St
                     className="w-8 h-8 rounded-full"
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center">
-                    <User className="h-4 w-4 text-slate-400" />
+                  <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center">
+                    <User className="h-4 w-4 text-muted-foreground" />
                   </div>
                 )}
-                <span className="font-medium text-white">
+                <span className="font-medium text-foreground">
                   {standup.developer_name || "Unknown"}
                 </span>
               </div>
             ) : (
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5 text-blue-400" />
-                <span className="font-medium text-white">Daily Standup</span>
+                <span className="font-medium text-foreground">Daily Standup</span>
               </div>
             )}
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 text-xs text-slate-400">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <SourceIcon className={`h-3.5 w-3.5 ${source.color}`} />
               <span>{source.label}</span>
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-slate-400">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Clock className="h-3.5 w-3.5" />
               <span>{formatDate(standup.standup_date)}</span>
             </div>
@@ -100,20 +100,20 @@ export function StandupCard({ standup, showAuthor = false, compact = false }: St
         {/* Yesterday */}
         {standup.yesterday_summary && (
           <div>
-            <h4 className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">
+            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
               Yesterday
             </h4>
-            <p className="text-sm text-slate-200 whitespace-pre-wrap">{standup.yesterday_summary}</p>
+            <p className="text-sm text-foreground whitespace-pre-wrap">{standup.yesterday_summary}</p>
           </div>
         )}
 
         {/* Today */}
         {standup.today_plan && (
           <div>
-            <h4 className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">
+            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
               Today
             </h4>
-            <p className="text-sm text-slate-200 whitespace-pre-wrap">{standup.today_plan}</p>
+            <p className="text-sm text-foreground whitespace-pre-wrap">{standup.today_plan}</p>
           </div>
         )}
 
@@ -133,8 +133,8 @@ export function StandupCard({ standup, showAuthor = false, compact = false }: St
       {standup.sentiment_score !== undefined && standup.sentiment_score !== null && (
         <div className="px-4 pb-4">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400">Sentiment:</span>
-            <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+            <span className="text-xs text-muted-foreground">Sentiment:</span>
+            <div className="flex-1 h-1.5 bg-accent rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full ${
                   standup.sentiment_score > 0.6
@@ -146,7 +146,7 @@ export function StandupCard({ standup, showAuthor = false, compact = false }: St
                 style={{ width: `${standup.sentiment_score * 100}%` }}
               />
             </div>
-            <span className="text-xs text-slate-400">{Math.round(standup.sentiment_score * 100)}%</span>
+            <span className="text-xs text-muted-foreground">{Math.round(standup.sentiment_score * 100)}%</span>
           </div>
         </div>
       )}

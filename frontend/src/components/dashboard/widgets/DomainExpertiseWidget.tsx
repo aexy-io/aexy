@@ -31,7 +31,7 @@ export function DomainExpertiseWidget({ domains }: DomainExpertiseWidgetProps) {
                 key={domain.name}
                 content={`Confidence: ${domain.confidence_score}% based on file types & commits`}
               >
-                <span className="inline-flex items-center gap-2 bg-muted hover:bg-accent text-slate-300 px-4 py-2 rounded-lg text-sm cursor-help transition">
+                <span className="inline-flex items-center gap-2 bg-muted hover:bg-accent text-foreground px-4 py-2 rounded-lg text-sm cursor-help transition">
                   {domain.name.replace("_", " ")}
                   <span className="text-xs text-muted-foreground/70 bg-muted px-2 py-0.5 rounded-full">
                     {domain.confidence_score}%

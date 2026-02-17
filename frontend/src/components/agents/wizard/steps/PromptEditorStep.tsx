@@ -126,10 +126,10 @@ export function PromptEditorStep({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-white mb-2">
+        <h2 className="text-xl font-semibold text-foreground mb-2">
           Agent Prompts
         </h2>
-        <p className="text-slate-400">
+        <p className="text-muted-foreground">
           Configure the system prompt that defines your agent's personality and
           behavior, plus any custom instructions.
         </p>
@@ -144,7 +144,7 @@ export function PromptEditorStep({
               <p className="text-amber-400 font-medium mb-2">
                 Start with a template for {getAgentTypeConfig(agentType).label}
               </p>
-              <p className="text-sm text-slate-400 mb-3">
+              <p className="text-sm text-muted-foreground mb-3">
                 We have a pre-written prompt template that works well for this type
                 of agent. You can customize it after applying.
               </p>
@@ -157,7 +157,7 @@ export function PromptEditorStep({
                 </button>
                 <button
                   onClick={handleCopyTemplate}
-                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition text-sm flex items-center gap-2"
+                  className="px-4 py-2 bg-accent hover:bg-muted text-foreground rounded-lg transition text-sm flex items-center gap-2"
                 >
                   {copied ? (
                     <>
@@ -196,9 +196,9 @@ export function PromptEditorStep({
         rows={4}
       />
 
-      <div className="p-3 bg-slate-700/50 rounded-lg">
-        <p className="text-sm text-slate-400">
-          <strong className="text-slate-300">Tip:</strong> Use variables like{" "}
+      <div className="p-3 bg-accent/50 rounded-lg">
+        <p className="text-sm text-muted-foreground">
+          <strong className="text-foreground">Tip:</strong> Use variables like{" "}
           <code className="text-purple-400">{"{{sender_name}}"}</code> in your
           prompts. They'll be replaced with actual values when the agent runs.
         </p>

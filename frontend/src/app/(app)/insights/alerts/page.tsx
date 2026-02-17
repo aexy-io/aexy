@@ -189,13 +189,13 @@ export default function AlertsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/insights"
-            className="p-2 rounded-lg hover:bg-zinc-800 transition-colors"
+            className="p-2 rounded-lg hover:bg-muted transition-colors"
           >
-            <ArrowLeft className="w-5 h-5 text-zinc-400" />
+            <ArrowLeft className="w-5 h-5 text-muted-foreground" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-white">Alert Management</h1>
-            <p className="text-sm text-zinc-400 mt-1">
+            <h1 className="text-2xl font-bold text-foreground">Alert Management</h1>
+            <p className="text-sm text-muted-foreground mt-1">
               Configure rules to detect anomalies and review triggered alerts
             </p>
           </div>
@@ -204,7 +204,7 @@ export default function AlertsPage() {
           <button
             onClick={handleSeedTemplates}
             disabled={isSeeding}
-            className="flex items-center gap-2 px-3 py-2 text-sm bg-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-700 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-sm bg-muted text-foreground rounded-lg hover:bg-accent disabled:opacity-50 transition-colors"
           >
             <Zap className="w-4 h-4" />
             {isSeeding ? "Seeding..." : "Load Defaults"}
@@ -221,13 +221,13 @@ export default function AlertsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-zinc-900 p-1 rounded-lg w-fit">
+      <div className="flex gap-1 bg-background p-1 rounded-lg w-fit">
         <button
           onClick={() => setTab("rules")}
           className={`flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors ${
             tab === "rules"
-              ? "bg-zinc-800 text-white"
-              : "text-zinc-400 hover:text-zinc-200"
+              ? "bg-muted text-foreground"
+              : "text-muted-foreground hover:text-foreground"
           }`}
         >
           <Bell className="w-4 h-4" />
@@ -237,8 +237,8 @@ export default function AlertsPage() {
           onClick={() => setTab("history")}
           className={`flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors ${
             tab === "history"
-              ? "bg-zinc-800 text-white"
-              : "text-zinc-400 hover:text-zinc-200"
+              ? "bg-muted text-foreground"
+              : "text-muted-foreground hover:text-foreground"
           }`}
         >
           <BellRing className="w-4 h-4" />
@@ -253,7 +253,7 @@ export default function AlertsPage() {
           {!showCreateForm && (
             <button
               onClick={() => setShowCreateForm(true)}
-              className="flex items-center gap-2 px-4 py-2 text-sm bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-lg hover:bg-zinc-700 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-sm bg-muted border border-border text-foreground rounded-lg hover:bg-accent transition-colors"
             >
               <Plus className="w-4 h-4" />
               Create Rule
@@ -262,39 +262,39 @@ export default function AlertsPage() {
 
           {/* Create form */}
           {showCreateForm && (
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-4">
+            <div className="bg-background border border-border rounded-xl p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-white">New Alert Rule</h3>
+                <h3 className="text-sm font-semibold text-foreground">New Alert Rule</h3>
                 <button
                   onClick={() => setShowCreateForm(false)}
-                  className="p-1 rounded hover:bg-zinc-800"
+                  className="p-1 rounded hover:bg-muted"
                 >
-                  <X className="w-4 h-4 text-zinc-400" />
+                  <X className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-xs text-zinc-400 mb-1">Name</label>
+                  <label className="block text-xs text-muted-foreground mb-1">Name</label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                     placeholder="e.g. Low Velocity Alert"
                   />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs text-zinc-400 mb-1">Description</label>
+                  <label className="block text-xs text-muted-foreground mb-1">Description</label>
                   <input
                     type="text"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                     placeholder="Optional description"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-zinc-400 mb-1">Category</label>
+                  <label className="block text-xs text-muted-foreground mb-1">Category</label>
                   <select
                     value={formData.metric_category}
                     onChange={(e) =>
@@ -304,7 +304,7 @@ export default function AlertsPage() {
                         metric_name: METRIC_NAMES[e.target.value]?.[0]?.value || "",
                       })
                     }
-                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   >
                     {METRIC_CATEGORIES.map((c) => (
                       <option key={c.value} value={c.value}>
@@ -314,11 +314,11 @@ export default function AlertsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-zinc-400 mb-1">Metric</label>
+                  <label className="block text-xs text-muted-foreground mb-1">Metric</label>
                   <select
                     value={formData.metric_name}
                     onChange={(e) => setFormData({ ...formData, metric_name: e.target.value })}
-                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   >
                     {(METRIC_NAMES[formData.metric_category] || []).map((m) => (
                       <option key={m.value} value={m.value}>
@@ -328,12 +328,12 @@ export default function AlertsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-zinc-400 mb-1">Condition</label>
+                  <label className="block text-xs text-muted-foreground mb-1">Condition</label>
                   <div className="flex gap-2">
                     <select
                       value={formData.condition_operator}
                       onChange={(e) => setFormData({ ...formData, condition_operator: e.target.value })}
-                      className="w-20 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className="w-20 px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                     >
                       {OPERATORS.map((o) => (
                         <option key={o.value} value={o.value}>
@@ -346,16 +346,16 @@ export default function AlertsPage() {
                       step="any"
                       value={formData.condition_value}
                       onChange={(e) => setFormData({ ...formData, condition_value: parseFloat(e.target.value) || 0 })}
-                      className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs text-zinc-400 mb-1">Severity</label>
+                  <label className="block text-xs text-muted-foreground mb-1">Severity</label>
                   <select
                     value={formData.severity}
                     onChange={(e) => setFormData({ ...formData, severity: e.target.value })}
-                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   >
                     <option value="info">Info</option>
                     <option value="warning">Warning</option>
@@ -366,7 +366,7 @@ export default function AlertsPage() {
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   onClick={() => setShowCreateForm(false)}
-                  className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors"
+                  className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Cancel
                 </button>
@@ -390,10 +390,10 @@ export default function AlertsPage() {
 
           {/* Empty state */}
           {!rulesLoading && rules.length === 0 && (
-            <div className="text-center py-12 bg-zinc-900 border border-zinc-800 rounded-xl">
-              <Bell className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
-              <p className="text-zinc-400 mb-2">No alert rules configured</p>
-              <p className="text-sm text-zinc-500 mb-4">
+            <div className="text-center py-12 bg-background border border-border rounded-xl">
+              <Bell className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground mb-2">No alert rules configured</p>
+              <p className="text-sm text-muted-foreground mb-4">
                 Click &quot;Load Defaults&quot; to seed recommended templates
               </p>
             </div>
@@ -402,7 +402,7 @@ export default function AlertsPage() {
           {/* Active rules */}
           {activeRules.length > 0 && (
             <div className="space-y-2">
-              <h3 className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Active Rules ({activeRules.length})
               </h3>
               {activeRules.map((rule) => (
@@ -414,7 +414,7 @@ export default function AlertsPage() {
           {/* Inactive rules */}
           {inactiveRules.length > 0 && (
             <div className="space-y-2">
-              <h3 className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Inactive Rules ({inactiveRules.length})
               </h3>
               {inactiveRules.map((rule) => (
@@ -441,7 +441,7 @@ export default function AlertsPage() {
                 className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
                   historyFilter === f.value
                     ? "bg-indigo-600 text-white"
-                    : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                    : "bg-muted text-muted-foreground hover:bg-accent"
                 }`}
               >
                 {f.label}
@@ -456,10 +456,10 @@ export default function AlertsPage() {
           )}
 
           {!historyLoading && history.length === 0 && (
-            <div className="text-center py-12 bg-zinc-900 border border-zinc-800 rounded-xl">
-              <BellRing className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
-              <p className="text-zinc-400">No alerts triggered yet</p>
-              <p className="text-sm text-zinc-500 mt-1">
+            <div className="text-center py-12 bg-background border border-border rounded-xl">
+              <BellRing className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground">No alerts triggered yet</p>
+              <p className="text-sm text-muted-foreground mt-1">
                 Run an evaluation to check your rules against current metrics
               </p>
             </div>
@@ -473,16 +473,16 @@ export default function AlertsPage() {
                 return (
                   <div
                     key={alert.id}
-                    className="flex items-center gap-4 p-4 bg-zinc-900 border border-zinc-800 rounded-xl"
+                    className="flex items-center gap-4 p-4 bg-background border border-border rounded-xl"
                   >
                     <div className={`p-2 rounded-lg ${sev.bg}`}>
                       <SevIcon className={`w-4 h-4 ${sev.color}`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white truncate">
+                      <p className="text-sm text-foreground truncate">
                         {alert.message || `Alert triggered`}
                       </p>
-                      <p className="text-xs text-zinc-500 mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         Value: {alert.metric_value.toFixed(2)} | Threshold:{" "}
                         {alert.threshold_value.toFixed(2)}
                         {alert.triggered_at &&
@@ -502,7 +502,7 @@ export default function AlertsPage() {
                       {alert.status !== "acknowledged" && (
                         <button
                           onClick={() => handleAcknowledge(alert.id)}
-                          className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-green-400 transition-colors"
+                          className="p-1.5 rounded-lg bg-muted hover:bg-accent text-muted-foreground hover:text-green-400 transition-colors"
                           title="Acknowledge"
                         >
                           <Check className="w-4 h-4" />
@@ -532,20 +532,20 @@ function RuleCard({
   const operator = OPERATORS.find((o) => o.value === rule.condition_operator)?.label || rule.condition_operator;
 
   return (
-    <div className="flex items-center gap-4 p-4 bg-zinc-900 border border-zinc-800 rounded-xl">
+    <div className="flex items-center gap-4 p-4 bg-background border border-border rounded-xl">
       <div className={`p-2 rounded-lg ${sev.bg}`}>
         <SevIcon className={`w-4 h-4 ${sev.color}`} />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-white truncate">{rule.name}</p>
+          <p className="text-sm font-medium text-foreground truncate">{rule.name}</p>
           {!rule.is_active && (
-            <span className="px-1.5 py-0.5 text-[10px] bg-zinc-800 text-zinc-500 rounded">
+            <span className="px-1.5 py-0.5 text-[10px] bg-muted text-muted-foreground rounded">
               Inactive
             </span>
           )}
         </div>
-        <p className="text-xs text-zinc-500 mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           {rule.metric_category}.{rule.metric_name} {operator} {rule.condition_value}
           {rule.description && ` — ${rule.description}`}
         </p>
@@ -556,7 +556,7 @@ function RuleCard({
         </span>
         <button
           onClick={() => onDelete(rule.id)}
-          className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-500 hover:text-red-400 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-red-400 transition-colors"
           title="Delete rule"
         >
           <Trash2 className="w-4 h-4" />

@@ -76,11 +76,11 @@ export function TeamCalendar({ teamId, eventTypes }: TeamCalendarProps) {
 
   if (isLoading) {
     return (
-      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 animate-pulse">
-        <div className="h-8 w-48 bg-slate-800 rounded mb-4" />
+      <div className="bg-background/50 border border-border rounded-xl p-6 animate-pulse">
+        <div className="h-8 w-48 bg-muted rounded mb-4" />
         <div className="grid grid-cols-7 gap-1">
           {Array.from({ length: 42 }).map((_, i) => (
-            <div key={i} className="h-24 bg-slate-800/50 rounded-lg" />
+            <div key={i} className="h-24 bg-muted/50 rounded-lg" />
           ))}
         </div>
       </div>
@@ -88,29 +88,29 @@ export function TeamCalendar({ teamId, eventTypes }: TeamCalendarProps) {
   }
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
+    <div className="bg-background/50 border border-border rounded-xl overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+      <div className="px-6 py-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             onClick={prevMonth}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <h3 className="text-lg font-semibold text-white min-w-[180px] text-center">
+          <h3 className="text-lg font-semibold text-foreground min-w-[180px] text-center">
             {monthLabel}
           </h3>
           <button
             onClick={nextMonth}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition"
           >
             <ChevronRight className="h-5 w-5" />
           </button>
         </div>
         <button
           onClick={goToToday}
-          className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition"
+          className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-foreground hover:bg-muted transition"
         >
           Today
         </button>
@@ -123,7 +123,7 @@ export function TeamCalendar({ teamId, eventTypes }: TeamCalendarProps) {
           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
             <div
               key={d}
-              className="text-center text-xs font-medium text-slate-500 py-2"
+              className="text-center text-xs font-medium text-muted-foreground py-2"
             >
               {d}
             </div>
@@ -136,7 +136,7 @@ export function TeamCalendar({ teamId, eventTypes }: TeamCalendarProps) {
           {Array.from({ length: firstDayOfWeek }).map((_, i) => (
             <div
               key={`empty-${i}`}
-              className="min-h-[90px] bg-slate-800/20 rounded-lg"
+              className="min-h-[90px] bg-muted/20 rounded-lg"
             />
           ))}
 
@@ -155,8 +155,8 @@ export function TeamCalendar({ teamId, eventTypes }: TeamCalendarProps) {
                   isToday
                     ? "bg-blue-600/10 border border-blue-500/30"
                     : isWeekend
-                      ? "bg-slate-800/30"
-                      : "bg-slate-800/10 hover:bg-slate-800/30"
+                      ? "bg-muted/30"
+                      : "bg-muted/10 hover:bg-muted/30"
                 }`}
               >
                 <span
@@ -164,8 +164,8 @@ export function TeamCalendar({ teamId, eventTypes }: TeamCalendarProps) {
                     isToday
                       ? "text-blue-400"
                       : isWeekend
-                        ? "text-slate-600"
-                        : "text-slate-400"
+                        ? "text-muted-foreground"
+                        : "text-muted-foreground"
                   }`}
                 >
                   {day}
@@ -187,7 +187,7 @@ export function TeamCalendar({ teamId, eventTypes }: TeamCalendarProps) {
                     </button>
                   ))}
                   {dayEvents.length > 3 && (
-                    <span className="text-[10px] text-slate-500 pl-1.5">
+                    <span className="text-[10px] text-muted-foreground pl-1.5">
                       +{dayEvents.length - 3} more
                     </span>
                   )}

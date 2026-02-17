@@ -118,7 +118,7 @@ export function AttributeList({
     return (
       <div className={cn("space-y-3", className)}>
         {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="h-14 bg-slate-800/50 rounded-lg animate-pulse" />
+          <div key={i} className="h-14 bg-muted/50 rounded-lg animate-pulse" />
         ))}
       </div>
     );
@@ -130,13 +130,13 @@ export function AttributeList({
       <div className="flex items-center gap-3">
         {/* Search */}
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search attributes..."
-            className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
           />
         </div>
 
@@ -145,7 +145,7 @@ export function AttributeList({
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value as CRMAttributeType | "all")}
-            className="pl-3 pr-8 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="pl-3 pr-8 py-2 bg-muted border border-border rounded-lg text-sm text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
             {typeFilters.map((filter) => (
               <option key={filter.value} value={filter.value}>
@@ -153,7 +153,7 @@ export function AttributeList({
               </option>
             ))}
           </select>
-          <Filter className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+          <Filter className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
         </div>
 
         {/* Show system toggle */}
@@ -162,9 +162,9 @@ export function AttributeList({
             type="checkbox"
             checked={showSystemAttrs}
             onChange={(e) => setShowSystemAttrs(e.target.checked)}
-            className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-purple-500 focus:ring-purple-500"
+            className="w-4 h-4 rounded border-border bg-accent text-purple-500 focus:ring-purple-500"
           />
-          <span className="text-sm text-slate-400">Show system</span>
+          <span className="text-sm text-muted-foreground">Show system</span>
         </label>
 
         {/* Add button */}
@@ -180,7 +180,7 @@ export function AttributeList({
       </div>
 
       {/* Attribute count */}
-      <div className="text-sm text-slate-500">
+      <div className="text-sm text-muted-foreground">
         {filteredAttributes.length} of {attributes.length} attributes
         {searchQuery && ` matching "${searchQuery}"`}
       </div>
@@ -213,8 +213,8 @@ export function AttributeList({
 
       {/* System attributes (not draggable) */}
       {showSystemAttrs && systemAttributes.length > 0 && (
-        <div className="space-y-2 pt-4 border-t border-slate-700">
-          <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+        <div className="space-y-2 pt-4 border-t border-border">
+          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             System Attributes
           </h4>
           {systemAttributes.map((attr) => (
@@ -229,8 +229,8 @@ export function AttributeList({
 
       {/* Empty state */}
       {filteredAttributes.length === 0 && (
-        <div className="text-center py-12 bg-slate-800/30 rounded-xl border border-slate-700">
-          <p className="text-slate-400 mb-2">No attributes found</p>
+        <div className="text-center py-12 bg-muted/30 rounded-xl border border-border">
+          <p className="text-muted-foreground mb-2">No attributes found</p>
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}

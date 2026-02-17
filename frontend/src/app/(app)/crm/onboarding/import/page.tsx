@@ -109,7 +109,7 @@ export default function DataImport() {
             className={`h-1.5 rounded-full transition-all ${
               step <= 3
                 ? "w-8 bg-purple-500"
-                : "w-4 bg-slate-700"
+                : "w-4 bg-accent"
             }`}
           />
         ))}
@@ -122,10 +122,10 @@ export default function DataImport() {
       >
         {/* Header */}
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold text-white mb-3">
+          <h1 className="text-3xl font-bold text-foreground mb-3">
             Import your data
           </h1>
-          <p className="text-slate-400 max-w-lg mx-auto">
+          <p className="text-muted-foreground max-w-lg mx-auto">
             Bring your existing contacts and companies into Aexy CRM,
             or start fresh.
           </p>
@@ -150,8 +150,8 @@ export default function DataImport() {
                 }}
                 className={`relative p-5 rounded-xl border text-left transition-all ${
                   isSelected
-                    ? "bg-slate-800/80 border-purple-500/50 ring-2 ring-purple-500/20"
-                    : "bg-slate-800/30 border-slate-700/50 hover:border-slate-600/50"
+                    ? "bg-muted/80 border-purple-500/50 ring-2 ring-purple-500/20"
+                    : "bg-muted/30 border-border/50 hover:border-border/50"
                 }`}
               >
                 {badge && !isSelected && (
@@ -167,8 +167,8 @@ export default function DataImport() {
                 <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${method.color} flex items-center justify-center mb-4`}>
                   <method.icon className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="font-semibold text-white mb-1">{method.title}</h3>
-                <p className="text-sm text-slate-400">{method.description}</p>
+                <h3 className="font-semibold text-foreground mb-1">{method.title}</h3>
+                <p className="text-sm text-muted-foreground">{method.description}</p>
               </motion.button>
             );
           })}
@@ -187,8 +187,8 @@ export default function DataImport() {
                   <Mail className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-white mb-2">Gmail Integration</h3>
-                  <p className="text-sm text-slate-400 mb-4">
+                  <h3 className="font-semibold text-foreground mb-2">Gmail Integration</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
                     On the next step, you&apos;ll connect your Google account. Once connected, we&apos;ll automatically:
                   </p>
                   <ul className="space-y-2">
@@ -198,7 +198,7 @@ export default function DataImport() {
                       "Extract details from email signatures using AI",
                       "Keep your CRM updated as you send and receive emails",
                     ].map((item, i) => (
-                      <li key={i} className="flex items-center gap-2 text-sm text-slate-300">
+                      <li key={i} className="flex items-center gap-2 text-sm text-foreground">
                         <CheckCircle2 className="w-4 h-4 text-red-400 flex-shrink-0" />
                         {item}
                       </li>
@@ -226,7 +226,7 @@ export default function DataImport() {
                   ? "border-purple-500 bg-purple-500/10"
                   : uploadedFile
                   ? "border-green-500/50 bg-green-500/5"
-                  : "border-slate-700 hover:border-slate-600"
+                  : "border-border hover:border-border"
               }`}
             >
               {uploadedFile ? (
@@ -246,8 +246,8 @@ export default function DataImport() {
                   </div>
 
                   <div>
-                    <p className="text-white font-medium">{uploadedFile.name}</p>
-                    <p className="text-sm text-slate-400">
+                    <p className="text-foreground font-medium">{uploadedFile.name}</p>
+                    <p className="text-sm text-muted-foreground">
                       {(uploadedFile.size / 1024).toFixed(1)} KB
                     </p>
                   </div>
@@ -263,7 +263,7 @@ export default function DataImport() {
                       setUploadedFile(null);
                       setUploadStatus("idle");
                     }}
-                    className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-white transition-colors"
+                    className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <X className="w-4 h-4" />
                     Remove file
@@ -271,11 +271,11 @@ export default function DataImport() {
                 </div>
               ) : (
                 <>
-                  <Upload className="w-10 h-10 text-slate-500 mx-auto mb-4" />
-                  <p className="text-white font-medium mb-1">
+                  <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-foreground font-medium mb-1">
                     Drop your CSV file here
                   </p>
-                  <p className="text-sm text-slate-400 mb-4">
+                  <p className="text-sm text-muted-foreground mb-4">
                     or click to browse
                   </p>
                   <input
@@ -284,7 +284,7 @@ export default function DataImport() {
                     onChange={handleFileSelect}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     Supports CSV files up to 10MB
                   </p>
                 </>
@@ -292,14 +292,14 @@ export default function DataImport() {
             </div>
 
             {/* CSV format guide */}
-            <div className="mt-4 p-4 rounded-lg bg-slate-800/30 border border-slate-700/50">
-              <h4 className="text-sm font-medium text-white mb-2">CSV Format Guide</h4>
-              <p className="text-xs text-slate-400 mb-2">
+            <div className="mt-4 p-4 rounded-lg bg-muted/30 border border-border/50">
+              <h4 className="text-sm font-medium text-foreground mb-2">CSV Format Guide</h4>
+              <p className="text-xs text-muted-foreground mb-2">
                 Your CSV should include headers in the first row. Supported columns:
               </p>
               <div className="flex flex-wrap gap-2">
                 {["name", "email", "company", "phone", "title", "website", "notes"].map((col) => (
-                  <span key={col} className="px-2 py-0.5 rounded bg-slate-700/50 text-xs text-slate-300 font-mono">
+                  <span key={col} className="px-2 py-0.5 rounded bg-accent/50 text-xs text-foreground font-mono">
                     {col}
                   </span>
                 ))}
@@ -309,10 +309,10 @@ export default function DataImport() {
         )}
 
         {/* Navigation */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 border-t border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 border-t border-muted">
           <button
             onClick={() => router.push("/crm/onboarding/template")}
-            className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-white transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
@@ -324,7 +324,7 @@ export default function DataImport() {
             className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
               selectedMethod && (selectedMethod !== "csv" || uploadStatus === "success")
                 ? "bg-gradient-to-r from-purple-500 to-purple-600 text-white hover:from-purple-600 hover:to-purple-700 shadow-lg shadow-purple-500/25"
-                : "bg-slate-800 text-slate-500 cursor-not-allowed"
+                : "bg-muted text-muted-foreground cursor-not-allowed"
             }`}
           >
             Continue

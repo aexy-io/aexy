@@ -57,8 +57,8 @@ export function UtilizationGauge({
   const viewBoxSize = (config.radius + config.strokeWidth) * 2;
 
   return (
-    <div className={`bg-slate-800 rounded-xl border border-slate-700 p-6 ${className}`}>
-      {title && <h3 className="text-lg font-semibold text-white mb-4 text-center">{title}</h3>}
+    <div className={`bg-muted rounded-xl border border-border p-6 ${className}`}>
+      {title && <h3 className="text-lg font-semibold text-foreground mb-4 text-center">{title}</h3>}
 
       <div className="flex flex-col items-center">
         <div className="relative">
@@ -94,11 +94,11 @@ export function UtilizationGauge({
 
           {/* Center text */}
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className={`${config.fontSize} font-bold text-white`}>
+            <span className={`${config.fontSize} font-bold text-foreground`}>
               {value.toFixed(1)}{unit}
             </span>
             {showPercentage && (
-              <span className="text-sm text-slate-400">
+              <span className="text-sm text-muted-foreground">
                 {Math.round(percentage)}%
               </span>
             )}
@@ -107,7 +107,7 @@ export function UtilizationGauge({
 
         {/* Target and status */}
         <div className="mt-4 text-center">
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted-foreground">
             Target: {target}{unit}
           </p>
           <p className={`text-sm font-medium mt-1 ${
@@ -166,7 +166,7 @@ export function UtilizationMini({
           strokeDashoffset={dashOffset}
         />
       </svg>
-      <span className="absolute text-xs font-medium text-white">
+      <span className="absolute text-xs font-medium text-foreground">
         {Math.round(percentage)}%
       </span>
     </div>

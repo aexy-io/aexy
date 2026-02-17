@@ -47,7 +47,7 @@ const ACTIVITY_COLORS: Record<string, string> = {
   assigned: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
   progress_updated: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
   linked: "bg-indigo-500/20 text-indigo-400 border-indigo-500/30",
-  unlinked: "bg-slate-500/20 text-slate-400 border-slate-500/30",
+  unlinked: "bg-muted-foreground/20 text-muted-foreground border-muted-foreground/30",
 };
 
 function TimelineItem({
@@ -71,7 +71,7 @@ function TimelineItem({
         <div className={cn("w-8 h-8 rounded-full flex items-center justify-center border", colorClass)}>
           {icon}
         </div>
-        <div className="w-px flex-1 bg-slate-700/50 mt-2" />
+        <div className="w-px flex-1 bg-accent/50 mt-2" />
       </div>
 
       {/* Content */}
@@ -87,18 +87,18 @@ function TimelineItem({
                     className="w-5 h-5 rounded-full"
                   />
                 ) : (
-                  <div className="w-5 h-5 rounded-full bg-slate-600 flex items-center justify-center">
-                    <User className="h-3 w-3 text-slate-300" />
+                  <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center">
+                    <User className="h-3 w-3 text-foreground" />
                   </div>
                 )}
-                <span className="text-sm font-medium text-slate-200">
+                <span className="text-sm font-medium text-foreground">
                   {entry.actor.name || entry.actor.email || "Unknown"}
                 </span>
               </>
             ) : (
-              <span className="text-sm text-slate-400">System</span>
+              <span className="text-sm text-muted-foreground">System</span>
             )}
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-muted-foreground">
               {formatDistanceToNow(new Date(entry.created_at), { addSuffix: true })}
             </span>
           </div>
@@ -107,7 +107,7 @@ function TimelineItem({
             <button
               onClick={() => onDelete(entry.id)}
               disabled={isDeleting}
-              className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-400 transition-all"
+              className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-red-400 transition-all"
             >
               {isDeleting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -120,13 +120,13 @@ function TimelineItem({
 
         {/* Display text */}
         {entry.display_text && (
-          <p className="text-sm text-slate-300 mt-1">{entry.display_text}</p>
+          <p className="text-sm text-foreground mt-1">{entry.display_text}</p>
         )}
 
         {/* Comment content */}
         {entry.content && (
-          <div className="mt-2 p-3 bg-slate-800/50 border border-slate-700/50 rounded-lg">
-            <p className="text-sm text-slate-300 whitespace-pre-wrap">{entry.content}</p>
+          <div className="mt-2 p-3 bg-muted/50 border border-border/50 rounded-lg">
+            <p className="text-sm text-foreground whitespace-pre-wrap">{entry.content}</p>
           </div>
         )}
 
@@ -134,11 +134,11 @@ function TimelineItem({
         {entry.changes && Object.keys(entry.changes).length > 0 && (
           <div className="mt-2 space-y-1">
             {Object.entries(entry.changes).map(([field, change]) => (
-              <div key={field} className="text-xs text-slate-400">
-                <span className="font-medium text-slate-300">{field}:</span>{" "}
-                <span className="line-through text-slate-500">{change.old || "—"}</span>
+              <div key={field} className="text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">{field}:</span>{" "}
+                <span className="line-through text-muted-foreground">{change.old || "—"}</span>
                 {" → "}
-                <span className="text-slate-300">{change.new || "—"}</span>
+                <span className="text-foreground">{change.new || "—"}</span>
               </div>
             ))}
           </div>
@@ -204,13 +204,13 @@ export function EntityTimeline({
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Add a comment..."
-              className="flex-1 bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500/50 resize-none min-h-[80px]"
+              className="flex-1 bg-muted/50 border border-border/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-blue-500/50 resize-none min-h-[80px]"
               rows={2}
             />
             <button
               type="submit"
               disabled={!comment.trim() || isAddingComment}
-              className="self-end px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg transition-colors flex items-center gap-2"
+              className="self-end px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-accent disabled:text-muted-foreground text-foreground rounded-lg transition-colors flex items-center gap-2"
             >
               {isAddingComment ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -226,10 +226,10 @@ export function EntityTimeline({
       <div className="space-y-0">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : timeline.length === 0 ? (
-          <div className="text-center py-8 text-slate-500 text-sm">
+          <div className="text-center py-8 text-muted-foreground text-sm">
             No activity yet
           </div>
         ) : (

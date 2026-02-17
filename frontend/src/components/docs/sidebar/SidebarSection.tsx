@@ -33,16 +33,16 @@ export function SidebarSection({
       >
         <div className="flex items-center gap-1.5">
           <ChevronRight
-            className={`h-3.5 w-3.5 text-slate-500 transition-transform duration-200 ${
+            className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${
               isExpanded ? "rotate-90" : ""
             }`}
           />
-          {icon && <span className="text-slate-500">{icon}</span>}
-          <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+          {icon && <span className="text-muted-foreground">{icon}</span>}
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             {title}
           </span>
           {typeof count === "number" && count > 0 && (
-            <span className="text-xs text-slate-500 ml-1">({count})</span>
+            <span className="text-xs text-muted-foreground ml-1">({count})</span>
           )}
         </div>
 
@@ -55,7 +55,7 @@ export function SidebarSection({
             className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-white/10 rounded transition-opacity"
             title={addTooltip}
           >
-            <Plus className="h-3.5 w-3.5 text-slate-400" />
+            <Plus className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
         )}
       </div>

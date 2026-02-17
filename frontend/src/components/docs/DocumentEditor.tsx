@@ -139,12 +139,12 @@ export function DocumentEditor({
       TableRow,
       TableCell.configure({
         HTMLAttributes: {
-          class: "border border-slate-700 p-2",
+          class: "border border-border p-2",
         },
       }),
       TableHeader.configure({
         HTMLAttributes: {
-          class: "border border-slate-700 p-2 bg-slate-800 font-semibold",
+          class: "border border-border p-2 bg-muted font-semibold",
         },
       }),
       Highlight.configure({
@@ -155,7 +155,7 @@ export function DocumentEditor({
       CodeBlockLowlight.configure({
         lowlight,
         HTMLAttributes: {
-          class: "bg-slate-900 rounded-lg p-4 font-mono text-sm overflow-x-auto",
+          class: "bg-background rounded-lg p-4 font-mono text-sm overflow-x-auto",
         },
       }),
       Markdown.configure({
@@ -269,24 +269,24 @@ export function DocumentEditor({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full bg-slate-950">
+      <div className="flex items-center justify-center h-full bg-background">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="w-10 h-10 border-4 border-primary-500/20 rounded-full"></div>
             <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
           </div>
-          <p className="text-slate-400 text-sm">Loading document...</p>
+          <p className="text-muted-foreground text-sm">Loading document...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-slate-950">
+    <div className="flex flex-col h-full bg-background">
       {/* Document Header + Toolbar (sticky together) */}
       <div className="sticky top-0 z-10">
         {/* Document Header */}
-        <div className="border-b border-slate-800/50 bg-gradient-to-b from-slate-900 to-slate-900/95 backdrop-blur-xl">
+        <div className="border-b border-border/50 bg-gradient-to-b from-slate-900 to-slate-900/95 backdrop-blur-xl">
           <div className="px-4 py-2">
             <div className="flex items-center gap-3">
               {/* Icon Picker */}
@@ -294,7 +294,7 @@ export function DocumentEditor({
                 <button
                   onClick={() => !readOnly && setShowEmojiPicker(!showEmojiPicker)}
                   disabled={readOnly}
-                  className="text-2xl hover:bg-slate-800/60 rounded-lg p-1.5 transition-all duration-200 disabled:cursor-default hover:scale-105 active:scale-95"
+                  className="text-2xl hover:bg-muted/60 rounded-lg p-1.5 transition-all duration-200 disabled:cursor-default hover:scale-105 active:scale-95"
                   title="Change icon"
                 >
                   {localIcon}
@@ -306,8 +306,8 @@ export function DocumentEditor({
                       className="fixed inset-0 z-40"
                       onClick={() => setShowEmojiPicker(false)}
                     />
-                    <div className="absolute left-0 top-full mt-2 bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl z-50 p-4 w-72">
-                      <div className="flex items-center gap-2 mb-4 text-sm text-slate-400">
+                    <div className="absolute left-0 top-full mt-2 bg-muted/95 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl z-50 p-4 w-72">
+                      <div className="flex items-center gap-2 mb-4 text-sm text-muted-foreground">
                         <Smile className="h-4 w-4" />
                         <span className="font-medium">Choose an icon</span>
                       </div>
@@ -316,7 +316,7 @@ export function DocumentEditor({
                           <button
                             key={emoji}
                             onClick={() => handleIconChange(emoji)}
-                            className="text-xl p-2 rounded-lg hover:bg-slate-700/80 transition-all duration-150 hover:scale-110 active:scale-95"
+                            className="text-xl p-2 rounded-lg hover:bg-accent/80 transition-all duration-150 hover:scale-110 active:scale-95"
                           >
                             {emoji}
                           </button>
@@ -343,17 +343,17 @@ export function DocumentEditor({
                     onBlur={handleTitleBlur}
                     placeholder="Untitled document"
                     disabled={readOnly}
-                    className="flex-1 min-w-0 text-xl font-semibold bg-transparent border-none outline-none text-white placeholder-slate-600 focus:placeholder-slate-500 transition-colors"
+                    className="flex-1 min-w-0 text-xl font-semibold bg-transparent border-none outline-none text-foreground placeholder-slate-600 focus:placeholder-muted-foreground transition-colors"
                   />
 
                   {/* Save Status */}
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {isSaving && (
-                      <div className="flex items-center gap-1.5 text-slate-500 text-xs">
+                      <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                         <div className="relative">
                           <Cloud className="h-3.5 w-3.5" />
                           <div className="absolute inset-0 animate-ping">
-                            <Cloud className="h-3.5 w-3.5 text-slate-500/50" />
+                            <Cloud className="h-3.5 w-3.5 text-muted-foreground/50" />
                           </div>
                         </div>
                         <span>Saving...</span>
@@ -376,7 +376,7 @@ export function DocumentEditor({
 
         {/* Editor Toolbar */}
         {editor && !readOnly && (
-          <div className="bg-slate-900/95 backdrop-blur-xl border-b border-slate-800/50 shadow-lg shadow-black/10">
+          <div className="bg-background/95 backdrop-blur-xl border-b border-border/50 shadow-lg shadow-black/10">
             <EditorToolbar
               editor={editor}
               onSave={handleManualSave}
@@ -393,7 +393,7 @@ export function DocumentEditor({
           {editorMode === "rich" ? (
             <EditorContent
               editor={editor}
-              className="min-h-[500px] [&_.ProseMirror]:text-slate-300 [&_.ProseMirror]:leading-relaxed [&_.ProseMirror]:text-[17px] [&_.ProseMirror_h1]:text-white [&_.ProseMirror_h2]:text-white [&_.ProseMirror_h3]:text-white [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h1]:text-3xl [&_.ProseMirror_h2]:text-2xl [&_.ProseMirror_h3]:text-xl [&_.ProseMirror_h1]:mt-10 [&_.ProseMirror_h1]:mb-4 [&_.ProseMirror_h2]:mt-8 [&_.ProseMirror_h2]:mb-3 [&_.ProseMirror_h3]:mt-6 [&_.ProseMirror_h3]:mb-2 [&_.ProseMirror_h1]:tracking-tight [&_.ProseMirror_h2]:tracking-tight [&_.ProseMirror_p]:my-4 [&_.ProseMirror_ul]:my-4 [&_.ProseMirror_ol]:my-4 [&_.ProseMirror_li]:my-1 [&_.ProseMirror_blockquote]:border-l-4 [&_.ProseMirror_blockquote]:border-primary-500 [&_.ProseMirror_blockquote]:pl-5 [&_.ProseMirror_blockquote]:italic [&_.ProseMirror_blockquote]:text-slate-400 [&_.ProseMirror_blockquote]:bg-slate-800/30 [&_.ProseMirror_blockquote]:py-3 [&_.ProseMirror_blockquote]:pr-4 [&_.ProseMirror_blockquote]:rounded-r-lg [&_.ProseMirror_code]:bg-slate-800 [&_.ProseMirror_code]:px-1.5 [&_.ProseMirror_code]:py-0.5 [&_.ProseMirror_code]:rounded [&_.ProseMirror_code]:text-primary-400 [&_.ProseMirror_code]:text-sm [&_.ProseMirror_code]:font-mono"
+              className="min-h-[500px] [&_.ProseMirror]:text-foreground [&_.ProseMirror]:leading-relaxed [&_.ProseMirror]:text-[17px] [&_.ProseMirror_h1]:text-foreground [&_.ProseMirror_h2]:text-foreground [&_.ProseMirror_h3]:text-foreground [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h1]:text-3xl [&_.ProseMirror_h2]:text-2xl [&_.ProseMirror_h3]:text-xl [&_.ProseMirror_h1]:mt-10 [&_.ProseMirror_h1]:mb-4 [&_.ProseMirror_h2]:mt-8 [&_.ProseMirror_h2]:mb-3 [&_.ProseMirror_h3]:mt-6 [&_.ProseMirror_h3]:mb-2 [&_.ProseMirror_h1]:tracking-tight [&_.ProseMirror_h2]:tracking-tight [&_.ProseMirror_p]:my-4 [&_.ProseMirror_ul]:my-4 [&_.ProseMirror_ol]:my-4 [&_.ProseMirror_li]:my-1 [&_.ProseMirror_blockquote]:border-l-4 [&_.ProseMirror_blockquote]:border-primary-500 [&_.ProseMirror_blockquote]:pl-5 [&_.ProseMirror_blockquote]:italic [&_.ProseMirror_blockquote]:text-muted-foreground [&_.ProseMirror_blockquote]:bg-muted/30 [&_.ProseMirror_blockquote]:py-3 [&_.ProseMirror_blockquote]:pr-4 [&_.ProseMirror_blockquote]:rounded-r-lg [&_.ProseMirror_code]:bg-muted [&_.ProseMirror_code]:px-1.5 [&_.ProseMirror_code]:py-0.5 [&_.ProseMirror_code]:rounded [&_.ProseMirror_code]:text-primary-400 [&_.ProseMirror_code]:text-sm [&_.ProseMirror_code]:font-mono"
             />
           ) : (
             <div className="min-h-[500px]">
@@ -402,10 +402,10 @@ export function DocumentEditor({
                 onChange={handleMarkdownChange}
                 disabled={readOnly}
                 placeholder="Write your content in Markdown..."
-                className="w-full min-h-[500px] bg-slate-900/50 border border-slate-700 rounded-lg p-4 text-slate-300 font-mono text-sm leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder-slate-500"
+                className="w-full min-h-[500px] bg-background/50 border border-border rounded-lg p-4 text-foreground font-mono text-sm leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder-muted-foreground"
                 spellCheck={false}
               />
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-2 text-xs text-muted-foreground">
                 Tip: Use Markdown syntax for formatting. Click &quot;Rich&quot; to preview and switch back to visual editing.
               </p>
             </div>

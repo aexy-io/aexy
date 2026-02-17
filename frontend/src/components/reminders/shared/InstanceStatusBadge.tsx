@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 const STATUS_CONFIG: Record<ReminderInstanceStatus, { label: string; className: string; icon: React.ReactNode }> = {
   pending: {
     label: "Pending",
-    className: "bg-slate-500/20 text-slate-400",
+    className: "bg-muted-foreground/20 text-muted-foreground",
     icon: <Clock className="h-3 w-3" />,
   },
   notified: {

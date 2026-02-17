@@ -80,13 +80,13 @@ function EventCard({
   return (
     <button
       onClick={onClick}
-      className="w-full text-left p-4 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-xl transition-all"
+      className="w-full text-left p-4 bg-muted/50 hover:bg-muted border border-border hover:border-border rounded-xl transition-all"
     >
       <div className="flex items-start gap-3">
         <div className="w-1 h-full min-h-[40px] rounded-full bg-purple-500" />
         <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-white truncate">{event.title}</h3>
-          <div className="flex items-center gap-3 mt-1 text-sm text-slate-400">
+          <h3 className="font-medium text-foreground truncate">{event.title}</h3>
+          <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
               {formatEventTime(event)}
@@ -99,7 +99,7 @@ function EventCard({
             )}
           </div>
           {event.attendees && event.attendees.length > 0 && (
-            <div className="flex items-center gap-1 mt-2 text-xs text-slate-500">
+            <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
               <Users className="w-3 h-3" />
               {event.attendees.length} attendee{event.attendees.length !== 1 ? "s" : ""}
             </div>
@@ -132,16 +132,16 @@ function EventDetailModal({
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-slate-800 rounded-xl w-full max-w-lg border border-slate-700 overflow-hidden"
+        className="bg-muted rounded-xl w-full max-w-lg border border-border overflow-hidden"
       >
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-700">
-          <h3 className="text-lg font-semibold text-white truncate">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-border">
+          <h3 className="text-lg font-semibold text-foreground truncate">
             {event.title || "(No title)"}
           </h3>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -155,7 +155,7 @@ function EventDetailModal({
               <Clock className="w-4 h-4 text-purple-400" />
             </div>
             <div>
-              <p className="text-white">
+              <p className="text-foreground">
                 {eventDate.toLocaleDateString([], {
                   weekday: "long",
                   month: "long",
@@ -163,7 +163,7 @@ function EventDetailModal({
                   year: "numeric",
                 })}
               </p>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-muted-foreground">
                 {formatEventTime(event)}
               </p>
             </div>
@@ -192,7 +192,7 @@ function EventDetailModal({
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 ) : (
-                  <p className="text-white">{event.location}</p>
+                  <p className="text-foreground">{event.location}</p>
                 )}
               </div>
             </div>
@@ -205,20 +205,20 @@ function EventDetailModal({
                 <Users className="w-4 h-4 text-green-400" />
               </div>
               <div className="flex-1">
-                <p className="text-sm text-slate-400 mb-2">
+                <p className="text-sm text-muted-foreground mb-2">
                   {event.attendees.length} attendee{event.attendees.length !== 1 ? "s" : ""}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {event.attendees.slice(0, 5).map((attendee, idx) => (
                     <span
                       key={idx}
-                      className="px-2 py-1 text-xs bg-slate-700 text-slate-300 rounded"
+                      className="px-2 py-1 text-xs bg-accent text-foreground rounded"
                     >
                       {typeof attendee === "string" ? attendee : attendee.email}
                     </span>
                   ))}
                   {event.attendees.length > 5 && (
-                    <span className="px-2 py-1 text-xs bg-slate-700 text-slate-400 rounded">
+                    <span className="px-2 py-1 text-xs bg-accent text-muted-foreground rounded">
                       +{event.attendees.length - 5} more
                     </span>
                   )}
@@ -229,8 +229,8 @@ function EventDetailModal({
 
           {/* Description */}
           {event.description && (
-            <div className="pt-4 border-t border-slate-700">
-              <p className="text-sm text-slate-300 whitespace-pre-wrap">
+            <div className="pt-4 border-t border-border">
+              <p className="text-sm text-foreground whitespace-pre-wrap">
                 {event.description}
               </p>
             </div>
@@ -238,17 +238,17 @@ function EventDetailModal({
         </div>
 
         {/* Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-t border-slate-700">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-t border-border">
           <button
             onClick={() => {}}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-400 hover:text-white transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <Link2 className="w-4 h-4" />
             Link to Record
           </button>
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+            className="px-4 py-2 bg-accent hover:bg-accent text-foreground rounded-lg transition-colors"
           >
             Close
           </button>
@@ -318,11 +318,11 @@ function MonthView({
   return (
     <div className="flex-1 overflow-auto">
       {/* Day headers */}
-      <div className="grid grid-cols-7 border-b border-slate-800">
+      <div className="grid grid-cols-7 border-b border-border">
         {dayNames.map((day) => (
           <div
             key={day}
-            className="px-2 py-3 text-center text-sm font-medium text-slate-400"
+            className="px-2 py-3 text-center text-sm font-medium text-muted-foreground"
           >
             {day}
           </div>
@@ -337,7 +337,7 @@ function MonthView({
               return (
                 <div
                   key={`${weekIdx}-${dayIdx}`}
-                  className="min-h-[120px] border-b border-r border-slate-800/50 bg-slate-900/30"
+                  className="min-h-[120px] border-b border-r border-border/50 bg-muted/30"
                 />
               );
             }
@@ -350,13 +350,13 @@ function MonthView({
               <div
                 key={`${weekIdx}-${dayIdx}`}
                 onClick={() => onDayClick(date)}
-                className="min-h-[120px] border-b border-r border-slate-800 p-2 hover:bg-slate-800/30 cursor-pointer transition-colors"
+                className="min-h-[120px] border-b border-r border-border p-2 hover:bg-muted/30 cursor-pointer transition-colors"
               >
                 <div
                   className={`w-7 h-7 flex items-center justify-center rounded-full text-sm mb-2 ${
                     isToday
                       ? "bg-purple-500 text-white font-medium"
-                      : "text-slate-300"
+                      : "text-foreground"
                   }`}
                 >
                   {day}
@@ -371,7 +371,7 @@ function MonthView({
                     />
                   ))}
                   {dayEvents.length > 3 && (
-                    <p className="text-xs text-slate-500 px-2">
+                    <p className="text-xs text-muted-foreground px-2">
                       +{dayEvents.length - 3} more
                     </p>
                   )}
@@ -411,7 +411,7 @@ function DayView({
 
   return (
     <div className="flex-1 overflow-auto p-6">
-      <h2 className="text-lg font-semibold text-white mb-4">
+      <h2 className="text-lg font-semibold text-foreground mb-4">
         {date.toLocaleDateString([], {
           weekday: "long",
           month: "long",
@@ -421,8 +421,8 @@ function DayView({
       </h2>
 
       {dayEvents.length === 0 ? (
-        <div className="text-center py-12 text-slate-400">
-          <CalendarIcon className="w-12 h-12 mx-auto mb-4 text-slate-600" />
+        <div className="text-center py-12 text-muted-foreground">
+          <CalendarIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
           <p>No events scheduled for this day</p>
         </div>
       ) : (
@@ -451,13 +451,13 @@ function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center h-full py-16 px-4">
-      <div className="bg-slate-800/50 rounded-full p-6 mb-6">
-        <CalendarIcon className="h-12 w-12 text-slate-400" />
+      <div className="bg-muted/50 rounded-full p-6 mb-6">
+        <CalendarIcon className="h-12 w-12 text-muted-foreground" />
       </div>
-      <h2 className="text-xl font-semibold text-white mb-2">
+      <h2 className="text-xl font-semibold text-foreground mb-2">
         {hasIntegration ? "No events synced yet" : "Connect your calendar"}
       </h2>
-      <p className="text-slate-400 text-center max-w-md mb-6">
+      <p className="text-muted-foreground text-center max-w-md mb-6">
         {hasIntegration
           ? "Sync your Google Calendar to see events here and link them to contacts."
           : "Connect your Google account to sync calendar events."}
@@ -705,9 +705,9 @@ function CalendarPageContent() {
 
   if (!workspaceId) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col">
+      <div className="min-h-screen bg-background flex flex-col">
 <div className="flex-1 flex items-center justify-center">
-          <div className="text-slate-400">Loading workspace...</div>
+          <div className="text-muted-foreground">Loading workspace...</div>
         </div>
       </div>
     );
@@ -715,7 +715,7 @@ function CalendarPageContent() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col">
+      <div className="min-h-screen bg-background flex flex-col">
 <div className="flex-1 flex items-center justify-center">
           <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
         </div>
@@ -724,19 +724,19 @@ function CalendarPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
 {/* Header */}
-      <div className="border-b border-slate-800 px-6 py-4">
+      <div className="border-b border-border px-6 py-4">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push("/crm")}
-              className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
               CRM
             </button>
-            <h1 className="text-xl font-semibold text-white flex items-center gap-2">
+            <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
               <CalendarIcon className="w-5 h-5 text-purple-400" />
               Calendar
             </h1>
@@ -746,7 +746,7 @@ function CalendarPageContent() {
               <button
                 onClick={handleSync}
                 disabled={isSyncing}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors disabled:opacity-50"
               >
                 <RefreshCw
                   className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`}
@@ -756,7 +756,7 @@ function CalendarPageContent() {
             )}
             <button
               onClick={() => router.push("/crm/settings/integrations")}
-              className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+              className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
             >
               Settings
             </button>
@@ -806,41 +806,41 @@ function CalendarPageContent() {
       ) : (
         <>
           {/* Calendar Controls */}
-          <div className="border-b border-slate-800 px-6 py-3">
+          <div className="border-b border-border px-6 py-3">
             <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <button
                   onClick={goToToday}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg transition-colors"
+                  className="px-4 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors"
                 >
                   Today
                 </button>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => navigateMonth(-1)}
-                    className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-white"
+                    className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
                   <button
                     onClick={() => navigateMonth(1)}
-                    className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-white"
+                    className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground"
                   >
                     <ChevronRight className="w-5 h-5" />
                   </button>
                 </div>
-                <h2 className="text-lg font-semibold text-white">{monthName}</h2>
+                <h2 className="text-lg font-semibold text-foreground">{monthName}</h2>
               </div>
 
-              <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-lg p-1">
+              <div className="flex items-center gap-1 bg-muted border border-border rounded-lg p-1">
                 {(["month", "week", "day"] as ViewMode[]).map((mode) => (
                   <button
                     key={mode}
                     onClick={() => setViewMode(mode)}
                     className={`px-4 py-1.5 text-sm rounded-md transition-colors ${
                       viewMode === mode
-                        ? "bg-slate-700 text-white"
-                        : "text-slate-400 hover:text-white"
+                        ? "bg-accent text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {mode.charAt(0).toUpperCase() + mode.slice(1)}
@@ -869,7 +869,7 @@ function CalendarPageContent() {
               />
             )}
             {viewMode === "week" && (
-              <div className="flex-1 flex items-center justify-center text-slate-400">
+              <div className="flex-1 flex items-center justify-center text-muted-foreground">
                 <p>Week view coming soon</p>
               </div>
             )}
@@ -894,7 +894,7 @@ function CalendarPageContent() {
 
 export default function CalendarPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="animate-spin h-8 w-8 border-2 border-purple-500 border-t-transparent rounded-full" /></div>}>
+    <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center"><div className="animate-spin h-8 w-8 border-2 border-purple-500 border-t-transparent rounded-full" /></div>}>
       <CalendarPageContent />
     </Suspense>
   );

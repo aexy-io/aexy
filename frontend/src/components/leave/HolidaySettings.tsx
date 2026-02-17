@@ -122,7 +122,7 @@ export function HolidaySettings() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 text-slate-400 animate-spin" />
+        <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
       </div>
     );
   }
@@ -132,8 +132,8 @@ export function HolidaySettings() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold text-white">Holidays</h3>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <h3 className="text-base font-semibold text-foreground">Holidays</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
             Manage public holidays and optional holidays for your workspace
           </p>
         </div>
@@ -148,14 +148,14 @@ export function HolidaySettings() {
 
       {/* Form */}
       {showForm && (
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-5">
+        <div className="bg-muted/50 border border-border/50 rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h4 className="text-sm font-semibold text-white">
+            <h4 className="text-sm font-semibold text-foreground">
               {editingId ? "Edit Holiday" : "New Holiday"}
             </h4>
             <button
               onClick={closeForm}
-              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition"
+              className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition"
             >
               <X className="h-4 w-4" />
             </button>
@@ -163,7 +163,7 @@ export function HolidaySettings() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">
+                <label className="block text-xs font-medium text-muted-foreground mb-1">
                   Holiday Name
                 </label>
                 <input
@@ -173,12 +173,12 @@ export function HolidaySettings() {
                     setFormData({ ...formData, name: e.target.value })
                   }
                   placeholder="e.g. New Year's Day"
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500/50"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-blue-500/50"
                   required
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">
+                <label className="block text-xs font-medium text-muted-foreground mb-1">
                   Date
                 </label>
                 <input
@@ -187,15 +187,15 @@ export function HolidaySettings() {
                   onChange={(e) =>
                     setFormData({ ...formData, date: e.target.value })
                   }
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50 [color-scheme:dark]"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-blue-500/50 [color-scheme:dark]"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">
-                Description <span className="text-slate-500 font-normal">(optional)</span>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                Description <span className="text-muted-foreground font-normal">(optional)</span>
               </label>
               <input
                 type="text"
@@ -204,7 +204,7 @@ export function HolidaySettings() {
                   setFormData({ ...formData, description: e.target.value })
                 }
                 placeholder="Optional description"
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500/50"
+                className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-blue-500/50"
               />
             </div>
 
@@ -217,15 +217,15 @@ export function HolidaySettings() {
                   is_optional: !formData.is_optional,
                 })
               }
-              className="flex items-center gap-2 text-sm text-slate-300"
+              className="flex items-center gap-2 text-sm text-foreground"
             >
               {formData.is_optional ? (
                 <ToggleRight className="h-5 w-5 text-blue-400" />
               ) : (
-                <ToggleLeft className="h-5 w-5 text-slate-500" />
+                <ToggleLeft className="h-5 w-5 text-muted-foreground" />
               )}
               Optional Holiday
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-muted-foreground">
                 (employees can choose to work)
               </span>
             </button>
@@ -235,7 +235,7 @@ export function HolidaySettings() {
               <button
                 type="button"
                 onClick={closeForm}
-                className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition"
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-border text-foreground hover:bg-muted transition"
               >
                 Cancel
               </button>
@@ -257,41 +257,41 @@ export function HolidaySettings() {
       )}
 
       {/* Table */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="bg-background border border-border rounded-xl overflow-hidden">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-slate-800">
-              <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wider px-4 py-3">
+            <tr className="border-b border-border">
+              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
                 Holiday
               </th>
-              <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wider px-4 py-3">
+              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
                 Date
               </th>
-              <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wider px-4 py-3">
+              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
                 Type
               </th>
-              <th className="text-right text-xs font-medium text-slate-400 uppercase tracking-wider px-4 py-3">
+              <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800">
+          <tbody className="divide-y divide-border">
             {sortedHolidays.map((holiday) => (
               <tr
                 key={holiday.id}
-                className={`hover:bg-slate-800/50 transition ${
+                className={`hover:bg-muted/50 transition ${
                   isPast(holiday.date) ? "opacity-50" : ""
                 }`}
               >
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2.5">
-                    <CalendarDays className="h-4 w-4 text-slate-500 flex-shrink-0" />
+                    <CalendarDays className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     <div>
-                      <span className="text-sm font-medium text-white">
+                      <span className="text-sm font-medium text-foreground">
                         {holiday.name}
                       </span>
                       {holiday.description && (
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <p className="text-xs text-muted-foreground mt-0.5">
                           {holiday.description}
                         </p>
                       )}
@@ -299,7 +299,7 @@ export function HolidaySettings() {
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="text-sm text-slate-300">
+                  <span className="text-sm text-foreground">
                     {formatDate(holiday.date)}
                   </span>
                 </td>
@@ -319,7 +319,7 @@ export function HolidaySettings() {
                   <div className="flex items-center justify-end gap-1">
                     <button
                       onClick={() => openEditForm(holiday)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition"
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition"
                       title="Edit"
                     >
                       <Pencil className="h-3.5 w-3.5" />
@@ -330,7 +330,7 @@ export function HolidaySettings() {
                       className={`p-1.5 rounded-lg transition ${
                         deletingId === holiday.id
                           ? "text-red-400 bg-red-500/10"
-                          : "text-slate-400 hover:text-red-400 hover:bg-slate-700"
+                          : "text-muted-foreground hover:text-red-400 hover:bg-accent"
                       }`}
                       title={
                         deletingId === holiday.id
@@ -348,7 +348,7 @@ export function HolidaySettings() {
               <tr>
                 <td
                   colSpan={4}
-                  className="px-4 py-8 text-center text-sm text-slate-500"
+                  className="px-4 py-8 text-center text-sm text-muted-foreground"
                 >
                   No holidays configured yet.
                 </td>

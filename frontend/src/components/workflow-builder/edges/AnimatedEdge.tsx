@@ -100,7 +100,7 @@ export const AnimatedEdge = memo(
                 transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
                 pointerEvents: "all",
               }}
-              className="px-1.5 py-0.5 rounded bg-slate-800/90 border border-emerald-500/30 text-[10px] text-emerald-400 font-medium"
+              className="px-1.5 py-0.5 rounded bg-muted/90 border border-emerald-500/30 text-[10px] text-emerald-400 font-medium"
             >
               {durationMs}ms
             </div>

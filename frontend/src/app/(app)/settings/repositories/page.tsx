@@ -180,7 +180,7 @@ function CollapsibleSection({
         {headerRight}
       </div>
       {expanded && (
-        <div className="divide-y divide-slate-700/50">
+        <div className="divide-y divide-border/50">
           {children}
         </div>
       )}
@@ -513,7 +513,7 @@ export default function RepositorySettingsPage() {
         {/* No Installation State */}
         {!installationStatus?.has_installation && (
           <div className="bg-card rounded-xl p-12 text-center">
-            <FolderGit2 className="h-16 w-16 text-slate-600 mx-auto mb-4" />
+            <FolderGit2 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-xl font-medium text-foreground mb-2">GitHub App Not Installed</h3>
             <p className="text-muted-foreground mb-6">
               Install the Aexy GitHub App to grant access to your repositories.
@@ -537,7 +537,7 @@ export default function RepositorySettingsPage() {
         {/* Empty State - has installation but no repos */}
         {installationStatus?.has_installation && repositories.length === 0 && (
           <div className="bg-card rounded-xl p-12 text-center">
-            <FolderGit2 className="h-16 w-16 text-slate-600 mx-auto mb-4" />
+            <FolderGit2 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-xl font-medium text-foreground mb-2">No repositories found</h3>
             <p className="text-muted-foreground mb-6">
               We couldn&apos;t find any repositories. Try refreshing from GitHub or check your app installation permissions.
@@ -573,7 +573,7 @@ export default function RepositorySettingsPage() {
               <Settings className="h-5 w-5 text-muted-foreground" />
               Sync Settings
             </h2>
-            <div className="bg-card rounded-xl divide-y divide-slate-700">
+            <div className="bg-card rounded-xl divide-y divide-border">
               <div className="p-4 flex items-center justify-between">
                 <div>
                   <h3 className="text-foreground font-medium">Auto-sync</h3>

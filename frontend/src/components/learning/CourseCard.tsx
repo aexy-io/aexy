@@ -43,13 +43,13 @@ export function CourseCard({
 
   const provider = providerConfig[course.provider] || {
     icon: BookOpen,
-    color: "text-slate-400",
+    color: "text-muted-foreground",
     label: course.provider,
   };
   const ProviderIcon = provider.icon;
 
   const difficulty = course.difficulty
-    ? difficultyConfig[course.difficulty] || { color: "text-slate-400", bgColor: "bg-slate-700" }
+    ? difficultyConfig[course.difficulty] || { color: "text-muted-foreground", bgColor: "bg-accent" }
     : null;
 
   const formatDuration = (minutes: number | null) => {
@@ -72,7 +72,7 @@ export function CourseCard({
 
   if (compact) {
     return (
-      <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-800 border border-slate-700 hover:border-slate-600 transition">
+      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted border border-border hover:border-border transition">
         {/* Thumbnail */}
         {course.thumbnail_url ? (
           <img
@@ -81,14 +81,14 @@ export function CourseCard({
             className="w-20 h-12 rounded object-cover flex-shrink-0"
           />
         ) : (
-          <div className="w-20 h-12 rounded bg-slate-700 flex items-center justify-center flex-shrink-0">
+          <div className="w-20 h-12 rounded bg-accent flex items-center justify-center flex-shrink-0">
             <ProviderIcon className={`h-6 w-6 ${provider.color}`} />
           </div>
         )}
 
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-white truncate">{course.title}</p>
-          <div className="flex items-center gap-2 text-xs text-slate-400">
+          <p className="text-sm font-medium text-foreground truncate">{course.title}</p>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <ProviderIcon className={`h-3 w-3 ${provider.color}`} />
             <span>{provider.label}</span>
             {course.duration_minutes && (
@@ -114,9 +114,9 @@ export function CourseCard({
   }
 
   return (
-    <div className="rounded-xl border border-slate-700 overflow-hidden bg-slate-800 hover:border-slate-600 transition">
+    <div className="rounded-xl border border-border overflow-hidden bg-muted hover:border-border transition">
       {/* Thumbnail */}
-      <div className="relative aspect-video bg-slate-700">
+      <div className="relative aspect-video bg-accent">
         {course.thumbnail_url ? (
           <img
             src={course.thumbnail_url}
@@ -130,14 +130,14 @@ export function CourseCard({
         )}
 
         {/* Provider badge */}
-        <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded bg-black/60 text-white text-xs">
+        <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded bg-black/60 text-foreground text-xs">
           <ProviderIcon className={`h-3 w-3 ${provider.color}`} />
           <span>{provider.label}</span>
         </div>
 
         {/* Duration badge */}
         {course.duration_minutes && (
-          <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/60 text-white text-xs flex items-center gap-1">
+          <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/60 text-foreground text-xs flex items-center gap-1">
             <Clock className="h-3 w-3" />
             {formatDuration(course.duration_minutes)}
           </div>
@@ -153,14 +153,14 @@ export function CourseCard({
 
       {/* Content */}
       <div className="p-4">
-        <h3 className="font-medium text-white line-clamp-2 mb-2">{course.title}</h3>
+        <h3 className="font-medium text-foreground line-clamp-2 mb-2">{course.title}</h3>
 
         {course.description && (
-          <p className="text-sm text-slate-400 line-clamp-2 mb-3">{course.description}</p>
+          <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{course.description}</p>
         )}
 
         {/* Metadata row */}
-        <div className="flex items-center gap-3 text-xs text-slate-400 mb-3">
+        <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
           {course.instructor && (
             <div className="flex items-center gap-1">
               <User className="h-3 w-3" />
@@ -184,7 +184,7 @@ export function CourseCard({
         {course.skill_tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-3">
             {course.skill_tags.slice(0, 3).map((tag) => (
-              <span key={tag} className="text-xs px-2 py-0.5 bg-slate-700 text-slate-300 rounded">
+              <span key={tag} className="text-xs px-2 py-0.5 bg-accent text-foreground rounded">
                 {tag}
               </span>
             ))}
@@ -197,7 +197,7 @@ export function CourseCard({
             href={course.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition"
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-accent hover:bg-muted text-foreground rounded-lg text-sm font-medium transition"
           >
             <ExternalLink className="h-4 w-4" />
             View Course

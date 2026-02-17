@@ -39,14 +39,14 @@ export function ToolCallDisplay({
   };
 
   return (
-    <div className="border border-slate-600 rounded-lg overflow-hidden my-2">
+    <div className="border border-border rounded-lg overflow-hidden my-2">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between px-3 py-2 bg-slate-700/50 hover:bg-slate-700 transition text-left"
+        className="w-full flex items-center justify-between px-3 py-2 bg-accent/50 hover:bg-accent transition text-left"
       >
         <div className="flex items-center gap-2">
           <Wrench className="h-4 w-4 text-amber-400" />
-          <span className="text-sm font-medium text-slate-200">
+          <span className="text-sm font-medium text-foreground">
             {formatToolName(toolName)}
           </span>
           {status === "completed" && (
@@ -60,20 +60,20 @@ export function ToolCallDisplay({
           )}
         </div>
         {isExpanded ? (
-          <ChevronDown className="h-4 w-4 text-slate-400" />
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
         ) : (
-          <ChevronRight className="h-4 w-4 text-slate-400" />
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
         )}
       </button>
 
       {isExpanded && (
-        <div className="p-3 space-y-3 bg-slate-800/50">
+        <div className="p-3 space-y-3 bg-muted/50">
           {input && Object.keys(input).length > 0 && (
             <div>
-              <div className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">
+              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
                 Input
               </div>
-              <pre className="text-xs text-slate-300 bg-slate-900/50 rounded p-2 overflow-x-auto whitespace-pre-wrap">
+              <pre className="text-xs text-foreground bg-background/50 rounded p-2 overflow-x-auto whitespace-pre-wrap">
                 {formatJson(input)}
               </pre>
             </div>
@@ -81,10 +81,10 @@ export function ToolCallDisplay({
 
           {output !== undefined && (
             <div>
-              <div className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">
+              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
                 Output
               </div>
-              <pre className="text-xs text-slate-300 bg-slate-900/50 rounded p-2 overflow-x-auto whitespace-pre-wrap">
+              <pre className="text-xs text-foreground bg-background/50 rounded p-2 overflow-x-auto whitespace-pre-wrap">
                 {truncateOutput(
                   typeof output === "string" ? output : formatJson(output)
                 )}

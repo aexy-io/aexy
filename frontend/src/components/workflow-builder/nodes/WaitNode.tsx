@@ -64,7 +64,7 @@ export const WaitNode = memo(({ data, selected }: NodeProps<WaitNodeType>) => {
     if (isRunning) return "border-blue-400 shadow-blue-500/30 animate-pulse";
     if (isSuccess) return "border-violet-400 shadow-violet-500/30";
     if (isFailed) return "border-red-500 shadow-red-500/30";
-    if (isSkipped) return "border-slate-500 shadow-slate-500/20 opacity-60";
+    if (isSkipped) return "border-muted-foreground shadow-muted-foreground/20 opacity-60";
     if (data.hasError) return "border-red-500 shadow-red-500/20";
     if (selected) return "border-violet-400 shadow-violet-500/20";
     return "border-violet-500/50";
@@ -77,7 +77,7 @@ export const WaitNode = memo(({ data, selected }: NodeProps<WaitNodeType>) => {
         bg-gradient-to-br from-violet-500/20 to-violet-600/10
         border-2 transition-all
         ${getStyles()}
-        ${isHighlighted ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-slate-900" : ""}
+        ${isHighlighted ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-background" : ""}
       `}
     >
       {StatusIndicator}
@@ -97,7 +97,7 @@ export const WaitNode = memo(({ data, selected }: NodeProps<WaitNodeType>) => {
           <div className={`text-[10px] uppercase tracking-wider font-medium ${data.hasError ? "text-red-400/70" : "text-violet-400/70"}`}>
             Wait
           </div>
-          <div className="text-white font-medium text-sm">
+          <div className="text-foreground font-medium text-sm">
             {data.label as string}
           </div>
           {!data.hasError && (

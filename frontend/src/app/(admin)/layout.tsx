@@ -71,10 +71,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // Loading state
   if (!mounted || isAuthLoading || isAdminLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-          <p className="text-slate-400">Verifying admin access...</p>
+          <p className="text-muted-foreground">Verifying admin access...</p>
         </div>
       </div>
     );
@@ -86,15 +86,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-background">
       {/* Top Header */}
-      <header className="border-b border-slate-700 bg-slate-800/50 sticky top-0 z-50">
+      <header className="border-b border-border bg-muted/50 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link
                 href="/dashboard"
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Link>
@@ -103,8 +103,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <Shield className="h-5 w-5 text-amber-500" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-semibold text-white">Platform Admin</h1>
-                  <p className="text-slate-400 text-sm">{user?.email}</p>
+                  <h1 className="text-lg font-semibold text-foreground">Platform Admin</h1>
+                  <p className="text-muted-foreground text-sm">{user?.email}</p>
                 </div>
               </div>
             </div>
@@ -114,7 +114,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       <div className="flex">
         {/* Sidebar */}
-        <aside className="w-64 border-r border-slate-700 bg-slate-800/30 min-h-[calc(100vh-65px)] sticky top-[65px]">
+        <aside className="w-64 border-r border-border bg-muted/30 min-h-[calc(100vh-65px)] sticky top-[65px]">
           <nav className="p-4 space-y-1">
             {adminNavItems.map((item) => {
               const Icon = item.icon;
@@ -123,11 +123,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700/50 transition",
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-foreground hover:text-foreground hover:bg-accent/50 transition",
                     "group"
                   )}
                 >
-                  <Icon className="h-5 w-5 text-slate-400 group-hover:text-white transition" />
+                  <Icon className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition" />
                   {item.title}
                 </Link>
               );

@@ -14,7 +14,7 @@ const SEVERITY_COLORS: Record<string, string> = {
   critical: "text-red-400 bg-red-900/30",
   major: "text-orange-400 bg-orange-900/30",
   minor: "text-yellow-400 bg-yellow-900/30",
-  trivial: "text-slate-400 bg-slate-700",
+  trivial: "text-muted-foreground bg-accent",
 };
 
 export function BugsTab({ publicSlug }: BugsTabProps) {
@@ -31,12 +31,12 @@ export function BugsTab({ publicSlug }: BugsTabProps) {
   return (
     <div className="space-y-3">
       {bugs.map((bug) => (
-        <div key={bug.id} className="bg-slate-800 rounded-lg p-4">
+        <div key={bug.id} className="bg-muted rounded-lg p-4">
           <div className="flex items-start gap-3">
-            <span className="text-xs font-mono text-slate-500 bg-slate-700 px-2 py-1 rounded">{bug.key}</span>
+            <span className="text-xs font-mono text-muted-foreground bg-accent px-2 py-1 rounded">{bug.key}</span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="text-white font-medium">{bug.title}</h3>
+                <h3 className="text-foreground font-medium">{bug.title}</h3>
                 {bug.is_regression && (
                   <span className="text-xs text-red-400 bg-red-900/30 px-1.5 py-0.5 rounded flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3" />
@@ -48,8 +48,8 @@ export function BugsTab({ publicSlug }: BugsTabProps) {
                 <span className={`px-2 py-0.5 rounded text-xs font-medium ${SEVERITY_COLORS[bug.severity] || SEVERITY_COLORS.minor}`}>
                   {bug.severity}
                 </span>
-                <span className="text-xs text-slate-500">{bug.bug_type}</span>
-                <span className="text-xs text-slate-500">{bug.status.replace("_", " ")}</span>
+                <span className="text-xs text-muted-foreground">{bug.bug_type}</span>
+                <span className="text-xs text-muted-foreground">{bug.status.replace("_", " ")}</span>
               </div>
             </div>
           </div>

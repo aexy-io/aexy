@@ -96,19 +96,19 @@ function QuickAccessCard({
   return (
     <button
       onClick={handleClick}
-      className="group bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-xl p-5 text-left transition-all duration-200 w-full"
+      className="group bg-muted/50 hover:bg-muted border border-border hover:border-border rounded-xl p-5 text-left transition-all duration-200 w-full"
     >
       <div className="flex items-start justify-between mb-3">
         <div className={`p-2.5 rounded-lg ${color}`}>{icon}</div>
-        <ArrowUpRight className="h-4 w-4 text-slate-500 group-hover:text-slate-300 transition-colors" />
+        <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
       </div>
-      <h3 className="text-base font-semibold text-white mb-1">{title}</h3>
-      <p className="text-sm text-slate-400 mb-3">{description}</p>
+      <h3 className="text-base font-semibold text-foreground mb-1">{title}</h3>
+      <p className="text-sm text-muted-foreground mb-3">{description}</p>
       {stats && stats.length > 0 && (
         <div className="flex items-center gap-4 text-xs">
           {stats.map((stat, i) => (
-            <span key={i} className="text-slate-400">
-              <span className="font-medium text-slate-300">{stat.value}</span> {stat.label}
+            <span key={i} className="text-muted-foreground">
+              <span className="font-medium text-foreground">{stat.value}</span> {stat.label}
             </span>
           ))}
         </div>
@@ -183,8 +183,8 @@ function GoogleIntegrationBanner({
               <GoogleIcon className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-medium text-white">Connect Google</h3>
-              <p className="text-xs text-slate-400">
+              <h3 className="text-sm font-medium text-foreground">Connect Google</h3>
+              <p className="text-xs text-muted-foreground">
                 Sync emails and calendar events to enrich your CRM
               </p>
             </div>
@@ -201,18 +201,18 @@ function GoogleIntegrationBanner({
   }
 
   return (
-    <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-4 mb-6">
+    <div className="bg-muted/30 border border-border/50 rounded-xl p-4 mb-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-green-500/20 rounded-lg">
             <CheckCircle2 className="w-5 h-5 text-green-400" />
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white flex items-center gap-2">
+            <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
               Google Connected
-              <span className="text-xs text-slate-500">{status.google_email}</span>
+              <span className="text-xs text-muted-foreground">{status.google_email}</span>
             </h3>
-            <div className="flex items-center gap-4 text-xs text-slate-400 mt-0.5">
+            <div className="flex items-center gap-4 text-xs text-muted-foreground mt-0.5">
               {status.gmail_sync_enabled && (
                 <span className="flex items-center gap-1">
                   <Mail className="w-3 h-3" />
@@ -230,7 +230,7 @@ function GoogleIntegrationBanner({
         </div>
         <a
           href="/crm/settings/integrations"
-          className="text-sm text-slate-400 hover:text-white transition-colors"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           Manage
         </a>
@@ -246,19 +246,19 @@ function ObjectCard({ object, onClick }: { object: CRMObject; onClick: () => voi
   return (
     <button
       onClick={onClick}
-      className="group bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-xl p-6 text-left transition-all duration-200"
+      className="group bg-muted/50 hover:bg-muted border border-border hover:border-border rounded-xl p-6 text-left transition-all duration-200"
     >
       <div className="flex items-start justify-between mb-4">
         <div className={`p-3 rounded-lg border ${colorClass}`}>{icon}</div>
-        <ChevronRight className="h-5 w-5 text-slate-500 group-hover:text-slate-300 transition-colors" />
+        <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
       </div>
-      <h3 className="text-lg font-semibold text-white mb-1">{object.plural_name}</h3>
-      <p className="text-sm text-slate-400 mb-3">{object.description || `Manage your ${object.plural_name.toLowerCase()}`}</p>
+      <h3 className="text-lg font-semibold text-foreground mb-1">{object.plural_name}</h3>
+      <p className="text-sm text-muted-foreground mb-3">{object.description || `Manage your ${object.plural_name.toLowerCase()}`}</p>
       <div className="flex items-center gap-4 text-sm">
-        <span className="text-slate-300">
+        <span className="text-foreground">
           <span className="font-medium">{object.record_count}</span> records
         </span>
-        <span className="text-slate-500">
+        <span className="text-muted-foreground">
           {object.attributes?.length || 0} attributes
         </span>
       </div>
@@ -269,11 +269,11 @@ function ObjectCard({ object, onClick }: { object: CRMObject; onClick: () => voi
 function EmptyState({ onStartOnboarding }: { onStartOnboarding: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4">
-      <div className="bg-slate-800/50 rounded-full p-6 mb-6">
+      <div className="bg-muted/50 rounded-full p-6 mb-6">
         <Sparkles className="h-12 w-12 text-purple-400" />
       </div>
-      <h2 className="text-2xl font-bold text-white mb-2">Welcome to CRM</h2>
-      <p className="text-slate-400 text-center max-w-md mb-8">
+      <h2 className="text-2xl font-bold text-foreground mb-2">Welcome to CRM</h2>
+      <p className="text-muted-foreground text-center max-w-md mb-8">
         Get started by setting up your CRM. Choose a template and configure your workspace.
       </p>
       <button
@@ -315,11 +315,11 @@ function CreateObjectModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-slate-800 rounded-xl p-6 w-full max-w-md border border-slate-700">
-        <h3 className="text-xl font-semibold text-white mb-4">Create Custom Object</h3>
+      <div className="bg-muted rounded-xl p-6 w-full max-w-md border border-border">
+        <h3 className="text-xl font-semibold text-foreground mb-4">Create Custom Object</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Name (singular)</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Name (singular)</label>
             <input
               type="text"
               value={name}
@@ -329,35 +329,35 @@ function CreateObjectModal({
               }}
               placeholder="e.g., Project"
               required
-              className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Name (plural)</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Name (plural)</label>
             <input
               type="text"
               value={pluralName}
               onChange={(e) => setPluralName(e.target.value)}
               placeholder="e.g., Projects"
               required
-              className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Description (optional)</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Description (optional)</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What is this object used for?"
               rows={2}
-              className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+              className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
             />
           </div>
           <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors"
+              className="flex-1 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-accent transition-colors"
             >
               Cancel
             </button>
@@ -454,14 +454,14 @@ export default function CRMPage() {
 
   if (isLoading || authLoading || !hasCheckedOnboarding) {
     return (
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen bg-background">
 <div className="p-8">
           <div className="max-w-7xl mx-auto">
             <div className="animate-pulse space-y-8">
-              <div className="h-8 w-48 bg-slate-800 rounded" />
+              <div className="h-8 w-48 bg-muted rounded" />
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-48 bg-slate-800 rounded-xl" />
+                  <div key={i} className="h-48 bg-muted rounded-xl" />
                 ))}
               </div>
             </div>
@@ -475,7 +475,7 @@ export default function CRMPage() {
   const onboardingComplete = localStorage.getItem("crm_onboarding_complete") === "true";
   if (objects.length === 0 && !onboardingComplete) {
     return (
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen bg-background">
 <div className="p-8">
           <div className="max-w-7xl mx-auto">
             <EmptyState onStartOnboarding={handleStartOnboarding} />
@@ -486,7 +486,7 @@ export default function CRMPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
 <div className="p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex gap-8 md:flex-row flex-col-reverse">
@@ -495,8 +495,8 @@ export default function CRMPage() {
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div>
-                <h1 className="text-3xl font-bold text-white mb-1">CRM</h1>
-                <p className="text-slate-400">Manage your contacts, companies, and deals</p>
+                <h1 className="text-3xl font-bold text-foreground mb-1">CRM</h1>
+                <p className="text-muted-foreground">Manage your contacts, companies, and deals</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -505,21 +505,21 @@ export default function CRMPage() {
                     recalculateCounts().catch(console.error);
                   }}
                   disabled={isRecalculating}
-                  className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg transition-colors text-sm disabled:opacity-50"
+                  className="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors text-sm disabled:opacity-50"
                   title="Refresh record counts"
                 >
                   <RefreshCw className={`h-4 w-4 ${isRecalculating ? "animate-spin" : ""}`} />
                 </button>
                 <button
                   onClick={() => router.push("/crm/automations")}
-                  className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg transition-colors text-sm"
+                  className="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors text-sm"
                 >
                   <Zap className="h-4 w-4" />
                   Automations
                 </button>
                 <button
                   onClick={() => router.push("/crm/settings")}
-                  className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg transition-colors text-sm"
+                  className="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors text-sm"
                 >
                   <Settings className="h-4 w-4" />
                   Settings
@@ -581,25 +581,25 @@ export default function CRMPage() {
                 {/* Search and View Toggle */}
                 <div className="flex items-center gap-4 mb-6">
                   <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search objects..."
-                      className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
-                  <div className="flex bg-slate-800 border border-slate-700 rounded-lg p-1">
+                  <div className="flex bg-muted border border-border rounded-lg p-1">
                     <button
                       onClick={() => setViewMode("grid")}
-                      className={`p-2 rounded ${viewMode === "grid" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"}`}
+                      className={`p-2 rounded ${viewMode === "grid" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                     >
                       <LayoutGrid className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => setViewMode("list")}
-                      className={`p-2 rounded ${viewMode === "list" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"}`}
+                      className={`p-2 rounded ${viewMode === "list" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                     >
                       <List className="h-4 w-4" />
                     </button>
@@ -609,7 +609,7 @@ export default function CRMPage() {
                 {/* System Objects */}
                 {systemObjects.length > 0 && (
                   <div className="mb-8">
-                    <h2 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-4">Standard Objects</h2>
+                    <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">Standard Objects</h2>
                     <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" : "space-y-3"}>
                       {systemObjects.map((object) => (
                         <ObjectCard key={object.id} object={object} onClick={() => handleObjectClick(object)} />
@@ -621,7 +621,7 @@ export default function CRMPage() {
                 {/* Custom Objects */}
                 {customObjects.length > 0 && (
                   <div>
-                    <h2 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-4">Custom Objects</h2>
+                    <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">Custom Objects</h2>
                     <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" : "space-y-3"}>
                       {customObjects.map((object) => (
                         <ObjectCard key={object.id} object={object} onClick={() => handleObjectClick(object)} />

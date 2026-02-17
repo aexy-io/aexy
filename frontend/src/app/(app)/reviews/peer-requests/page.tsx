@@ -30,7 +30,7 @@ function RequestCard({ request }: { request: ReviewRequest }) {
   return (
     <Link
       href={`/reviews/peer-requests/${request.id}`}
-      className="block bg-slate-900/50 border border-slate-800 rounded-xl p-5 hover:border-slate-700 hover:bg-slate-900 transition group"
+      className="block bg-background/50 border border-border rounded-xl p-5 hover:border-border hover:bg-background transition group"
     >
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
@@ -38,10 +38,10 @@ function RequestCard({ request }: { request: ReviewRequest }) {
             <MessageSquare className="h-5 w-5 text-amber-400" />
           </div>
           <div>
-            <p className="text-white font-medium group-hover:text-amber-400 transition">
+            <p className="text-foreground font-medium group-hover:text-amber-400 transition">
               Peer Review Request
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               From {request.requester_name || "Unknown"}
             </p>
           </div>
@@ -53,12 +53,12 @@ function RequestCard({ request }: { request: ReviewRequest }) {
       </div>
 
       {request.message && (
-        <p className="text-slate-400 text-sm mb-3 line-clamp-2">
+        <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
           &quot;{request.message}&quot;
         </p>
       )}
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-slate-500">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-muted-foreground">
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1">
             <Calendar className="h-3.5 w-3.5" />
@@ -70,7 +70,7 @@ function RequestCard({ request }: { request: ReviewRequest }) {
           </span>
           <span className="capitalize">{request.request_source}</span>
         </div>
-        <ChevronRight className="h-4 w-4 text-slate-600 group-hover:text-slate-400 transition" />
+        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-muted-foreground transition" />
       </div>
     </Link>
   );
@@ -87,13 +87,13 @@ export default function PeerRequestsPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
             <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
           </div>
-          <p className="text-slate-400 text-sm">Loading peer requests...</p>
+          <p className="text-muted-foreground text-sm">Loading peer requests...</p>
         </div>
       </div>
     );
@@ -104,12 +104,12 @@ export default function PeerRequestsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
 <main className="max-w-4xl mx-auto px-4 py-8">
         {/* Back Link */}
         <Link
           href="/reviews"
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white mb-6 transition"
+          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Reviews
@@ -121,8 +121,8 @@ export default function PeerRequestsPage() {
             <MessageSquare className="h-7 w-7 text-amber-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Peer Review Requests</h1>
-            <p className="text-slate-400 text-sm">
+            <h1 className="text-2xl font-bold text-foreground">Peer Review Requests</h1>
+            <p className="text-muted-foreground text-sm">
               Feedback requests from your colleagues
             </p>
           </div>
@@ -130,27 +130,27 @@ export default function PeerRequestsPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800">
-            <p className="text-2xl font-bold text-white">{requests.length}</p>
-            <p className="text-sm text-slate-400">Total Requests</p>
+          <div className="bg-background/50 rounded-xl p-4 border border-border">
+            <p className="text-2xl font-bold text-foreground">{requests.length}</p>
+            <p className="text-sm text-muted-foreground">Total Requests</p>
           </div>
-          <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800">
+          <div className="bg-background/50 rounded-xl p-4 border border-border">
             <p className="text-2xl font-bold text-amber-400">
               {requests.filter((r) => r.status === "pending").length}
             </p>
-            <p className="text-sm text-slate-400">Pending</p>
+            <p className="text-sm text-muted-foreground">Pending</p>
           </div>
-          <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800">
+          <div className="bg-background/50 rounded-xl p-4 border border-border">
             <p className="text-2xl font-bold text-blue-400">
               {requests.filter((r) => r.status === "accepted").length}
             </p>
-            <p className="text-sm text-slate-400">In Progress</p>
+            <p className="text-sm text-muted-foreground">In Progress</p>
           </div>
-          <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800">
+          <div className="bg-background/50 rounded-xl p-4 border border-border">
             <p className="text-2xl font-bold text-green-400">
               {requests.filter((r) => r.status === "completed").length}
             </p>
-            <p className="text-sm text-slate-400">Completed</p>
+            <p className="text-sm text-muted-foreground">Completed</p>
           </div>
         </div>
 
@@ -171,11 +171,11 @@ export default function PeerRequestsPage() {
           </div>
         ) : requests.length === 0 ? (
           <div className="text-center py-16">
-            <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-              <MessageSquare className="w-10 h-10 text-slate-500" />
+            <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <MessageSquare className="w-10 h-10 text-muted-foreground" />
             </div>
-            <h3 className="text-xl font-medium text-white mb-2">No peer requests yet</h3>
-            <p className="text-slate-400 text-sm max-w-md mx-auto">
+            <h3 className="text-xl font-medium text-foreground mb-2">No peer requests yet</h3>
+            <p className="text-muted-foreground text-sm max-w-md mx-auto">
               When colleagues request your feedback for their performance review, they&apos;ll appear here.
             </p>
           </div>
@@ -184,7 +184,7 @@ export default function PeerRequestsPage() {
             {/* Pending Requests */}
             {pendingRequests.length > 0 && (
               <div>
-                <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                   <Clock className="h-5 w-5 text-amber-400" />
                   Pending Requests ({pendingRequests.length})
                 </h2>
@@ -199,7 +199,7 @@ export default function PeerRequestsPage() {
             {/* Completed Requests */}
             {completedRequests.length > 0 && (
               <div>
-                <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                   <CheckCircle className="h-5 w-5 text-green-400" />
                   Completed ({completedRequests.length})
                 </h2>
@@ -214,27 +214,27 @@ export default function PeerRequestsPage() {
         )}
 
         {/* Help Section */}
-        <div className="mt-12 bg-slate-900/30 rounded-xl p-6 border border-slate-800/50">
-          <h3 className="text-white font-medium mb-3">About Peer Reviews</h3>
-          <p className="text-slate-400 text-sm mb-4">
+        <div className="mt-12 bg-background/30 rounded-xl p-6 border border-border/50">
+          <h3 className="text-foreground font-medium mb-3">About Peer Reviews</h3>
+          <p className="text-muted-foreground text-sm mb-4">
             Peer reviews use the COIN framework for structured, constructive feedback:
           </p>
           <div className="grid md:grid-cols-4 gap-4 text-sm">
-            <div className="bg-slate-800/50 rounded-lg p-3">
+            <div className="bg-muted/50 rounded-lg p-3">
               <p className="text-cyan-400 font-medium mb-1">Context</p>
-              <p className="text-slate-500 text-xs">The situation or setting</p>
+              <p className="text-muted-foreground text-xs">The situation or setting</p>
             </div>
-            <div className="bg-slate-800/50 rounded-lg p-3">
+            <div className="bg-muted/50 rounded-lg p-3">
               <p className="text-blue-400 font-medium mb-1">Observation</p>
-              <p className="text-slate-500 text-xs">Specific behavior observed</p>
+              <p className="text-muted-foreground text-xs">Specific behavior observed</p>
             </div>
-            <div className="bg-slate-800/50 rounded-lg p-3">
+            <div className="bg-muted/50 rounded-lg p-3">
               <p className="text-purple-400 font-medium mb-1">Impact</p>
-              <p className="text-slate-500 text-xs">Effect on team/project</p>
+              <p className="text-muted-foreground text-xs">Effect on team/project</p>
             </div>
-            <div className="bg-slate-800/50 rounded-lg p-3">
+            <div className="bg-muted/50 rounded-lg p-3">
               <p className="text-green-400 font-medium mb-1">Next Steps</p>
-              <p className="text-slate-500 text-xs">Actionable recommendations</p>
+              <p className="text-muted-foreground text-xs">Actionable recommendations</p>
             </div>
           </div>
         </div>

@@ -112,8 +112,8 @@ export function AttributeRow({
       style={style}
       {...dragAttributes}
       className={cn(
-        "flex items-center gap-3 px-3 py-3 bg-slate-800/50 rounded-lg border border-slate-700/50",
-        "hover:border-slate-600 transition-all group",
+        "flex items-center gap-3 px-3 py-3 bg-muted/50 rounded-lg border border-border/50",
+        "hover:border-border transition-all group",
         isDragging && "opacity-50 shadow-lg",
         className
       )}
@@ -122,7 +122,7 @@ export function AttributeRow({
       {isDraggable && !attribute.is_system && (
         <button
           {...listeners}
-          className="p-1 cursor-grab text-slate-500 hover:text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="p-1 cursor-grab text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
         >
           <GripVertical className="h-4 w-4" />
         </button>
@@ -130,16 +130,16 @@ export function AttributeRow({
       {(!isDraggable || attribute.is_system) && <div className="w-6" />}
 
       {/* Type icon */}
-      <div className="p-2 bg-slate-700/50 rounded-lg text-slate-400">{icon}</div>
+      <div className="p-2 bg-accent/50 rounded-lg text-muted-foreground">{icon}</div>
 
       {/* Name and description */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-white truncate">{attribute.name}</span>
-          <span className="text-xs text-slate-500">{attribute.slug}</span>
+          <span className="font-medium text-foreground truncate">{attribute.name}</span>
+          <span className="text-xs text-muted-foreground">{attribute.slug}</span>
         </div>
         {attribute.description && (
-          <p className="text-xs text-slate-500 truncate">{attribute.description}</p>
+          <p className="text-xs text-muted-foreground truncate">{attribute.description}</p>
         )}
       </div>
 
@@ -158,7 +158,7 @@ export function AttributeRow({
         <div className="relative">
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 opacity-0 group-hover:opacity-100 transition-all"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent opacity-0 group-hover:opacity-100 transition-all"
           >
             <MoreHorizontal className="h-4 w-4" />
           </button>
@@ -169,13 +169,13 @@ export function AttributeRow({
                 className="fixed inset-0 z-10"
                 onClick={() => setShowMenu(false)}
               />
-              <div className="absolute right-0 top-full mt-1 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-20 py-1">
+              <div className="absolute right-0 top-full mt-1 w-40 bg-muted border border-border rounded-lg shadow-xl z-20 py-1">
                 <button
                   onClick={() => {
                     onEdit?.(attribute);
                     setShowMenu(false);
                   }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent"
                 >
                   <Edit2 className="h-4 w-4" />
                   Edit
@@ -214,22 +214,22 @@ export function AttributeRowCompact({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-800/50 group",
+        "flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-muted/50 group",
         className
       )}
     >
-      <div className="text-slate-500">{icon}</div>
-      <span className="flex-1 text-sm text-white truncate">{attribute.name}</span>
+      <div className="text-muted-foreground">{icon}</div>
+      <span className="flex-1 text-sm text-foreground truncate">{attribute.name}</span>
       {attribute.is_required && (
         <span className="text-xs text-red-400">*</span>
       )}
       {attribute.is_system && (
-        <span className="text-xs text-slate-500">System</span>
+        <span className="text-xs text-muted-foreground">System</span>
       )}
       {!attribute.is_system && onDelete && (
         <button
           onClick={() => onDelete(attribute)}
-          className="p-1 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-400 transition-all"
+          className="p-1 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 transition-all"
         >
           <Trash2 className="h-3 w-3" />
         </button>

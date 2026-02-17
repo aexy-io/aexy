@@ -135,10 +135,10 @@ export default function KnowledgeGraphPage() {
           <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-indigo-500/10 flex items-center justify-center">
             <Lock className="h-8 w-8 text-indigo-400" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-3">
+          <h2 className="text-2xl font-bold text-foreground mb-3">
             Knowledge Graph
           </h2>
-          <p className="text-slate-400 mb-6">
+          <p className="text-muted-foreground mb-6">
             Visualize relationships between documents and automatically extract
             entities like people, technologies, and concepts. This feature is
             available on the Enterprise plan.
@@ -153,7 +153,7 @@ export default function KnowledgeGraphPage() {
             </Link>
             <Link
               href="/docs"
-              className="text-slate-400 hover:text-white transition-colors"
+              className="text-muted-foreground hover:text-foreground transition-colors"
             >
               Back to Documents
             </Link>
@@ -180,15 +180,15 @@ export default function KnowledgeGraphPage() {
           <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-red-500/10 flex items-center justify-center">
             <AlertTriangle className="h-8 w-8 text-red-400" />
           </div>
-          <h2 className="text-xl font-bold text-white mb-3">
+          <h2 className="text-xl font-bold text-foreground mb-3">
             Failed to Load Knowledge Graph
           </h2>
-          <p className="text-slate-400 mb-6">
+          <p className="text-muted-foreground mb-6">
             {(graphError as Error).message || "An unexpected error occurred."}
           </p>
           <button
             onClick={() => refetchGraph()}
-            className="inline-flex items-center justify-center px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded-lg transition-colors"
+            className="inline-flex items-center justify-center px-6 py-3 bg-accent hover:bg-muted text-foreground font-medium rounded-lg transition-colors"
           >
             <RefreshCw className="h-5 w-5 mr-2" />
             Try Again
@@ -218,22 +218,22 @@ export default function KnowledgeGraphPage() {
         {/* Graph Canvas */}
         <div className="flex-1 relative">
           {graphLoading ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
+            <div className="absolute inset-0 flex items-center justify-center bg-background">
               <div className="flex flex-col items-center gap-4">
                 <RefreshCw className="h-8 w-8 text-indigo-400 animate-spin" />
-                <p className="text-slate-400">Loading knowledge graph...</p>
+                <p className="text-muted-foreground">Loading knowledge graph...</p>
               </div>
             </div>
           ) : graphData?.nodes.length === 0 ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
+            <div className="absolute inset-0 flex items-center justify-center bg-background">
               <div className="flex flex-col items-center gap-4 max-w-md text-center px-4">
                 <div className="w-16 h-16 rounded-full bg-indigo-500/10 flex items-center justify-center">
                   <Network className="h-8 w-8 text-indigo-400" />
                 </div>
-                <h3 className="text-xl font-semibold text-white">
+                <h3 className="text-xl font-semibold text-foreground">
                   No Knowledge Graph Yet
                 </h3>
-                <p className="text-slate-400">
+                <p className="text-muted-foreground">
                   Your knowledge graph is empty. Create some documents first,
                   then run extraction to automatically discover entities and
                   relationships.
@@ -241,7 +241,7 @@ export default function KnowledgeGraphPage() {
                 <button
                   onClick={handleTriggerExtraction}
                   disabled={triggerExtraction.isPending}
-                  className="inline-flex items-center justify-center px-6 py-3 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
+                  className="inline-flex items-center justify-center px-6 py-3 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-foreground font-medium rounded-lg transition-colors"
                 >
                   {triggerExtraction.isPending ? (
                     <RefreshCw className="h-5 w-5 mr-2 animate-spin" />

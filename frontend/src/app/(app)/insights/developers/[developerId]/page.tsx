@@ -155,15 +155,15 @@ export default function DeveloperInsightsPage() {
         <div className="flex items-center gap-4">
           <Link
             href="/insights"
-            className="text-slate-400 hover:text-white transition"
+            className="text-muted-foreground hover:text-foreground transition"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-2xl font-bold text-foreground">
               Developer Insights
             </h1>
-            <p className="text-slate-400 text-sm">
+            <p className="text-muted-foreground text-sm">
               {developerId.slice(0, 8)}... &middot;{" "}
               {insights?.period_start
                 ? `${new Date(insights.period_start).toLocaleDateString()} – ${new Date(insights.period_end).toLocaleDateString()}`
@@ -171,7 +171,7 @@ export default function DeveloperInsightsPage() {
             </p>
           </div>
         </div>
-        <div className="flex bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+        <div className="flex bg-muted rounded-lg border border-border overflow-hidden">
           {PERIOD_OPTIONS.map((opt) => (
             <button
               key={opt.value}
@@ -179,7 +179,7 @@ export default function DeveloperInsightsPage() {
               className={`px-3 py-1.5 text-sm font-medium transition ${
                 periodType === opt.value
                   ? "bg-indigo-600 text-white"
-                  : "text-slate-400 hover:text-white"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {opt.label}
@@ -193,13 +193,13 @@ export default function DeveloperInsightsPage() {
           {Array.from({ length: 8 }).map((_, i) => (
             <div
               key={i}
-              className="bg-slate-800 rounded-xl p-4 border border-slate-700 animate-pulse h-24"
+              className="bg-muted rounded-xl p-4 border border-border animate-pulse h-24"
             />
           ))}
         </div>
       ) : !insights ? (
-        <div className="bg-slate-800 rounded-xl p-8 border border-slate-700 text-center">
-          <p className="text-slate-400">
+        <div className="bg-muted rounded-xl p-8 border border-border text-center">
+          <p className="text-muted-foreground">
             No insights data for this developer. Generate snapshots from the
             Team Overview page first.
           </p>
@@ -371,8 +371,8 @@ export default function DeveloperInsightsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Health Score */}
             {healthScore && (
-              <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
-                <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
+              <div className="bg-muted rounded-xl p-5 border border-border">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
                   <Heart className="h-4 w-4 text-rose-400" />
                   Health Score
                 </h3>
@@ -388,19 +388,19 @@ export default function DeveloperInsightsPage() {
                   >
                     {healthScore.score.toFixed(0)}
                   </span>
-                  <span className="text-slate-400 text-sm"> / 100</span>
+                  <span className="text-muted-foreground text-sm"> / 100</span>
                 </div>
                 <div className="space-y-2">
                   {Object.entries(healthScore.breakdown).map(([key, val]) => (
                     <div key={key} className="flex items-center gap-2">
-                      <span className="text-xs text-slate-400 w-24 capitalize">{key}</span>
-                      <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
+                      <span className="text-xs text-muted-foreground w-24 capitalize">{key}</span>
+                      <div className="flex-1 h-2 bg-accent rounded-full overflow-hidden">
                         <div
                           className="h-full bg-indigo-500 rounded-full"
                           style={{ width: `${Math.min(100, val.score)}%` }}
                         />
                       </div>
-                      <span className="text-xs text-slate-300 w-8 text-right">
+                      <span className="text-xs text-foreground w-8 text-right">
                         {val.score.toFixed(0)}
                       </span>
                     </div>
@@ -411,38 +411,38 @@ export default function DeveloperInsightsPage() {
 
             {/* Velocity Forecast */}
             {forecast && (
-              <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
-                <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
+              <div className="bg-muted rounded-xl p-5 border border-border">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
                   <Activity className="h-4 w-4 text-indigo-400" />
                   Velocity Forecast
                 </h3>
-                <p className="text-xs text-slate-400 mb-3">
+                <p className="text-xs text-muted-foreground mb-3">
                   Next period prediction (confidence: {((forecast.confidence ?? 0) * 100).toFixed(0)}%)
                 </p>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-slate-300">Commits</span>
-                    <span className="text-sm font-medium text-white">
+                    <span className="text-sm text-foreground">Commits</span>
+                    <span className="text-sm font-medium text-foreground">
                       ~{forecast.forecast.commits.toFixed(0)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-slate-300">PRs Merged</span>
-                    <span className="text-sm font-medium text-white">
+                    <span className="text-sm text-foreground">PRs Merged</span>
+                    <span className="text-sm font-medium text-foreground">
                       ~{forecast.forecast.prs_merged.toFixed(0)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-slate-300">Lines Added</span>
-                    <span className="text-sm font-medium text-white">
+                    <span className="text-sm text-foreground">Lines Added</span>
+                    <span className="text-sm font-medium text-foreground">
                       ~{formatNumber(Math.round(forecast.forecast.lines_added))}
                     </span>
                   </div>
                 </div>
-                <div className="mt-3 pt-3 border-t border-slate-700">
+                <div className="mt-3 pt-3 border-t border-border">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400">Data points:</span>
-                    <span className="text-xs text-slate-300">{forecast.data_points}</span>
+                    <span className="text-xs text-muted-foreground">Data points:</span>
+                    <span className="text-xs text-foreground">{forecast.data_points}</span>
                   </div>
                 </div>
               </div>
@@ -450,8 +450,8 @@ export default function DeveloperInsightsPage() {
 
             {/* Gaming Flags */}
             {gamingFlags && (
-              <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
-                <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
+              <div className="bg-muted rounded-xl p-5 border border-border">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
                   <AlertTriangle className="h-4 w-4 text-amber-400" />
                   Integrity Check
                 </h3>
@@ -471,7 +471,7 @@ export default function DeveloperInsightsPage() {
                   </span>
                 </div>
                 {gamingFlags.flags.length === 0 ? (
-                  <p className="text-xs text-slate-400">No anomalous patterns detected.</p>
+                  <p className="text-xs text-muted-foreground">No anomalous patterns detected.</p>
                 ) : (
                   <div className="space-y-2">
                     {gamingFlags.flags.map((flag: Record<string, unknown>, i: number) => {
@@ -490,7 +490,7 @@ export default function DeveloperInsightsPage() {
                           }`}
                         >
                           <div className="font-medium capitalize">{label.replace(/_/g, " ")}</div>
-                          <div className="text-slate-400 mt-0.5">{desc || (typeof flag.evidence === "string" ? flag.evidence : "")}</div>
+                          <div className="text-muted-foreground mt-0.5">{desc || (typeof flag.evidence === "string" ? flag.evidence : "")}</div>
                         </div>
                       );
                     })}
@@ -504,12 +504,12 @@ export default function DeveloperInsightsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* PR Size Distribution */}
             {prSizes && prSizes.total_prs > 0 && (
-              <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
-                <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
+              <div className="bg-muted rounded-xl p-5 border border-border">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
                   <GitPullRequest className="h-4 w-4 text-purple-400" />
                   PR Size Distribution
                 </h3>
-                <div className="flex items-center gap-4 mb-4 text-xs text-slate-400">
+                <div className="flex items-center gap-4 mb-4 text-xs text-muted-foreground">
                   <span>Total: {prSizes.total_prs} PRs</span>
                   <span>Avg: {prSizes.avg_size.toFixed(0)} lines</span>
                   <span>Median: {prSizes.median_size.toFixed(0)} lines</span>
@@ -561,14 +561,14 @@ export default function DeveloperInsightsPage() {
 
             {/* Code Churn */}
             {codeChurn && (codeChurn.total_additions > 0 || codeChurn.total_deletions > 0) && (
-              <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
-                <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
+              <div className="bg-muted rounded-xl p-5 border border-border">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
                   <TrendingUp className="h-4 w-4 text-orange-400" />
                   Code Churn
                 </h3>
                 <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="bg-slate-900 rounded-lg p-3">
-                    <p className="text-xs text-slate-400">Churn Rate</p>
+                  <div className="bg-background rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">Churn Rate</p>
                     <p
                       className={`text-xl font-bold ${
                         codeChurn.churn_rate > 0.3
@@ -581,22 +581,22 @@ export default function DeveloperInsightsPage() {
                       {(codeChurn.churn_rate * 100).toFixed(1)}%
                     </p>
                   </div>
-                  <div className="bg-slate-900 rounded-lg p-3">
-                    <p className="text-xs text-slate-400">Churn Deletions</p>
-                    <p className="text-xl font-bold text-white">
+                  <div className="bg-background rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">Churn Deletions</p>
+                    <p className="text-xl font-bold text-foreground">
                       {formatNumber(codeChurn.churn_deletions)}
                     </p>
                   </div>
                 </div>
                 {codeChurn.per_repo.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-xs text-slate-400 font-medium">Per Repository</p>
+                    <p className="text-xs text-muted-foreground font-medium">Per Repository</p>
                     {codeChurn.per_repo.slice(0, 5).map((repo) => (
                       <div key={repo.repository} className="flex items-center gap-2">
-                        <span className="text-xs text-slate-300 truncate flex-1">
+                        <span className="text-xs text-foreground truncate flex-1">
                           {repo.repository}
                         </span>
-                        <div className="w-20 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                        <div className="w-20 h-1.5 bg-accent rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full ${
                               repo.churn_rate > 0.3
@@ -608,7 +608,7 @@ export default function DeveloperInsightsPage() {
                             style={{ width: `${Math.min(100, repo.churn_rate * 100)}%` }}
                           />
                         </div>
-                        <span className="text-[10px] text-slate-400 w-10 text-right">
+                        <span className="text-[10px] text-muted-foreground w-10 text-right">
                           {(repo.churn_rate * 100).toFixed(0)}%
                         </span>
                       </div>
@@ -621,8 +621,8 @@ export default function DeveloperInsightsPage() {
 
           {/* Trend Chart */}
           {trendData.length > 1 && (
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <div className="bg-muted rounded-xl p-6 border border-border">
+              <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-indigo-400" />
                 Activity Trend
               </h2>
@@ -685,7 +685,7 @@ function Section({
 }) {
   return (
     <div>
-      <h2 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+      <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
         <Icon className={`h-5 w-5 ${color}`} />
         {title}
       </h2>
@@ -730,18 +730,18 @@ function MetricCard({
 
   return (
     <div
-      className={`bg-slate-800 rounded-xl p-4 border ${
-        warn ? "border-amber-500/40" : "border-slate-700"
+      className={`bg-muted rounded-xl p-4 border ${
+        warn ? "border-amber-500/40" : "border-border"
       }`}
     >
       <div className="flex items-center gap-1.5 mb-1">
-        {Icon && <Icon className="h-3.5 w-3.5 text-slate-500" />}
-        <span className="text-xs text-slate-400">{label}</span>
+        {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground" />}
+        <span className="text-xs text-muted-foreground">{label}</span>
         {warn && (
           <span className="text-amber-400 text-[10px]">⚠</span>
         )}
       </div>
-      <div className={`text-lg font-bold ${color || "text-white"}`}>
+      <div className={`text-lg font-bold ${color || "text-foreground"}`}>
         {value}
       </div>
       {delta && <div className="mt-1">{delta}</div>}

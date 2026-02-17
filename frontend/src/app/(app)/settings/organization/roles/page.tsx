@@ -439,7 +439,7 @@ export default function RolesSettingsPage() {
             </div>
           ) : (
             <div className="bg-card rounded-xl p-8 text-center border border-border">
-              <Shield className="h-12 w-12 text-slate-600 mx-auto mb-4" />
+              <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">No Custom Roles</h3>
               <p className="text-muted-foreground mb-4">
                 Create custom roles to define specific permission sets for your team.

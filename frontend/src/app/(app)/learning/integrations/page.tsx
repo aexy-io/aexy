@@ -173,13 +173,13 @@ export default function LearningIntegrationsPage() {
 
   if (isLoading || loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
             <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
           </div>
-          <p className="text-slate-400 text-sm">Loading integrations...</p>
+          <p className="text-muted-foreground text-sm">Loading integrations...</p>
         </div>
       </div>
     );
@@ -194,13 +194,13 @@ export default function LearningIntegrationsPage() {
       case "active":
         return "bg-green-900/50 text-green-400 border-green-700";
       case "inactive":
-        return "bg-slate-700 text-slate-400 border-slate-600";
+        return "bg-accent text-muted-foreground border-border";
       case "error":
         return "bg-red-900/50 text-red-400 border-red-700";
       case "pending_setup":
         return "bg-yellow-900/50 text-yellow-400 border-yellow-700";
       default:
-        return "bg-slate-700 text-slate-400 border-slate-600";
+        return "bg-accent text-muted-foreground border-border";
     }
   };
 
@@ -249,7 +249,7 @@ export default function LearningIntegrationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
@@ -258,20 +258,20 @@ export default function LearningIntegrationsPage() {
               <Plug className="h-7 w-7 text-cyan-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">Learning Integrations</h1>
-              <p className="text-slate-400 text-sm">Connect HR systems, LMS, SCORM, and calendars</p>
+              <h1 className="text-2xl font-bold text-foreground">Learning Integrations</h1>
+              <p className="text-muted-foreground text-sm">Connect HR systems, LMS, SCORM, and calendars</p>
             </div>
           </div>
           <button
             onClick={fetchData}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition"
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition"
           >
             <RefreshCw className="h-5 w-5" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 bg-slate-800/50 p-1 rounded-lg w-fit">
+        <div className="flex gap-1 mb-6 bg-muted/50 p-1 rounded-lg w-fit">
           {[
             { id: "overview", label: "Overview", icon: Plug },
             { id: "hr", label: "HR Systems", icon: Users },
@@ -285,7 +285,7 @@ export default function LearningIntegrationsPage() {
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition ${
                 activeTab === tab.id
                   ? "bg-primary-600 text-white"
-                  : "text-slate-400 hover:text-white hover:bg-slate-700"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
               }`}
             >
               <tab.icon className="h-4 w-4" />
@@ -299,101 +299,101 @@ export default function LearningIntegrationsPage() {
           <div className="space-y-6">
             {/* Stats Grid */}
             <div className="grid md:grid-cols-4 gap-4">
-              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-2 bg-blue-900/50 rounded-lg">
                     <Users className="h-5 w-5 text-blue-400" />
                   </div>
-                  <span className="text-slate-400 text-sm">HR Integrations</span>
+                  <span className="text-muted-foreground text-sm">HR Integrations</span>
                 </div>
-                <div className="text-2xl font-bold text-white">{overview.hr_integrations_count}</div>
-                <div className="text-sm text-slate-500 mt-1">{overview.hr_integrations_active} active</div>
+                <div className="text-2xl font-bold text-foreground">{overview.hr_integrations_count}</div>
+                <div className="text-sm text-muted-foreground mt-1">{overview.hr_integrations_active} active</div>
               </div>
 
-              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-2 bg-purple-900/50 rounded-lg">
                     <BookOpen className="h-5 w-5 text-purple-400" />
                   </div>
-                  <span className="text-slate-400 text-sm">LMS Integrations</span>
+                  <span className="text-muted-foreground text-sm">LMS Integrations</span>
                 </div>
-                <div className="text-2xl font-bold text-white">{overview.lms_integrations_count}</div>
-                <div className="text-sm text-slate-500 mt-1">{overview.lms_integrations_active} active</div>
+                <div className="text-2xl font-bold text-foreground">{overview.lms_integrations_count}</div>
+                <div className="text-sm text-muted-foreground mt-1">{overview.lms_integrations_active} active</div>
               </div>
 
-              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-2 bg-green-900/50 rounded-lg">
                     <Package className="h-5 w-5 text-green-400" />
                   </div>
-                  <span className="text-slate-400 text-sm">SCORM Packages</span>
+                  <span className="text-muted-foreground text-sm">SCORM Packages</span>
                 </div>
-                <div className="text-2xl font-bold text-white">{overview.scorm_packages_count}</div>
-                <div className="text-sm text-slate-500 mt-1">{overview.scorm_packages_active} active</div>
+                <div className="text-2xl font-bold text-foreground">{overview.scorm_packages_count}</div>
+                <div className="text-sm text-muted-foreground mt-1">{overview.scorm_packages_active} active</div>
               </div>
 
-              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-2 bg-amber-900/50 rounded-lg">
                     <Calendar className="h-5 w-5 text-amber-400" />
                   </div>
-                  <span className="text-slate-400 text-sm">Calendar Syncs</span>
+                  <span className="text-muted-foreground text-sm">Calendar Syncs</span>
                 </div>
-                <div className="text-2xl font-bold text-white">{overview.calendar_integrations_count}</div>
-                <div className="text-sm text-slate-500 mt-1">{overview.calendar_integrations_active} active</div>
+                <div className="text-2xl font-bold text-foreground">{overview.calendar_integrations_count}</div>
+                <div className="text-sm text-muted-foreground mt-1">{overview.calendar_integrations_active} active</div>
               </div>
             </div>
 
             {/* Quick Stats */}
             <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-                <h3 className="text-lg font-semibold text-white mb-4">Last Sync Activity</h3>
+              <div className="bg-muted rounded-xl p-6 border border-border">
+                <h3 className="text-lg font-semibold text-foreground mb-4">Last Sync Activity</h3>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-400">Last HR Sync</span>
-                    <span className="text-white">{formatDate(overview.last_hr_sync_at)}</span>
+                    <span className="text-muted-foreground">Last HR Sync</span>
+                    <span className="text-foreground">{formatDate(overview.last_hr_sync_at)}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-400">Last LMS Sync</span>
-                    <span className="text-white">{formatDate(overview.last_lms_sync_at)}</span>
+                    <span className="text-muted-foreground">Last LMS Sync</span>
+                    <span className="text-foreground">{formatDate(overview.last_lms_sync_at)}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-400">Total xAPI Statements</span>
-                    <span className="text-white">{overview.total_xapi_statements.toLocaleString()}</span>
+                    <span className="text-muted-foreground">Total xAPI Statements</span>
+                    <span className="text-foreground">{overview.total_xapi_statements.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-                <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
+              <div className="bg-muted rounded-xl p-6 border border-border">
+                <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => setActiveTab("hr")}
-                    className="p-3 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-left transition"
+                    className="p-3 bg-accent/50 hover:bg-accent rounded-lg text-left transition"
                   >
                     <Users className="h-5 w-5 text-blue-400 mb-2" />
-                    <div className="text-sm text-white font-medium">Add HR System</div>
+                    <div className="text-sm text-foreground font-medium">Add HR System</div>
                   </button>
                   <button
                     onClick={() => setActiveTab("lms")}
-                    className="p-3 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-left transition"
+                    className="p-3 bg-accent/50 hover:bg-accent rounded-lg text-left transition"
                   >
                     <BookOpen className="h-5 w-5 text-purple-400 mb-2" />
-                    <div className="text-sm text-white font-medium">Connect LMS</div>
+                    <div className="text-sm text-foreground font-medium">Connect LMS</div>
                   </button>
                   <button
                     onClick={() => setActiveTab("scorm")}
-                    className="p-3 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-left transition"
+                    className="p-3 bg-accent/50 hover:bg-accent rounded-lg text-left transition"
                   >
                     <Package className="h-5 w-5 text-green-400 mb-2" />
-                    <div className="text-sm text-white font-medium">Upload SCORM</div>
+                    <div className="text-sm text-foreground font-medium">Upload SCORM</div>
                   </button>
                   <button
                     onClick={() => setActiveTab("calendar")}
-                    className="p-3 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-left transition"
+                    className="p-3 bg-accent/50 hover:bg-accent rounded-lg text-left transition"
                   >
                     <Calendar className="h-5 w-5 text-amber-400 mb-2" />
-                    <div className="text-sm text-white font-medium">Sync Calendar</div>
+                    <div className="text-sm text-foreground font-medium">Sync Calendar</div>
                   </button>
                 </div>
               </div>
@@ -405,7 +405,7 @@ export default function LearningIntegrationsPage() {
         {activeTab === "hr" && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <h2 className="text-lg font-semibold text-white">HR System Integrations</h2>
+              <h2 className="text-lg font-semibold text-foreground">HR System Integrations</h2>
               <button className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition">
                 <Plus className="h-4 w-4" />
                 Add Integration
@@ -413,23 +413,23 @@ export default function LearningIntegrationsPage() {
             </div>
 
             {hrIntegrations.length === 0 ? (
-              <div className="bg-slate-800 rounded-xl p-12 border border-slate-700 text-center">
-                <Users className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">No HR Integrations</h3>
-                <p className="text-slate-400 mb-4">Connect your HR system to sync employee data automatically.</p>
-                <p className="text-slate-500 text-sm">Supported: Workday, BambooHR, SAP SuccessFactors, ADP</p>
+              <div className="bg-muted rounded-xl p-12 border border-border text-center">
+                <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-foreground mb-2">No HR Integrations</h3>
+                <p className="text-muted-foreground mb-4">Connect your HR system to sync employee data automatically.</p>
+                <p className="text-muted-foreground text-sm">Supported: Workday, BambooHR, SAP SuccessFactors, ADP</p>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
                 {hrIntegrations.map((integration) => (
                   <div
                     key={integration.id}
-                    className="bg-slate-800 rounded-xl p-5 border border-slate-700 hover:border-slate-600 transition"
+                    className="bg-muted rounded-xl p-5 border border-border hover:border-border transition"
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <h3 className="text-white font-medium">{integration.name}</h3>
-                        <p className="text-slate-400 text-sm">{getProviderLabel(integration.provider)}</p>
+                        <h3 className="text-foreground font-medium">{integration.name}</h3>
+                        <p className="text-muted-foreground text-sm">{getProviderLabel(integration.provider)}</p>
                       </div>
                       <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded border ${getStatusColor(integration.status)}`}>
                         {getStatusIcon(integration.status)}
@@ -438,10 +438,10 @@ export default function LearningIntegrationsPage() {
                     </div>
 
                     {integration.description && (
-                      <p className="text-slate-400 text-sm mb-3 line-clamp-2">{integration.description}</p>
+                      <p className="text-muted-foreground text-sm mb-3 line-clamp-2">{integration.description}</p>
                     )}
 
-                    <div className="flex items-center gap-4 text-sm text-slate-500 mb-4">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
                       <span>Last sync: {formatDate(integration.last_sync_at)}</span>
                       {integration.last_sync_status && (
                         <span className={integration.last_sync_status === "completed" ? "text-green-400" : "text-red-400"}>
@@ -450,7 +450,7 @@ export default function LearningIntegrationsPage() {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 pt-3 border-t border-slate-700">
+                    <div className="flex items-center gap-2 pt-3 border-t border-border">
                       <button
                         onClick={() => handleTriggerHRSync(integration.id)}
                         className="flex items-center gap-1 px-3 py-1.5 text-sm bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition"
@@ -458,12 +458,12 @@ export default function LearningIntegrationsPage() {
                         <Play className="h-4 w-4" />
                         Sync Now
                       </button>
-                      <button className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition">
+                      <button className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition">
                         <Settings className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleDeleteHRIntegration(integration.id)}
-                        className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition"
+                        className="p-1.5 text-muted-foreground hover:text-red-400 hover:bg-accent rounded-lg transition"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -479,7 +479,7 @@ export default function LearningIntegrationsPage() {
         {activeTab === "lms" && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <h2 className="text-lg font-semibold text-white">LMS Integrations</h2>
+              <h2 className="text-lg font-semibold text-foreground">LMS Integrations</h2>
               <button className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition">
                 <Plus className="h-4 w-4" />
                 Add Integration
@@ -487,23 +487,23 @@ export default function LearningIntegrationsPage() {
             </div>
 
             {lmsIntegrations.length === 0 ? (
-              <div className="bg-slate-800 rounded-xl p-12 border border-slate-700 text-center">
-                <BookOpen className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">No LMS Integrations</h3>
-                <p className="text-slate-400 mb-4">Connect external learning management systems to sync course completions.</p>
-                <p className="text-slate-500 text-sm">Supported: SCORM Cloud, Cornerstone, LinkedIn Learning, Udemy Business, Coursera</p>
+              <div className="bg-muted rounded-xl p-12 border border-border text-center">
+                <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-foreground mb-2">No LMS Integrations</h3>
+                <p className="text-muted-foreground mb-4">Connect external learning management systems to sync course completions.</p>
+                <p className="text-muted-foreground text-sm">Supported: SCORM Cloud, Cornerstone, LinkedIn Learning, Udemy Business, Coursera</p>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
                 {lmsIntegrations.map((integration) => (
                   <div
                     key={integration.id}
-                    className="bg-slate-800 rounded-xl p-5 border border-slate-700 hover:border-slate-600 transition"
+                    className="bg-muted rounded-xl p-5 border border-border hover:border-border transition"
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <h3 className="text-white font-medium">{integration.name}</h3>
-                        <p className="text-slate-400 text-sm">{getProviderLabel(integration.provider)}</p>
+                        <h3 className="text-foreground font-medium">{integration.name}</h3>
+                        <p className="text-muted-foreground text-sm">{getProviderLabel(integration.provider)}</p>
                       </div>
                       <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded border ${getStatusColor(integration.status)}`}>
                         {getStatusIcon(integration.status)}
@@ -520,17 +520,17 @@ export default function LearningIntegrationsPage() {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-4 text-sm text-slate-500 mb-4">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
                       <span>Last sync: {formatDate(integration.last_sync_at)}</span>
                     </div>
 
-                    <div className="flex items-center gap-2 pt-3 border-t border-slate-700">
-                      <button className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition">
+                    <div className="flex items-center gap-2 pt-3 border-t border-border">
+                      <button className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition">
                         <Settings className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleDeleteLMSIntegration(integration.id)}
-                        className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition"
+                        className="p-1.5 text-muted-foreground hover:text-red-400 hover:bg-accent rounded-lg transition"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -546,7 +546,7 @@ export default function LearningIntegrationsPage() {
         {activeTab === "scorm" && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <h2 className="text-lg font-semibold text-white">SCORM Packages</h2>
+              <h2 className="text-lg font-semibold text-foreground">SCORM Packages</h2>
               <button className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition">
                 <Plus className="h-4 w-4" />
                 Upload Package
@@ -554,63 +554,63 @@ export default function LearningIntegrationsPage() {
             </div>
 
             {scormPackages.length === 0 ? (
-              <div className="bg-slate-800 rounded-xl p-12 border border-slate-700 text-center">
-                <Package className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">No SCORM Packages</h3>
-                <p className="text-slate-400 mb-4">Upload SCORM packages to deliver standardized e-learning content.</p>
-                <p className="text-slate-500 text-sm">Supported: SCORM 1.2, SCORM 2004 (2nd, 3rd, 4th editions)</p>
+              <div className="bg-muted rounded-xl p-12 border border-border text-center">
+                <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-foreground mb-2">No SCORM Packages</h3>
+                <p className="text-muted-foreground mb-4">Upload SCORM packages to deliver standardized e-learning content.</p>
+                <p className="text-muted-foreground text-sm">Supported: SCORM 1.2, SCORM 2004 (2nd, 3rd, 4th editions)</p>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {scormPackages.map((pkg) => (
                   <div
                     key={pkg.id}
-                    className="bg-slate-800 rounded-xl p-5 border border-slate-700 hover:border-slate-600 transition"
+                    className="bg-muted rounded-xl p-5 border border-border hover:border-border transition"
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <h3 className="text-white font-medium line-clamp-1">{pkg.title}</h3>
-                        <p className="text-slate-400 text-xs">{pkg.version}</p>
+                        <h3 className="text-foreground font-medium line-clamp-1">{pkg.title}</h3>
+                        <p className="text-muted-foreground text-xs">{pkg.version}</p>
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded border ${pkg.is_active ? "bg-green-900/50 text-green-400 border-green-700" : "bg-slate-700 text-slate-400 border-slate-600"}`}>
+                      <span className={`text-xs px-2 py-1 rounded border ${pkg.is_active ? "bg-green-900/50 text-green-400 border-green-700" : "bg-accent text-muted-foreground border-border"}`}>
                         {pkg.is_active ? "Active" : "Inactive"}
                       </span>
                     </div>
 
                     {pkg.description && (
-                      <p className="text-slate-400 text-sm mb-3 line-clamp-2">{pkg.description}</p>
+                      <p className="text-muted-foreground text-sm mb-3 line-clamp-2">{pkg.description}</p>
                     )}
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
-                      <div className="text-center p-2 bg-slate-700/50 rounded-lg">
-                        <div className="text-lg font-bold text-white">{pkg.total_enrollments}</div>
-                        <div className="text-xs text-slate-400">Enrolled</div>
+                      <div className="text-center p-2 bg-accent/50 rounded-lg">
+                        <div className="text-lg font-bold text-foreground">{pkg.total_enrollments}</div>
+                        <div className="text-xs text-muted-foreground">Enrolled</div>
                       </div>
-                      <div className="text-center p-2 bg-slate-700/50 rounded-lg">
+                      <div className="text-center p-2 bg-accent/50 rounded-lg">
                         <div className="text-lg font-bold text-green-400">{pkg.completed_count}</div>
-                        <div className="text-xs text-slate-400">Completed</div>
+                        <div className="text-xs text-muted-foreground">Completed</div>
                       </div>
-                      <div className="text-center p-2 bg-slate-700/50 rounded-lg">
+                      <div className="text-center p-2 bg-accent/50 rounded-lg">
                         <div className="text-lg font-bold text-blue-400">
                           {pkg.average_score !== null ? `${(pkg.average_score).toFixed(0)}%` : "-"}
                         </div>
-                        <div className="text-xs text-slate-400">Avg Score</div>
+                        <div className="text-xs text-muted-foreground">Avg Score</div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 pt-3 border-t border-slate-700">
+                    <div className="flex items-center gap-2 pt-3 border-t border-border">
                       {pkg.launch_url && (
                         <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition">
                           <ExternalLink className="h-4 w-4" />
                           Launch
                         </button>
                       )}
-                      <button className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition">
+                      <button className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition">
                         <Settings className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleDeleteSCORMPackage(pkg.id)}
-                        className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition"
+                        className="p-1.5 text-muted-foreground hover:text-red-400 hover:bg-accent rounded-lg transition"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -626,7 +626,7 @@ export default function LearningIntegrationsPage() {
         {activeTab === "calendar" && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <h2 className="text-lg font-semibold text-white">Calendar Integrations</h2>
+              <h2 className="text-lg font-semibold text-foreground">Calendar Integrations</h2>
               <button className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition">
                 <Plus className="h-4 w-4" />
                 Connect Calendar
@@ -634,24 +634,24 @@ export default function LearningIntegrationsPage() {
             </div>
 
             {calendarIntegrations.length === 0 ? (
-              <div className="bg-slate-800 rounded-xl p-12 border border-slate-700 text-center">
-                <Calendar className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">No Calendar Integrations</h3>
-                <p className="text-slate-400 mb-4">Connect your calendar to sync learning events and deadlines.</p>
-                <p className="text-slate-500 text-sm">Supported: Google Calendar, Outlook, Apple Calendar</p>
+              <div className="bg-muted rounded-xl p-12 border border-border text-center">
+                <Calendar className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-foreground mb-2">No Calendar Integrations</h3>
+                <p className="text-muted-foreground mb-4">Connect your calendar to sync learning events and deadlines.</p>
+                <p className="text-muted-foreground text-sm">Supported: Google Calendar, Outlook, Apple Calendar</p>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
                 {calendarIntegrations.map((integration) => (
                   <div
                     key={integration.id}
-                    className="bg-slate-800 rounded-xl p-5 border border-slate-700 hover:border-slate-600 transition"
+                    className="bg-muted rounded-xl p-5 border border-border hover:border-border transition"
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <h3 className="text-white font-medium">{getProviderLabel(integration.provider)}</h3>
+                        <h3 className="text-foreground font-medium">{getProviderLabel(integration.provider)}</h3>
                         {integration.calendar_id && (
-                          <p className="text-slate-400 text-sm truncate">{integration.calendar_id}</p>
+                          <p className="text-muted-foreground text-sm truncate">{integration.calendar_id}</p>
                         )}
                       </div>
                       <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded border ${getStatusColor(integration.status)}`}>
@@ -672,17 +672,17 @@ export default function LearningIntegrationsPage() {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-4 text-sm text-slate-500 mb-4">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
                       <span>Last sync: {formatDate(integration.last_sync_at)}</span>
                     </div>
 
-                    <div className="flex items-center gap-2 pt-3 border-t border-slate-700">
-                      <button className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition">
+                    <div className="flex items-center gap-2 pt-3 border-t border-border">
+                      <button className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition">
                         <Settings className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleDeleteCalendarIntegration(integration.id)}
-                        className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition"
+                        className="p-1.5 text-muted-foreground hover:text-red-400 hover:bg-accent rounded-lg transition"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

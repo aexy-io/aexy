@@ -658,7 +658,7 @@ function IntegrationsPageContent() {
       <div>
         {!hasWorkspaces ? (
           <div className="bg-card rounded-xl p-12 text-center">
-            <Link2 className="h-16 w-16 text-slate-600 mx-auto mb-4" />
+            <Link2 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-xl font-medium text-foreground mb-2">No Workspace</h3>
             <p className="text-muted-foreground mb-6">
               Create a workspace first to configure integrations.
@@ -917,7 +917,7 @@ function IntegrationsPageContent() {
                       </p>
                       <a
                         href={getSlackInstallUrl(user.id) || "#"}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#4A154B] hover:bg-[#611f64] text-white rounded-lg transition font-medium"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#4A154B] hover:bg-[#611f64] text-foreground rounded-lg transition font-medium"
                       >
                         <Slack className="h-5 w-5" />
                         Add to Slack

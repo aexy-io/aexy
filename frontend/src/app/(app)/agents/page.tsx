@@ -67,10 +67,10 @@ function AgentCard({
   return (
     <div
       className={cn(
-        "bg-slate-800 rounded-xl border transition-all cursor-pointer group",
+        "bg-muted rounded-xl border transition-all cursor-pointer group",
         agent.is_active
-          ? "border-slate-700 hover:border-slate-600"
-          : "border-slate-700/50 opacity-75 hover:opacity-100"
+          ? "border-border hover:border-border"
+          : "border-border/50 opacity-75 hover:opacity-100"
       )}
       onClick={() => router.push(`/agents/${agent.id}`)}
     >
@@ -92,11 +92,11 @@ function AgentCard({
               />
             </div>
             <div>
-              <h3 className="text-white font-medium group-hover:text-purple-400 transition">
+              <h3 className="text-foreground font-medium group-hover:text-purple-400 transition">
                 {agent.name}
               </h3>
               {agent.mention_handle && (
-                <span className="text-sm text-slate-400">@{agent.mention_handle}</span>
+                <span className="text-sm text-muted-foreground">@{agent.mention_handle}</span>
               )}
             </div>
           </div>
@@ -108,7 +108,7 @@ function AgentCard({
                   e.stopPropagation();
                   setShowMenu(!showMenu);
                 }}
-                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
               >
                 <MoreVertical className="h-4 w-4" />
               </button>
@@ -121,11 +121,11 @@ function AgentCard({
                       setShowMenu(false);
                     }}
                   />
-                  <div className="absolute right-0 top-full mt-1 w-48 bg-slate-700 rounded-lg shadow-xl z-20 py-1">
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-accent rounded-lg shadow-xl z-20 py-1">
                     <Link
                       href={`/agents/${agent.id}/edit`}
                       onClick={(e) => e.stopPropagation()}
-                      className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-600 flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-muted flex items-center gap-2"
                     >
                       <Settings className="h-4 w-4" />
                       Edit Agent
@@ -137,7 +137,7 @@ function AgentCard({
                         setShowMenu(false);
                       }}
                       disabled={isToggling}
-                      className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-600 flex items-center gap-2 disabled:opacity-50"
+                      className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-muted flex items-center gap-2 disabled:opacity-50"
                     >
                       {agent.is_active ? (
                         <>
@@ -157,7 +157,7 @@ function AgentCard({
                         onDelete(agent.id);
                         setShowMenu(false);
                       }}
-                      className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-600 flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-muted flex items-center gap-2"
                     >
                       <Trash2 className="h-4 w-4" />
                       Delete Agent
@@ -173,7 +173,7 @@ function AgentCard({
         <div className="mb-4">
           <AgentTypeBadge type={agent.agent_type} size="sm" className="mb-2" />
           {agent.description && (
-            <p className="text-sm text-slate-400 line-clamp-2">{agent.description}</p>
+            <p className="text-sm text-muted-foreground line-clamp-2">{agent.description}</p>
           )}
         </div>
 
@@ -185,12 +185,12 @@ function AgentCard({
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-700">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-border">
           <div className="text-center">
-            <div className="text-lg font-semibold text-white">
+            <div className="text-lg font-semibold text-foreground">
               {formatNumber(agent.total_executions)}
             </div>
-            <div className="text-xs text-slate-400 flex items-center justify-center gap-1">
+            <div className="text-xs text-muted-foreground flex items-center justify-center gap-1">
               <Activity className="h-3 w-3" />
               Total Runs
             </div>
@@ -208,16 +208,16 @@ function AgentCard({
             >
               {successRate}%
             </div>
-            <div className="text-xs text-slate-400 flex items-center justify-center gap-1">
+            <div className="text-xs text-muted-foreground flex items-center justify-center gap-1">
               <TrendingUp className="h-3 w-3" />
               Success
             </div>
           </div>
           <div className="text-center">
-            <div className="text-lg font-semibold text-white">
+            <div className="text-lg font-semibold text-foreground">
               {formatDuration(agent.avg_duration_ms || 0)}
             </div>
-            <div className="text-xs text-slate-400 flex items-center justify-center gap-1">
+            <div className="text-xs text-muted-foreground flex items-center justify-center gap-1">
               <Clock className="h-3 w-3" />
               Avg Time
             </div>
@@ -230,12 +230,12 @@ function AgentCard({
 
 function AgentEmptyState() {
   return (
-    <div className="bg-slate-800 rounded-xl p-12 text-center border border-slate-700">
+    <div className="bg-muted rounded-xl p-12 text-center border border-border">
       <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
         <Bot className="h-8 w-8 text-purple-400" />
       </div>
-      <h3 className="text-xl font-medium text-white mb-2">No Agents Yet</h3>
-      <p className="text-slate-400 mb-6 max-w-md mx-auto">
+      <h3 className="text-xl font-medium text-foreground mb-2">No Agents Yet</h3>
+      <p className="text-muted-foreground mb-6 max-w-md mx-auto">
         Create AI agents to automate email responses, schedule meetings, manage
         CRM data, and more.
       </p>
@@ -305,24 +305,24 @@ export default function AgentsListPage() {
 
   if (currentWorkspaceLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mx-auto mb-4"></div>
-          <p className="text-white">Loading agents...</p>
+          <p className="text-foreground">Loading agents...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800/50">
+      <header className="border-b border-border bg-muted/50">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
             <Link
               href="/dashboard"
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>
@@ -331,8 +331,8 @@ export default function AgentsListPage() {
                 <Bot className="h-5 w-5 text-purple-400" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-white">AI Agents</h1>
-                <p className="text-slate-400 text-sm">
+                <h1 className="text-xl font-semibold text-foreground">AI Agents</h1>
+                <p className="text-muted-foreground text-sm">
                   Create and manage intelligent automation agents
                 </p>
               </div>
@@ -351,30 +351,30 @@ export default function AgentsListPage() {
       <main className="max-w-6xl mx-auto px-4 py-8">
         {/* Stats Summary */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-            <div className="text-2xl font-bold text-white">{agents.length}</div>
-            <div className="text-sm text-slate-400">Total Agents</div>
+          <div className="bg-muted rounded-xl p-4 border border-border">
+            <div className="text-2xl font-bold text-foreground">{agents.length}</div>
+            <div className="text-sm text-muted-foreground">Total Agents</div>
           </div>
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+          <div className="bg-muted rounded-xl p-4 border border-border">
             <div className="text-2xl font-bold text-green-400">{activeCount}</div>
-            <div className="text-sm text-slate-400">Active Agents</div>
+            <div className="text-sm text-muted-foreground">Active Agents</div>
           </div>
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-            <div className="text-2xl font-bold text-white">{formatNumber(totalRuns)}</div>
-            <div className="text-sm text-slate-400">Total Executions</div>
+          <div className="bg-muted rounded-xl p-4 border border-border">
+            <div className="text-2xl font-bold text-foreground">{formatNumber(totalRuns)}</div>
+            <div className="text-sm text-muted-foreground">Total Executions</div>
           </div>
         </div>
 
         {/* Search & Filters */}
         <div className="flex items-center gap-4 mb-6">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search agents..."
-              className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
           <button
@@ -383,7 +383,7 @@ export default function AgentsListPage() {
               "flex items-center gap-2 px-4 py-2 border rounded-lg transition",
               showFilters
                 ? "bg-purple-500/20 border-purple-500 text-purple-400"
-                : "bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600"
+                : "bg-muted border-border text-foreground hover:border-border"
             )}
           >
             <Filter className="h-4 w-4" />
@@ -396,14 +396,14 @@ export default function AgentsListPage() {
 
         {/* Filter Panel */}
         {showFilters && (
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-6">
+          <div className="bg-muted rounded-xl p-4 border border-border mb-6">
             <div className="flex flex-wrap gap-4">
               <div>
-                <label className="block text-sm text-slate-400 mb-2">Type</label>
+                <label className="block text-sm text-muted-foreground mb-2">Type</label>
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}
-                  className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="px-3 py-2 bg-accent border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="all">All Types</option>
                   {Object.entries(AGENT_TYPE_CONFIG).map(([key, config]) => (
@@ -414,11 +414,11 @@ export default function AgentsListPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm text-slate-400 mb-2">Status</label>
+                <label className="block text-sm text-muted-foreground mb-2">Status</label>
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="px-3 py-2 bg-accent border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="all">All Status</option>
                   <option value="active">Active</option>
@@ -433,10 +433,10 @@ export default function AgentsListPage() {
         {agents.length === 0 ? (
           <AgentEmptyState />
         ) : filteredAgents.length === 0 ? (
-          <div className="bg-slate-800 rounded-xl p-8 text-center border border-slate-700">
-            <Search className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-white mb-2">No agents found</h3>
-            <p className="text-slate-400">
+          <div className="bg-muted rounded-xl p-8 text-center border border-border">
+            <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">No agents found</h3>
+            <p className="text-muted-foreground">
               Try adjusting your search or filters
             </p>
           </div>

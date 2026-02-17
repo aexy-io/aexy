@@ -26,8 +26,8 @@ const statusBadge: Record<
   pending: { label: "Pending", className: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
   approved: { label: "Approved", className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
   rejected: { label: "Rejected", className: "bg-red-500/10 text-red-400 border-red-500/20" },
-  cancelled: { label: "Cancelled", className: "bg-slate-500/10 text-slate-400 border-slate-500/20" },
-  withdrawn: { label: "Withdrawn", className: "bg-slate-500/10 text-slate-400 border-slate-500/20" },
+  cancelled: { label: "Cancelled", className: "bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20" },
+  withdrawn: { label: "Withdrawn", className: "bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20" },
 };
 
 function formatDate(dateStr: string): string {
@@ -46,7 +46,7 @@ export function TeamLeaveTable() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 text-slate-400 animate-spin" />
+        <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
       </div>
     );
   }
@@ -56,11 +56,11 @@ export function TeamLeaveTable() {
       {/* Filter bar */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-slate-500" />
+          <Filter className="h-4 w-4 text-muted-foreground" />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
+            className="px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-blue-500/50"
           >
             {STATUS_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -69,35 +69,35 @@ export function TeamLeaveTable() {
             ))}
           </select>
         </div>
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-muted-foreground">
           {requests?.length || 0} request{(requests?.length || 0) !== 1 ? "s" : ""}
         </span>
       </div>
 
       {/* Table */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="bg-background border border-border rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-800">
-                <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wider px-4 py-3">
+              <tr className="border-b border-border">
+                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
                   Employee
                 </th>
-                <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wider px-4 py-3">
+                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
                   Leave Type
                 </th>
-                <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wider px-4 py-3">
+                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
                   Dates
                 </th>
-                <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wider px-4 py-3">
+                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
                   Days
                 </th>
-                <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wider px-4 py-3">
+                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
                   Status
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800">
+            <tbody className="divide-y divide-border">
               {requests?.map((request) => {
                 const status = statusBadge[request.status];
                 const developer = request.developer;
@@ -107,7 +107,7 @@ export function TeamLeaveTable() {
                 return (
                   <tr
                     key={request.id}
-                    className="hover:bg-slate-800/50 transition"
+                    className="hover:bg-muted/50 transition"
                   >
                     {/* Employee */}
                     <td className="px-4 py-3">
@@ -119,11 +119,11 @@ export function TeamLeaveTable() {
                             className="w-7 h-7 rounded-full object-cover flex-shrink-0"
                           />
                         ) : (
-                          <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center flex-shrink-0">
-                            <User className="h-3.5 w-3.5 text-slate-500" />
+                          <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                            <User className="h-3.5 w-3.5 text-muted-foreground" />
                           </div>
                         )}
-                        <span className="text-sm font-medium text-white truncate">
+                        <span className="text-sm font-medium text-foreground truncate">
                           {developer?.name || developer?.email || "Unknown"}
                         </span>
                       </div>
@@ -138,7 +138,7 @@ export function TeamLeaveTable() {
                             backgroundColor: leaveType?.color || "#6366f1",
                           }}
                         />
-                        <span className="text-sm text-slate-300">
+                        <span className="text-sm text-foreground">
                           {leaveType?.name || "Leave"}
                         </span>
                       </div>
@@ -146,8 +146,8 @@ export function TeamLeaveTable() {
 
                     {/* Dates */}
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5 text-sm text-slate-300">
-                        <Calendar className="h-3.5 w-3.5 text-slate-500 flex-shrink-0" />
+                      <div className="flex items-center gap-1.5 text-sm text-foreground">
+                        <Calendar className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                         <span>
                           {isSingleDay
                             ? formatDate(request.start_date)
@@ -158,10 +158,10 @@ export function TeamLeaveTable() {
 
                     {/* Days */}
                     <td className="px-4 py-3">
-                      <span className="text-sm text-slate-300">
+                      <span className="text-sm text-foreground">
                         {request.total_days}
                         {request.is_half_day && (
-                          <span className="text-xs text-slate-500 ml-1">
+                          <span className="text-xs text-muted-foreground ml-1">
                             (half)
                           </span>
                         )}
@@ -183,7 +183,7 @@ export function TeamLeaveTable() {
                 <tr>
                   <td
                     colSpan={5}
-                    className="px-4 py-8 text-center text-sm text-slate-500"
+                    className="px-4 py-8 text-center text-sm text-muted-foreground"
                   >
                     No leave requests found.
                   </td>

@@ -128,10 +128,10 @@ function UpgradeModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-slate-900 border border-slate-700 rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+      <div className="relative bg-background border border-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
+          className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
         >
           <X className="h-5 w-5" />
         </button>
@@ -141,19 +141,19 @@ function UpgradeModal({
             <Lock className="h-6 w-6 text-amber-400" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white">{featureNames[feature]}</h3>
-            <p className="text-sm text-slate-400">Premium Feature</p>
+            <h3 className="text-lg font-semibold text-foreground">{featureNames[feature]}</h3>
+            <p className="text-sm text-muted-foreground">Premium Feature</p>
           </div>
         </div>
 
-        <p className="text-slate-300 mb-6">{featureDescriptions[feature]}</p>
+        <p className="text-foreground mb-6">{featureDescriptions[feature]}</p>
 
-        <div className="bg-slate-800/50 rounded-lg p-4 mb-6">
+        <div className="bg-muted/50 rounded-lg p-4 mb-6">
           <div className="flex items-center gap-2 text-amber-400 mb-2">
             <Sparkles className="h-4 w-4" />
             <span className="font-medium">Unlock with Pro</span>
           </div>
-          <ul className="text-sm text-slate-300 space-y-1.5">
+          <ul className="text-sm text-foreground space-y-1.5">
             <li className="flex items-center gap-2">
               <span className="text-green-400">+</span> Sync members from repositories
             </li>
@@ -172,7 +172,7 @@ function UpgradeModal({
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 text-slate-300 hover:text-white border border-slate-600 rounded-lg transition-colors"
+            className="flex-1 px-4 py-2.5 text-foreground hover:text-foreground border border-border rounded-lg transition-colors"
           >
             Maybe Later
           </button>

@@ -24,9 +24,9 @@ export default function SwapRequestsList({
 
   if (pendingRequests.length === 0) {
     return (
-      <div className="bg-slate-800 rounded-xl p-6 text-center">
-        <ArrowRightLeft className="h-8 w-8 text-slate-600 mx-auto mb-2" />
-        <p className="text-slate-400">No pending swap requests</p>
+      <div className="bg-muted rounded-xl p-6 text-center">
+        <ArrowRightLeft className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+        <p className="text-muted-foreground">No pending swap requests</p>
       </div>
     );
   }
@@ -42,13 +42,13 @@ export default function SwapRequestsList({
         return (
           <div
             key={request.id}
-            className="bg-slate-800 rounded-xl p-4 border border-slate-700"
+            className="bg-muted rounded-xl p-4 border border-border"
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2">
                   <ArrowRightLeft className="h-4 w-4 text-blue-400" />
-                  <span className="font-medium text-white">
+                  <span className="font-medium text-foreground">
                     {isTarget ? "Swap Request Received" : "Swap Request Sent"}
                   </span>
                   <span className="px-2 py-0.5 bg-amber-900/30 text-amber-400 rounded text-xs">
@@ -56,17 +56,17 @@ export default function SwapRequestsList({
                   </span>
                 </div>
 
-                <div className="text-sm text-slate-400 mb-2">
-                  <span className="text-white font-medium">
+                <div className="text-sm text-muted-foreground mb-2">
+                  <span className="text-foreground font-medium">
                     {request.requester?.name || request.requester?.email}
                   </span>
                   {" wants to swap with "}
-                  <span className="text-white font-medium">
+                  <span className="text-foreground font-medium">
                     {request.target?.name || request.target?.email}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-4 text-sm text-slate-500">
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5" />
                     <span>Shift: {scheduleDate}</span>
@@ -78,9 +78,9 @@ export default function SwapRequestsList({
                 </div>
 
                 {request.message && (
-                  <div className="mt-3 flex items-start gap-2 p-2 bg-slate-700/50 rounded">
-                    <MessageSquare className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-slate-300">{request.message}</p>
+                  <div className="mt-3 flex items-start gap-2 p-2 bg-accent/50 rounded">
+                    <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-foreground">{request.message}</p>
                   </div>
                 )}
               </div>

@@ -104,19 +104,19 @@ export function CourseSearch({
       {/* Search input */}
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             placeholder="Search for courses... (e.g., React, Python, Docker)"
-            className="w-full pl-9 pr-9 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-9 pr-9 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           {query && (
             <button
               onClick={clearSearch}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
               <X className="h-4 w-4" />
             </button>
@@ -143,7 +143,7 @@ export function CourseSearch({
 
       {/* Provider filters */}
       <div className="flex items-center gap-2">
-        <span className="text-sm text-slate-400">Providers:</span>
+        <span className="text-sm text-muted-foreground">Providers:</span>
         {providerOptions.map((provider) => {
           const Icon = provider.icon;
           const isSelected = selectedProviders.includes(provider.id);
@@ -154,7 +154,7 @@ export function CourseSearch({
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition ${
                 isSelected
                   ? "bg-blue-600 text-white"
-                  : "bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700"
+                  : "bg-muted text-muted-foreground hover:text-foreground hover:bg-accent"
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -167,13 +167,13 @@ export function CourseSearch({
       {/* Suggested skills */}
       {suggestedSkills.length > 0 && !hasSearched && (
         <div>
-          <p className="text-sm text-slate-400 mb-2">Suggested skills from your path:</p>
+          <p className="text-sm text-muted-foreground mb-2">Suggested skills from your path:</p>
           <div className="flex flex-wrap gap-2">
             {suggestedSkills.map((skill) => (
               <button
                 key={skill}
                 onClick={() => handleSuggestedSkillClick(skill)}
-                className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition"
+                className="px-3 py-1.5 bg-accent hover:bg-muted text-foreground rounded-lg text-sm transition"
               >
                 {skill}
               </button>
@@ -200,15 +200,15 @@ export function CourseSearch({
             ))}
           </div>
         ) : (
-          <div className="text-center py-8 text-slate-400">
-            <BookOpen className="h-12 w-12 mx-auto mb-3 text-slate-600" />
+          <div className="text-center py-8 text-muted-foreground">
+            <BookOpen className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
             <p>No courses found for "{query}"</p>
             <p className="text-sm">Try a different search term or provider</p>
           </div>
         )
       ) : (
-        <div className="text-center py-8 text-slate-400">
-          <Search className="h-12 w-12 mx-auto mb-3 text-slate-600" />
+        <div className="text-center py-8 text-muted-foreground">
+          <Search className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
           <p>Search for courses to add to your learning activities</p>
         </div>
       )}
