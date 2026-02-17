@@ -129,6 +129,7 @@ def get_all_activities() -> list:
         calculate_isp_metrics,
         process_unprocessed_events,
     )
+    from aexy.temporal.activities.insights import auto_generate_snapshots
     from aexy.temporal.activities.sync import check_repo_auto_sync, sync_commits, sync_repository
     from aexy.temporal.activities.tracking import (
         aggregate_daily_standups,
@@ -252,6 +253,8 @@ def get_all_activities() -> list:
         # Workflow Actions
         execute_workflow_action,
         cleanup_old_executions,
+        # Insights
+        auto_generate_snapshots,
         # Reminders (Compliance)
         generate_reminder_instances,
         process_escalations,
