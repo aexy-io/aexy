@@ -47,7 +47,7 @@ export function DocumentItem({
         className={`group relative flex items-center py-1 px-2 rounded-md cursor-pointer transition-colors ${
           isSelected
             ? "bg-primary-500/20 text-foreground"
-            : "hover:bg-white/5 text-foreground"
+            : "hover:bg-accent/50 text-foreground"
         }`}
         style={{ paddingLeft }}
       >
@@ -58,7 +58,7 @@ export function DocumentItem({
               e.stopPropagation();
               setIsExpanded(!isExpanded);
             }}
-            className="p-0.5 hover:bg-white/10 rounded mr-1"
+            className="p-0.5 hover:bg-accent rounded mr-1"
           >
             <ChevronRight
               className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${
@@ -97,7 +97,7 @@ export function DocumentItem({
                 e.stopPropagation();
                 onToggleFavorite(document.id);
               }}
-              className="p-1 hover:bg-white/10 rounded"
+              className="p-1 hover:bg-accent rounded"
               title={document.is_favorited ? "Remove from favorites" : "Add to favorites"}
             >
               <Star
@@ -117,7 +117,7 @@ export function DocumentItem({
                 e.stopPropagation();
                 onAddChild(document.id);
               }}
-              className="p-1 hover:bg-white/10 rounded"
+              className="p-1 hover:bg-accent rounded"
               title="Add subpage"
             >
               <Plus className="h-3.5 w-3.5 text-muted-foreground" />
@@ -131,7 +131,7 @@ export function DocumentItem({
                 e.stopPropagation();
                 setShowMenu(!showMenu);
               }}
-              className="p-1 hover:bg-white/10 rounded"
+              className="p-1 hover:bg-accent rounded"
             >
               <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
             </button>

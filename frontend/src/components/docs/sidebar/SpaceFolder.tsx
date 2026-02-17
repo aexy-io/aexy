@@ -37,7 +37,7 @@ export function SpaceFolder({
     <div className="py-0.5">
       {/* Space Header */}
       <div
-        className="flex items-center justify-between px-2 py-1.5 group cursor-pointer hover:bg-white/5 rounded-md mx-1"
+        className="flex items-center justify-between px-2 py-1.5 group cursor-pointer hover:bg-accent/50 rounded-md mx-1"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -75,7 +75,7 @@ export function SpaceFolder({
               e.stopPropagation();
               onAddDocument(space.id);
             }}
-            className="p-1 hover:bg-white/10 rounded transition-colors"
+            className="p-1 hover:bg-accent rounded transition-colors"
             title="Add page"
           >
             <Plus className="h-3.5 w-3.5 text-muted-foreground" />
@@ -88,7 +88,7 @@ export function SpaceFolder({
                   e.stopPropagation();
                   setShowMenu(!showMenu);
                 }}
-                className="p-1 hover:bg-white/10 rounded transition-colors"
+                className="p-1 hover:bg-accent rounded transition-colors"
               >
                 <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
               </button>

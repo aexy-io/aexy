@@ -33,7 +33,7 @@ export function WorkspaceSwitcher({
       {/* Trigger */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors"
+        className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-accent/50 rounded-lg transition-colors"
       >
         {/* Workspace Avatar */}
         <div className="h-6 w-6 rounded bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center flex-shrink-0">
@@ -82,7 +82,7 @@ export function WorkspaceSwitcher({
                 className="w-full flex items-center gap-3 px-3 py-2 hover:bg-accent/50 transition-colors"
               >
                 {/* Avatar */}
-                <div className="h-6 w-6 rounded bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center flex-shrink-0">
+                <div className="h-6 w-6 rounded bg-gradient-to-br from-muted-foreground/40 to-muted-foreground/50 flex items-center justify-center flex-shrink-0">
                   {workspace.avatar_url ? (
                     <img
                       src={workspace.avatar_url}

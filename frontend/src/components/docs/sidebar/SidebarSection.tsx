@@ -28,7 +28,7 @@ export function SidebarSection({
     <div className="py-1">
       {/* Section Header */}
       <div
-        className="flex items-center justify-between px-3 py-1.5 group cursor-pointer hover:bg-white/5 rounded-md mx-1"
+        className="flex items-center justify-between px-3 py-1.5 group cursor-pointer hover:bg-accent/50 rounded-md mx-1"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-1.5">
@@ -52,7 +52,7 @@ export function SidebarSection({
               e.stopPropagation();
               onAdd();
             }}
-            className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-white/10 rounded transition-opacity"
+            className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-accent rounded transition-opacity"
             title={addTooltip}
           >
             <Plus className="h-3.5 w-3.5 text-muted-foreground" />

@@ -19,7 +19,7 @@ export function SidebarNavigation({
       {/* Search */}
       <button
         onClick={onOpenSearch}
-        className="w-full flex items-center gap-3 px-3 py-1.5 rounded-md hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground"
+        className="w-full flex items-center gap-3 px-3 py-1.5 rounded-md hover:bg-accent/50 transition-colors text-muted-foreground hover:text-foreground"
       >
         <Search className="h-4 w-4" />
         <span className="flex-1 text-left text-sm">Search</span>
@@ -32,7 +32,7 @@ export function SidebarNavigation({
       {/* Home */}
       <Link
         href="/docs"
-        className="flex items-center gap-3 px-3 py-1.5 rounded-md hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground"
+        className="flex items-center gap-3 px-3 py-1.5 rounded-md hover:bg-accent/50 transition-colors text-muted-foreground hover:text-foreground"
       >
         <Home className="h-4 w-4" />
         <span className="text-sm">Home</span>
@@ -41,7 +41,7 @@ export function SidebarNavigation({
       {/* Inbox */}
       <button
         onClick={onOpenInbox}
-        className="w-full flex items-center gap-3 px-3 py-1.5 rounded-md hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground"
+        className="w-full flex items-center gap-3 px-3 py-1.5 rounded-md hover:bg-accent/50 transition-colors text-muted-foreground hover:text-foreground"
       >
         <Inbox className="h-4 w-4" />
         <span className="flex-1 text-left text-sm">Inbox</span>

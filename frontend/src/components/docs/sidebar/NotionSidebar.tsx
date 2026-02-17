@@ -139,7 +139,7 @@ export function NotionSidebar({
   );
 
   return (
-    <div className="flex flex-col h-full bg-[#191919] border-r border-border/50">
+    <div className="flex flex-col h-full bg-card border-r border-border/50">
       {/* Workspace Switcher */}
       <div className="p-2 border-b border-border/50">
         <WorkspaceSwitcher
@@ -262,7 +262,7 @@ export function NotionSidebar({
             <div className="px-2 py-1">
               <button
                 onClick={() => setShowCreateSpaceModal(true)}
-                className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-white/5 rounded-md transition-colors text-muted-foreground hover:text-muted-foreground"
+                className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-accent/50 rounded-md transition-colors text-muted-foreground hover:text-muted-foreground"
               >
                 <div className="h-5 w-5 rounded border border-dashed border-border flex items-center justify-center">
                   <Plus className="h-3 w-3" />
