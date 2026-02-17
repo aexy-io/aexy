@@ -160,7 +160,7 @@ export default function OnCallSettingsPage() {
   if (currentWorkspaceLoading || teamLoading || configLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="flex items-center gap-3 text-slate-400">
+        <div className="flex items-center gap-3 text-muted-foreground">
           <RefreshCw className="h-5 w-5 animate-spin" />
           <span>Loading...</span>
         </div>
@@ -172,7 +172,7 @@ export default function OnCallSettingsPage() {
   if (!workspaceId) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="text-center text-slate-400">
+        <div className="text-center text-muted-foreground">
           <p>No workspace selected</p>
           <Link href="/settings/organization" className="text-blue-400 hover:underline mt-2 block">
             Go to Organization Settings
@@ -198,8 +198,8 @@ export default function OnCallSettingsPage() {
         <div className="flex items-center gap-3">
           <Phone className="h-6 w-6 text-green-400" />
           <div>
-            <h1 className="text-2xl font-semibold text-white">On-Call Settings</h1>
-            <p className="text-sm text-slate-400 mt-0.5">
+            <h1 className="text-2xl font-semibold text-foreground">On-Call Settings</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
               {team?.name || "Team"}
             </p>
           </div>
@@ -207,7 +207,7 @@ export default function OnCallSettingsPage() {
         <button
           onClick={() => setShowSettings(!showSettings)}
           className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
-            showSettings ? "bg-blue-600 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+            showSettings ? "bg-blue-600 text-white" : "bg-muted text-foreground hover:bg-accent"
           }`}
         >
           <Settings className="h-4 w-4" />
@@ -218,20 +218,20 @@ export default function OnCallSettingsPage() {
       <div>
         {/* Not Enabled State */}
         {!config?.is_enabled && (
-          <div className="bg-slate-800 rounded-xl p-8 text-center">
+          <div className="bg-card rounded-xl p-8 text-center">
             <Phone className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-white mb-2">On-Call Not Enabled</h2>
-            <p className="text-slate-400 mb-6 max-w-md mx-auto">
+            <h2 className="text-xl font-semibold text-foreground mb-2">On-Call Not Enabled</h2>
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
               Enable on-call scheduling for this team to manage who&apos;s on-call and when.
               Team members will receive notifications before their shifts.
             </p>
             <div className="flex flex-col items-center gap-4">
               <div className="flex items-center gap-3">
-                <label className="text-sm text-slate-400">Timezone:</label>
+                <label className="text-sm text-muted-foreground">Timezone:</label>
                 <select
                   value={timezone}
                   onChange={(e) => setTimezone(e.target.value)}
-                  className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {TIMEZONES.map((tz) => (
                     <option key={tz} value={tz}>
@@ -257,7 +257,7 @@ export default function OnCallSettingsPage() {
             {/* Current On-Call Status */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <h3 className="text-sm font-medium text-slate-400 mb-2">Current Status</h3>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Current Status</h3>
                 <CurrentOnCallBadge
                   currentSchedule={currentSchedule}
                   nextSchedule={nextSchedule}
@@ -265,19 +265,19 @@ export default function OnCallSettingsPage() {
                 />
               </div>
               <div>
-                <h3 className="text-sm font-medium text-slate-400 mb-2">Google Calendar</h3>
-                <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Google Calendar</h3>
+                <div className="bg-card rounded-lg p-3 border border-border">
                   {isCalendarConnected ? (
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-green-400" />
-                        <span className="text-sm text-white">{calendarStatus?.calendar_email}</span>
+                        <span className="text-sm text-foreground">{calendarStatus?.calendar_email}</span>
                       </div>
                       <div className="flex gap-2">
                         <button
                           onClick={handleSyncCalendar}
                           disabled={isSyncing}
-                          className="p-1.5 text-slate-400 hover:text-white transition"
+                          className="p-1.5 text-muted-foreground hover:text-foreground transition"
                           title="Sync now"
                         >
                           <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
@@ -308,16 +308,16 @@ export default function OnCallSettingsPage() {
 
             {/* Settings Panel (collapsible) */}
             {showSettings && (
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-                <h3 className="text-lg font-semibold text-white mb-4">Configuration</h3>
+              <div className="bg-card rounded-xl p-6 border border-border">
+                <h3 className="text-lg font-semibold text-foreground mb-4">Configuration</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm text-slate-400 mb-1">Timezone</label>
+                    <label className="block text-sm text-muted-foreground mb-1">Timezone</label>
                     <select
                       value={config.timezone}
                       onChange={(e) => updateConfig({ timezone: e.target.value })}
                       disabled={isUpdating}
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       {TIMEZONES.map((tz) => (
                         <option key={tz} value={tz}>
@@ -327,7 +327,7 @@ export default function OnCallSettingsPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm text-slate-400 mb-1">
+                    <label className="block text-sm text-muted-foreground mb-1">
                       Notify before shift (minutes)
                     </label>
                     <input
@@ -337,21 +337,21 @@ export default function OnCallSettingsPage() {
                         updateConfig({ notify_before_shift_minutes: parseInt(e.target.value) })
                       }
                       disabled={isUpdating}
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
                       min={0}
                       max={1440}
                     />
                   </div>
                   {isCalendarConnected && calendars.length > 0 && (
                     <div className="md:col-span-2">
-                      <label className="block text-sm text-slate-400 mb-1">
+                      <label className="block text-sm text-muted-foreground mb-1">
                         Sync to Calendar
                       </label>
                       <div className="flex gap-2">
                         <select
                           value={selectedCalendarId || config.google_calendar_id || ""}
                           onChange={(e) => setSelectedCalendarId(e.target.value)}
-                          className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="">Select a calendar...</option>
                           {calendars.map((cal) => (
@@ -371,7 +371,7 @@ export default function OnCallSettingsPage() {
                     </div>
                   )}
                 </div>
-                <div className="mt-6 pt-4 border-t border-slate-700">
+                <div className="mt-6 pt-4 border-t border-border">
                   <button
                     onClick={handleDisableOnCall}
                     disabled={isDisabling}
@@ -386,7 +386,7 @@ export default function OnCallSettingsPage() {
             {/* Swap Requests */}
             {swapRequests.filter((r) => r.status === "pending").length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold text-white mb-3">Pending Swap Requests</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-3">Pending Swap Requests</h3>
                 <SwapRequestsList
                   swapRequests={swapRequests}
                   currentUserId={currentUserId}
@@ -400,7 +400,7 @@ export default function OnCallSettingsPage() {
 
             {/* Schedule Editor */}
             <div>
-              <h3 className="text-lg font-semibold text-white mb-3">Schedule</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-3">Schedule</h3>
               <OnCallScheduleEditor
                 schedules={schedules}
                 teamMembers={teamMembers}

@@ -88,6 +88,9 @@ class AppAccessService:
 
         # Get workspace settings for app access
         workspace = await self._get_workspace(workspace_id)
+        workspace_app_settings = {}
+        if workspace and workspace.settings:
+            workspace_app_settings = workspace.settings.get("app_settings", {})
 
         # Step 1: Start with role-based defaults
         role_template_id = self._get_role_template_id(member)
@@ -135,6 +138,11 @@ class AppAccessService:
             # Admin override: admins see all apps
             if is_admin:
                 enabled = True
+
+            # Workspace-level disable: if workspace disabled this app, override everything
+            workspace_app_enabled = workspace_app_settings.get(app_id, True)
+            if not workspace_app_enabled:
+                enabled = False
 
             # Resolve modules
             modules: dict[str, bool] = {}

@@ -40,28 +40,28 @@ const ROLE_OPTIONS = [
 function getRoleBadgeColor(role: string) {
   switch (role) {
     case "owner":
-      return "bg-amber-900/30 text-amber-400";
+      return "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400";
     case "admin":
-      return "bg-purple-900/30 text-purple-400";
+      return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
     case "member":
-      return "bg-blue-900/30 text-blue-400";
+      return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
     case "viewer":
-      return "bg-slate-700 text-slate-400";
+      return "bg-muted text-muted-foreground";
     default:
-      return "bg-slate-700 text-slate-400";
+      return "bg-muted text-muted-foreground";
   }
 }
 
 function getStatusBadgeColor(status: string) {
   switch (status) {
     case "active":
-      return "bg-green-900/30 text-green-400";
+      return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
     case "pending":
-      return "bg-yellow-900/30 text-yellow-400";
+      return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
     case "suspended":
-      return "bg-red-900/30 text-red-400";
+      return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
     default:
-      return "bg-slate-700 text-slate-400";
+      return "bg-muted text-muted-foreground";
   }
 }
 
@@ -105,7 +105,7 @@ function MemberRow({ member, currentUserId, isCurrentUserAdmin, onUpdateRole, on
   };
 
   return (
-    <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-700/30 transition">
+    <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent/30 transition">
       <div className="flex items-center gap-3">
         {member.developer_avatar_url ? (
           <Image
@@ -116,21 +116,21 @@ function MemberRow({ member, currentUserId, isCurrentUserAdmin, onUpdateRole, on
             className="rounded-full"
           />
         ) : (
-          <div className="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center">
-            <Users className="h-5 w-5 text-slate-400" />
+          <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
+            <Users className="h-5 w-5 text-muted-foreground" />
           </div>
         )}
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-white font-medium">
+            <span className="text-foreground font-medium">
               {member.developer_name || member.developer_email || "Unknown"}
             </span>
             {isCurrentUser && (
-              <span className="text-xs text-slate-400">(you)</span>
+              <span className="text-xs text-muted-foreground">(you)</span>
             )}
           </div>
           {member.developer_email && (
-            <p className="text-slate-400 text-sm">{member.developer_email}</p>
+            <p className="text-muted-foreground text-sm">{member.developer_email}</p>
           )}
         </div>
       </div>
@@ -148,7 +148,7 @@ function MemberRow({ member, currentUserId, isCurrentUserAdmin, onUpdateRole, on
             <button
               ref={buttonRef}
               onClick={handleOpenMenu}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
             >
               <MoreVertical className="h-4 w-4" />
             </button>
@@ -156,10 +156,10 @@ function MemberRow({ member, currentUserId, isCurrentUserAdmin, onUpdateRole, on
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
                 <div
-                  className="fixed w-48 bg-slate-700 rounded-lg shadow-xl z-50 py-1"
+                  className="fixed w-48 bg-muted rounded-lg shadow-xl z-50 py-1"
                   style={{ top: menuPosition.top, right: menuPosition.right }}
                 >
-                  <div className="px-3 py-2 text-xs text-slate-400 uppercase tracking-wider">
+                  <div className="px-3 py-2 text-xs text-muted-foreground uppercase tracking-wider">
                     Change Role
                   </div>
                   {ROLE_OPTIONS.filter(r => r.value !== "owner").map((role) => (
@@ -169,20 +169,20 @@ function MemberRow({ member, currentUserId, isCurrentUserAdmin, onUpdateRole, on
                         onUpdateRole(member.developer_id, role.value);
                         setShowMenu(false);
                       }}
-                      className={`w-full px-3 py-2 text-left text-sm hover:bg-slate-600 flex items-center gap-2 ${
-                        member.role === role.value ? "text-primary-400" : "text-white"
+                      className={`w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2 ${
+                        member.role === role.value ? "text-primary-400" : "text-foreground"
                       }`}
                     >
                       {member.role === role.value && <Check className="h-4 w-4" />}
                       <span className={member.role === role.value ? "" : "ml-6"}>{role.label}</span>
                     </button>
                   ))}
-                  <div className="border-t border-slate-600 mt-1 pt-1">
+                  <div className="border-t border-border mt-1 pt-1">
                     {isPending && (
                       <button
                         onClick={handleResendInvite}
                         disabled={isResending}
-                        className="w-full px-3 py-2 text-left text-sm text-blue-400 hover:bg-slate-600 flex items-center gap-2 disabled:opacity-50"
+                        className="w-full px-3 py-2 text-left text-sm text-blue-400 hover:bg-accent flex items-center gap-2 disabled:opacity-50"
                       >
                         <RefreshCw className={`h-4 w-4 ${isResending ? 'animate-spin' : ''}`} />
                         {isResending ? 'Resending...' : 'Resend Invite'}
@@ -193,7 +193,7 @@ function MemberRow({ member, currentUserId, isCurrentUserAdmin, onUpdateRole, on
                         onRemove(member.developer_id);
                         setShowMenu(false);
                       }}
-                      className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-600 flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-accent flex items-center gap-2"
                     >
                       <UserMinus className="h-4 w-4" />
                       Remove from workspace
@@ -240,26 +240,26 @@ function InviteMemberModal({ onClose, onInvite, isInviting }: InviteMemberModalP
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-slate-800 rounded-xl w-full max-w-md p-6">
-        <h3 className="text-xl font-semibold text-white mb-4">Invite Team Member</h3>
+      <div className="bg-card rounded-xl w-full max-w-md p-6">
+        <h3 className="text-xl font-semibold text-foreground mb-4">Invite Team Member</h3>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Email Address</label>
+              <label className="block text-sm text-muted-foreground mb-1">Email Address</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="colleague@company.com"
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500"
+                className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary-500"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Role</label>
+              <label className="block text-sm text-muted-foreground mb-1">Role</label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500"
               >
                 {ROLE_OPTIONS.filter(r => r.value !== "owner").map((option) => (
                   <option key={option.value} value={option.value}>
@@ -276,7 +276,7 @@ function InviteMemberModal({ onClose, onInvite, isInviting }: InviteMemberModalP
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+              className="flex-1 px-4 py-2 bg-muted hover:bg-accent text-foreground rounded-lg transition"
             >
               Cancel
             </button>
@@ -343,32 +343,32 @@ function CreateWorkspaceModal({ onClose, onCreate, isCreating, organizations }: 
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-slate-800 rounded-xl w-full max-w-md p-6">
-        <h3 className="text-xl font-semibold text-white mb-4">Create Workspace</h3>
+      <div className="bg-card rounded-xl w-full max-w-md p-6">
+        <h3 className="text-xl font-semibold text-foreground mb-4">Create Workspace</h3>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Workspace Name</label>
+              <label className="block text-sm text-muted-foreground mb-1">Workspace Name</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="My Team"
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500"
+                className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary-500"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Description (optional)</label>
+              <label className="block text-sm text-muted-foreground mb-1">Description (optional)</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="What is this workspace for?"
                 rows={2}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500"
+                className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary-500"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Type</label>
+              <label className="block text-sm text-muted-foreground mb-1">Type</label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
@@ -376,12 +376,12 @@ function CreateWorkspaceModal({ onClose, onCreate, isCreating, organizations }: 
                   className={`p-3 rounded-lg border text-left transition ${
                     type === "internal"
                       ? "border-primary-500 bg-primary-900/20"
-                      : "border-slate-600 hover:border-slate-500"
+                      : "border-border hover:border-border"
                   }`}
                 >
-                  <Building2 className="h-5 w-5 text-slate-400 mb-1" />
-                  <div className="text-white font-medium text-sm">Internal</div>
-                  <div className="text-slate-400 text-xs">Manual member management</div>
+                  <Building2 className="h-5 w-5 text-muted-foreground mb-1" />
+                  <div className="text-foreground font-medium text-sm">Internal</div>
+                  <div className="text-muted-foreground text-xs">Manual member management</div>
                 </button>
                 <button
                   type="button"
@@ -389,22 +389,22 @@ function CreateWorkspaceModal({ onClose, onCreate, isCreating, organizations }: 
                   className={`p-3 rounded-lg border text-left transition ${
                     type === "github_linked"
                       ? "border-primary-500 bg-primary-900/20"
-                      : "border-slate-600 hover:border-slate-500"
+                      : "border-border hover:border-border"
                   }`}
                 >
-                  <LinkIcon className="h-5 w-5 text-slate-400 mb-1" />
-                  <div className="text-white font-medium text-sm">GitHub Linked</div>
-                  <div className="text-slate-400 text-xs">Sync from GitHub org</div>
+                  <LinkIcon className="h-5 w-5 text-muted-foreground mb-1" />
+                  <div className="text-foreground font-medium text-sm">GitHub Linked</div>
+                  <div className="text-muted-foreground text-xs">Sync from GitHub org</div>
                 </button>
               </div>
             </div>
             {type === "github_linked" && organizations.length > 0 && (
               <div>
-                <label className="block text-sm text-slate-400 mb-1">GitHub Organization</label>
+                <label className="block text-sm text-muted-foreground mb-1">GitHub Organization</label>
                 <select
                   value={selectedOrgId}
                   onChange={(e) => setSelectedOrgId(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                  className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500"
                 >
                   <option value="">Select an organization...</option>
                   {organizations.map((org) => (
@@ -423,7 +423,7 @@ function CreateWorkspaceModal({ onClose, onCreate, isCreating, organizations }: 
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+              className="flex-1 px-4 py-2 bg-muted hover:bg-accent text-foreground rounded-lg transition"
             >
               Cancel
             </button>
@@ -459,12 +459,12 @@ function SeatUsageBar({ used, total }: { used: number; total: number }) {
   return (
     <div className="mt-2">
       <div className="flex justify-between text-sm mb-1">
-        <span className="text-slate-400">Seats Used</span>
-        <span className={isAtLimit ? "text-red-400" : isNearLimit ? "text-yellow-400" : "text-slate-400"}>
+        <span className="text-muted-foreground">Seats Used</span>
+        <span className={isAtLimit ? "text-red-400" : isNearLimit ? "text-yellow-400" : "text-muted-foreground"}>
           {used} / {total}
         </span>
       </div>
-      <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+      <div className="h-2 bg-muted rounded-full overflow-hidden">
         <div
           className={`h-full transition-all ${
             isAtLimit ? "bg-red-500" : isNearLimit ? "bg-yellow-500" : "bg-primary-500"
@@ -498,19 +498,19 @@ function PendingInviteRow({ invite, onRevoke, onResend, isRevoking }: PendingInv
   };
 
   return (
-    <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-700/30 transition">
+    <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent/30 transition">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 bg-yellow-900/30 rounded-full flex items-center justify-center">
           <Mail className="h-5 w-5 text-yellow-400" />
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-white font-medium">{invite.email}</span>
+            <span className="text-foreground font-medium">{invite.email}</span>
             <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-900/30 text-yellow-400">
               Pending
             </span>
           </div>
-          <div className="flex items-center gap-2 text-slate-400 text-sm">
+          <div className="flex items-center gap-2 text-muted-foreground text-sm">
             <Clock className="h-3 w-3" />
             {isExpired ? (
               <span className="text-red-400">Expired</span>
@@ -535,7 +535,7 @@ function PendingInviteRow({ invite, onRevoke, onResend, isRevoking }: PendingInv
         <button
           onClick={handleResend}
           disabled={isResending}
-          className="p-2 text-blue-400 hover:text-blue-300 hover:bg-slate-700 rounded-lg transition disabled:opacity-50"
+          className="p-2 text-blue-400 hover:text-blue-300 hover:bg-accent rounded-lg transition disabled:opacity-50"
           title="Resend invite"
         >
           <RefreshCw className={`h-4 w-4 ${isResending ? 'animate-spin' : ''}`} />
@@ -543,7 +543,7 @@ function PendingInviteRow({ invite, onRevoke, onResend, isRevoking }: PendingInv
         <button
           onClick={() => onRevoke(invite.id)}
           disabled={isRevoking}
-          className="p-2 text-red-400 hover:text-red-300 hover:bg-slate-700 rounded-lg transition disabled:opacity-50"
+          className="p-2 text-red-400 hover:text-red-300 hover:bg-accent rounded-lg transition disabled:opacity-50"
           title="Revoke invite"
         >
           <X className="h-4 w-4" />
@@ -553,14 +553,13 @@ function PendingInviteRow({ invite, onRevoke, onResend, isRevoking }: PendingInv
   );
 }
 
-const APP_LABELS: Record<string, { label: string; description: string }> = {
-  hiring: { label: "Hiring", description: "Assessment and candidate management" },
-  tracking: { label: "Time Tracking", description: "Track developer activity and time" },
-  oncall: { label: "On-Call", description: "On-call scheduling and escalations" },
-  sprints: { label: "Sprints", description: "Sprint planning and management" },
-  documents: { label: "Documents", description: "Documentation and collaboration" },
-  ticketing: { label: "Ticketing", description: "Support tickets and forms" },
-};
+import { APP_CATALOG } from "@/config/appDefinitions";
+
+const APP_LABELS: Record<string, { label: string; description: string }> = Object.fromEntries(
+  Object.entries(APP_CATALOG)
+    .filter(([id]) => id !== "dashboard")
+    .map(([id, app]) => [id, { label: app.name, description: app.description }])
+);
 
 interface AppSettingsSectionProps {
   appSettings: Record<string, boolean>;
@@ -577,36 +576,36 @@ function AppSettingsSection({ appSettings, onUpdate, isUpdating, isOwner }: AppS
   };
 
   return (
-    <div className="bg-slate-800 rounded-xl overflow-hidden mb-6">
-      <div className="p-4 border-b border-slate-700 flex items-center gap-3">
-        <Layers className="h-5 w-5 text-slate-400" />
+    <div className="bg-card rounded-xl overflow-hidden mb-6">
+      <div className="p-4 border-b border-border flex items-center gap-3">
+        <Layers className="h-5 w-5 text-muted-foreground" />
         <div>
-          <h3 className="text-white font-medium">App Settings</h3>
-          <p className="text-slate-400 text-sm">Enable or disable apps for your workspace</p>
+          <h3 className="text-foreground font-medium">App Settings</h3>
+          <p className="text-muted-foreground text-sm">Enable or disable apps for your workspace</p>
         </div>
       </div>
       <div className="p-4 space-y-3">
         {Object.entries(APP_LABELS).map(([key, { label, description }]) => (
           <div
             key={key}
-            className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-slate-700/30 rounded-lg"
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-muted/30 rounded-lg"
           >
             <div>
-              <div className="text-white font-medium">{label}</div>
-              <div className="text-slate-400 text-sm">{description}</div>
+              <div className="text-foreground font-medium">{label}</div>
+              <div className="text-muted-foreground text-sm">{description}</div>
             </div>
             <button
               onClick={() => handleToggle(key)}
               disabled={isUpdating || !isOwner}
               className={`p-1 rounded-full transition ${
-                !isOwner ? "opacity-50 cursor-not-allowed" : "hover:bg-slate-600"
+                !isOwner ? "opacity-50 cursor-not-allowed" : "hover:bg-accent"
               }`}
               title={isOwner ? `${appSettings[key] ? "Disable" : "Enable"} ${label}` : "Only owner can change"}
             >
               {appSettings[key] ? (
                 <ToggleRight className="h-8 w-8 text-green-400" />
               ) : (
-                <ToggleLeft className="h-8 w-8 text-slate-500" />
+                <ToggleLeft className="h-8 w-8 text-muted-foreground" />
               )}
             </button>
           </div>
@@ -614,7 +613,7 @@ function AppSettingsSection({ appSettings, onUpdate, isUpdating, isOwner }: AppS
       </div>
       {!isOwner && (
         <div className="px-4 pb-4">
-          <p className="text-xs text-slate-500">Only the workspace owner can change app settings.</p>
+          <p className="text-xs text-muted-foreground">Only the workspace owner can change app settings.</p>
         </div>
       )}
     </div>
@@ -718,7 +717,7 @@ export default function OrganizationSettingsPage() {
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-white">Loading workspace...</p>
+          <p className="text-foreground">Loading workspace...</p>
         </div>
       </div>
     );
@@ -745,8 +744,8 @@ export default function OrganizationSettingsPage() {
         {/* Workspace Selector */}
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-            <h2 className="text-lg font-medium text-white flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-slate-400" />
+            <h2 className="text-lg font-medium text-foreground flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-muted-foreground" />
               Workspaces
             </h2>
             <button
@@ -767,7 +766,7 @@ export default function OrganizationSettingsPage() {
                   className={`p-4 rounded-xl border text-left transition ${
                     ws.id === currentWorkspaceId
                       ? "border-primary-500 bg-primary-900/20"
-                      : "border-slate-700 bg-slate-800 hover:border-slate-600"
+                      : "border-border bg-card hover:border-border"
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -780,13 +779,13 @@ export default function OrganizationSettingsPage() {
                         className="rounded-lg"
                       />
                     ) : (
-                      <div className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center">
-                        <Building2 className="h-5 w-5 text-slate-400" />
+                      <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
+                        <Building2 className="h-5 w-5 text-muted-foreground" />
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="text-white font-medium truncate">{ws.name}</div>
-                      <div className="flex items-center gap-2 text-xs text-slate-400">
+                      <div className="text-foreground font-medium truncate">{ws.name}</div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Users className="h-3 w-3" />
                         {ws.member_count} members
                         {ws.type === "github_linked" && (
@@ -805,10 +804,10 @@ export default function OrganizationSettingsPage() {
               ))}
             </div>
           ) : (
-            <div className="bg-slate-800 rounded-xl p-8 text-center">
-              <Building2 className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-white mb-2">No workspaces yet</h3>
-              <p className="text-slate-400 mb-4">
+            <div className="bg-card rounded-xl p-8 text-center">
+              <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">No workspaces yet</h3>
+              <p className="text-muted-foreground mb-4">
                 Create your first workspace to start managing your team.
               </p>
               <button
@@ -826,7 +825,7 @@ export default function OrganizationSettingsPage() {
         {currentWorkspace && (
           <>
             {/* Workspace Info Card */}
-            <div className="bg-slate-800 rounded-xl p-6 mb-6">
+            <div className="bg-card rounded-xl p-6 mb-6">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-4">
                   {currentWorkspace.avatar_url ? (
@@ -838,13 +837,13 @@ export default function OrganizationSettingsPage() {
                       className="rounded-xl"
                     />
                   ) : (
-                    <div className="w-16 h-16 bg-slate-700 rounded-xl flex items-center justify-center">
-                      <Building2 className="h-8 w-8 text-slate-400" />
+                    <div className="w-16 h-16 bg-muted rounded-xl flex items-center justify-center">
+                      <Building2 className="h-8 w-8 text-muted-foreground" />
                     </div>
                   )}
                   <div>
-                    <h2 className="text-2xl font-semibold text-white">{currentWorkspace.name}</h2>
-                    <p className="text-slate-400">{currentWorkspace.description || "No description"}</p>
+                    <h2 className="text-2xl font-semibold text-foreground">{currentWorkspace.name}</h2>
+                    <p className="text-muted-foreground">{currentWorkspace.description || "No description"}</p>
                     <div className="flex items-center gap-3 mt-2">
                       <span className={`px-2 py-1 rounded text-xs font-medium ${
                         currentWorkspace.type === "github_linked"
@@ -853,10 +852,10 @@ export default function OrganizationSettingsPage() {
                       }`}>
                         {currentWorkspace.type === "github_linked" ? "GitHub Linked" : "Internal"}
                       </span>
-                      <span className="text-slate-400 text-sm">
+                      <span className="text-muted-foreground text-sm">
                         {currentWorkspace.member_count} members
                       </span>
-                      <span className="text-slate-400 text-sm">
+                      <span className="text-muted-foreground text-sm">
                         {currentWorkspace.team_count} projects
                       </span>
                     </div>
@@ -864,7 +863,7 @@ export default function OrganizationSettingsPage() {
                 </div>
                 {billingStatus && (
                   <div className="text-right">
-                    <div className="flex items-center gap-2 text-slate-400 mb-1">
+                    <div className="flex items-center gap-2 text-muted-foreground mb-1">
                       <Shield className="h-4 w-4" />
                       <span className="text-sm">{billingStatus.current_plan || "Free"} Plan</span>
                     </div>
@@ -877,13 +876,13 @@ export default function OrganizationSettingsPage() {
             </div>
 
             {/* Members Section */}
-            <div className="bg-slate-800 rounded-xl mb-6">
-              <div className="p-4 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="bg-card rounded-xl mb-6">
+              <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <Users className="h-5 w-5 text-slate-400" />
+                  <Users className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <h3 className="text-white font-medium">Team Members</h3>
-                    <p className="text-slate-400 text-sm">{members.length} members</p>
+                    <h3 className="text-foreground font-medium">Team Members</h3>
+                    <p className="text-muted-foreground text-sm">{members.length} members</p>
                   </div>
                 </div>
                 {isAdmin && (
@@ -896,7 +895,7 @@ export default function OrganizationSettingsPage() {
                   </button>
                 )}
               </div>
-              <div className="divide-y divide-slate-700/50">
+              <div className="divide-y divide-border/50">
                 {members.length > 0 ? (
                   members.map((member) => (
                     <MemberRow
@@ -910,7 +909,7 @@ export default function OrganizationSettingsPage() {
                     />
                   ))
                 ) : (
-                  <div className="p-8 text-center text-slate-400">
+                  <div className="p-8 text-center text-muted-foreground">
                     No members found
                   </div>
                 )}
@@ -919,15 +918,15 @@ export default function OrganizationSettingsPage() {
 
             {/* Pending Invites Section */}
             {pendingInvites.length > 0 && (
-              <div className="bg-slate-800 rounded-xl overflow-hidden mb-6">
-                <div className="p-4 border-b border-slate-700 flex items-center gap-3">
+              <div className="bg-card rounded-xl overflow-hidden mb-6">
+                <div className="p-4 border-b border-border flex items-center gap-3">
                   <Mail className="h-5 w-5 text-yellow-400" />
                   <div>
-                    <h3 className="text-white font-medium">Pending Invitations</h3>
-                    <p className="text-slate-400 text-sm">{pendingInvites.length} pending</p>
+                    <h3 className="text-foreground font-medium">Pending Invitations</h3>
+                    <p className="text-muted-foreground text-sm">{pendingInvites.length} pending</p>
                   </div>
                 </div>
-                <div className="divide-y divide-slate-700/50">
+                <div className="divide-y divide-border/50">
                   {pendingInvites.map((invite) => (
                     <PendingInviteRow
                       key={invite.id}
@@ -953,44 +952,44 @@ export default function OrganizationSettingsPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Link
                 href="/settings/projects"
-                className="bg-slate-800 rounded-xl p-4 hover:bg-slate-700/50 transition group"
+                className="bg-card rounded-xl p-4 hover:bg-accent/50 transition group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-slate-700 rounded-lg group-hover:bg-slate-600 transition">
-                    <FolderKanban className="h-5 w-5 text-slate-300" />
+                  <div className="p-2 bg-muted rounded-lg group-hover:bg-accent transition">
+                    <FolderKanban className="h-5 w-5 text-foreground" />
                   </div>
                   <div>
-                    <h4 className="text-white font-medium">Projects</h4>
-                    <p className="text-slate-400 text-sm">Manage projects</p>
+                    <h4 className="text-foreground font-medium">Projects</h4>
+                    <p className="text-muted-foreground text-sm">Manage projects</p>
                   </div>
-                  <ChevronDown className="h-5 w-5 text-slate-400 ml-auto -rotate-90" />
+                  <ChevronDown className="h-5 w-5 text-muted-foreground ml-auto -rotate-90" />
                 </div>
               </Link>
               <Link
                 href="/settings/repositories"
-                className="bg-slate-800 rounded-xl p-4 hover:bg-slate-700/50 transition group"
+                className="bg-card rounded-xl p-4 hover:bg-accent/50 transition group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-slate-700 rounded-lg group-hover:bg-slate-600 transition">
-                    <Settings className="h-5 w-5 text-slate-300" />
+                  <div className="p-2 bg-muted rounded-lg group-hover:bg-accent transition">
+                    <Settings className="h-5 w-5 text-foreground" />
                   </div>
                   <div>
-                    <h4 className="text-white font-medium">Repositories</h4>
-                    <p className="text-slate-400 text-sm">Manage repos</p>
+                    <h4 className="text-foreground font-medium">Repositories</h4>
+                    <p className="text-muted-foreground text-sm">Manage repos</p>
                   </div>
-                  <ChevronDown className="h-5 w-5 text-slate-400 ml-auto -rotate-90" />
+                  <ChevronDown className="h-5 w-5 text-muted-foreground ml-auto -rotate-90" />
                 </div>
               </Link>
-              <div className="bg-slate-800 rounded-xl p-4 opacity-60 cursor-not-allowed">
+              <div className="bg-card rounded-xl p-4 opacity-60 cursor-not-allowed">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-slate-700 rounded-lg">
-                    <CreditCard className="h-5 w-5 text-slate-300" />
+                  <div className="p-2 bg-muted rounded-lg">
+                    <CreditCard className="h-5 w-5 text-foreground" />
                   </div>
                   <div>
-                    <h4 className="text-white font-medium">Billing</h4>
-                    <p className="text-slate-400 text-sm">Coming soon</p>
+                    <h4 className="text-foreground font-medium">Billing</h4>
+                    <p className="text-muted-foreground text-sm">Coming soon</p>
                   </div>
-                  <ChevronDown className="h-5 w-5 text-slate-400 ml-auto -rotate-90" />
+                  <ChevronDown className="h-5 w-5 text-muted-foreground ml-auto -rotate-90" />
                 </div>
               </div>
             </div>

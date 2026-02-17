@@ -388,6 +388,7 @@ export function useWorkspaceAppSettings(workspaceId: string | null) {
     mutationFn: (apps: Record<string, boolean>) => workspaceApi.updateAppSettings(workspaceId!, apps),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workspaceAppSettings", workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["appAccess"] });
     },
   });
 
@@ -400,14 +401,7 @@ export function useWorkspaceAppSettings(workspaceId: string | null) {
   });
 
   return {
-    appSettings: appSettings || {
-      hiring: true,
-      tracking: true,
-      oncall: true,
-      sprints: true,
-      documents: true,
-      ticketing: true,
-    },
+    appSettings: appSettings || {},
     isLoading,
     error,
     refetch,

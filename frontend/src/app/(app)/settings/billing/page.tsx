@@ -100,7 +100,7 @@ function BillingContent() {
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary-500 mx-auto mb-4" />
-          <p className="text-slate-400">Loading billing information...</p>
+          <p className="text-muted-foreground">Loading billing information...</p>
         </div>
       </div>
     );
@@ -128,7 +128,7 @@ function BillingContent() {
         <UsageAlerts />
 
         {/* Current Plan Card */}
-        <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
           <div className={`p-6 bg-gradient-to-r ${getTierColor(tier)}`}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -159,22 +159,22 @@ function BillingContent() {
             {subscriptionStatus?.subscription ? (
               <div className="grid md:grid-cols-3 gap-6">
                 <div>
-                  <p className="text-slate-400 text-sm mb-1">Status</p>
-                  <p className="text-white font-medium capitalize flex items-center gap-2">
+                  <p className="text-muted-foreground text-sm mb-1">Status</p>
+                  <p className="text-foreground font-medium capitalize flex items-center gap-2">
                     <span className="w-2 h-2 bg-green-400 rounded-full" />
                     {subscriptionStatus.subscription.status}
                   </p>
                 </div>
                 <div>
-                  <p className="text-slate-400 text-sm mb-1">Current Period</p>
-                  <p className="text-white font-medium">
+                  <p className="text-muted-foreground text-sm mb-1">Current Period</p>
+                  <p className="text-foreground font-medium">
                     {formatDate(subscriptionStatus.subscription.current_period_start)} -{" "}
                     {formatDate(subscriptionStatus.subscription.current_period_end)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-slate-400 text-sm mb-1">Next Billing</p>
-                  <p className="text-white font-medium">
+                  <p className="text-muted-foreground text-sm mb-1">Next Billing</p>
+                  <p className="text-foreground font-medium">
                     {formatDate(subscriptionStatus.subscription.current_period_end)}
                   </p>
                 </div>
@@ -183,7 +183,7 @@ function BillingContent() {
               <div className="py-4">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div>
-                    <p className="text-slate-400">
+                    <p className="text-muted-foreground">
                       You're on the free plan. Upgrade to unlock more features.
                     </p>
                   </div>
@@ -207,8 +207,8 @@ function BillingContent() {
                         <Sparkles className="h-5 w-5 text-primary-400" />
                       </div>
                       <div>
-                        <p className="text-white font-medium">Upgrade to Pro for $29/mo</p>
-                        <p className="text-slate-400 text-sm">Get AI insights, advanced analytics, and more</p>
+                        <p className="text-foreground font-medium">Upgrade to Pro for $29/mo</p>
+                        <p className="text-muted-foreground text-sm">Get AI insights, advanced analytics, and more</p>
                       </div>
                     </div>
                     <Link
@@ -226,7 +226,7 @@ function BillingContent() {
 
         {/* Usage Stats Cards */}
         <div>
-          <h3 className="text-lg font-semibold text-white mb-4">Current Usage</h3>
+          <h3 className="text-lg font-semibold text-foreground mb-4">Current Usage</h3>
           <UsageStatsCards />
         </div>
 
@@ -237,24 +237,24 @@ function BillingContent() {
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Plan Features */}
           {plan && (
-            <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Plan Features</h3>
+            <div className="bg-card rounded-xl border border-border p-6">
+              <h3 className="text-lg font-semibold text-foreground mb-4">Plan Features</h3>
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <Check className={`h-5 w-5 ${plan.max_repos === -1 ? "text-green-400" : "text-primary-400"}`} />
-                  <span className="text-slate-300">
+                  <span className="text-foreground">
                     {plan.max_repos === -1 ? "Unlimited" : plan.max_repos} repositories
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Check className={`h-5 w-5 ${plan.sync_history_days === -1 ? "text-green-400" : "text-primary-400"}`} />
-                  <span className="text-slate-300">
+                  <span className="text-foreground">
                     {plan.sync_history_days === -1 ? "Unlimited" : `${plan.sync_history_days} days`} sync history
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Check className={`h-5 w-5 ${plan.llm_requests_per_day === -1 ? "text-green-400" : "text-primary-400"}`} />
-                  <span className="text-slate-300">
+                  <span className="text-foreground">
                     {plan.llm_requests_per_day === -1 ? "Unlimited" : plan.llm_requests_per_day} AI requests/day
                   </span>
                 </div>
@@ -264,7 +264,7 @@ function BillingContent() {
                   ) : (
                     <span className="h-5 w-5 text-slate-600">-</span>
                   )}
-                  <span className={plan.enable_real_time_sync ? "text-slate-300" : "text-slate-500"}>
+                  <span className={plan.enable_real_time_sync ? "text-foreground" : "text-muted-foreground"}>
                     Real-time sync
                   </span>
                 </div>
@@ -274,7 +274,7 @@ function BillingContent() {
                   ) : (
                     <span className="h-5 w-5 text-slate-600">-</span>
                   )}
-                  <span className={plan.enable_advanced_analytics ? "text-slate-300" : "text-slate-500"}>
+                  <span className={plan.enable_advanced_analytics ? "text-foreground" : "text-muted-foreground"}>
                     Advanced analytics
                   </span>
                 </div>
@@ -284,7 +284,7 @@ function BillingContent() {
                   ) : (
                     <span className="h-5 w-5 text-slate-600">-</span>
                   )}
-                  <span className={plan.enable_team_features ? "text-slate-300" : "text-slate-500"}>
+                  <span className={plan.enable_team_features ? "text-foreground" : "text-muted-foreground"}>
                     Team features
                   </span>
                 </div>
@@ -294,7 +294,7 @@ function BillingContent() {
                   ) : (
                     <span className="h-5 w-5 text-slate-600">-</span>
                   )}
-                  <span className={plan.enable_exports ? "text-slate-300" : "text-slate-500"}>
+                  <span className={plan.enable_exports ? "text-foreground" : "text-muted-foreground"}>
                     Data exports
                   </span>
                 </div>
@@ -304,7 +304,7 @@ function BillingContent() {
                   ) : (
                     <span className="h-5 w-5 text-slate-600">-</span>
                   )}
-                  <span className={plan.enable_webhooks ? "text-slate-300" : "text-slate-500"}>
+                  <span className={plan.enable_webhooks ? "text-foreground" : "text-muted-foreground"}>
                     Webhooks
                   </span>
                 </div>
@@ -318,24 +318,24 @@ function BillingContent() {
 
         {/* Payment Method */}
         {subscriptionStatus?.customer && (
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Payment Method</h3>
+          <div className="bg-card rounded-xl border border-border p-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Payment Method</h3>
             {subscriptionStatus.customer.stripe_customer_id ? (
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-slate-700 rounded-lg">
-                    <CreditCard className="h-5 w-5 text-slate-300" />
+                  <div className="p-2 bg-muted rounded-lg">
+                    <CreditCard className="h-5 w-5 text-foreground" />
                   </div>
                   <div>
-                    <p className="text-white">Managed via Stripe</p>
-                    <p className="text-slate-400 text-sm">
+                    <p className="text-foreground">Managed via Stripe</p>
+                    <p className="text-muted-foreground text-sm">
                       Click "Manage Billing" to update your payment method
                     </p>
                   </div>
                 </div>
               </div>
             ) : (
-              <p className="text-slate-400">No payment method on file</p>
+              <p className="text-muted-foreground">No payment method on file</p>
             )}
           </div>
         )}
@@ -347,7 +347,7 @@ function BillingContent() {
               <button
                 onClick={handleManageBilling}
                 disabled={portalLoading}
-                className="flex items-center gap-2 px-6 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-lg transition disabled:opacity-50"
+                className="flex items-center gap-2 px-6 py-2.5 bg-card hover:bg-accent border border-border text-foreground rounded-lg transition disabled:opacity-50"
               >
                 {portalLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -360,7 +360,7 @@ function BillingContent() {
 
               <Link
                 href="/settings/plans"
-                className="flex items-center gap-2 px-6 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-lg transition"
+                className="flex items-center gap-2 px-6 py-2.5 bg-card hover:bg-accent border border-border text-foreground rounded-lg transition"
               >
                 <RefreshCw className="h-4 w-4" />
                 Change Plan
@@ -380,8 +380,8 @@ function BillingContent() {
         </div>
 
         {/* Help Text */}
-        <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
-          <p className="text-slate-400 text-sm">
+        <div className="p-4 bg-card/50 rounded-lg border border-border">
+          <p className="text-muted-foreground text-sm">
             Need help with billing?{" "}
             <a
               href="mailto:billing@aexy.io"
@@ -401,7 +401,7 @@ function BillingLoadingFallback() {
     <div className="flex items-center justify-center py-20">
       <div className="text-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary-500 mx-auto mb-4" />
-        <p className="text-slate-400">Loading billing information...</p>
+        <p className="text-muted-foreground">Loading billing information...</p>
       </div>
     </div>
   );

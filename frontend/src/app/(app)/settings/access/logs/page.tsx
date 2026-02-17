@@ -71,7 +71,7 @@ export default function AccessLogsPage() {
   if (subscriptionLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -90,8 +90,8 @@ export default function AccessLogsPage() {
           <div className="mx-auto w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center mb-6">
             <Crown className="h-10 w-10 text-amber-400" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Enterprise Feature</h2>
-          <p className="text-slate-400 mb-6 max-w-md mx-auto">
+          <h2 className="text-2xl font-bold text-foreground mb-2">Enterprise Feature</h2>
+          <p className="text-muted-foreground mb-6 max-w-md mx-auto">
             Access logs are available on the Enterprise plan. Upgrade to track
             all access control changes and security events.
           </p>
@@ -130,14 +130,14 @@ export default function AccessLogsPage() {
         {/* Summary Cards */}
         {summary && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
-              <p className="text-sm text-slate-400">Total Events (30 days)</p>
-              <p className="text-2xl font-bold text-white">
+            <div className="bg-card border border-border rounded-lg p-4">
+              <p className="text-sm text-muted-foreground">Total Events (30 days)</p>
+              <p className="text-2xl font-bold text-foreground">
                 {summary.total_events.toLocaleString()}
               </p>
             </div>
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
-              <p className="text-sm text-slate-400">Access Updates</p>
+            <div className="bg-card border border-border rounded-lg p-4">
+              <p className="text-sm text-muted-foreground">Access Updates</p>
               <p className="text-2xl font-bold text-violet-400">
                 {(
                   (summary.action_counts["access_updated"] || 0) +
@@ -145,8 +145,8 @@ export default function AccessLogsPage() {
                 ).toLocaleString()}
               </p>
             </div>
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
-              <p className="text-sm text-slate-400">Template Changes</p>
+            <div className="bg-card border border-border rounded-lg p-4">
+              <p className="text-sm text-muted-foreground">Template Changes</p>
               <p className="text-2xl font-bold text-blue-400">
                 {(
                   (summary.action_counts["template_created"] || 0) +
@@ -155,8 +155,8 @@ export default function AccessLogsPage() {
                 ).toLocaleString()}
               </p>
             </div>
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
-              <p className="text-sm text-slate-400">Access Denials</p>
+            <div className="bg-card border border-border rounded-lg p-4">
+              <p className="text-sm text-muted-foreground">Access Denials</p>
               <p className="text-2xl font-bold text-red-400">
                 {(summary.action_counts["access_denied"] || 0).toLocaleString()}
               </p>
@@ -167,14 +167,14 @@ export default function AccessLogsPage() {
         {/* Filters */}
         <div className="flex items-center gap-4 mb-4">
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-slate-400" />
+            <Filter className="h-4 w-4 text-muted-foreground" />
             <select
               value={actionFilter}
               onChange={(e) => {
                 setActionFilter(e.target.value);
                 setPage(0);
               }}
-              className="rounded-md border border-slate-600 bg-slate-700 px-3 py-1.5 text-sm text-white"
+              className="rounded-md border border-border bg-muted px-3 py-1.5 text-sm text-foreground"
             >
               <option value="">All Actions</option>
               {Object.entries(ACTION_LABELS).map(([value, label]) => (
@@ -187,7 +187,7 @@ export default function AccessLogsPage() {
 
           <div className="flex-1" />
 
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted-foreground">
             {total.toLocaleString()} total events
           </p>
         </div>
@@ -195,7 +195,7 @@ export default function AccessLogsPage() {
         {/* Logs Table */}
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : error ? (
           <div className="text-center py-20">
@@ -203,28 +203,28 @@ export default function AccessLogsPage() {
             <p className="text-red-400">Failed to load access logs</p>
           </div>
         ) : logs.length === 0 ? (
-          <div className="text-center py-20 bg-slate-800 border border-slate-700 border-dashed rounded-lg">
-            <FileText className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-            <p className="text-slate-400">No access logs found</p>
-            <p className="text-sm text-slate-500">
+          <div className="text-center py-20 bg-card border border-border border-dashed rounded-lg">
+            <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-muted-foreground">No access logs found</p>
+            <p className="text-sm text-muted-foreground">
               Logs will appear here when access control changes are made
             </p>
           </div>
         ) : (
-          <div className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden overflow-x-auto">
+          <div className="bg-card border border-border rounded-lg overflow-hidden overflow-x-auto">
             <table className="w-full min-w-[600px]">
               <thead>
-                <tr className="border-b border-slate-700">
-                  <th className="px-4 py-3 text-left text-sm font-medium text-slate-400">
+                <tr className="border-b border-border">
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
                     Action
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-slate-400">
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
                     Target
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-slate-400">
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
                     Description
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-slate-400">
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
                     Time
                   </th>
                 </tr>
@@ -233,12 +233,12 @@ export default function AccessLogsPage() {
                 {logs.map((log) => (
                   <tr
                     key={log.id}
-                    className="border-b border-slate-700/50 hover:bg-slate-700/30"
+                    className="border-b border-border/50 hover:bg-accent/30"
                   >
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                          ACTION_COLORS[log.action] || "bg-slate-600 text-slate-300"
+                          ACTION_COLORS[log.action] || "bg-slate-600 text-foreground"
                         }`}
                       >
                         {ACTION_LABELS[log.action] || log.action}
@@ -246,20 +246,20 @@ export default function AccessLogsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="text-sm">
-                        <span className="text-slate-300">{log.target_type}</span>
+                        <span className="text-foreground">{log.target_type}</span>
                         {log.target_id && (
-                          <span className="text-slate-500 ml-1">
+                          <span className="text-muted-foreground ml-1">
                             #{log.target_id.slice(0, 8)}
                           </span>
                         )}
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <p className="text-sm text-slate-300 truncate max-w-[300px]">
+                      <p className="text-sm text-foreground truncate max-w-[300px]">
                         {log.description || "-"}
                       </p>
                       {log.extra_data && Object.keys(log.extra_data).length > 0 && (
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <p className="text-xs text-muted-foreground mt-0.5">
                           {Object.entries(log.extra_data)
                             .slice(0, 2)
                             .map(([k, v]) => `${k}: ${v}`)
@@ -267,7 +267,7 @@ export default function AccessLogsPage() {
                         </p>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-400">
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
                       {formatDistanceToNow(new Date(log.created_at), {
                         addSuffix: true,
                       })}
@@ -279,8 +279,8 @@ export default function AccessLogsPage() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-4 py-3 border-t border-slate-700">
-                <p className="text-sm text-slate-400">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-4 py-3 border-t border-border">
+                <p className="text-sm text-muted-foreground">
                   Page {page + 1} of {totalPages}
                 </p>
                 <div className="flex items-center gap-2">

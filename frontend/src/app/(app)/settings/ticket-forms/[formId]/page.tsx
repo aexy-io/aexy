@@ -138,24 +138,24 @@ function FieldEditor({
   const fieldConfig = FIELD_TYPE_CONFIG[field.field_type];
 
   return (
-    <div className="bg-slate-800 rounded-lg border border-slate-700">
+    <div className="bg-card rounded-lg border border-border">
       {/* Header */}
       <div
-        className="flex items-center gap-3 p-4 cursor-pointer hover:bg-slate-700/50 transition"
+        className="flex items-center gap-3 p-4 cursor-pointer hover:bg-accent/50 transition"
         onClick={onToggleExpand}
       >
-        <GripVertical className="h-4 w-4 text-slate-500 cursor-grab" />
-        <div className="p-2 bg-slate-700 rounded">
+        <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
+        <div className="p-2 bg-muted rounded">
           {fieldConfig.icon}
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-white font-medium">{field.name}</span>
+            <span className="text-foreground font-medium">{field.name}</span>
             {field.is_required && (
               <span className="text-red-400 text-xs">*Required</span>
             )}
           </div>
-          <span className="text-slate-500 text-sm">{fieldConfig.label}</span>
+          <span className="text-muted-foreground text-sm">{fieldConfig.label}</span>
         </div>
         {hasChanges && (
           <span className="text-yellow-400 text-xs px-2 py-1 bg-yellow-900/30 rounded">
@@ -163,55 +163,55 @@ function FieldEditor({
           </span>
         )}
         {isExpanded ? (
-          <ChevronUp className="h-4 w-4 text-slate-400" />
+          <ChevronUp className="h-4 w-4 text-muted-foreground" />
         ) : (
-          <ChevronDown className="h-4 w-4 text-slate-400" />
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
         )}
       </div>
 
       {/* Expanded Content */}
       {isExpanded && (
-        <div className="border-t border-slate-700 p-4 space-y-4">
+        <div className="border-t border-border p-4 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Label</label>
+              <label className="block text-sm text-muted-foreground mb-1">Label</label>
               <input
                 type="text"
                 value={localField.name}
                 onChange={(e) => handleChange("name", e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:border-purple-500"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Field Key</label>
+              <label className="block text-sm text-muted-foreground mb-1">Field Key</label>
               <input
                 type="text"
                 value={field.field_key}
                 disabled
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-500 cursor-not-allowed"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-muted-foreground cursor-not-allowed"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Placeholder</label>
+            <label className="block text-sm text-muted-foreground mb-1">Placeholder</label>
             <input
               type="text"
               value={localField.placeholder || ""}
               onChange={(e) => handleChange("placeholder", e.target.value)}
               placeholder="Enter placeholder text..."
-              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+              className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-purple-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Help Text</label>
+            <label className="block text-sm text-muted-foreground mb-1">Help Text</label>
             <input
               type="text"
               value={localField.help_text || ""}
               onChange={(e) => handleChange("help_text", e.target.value)}
               placeholder="Additional instructions for this field..."
-              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+              className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-purple-500"
             />
           </div>
 
@@ -221,9 +221,9 @@ function FieldEditor({
               id={`required-${field.id}`}
               checked={localField.is_required}
               onChange={(e) => handleChange("is_required", e.target.checked)}
-              className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-purple-500 focus:ring-purple-500"
+              className="w-4 h-4 rounded border-border bg-muted text-purple-500 focus:ring-purple-500"
             />
-            <label htmlFor={`required-${field.id}`} className="text-white text-sm">
+            <label htmlFor={`required-${field.id}`} className="text-foreground text-sm">
               Required field
             </label>
           </div>
@@ -231,7 +231,7 @@ function FieldEditor({
           {/* Options for select/multiselect */}
           {(field.field_type === "select" || field.field_type === "multiselect") && (
             <div>
-              <label className="block text-sm text-slate-400 mb-2">Options</label>
+              <label className="block text-sm text-muted-foreground mb-2">Options</label>
               <div className="space-y-2 mb-3">
                 {(localField.options || []).map((option, index) => (
                   <div key={index} className="flex items-center gap-2">
@@ -243,11 +243,11 @@ function FieldEditor({
                         newOptions[index] = { ...option, label: e.target.value };
                         handleChange("options", newOptions);
                       }}
-                      className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:border-purple-500"
                     />
                     <button
                       onClick={() => handleRemoveOption(index)}
-                      className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition"
+                      className="p-2 text-muted-foreground hover:text-red-400 hover:bg-accent rounded-lg transition"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -261,11 +261,11 @@ function FieldEditor({
                   onChange={(e) => setOptionInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleAddOption()}
                   placeholder="Add option..."
-                  className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                  className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-purple-500"
                 />
                 <button
                   onClick={handleAddOption}
-                  className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+                  className="px-3 py-2 bg-muted hover:bg-accent text-foreground rounded-lg transition"
                 >
                   <Plus className="h-4 w-4" />
                 </button>
@@ -274,7 +274,7 @@ function FieldEditor({
           )}
 
           {/* Actions */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-slate-700">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-border">
             <button
               onClick={handleDelete}
               disabled={isDeleting}
@@ -404,7 +404,7 @@ export default function FormBuilderPage() {
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mx-auto mb-4"></div>
-          <p className="text-white">Loading form...</p>
+          <p className="text-foreground">Loading form...</p>
         </div>
       </div>
     );
@@ -414,7 +414,7 @@ export default function FormBuilderPage() {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
-          <p className="text-white mb-4">Form not found</p>
+          <p className="text-foreground mb-4">Form not found</p>
           <Link
             href="/settings/ticket-forms"
             className="text-purple-400 hover:text-purple-300"
@@ -446,7 +446,7 @@ export default function FormBuilderPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={handleCopyUrl}
-              className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition text-sm"
+              className="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-accent text-foreground rounded-lg transition text-sm"
             >
               <Copy className="h-4 w-4" />
               Copy URL
@@ -455,7 +455,7 @@ export default function FormBuilderPage() {
               href={publicUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition text-sm"
+              className="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-accent text-foreground rounded-lg transition text-sm"
             >
               <Eye className="h-4 w-4" />
               Preview
@@ -466,13 +466,13 @@ export default function FormBuilderPage() {
 
       <div>
         {/* Tabs */}
-        <div className="flex gap-1 bg-slate-800 p-1 rounded-lg w-fit mb-6">
+        <div className="flex gap-1 bg-card p-1 rounded-lg w-fit mb-6">
           <button
             onClick={() => setActiveTab("fields")}
             className={`px-4 py-2 rounded-md text-sm font-medium transition ${
               activeTab === "fields"
                 ? "bg-purple-600 text-white"
-                : "text-slate-400 hover:text-white"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Fields
@@ -482,7 +482,7 @@ export default function FormBuilderPage() {
             className={`px-4 py-2 rounded-md text-sm font-medium transition flex items-center gap-2 ${
               activeTab === "settings"
                 ? "bg-purple-600 text-white"
-                : "text-slate-400 hover:text-white"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <Settings className="h-4 w-4" />
@@ -512,15 +512,15 @@ export default function FormBuilderPage() {
                   />
                 ))
             ) : (
-              <div className="bg-slate-800 rounded-xl p-8 text-center border border-slate-700">
-                <p className="text-slate-400 mb-4">No fields yet. Add your first field to get started.</p>
+              <div className="bg-card rounded-xl p-8 text-center border border-border">
+                <p className="text-muted-foreground mb-4">No fields yet. Add your first field to get started.</p>
               </div>
             )}
 
             {/* Add Field Button */}
             <button
               onClick={() => setShowAddField(true)}
-              className="w-full p-4 border-2 border-dashed border-slate-700 rounded-xl text-slate-400 hover:text-white hover:border-slate-600 transition flex items-center justify-center gap-2"
+              className="w-full p-4 border-2 border-dashed border-border rounded-xl text-muted-foreground hover:text-foreground hover:border-border transition flex items-center justify-center gap-2"
             >
               <Plus className="h-5 w-5" />
               Add Field
@@ -530,24 +530,24 @@ export default function FormBuilderPage() {
 
         {/* Settings Tab */}
         {activeTab === "settings" && (
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 space-y-6">
+          <div className="bg-card rounded-xl border border-border p-6 space-y-6">
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Form Name</label>
+              <label className="block text-sm text-muted-foreground mb-1">Form Name</label>
               <input
                 type="text"
                 value={formSettings.name}
                 onChange={(e) => handleSettingsChange("name", e.target.value)}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:border-purple-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Description</label>
+              <label className="block text-sm text-muted-foreground mb-1">Description</label>
               <textarea
                 value={formSettings.description}
                 onChange={(e) => handleSettingsChange("description", e.target.value)}
                 rows={3}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-purple-500 resize-none"
+                className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:border-purple-500 resize-none"
               />
             </div>
 
@@ -557,17 +557,17 @@ export default function FormBuilderPage() {
                 id="is_active"
                 checked={formSettings.is_active}
                 onChange={(e) => handleSettingsChange("is_active", e.target.checked)}
-                className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-purple-500 focus:ring-purple-500"
+                className="w-4 h-4 rounded border-border bg-muted text-purple-500 focus:ring-purple-500"
               />
-              <label htmlFor="is_active" className="text-white">
+              <label htmlFor="is_active" className="text-foreground">
                 Form is active and accepting submissions
               </label>
             </div>
 
             <div>
-              <label className="block text-sm text-slate-400 mb-2">Authentication Mode</label>
+              <label className="block text-sm text-muted-foreground mb-2">Authentication Mode</label>
               <div className="space-y-2">
-                <label className="flex items-center gap-3 p-3 bg-slate-700 rounded-lg cursor-pointer hover:bg-slate-600 transition">
+                <label className="flex items-center gap-3 p-3 bg-muted rounded-lg cursor-pointer hover:bg-accent transition">
                   <input
                     type="radio"
                     name="auth_mode"
@@ -577,11 +577,11 @@ export default function FormBuilderPage() {
                     className="text-purple-500 focus:ring-purple-500"
                   />
                   <div>
-                    <p className="text-white font-medium">Anonymous</p>
-                    <p className="text-slate-400 text-sm">Anyone can submit without verification</p>
+                    <p className="text-foreground font-medium">Anonymous</p>
+                    <p className="text-muted-foreground text-sm">Anyone can submit without verification</p>
                   </div>
                 </label>
-                <label className="flex items-center gap-3 p-3 bg-slate-700 rounded-lg cursor-pointer hover:bg-slate-600 transition">
+                <label className="flex items-center gap-3 p-3 bg-muted rounded-lg cursor-pointer hover:bg-accent transition">
                   <input
                     type="radio"
                     name="auth_mode"
@@ -591,8 +591,8 @@ export default function FormBuilderPage() {
                     className="text-purple-500 focus:ring-purple-500"
                   />
                   <div>
-                    <p className="text-white font-medium">Email Verification</p>
-                    <p className="text-slate-400 text-sm">Submitters must verify their email before submission</p>
+                    <p className="text-foreground font-medium">Email Verification</p>
+                    <p className="text-muted-foreground text-sm">Submitters must verify their email before submission</p>
                   </div>
                 </label>
               </div>
@@ -604,24 +604,24 @@ export default function FormBuilderPage() {
                 id="require_email"
                 checked={formSettings.require_email}
                 onChange={(e) => handleSettingsChange("require_email", e.target.checked)}
-                className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-purple-500 focus:ring-purple-500"
+                className="w-4 h-4 rounded border-border bg-muted text-purple-500 focus:ring-purple-500"
               />
-              <label htmlFor="require_email" className="text-white">
+              <label htmlFor="require_email" className="text-foreground">
                 Require email address (even in anonymous mode)
               </label>
             </div>
 
             {/* Ticket Defaults Section */}
-            <div className="pt-4 border-t border-slate-700">
-              <h3 className="text-white font-medium mb-4">Ticket Defaults</h3>
+            <div className="pt-4 border-t border-border">
+              <h3 className="text-foreground font-medium mb-4">Ticket Defaults</h3>
 
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">Default Priority</label>
+                  <label className="block text-sm text-muted-foreground mb-1">Default Priority</label>
                   <select
                     value={formSettings.default_priority || ""}
                     onChange={(e) => handleSettingsChange("default_priority", e.target.value || undefined)}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                    className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:border-purple-500"
                   >
                     <option value="">No default</option>
                     {PRIORITY_OPTIONS.map((opt) => (
@@ -632,11 +632,11 @@ export default function FormBuilderPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">Default Severity</label>
+                  <label className="block text-sm text-muted-foreground mb-1">Default Severity</label>
                   <select
                     value={formSettings.default_severity || ""}
                     onChange={(e) => handleSettingsChange("default_severity", e.target.value || undefined)}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                    className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:border-purple-500"
                   >
                     <option value="">No default</option>
                     {SEVERITY_OPTIONS.map((opt) => (
@@ -648,46 +648,46 @@ export default function FormBuilderPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 p-4 bg-slate-700 rounded-lg">
+              <div className="flex items-center gap-2 p-4 bg-muted rounded-lg">
                 <input
                   type="checkbox"
                   id="auto_assign_oncall"
                   checked={formSettings.auto_assign_oncall}
                   onChange={(e) => handleSettingsChange("auto_assign_oncall", e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-purple-500 focus:ring-purple-500"
+                  className="w-4 h-4 rounded border-border bg-card text-purple-500 focus:ring-purple-500"
                 />
-                <label htmlFor="auto_assign_oncall" className="text-white">
+                <label htmlFor="auto_assign_oncall" className="text-foreground">
                   Auto-assign to on-call person
                 </label>
-                <span className="text-slate-400 text-sm ml-2">
+                <span className="text-muted-foreground text-sm ml-2">
                   Tickets will be automatically assigned to whoever is currently on-call
                 </span>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Success Message</label>
+              <label className="block text-sm text-muted-foreground mb-1">Success Message</label>
               <textarea
                 value={formSettings.success_message}
                 onChange={(e) => handleSettingsChange("success_message", e.target.value)}
                 rows={2}
                 placeholder="Thank you for your submission!"
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 resize-none"
+                className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-purple-500 resize-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Public URL</label>
+              <label className="block text-sm text-muted-foreground mb-1">Public URL</label>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={publicUrl}
                   readOnly
-                  className="flex-1 px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-400"
+                  className="flex-1 px-4 py-2 bg-background border border-border rounded-lg text-muted-foreground"
                 />
                 <button
                   onClick={handleCopyUrl}
-                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+                  className="px-4 py-2 bg-muted hover:bg-accent text-foreground rounded-lg transition"
                 >
                   <Copy className="h-4 w-4" />
                 </button>
@@ -695,7 +695,7 @@ export default function FormBuilderPage() {
                   href={publicUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+                  className="px-4 py-2 bg-muted hover:bg-accent text-foreground rounded-lg transition"
                 >
                   <ExternalLink className="h-4 w-4" />
                 </a>
@@ -703,7 +703,7 @@ export default function FormBuilderPage() {
             </div>
 
             {settingsHasChanges && (
-              <div className="flex justify-end pt-4 border-t border-slate-700">
+              <div className="flex justify-end pt-4 border-t border-border">
                 <button
                   onClick={handleSaveSettings}
                   disabled={isUpdating}
@@ -725,8 +725,8 @@ export default function FormBuilderPage() {
       {/* Add Field Modal */}
       {showAddField && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-slate-800 rounded-xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto">
-            <h3 className="text-lg font-medium text-white mb-4">Add Field</h3>
+          <div className="bg-card rounded-xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto">
+            <h3 className="text-lg font-medium text-foreground mb-4">Add Field</h3>
             <div className="grid grid-cols-2 gap-3">
               {(Object.keys(FIELD_TYPE_CONFIG) as TicketFieldType[]).map((type) => {
                 const config = FIELD_TYPE_CONFIG[type];
@@ -735,23 +735,23 @@ export default function FormBuilderPage() {
                     key={type}
                     onClick={() => handleAddField(type)}
                     disabled={isAddingField}
-                    className="p-4 bg-slate-700 hover:bg-slate-600 rounded-lg text-left transition flex items-start gap-3"
+                    className="p-4 bg-muted hover:bg-accent rounded-lg text-left transition flex items-start gap-3"
                   >
-                    <div className="p-2 bg-slate-600 rounded">
+                    <div className="p-2 bg-muted rounded">
                       {config.icon}
                     </div>
                     <div>
-                      <p className="text-white font-medium">{config.label}</p>
-                      <p className="text-slate-400 text-xs">{config.description}</p>
+                      <p className="text-foreground font-medium">{config.label}</p>
+                      <p className="text-muted-foreground text-xs">{config.description}</p>
                     </div>
                   </button>
                 );
               })}
             </div>
-            <div className="flex justify-end mt-6 pt-4 border-t border-slate-700">
+            <div className="flex justify-end mt-6 pt-4 border-t border-border">
               <button
                 onClick={() => setShowAddField(false)}
-                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+                className="px-4 py-2 bg-muted hover:bg-accent text-foreground rounded-lg transition"
               >
                 Cancel
               </button>
