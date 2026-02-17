@@ -82,20 +82,20 @@ export function DashboardCustomizeModal({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 animate-in fade-in duration-200" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg max-h-[85vh] bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg max-h-[85vh] bg-background border border-border/50 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-slate-700/50">
+          <div className="flex items-center justify-between p-4 border-b border-border/50">
             <div>
-              <Dialog.Title className="text-lg font-semibold text-white">
+              <Dialog.Title className="text-lg font-semibold text-foreground">
                 Customize Dashboard
               </Dialog.Title>
-              <Dialog.Description className="text-sm text-slate-400 mt-0.5">
+              <Dialog.Description className="text-sm text-muted-foreground mt-0.5">
                 Choose a preset, toggle widgets, or reorder your layout
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
               <button
-                className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition"
                 aria-label="Close"
               >
                 <X className="h-5 w-5" />
@@ -104,15 +104,15 @@ export function DashboardCustomizeModal({
           </div>
 
           {/* Tabs */}
-          <div className="flex border-b border-slate-700/50">
+          <div className="flex border-b border-border/50">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex-1 px-4 py-3 text-sm font-medium transition relative ${
                   activeTab === tab.id
-                    ? "text-white"
-                    : "text-slate-400 hover:text-white"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {tab.label}
@@ -132,9 +132,9 @@ export function DashboardCustomizeModal({
             ) : activeTab === "presets" ? (
               <div className="space-y-4">
                 {/* Info box */}
-                <div className="flex gap-3 p-3 bg-slate-800/50 border border-slate-700/50 rounded-lg">
+                <div className="flex gap-3 p-3 bg-muted/50 border border-border/50 rounded-lg">
                   <Info className="h-5 w-5 text-primary-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-slate-300">
+                  <p className="text-sm text-foreground">
                     Select a preset based on your role. Each preset comes with
                     widgets tailored to your workflow.
                   </p>
@@ -162,18 +162,18 @@ export function DashboardCustomizeModal({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between p-4 border-t border-slate-700/50 bg-slate-900/50">
+          <div className="flex items-center justify-between p-4 border-t border-border/50 bg-background/50">
             <button
               onClick={handleReset}
               disabled={isUpdating}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-slate-400 hover:text-white transition disabled:opacity-50"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition disabled:opacity-50"
             >
               <RotateCcw className="h-4 w-4" />
               Reset to Default
             </button>
 
             <Dialog.Close asChild>
-              <button className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition">
+              <button className="px-4 py-2 text-sm font-medium text-foreground bg-primary-600 hover:bg-primary-700 rounded-lg transition">
                 Done
               </button>
             </Dialog.Close>

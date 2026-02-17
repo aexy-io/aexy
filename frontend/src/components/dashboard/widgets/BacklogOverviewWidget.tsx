@@ -19,8 +19,8 @@ const STATUS_CONFIG: Record<
   backlog: {
     label: "Backlog",
     icon: Circle,
-    color: "text-slate-400",
-    bgColor: "bg-slate-500/20",
+    color: "text-muted-foreground",
+    bgColor: "bg-muted-foreground/20",
   },
   ready: {
     label: "Ready",
@@ -50,14 +50,14 @@ export function BacklogOverviewWidget() {
 
   if (isLoading) {
     return (
-      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 animate-pulse">
-        <div className="h-6 w-40 bg-slate-800 rounded mb-4" />
+      <div className="bg-background/50 border border-border rounded-xl p-6 animate-pulse">
+        <div className="h-6 w-40 bg-muted rounded mb-4" />
         <div className="space-y-3">
-          <div className="h-16 bg-slate-800 rounded-lg" />
-          <div className="h-3 bg-slate-800 rounded-full" />
+          <div className="h-16 bg-muted rounded-lg" />
+          <div className="h-3 bg-muted rounded-full" />
           <div className="grid grid-cols-2 gap-3">
-            <div className="h-16 bg-slate-800 rounded-lg" />
-            <div className="h-16 bg-slate-800 rounded-lg" />
+            <div className="h-16 bg-muted rounded-lg" />
+            <div className="h-16 bg-muted rounded-lg" />
           </div>
         </div>
       </div>
@@ -83,13 +83,13 @@ export function BacklogOverviewWidget() {
     totalPoints > 0 ? Math.round((completedPoints / totalPoints) * 100) : 0;
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+    <div className="bg-background/50 border border-border rounded-xl overflow-hidden">
+      <div className="px-6 py-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-purple-500/10 rounded-lg">
             <Layers className="h-5 w-5 text-purple-400" />
           </div>
-          <h3 className="text-lg font-semibold text-white">Backlog Overview</h3>
+          <h3 className="text-lg font-semibold text-foreground">Backlog Overview</h3>
         </div>
         <Link
           href="/stories"
@@ -101,19 +101,19 @@ export function BacklogOverviewWidget() {
       <div className="p-6">
         {!currentWorkspace ? (
           <div className="text-center py-6">
-            <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Layers className="w-8 h-8 text-slate-600" />
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <Layers className="w-8 h-8 text-muted-foreground" />
             </div>
-            <p className="text-slate-400 text-sm">
+            <p className="text-muted-foreground text-sm">
               Select a workspace to view backlog.
             </p>
           </div>
         ) : total === 0 ? (
           <div className="text-center py-6">
-            <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Layers className="w-8 h-8 text-slate-600" />
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <Layers className="w-8 h-8 text-muted-foreground" />
             </div>
-            <p className="text-slate-400 text-sm mb-4">
+            <p className="text-muted-foreground text-sm mb-4">
               No stories in your backlog yet.
             </p>
             <Link
@@ -129,12 +129,12 @@ export function BacklogOverviewWidget() {
             {totalPoints > 0 && (
               <div>
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="text-slate-400">Story Points</span>
-                  <span className="text-white font-medium tabular-nums">
+                  <span className="text-muted-foreground">Story Points</span>
+                  <span className="text-foreground font-medium tabular-nums">
                     {completedPoints} / {totalPoints} pts ({pointsProgress}%)
                   </span>
                 </div>
-                <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-purple-600 to-purple-400 rounded-full transition-all"
                     style={{ width: `${pointsProgress}%` }}
@@ -151,15 +151,15 @@ export function BacklogOverviewWidget() {
                 return (
                   <div
                     key={status}
-                    className="p-3 bg-slate-800/50 rounded-lg"
+                    className="p-3 bg-muted/50 rounded-lg"
                   >
                     <div className="flex items-center gap-2 mb-1">
                       <Icon className={`h-3.5 w-3.5 ${config.color}`} />
-                      <span className="text-slate-400 text-xs">
+                      <span className="text-muted-foreground text-xs">
                         {config.label}
                       </span>
                     </div>
-                    <p className="text-xl font-bold text-white tabular-nums">
+                    <p className="text-xl font-bold text-foreground tabular-nums">
                       {count}
                     </p>
                   </div>
@@ -168,7 +168,7 @@ export function BacklogOverviewWidget() {
             </div>
 
             {/* Total */}
-            <div className="text-center text-slate-500 text-xs pt-1">
+            <div className="text-center text-muted-foreground text-xs pt-1">
               {total} total stories
             </div>
           </div>

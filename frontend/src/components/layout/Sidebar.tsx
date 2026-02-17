@@ -238,7 +238,7 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                     {!isCollapsed && (
                         <button
                             onClick={(e) => toggleExpand("/docs", e)}
-                            className="p-0.5 hover:bg-slate-700/50 rounded"
+                            className="p-0.5 hover:bg-accent/50 rounded"
                         >
                             <motion.div
                                 animate={{ rotate: isExpanded ? 90 : 0 }}

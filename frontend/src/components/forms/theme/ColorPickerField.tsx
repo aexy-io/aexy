@@ -64,7 +64,7 @@ export function ColorPickerField({
 
   return (
     <div className="relative" ref={containerRef}>
-      <label className="block text-sm font-medium text-slate-300 mb-1.5">
+      <label className="block text-sm font-medium text-foreground mb-1.5">
         {label}
       </label>
       <div className="flex gap-2">
@@ -74,22 +74,22 @@ export function ColorPickerField({
             value={inputValue}
             onChange={handleInputChange}
             placeholder={placeholder}
-            className="w-full px-3 py-2 pl-10 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+            className="w-full px-3 py-2 pl-10 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50"
           />
           <button
             type="button"
             onClick={() => setIsOpen(!isOpen)}
-            className="absolute left-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded border border-slate-600 overflow-hidden"
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded border border-border overflow-hidden"
             style={{ backgroundColor: value || "#1e293b" }}
           >
-            {!value && <Pipette className="w-4 h-4 text-slate-400 m-auto" />}
+            {!value && <Pipette className="w-4 h-4 text-muted-foreground m-auto" />}
           </button>
         </div>
         {showReset && value && (
           <button
             type="button"
             onClick={handleReset}
-            className="px-3 py-2 text-sm text-slate-400 hover:text-white bg-slate-800 rounded-lg"
+            className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground bg-muted rounded-lg"
           >
             Reset
           </button>
@@ -97,7 +97,7 @@ export function ColorPickerField({
       </div>
 
       {isOpen && (
-        <div className="absolute z-50 mt-2 p-3 bg-slate-800 border border-slate-700 rounded-lg shadow-xl">
+        <div className="absolute z-50 mt-2 p-3 bg-muted border border-border rounded-lg shadow-xl">
           <div className="grid grid-cols-5 gap-2 mb-3">
             {PRESET_COLORS.map((color) => (
               <button

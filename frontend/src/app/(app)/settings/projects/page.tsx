@@ -251,7 +251,7 @@ function ProjectCard({
           ) : (
             <>
               {/* Project Members */}
-              <div className="divide-y divide-slate-700/50">
+              <div className="divide-y divide-border/50">
                 {members.map((member) => (
                   <div
                     key={member.id}
@@ -649,7 +649,7 @@ export default function ProjectsSettingsPage() {
       <div>
         {!hasWorkspaces ? (
           <div className="bg-card rounded-xl p-12 text-center">
-            <FolderKanban className="h-16 w-16 text-slate-600 mx-auto mb-4" />
+            <FolderKanban className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-xl font-medium text-foreground mb-2">No Workspace</h3>
             <p className="text-muted-foreground mb-6">
               Create a workspace first to start managing projects.
@@ -700,7 +700,7 @@ export default function ProjectsSettingsPage() {
               </div>
             ) : (
               <div className="bg-card rounded-xl p-12 text-center">
-                <FolderKanban className="h-16 w-16 text-slate-600 mx-auto mb-4" />
+                <FolderKanban className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-xl font-medium text-foreground mb-2">No Projects Yet</h3>
                 <p className="text-muted-foreground mb-6">
                   Create your first project to organize your work and manage team access.

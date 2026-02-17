@@ -127,13 +127,13 @@ export default function CompliancePage() {
 
   if (isLoading || loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
             <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
           </div>
-          <p className="text-slate-400 text-sm">Loading compliance data...</p>
+          <p className="text-muted-foreground text-sm">Loading compliance data...</p>
         </div>
       </div>
     );
@@ -154,7 +154,7 @@ export default function CompliancePage() {
       case "pending":
         return "bg-yellow-900/50 text-yellow-400 border-yellow-700";
       case "waived":
-        return "bg-slate-700 text-slate-300 border-slate-600";
+        return "bg-accent text-foreground border-border";
       case "active":
         return "bg-green-900/50 text-green-400 border-green-700";
       case "expired":
@@ -162,7 +162,7 @@ export default function CompliancePage() {
       case "expiring_soon":
         return "bg-orange-900/50 text-orange-400 border-orange-700";
       default:
-        return "bg-slate-700 text-slate-300 border-slate-600";
+        return "bg-accent text-foreground border-border";
     }
   };
 
@@ -179,7 +179,7 @@ export default function CompliancePage() {
   const myExpiring = myCertifications.filter((c) => c.is_expiring_soon);
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
@@ -188,13 +188,13 @@ export default function CompliancePage() {
               <Shield className="h-7 w-7 text-blue-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">Compliance & Certifications</h1>
-              <p className="text-slate-400 text-sm">Track mandatory training and certifications</p>
+              <h1 className="text-2xl font-bold text-foreground">Compliance & Certifications</h1>
+              <p className="text-muted-foreground text-sm">Track mandatory training and certifications</p>
             </div>
           </div>
           <button
             onClick={fetchData}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition"
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition"
           >
             <RefreshCw className="h-5 w-5" />
           </button>
@@ -229,7 +229,7 @@ export default function CompliancePage() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 bg-slate-800/50 p-1 rounded-lg w-fit">
+        <div className="flex gap-1 mb-6 bg-muted/50 p-1 rounded-lg w-fit">
           {[
             { id: "overview", label: "Overview", icon: TrendingUp },
             { id: "training", label: "Training", icon: BookOpen },
@@ -243,7 +243,7 @@ export default function CompliancePage() {
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition ${
                 activeTab === tab.id
                   ? "bg-primary-600 text-white"
-                  : "text-slate-400 hover:text-white hover:bg-slate-700"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
               }`}
             >
               <tab.icon className="h-4 w-4" />
@@ -257,64 +257,64 @@ export default function CompliancePage() {
           <div className="space-y-6">
             {/* Stats Grid */}
             <div className="grid md:grid-cols-4 gap-4">
-              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-2 bg-blue-900/50 rounded-lg">
                     <BookOpen className="h-5 w-5 text-blue-400" />
                   </div>
-                  <span className="text-slate-400 text-sm">Total Training</span>
+                  <span className="text-muted-foreground text-sm">Total Training</span>
                 </div>
-                <div className="text-2xl font-bold text-white">{overview.total_assignments}</div>
-                <div className="text-sm text-slate-500 mt-1">{overview.active_mandatory_trainings} active programs</div>
+                <div className="text-2xl font-bold text-foreground">{overview.total_assignments}</div>
+                <div className="text-sm text-muted-foreground mt-1">{overview.active_mandatory_trainings} active programs</div>
               </div>
 
-              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-2 bg-green-900/50 rounded-lg">
                     <CheckCircle2 className="h-5 w-5 text-green-400" />
                   </div>
-                  <span className="text-slate-400 text-sm">Completion Rate</span>
+                  <span className="text-muted-foreground text-sm">Completion Rate</span>
                 </div>
-                <div className="text-2xl font-bold text-white">
+                <div className="text-2xl font-bold text-foreground">
                   {(overview.overall_completion_rate * 100).toFixed(1)}%
                 </div>
-                <div className="text-sm text-slate-500 mt-1">{overview.completed_assignments} completed</div>
+                <div className="text-sm text-muted-foreground mt-1">{overview.completed_assignments} completed</div>
               </div>
 
-              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-2 bg-red-900/50 rounded-lg">
                     <AlertTriangle className="h-5 w-5 text-red-400" />
                   </div>
-                  <span className="text-slate-400 text-sm">Overdue</span>
+                  <span className="text-muted-foreground text-sm">Overdue</span>
                 </div>
-                <div className="text-2xl font-bold text-white">{overview.overdue_assignments}</div>
-                <div className="text-sm text-slate-500 mt-1">{overview.pending_assignments} pending</div>
+                <div className="text-2xl font-bold text-foreground">{overview.overdue_assignments}</div>
+                <div className="text-sm text-muted-foreground mt-1">{overview.pending_assignments} pending</div>
               </div>
 
-              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-2 bg-amber-900/50 rounded-lg">
                     <Award className="h-5 w-5 text-amber-400" />
                   </div>
-                  <span className="text-slate-400 text-sm">Certifications</span>
+                  <span className="text-muted-foreground text-sm">Certifications</span>
                 </div>
-                <div className="text-2xl font-bold text-white">{overview.active_certifications}</div>
-                <div className="text-sm text-slate-500 mt-1">{overview.expiring_soon_certifications} expiring soon</div>
+                <div className="text-2xl font-bold text-foreground">{overview.active_certifications}</div>
+                <div className="text-sm text-muted-foreground mt-1">{overview.expiring_soon_certifications} expiring soon</div>
               </div>
             </div>
 
             {/* Progress Bars */}
             <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-                <h3 className="text-lg font-semibold text-white mb-4">Training Progress</h3>
+              <div className="bg-muted rounded-xl p-6 border border-border">
+                <h3 className="text-lg font-semibold text-foreground mb-4">Training Progress</h3>
                 <div className="space-y-4">
                   <div>
                     <div className="flex justify-between text-sm mb-2">
-                      <span className="text-slate-400">Completed</span>
+                      <span className="text-muted-foreground">Completed</span>
                       <span className="text-green-400">{overview.completed_assignments}</span>
                     </div>
-                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-2 bg-accent rounded-full overflow-hidden">
                       <div
                         className="h-full bg-green-500 rounded-full"
                         style={{
@@ -325,10 +325,10 @@ export default function CompliancePage() {
                   </div>
                   <div>
                     <div className="flex justify-between text-sm mb-2">
-                      <span className="text-slate-400">In Progress</span>
+                      <span className="text-muted-foreground">In Progress</span>
                       <span className="text-blue-400">{overview.in_progress_assignments}</span>
                     </div>
-                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-2 bg-accent rounded-full overflow-hidden">
                       <div
                         className="h-full bg-blue-500 rounded-full"
                         style={{
@@ -339,10 +339,10 @@ export default function CompliancePage() {
                   </div>
                   <div>
                     <div className="flex justify-between text-sm mb-2">
-                      <span className="text-slate-400">Overdue</span>
+                      <span className="text-muted-foreground">Overdue</span>
                       <span className="text-red-400">{overview.overdue_assignments}</span>
                     </div>
-                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-2 bg-accent rounded-full overflow-hidden">
                       <div
                         className="h-full bg-red-500 rounded-full"
                         style={{
@@ -354,15 +354,15 @@ export default function CompliancePage() {
                 </div>
               </div>
 
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-                <h3 className="text-lg font-semibold text-white mb-4">Certification Status</h3>
+              <div className="bg-muted rounded-xl p-6 border border-border">
+                <h3 className="text-lg font-semibold text-foreground mb-4">Certification Status</h3>
                 <div className="space-y-4">
                   <div>
                     <div className="flex justify-between text-sm mb-2">
-                      <span className="text-slate-400">Active</span>
+                      <span className="text-muted-foreground">Active</span>
                       <span className="text-green-400">{overview.active_certifications}</span>
                     </div>
-                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-2 bg-accent rounded-full overflow-hidden">
                       <div
                         className="h-full bg-green-500 rounded-full"
                         style={{
@@ -373,10 +373,10 @@ export default function CompliancePage() {
                   </div>
                   <div>
                     <div className="flex justify-between text-sm mb-2">
-                      <span className="text-slate-400">Expiring Soon</span>
+                      <span className="text-muted-foreground">Expiring Soon</span>
                       <span className="text-orange-400">{overview.expiring_soon_certifications}</span>
                     </div>
-                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-2 bg-accent rounded-full overflow-hidden">
                       <div
                         className="h-full bg-orange-500 rounded-full"
                         style={{
@@ -387,10 +387,10 @@ export default function CompliancePage() {
                   </div>
                   <div>
                     <div className="flex justify-between text-sm mb-2">
-                      <span className="text-slate-400">Expired</span>
+                      <span className="text-muted-foreground">Expired</span>
                       <span className="text-red-400">{overview.expired_certifications}</span>
                     </div>
-                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-2 bg-accent rounded-full overflow-hidden">
                       <div
                         className="h-full bg-red-500 rounded-full"
                         style={{
@@ -409,55 +409,55 @@ export default function CompliancePage() {
         {activeTab === "training" && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-white">Mandatory Training Programs</h2>
+              <h2 className="text-lg font-semibold text-foreground">Mandatory Training Programs</h2>
             </div>
 
             {trainings.length === 0 ? (
-              <div className="bg-slate-800 rounded-xl p-12 border border-slate-700 text-center">
-                <BookOpen className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">No Training Programs</h3>
-                <p className="text-slate-400">No mandatory training programs have been created yet.</p>
+              <div className="bg-muted rounded-xl p-12 border border-border text-center">
+                <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-foreground mb-2">No Training Programs</h3>
+                <p className="text-muted-foreground">No mandatory training programs have been created yet.</p>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
                 {trainings.map((training) => (
                   <div
                     key={training.id}
-                    className="bg-slate-800 rounded-xl p-5 border border-slate-700 hover:border-slate-600 transition"
+                    className="bg-muted rounded-xl p-5 border border-border hover:border-border transition"
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <h3 className="text-white font-medium">{training.name}</h3>
+                        <h3 className="text-foreground font-medium">{training.name}</h3>
                         {training.description && (
-                          <p className="text-slate-400 text-sm mt-1 line-clamp-2">{training.description}</p>
+                          <p className="text-muted-foreground text-sm mt-1 line-clamp-2">{training.description}</p>
                         )}
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded border ${training.is_active ? "bg-green-900/50 text-green-400 border-green-700" : "bg-slate-700 text-slate-400 border-slate-600"}`}>
+                      <span className={`text-xs px-2 py-1 rounded border ${training.is_active ? "bg-green-900/50 text-green-400 border-green-700" : "bg-accent text-muted-foreground border-border"}`}>
                         {training.is_active ? "Active" : "Inactive"}
                       </span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4">
-                      <div className="text-center p-2 bg-slate-700/50 rounded-lg">
-                        <div className="text-lg font-bold text-white">{training.total_assignments}</div>
-                        <div className="text-xs text-slate-400">Assigned</div>
+                      <div className="text-center p-2 bg-accent/50 rounded-lg">
+                        <div className="text-lg font-bold text-foreground">{training.total_assignments}</div>
+                        <div className="text-xs text-muted-foreground">Assigned</div>
                       </div>
-                      <div className="text-center p-2 bg-slate-700/50 rounded-lg">
+                      <div className="text-center p-2 bg-accent/50 rounded-lg">
                         <div className="text-lg font-bold text-green-400">{training.completed_assignments}</div>
-                        <div className="text-xs text-slate-400">Completed</div>
+                        <div className="text-xs text-muted-foreground">Completed</div>
                       </div>
-                      <div className="text-center p-2 bg-slate-700/50 rounded-lg">
+                      <div className="text-center p-2 bg-accent/50 rounded-lg">
                         <div className="text-lg font-bold text-red-400">{training.overdue_assignments}</div>
-                        <div className="text-xs text-slate-400">Overdue</div>
+                        <div className="text-xs text-muted-foreground">Overdue</div>
                       </div>
                     </div>
 
                     <div className="mt-4">
                       <div className="flex justify-between text-sm mb-1">
-                        <span className="text-slate-400">Completion Rate</span>
-                        <span className="text-white">{(training.completion_rate * 100).toFixed(0)}%</span>
+                        <span className="text-muted-foreground">Completion Rate</span>
+                        <span className="text-foreground">{(training.completion_rate * 100).toFixed(0)}%</span>
                       </div>
-                      <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                      <div className="h-2 bg-accent rounded-full overflow-hidden">
                         <div
                           className="h-full bg-primary-500 rounded-full"
                           style={{ width: `${training.completion_rate * 100}%` }}
@@ -465,7 +465,7 @@ export default function CompliancePage() {
                       </div>
                     </div>
 
-                    <div className="mt-4 flex items-center justify-between text-sm text-slate-400">
+                    <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
                       <span>Due in {training.due_days_after_assignment} days</span>
                       {training.recurring_months && (
                         <span>Recurs every {training.recurring_months} months</span>
@@ -482,21 +482,21 @@ export default function CompliancePage() {
         {activeTab === "certifications" && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-white">Certifications</h2>
+              <h2 className="text-lg font-semibold text-foreground">Certifications</h2>
             </div>
 
             {certifications.length === 0 ? (
-              <div className="bg-slate-800 rounded-xl p-12 border border-slate-700 text-center">
-                <Award className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">No Certifications</h3>
-                <p className="text-slate-400">No certifications have been defined yet.</p>
+              <div className="bg-muted rounded-xl p-12 border border-border text-center">
+                <Award className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-foreground mb-2">No Certifications</h3>
+                <p className="text-muted-foreground">No certifications have been defined yet.</p>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {certifications.map((cert) => (
                   <div
                     key={cert.id}
-                    className="bg-slate-800 rounded-xl p-5 border border-slate-700 hover:border-slate-600 transition"
+                    className="bg-muted rounded-xl p-5 border border-border hover:border-border transition"
                   >
                     <div className="flex items-start gap-3 mb-3">
                       {cert.logo_url ? (
@@ -507,39 +507,39 @@ export default function CompliancePage() {
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-white font-medium truncate">{cert.name}</h3>
-                        <p className="text-slate-400 text-sm truncate">{cert.issuing_authority}</p>
+                        <h3 className="text-foreground font-medium truncate">{cert.name}</h3>
+                        <p className="text-muted-foreground text-sm truncate">{cert.issuing_authority}</p>
                       </div>
                     </div>
 
                     {cert.description && (
-                      <p className="text-slate-400 text-sm mb-3 line-clamp-2">{cert.description}</p>
+                      <p className="text-muted-foreground text-sm mb-3 line-clamp-2">{cert.description}</p>
                     )}
 
                     <div className="flex flex-wrap gap-1 mb-3">
                       {cert.skill_tags.slice(0, 3).map((tag) => (
-                        <span key={tag} className="text-xs px-2 py-0.5 bg-slate-700 text-slate-300 rounded">
+                        <span key={tag} className="text-xs px-2 py-0.5 bg-accent text-foreground rounded">
                           {tag}
                         </span>
                       ))}
                       {cert.skill_tags.length > 3 && (
-                        <span className="text-xs text-slate-500">+{cert.skill_tags.length - 3}</span>
+                        <span className="text-xs text-muted-foreground">+{cert.skill_tags.length - 3}</span>
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-700">
+                    <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-border">
                       <div className="text-center">
-                        <div className="text-lg font-bold text-white">{cert.active_holders}</div>
-                        <div className="text-xs text-slate-400">Active Holders</div>
+                        <div className="text-lg font-bold text-foreground">{cert.active_holders}</div>
+                        <div className="text-xs text-muted-foreground">Active Holders</div>
                       </div>
                       <div className="text-center">
                         <div className="text-lg font-bold text-orange-400">{cert.expiring_soon_count}</div>
-                        <div className="text-xs text-slate-400">Expiring Soon</div>
+                        <div className="text-xs text-muted-foreground">Expiring Soon</div>
                       </div>
                     </div>
 
                     {cert.validity_months && (
-                      <div className="mt-3 text-sm text-slate-400 text-center">
+                      <div className="mt-3 text-sm text-muted-foreground text-center">
                         Valid for {cert.validity_months} months
                       </div>
                     )}
@@ -554,9 +554,9 @@ export default function CompliancePage() {
         {activeTab === "my_compliance" && (
           <div className="space-y-6">
             {/* My Training Assignments */}
-            <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-              <div className="p-4 border-b border-slate-700">
-                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <div className="bg-muted rounded-xl border border-border overflow-hidden">
+              <div className="p-4 border-b border-border">
+                <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-primary-400" />
                   My Training Assignments
                 </h2>
@@ -565,24 +565,24 @@ export default function CompliancePage() {
               {myAssignments.length === 0 ? (
                 <div className="p-8 text-center">
                   <CheckCircle2 className="h-12 w-12 text-green-400 mx-auto mb-3" />
-                  <p className="text-slate-400">No training assignments</p>
+                  <p className="text-muted-foreground">No training assignments</p>
                 </div>
               ) : (
-                <div className="divide-y divide-slate-700">
+                <div className="divide-y divide-border">
                   {myAssignments.map((assignment) => (
-                    <div key={assignment.id} className="p-4 hover:bg-slate-700/30 transition">
+                    <div key={assignment.id} className="p-4 hover:bg-accent/30 transition">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3">
-                            <h3 className="text-white font-medium truncate">{assignment.training_name}</h3>
+                            <h3 className="text-foreground font-medium truncate">{assignment.training_name}</h3>
                             <span className={`text-xs px-2 py-0.5 rounded border ${getStatusColor(assignment.status)}`}>
                               {assignment.status.replace("_", " ")}
                             </span>
                           </div>
                           {assignment.training_description && (
-                            <p className="text-slate-400 text-sm mt-1 line-clamp-1">{assignment.training_description}</p>
+                            <p className="text-muted-foreground text-sm mt-1 line-clamp-1">{assignment.training_description}</p>
                           )}
-                          <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
+                          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Calendar className="h-4 w-4" />
                               Due: {formatDate(assignment.due_date)}
@@ -600,7 +600,7 @@ export default function CompliancePage() {
                           {assignment.status === "pending" && !assignment.acknowledged_at && (
                             <button
                               onClick={() => handleAcknowledgeAssignment(assignment.id)}
-                              className="px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+                              className="px-3 py-1.5 text-sm bg-accent hover:bg-muted text-foreground rounded-lg transition"
                             >
                               Acknowledge
                             </button>
@@ -621,17 +621,17 @@ export default function CompliancePage() {
                               Complete
                             </button>
                           )}
-                          <ChevronRight className="h-5 w-5 text-slate-500" />
+                          <ChevronRight className="h-5 w-5 text-muted-foreground" />
                         </div>
                       </div>
 
                       {assignment.status === "in_progress" && (
                         <div className="mt-3">
                           <div className="flex justify-between text-sm mb-1">
-                            <span className="text-slate-400">Progress</span>
-                            <span className="text-white">{assignment.progress_percentage}%</span>
+                            <span className="text-muted-foreground">Progress</span>
+                            <span className="text-foreground">{assignment.progress_percentage}%</span>
                           </div>
-                          <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                          <div className="h-2 bg-accent rounded-full overflow-hidden">
                             <div
                               className="h-full bg-primary-500 rounded-full"
                               style={{ width: `${assignment.progress_percentage}%` }}
@@ -646,9 +646,9 @@ export default function CompliancePage() {
             </div>
 
             {/* My Certifications */}
-            <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-              <div className="p-4 border-b border-slate-700">
-                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <div className="bg-muted rounded-xl border border-border overflow-hidden">
+              <div className="p-4 border-b border-border">
+                <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                   <Award className="h-5 w-5 text-amber-400" />
                   My Certifications
                 </h2>
@@ -656,23 +656,23 @@ export default function CompliancePage() {
 
               {myCertifications.length === 0 ? (
                 <div className="p-8 text-center">
-                  <Award className="h-12 w-12 text-slate-600 mx-auto mb-3" />
-                  <p className="text-slate-400">No certifications yet</p>
+                  <Award className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">No certifications yet</p>
                 </div>
               ) : (
-                <div className="divide-y divide-slate-700">
+                <div className="divide-y divide-border">
                   {myCertifications.map((cert) => (
-                    <div key={cert.id} className="p-4 hover:bg-slate-700/30 transition">
+                    <div key={cert.id} className="p-4 hover:bg-accent/30 transition">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3">
-                            <h3 className="text-white font-medium truncate">{cert.certification_name}</h3>
+                            <h3 className="text-foreground font-medium truncate">{cert.certification_name}</h3>
                             <span className={`text-xs px-2 py-0.5 rounded border ${getStatusColor(cert.status)}`}>
                               {cert.status.replace("_", " ")}
                             </span>
                           </div>
-                          <p className="text-slate-400 text-sm mt-1">{cert.certification_issuing_authority}</p>
-                          <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
+                          <p className="text-muted-foreground text-sm mt-1">{cert.certification_issuing_authority}</p>
+                          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                             <span>Issued: {formatDate(cert.issued_date)}</span>
                             {cert.expiry_date && (
                               <span>Expires: {formatDate(cert.expiry_date)}</span>
@@ -701,7 +701,7 @@ export default function CompliancePage() {
                               Verify
                             </a>
                           )}
-                          <ChevronRight className="h-5 w-5 text-slate-500" />
+                          <ChevronRight className="h-5 w-5 text-muted-foreground" />
                         </div>
                       </div>
                     </div>
@@ -716,9 +716,9 @@ export default function CompliancePage() {
         {activeTab === "reports" && (
           <div className="space-y-6">
             {/* Overdue Training Report */}
-            <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-              <div className="p-4 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <div className="bg-muted rounded-xl border border-border overflow-hidden">
+              <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                   <AlertTriangle className="h-5 w-5 text-red-400" />
                   Overdue Training Report
                 </h2>
@@ -730,17 +730,17 @@ export default function CompliancePage() {
               {!overdueReport || overdueReport.assignments.length === 0 ? (
                 <div className="p-8 text-center">
                   <CheckCircle2 className="h-12 w-12 text-green-400 mx-auto mb-3" />
-                  <p className="text-slate-400">No overdue training assignments</p>
+                  <p className="text-muted-foreground">No overdue training assignments</p>
                 </div>
               ) : (
-                <div className="divide-y divide-slate-700 max-h-[400px] overflow-y-auto">
+                <div className="divide-y divide-border max-h-[400px] overflow-y-auto">
                   {overdueReport.assignments.map((assignment) => (
-                    <div key={assignment.id} className="p-4 hover:bg-slate-700/30 transition">
+                    <div key={assignment.id} className="p-4 hover:bg-accent/30 transition">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
-                          <h3 className="text-white font-medium">{assignment.training_name}</h3>
-                          <p className="text-slate-400 text-sm">{assignment.developer_name} ({assignment.developer_email})</p>
-                          <div className="flex items-center gap-4 mt-1 text-sm text-slate-500">
+                          <h3 className="text-foreground font-medium">{assignment.training_name}</h3>
+                          <p className="text-muted-foreground text-sm">{assignment.developer_name} ({assignment.developer_email})</p>
+                          <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                             <span>Due: {formatDate(assignment.due_date)}</span>
                             <span className="text-red-400">
                               Overdue by {Math.abs(assignment.days_until_due || 0)} days
@@ -755,9 +755,9 @@ export default function CompliancePage() {
             </div>
 
             {/* Expiring Certifications Report */}
-            <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-              <div className="p-4 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <div className="bg-muted rounded-xl border border-border overflow-hidden">
+              <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                   <Clock className="h-5 w-5 text-orange-400" />
                   Expiring Certifications (Next 30 Days)
                 </h2>
@@ -769,17 +769,17 @@ export default function CompliancePage() {
               {!expiringReport || expiringReport.certifications.length === 0 ? (
                 <div className="p-8 text-center">
                   <CheckCircle2 className="h-12 w-12 text-green-400 mx-auto mb-3" />
-                  <p className="text-slate-400">No certifications expiring soon</p>
+                  <p className="text-muted-foreground">No certifications expiring soon</p>
                 </div>
               ) : (
-                <div className="divide-y divide-slate-700 max-h-[400px] overflow-y-auto">
+                <div className="divide-y divide-border max-h-[400px] overflow-y-auto">
                   {expiringReport.certifications.map((cert) => (
-                    <div key={cert.id} className="p-4 hover:bg-slate-700/30 transition">
+                    <div key={cert.id} className="p-4 hover:bg-accent/30 transition">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
-                          <h3 className="text-white font-medium">{cert.certification_name}</h3>
-                          <p className="text-slate-400 text-sm">{cert.developer_name} ({cert.developer_email})</p>
-                          <div className="flex items-center gap-4 mt-1 text-sm text-slate-500">
+                          <h3 className="text-foreground font-medium">{cert.certification_name}</h3>
+                          <p className="text-muted-foreground text-sm">{cert.developer_name} ({cert.developer_email})</p>
+                          <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                             <span>Expires: {cert.expiry_date ? formatDate(cert.expiry_date) : "N/A"}</span>
                             {cert.days_until_expiry !== null && (
                               <span className={cert.is_expired ? "text-red-400" : "text-orange-400"}>

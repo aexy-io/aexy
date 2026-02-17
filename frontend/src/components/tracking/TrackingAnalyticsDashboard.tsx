@@ -40,7 +40,7 @@ function TeamMemberCard({ member, className = "" }: TeamMemberCardProps) {
   };
 
   return (
-    <div className={`bg-slate-800 rounded-xl border border-slate-700 p-4 ${className}`}>
+    <div className={`bg-muted rounded-xl border border-border p-4 ${className}`}>
       <div className="flex items-center gap-3 mb-4">
         {member.avatar_url ? (
           <img
@@ -49,12 +49,12 @@ function TeamMemberCard({ member, className = "" }: TeamMemberCardProps) {
             className="w-10 h-10 rounded-full"
           />
         ) : (
-          <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center">
-            <User className="h-5 w-5 text-slate-400" />
+          <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
+            <User className="h-5 w-5 text-muted-foreground" />
           </div>
         )}
         <div>
-          <p className="font-medium text-white">{member.name || "Unknown"}</p>
+          <p className="font-medium text-foreground">{member.name || "Unknown"}</p>
           {member.streak_days !== undefined && member.streak_days > 0 && (
             <p className="text-xs text-amber-400">{member.streak_days} day streak</p>
           )}
@@ -62,7 +62,7 @@ function TeamMemberCard({ member, className = "" }: TeamMemberCardProps) {
         {member.has_standup_today !== undefined && (
           <div
             className={`ml-auto w-3 h-3 rounded-full ${
-              member.has_standup_today ? "bg-green-500" : "bg-slate-600"
+              member.has_standup_today ? "bg-green-500" : "bg-muted"
             }`}
             title={member.has_standup_today ? "Standup submitted" : "No standup yet"}
           />
@@ -70,21 +70,21 @@ function TeamMemberCard({ member, className = "" }: TeamMemberCardProps) {
       </div>
 
       <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="bg-slate-900 rounded-lg p-2">
-          <p className="text-lg font-semibold text-white">
+        <div className="bg-background rounded-lg p-2">
+          <p className="text-lg font-semibold text-foreground">
             {member.standups_submitted ?? member.time_logged_this_week !== undefined ? formatDuration(member.time_logged_this_week || 0) : "-"}
           </p>
-          <p className="text-[10px] text-slate-500 uppercase">
+          <p className="text-[10px] text-muted-foreground uppercase">
             {member.time_logged_this_week !== undefined ? "Time" : "Standups"}
           </p>
         </div>
-        <div className="bg-slate-900 rounded-lg p-2">
-          <p className="text-lg font-semibold text-white">
+        <div className="bg-background rounded-lg p-2">
+          <p className="text-lg font-semibold text-foreground">
             {member.active_blockers_count ?? member.blockers_reported ?? 0}
           </p>
-          <p className="text-[10px] text-slate-500 uppercase">Blockers</p>
+          <p className="text-[10px] text-muted-foreground uppercase">Blockers</p>
         </div>
-        <div className="bg-slate-900 rounded-lg p-2">
+        <div className="bg-background rounded-lg p-2">
           {member.sentiment_avg !== undefined ? (
             <>
               <p className={`text-lg font-semibold ${
@@ -93,12 +93,12 @@ function TeamMemberCard({ member, className = "" }: TeamMemberCardProps) {
               }`}>
                 {Math.round(member.sentiment_avg * 100)}%
               </p>
-              <p className="text-[10px] text-slate-500 uppercase">Mood</p>
+              <p className="text-[10px] text-muted-foreground uppercase">Mood</p>
             </>
           ) : (
             <>
-              <p className="text-lg font-semibold text-slate-500">-</p>
-              <p className="text-[10px] text-slate-500 uppercase">Mood</p>
+              <p className="text-lg font-semibold text-muted-foreground">-</p>
+              <p className="text-[10px] text-muted-foreground uppercase">Mood</p>
             </>
           )}
         </div>
@@ -152,8 +152,8 @@ function SprintHealthIndicator({
   const health = getHealthStatus();
 
   return (
-    <div className={`bg-slate-800 rounded-xl border border-slate-700 p-6 ${className}`}>
-      <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+    <div className={`bg-muted rounded-xl border border-border p-6 ${className}`}>
+      <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
         <Activity className="h-5 w-5 text-purple-400" />
         Sprint Health
       </h3>
@@ -162,20 +162,20 @@ function SprintHealthIndicator({
       </div>
       <div className="mt-4 space-y-2">
         <div className="flex justify-between text-sm">
-          <span className="text-slate-400">Participation</span>
+          <span className="text-muted-foreground">Participation</span>
           <span className={participationRate >= 80 ? "text-green-400" : "text-amber-400"}>
             {Math.round(participationRate)}%
           </span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-slate-400">Active Blockers</span>
+          <span className="text-muted-foreground">Active Blockers</span>
           <span className={blockerCount === 0 ? "text-green-400" : "text-red-400"}>
             {blockerCount}
           </span>
         </div>
         {avgSentiment !== undefined && (
           <div className="flex justify-between text-sm">
-            <span className="text-slate-400">Team Mood</span>
+            <span className="text-muted-foreground">Team Mood</span>
             <span className={avgSentiment >= 0.6 ? "text-green-400" : "text-amber-400"}>
               {Math.round(avgSentiment * 100)}%
             </span>
@@ -281,9 +281,9 @@ export function TrackingAnalyticsDashboard({
       <div className={`space-y-6 ${className}`}>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-slate-800 rounded-xl p-6 border border-slate-700 animate-pulse">
-              <div className="h-4 bg-slate-700 rounded w-1/2 mb-3" />
-              <div className="h-8 bg-slate-700 rounded w-1/3" />
+            <div key={i} className="bg-muted rounded-xl p-6 border border-border animate-pulse">
+              <div className="h-4 bg-accent rounded w-1/2 mb-3" />
+              <div className="h-8 bg-accent rounded w-1/3" />
             </div>
           ))}
         </div>
@@ -316,12 +316,12 @@ export function TrackingAnalyticsDashboard({
           {...metricPresets.blocker}
         />
         {metrics.avgSentiment !== undefined && (
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+          <div className="bg-muted rounded-xl border border-border p-6">
             <div className="flex items-center gap-3 mb-3">
               <div className="p-2 bg-amber-900/30 rounded-lg">
                 <Smile className="h-5 w-5 text-amber-400" />
               </div>
-              <span className="text-slate-400 text-sm">Team Mood</span>
+              <span className="text-muted-foreground text-sm">Team Mood</span>
             </div>
             <SentimentIndicator score={metrics.avgSentiment} showLabel showEmoji size="lg" />
           </div>
@@ -349,16 +349,16 @@ export function TrackingAnalyticsDashboard({
             />
           </div>
         ) : (
-          <div className="lg:col-span-2 bg-slate-800 rounded-xl border border-slate-700 p-6 flex items-center justify-center">
-            <p className="text-slate-500">No trend data available</p>
+          <div className="lg:col-span-2 bg-muted rounded-xl border border-border p-6 flex items-center justify-center">
+            <p className="text-muted-foreground">No trend data available</p>
           </div>
         )}
       </div>
 
       {/* Sentiment Distribution */}
       {metrics.sentimentDistribution && (
-        <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Sentiment Distribution</h3>
+        <div className="bg-muted rounded-xl border border-border p-6">
+          <h3 className="text-lg font-semibold text-foreground mb-4">Sentiment Distribution</h3>
           <TeamSentimentOverview
             scores={standups
               .filter((s) => s.sentiment_score !== null && s.sentiment_score !== undefined)
@@ -370,7 +370,7 @@ export function TrackingAnalyticsDashboard({
       {/* Team Members */}
       {memberMetrics.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
             <Users className="h-5 w-5 text-blue-400" />
             Team Members
           </h3>

@@ -325,15 +325,15 @@ export function AgentCreationWizard({
   };
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800/50 sticky top-0 z-10">
+      <header className="border-b border-border bg-muted/50 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-xl font-semibold text-white">Create New Agent</h1>
+            <h1 className="text-xl font-semibold text-foreground">Create New Agent</h1>
             <button
               onClick={handleClose}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
             >
               <X className="h-5 w-5" />
             </button>
@@ -350,7 +350,7 @@ export function AgentCreationWizard({
           </div>
         )}
 
-        <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+        <div className="bg-muted rounded-xl border border-border p-6">
           {renderStepContent()}
 
           <WizardNavigation

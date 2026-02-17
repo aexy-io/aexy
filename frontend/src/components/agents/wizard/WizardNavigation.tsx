@@ -36,7 +36,7 @@ export function WizardNavigation({
   return (
     <div
       className={cn(
-        "flex items-center justify-between pt-6 border-t border-slate-700",
+        "flex items-center justify-between pt-6 border-t border-border",
         className
       )}
     >
@@ -47,8 +47,8 @@ export function WizardNavigation({
         className={cn(
           "flex items-center gap-2 px-4 py-2 rounded-lg transition",
           isFirstStep
-            ? "text-slate-600 cursor-not-allowed"
-            : "text-slate-300 hover:text-white hover:bg-slate-700"
+            ? "text-muted-foreground cursor-not-allowed"
+            : "text-foreground hover:text-foreground hover:bg-accent"
         )}
       >
         <ArrowLeft className="h-4 w-4" />
@@ -56,7 +56,7 @@ export function WizardNavigation({
       </button>
 
       {/* Step indicator */}
-      <div className="text-sm text-slate-500">
+      <div className="text-sm text-muted-foreground">
         Step {currentStep + 1} of {totalSteps}
       </div>
 

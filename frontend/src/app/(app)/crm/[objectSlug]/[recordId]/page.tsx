@@ -141,24 +141,24 @@ export default function RecordDetailPage() {
   // Loading state
   if (isLoadingRecord || !record) {
     return (
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen bg-background">
 <div className="p-8">
           <div className="max-w-7xl mx-auto">
             <div className="animate-pulse space-y-6">
               <div className="flex items-center gap-4">
-                <div className="h-10 w-10 bg-slate-800 rounded" />
-                <div className="h-12 w-12 bg-slate-800 rounded-xl" />
+                <div className="h-10 w-10 bg-muted rounded" />
+                <div className="h-12 w-12 bg-muted rounded-xl" />
                 <div className="flex-1">
-                  <div className="h-6 w-48 bg-slate-800 rounded mb-2" />
-                  <div className="h-4 w-24 bg-slate-800 rounded" />
+                  <div className="h-6 w-48 bg-muted rounded mb-2" />
+                  <div className="h-4 w-24 bg-muted rounded" />
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="h-20 bg-slate-800 rounded-xl" />
-                <div className="h-20 bg-slate-800 rounded-xl" />
-                <div className="h-20 bg-slate-800 rounded-xl" />
+                <div className="h-20 bg-muted rounded-xl" />
+                <div className="h-20 bg-muted rounded-xl" />
+                <div className="h-20 bg-muted rounded-xl" />
               </div>
-              <div className="h-64 bg-slate-800 rounded-xl" />
+              <div className="h-64 bg-muted rounded-xl" />
             </div>
           </div>
         </div>
@@ -170,12 +170,12 @@ export default function RecordDetailPage() {
   const pinnedNotes = notes.filter((n) => n.is_pinned);
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
 <div className="flex">
         {/* Main content area */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
-          <div className="px-8 pt-6 pb-4 border-b border-slate-800">
+          <div className="px-8 pt-6 pb-4 border-b border-border">
             <RecordHeader
               record={record}
               object={currentObject}

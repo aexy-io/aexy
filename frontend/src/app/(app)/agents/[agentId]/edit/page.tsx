@@ -248,10 +248,10 @@ export default function EditAgentPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mx-auto mb-4"></div>
-          <p className="text-white">Loading agent...</p>
+          <p className="text-foreground">Loading agent...</p>
         </div>
       </div>
     );
@@ -259,10 +259,10 @@ export default function EditAgentPage() {
 
   if (!agent) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <Bot className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-          <h2 className="text-xl font-medium text-white mb-2">Agent Not Found</h2>
+          <Bot className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-xl font-medium text-foreground mb-2">Agent Not Found</h2>
           <Link
             href="/agents"
             className="text-purple-400 hover:text-purple-300"
@@ -288,7 +288,7 @@ export default function EditAgentPage() {
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Agent Name
               </label>
               <input
@@ -297,37 +297,37 @@ export default function EditAgentPage() {
                 onChange={(e) => setName(e.target.value)}
                 disabled={isSystemAgent}
                 className={cn(
-                  "w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500",
+                  "w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500",
                   isSystemAgent && "opacity-50 cursor-not-allowed"
                 )}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Agent Type
               </label>
               <div className="flex sm:flex-row flex-col sm:items-center items-start gap-2">
                 <AgentTypeBadge type={agentType} />
-                <span className="text-sm text-slate-400">
+                <span className="text-sm text-muted-foreground">
                   (Cannot be changed after creation)
                 </span>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Mention Handle
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">@</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">@</span>
                 <input
                   type="text"
                   value={mentionHandle}
                   onChange={(e) => setMentionHandle(e.target.value.toLowerCase())}
                   disabled={isSystemAgent}
                   className={cn(
-                    "w-full pl-8 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500",
+                    "w-full pl-8 pr-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500",
                     isSystemAgent && "opacity-50 cursor-not-allowed"
                   )}
                 />
@@ -335,7 +335,7 @@ export default function EditAgentPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Description
               </label>
               <textarea
@@ -344,7 +344,7 @@ export default function EditAgentPage() {
                 disabled={isSystemAgent}
                 rows={3}
                 className={cn(
-                  "w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none",
+                  "w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none",
                   isSystemAgent && "opacity-50 cursor-not-allowed"
                 )}
               />
@@ -365,7 +365,7 @@ export default function EditAgentPage() {
             />
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Temperature
               </label>
               <div className="flex items-center gap-4">
@@ -376,16 +376,16 @@ export default function EditAgentPage() {
                   step={0.1}
                   value={temperature}
                   onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                  className="flex-1 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                  className="flex-1 h-2 bg-accent rounded-lg appearance-none cursor-pointer"
                 />
-                <span className="w-12 text-right text-white font-medium">
+                <span className="w-12 text-right text-foreground font-medium">
                   {temperature.toFixed(1)}
                 </span>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Max Tokens
               </label>
               <input
@@ -394,7 +394,7 @@ export default function EditAgentPage() {
                 onChange={(e) => setMaxTokens(parseInt(e.target.value) || 2000)}
                 min={100}
                 max={32000}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
           </div>
@@ -411,7 +411,7 @@ export default function EditAgentPage() {
             {toolsLoading ? (
               <div className="text-center py-8">
                 <Loader2 className="h-8 w-8 text-purple-400 animate-spin mx-auto mb-4" />
-                <p className="text-slate-400">Loading tools...</p>
+                <p className="text-muted-foreground">Loading tools...</p>
               </div>
             ) : (
               <div className={isSystemAgent ? "opacity-50 pointer-events-none" : ""}>
@@ -439,11 +439,11 @@ export default function EditAgentPage() {
                 checked={autoRespond}
                 onChange={(e) => setAutoRespond(e.target.checked)}
                 disabled={isSystemAgent}
-                className="w-5 h-5 mt-0.5 rounded border-slate-600 bg-slate-700 text-purple-500 focus:ring-purple-500"
+                className="w-5 h-5 mt-0.5 rounded border-border bg-accent text-purple-500 focus:ring-purple-500"
               />
               <div>
-                <div className="font-medium text-white">Enable Auto-Response</div>
-                <p className="text-sm text-slate-400 mt-1">
+                <div className="font-medium text-foreground">Enable Auto-Response</div>
+                <p className="text-sm text-muted-foreground mt-1">
                   Automatically respond to messages above the confidence threshold
                 </p>
               </div>
@@ -465,7 +465,7 @@ export default function EditAgentPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Max Daily Responses
                 </label>
                 <input
@@ -475,13 +475,13 @@ export default function EditAgentPage() {
                   disabled={isSystemAgent}
                   min={1}
                   className={cn(
-                    "w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500",
+                    "w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500",
                     isSystemAgent && "opacity-50 cursor-not-allowed"
                   )}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Response Delay (minutes)
                 </label>
                 <input
@@ -491,7 +491,7 @@ export default function EditAgentPage() {
                   disabled={isSystemAgent}
                   min={0}
                   className={cn(
-                    "w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500",
+                    "w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500",
                     isSystemAgent && "opacity-50 cursor-not-allowed"
                   )}
                 />
@@ -499,7 +499,7 @@ export default function EditAgentPage() {
             </div>
 
             <div className={isSystemAgent ? "opacity-50 pointer-events-none" : ""}>
-              <h3 className="text-lg font-medium text-white mb-4">Working Hours</h3>
+              <h3 className="text-lg font-medium text-foreground mb-4">Working Hours</h3>
               <WorkingHoursConfigPanel
                 value={workingHours}
                 onChange={setWorkingHours}
@@ -544,7 +544,7 @@ export default function EditAgentPage() {
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Escalation Email
               </label>
               <input
@@ -554,17 +554,17 @@ export default function EditAgentPage() {
                 disabled={isSystemAgent}
                 placeholder="support@example.com"
                 className={cn(
-                  "w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500",
+                  "w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500",
                   isSystemAgent && "opacity-50 cursor-not-allowed"
                 )}
               />
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-muted-foreground">
                 Email address to notify when agent escalates an issue
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Slack Channel
               </label>
               <input
@@ -574,11 +574,11 @@ export default function EditAgentPage() {
                 disabled={isSystemAgent}
                 placeholder="#support-escalations"
                 className={cn(
-                  "w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500",
+                  "w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500",
                   isSystemAgent && "opacity-50 cursor-not-allowed"
                 )}
               />
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-muted-foreground">
                 Slack channel to post escalation notifications
               </p>
             </div>
@@ -643,13 +643,13 @@ export default function EditAgentPage() {
             {showEmailSetup && !agent?.email_enabled && !isSystemAgent && (
               <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                  <h3 className="font-medium text-white flex items-center gap-2">
+                  <h3 className="font-medium text-foreground flex items-center gap-2">
                     <AtSign className="h-4 w-4 text-purple-400" />
                     Configure Email Address
                   </h3>
                   <button
                     onClick={() => setShowEmailSetup(false)}
-                    className="p-1 text-slate-400 hover:text-white transition-colors"
+                    className="p-1 text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -658,7 +658,7 @@ export default function EditAgentPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   {/* Email Handle */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">
+                    <label className="block text-sm font-medium text-foreground mb-1">
                       Email Handle
                     </label>
                     <input
@@ -666,24 +666,24 @@ export default function EditAgentPage() {
                       value={newEmailHandle}
                       onChange={(e) => setNewEmailHandle(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
                       placeholder="support"
-                      className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Letters, numbers, and hyphens only
                     </p>
                   </div>
 
                   {/* Domain Selector */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">
+                    <label className="block text-sm font-medium text-foreground mb-1">
                       Domain
                     </label>
                     <div className="relative">
-                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <select
                         value={newEmailDomain}
                         onChange={(e) => setNewEmailDomain(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none"
+                        className="w-full pl-10 pr-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none"
                       >
                         {domains.map((d) => (
                           <option key={d.domain} value={d.domain}>
@@ -697,8 +697,8 @@ export default function EditAgentPage() {
 
                 {/* Preview */}
                 {newEmailHandle && newEmailDomain && (
-                  <div className="p-3 bg-slate-800 rounded-lg border border-slate-700 mb-4">
-                    <span className="text-sm text-slate-400">Email address: </span>
+                  <div className="p-3 bg-muted rounded-lg border border-border mb-4">
+                    <span className="text-sm text-muted-foreground">Email address: </span>
                     <code className="text-blue-400 font-mono">{newEmailHandle}@{newEmailDomain}</code>
                   </div>
                 )}
@@ -706,7 +706,7 @@ export default function EditAgentPage() {
                 <div className="flex justify-end gap-2">
                   <button
                     onClick={() => setShowEmailSetup(false)}
-                    className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+                    className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
                   >
                     Cancel
                   </button>
@@ -726,30 +726,30 @@ export default function EditAgentPage() {
             )}
 
             {/* Email Status */}
-            <div className="p-4 bg-slate-700/50 rounded-lg border border-slate-600">
+            <div className="p-4 bg-accent/50 rounded-lg border border-border">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className={cn(
                     "p-2 rounded-lg",
-                    agent?.email_enabled ? "bg-green-500/20" : "bg-slate-600"
+                    agent?.email_enabled ? "bg-green-500/20" : "bg-muted"
                   )}>
                     <Mail className={cn(
                       "h-5 w-5",
-                      agent?.email_enabled ? "text-green-400" : "text-slate-400"
+                      agent?.email_enabled ? "text-green-400" : "text-muted-foreground"
                     )} />
                   </div>
                   <div>
-                    <h3 className="font-medium text-white">
+                    <h3 className="font-medium text-foreground">
                       {agent?.email_enabled ? "Email Enabled" : "Email Disabled"}
                     </h3>
                     {agent?.email_address ? (
                       <div className="flex items-center gap-2 mt-1">
-                        <code className="text-sm text-blue-400 bg-slate-800 px-2 py-0.5 rounded">
+                        <code className="text-sm text-blue-400 bg-muted px-2 py-0.5 rounded">
                           {agent.email_address}
                         </code>
                         <button
                           onClick={copyEmailAddress}
-                          className="p-1 text-slate-400 hover:text-white transition-colors"
+                          className="p-1 text-muted-foreground hover:text-foreground transition-colors"
                           title="Copy email address"
                         >
                           {emailCopied ? (
@@ -760,7 +760,7 @@ export default function EditAgentPage() {
                         </button>
                       </div>
                     ) : (
-                      <p className="text-sm text-slate-400">
+                      <p className="text-sm text-muted-foreground">
                         Enable email to get an address for this agent
                       </p>
                     )}
@@ -800,11 +800,11 @@ export default function EditAgentPage() {
                     checked={autoReplyEnabled}
                     onChange={(e) => setAutoReplyEnabled(e.target.checked)}
                     disabled={isSystemAgent}
-                    className="w-5 h-5 mt-0.5 rounded border-slate-600 bg-slate-700 text-purple-500 focus:ring-purple-500"
+                    className="w-5 h-5 mt-0.5 rounded border-border bg-accent text-purple-500 focus:ring-purple-500"
                   />
                   <div>
-                    <div className="font-medium text-white">Enable Auto-Reply</div>
-                    <p className="text-sm text-slate-400 mt-1">
+                    <div className="font-medium text-foreground">Enable Auto-Reply</div>
+                    <p className="text-sm text-muted-foreground mt-1">
                       Automatically respond to emails when AI confidence is above threshold ({Math.round(confidenceThreshold * 100)}%)
                     </p>
                   </div>
@@ -812,7 +812,7 @@ export default function EditAgentPage() {
 
                 {/* Email Signature */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label className="block text-sm font-medium text-foreground mb-2">
                     Email Signature
                   </label>
                   <textarea
@@ -822,11 +822,11 @@ export default function EditAgentPage() {
                     rows={4}
                     placeholder="Best regards,&#10;{agent_name}"
                     className={cn(
-                      "w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none",
+                      "w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none",
                       isSystemAgent && "opacity-50 cursor-not-allowed"
                     )}
                   />
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     Signature appended to all outgoing emails from this agent
                   </p>
                 </div>
@@ -836,7 +836,7 @@ export default function EditAgentPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <h4 className="font-medium text-blue-300">Agent Inbox</h4>
-                      <p className="text-sm text-slate-400 mt-1">
+                      <p className="text-sm text-muted-foreground mt-1">
                         View and manage emails received by this agent
                       </p>
                     </div>
@@ -861,14 +861,14 @@ export default function EditAgentPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800/50 sticky top-0 z-10">
+      <header className="border-b border-border bg-muted/50 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 py-3 sm:py-4">
           <div className="flex items-center gap-2 sm:gap-4">
             <Link
               href={`/agents/${agentId}`}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition flex-shrink-0"
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition flex-shrink-0"
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>
@@ -887,8 +887,8 @@ export default function EditAgentPage() {
                 />
               </div>
               <div className="min-w-0">
-                <h1 className="text-base sm:text-xl font-semibold text-white truncate">Edit {agent.name}</h1>
-                <p className="text-slate-400 text-sm hidden sm:block">
+                <h1 className="text-base sm:text-xl font-semibold text-foreground truncate">Edit {agent.name}</h1>
+                <p className="text-muted-foreground text-sm hidden sm:block">
                   Configure your agent settings
                 </p>
               </div>
@@ -900,7 +900,7 @@ export default function EditAgentPage() {
                 "flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition text-sm font-medium flex-shrink-0",
                 hasChanges
                   ? "bg-purple-600 hover:bg-purple-700 text-white"
-                  : "bg-slate-700 text-slate-400 cursor-not-allowed"
+                  : "bg-accent text-muted-foreground cursor-not-allowed"
               )}
             >
               {isUpdating ? (
@@ -934,7 +934,7 @@ export default function EditAgentPage() {
         <div className="flex gap-6 flex-col sm:flex-row">
           {/* Tabs sidebar */}
           <nav className="w-full sm:w-48 flex-shrink-0">
-            <div className="bg-slate-800 rounded-xl border border-slate-700 p-2 sticky top-24 flex sm:block overflow-x-auto gap-1 sm:gap-0">
+            <div className="bg-muted rounded-xl border border-border p-2 sticky top-24 flex sm:block overflow-x-auto gap-1 sm:gap-0">
               {TABS.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -946,7 +946,7 @@ export default function EditAgentPage() {
                       "flex items-center gap-2 sm:gap-3 px-3 py-2 rounded-lg text-left transition whitespace-nowrap sm:w-full",
                       isActive
                         ? "bg-purple-500/20 text-purple-400"
-                        : "text-slate-400 hover:text-white hover:bg-slate-700"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
                     )}
                   >
                     <Icon className="h-4 w-4 flex-shrink-0" />
@@ -959,7 +959,7 @@ export default function EditAgentPage() {
 
           {/* Tab content */}
           <div className="flex-1 min-w-0">
-            <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+            <div className="bg-muted rounded-xl border border-border p-6">
               {renderTabContent()}
             </div>
           </div>

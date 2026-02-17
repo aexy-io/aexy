@@ -375,17 +375,17 @@ export function NodeConfigPanel({
         {/* Object Type Selector - for record-based triggers */}
         {isRecordTrigger && (
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Object Type</label>
+            <label className="block text-sm text-muted-foreground mb-1">Object Type</label>
             {objectsLoading ? (
-              <div className="flex items-center gap-2 text-slate-500 text-sm py-2">
-                <div className="animate-spin h-4 w-4 border-2 border-slate-500 border-t-transparent rounded-full" />
+              <div className="flex items-center gap-2 text-muted-foreground text-sm py-2">
+                <div className="animate-spin h-4 w-4 border-2 border-muted-foreground border-t-transparent rounded-full" />
                 Loading objects...
               </div>
             ) : (
               <select
                 value={(node.data.object_id as string) || ""}
                 onChange={(e) => onUpdate({ object_id: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
                 <option value="">Select object type...</option>
                 {moduleObjects.map((obj) => (
@@ -395,7 +395,7 @@ export function NodeConfigPanel({
                 ))}
               </select>
             )}
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Select the object type this automation applies to
             </p>
           </div>
@@ -403,12 +403,12 @@ export function NodeConfigPanel({
 
         {triggerType === "field_changed" && (
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Field to Watch</label>
+            <label className="block text-sm text-muted-foreground mb-1">Field to Watch</label>
             {selectedObjectId ? (
               <select
                 value={(node.data.field_slug as string) || ""}
                 onChange={(e) => onUpdate({ field_slug: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
                 <option value="">Select field...</option>
                 {fieldSchema.record?.fields
@@ -425,7 +425,7 @@ export function NodeConfigPanel({
                 value={(node.data.field_slug as string) || ""}
                 onChange={(e) => onUpdate({ field_slug: e.target.value })}
                 placeholder="e.g., status (select object type first)"
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             )}
           </div>
@@ -433,15 +433,15 @@ export function NodeConfigPanel({
 
         {triggerType === "scheduled" && (
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Schedule (Cron)</label>
+            <label className="block text-sm text-muted-foreground mb-1">Schedule (Cron)</label>
             <input
               type="text"
               value={(node.data.schedule as string) || ""}
               onChange={(e) => onUpdate({ schedule: e.target.value })}
               placeholder="0 9 * * *"
-              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
             />
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Example: 0 9 * * * (daily at 9am)
             </p>
           </div>
@@ -451,10 +451,10 @@ export function NodeConfigPanel({
           <div className="space-y-4">
             {/* Webhook URL */}
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Webhook URL</label>
+              <label className="block text-sm text-muted-foreground mb-1">Webhook URL</label>
               {webhookLoading ? (
-                <div className="flex items-center gap-2 text-slate-500 text-sm py-2">
-                  <div className="animate-spin h-4 w-4 border-2 border-slate-500 border-t-transparent rounded-full" />
+                <div className="flex items-center gap-2 text-muted-foreground text-sm py-2">
+                  <div className="animate-spin h-4 w-4 border-2 border-muted-foreground border-t-transparent rounded-full" />
                   Loading...
                 </div>
               ) : webhookUrl ? (
@@ -464,27 +464,27 @@ export function NodeConfigPanel({
                       type="text"
                       value={webhookUrl}
                       readOnly
-                      className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-xs font-mono cursor-text"
+                      className="flex-1 bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-xs font-mono cursor-text"
                     />
                     <button
                       onClick={() => copyToClipboard(webhookUrl)}
                       className={`p-2 rounded-lg transition-colors ${
                         copied
                           ? "bg-green-500/20 text-green-400"
-                          : "bg-slate-700 text-slate-400 hover:text-white hover:bg-slate-600"
+                          : "bg-accent text-muted-foreground hover:text-foreground hover:bg-muted"
                       }`}
                       title={copied ? "Copied!" : "Copy URL"}
                     >
                       {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     </button>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded font-medium">POST</span>
                     <span>Send a POST request to trigger this workflow</span>
                   </div>
                 </div>
               ) : (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   Save and publish your workflow to get a webhook URL
                 </p>
               )}
@@ -494,7 +494,7 @@ export function NodeConfigPanel({
             <div>
               <button
                 onClick={() => setShowSamplePayload(!showSamplePayload)}
-                className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Code className="h-4 w-4" />
                 <span>{showSamplePayload ? "Hide" : "Show"} sample payload</span>
@@ -504,12 +504,12 @@ export function NodeConfigPanel({
               </button>
               {showSamplePayload && (
                 <div className="mt-2 relative">
-                  <pre className="bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs text-slate-300 font-mono overflow-x-auto">
+                  <pre className="bg-background border border-border rounded-lg p-3 text-xs text-foreground font-mono overflow-x-auto">
                     {samplePayload}
                   </pre>
                   <button
                     onClick={() => copyToClipboard(samplePayload)}
-                    className="absolute top-2 right-2 p-1.5 bg-slate-800 rounded text-slate-400 hover:text-white transition-colors"
+                    className="absolute top-2 right-2 p-1.5 bg-muted rounded text-muted-foreground hover:text-foreground transition-colors"
                     title="Copy payload"
                   >
                     <Copy className="h-3.5 w-3.5" />
@@ -519,8 +519,8 @@ export function NodeConfigPanel({
             </div>
 
             {/* Info box */}
-            <div className="text-xs text-slate-500 bg-slate-800/50 rounded-lg p-3">
-              <p className="font-medium text-slate-400 mb-1">How it works</p>
+            <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
+              <p className="font-medium text-muted-foreground mb-1">How it works</p>
               <ul className="space-y-1 list-disc list-inside">
                 <li>Send a POST request with JSON payload</li>
                 <li>Include <code className="text-blue-400">record_id</code> to link to a CRM record</li>
@@ -541,7 +541,7 @@ export function NodeConfigPanel({
         {(actionType === "send_email") && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">
+              <label className="block text-sm text-muted-foreground mb-1">
                 To (Recipient)
                 <span className="text-red-400 ml-1">*</span>
               </label>
@@ -550,14 +550,14 @@ export function NodeConfigPanel({
                 value={(node.data.to as string) || ""}
                 onChange={(e) => onUpdate({ to: e.target.value })}
                 placeholder="recipient@example.com or {{record.values.email}}"
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Enter an email address or use a field variable like {"{{record.values.email}}"}
               </p>
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">
+              <label className="block text-sm text-muted-foreground mb-1">
                 Subject
                 <span className="text-red-400 ml-1">*</span>
               </label>
@@ -566,12 +566,12 @@ export function NodeConfigPanel({
                 value={(node.data.email_subject as string) || ""}
                 onChange={(e) => onUpdate({ email_subject: e.target.value })}
                 placeholder="Email subject..."
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-sm text-slate-400">Body</label>
+                <label className="text-sm text-muted-foreground">Body</label>
                 <InlineFieldPicker
                   workspaceId={workspaceId}
                   automationId={automationId}
@@ -585,7 +585,7 @@ export function NodeConfigPanel({
                 onChange={(e) => onUpdate({ email_body: e.target.value })}
                 placeholder="Email body... Click 'Insert field' to add variables"
                 rows={4}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -594,9 +594,9 @@ export function NodeConfigPanel({
                 id="ai-personalize"
                 checked={(node.data.use_ai_personalization as boolean) || false}
                 onChange={(e) => onUpdate({ use_ai_personalization: e.target.checked })}
-                className="rounded bg-slate-700 border-slate-600"
+                className="rounded bg-accent border-border"
               />
-              <label htmlFor="ai-personalize" className="text-sm text-slate-300">
+              <label htmlFor="ai-personalize" className="text-sm text-foreground">
                 Use AI to personalize
               </label>
             </div>
@@ -606,7 +606,7 @@ export function NodeConfigPanel({
         {actionType === "send_sms" && (
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-sm text-slate-400">Message</label>
+              <label className="text-sm text-muted-foreground">Message</label>
               <InlineFieldPicker
                 workspaceId={workspaceId}
                 automationId={automationId}
@@ -620,7 +620,7 @@ export function NodeConfigPanel({
               onChange={(e) => onUpdate({ message_template: e.target.value })}
               placeholder="Message... Click 'Insert field' to add variables"
               rows={3}
-              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
             />
           </div>
         )}
@@ -629,7 +629,7 @@ export function NodeConfigPanel({
           <>
             {/* Target Type Selection */}
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Send to</label>
+              <label className="block text-sm text-muted-foreground mb-1">Send to</label>
               <select
                 value={(node.data.slack_target_type as string) || "channel"}
                 onChange={(e) => onUpdate({
@@ -639,7 +639,7 @@ export function NodeConfigPanel({
                   user_email: "",
                   user_email_field: "",
                 })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
                 <option value="channel">Channel</option>
                 <option value="dm">Direct Message (DM)</option>
@@ -649,15 +649,15 @@ export function NodeConfigPanel({
             {/* Channel Config */}
             {((node.data.slack_target_type as string) || "channel") === "channel" && (
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Channel ID</label>
+                <label className="block text-sm text-muted-foreground mb-1">Channel ID</label>
                 <input
                   type="text"
                   value={(node.data.channel as string) || ""}
                   onChange={(e) => onUpdate({ channel: e.target.value })}
                   placeholder="C1234567890"
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                 />
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Find Channel ID in Slack: right-click channel → View channel details → scroll to bottom
                 </p>
               </div>
@@ -667,7 +667,7 @@ export function NodeConfigPanel({
             {(node.data.slack_target_type as string) === "dm" && (
               <>
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">Recipient</label>
+                  <label className="block text-sm text-muted-foreground mb-1">Recipient</label>
                   <select
                     value={(node.data.slack_dm_type as string) || "email_field"}
                     onChange={(e) => onUpdate({
@@ -675,7 +675,7 @@ export function NodeConfigPanel({
                       user_email: "",
                       user_email_field: "",
                     })}
-                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                    className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                   >
                     <option value="email_field">From record field (dynamic)</option>
                     <option value="email">Specific email address</option>
@@ -684,7 +684,7 @@ export function NodeConfigPanel({
 
                 {((node.data.slack_dm_type as string) || "email_field") === "email_field" && (
                   <div>
-                    <label className="block text-sm text-slate-400 mb-1">Email Field</label>
+                    <label className="block text-sm text-muted-foreground mb-1">Email Field</label>
                     <FieldPicker
                       workspaceId={workspaceId}
                       automationId={automationId}
@@ -693,7 +693,7 @@ export function NodeConfigPanel({
                       onChange={(value) => onUpdate({ user_email_field: value })}
                       placeholder="Select field containing email..."
                     />
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       e.g., owner_email, assigned_to_email
                     </p>
                   </div>
@@ -701,15 +701,15 @@ export function NodeConfigPanel({
 
                 {(node.data.slack_dm_type as string) === "email" && (
                   <div>
-                    <label className="block text-sm text-slate-400 mb-1">Email Address</label>
+                    <label className="block text-sm text-muted-foreground mb-1">Email Address</label>
                     <input
                       type="email"
                       value={(node.data.user_email as string) || ""}
                       onChange={(e) => onUpdate({ user_email: e.target.value })}
                       placeholder="user@company.com"
-                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                      className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                     />
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       User must be mapped in Slack integration settings
                     </p>
                   </div>
@@ -720,7 +720,7 @@ export function NodeConfigPanel({
             {/* Message */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-sm text-slate-400">Message</label>
+                <label className="text-sm text-muted-foreground">Message</label>
                 <InlineFieldPicker
                   workspaceId={workspaceId}
                   automationId={automationId}
@@ -734,7 +734,7 @@ export function NodeConfigPanel({
                 onChange={(e) => onUpdate({ message_template: e.target.value })}
                 placeholder="Message... Click 'Insert field' to add variables like {name}, {deal_value}"
                 rows={4}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
           </>
@@ -743,21 +743,21 @@ export function NodeConfigPanel({
         {actionType === "webhook_call" && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">URL</label>
+              <label className="block text-sm text-muted-foreground mb-1">URL</label>
               <input
                 type="url"
                 value={(node.data.webhook_url as string) || ""}
                 onChange={(e) => onUpdate({ webhook_url: e.target.value })}
                 placeholder="https://..."
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Method</label>
+              <label className="block text-sm text-muted-foreground mb-1">Method</label>
               <select
                 value={(node.data.http_method as string) || "POST"}
                 onChange={(e) => onUpdate({ http_method: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
                 <option value="GET">GET</option>
                 <option value="POST">POST</option>
@@ -768,7 +768,7 @@ export function NodeConfigPanel({
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-sm text-slate-400">Body (JSON)</label>
+                <label className="text-sm text-muted-foreground">Body (JSON)</label>
                 <InlineFieldPicker
                   workspaceId={workspaceId}
                   automationId={automationId}
@@ -782,7 +782,7 @@ export function NodeConfigPanel({
                 onChange={(e) => onUpdate({ body_template: e.target.value })}
                 placeholder='{"key": "{{record.field}}"}'
                 rows={3}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm font-mono"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm font-mono"
               />
             </div>
           </>
@@ -791,7 +791,7 @@ export function NodeConfigPanel({
         {actionType === "update_record" && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Field to Update</label>
+              <label className="block text-sm text-muted-foreground mb-1">Field to Update</label>
               <FieldPicker
                 workspaceId={workspaceId}
                 automationId={automationId}
@@ -806,15 +806,15 @@ export function NodeConfigPanel({
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">New Value</label>
+              <label className="block text-sm text-muted-foreground mb-1">New Value</label>
               <input
                 type="text"
                 value={(node.data.update_value as string) || ""}
                 onChange={(e) => onUpdate({ update_value: e.target.value })}
                 placeholder="Enter value or use {{field}} syntax"
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Use {"{{record.field}}"} to reference other fields
               </p>
             </div>
@@ -824,17 +824,17 @@ export function NodeConfigPanel({
         {actionType === "create_record" && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Object Type</label>
+              <label className="block text-sm text-muted-foreground mb-1">Object Type</label>
               {objectsLoading ? (
-                <div className="flex items-center gap-2 text-slate-500 text-sm py-2">
-                  <div className="animate-spin h-4 w-4 border-2 border-slate-500 border-t-transparent rounded-full" />
+                <div className="flex items-center gap-2 text-muted-foreground text-sm py-2">
+                  <div className="animate-spin h-4 w-4 border-2 border-muted-foreground border-t-transparent rounded-full" />
                   Loading...
                 </div>
               ) : (
                 <select
                   value={(node.data.target_object_id as string) || ""}
                   onChange={(e) => onUpdate({ target_object_id: e.target.value })}
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                 >
                   <option value="">Select object type...</option>
                   {moduleObjects.map((obj) => (
@@ -846,13 +846,13 @@ export function NodeConfigPanel({
               )}
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Record Name</label>
+              <label className="block text-sm text-muted-foreground mb-1">Record Name</label>
               <input
                 type="text"
                 value={(node.data.record_name as string) || ""}
                 onChange={(e) => onUpdate({ record_name: e.target.value })}
                 placeholder="Name for the new record"
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -861,9 +861,9 @@ export function NodeConfigPanel({
                 id="link-to-current"
                 checked={(node.data.link_to_current as boolean) || false}
                 onChange={(e) => onUpdate({ link_to_current: e.target.checked })}
-                className="rounded bg-slate-700 border-slate-600"
+                className="rounded bg-accent border-border"
               />
-              <label htmlFor="link-to-current" className="text-sm text-slate-300">
+              <label htmlFor="link-to-current" className="text-sm text-foreground">
                 Link to triggering record
               </label>
             </div>
@@ -873,11 +873,11 @@ export function NodeConfigPanel({
         {actionType === "create_task" && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Project</label>
+              <label className="block text-sm text-muted-foreground mb-1">Project</label>
               <select
                 value={(node.data.project_id as string) || ""}
                 onChange={(e) => onUpdate({ project_id: e.target.value || null })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                 disabled={projectsLoading}
               >
                 <option value="">Workspace Backlog (No Project)</option>
@@ -887,44 +887,44 @@ export function NodeConfigPanel({
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {projectsLoading ? "Loading projects..." : "Select a project for this task"}
               </p>
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Task Title</label>
+              <label className="block text-sm text-muted-foreground mb-1">Task Title</label>
               <input
                 type="text"
                 value={(node.data.task_title as string) || ""}
                 onChange={(e) => onUpdate({ task_title: e.target.value })}
                 placeholder="Follow up with {{trigger.monitor_name}}"
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Description</label>
+              <label className="block text-sm text-muted-foreground mb-1">Description</label>
               <textarea
                 value={(node.data.task_description as string) || ""}
                 onChange={(e) => onUpdate({ task_description: e.target.value })}
                 placeholder="Task details..."
                 rows={3}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Due In</label>
+              <label className="block text-sm text-muted-foreground mb-1">Due In</label>
               <div className="flex gap-2">
                 <input
                   type="number"
                   min="1"
                   value={(node.data.due_in_value as number) || 1}
                   onChange={(e) => onUpdate({ due_in_value: parseInt(e.target.value) || 1 })}
-                  className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                  className="flex-1 bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                 />
                 <select
                   value={(node.data.due_in_unit as string) || "days"}
                   onChange={(e) => onUpdate({ due_in_unit: e.target.value })}
-                  className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                  className="flex-1 bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                 >
                   <option value="hours">Hours</option>
                   <option value="days">Days</option>
@@ -933,11 +933,11 @@ export function NodeConfigPanel({
               </div>
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Priority</label>
+              <label className="block text-sm text-muted-foreground mb-1">Priority</label>
               <select
                 value={(node.data.task_priority as string) || "medium"}
                 onChange={(e) => onUpdate({ task_priority: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -946,13 +946,13 @@ export function NodeConfigPanel({
               </select>
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Assign To</label>
+              <label className="block text-sm text-muted-foreground mb-1">Assign To</label>
               <input
                 type="text"
                 value={(node.data.assignee_email as string) || ""}
                 onChange={(e) => onUpdate({ assignee_email: e.target.value })}
                 placeholder="user@company.com or {{record.owner_email}}"
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
           </>
@@ -961,11 +961,11 @@ export function NodeConfigPanel({
         {actionType === "notify_user" && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Notify</label>
+              <label className="block text-sm text-muted-foreground mb-1">Notify</label>
               <select
                 value={(node.data.notify_type as string) || "email"}
                 onChange={(e) => onUpdate({ notify_type: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
                 <option value="email">Specific Email</option>
                 <option value="field">From Record Field</option>
@@ -974,19 +974,19 @@ export function NodeConfigPanel({
             </div>
             {(node.data.notify_type as string) === "email" && (
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Email Address</label>
+                <label className="block text-sm text-muted-foreground mb-1">Email Address</label>
                 <input
                   type="email"
                   value={(node.data.notify_email as string) || ""}
                   onChange={(e) => onUpdate({ notify_email: e.target.value })}
                   placeholder="user@company.com"
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                 />
               </div>
             )}
             {(node.data.notify_type as string) === "field" && (
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Email Field</label>
+                <label className="block text-sm text-muted-foreground mb-1">Email Field</label>
                 <FieldPicker
                   workspaceId={workspaceId}
                   automationId={automationId}
@@ -998,23 +998,23 @@ export function NodeConfigPanel({
               </div>
             )}
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Notification Title</label>
+              <label className="block text-sm text-muted-foreground mb-1">Notification Title</label>
               <input
                 type="text"
                 value={(node.data.notify_title as string) || ""}
                 onChange={(e) => onUpdate({ notify_title: e.target.value })}
                 placeholder="New deal requires attention"
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Message</label>
+              <label className="block text-sm text-muted-foreground mb-1">Message</label>
               <textarea
                 value={(node.data.notify_message as string) || ""}
                 onChange={(e) => onUpdate({ notify_message: e.target.value })}
                 placeholder="Notification message..."
                 rows={3}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
           </>
@@ -1023,11 +1023,11 @@ export function NodeConfigPanel({
         {actionType === "notify_team" && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Notification Channel</label>
+              <label className="block text-sm text-muted-foreground mb-1">Notification Channel</label>
               <select
                 value={(node.data.notify_channel as string) || "slack"}
                 onChange={(e) => onUpdate({ notify_channel: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
                 <option value="slack">Slack Channel</option>
                 <option value="email">Email Group</option>
@@ -1036,46 +1036,46 @@ export function NodeConfigPanel({
             </div>
             {(node.data.notify_channel as string) === "slack" && (
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Slack Channel ID</label>
+                <label className="block text-sm text-muted-foreground mb-1">Slack Channel ID</label>
                 <input
                   type="text"
                   value={(node.data.team_channel_id as string) || ""}
                   onChange={(e) => onUpdate({ team_channel_id: e.target.value })}
                   placeholder="C1234567890"
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                 />
               </div>
             )}
             {(node.data.notify_channel as string) === "email" && (
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Email Addresses</label>
+                <label className="block text-sm text-muted-foreground mb-1">Email Addresses</label>
                 <textarea
                   value={(node.data.team_emails as string) || ""}
                   onChange={(e) => onUpdate({ team_emails: e.target.value })}
                   placeholder="team@company.com&#10;sales@company.com"
                   rows={3}
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                 />
               </div>
             )}
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Notification Title</label>
+              <label className="block text-sm text-muted-foreground mb-1">Notification Title</label>
               <input
                 type="text"
                 value={(node.data.team_notify_title as string) || ""}
                 onChange={(e) => onUpdate({ team_notify_title: e.target.value })}
                 placeholder="New high-value deal created"
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Message</label>
+              <label className="block text-sm text-muted-foreground mb-1">Message</label>
               <textarea
                 value={(node.data.team_notify_message as string) || ""}
                 onChange={(e) => onUpdate({ team_notify_message: e.target.value })}
                 placeholder="A new deal worth {{record.value}} has been created..."
                 rows={3}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
           </>
@@ -1084,11 +1084,11 @@ export function NodeConfigPanel({
         {actionType === "assign_owner" && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Assignment Type</label>
+              <label className="block text-sm text-muted-foreground mb-1">Assignment Type</label>
               <select
                 value={(node.data.assign_type as string) || "specific"}
                 onChange={(e) => onUpdate({ assign_type: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
                 <option value="specific">Specific User</option>
                 <option value="field">From Record Field</option>
@@ -1098,19 +1098,19 @@ export function NodeConfigPanel({
             </div>
             {(node.data.assign_type as string) === "specific" && (
               <div>
-                <label className="block text-sm text-slate-400 mb-1">User Email</label>
+                <label className="block text-sm text-muted-foreground mb-1">User Email</label>
                 <input
                   type="email"
                   value={(node.data.owner_email as string) || ""}
                   onChange={(e) => onUpdate({ owner_email: e.target.value })}
                   placeholder="user@company.com"
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                 />
               </div>
             )}
             {(node.data.assign_type as string) === "field" && (
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Owner Field</label>
+                <label className="block text-sm text-muted-foreground mb-1">Owner Field</label>
                 <FieldPicker
                   workspaceId={workspaceId}
                   automationId={automationId}
@@ -1123,30 +1123,30 @@ export function NodeConfigPanel({
             )}
             {(node.data.assign_type as string) === "round_robin" && (
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Team Members</label>
+                <label className="block text-sm text-muted-foreground mb-1">Team Members</label>
                 <textarea
                   value={(node.data.team_emails as string) || ""}
                   onChange={(e) => onUpdate({ team_emails: e.target.value })}
                   placeholder="user1@company.com&#10;user2@company.com&#10;user3@company.com"
                   rows={3}
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                 />
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   One email per line. Assignments rotate evenly.
                 </p>
               </div>
             )}
             {(node.data.assign_type as string) === "least_busy" && (
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Team Members</label>
+                <label className="block text-sm text-muted-foreground mb-1">Team Members</label>
                 <textarea
                   value={(node.data.team_emails as string) || ""}
                   onChange={(e) => onUpdate({ team_emails: e.target.value })}
                   placeholder="user1@company.com&#10;user2@company.com&#10;user3@company.com"
                   rows={3}
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                 />
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Assigns to the team member with fewest open records.
                 </p>
               </div>
@@ -1157,15 +1157,15 @@ export function NodeConfigPanel({
         {actionType === "add_to_list" && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">List</label>
+              <label className="block text-sm text-muted-foreground mb-1">List</label>
               <input
                 type="text"
                 value={(node.data.list_id as string) || ""}
                 onChange={(e) => onUpdate({ list_id: e.target.value })}
                 placeholder="Enter list ID or name"
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 The record will be added to this CRM list
               </p>
             </div>
@@ -1175,15 +1175,15 @@ export function NodeConfigPanel({
         {actionType === "remove_from_list" && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">List</label>
+              <label className="block text-sm text-muted-foreground mb-1">List</label>
               <input
                 type="text"
                 value={(node.data.list_id as string) || ""}
                 onChange={(e) => onUpdate({ list_id: e.target.value })}
                 placeholder="Enter list ID or name"
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 The record will be removed from this CRM list
               </p>
             </div>
@@ -1193,23 +1193,23 @@ export function NodeConfigPanel({
         {(actionType === "enroll_in_sequence" || actionType === "enroll_sequence") && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Sequence</label>
+              <label className="block text-sm text-muted-foreground mb-1">Sequence</label>
               <input
                 type="text"
                 value={(node.data.sequence_id as string) || ""}
                 onChange={(e) => onUpdate({ sequence_id: e.target.value })}
                 placeholder="Enter sequence ID"
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Start At Step</label>
+              <label className="block text-sm text-muted-foreground mb-1">Start At Step</label>
               <input
                 type="number"
                 min="1"
                 value={(node.data.start_step as number) || 1}
                 onChange={(e) => onUpdate({ start_step: parseInt(e.target.value) || 1 })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -1218,9 +1218,9 @@ export function NodeConfigPanel({
                 id="skip-if-enrolled"
                 checked={(node.data.skip_if_enrolled as boolean) ?? true}
                 onChange={(e) => onUpdate({ skip_if_enrolled: e.target.checked })}
-                className="rounded bg-slate-700 border-slate-600"
+                className="rounded bg-accent border-border"
               />
-              <label htmlFor="skip-if-enrolled" className="text-sm text-slate-300">
+              <label htmlFor="skip-if-enrolled" className="text-sm text-foreground">
                 Skip if already enrolled
               </label>
             </div>
@@ -1230,15 +1230,15 @@ export function NodeConfigPanel({
         {(actionType === "remove_from_sequence" || actionType === "unenroll_sequence") && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Sequence</label>
+              <label className="block text-sm text-muted-foreground mb-1">Sequence</label>
               <input
                 type="text"
                 value={(node.data.sequence_id as string) || ""}
                 onChange={(e) => onUpdate({ sequence_id: e.target.value })}
                 placeholder="Enter sequence ID (leave empty for all)"
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Leave empty to remove from all active sequences
               </p>
             </div>
@@ -1248,11 +1248,11 @@ export function NodeConfigPanel({
         {actionType === "enrich_record" && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Enrichment Source</label>
+              <label className="block text-sm text-muted-foreground mb-1">Enrichment Source</label>
               <select
                 value={(node.data.enrichment_source as string) || "clearbit"}
                 onChange={(e) => onUpdate({ enrichment_source: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
                 <option value="clearbit">Clearbit</option>
                 <option value="apollo">Apollo</option>
@@ -1262,7 +1262,7 @@ export function NodeConfigPanel({
               </select>
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Fields to Enrich</label>
+              <label className="block text-sm text-muted-foreground mb-1">Fields to Enrich</label>
               <div className="space-y-2">
                 {["company", "title", "phone", "linkedin", "industry", "company_size"].map((field) => (
                   <label key={field} className="flex items-center gap-2">
@@ -1276,9 +1276,9 @@ export function NodeConfigPanel({
                           : current.filter((f) => f !== field);
                         onUpdate({ enrich_fields: updated });
                       }}
-                      className="rounded bg-slate-700 border-slate-600"
+                      className="rounded bg-accent border-border"
                     />
-                    <span className="text-sm text-slate-300 capitalize">{field.replace("_", " ")}</span>
+                    <span className="text-sm text-foreground capitalize">{field.replace("_", " ")}</span>
                   </label>
                 ))}
               </div>
@@ -1289,9 +1289,9 @@ export function NodeConfigPanel({
                 id="overwrite-existing"
                 checked={(node.data.overwrite_existing as boolean) || false}
                 onChange={(e) => onUpdate({ overwrite_existing: e.target.checked })}
-                className="rounded bg-slate-700 border-slate-600"
+                className="rounded bg-accent border-border"
               />
-              <label htmlFor="overwrite-existing" className="text-sm text-slate-300">
+              <label htmlFor="overwrite-existing" className="text-sm text-foreground">
                 Overwrite existing values
               </label>
             </div>
@@ -1301,11 +1301,11 @@ export function NodeConfigPanel({
         {actionType === "classify_record" && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Classification Type</label>
+              <label className="block text-sm text-muted-foreground mb-1">Classification Type</label>
               <select
                 value={(node.data.classification_type as string) || "lead_score"}
                 onChange={(e) => onUpdate({ classification_type: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
                 <option value="lead_score">Lead Score (0-100)</option>
                 <option value="sentiment">Sentiment Analysis</option>
@@ -1315,21 +1315,21 @@ export function NodeConfigPanel({
             </div>
             {(node.data.classification_type as string) === "category" && (
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Categories</label>
+                <label className="block text-sm text-muted-foreground mb-1">Categories</label>
                 <input
                   type="text"
                   value={(node.data.categories as string) || ""}
                   onChange={(e) => onUpdate({ categories: e.target.value })}
                   placeholder="hot_lead, warm_lead, cold_lead"
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                 />
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Comma-separated list of categories
                 </p>
               </div>
             )}
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Save Result To</label>
+              <label className="block text-sm text-muted-foreground mb-1">Save Result To</label>
               <FieldPicker
                 workspaceId={workspaceId}
                 automationId={automationId}
@@ -1349,11 +1349,11 @@ export function NodeConfigPanel({
         {actionType === "generate_summary" && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Summary Type</label>
+              <label className="block text-sm text-muted-foreground mb-1">Summary Type</label>
               <select
                 value={(node.data.summary_type as string) || "brief"}
                 onChange={(e) => onUpdate({ summary_type: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
                 <option value="brief">Brief (1-2 sentences)</option>
                 <option value="detailed">Detailed (paragraph)</option>
@@ -1362,7 +1362,7 @@ export function NodeConfigPanel({
               </select>
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Include</label>
+              <label className="block text-sm text-muted-foreground mb-1">Include</label>
               <div className="space-y-2">
                 {["activities", "notes", "emails", "meetings", "deals"].map((item) => (
                   <label key={item} className="flex items-center gap-2">
@@ -1376,15 +1376,15 @@ export function NodeConfigPanel({
                           : current.filter((i) => i !== item);
                         onUpdate({ summary_includes: updated });
                       }}
-                      className="rounded bg-slate-700 border-slate-600"
+                      className="rounded bg-accent border-border"
                     />
-                    <span className="text-sm text-slate-300 capitalize">{item}</span>
+                    <span className="text-sm text-foreground capitalize">{item}</span>
                   </label>
                 ))}
               </div>
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Save Summary To</label>
+              <label className="block text-sm text-muted-foreground mb-1">Save Summary To</label>
               <FieldPicker
                 workspaceId={workspaceId}
                 automationId={automationId}
@@ -1404,7 +1404,7 @@ export function NodeConfigPanel({
         {actionType === "delete_record" && (
           <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
             <p className="text-sm text-red-400 font-medium mb-1">Warning</p>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-muted-foreground">
               This action will permanently delete the record. This cannot be undone.
             </p>
             <div className="flex items-center gap-2 mt-3">
@@ -1413,9 +1413,9 @@ export function NodeConfigPanel({
                 id="confirm-delete"
                 checked={(node.data.confirm_delete as boolean) || false}
                 onChange={(e) => onUpdate({ confirm_delete: e.target.checked })}
-                className="rounded bg-slate-700 border-slate-600"
+                className="rounded bg-accent border-border"
               />
-              <label htmlFor="confirm-delete" className="text-sm text-slate-300">
+              <label htmlFor="confirm-delete" className="text-sm text-foreground">
                 I understand this will delete records
               </label>
             </div>
@@ -1425,11 +1425,11 @@ export function NodeConfigPanel({
         {actionType === "link_records" && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Link To</label>
+              <label className="block text-sm text-muted-foreground mb-1">Link To</label>
               <select
                 value={(node.data.link_type as string) || "field"}
                 onChange={(e) => onUpdate({ link_type: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
                 <option value="field">Record from Field Value</option>
                 <option value="specific">Specific Record</option>
@@ -1438,7 +1438,7 @@ export function NodeConfigPanel({
             </div>
             {(node.data.link_type as string) === "field" && (
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Record ID Field</label>
+                <label className="block text-sm text-muted-foreground mb-1">Record ID Field</label>
                 <FieldPicker
                   workspaceId={workspaceId}
                   automationId={automationId}
@@ -1451,24 +1451,24 @@ export function NodeConfigPanel({
             )}
             {(node.data.link_type as string) === "specific" && (
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Record ID</label>
+                <label className="block text-sm text-muted-foreground mb-1">Record ID</label>
                 <input
                   type="text"
                   value={(node.data.link_record_id as string) || ""}
                   onChange={(e) => onUpdate({ link_record_id: e.target.value })}
                   placeholder="Enter record ID"
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                 />
               </div>
             )}
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Relationship Type</label>
+              <label className="block text-sm text-muted-foreground mb-1">Relationship Type</label>
               <input
                 type="text"
                 value={(node.data.relation_type as string) || ""}
                 onChange={(e) => onUpdate({ relation_type: e.target.value })}
                 placeholder="e.g., parent, related, associated"
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
           </>
@@ -1477,21 +1477,21 @@ export function NodeConfigPanel({
         {actionType === "api_request" && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">URL</label>
+              <label className="block text-sm text-muted-foreground mb-1">URL</label>
               <input
                 type="url"
                 value={(node.data.api_url as string) || ""}
                 onChange={(e) => onUpdate({ api_url: e.target.value })}
                 placeholder="https://api.example.com/endpoint"
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Method</label>
+              <label className="block text-sm text-muted-foreground mb-1">Method</label>
               <select
                 value={(node.data.api_method as string) || "POST"}
                 onChange={(e) => onUpdate({ api_method: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
                 <option value="GET">GET</option>
                 <option value="POST">POST</option>
@@ -1501,11 +1501,11 @@ export function NodeConfigPanel({
               </select>
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Authentication</label>
+              <label className="block text-sm text-muted-foreground mb-1">Authentication</label>
               <select
                 value={(node.data.auth_type as string) || "none"}
                 onChange={(e) => onUpdate({ auth_type: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
                 <option value="none">None</option>
                 <option value="bearer">Bearer Token</option>
@@ -1515,43 +1515,43 @@ export function NodeConfigPanel({
             </div>
             {(node.data.auth_type as string) === "bearer" && (
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Bearer Token</label>
+                <label className="block text-sm text-muted-foreground mb-1">Bearer Token</label>
                 <input
                   type="password"
                   value={(node.data.bearer_token as string) || ""}
                   onChange={(e) => onUpdate({ bearer_token: e.target.value })}
                   placeholder="Enter token"
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                 />
               </div>
             )}
             {(node.data.auth_type as string) === "api_key" && (
               <>
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">Header Name</label>
+                  <label className="block text-sm text-muted-foreground mb-1">Header Name</label>
                   <input
                     type="text"
                     value={(node.data.api_key_header as string) || "X-API-Key"}
                     onChange={(e) => onUpdate({ api_key_header: e.target.value })}
                     placeholder="X-API-Key"
-                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                    className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">API Key</label>
+                  <label className="block text-sm text-muted-foreground mb-1">API Key</label>
                   <input
                     type="password"
                     value={(node.data.api_key as string) || ""}
                     onChange={(e) => onUpdate({ api_key: e.target.value })}
                     placeholder="Enter API key"
-                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                    className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                   />
                 </div>
               </>
             )}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-sm text-slate-400">Request Body (JSON)</label>
+                <label className="text-sm text-muted-foreground">Request Body (JSON)</label>
                 <InlineFieldPicker
                   workspaceId={workspaceId}
                   automationId={automationId}
@@ -1565,7 +1565,7 @@ export function NodeConfigPanel({
                 onChange={(e) => onUpdate({ api_body: e.target.value })}
                 placeholder='{"key": "{{record.field}}"}'
                 rows={3}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm font-mono"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm font-mono"
               />
             </div>
           </>
@@ -1580,8 +1580,8 @@ export function NodeConfigPanel({
           "enrich_record", "classify_record", "generate_summary",
           "delete_record", "link_records", "api_request"
         ].includes(actionType) && (
-          <div className="text-xs text-slate-500 bg-slate-800/50 rounded-lg p-3">
-            <p className="font-medium text-slate-400 mb-1">Action: {actionType}</p>
+          <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
+            <p className="font-medium text-muted-foreground mb-1">Action: {actionType}</p>
             <p>Configuration for this action type will be applied when the workflow runs.</p>
           </div>
         )}
@@ -1614,11 +1614,11 @@ export function NodeConfigPanel({
     return (
       <div className="space-y-4">
         <div>
-          <label className="block text-sm text-slate-400 mb-1">Match</label>
+          <label className="block text-sm text-muted-foreground mb-1">Match</label>
           <select
             value={conjunction}
             onChange={(e) => onUpdate({ conjunction: e.target.value })}
-            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+            className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
           >
             <option value="and">All conditions (AND)</option>
             <option value="or">Any condition (OR)</option>
@@ -1626,9 +1626,9 @@ export function NodeConfigPanel({
         </div>
 
         <div className="space-y-3">
-          <label className="block text-sm text-slate-400">Conditions</label>
+          <label className="block text-sm text-muted-foreground">Conditions</label>
           {conditions.map((condition, index) => (
-            <div key={index} className="bg-slate-700/50 rounded-lg p-3 space-y-2">
+            <div key={index} className="bg-accent/50 rounded-lg p-3 space-y-2">
               <div className="flex gap-2 items-start">
                 <div className="flex-1">
                   <FieldPicker
@@ -1647,7 +1647,7 @@ export function NodeConfigPanel({
                 </div>
                 <button
                   onClick={() => removeCondition(index)}
-                  className="p-1.5 text-slate-400 hover:text-red-400 mt-1"
+                  className="p-1.5 text-muted-foreground hover:text-red-400 mt-1"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -1655,7 +1655,7 @@ export function NodeConfigPanel({
               <select
                 value={condition.operator}
                 onChange={(e) => updateCondition(index, { operator: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-white text-sm"
+                className="w-full bg-accent border border-border rounded px-2 py-1.5 text-foreground text-sm"
               >
                 {conditionOperators.map((op) => (
                   <option key={op.value} value={op.value}>
@@ -1677,7 +1677,7 @@ export function NodeConfigPanel({
                       <select
                         value={condition.value}
                         onChange={(e) => updateCondition(index, { value: e.target.value })}
-                        className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-white text-sm"
+                        className="w-full bg-accent border border-border rounded px-2 py-1.5 text-foreground text-sm"
                       >
                         <option value="">Select value...</option>
                         {options.map((opt: { value: string; label: string; color?: string }) => (
@@ -1695,7 +1695,7 @@ export function NodeConfigPanel({
                       <select
                         value={condition.value}
                         onChange={(e) => updateCondition(index, { value: e.target.value })}
-                        className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-white text-sm"
+                        className="w-full bg-accent border border-border rounded px-2 py-1.5 text-foreground text-sm"
                       >
                         <option value="">Select value...</option>
                         <option value="true">Yes / True</option>
@@ -1711,7 +1711,7 @@ export function NodeConfigPanel({
                         type="date"
                         value={condition.value}
                         onChange={(e) => updateCondition(index, { value: e.target.value })}
-                        className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-white text-sm"
+                        className="w-full bg-accent border border-border rounded px-2 py-1.5 text-foreground text-sm"
                       />
                     );
                   }
@@ -1723,7 +1723,7 @@ export function NodeConfigPanel({
                       value={condition.value}
                       onChange={(e) => updateCondition(index, { value: e.target.value })}
                       placeholder="Value"
-                      className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-white text-sm"
+                      className="w-full bg-accent border border-border rounded px-2 py-1.5 text-foreground text-sm"
                     />
                   );
                 })()
@@ -1732,7 +1732,7 @@ export function NodeConfigPanel({
           ))}
           <button
             onClick={addCondition}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-slate-600 rounded-lg text-slate-400 hover:border-slate-500 hover:text-slate-300"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-border rounded-lg text-muted-foreground hover:border-muted-foreground hover:text-foreground"
           >
             <Plus className="h-4 w-4" />
             Add Condition
@@ -1748,11 +1748,11 @@ export function NodeConfigPanel({
     return (
       <div className="space-y-4">
         <div>
-          <label className="block text-sm text-slate-400 mb-1">Wait Type</label>
+          <label className="block text-sm text-muted-foreground mb-1">Wait Type</label>
           <select
             value={waitType}
             onChange={(e) => onUpdate({ wait_type: e.target.value })}
-            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+            className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
           >
             <option value="duration">Duration</option>
             <option value="datetime">Until Date/Time</option>
@@ -1763,21 +1763,21 @@ export function NodeConfigPanel({
         {waitType === "duration" && (
           <div className="flex gap-2">
             <div className="flex-1">
-              <label className="block text-sm text-slate-400 mb-1">Duration</label>
+              <label className="block text-sm text-muted-foreground mb-1">Duration</label>
               <input
                 type="number"
                 min="1"
                 value={(node.data.duration_value as number) || 1}
                 onChange={(e) => onUpdate({ duration_value: parseInt(e.target.value) || 1 })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
             <div className="flex-1">
-              <label className="block text-sm text-slate-400 mb-1">Unit</label>
+              <label className="block text-sm text-muted-foreground mb-1">Unit</label>
               <select
                 value={(node.data.duration_unit as string) || "days"}
                 onChange={(e) => onUpdate({ duration_unit: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
                 <option value="minutes">Minutes</option>
                 <option value="hours">Hours</option>
@@ -1789,12 +1789,12 @@ export function NodeConfigPanel({
 
         {waitType === "datetime" && (
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Wait Until</label>
+            <label className="block text-sm text-muted-foreground mb-1">Wait Until</label>
             <input
               type="datetime-local"
               value={(node.data.wait_until as string) || ""}
               onChange={(e) => onUpdate({ wait_until: e.target.value })}
-              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
             />
           </div>
         )}
@@ -1802,11 +1802,11 @@ export function NodeConfigPanel({
         {waitType === "event" && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Wait for Event</label>
+              <label className="block text-sm text-muted-foreground mb-1">Wait for Event</label>
               <select
                 value={(node.data.wait_for_event as string) || ""}
                 onChange={(e) => onUpdate({ wait_for_event: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
                 <option value="">Select event...</option>
                 <optgroup label="Email Events">
@@ -1833,7 +1833,7 @@ export function NodeConfigPanel({
             {/* Event-specific filter options */}
             {(node.data.wait_for_event as string)?.startsWith("email.") && (
               <div>
-                <label className="block text-sm text-slate-400 mb-1">
+                <label className="block text-sm text-muted-foreground mb-1">
                   Filter by Email ID (optional)
                 </label>
                 <input
@@ -1846,14 +1846,14 @@ export function NodeConfigPanel({
                     },
                   })}
                   placeholder="Leave empty to match any email"
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                 />
               </div>
             )}
 
             {(node.data.wait_for_event as string) === "form.submitted" && (
               <div>
-                <label className="block text-sm text-slate-400 mb-1">
+                <label className="block text-sm text-muted-foreground mb-1">
                   Filter by Form ID (optional)
                 </label>
                 <input
@@ -1866,14 +1866,14 @@ export function NodeConfigPanel({
                     },
                   })}
                   placeholder="Leave empty to match any form"
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                 />
               </div>
             )}
 
             {(node.data.wait_for_event as string)?.startsWith("meeting.") && (
               <div>
-                <label className="block text-sm text-slate-400 mb-1">
+                <label className="block text-sm text-muted-foreground mb-1">
                   Filter by Calendar/Meeting Type (optional)
                 </label>
                 <input
@@ -1886,14 +1886,14 @@ export function NodeConfigPanel({
                     },
                   })}
                   placeholder="Leave empty to match any meeting"
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                 />
               </div>
             )}
 
             {(node.data.wait_for_event as string) === "webhook.received" && (
               <div>
-                <label className="block text-sm text-slate-400 mb-1">
+                <label className="block text-sm text-muted-foreground mb-1">
                   Webhook ID
                 </label>
                 <input
@@ -1906,27 +1906,27 @@ export function NodeConfigPanel({
                     },
                   })}
                   placeholder="Your webhook identifier"
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                 />
               </div>
             )}
 
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Timeout (hours)</label>
+              <label className="block text-sm text-muted-foreground mb-1">Timeout (hours)</label>
               <input
                 type="number"
                 min="1"
                 value={(node.data.timeout_hours as number) || 24}
                 onChange={(e) => onUpdate({ timeout_hours: parseInt(e.target.value) || 24 })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Workflow fails if event not received within timeout
               </p>
             </div>
 
-            <div className="text-xs text-slate-500 bg-slate-800/50 rounded-lg p-3">
-              <p className="font-medium text-slate-400 mb-1">How it works</p>
+            <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
+              <p className="font-medium text-muted-foreground mb-1">How it works</p>
               <p>
                 The workflow will pause and wait until the selected event is received.
                 Events are matched to the current record automatically.
@@ -1944,11 +1944,11 @@ export function NodeConfigPanel({
     return (
       <div className="space-y-4">
         <div>
-          <label className="block text-sm text-slate-400 mb-1">Agent Type</label>
+          <label className="block text-sm text-muted-foreground mb-1">Agent Type</label>
           <select
             value={agentType}
             onChange={(e) => onUpdate({ agent_type: e.target.value })}
-            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+            className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
           >
             <option value="sales_outreach">Sales Outreach</option>
             <option value="lead_scoring">Lead Scoring</option>
@@ -1962,11 +1962,11 @@ export function NodeConfigPanel({
         {agentType === "sales_outreach" && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Outreach Channel</label>
+              <label className="block text-sm text-muted-foreground mb-1">Outreach Channel</label>
               <select
                 value={(node.data.outreach_channel as string) || "email"}
                 onChange={(e) => onUpdate({ outreach_channel: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
                 <option value="email">Email</option>
                 <option value="linkedin">LinkedIn</option>
@@ -1975,11 +1975,11 @@ export function NodeConfigPanel({
               </select>
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Tone</label>
+              <label className="block text-sm text-muted-foreground mb-1">Tone</label>
               <select
                 value={(node.data.outreach_tone as string) || "professional"}
                 onChange={(e) => onUpdate({ outreach_tone: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
                 <option value="professional">Professional</option>
                 <option value="friendly">Friendly & Casual</option>
@@ -1988,23 +1988,23 @@ export function NodeConfigPanel({
               </select>
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Target Persona</label>
+              <label className="block text-sm text-muted-foreground mb-1">Target Persona</label>
               <input
                 type="text"
                 value={(node.data.target_persona as string) || ""}
                 onChange={(e) => onUpdate({ target_persona: e.target.value })}
                 placeholder="e.g., VP of Engineering, IT Decision Maker"
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Value Proposition</label>
+              <label className="block text-sm text-muted-foreground mb-1">Value Proposition</label>
               <textarea
                 value={(node.data.value_proposition as string) || ""}
                 onChange={(e) => onUpdate({ value_proposition: e.target.value })}
                 placeholder="Key benefits to highlight..."
                 rows={2}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -2013,9 +2013,9 @@ export function NodeConfigPanel({
                 id="research-company"
                 checked={(node.data.research_company as boolean) ?? true}
                 onChange={(e) => onUpdate({ research_company: e.target.checked })}
-                className="rounded bg-slate-700 border-slate-600"
+                className="rounded bg-accent border-border"
               />
-              <label htmlFor="research-company" className="text-sm text-slate-300">
+              <label htmlFor="research-company" className="text-sm text-foreground">
                 Research company before outreach
               </label>
             </div>
@@ -2025,9 +2025,9 @@ export function NodeConfigPanel({
                 id="personalize-pain-points"
                 checked={(node.data.personalize_pain_points as boolean) ?? true}
                 onChange={(e) => onUpdate({ personalize_pain_points: e.target.checked })}
-                className="rounded bg-slate-700 border-slate-600"
+                className="rounded bg-accent border-border"
               />
-              <label htmlFor="personalize-pain-points" className="text-sm text-slate-300">
+              <label htmlFor="personalize-pain-points" className="text-sm text-foreground">
                 Identify and address pain points
               </label>
             </div>
@@ -2038,11 +2038,11 @@ export function NodeConfigPanel({
         {agentType === "lead_scoring" && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Scoring Model</label>
+              <label className="block text-sm text-muted-foreground mb-1">Scoring Model</label>
               <select
                 value={(node.data.scoring_model as string) || "balanced"}
                 onChange={(e) => onUpdate({ scoring_model: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
                 <option value="balanced">Balanced (Fit + Engagement)</option>
                 <option value="fit_focused">Fit-Focused (Demographics)</option>
@@ -2051,31 +2051,31 @@ export function NodeConfigPanel({
               </select>
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Ideal Customer Profile</label>
+              <label className="block text-sm text-muted-foreground mb-1">Ideal Customer Profile</label>
               <textarea
                 value={(node.data.ideal_customer_profile as string) || ""}
                 onChange={(e) => onUpdate({ ideal_customer_profile: e.target.value })}
                 placeholder="Describe your ideal customer: company size, industry, tech stack..."
                 rows={3}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Score Threshold for Hot Lead</label>
+              <label className="block text-sm text-muted-foreground mb-1">Score Threshold for Hot Lead</label>
               <input
                 type="number"
                 min="0"
                 max="100"
                 value={(node.data.hot_lead_threshold as number) || 70}
                 onChange={(e) => onUpdate({ hot_lead_threshold: parseInt(e.target.value) || 70 })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Leads scoring above this will be marked as hot
               </p>
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Save Score To</label>
+              <label className="block text-sm text-muted-foreground mb-1">Save Score To</label>
               <FieldPicker
                 workspaceId={workspaceId}
                 automationId={automationId}
@@ -2095,9 +2095,9 @@ export function NodeConfigPanel({
                 id="include-reasoning"
                 checked={(node.data.include_scoring_reasoning as boolean) ?? true}
                 onChange={(e) => onUpdate({ include_scoring_reasoning: e.target.checked })}
-                className="rounded bg-slate-700 border-slate-600"
+                className="rounded bg-accent border-border"
               />
-              <label htmlFor="include-reasoning" className="text-sm text-slate-300">
+              <label htmlFor="include-reasoning" className="text-sm text-foreground">
                 Include scoring reasoning in notes
               </label>
             </div>
@@ -2108,11 +2108,11 @@ export function NodeConfigPanel({
         {agentType === "email_drafter" && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Email Type</label>
+              <label className="block text-sm text-muted-foreground mb-1">Email Type</label>
               <select
                 value={(node.data.email_type as string) || "outreach"}
                 onChange={(e) => onUpdate({ email_type: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
                 <option value="outreach">Cold Outreach</option>
                 <option value="follow_up">Follow-up</option>
@@ -2123,11 +2123,11 @@ export function NodeConfigPanel({
               </select>
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Tone</label>
+              <label className="block text-sm text-muted-foreground mb-1">Tone</label>
               <select
                 value={(node.data.email_tone as string) || "professional"}
                 onChange={(e) => onUpdate({ email_tone: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
                 <option value="professional">Professional</option>
                 <option value="friendly">Friendly</option>
@@ -2137,11 +2137,11 @@ export function NodeConfigPanel({
               </select>
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Length</label>
+              <label className="block text-sm text-muted-foreground mb-1">Length</label>
               <select
                 value={(node.data.email_length as string) || "medium"}
                 onChange={(e) => onUpdate({ email_length: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
                 <option value="short">Short (2-3 sentences)</option>
                 <option value="medium">Medium (1 paragraph)</option>
@@ -2149,23 +2149,23 @@ export function NodeConfigPanel({
               </select>
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Key Points to Include</label>
+              <label className="block text-sm text-muted-foreground mb-1">Key Points to Include</label>
               <textarea
                 value={(node.data.email_key_points as string) || ""}
                 onChange={(e) => onUpdate({ email_key_points: e.target.value })}
                 placeholder="Main points or call-to-action to include..."
                 rows={2}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Writing Sample (Optional)</label>
+              <label className="block text-sm text-muted-foreground mb-1">Writing Sample (Optional)</label>
               <textarea
                 value={(node.data.writing_sample as string) || ""}
                 onChange={(e) => onUpdate({ writing_sample: e.target.value })}
                 placeholder="Paste an example email to match your style..."
                 rows={3}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -2174,9 +2174,9 @@ export function NodeConfigPanel({
                 id="include-signature"
                 checked={(node.data.include_signature as boolean) ?? true}
                 onChange={(e) => onUpdate({ include_signature: e.target.checked })}
-                className="rounded bg-slate-700 border-slate-600"
+                className="rounded bg-accent border-border"
               />
-              <label htmlFor="include-signature" className="text-sm text-slate-300">
+              <label htmlFor="include-signature" className="text-sm text-foreground">
                 Include email signature
               </label>
             </div>
@@ -2186,9 +2186,9 @@ export function NodeConfigPanel({
                 id="personalize-email"
                 checked={(node.data.personalize_email as boolean) ?? true}
                 onChange={(e) => onUpdate({ personalize_email: e.target.checked })}
-                className="rounded bg-slate-700 border-slate-600"
+                className="rounded bg-accent border-border"
               />
-              <label htmlFor="personalize-email" className="text-sm text-slate-300">
+              <label htmlFor="personalize-email" className="text-sm text-foreground">
                 Personalize based on record data
               </label>
             </div>
@@ -2199,7 +2199,7 @@ export function NodeConfigPanel({
         {agentType === "data_enrichment" && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Enrichment Sources</label>
+              <label className="block text-sm text-muted-foreground mb-1">Enrichment Sources</label>
               <div className="space-y-2">
                 {[
                   { value: "linkedin", label: "LinkedIn" },
@@ -2220,15 +2220,15 @@ export function NodeConfigPanel({
                           : current.filter((s) => s !== source.value);
                         onUpdate({ enrichment_sources: updated });
                       }}
-                      className="rounded bg-slate-700 border-slate-600"
+                      className="rounded bg-accent border-border"
                     />
-                    <span className="text-sm text-slate-300">{source.label}</span>
+                    <span className="text-sm text-foreground">{source.label}</span>
                   </label>
                 ))}
               </div>
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Fields to Enrich</label>
+              <label className="block text-sm text-muted-foreground mb-1">Fields to Enrich</label>
               <div className="space-y-2">
                 {[
                   { value: "company_info", label: "Company Info (size, industry, revenue)" },
@@ -2249,9 +2249,9 @@ export function NodeConfigPanel({
                           : current.filter((f) => f !== field.value);
                         onUpdate({ enrich_field_types: updated });
                       }}
-                      className="rounded bg-slate-700 border-slate-600"
+                      className="rounded bg-accent border-border"
                     />
-                    <span className="text-sm text-slate-300">{field.label}</span>
+                    <span className="text-sm text-foreground">{field.label}</span>
                   </label>
                 ))}
               </div>
@@ -2262,9 +2262,9 @@ export function NodeConfigPanel({
                 id="overwrite-enrichment"
                 checked={(node.data.overwrite_enriched as boolean) || false}
                 onChange={(e) => onUpdate({ overwrite_enriched: e.target.checked })}
-                className="rounded bg-slate-700 border-slate-600"
+                className="rounded bg-accent border-border"
               />
-              <label htmlFor="overwrite-enrichment" className="text-sm text-slate-300">
+              <label htmlFor="overwrite-enrichment" className="text-sm text-foreground">
                 Overwrite existing field values
               </label>
             </div>
@@ -2274,9 +2274,9 @@ export function NodeConfigPanel({
                 id="add-enrichment-note"
                 checked={(node.data.add_enrichment_note as boolean) ?? true}
                 onChange={(e) => onUpdate({ add_enrichment_note: e.target.checked })}
-                className="rounded bg-slate-700 border-slate-600"
+                className="rounded bg-accent border-border"
               />
-              <label htmlFor="add-enrichment-note" className="text-sm text-slate-300">
+              <label htmlFor="add-enrichment-note" className="text-sm text-foreground">
                 Add note with enrichment summary
               </label>
             </div>
@@ -2287,46 +2287,46 @@ export function NodeConfigPanel({
         {agentType === "custom" && (
           <>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Agent ID</label>
+              <label className="block text-sm text-muted-foreground mb-1">Agent ID</label>
               <input
                 type="text"
                 value={(node.data.agent_id as string) || ""}
                 onChange={(e) => onUpdate({ agent_id: e.target.value })}
                 placeholder="Select or enter agent ID"
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Custom Goal</label>
+              <label className="block text-sm text-muted-foreground mb-1">Custom Goal</label>
               <textarea
                 value={(node.data.custom_goal as string) || ""}
                 onChange={(e) => onUpdate({ custom_goal: e.target.value })}
                 placeholder="What should this agent accomplish?"
                 rows={3}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Additional Context</label>
+              <label className="block text-sm text-muted-foreground mb-1">Additional Context</label>
               <textarea
                 value={(node.data.custom_context as string) || ""}
                 onChange={(e) => onUpdate({ custom_context: e.target.value })}
                 placeholder="Any additional instructions or context..."
                 rows={2}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Max Iterations</label>
+              <label className="block text-sm text-muted-foreground mb-1">Max Iterations</label>
               <input
                 type="number"
                 min="1"
                 max="50"
                 value={(node.data.max_iterations as number) || 10}
                 onChange={(e) => onUpdate({ max_iterations: parseInt(e.target.value) || 10 })}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Maximum reasoning steps before stopping
               </p>
             </div>
@@ -2334,10 +2334,10 @@ export function NodeConfigPanel({
         )}
 
         {/* Common Settings */}
-        <div className="border-t border-slate-700 pt-4">
-          <label className="block text-sm text-slate-400 mb-2">Output Settings</label>
+        <div className="border-t border-border pt-4">
+          <label className="block text-sm text-muted-foreground mb-2">Output Settings</label>
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Save Output To</label>
+            <label className="block text-sm text-muted-foreground mb-1">Save Output To</label>
             <FieldPicker
               workspaceId={workspaceId}
               automationId={automationId}
@@ -2357,17 +2357,17 @@ export function NodeConfigPanel({
               id="add-agent-note"
               checked={(node.data.add_execution_note as boolean) ?? true}
               onChange={(e) => onUpdate({ add_execution_note: e.target.checked })}
-              className="rounded bg-slate-700 border-slate-600"
+              className="rounded bg-accent border-border"
             />
-            <label htmlFor="add-agent-note" className="text-sm text-slate-300">
+            <label htmlFor="add-agent-note" className="text-sm text-foreground">
               Add note with agent execution details
             </label>
           </div>
         </div>
 
         {/* Description */}
-        <div className="text-xs text-slate-500 bg-slate-800/50 rounded-lg p-3">
-          <p className="font-medium text-slate-400 mb-1">How it works</p>
+        <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
+          <p className="font-medium text-muted-foreground mb-1">How it works</p>
           {agentType === "sales_outreach" && (
             <p>Researches the prospect, identifies pain points based on their company and role, then crafts personalized outreach messages designed to start conversations.</p>
           )}
@@ -2395,11 +2395,11 @@ export function NodeConfigPanel({
     return (
       <div className="space-y-4">
         <div>
-          <label className="block text-sm text-slate-400 mb-1">Join Type</label>
+          <label className="block text-sm text-muted-foreground mb-1">Join Type</label>
           <select
             value={joinType}
             onChange={(e) => onUpdate({ join_type: e.target.value })}
-            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+            className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
           >
             <option value="all">Wait for All Branches</option>
             <option value="any">Wait for Any Branch</option>
@@ -2409,42 +2409,42 @@ export function NodeConfigPanel({
 
         {joinType === "count" && (
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Expected Count</label>
+            <label className="block text-sm text-muted-foreground mb-1">Expected Count</label>
             <input
               type="number"
               min="1"
               max={incomingBranches}
               value={(node.data.expected_count as number) || 1}
               onChange={(e) => onUpdate({ expected_count: parseInt(e.target.value) || 1 })}
-              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
             />
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Continue when this many branches complete
             </p>
           </div>
         )}
 
         <div>
-          <label className="block text-sm text-slate-400 mb-1">Incoming Branches</label>
+          <label className="block text-sm text-muted-foreground mb-1">Incoming Branches</label>
           <input
             type="number"
             min="2"
             max="10"
             value={incomingBranches}
             onChange={(e) => onUpdate({ incoming_branches: parseInt(e.target.value) || 2 })}
-            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+            className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
           />
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Number of input handles for parallel branches
           </p>
         </div>
 
         <div>
-          <label className="block text-sm text-slate-400 mb-1">On Failure</label>
+          <label className="block text-sm text-muted-foreground mb-1">On Failure</label>
           <select
             value={(node.data.on_failure as string) || "fail"}
             onChange={(e) => onUpdate({ on_failure: e.target.value })}
-            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+            className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
           >
             <option value="fail">Stop workflow if any branch fails</option>
             <option value="continue">Continue with successful branches</option>
@@ -2452,8 +2452,8 @@ export function NodeConfigPanel({
           </select>
         </div>
 
-        <div className="text-xs text-slate-500 bg-slate-800/50 rounded-lg p-3">
-          <p className="font-medium text-slate-400 mb-1">How it works</p>
+        <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
+          <p className="font-medium text-muted-foreground mb-1">How it works</p>
           {joinType === "all" && (
             <p>Waits for all incoming parallel branches to complete before continuing.</p>
           )}
@@ -2496,7 +2496,7 @@ export function NodeConfigPanel({
 
     return (
       <div className="space-y-4">
-        <label className="block text-sm text-slate-400">Branches</label>
+        <label className="block text-sm text-muted-foreground">Branches</label>
         {branches.map((branch, index) => (
           <div key={branch.id} className="flex gap-2">
             <input
@@ -2504,12 +2504,12 @@ export function NodeConfigPanel({
               value={branch.label}
               onChange={(e) => updateBranch(index, e.target.value)}
               placeholder={`Path ${index + 1}`}
-              className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+              className="flex-1 bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
             />
             {branches.length > 2 && (
               <button
                 onClick={() => removeBranch(index)}
-                className="p-2 text-slate-400 hover:text-red-400"
+                className="p-2 text-muted-foreground hover:text-red-400"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -2518,7 +2518,7 @@ export function NodeConfigPanel({
         ))}
         <button
           onClick={addBranch}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-slate-600 rounded-lg text-slate-400 hover:border-slate-500 hover:text-slate-300"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-border rounded-lg text-muted-foreground hover:border-muted-foreground hover:text-foreground"
         >
           <Plus className="h-4 w-4" />
           Add Branch
@@ -2535,12 +2535,12 @@ export function NodeConfigPanel({
         onClick={onClose}
       />
       {/* Config panel - responsive */}
-      <div className="fixed inset-y-0 right-0 w-full sm:w-96 md:w-80 md:relative md:inset-auto bg-slate-800 md:bg-slate-800/50 border-l border-slate-700 overflow-y-auto z-50 md:z-auto">
-        <div className="p-4 border-b border-slate-700 flex items-center justify-between">
-          <h3 className="text-white font-semibold">Configure Node</h3>
+      <div className="fixed inset-y-0 right-0 w-full sm:w-96 md:w-80 md:relative md:inset-auto bg-muted md:bg-muted/50 border-l border-border overflow-y-auto z-50 md:z-auto">
+        <div className="p-4 border-b border-border flex items-center justify-between">
+          <h3 className="text-foreground font-semibold">Configure Node</h3>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg"
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg"
           >
             <X className="h-5 w-5" />
           </button>
@@ -2549,12 +2549,12 @@ export function NodeConfigPanel({
       <div className="p-4 space-y-4">
         {/* Label */}
         <div>
-          <label className="block text-sm text-slate-400 mb-1">Label</label>
+          <label className="block text-sm text-muted-foreground mb-1">Label</label>
           <input
             type="text"
             value={label}
             onChange={(e) => handleLabelChange(e.target.value)}
-            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+            className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
           />
         </div>
 
@@ -2562,7 +2562,7 @@ export function NodeConfigPanel({
         {renderConfigFields()}
 
         {/* Delete button */}
-        <div className="pt-4 border-t border-slate-700">
+        <div className="pt-4 border-t border-border">
           <button
             onClick={onDelete}
             className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"

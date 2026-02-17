@@ -17,7 +17,7 @@ export const STATUS_COLORS: Record<ProjectStatus, { bg: string; text: string; do
   active: { bg: "bg-green-500/10", text: "text-green-400", dot: "bg-green-500" },
   on_hold: { bg: "bg-amber-500/10", text: "text-amber-400", dot: "bg-amber-500" },
   completed: { bg: "bg-blue-500/10", text: "text-blue-400", dot: "bg-blue-500" },
-  archived: { bg: "bg-slate-500/10", text: "text-slate-400", dot: "bg-slate-500" },
+  archived: { bg: "bg-muted-foreground/10", text: "text-muted-foreground", dot: "bg-muted-foreground" },
 };
 
 export const STATUS_LABELS: Record<ProjectStatus, string> = {
@@ -50,11 +50,11 @@ export const PRIORITY_COLORS: Record<string, string> = {
   critical: "text-red-400 bg-red-900/30",
   high: "text-orange-400 bg-orange-900/30",
   medium: "text-yellow-400 bg-yellow-900/30",
-  low: "text-slate-400 bg-slate-700",
+  low: "text-muted-foreground bg-accent",
 };
 
 export const TASK_STATUS_COLORS: Record<string, string> = {
-  todo: "bg-slate-600",
+  todo: "bg-muted",
   in_progress: "bg-blue-500",
   review: "bg-purple-500",
   done: "bg-green-500",
@@ -66,5 +66,5 @@ export const SPRINT_STATUS_COLORS: Record<string, string> = {
   active: "bg-green-500",
   review: "bg-amber-500",
   retrospective: "bg-purple-500",
-  completed: "bg-slate-500",
+  completed: "bg-muted-foreground",
 };

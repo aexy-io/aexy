@@ -41,7 +41,7 @@ export function GlobalThemeSettings({ settings = {}, onChange }: GlobalThemeSett
 
   return (
     <div className="space-y-6">
-      <h3 className="text-sm font-medium text-slate-300 flex items-center gap-2">
+      <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
         Global Colors & Typography
       </h3>
 
@@ -119,13 +119,13 @@ export function GlobalThemeSettings({ settings = {}, onChange }: GlobalThemeSett
       <div className="grid grid-cols-3 gap-4">
         {/* Font Family */}
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-1.5">
+          <label className="block text-sm font-medium text-foreground mb-1.5">
             Font Family
           </label>
           <select
             value={settings.font_family || ""}
             onChange={(e) => updateSetting("font_family", e.target.value || undefined)}
-            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50"
           >
             <option value="">Default</option>
             {FONT_OPTIONS.map((font) => (
@@ -138,13 +138,13 @@ export function GlobalThemeSettings({ settings = {}, onChange }: GlobalThemeSett
 
         {/* Border Radius */}
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-1.5">
+          <label className="block text-sm font-medium text-foreground mb-1.5">
             Border Radius
           </label>
           <select
             value={settings.border_radius || ""}
             onChange={(e) => updateSetting("border_radius", e.target.value || undefined)}
-            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50"
           >
             <option value="">Default</option>
             {BORDER_RADIUS_OPTIONS.map((opt) => (
@@ -157,13 +157,13 @@ export function GlobalThemeSettings({ settings = {}, onChange }: GlobalThemeSett
 
         {/* Spacing */}
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-1.5">
+          <label className="block text-sm font-medium text-foreground mb-1.5">
             Spacing
           </label>
           <select
             value={settings.spacing || ""}
             onChange={(e) => updateSetting("spacing", (e.target.value || undefined) as SpacingOption | undefined)}
-            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50"
           >
             <option value="">Default</option>
             {SPACING_OPTIONS.map((opt) => (

@@ -59,7 +59,7 @@ import { X, Loader2, FileText, Zap } from "lucide-react";
 
 // Status column configuration
 const STATUS_CONFIG: Record<TaskStatus, { label: string; color: string; bgColor: string }> = {
-  backlog: { label: "Backlog", color: "text-slate-400", bgColor: "bg-slate-700/30" },
+  backlog: { label: "Backlog", color: "text-muted-foreground", bgColor: "bg-accent/30" },
   todo: { label: "To Do", color: "text-blue-400", bgColor: "bg-blue-900/20" },
   in_progress: { label: "In Progress", color: "text-amber-400", bgColor: "bg-amber-900/20" },
   review: { label: "Review", color: "text-purple-400", bgColor: "bg-purple-900/20" },
@@ -72,7 +72,7 @@ const SPRINT_STATUS_COLORS: Record<string, string> = {
   active: "bg-green-500",
   review: "bg-amber-500",
   retrospective: "bg-purple-500",
-  completed: "bg-slate-500",
+  completed: "bg-muted-foreground",
 };
 
 interface KanbanColumnProps {
@@ -121,7 +121,7 @@ function KanbanColumn({
       )}
     >
       {/* Column header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-3 py-3 border-b border-slate-700/30">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-3 py-3 border-b border-border/30">
         <div className="flex items-center gap-2">
           <h3 className={cn("font-medium text-sm", color)}>{title}</h3>
           <Badge variant="default" size="sm">
@@ -129,7 +129,7 @@ function KanbanColumn({
           </Badge>
         </div>
         {totalPoints > 0 && (
-          <span className="text-xs text-slate-500">{totalPoints} SP</span>
+          <span className="text-xs text-muted-foreground">{totalPoints} SP</span>
         )}
       </div>
 
@@ -151,7 +151,7 @@ function KanbanColumn({
             ))}
           </AnimatePresence>
           {tasks.length === 0 && (
-            <div className="text-center py-8 text-slate-500 text-sm">
+            <div className="text-center py-8 text-muted-foreground text-sm">
               Drop tasks here
             </div>
           )}
@@ -198,7 +198,7 @@ function SprintColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex-shrink-0 rounded-xl bg-slate-800/50 border border-slate-700/50 transition-all duration-200",
+        "flex-shrink-0 rounded-xl bg-muted/50 border border-border/50 transition-all duration-200",
         isCollapsed ? "w-[60px]" : "w-[320px]",
         (isOver || isDropOver) && "ring-2 ring-primary-500/50 bg-primary-900/20"
       )}
@@ -206,16 +206,16 @@ function SprintColumn({
       {/* Sprint header */}
       <div
         className={cn(
-          "flex items-center gap-2 p-3 border-b border-slate-700/50 cursor-pointer hover:bg-slate-700/30 transition-colors",
+          "flex items-center gap-2 p-3 border-b border-border/50 cursor-pointer hover:bg-accent/30 transition-colors",
           isCollapsed && "justify-center"
         )}
         onClick={onToggleCollapse}
       >
         {isCollapsed ? (
           <div className="flex flex-col items-center gap-2">
-            <ChevronRight className="h-4 w-4 text-slate-400" />
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
             <span
-              className="text-xs font-medium text-white writing-mode-vertical transform rotate-180"
+              className="text-xs font-medium text-foreground writing-mode-vertical transform rotate-180"
               style={{ writingMode: "vertical-rl" }}
             >
               {sprint.name}
@@ -226,7 +226,7 @@ function SprintColumn({
           </div>
         ) : (
           <>
-            <ChevronDown className="h-4 w-4 text-slate-400" />
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
             <div
               className={cn(
                 "w-2 h-2 rounded-full",
@@ -234,11 +234,11 @@ function SprintColumn({
               )}
             />
             <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-sm text-white truncate">{sprint.name}</h3>
+              <h3 className="font-medium text-sm text-foreground truncate">{sprint.name}</h3>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs text-slate-500 capitalize">{sprint.status}</span>
-                <span className="text-xs text-slate-600">•</span>
-                <span className="text-xs text-slate-500">{completionRate}%</span>
+                <span className="text-xs text-muted-foreground capitalize">{sprint.status}</span>
+                <span className="text-xs text-muted-foreground">•</span>
+                <span className="text-xs text-muted-foreground">{completionRate}%</span>
               </div>
             </div>
             <div className="flex items-center gap-2 text-xs">
@@ -246,7 +246,7 @@ function SprintColumn({
                 {tasks.length}
               </Badge>
               {totalPoints > 0 && (
-                <span className="text-slate-500">{totalPoints} SP</span>
+                <span className="text-muted-foreground">{totalPoints} SP</span>
               )}
             </div>
           </>
@@ -271,7 +271,7 @@ function SprintColumn({
               ))}
             </AnimatePresence>
             {tasks.length === 0 && (
-              <div className="text-center py-8 text-slate-500 text-sm">
+              <div className="text-center py-8 text-muted-foreground text-sm">
                 No tasks
               </div>
             )}
@@ -351,21 +351,21 @@ function KeyboardShortcutsModal({ onClose }: KeyboardShortcutsModalProps) {
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-2xl max-h-[80vh] overflow-hidden shadow-2xl"
+        className="bg-muted border border-border rounded-xl w-full max-w-2xl max-h-[80vh] overflow-hidden shadow-2xl"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-700">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary-500/20 rounded-lg">
               <Keyboard className="h-5 w-5 text-primary-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">Keyboard Shortcuts</h3>
-              <p className="text-sm text-slate-400">Navigate faster with these shortcuts</p>
+              <h3 className="text-lg font-semibold text-foreground">Keyboard Shortcuts</h3>
+              <p className="text-sm text-muted-foreground">Navigate faster with these shortcuts</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
           >
             <X className="h-5 w-5" />
           </button>
@@ -375,7 +375,7 @@ function KeyboardShortcutsModal({ onClose }: KeyboardShortcutsModalProps) {
           <div className="grid grid-cols-2 gap-6">
             {KEYBOARD_SHORTCUTS.map((section) => (
               <div key={section.category}>
-                <h4 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
+                <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
                   <Command className="h-3.5 w-3.5" />
                   {section.category}
                 </h4>
@@ -385,15 +385,15 @@ function KeyboardShortcutsModal({ onClose }: KeyboardShortcutsModalProps) {
                       key={idx}
                       className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-1.5"
                     >
-                      <span className="text-sm text-slate-400">{shortcut.description}</span>
+                      <span className="text-sm text-muted-foreground">{shortcut.description}</span>
                       <div className="flex items-center gap-1">
                         {shortcut.keys.map((key, keyIdx) => (
                           <span key={keyIdx}>
-                            <kbd className="px-2 py-1 bg-slate-900 border border-slate-600 rounded text-xs text-slate-300 font-mono shadow-sm">
+                            <kbd className="px-2 py-1 bg-background border border-border rounded text-xs text-foreground font-mono shadow-sm">
                               {key}
                             </kbd>
                             {keyIdx < shortcut.keys.length - 1 && (
-                              <span className="text-slate-600 mx-0.5">+</span>
+                              <span className="text-muted-foreground mx-0.5">+</span>
                             )}
                           </span>
                         ))}
@@ -406,14 +406,14 @@ function KeyboardShortcutsModal({ onClose }: KeyboardShortcutsModalProps) {
           </div>
         </div>
 
-        <div className="p-4 border-t border-slate-700 bg-slate-800/80">
+        <div className="p-4 border-t border-border bg-muted/80">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <p className="text-sm text-slate-500">
-              Press <kbd className="px-1.5 py-0.5 bg-slate-700 border border-slate-600 rounded text-xs">?</kbd> anytime to show this panel
+            <p className="text-sm text-muted-foreground">
+              Press <kbd className="px-1.5 py-0.5 bg-accent border border-border rounded text-xs">?</kbd> anytime to show this panel
             </p>
             <button
               onClick={onClose}
-              className="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition"
+              className="px-4 py-2 text-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
             >
               Close
             </button>
@@ -558,15 +558,15 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-lg p-6 shadow-2xl"
+        className="bg-muted border border-border rounded-xl w-full max-w-lg p-6 shadow-2xl"
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <h3 className="text-xl font-semibold text-white">
+          <h3 className="text-xl font-semibold text-foreground">
             {mode === "select" ? "Create Task" : selectedTemplate ? `New Task from "${selectedTemplate.name}"` : "Create Task"}
           </h3>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
           >
             <X className="h-5 w-5" />
           </button>
@@ -579,21 +579,21 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
             <button
               type="button"
               onClick={() => setMode("form")}
-              className="w-full flex items-center gap-3 p-4 bg-slate-900/50 hover:bg-slate-700/50 border border-slate-700 hover:border-primary-500/50 rounded-xl transition text-left group"
+              className="w-full flex items-center gap-3 p-4 bg-background/50 hover:bg-accent/50 border border-border hover:border-primary-500/50 rounded-xl transition text-left group"
             >
               <div className="p-2 bg-primary-500/20 rounded-lg group-hover:bg-primary-500/30 transition">
                 <Plus className="h-5 w-5 text-primary-400" />
               </div>
               <div>
-                <span className="text-white font-medium">Start from scratch</span>
-                <p className="text-sm text-slate-400">Create a blank task</p>
+                <span className="text-foreground font-medium">Start from scratch</span>
+                <p className="text-sm text-muted-foreground">Create a blank task</p>
               </div>
             </button>
 
             {/* Templates */}
             {templates.length > 0 && (
               <>
-                <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider">
                   <Zap className="h-3.5 w-3.5" />
                   Templates
                 </div>
@@ -603,15 +603,15 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
                       key={template.id}
                       type="button"
                       onClick={() => applyTemplate(template)}
-                      className="w-full flex items-center gap-3 p-3 bg-slate-900/30 hover:bg-slate-700/50 border border-slate-700/50 hover:border-primary-500/50 rounded-lg transition text-left group"
+                      className="w-full flex items-center gap-3 p-3 bg-background/30 hover:bg-accent/50 border border-border/50 hover:border-primary-500/50 rounded-lg transition text-left group"
                     >
-                      <div className="p-1.5 bg-slate-700/50 rounded group-hover:bg-slate-600/50 transition">
-                        <FileText className="h-4 w-4 text-slate-400" />
+                      <div className="p-1.5 bg-accent/50 rounded group-hover:bg-muted/50 transition">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <span className="text-white font-medium truncate block">{template.name}</span>
+                        <span className="text-foreground font-medium truncate block">{template.name}</span>
                         {template.description && (
-                          <p className="text-xs text-slate-500 truncate">{template.description}</p>
+                          <p className="text-xs text-muted-foreground truncate">{template.description}</p>
                         )}
                       </div>
                       {template.category && (
@@ -633,22 +633,22 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
           <div className="space-y-4">
             {/* Title */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Title</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Title</label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="What needs to be done?"
                 autoFocus
-                className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
+                className="w-full px-4 py-2.5 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
               />
             </div>
 
             {/* Description with rich text and mentions */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
+              <label className="block text-sm font-medium text-foreground mb-1.5">
                 Description
-                <span className="text-xs text-slate-500 font-normal ml-2">
+                <span className="text-xs text-muted-foreground font-normal ml-2">
                   Use @ to mention users
                 </span>
               </label>
@@ -664,13 +664,13 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
 
             {/* Sprint Selection (Optional) */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                Sprint <span className="text-slate-500 font-normal">(optional)</span>
+              <label className="block text-sm font-medium text-foreground mb-1.5">
+                Sprint <span className="text-muted-foreground font-normal">(optional)</span>
               </label>
               <select
                 value={sprintId}
                 onChange={(e) => setSprintId(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
+                className="w-full px-4 py-2.5 bg-background/50 border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
               >
                 <option value="">Project Backlog (No Sprint)</option>
                 {sprints
@@ -681,7 +681,7 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
                     </option>
                   ))}
               </select>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Tasks without a sprint go to project backlog
               </p>
             </div>
@@ -689,7 +689,7 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
             {/* Story Points & Priority */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Story Points</label>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Story Points</label>
                 <input
                   type="number"
                   min="0"
@@ -697,15 +697,15 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
                   value={storyPoints}
                   onChange={(e) => setStoryPoints(e.target.value)}
                   placeholder="0"
-                  className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
+                  className="w-full px-4 py-2.5 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Priority</label>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Priority</label>
                 <select
                   value={priority}
                   onChange={(e) => setPriority(e.target.value as TaskPriority)}
-                  className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
+                  className="w-full px-4 py-2.5 bg-background/50 border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
                 >
                   {Object.entries(PRIORITY_CONFIG).map(([key, cfg]) => (
                     <option key={key} value={key}>
@@ -719,11 +719,11 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
             {/* Status & Assignee */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Status</label>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Status</label>
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value as TaskStatus)}
-                  className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
+                  className="w-full px-4 py-2.5 bg-background/50 border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
                 >
                   {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
                     <option key={key} value={key}>
@@ -733,11 +733,11 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Assignee</label>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Assignee</label>
                 <select
                   value={assigneeId}
                   onChange={(e) => setAssigneeId(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
+                  className="w-full px-4 py-2.5 bg-background/50 border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
                 >
                   <option value="">Unassigned</option>
                   {users.map((user) => (
@@ -752,11 +752,11 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
             {/* Epic */}
             {epics.length > 0 && (
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Epic (Optional)</label>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Epic (Optional)</label>
                 <select
                   value={epicId}
                   onChange={(e) => setEpicId(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
+                  className="w-full px-4 py-2.5 bg-background/50 border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
                 >
                   <option value="">No epic</option>
                   {epics.map((epic) => (
@@ -789,7 +789,7 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
                     setPriority("medium");
                     setStoryPoints("");
                   }}
-                  className="px-4 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition text-sm"
+                  className="px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition text-sm"
                 >
                   ← Back to templates
                 </button>
@@ -799,7 +799,7 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                className="px-4 py-2 text-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
               >
                 Cancel
               </button>
@@ -813,7 +813,7 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
                   {isAdding ? "Creating..." : "Create Task"}
                 </button>
                 {!title.trim() && !isAdding && (
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-700 text-xs text-slate-300 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-accent text-xs text-foreground rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                     Enter a task title to create
                   </div>
                 )}
@@ -1045,11 +1045,11 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-2xl shadow-2xl"
+        className="bg-muted border border-border rounded-xl w-full max-w-2xl shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between p-4 border-b border-slate-700">
+        <div className="flex items-start justify-between p-4 border-b border-border">
           <div className="flex-1 mr-4">
             {isEditingTitle ? (
               <input
@@ -1059,24 +1059,24 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
                 onBlur={() => setIsEditingTitle(false)}
                 onKeyDown={(e) => e.key === "Enter" && setIsEditingTitle(false)}
                 autoFocus
-                className="w-full text-xl font-semibold bg-slate-900/50 border border-slate-600 rounded px-2 py-1 text-white focus:outline-none focus:border-primary-500"
+                className="w-full text-xl font-semibold bg-background/50 border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:border-primary-500"
               />
             ) : (
               <h2
                 onClick={() => setIsEditingTitle(true)}
-                className="text-xl font-semibold text-white cursor-pointer hover:bg-slate-700/50 rounded px-2 py-1 -mx-2"
+                className="text-xl font-semibold text-foreground cursor-pointer hover:bg-accent/50 rounded px-2 py-1 -mx-2"
               >
                 {title}
               </h2>
             )}
-            <div className="flex items-center gap-2 mt-2 text-sm text-slate-400">
+            <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
               {task.sprint_id ? (
                 <span className="flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-green-500" />
                   {sprints.find(s => s.id === task.sprint_id)?.name || "Sprint"}
                 </span>
               ) : (
-                <span className="text-slate-500">Project Backlog</span>
+                <span className="text-muted-foreground">Project Backlog</span>
               )}
               <span>•</span>
               <span>Created {new Date(task.created_at).toLocaleDateString()}</span>
@@ -1084,7 +1084,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
           >
             <X className="h-5 w-5" />
           </button>
@@ -1095,7 +1095,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
           <div className="flex-1 p-4 space-y-4">
             {/* Quick status buttons */}
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-2 uppercase tracking-wider">Status</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Status</label>
               <div className="flex flex-wrap gap-2">
                 {(Object.keys(STATUS_CONFIG) as TaskStatus[]).map((s) => (
                   <button
@@ -1106,7 +1106,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
                       "px-3 py-1.5 rounded-lg text-sm font-medium transition-all",
                       status === s
                         ? `${STATUS_CONFIG[s].bgColor} ${STATUS_CONFIG[s].color} ring-2 ring-offset-2 ring-offset-slate-800 ring-current`
-                        : "bg-slate-700/50 text-slate-400 hover:bg-slate-700 hover:text-white"
+                        : "bg-accent/50 text-muted-foreground hover:bg-accent hover:text-foreground"
                     )}
                   >
                     {STATUS_CONFIG[s].label}
@@ -1117,9 +1117,9 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
 
             {/* Description with mentions */}
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-2 uppercase tracking-wider">
+              <label className="block text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">
                 Description
-                <span className="text-slate-500 font-normal ml-2">Use @ to mention</span>
+                <span className="text-muted-foreground font-normal ml-2">Use @ to mention</span>
               </label>
               <TaskDescriptionEditor
                 ref={editorRef}
@@ -1140,14 +1140,14 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
           </div>
 
           {/* Sidebar */}
-          <div className="w-48 border-l border-slate-700 p-4 space-y-4 bg-slate-800/50">
+          <div className="w-48 border-l border-border p-4 space-y-4 bg-muted/50">
             {/* Priority */}
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Priority</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Priority</label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as TaskPriority)}
-                className="w-full px-2 py-1.5 bg-slate-900/50 border border-slate-700 rounded text-sm text-white focus:outline-none focus:border-primary-500"
+                className="w-full px-2 py-1.5 bg-background/50 border border-border rounded text-sm text-foreground focus:outline-none focus:border-primary-500"
               >
                 {Object.entries(PRIORITY_CONFIG).map(([key, cfg]) => (
                   <option key={key} value={key}>{cfg.label}</option>
@@ -1157,7 +1157,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
 
             {/* Story Points */}
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Story Points</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Story Points</label>
               <input
                 type="number"
                 min="0"
@@ -1165,17 +1165,17 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
                 value={storyPoints}
                 onChange={(e) => setStoryPoints(e.target.value)}
                 placeholder="0"
-                className="w-full px-2 py-1.5 bg-slate-900/50 border border-slate-700 rounded text-sm text-white focus:outline-none focus:border-primary-500"
+                className="w-full px-2 py-1.5 bg-background/50 border border-border rounded text-sm text-foreground focus:outline-none focus:border-primary-500"
               />
             </div>
 
             {/* Sprint */}
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Sprint</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Sprint</label>
               <select
                 value={sprintId}
                 onChange={(e) => setSprintId(e.target.value)}
-                className="w-full px-2 py-1.5 bg-slate-900/50 border border-slate-700 rounded text-sm text-white focus:outline-none focus:border-primary-500"
+                className="w-full px-2 py-1.5 bg-background/50 border border-border rounded text-sm text-foreground focus:outline-none focus:border-primary-500"
               >
                 <option value="">No Sprint</option>
                 {sprints.filter(s => s.status !== "completed").map((sprint) => (
@@ -1189,11 +1189,11 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
             {/* Epic */}
             {epics.length > 0 && (
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Epic</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Epic</label>
                 <select
                   value={epicId}
                   onChange={(e) => setEpicId(e.target.value)}
-                  className="w-full px-2 py-1.5 bg-slate-900/50 border border-slate-700 rounded text-sm text-white focus:outline-none focus:border-primary-500"
+                  className="w-full px-2 py-1.5 bg-background/50 border border-border rounded text-sm text-foreground focus:outline-none focus:border-primary-500"
                 >
                   <option value="">No Epic</option>
                   {epics.map((epic) => (
@@ -1205,11 +1205,11 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
 
             {/* Assignee */}
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Assignee</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Assignee</label>
               <select
                 value={assigneeId}
                 onChange={(e) => setAssigneeId(e.target.value)}
-                className="w-full px-2 py-1.5 bg-slate-900/50 border border-slate-700 rounded text-sm text-white focus:outline-none focus:border-primary-500"
+                className="w-full px-2 py-1.5 bg-background/50 border border-border rounded text-sm text-foreground focus:outline-none focus:border-primary-500"
               >
                 <option value="">Unassigned</option>
                 {users.map((user) => (
@@ -1219,20 +1219,20 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
             </div>
 
             {/* Delete button */}
-            <div className="pt-4 border-t border-slate-700">
+            <div className="pt-4 border-t border-border">
               {showDeleteConfirm ? (
                 <div className="space-y-2">
                   <p className="text-xs text-red-400">Delete this task?</p>
                   <div className="flex gap-2">
                     <button
                       onClick={handleDelete}
-                      className="flex-1 px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs"
+                      className="flex-1 px-2 py-1 bg-red-600 hover:bg-red-700 text-foreground rounded text-xs"
                     >
                       Delete
                     </button>
                     <button
                       onClick={() => setShowDeleteConfirm(false)}
-                      className="flex-1 px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs"
+                      className="flex-1 px-2 py-1 bg-accent hover:bg-muted text-foreground rounded text-xs"
                     >
                       Cancel
                     </button>
@@ -1265,10 +1265,10 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
 
         {/* Footer */}
         {hasChanges && (
-          <div className="flex justify-end gap-3 p-4 border-t border-slate-700 bg-slate-800/80">
+          <div className="flex justify-end gap-3 p-4 border-t border-border bg-muted/80">
             <button
               onClick={handleDiscard}
-              className="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition"
+              className="px-4 py-2 text-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
             >
               Discard
             </button>
@@ -1670,10 +1670,10 @@ export default function ProjectBoardPage({
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-white">Loading...</p>
+          <p className="text-foreground">Loading...</p>
         </div>
       </div>
     );
@@ -1684,7 +1684,7 @@ export default function ProjectBoardPage({
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Command Palette */}
       <CommandPalette
         workspaceId={currentWorkspaceId}
@@ -1693,19 +1693,19 @@ export default function ProjectBoardPage({
       />
 
       {/* Header */}
-      <header className="flex-shrink-0 border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm sticky top-0 z-30">
+      <header className="flex-shrink-0 border-b border-border bg-muted/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="max-w-[1800px] mx-auto px-4 py-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href={`/sprints/${projectId}`}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Link>
               <div>
-                <h1 className="text-lg font-semibold text-white">Project Board</h1>
-                <p className="text-xs text-slate-500">
+                <h1 className="text-lg font-semibold text-foreground">Project Board</h1>
+                <p className="text-xs text-muted-foreground">
                   {filteredTasks.length} tasks across {sprints.length} sprints
                 </p>
               </div>
@@ -1713,14 +1713,14 @@ export default function ProjectBoardPage({
 
             <div className="flex items-center gap-3">
               {/* View Mode Toggle */}
-              <div className="flex items-center bg-slate-800 border border-slate-700 rounded-lg p-0.5">
+              <div className="flex items-center bg-muted border border-border rounded-lg p-0.5">
                 <button
                   onClick={() => setViewMode("sprint")}
                   className={cn(
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-all",
                     viewMode === "sprint"
                       ? "bg-primary-500 text-white"
-                      : "text-slate-400 hover:text-white"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   <Columns3 className="h-4 w-4" />
@@ -1732,7 +1732,7 @@ export default function ProjectBoardPage({
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-all",
                     viewMode === "status"
                       ? "bg-primary-500 text-white"
-                      : "text-slate-400 hover:text-white"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   <LayoutGrid className="h-4 w-4" />
@@ -1752,7 +1752,7 @@ export default function ProjectBoardPage({
               {/* Templates */}
               <Link
                 href={`/sprints/${projectId}/templates`}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm transition"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg text-sm transition"
                 title="Task Templates"
               >
                 <FileText className="h-4 w-4" />
@@ -1764,7 +1764,7 @@ export default function ProjectBoardPage({
                 <button
                   onClick={() => setShowExportDropdown(!showExportDropdown)}
                   disabled={isExporting}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm transition disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg text-sm transition disabled:opacity-50"
                   title="Export Tasks"
                 >
                   {isExporting ? (
@@ -1781,31 +1781,31 @@ export default function ProjectBoardPage({
                       className="fixed inset-0 z-10"
                       onClick={() => setShowExportDropdown(false)}
                     />
-                    <div className="absolute right-0 top-full mt-1 w-44 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1 z-20">
+                    <div className="absolute right-0 top-full mt-1 w-44 bg-muted border border-border rounded-lg shadow-xl py-1 z-20">
                       <button
                         onClick={() => handleExport("csv")}
-                        className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                        className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                       >
                         <FileSpreadsheet className="h-4 w-4 text-green-400" />
                         Export as CSV
                       </button>
                       <button
                         onClick={() => handleExport("xlsx")}
-                        className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                        className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                       >
                         <FileSpreadsheet className="h-4 w-4 text-emerald-400" />
                         Export as Excel
                       </button>
                       <button
                         onClick={() => handleExport("pdf")}
-                        className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                        className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                       >
                         <FileType className="h-4 w-4 text-red-400" />
                         Export as PDF
                       </button>
                       <button
                         onClick={() => handleExport("json")}
-                        className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                        className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                       >
                         <FileJson className="h-4 w-4 text-yellow-400" />
                         Export as JSON
@@ -1818,14 +1818,14 @@ export default function ProjectBoardPage({
               {/* Keyboard Shortcuts */}
               <button
                 onClick={() => setShowKeyboardShortcuts(true)}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
                 title="Keyboard shortcuts (?)"
               >
                 <Keyboard className="h-5 w-5" />
               </button>
 
               {/* Settings */}
-              <button className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition">
+              <button className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition">
                 <Settings2 className="h-5 w-5" />
               </button>
             </div>
@@ -1851,16 +1851,16 @@ export default function ProjectBoardPage({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="border-b border-slate-700 bg-primary-900/30 overflow-hidden z-50 relative"
+            className="border-b border-border bg-primary-900/30 overflow-hidden z-50 relative"
           >
             <div className="max-w-[1800px] mx-auto px-4 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <span className="text-sm text-white font-medium">
+                <span className="text-sm text-foreground font-medium">
                   {selectedCount} task{selectedCount > 1 ? "s" : ""} selected
                 </span>
                 <button
                   onClick={clearSelection}
-                  className="text-sm text-slate-400 hover:text-white transition"
+                  className="text-sm text-muted-foreground hover:text-foreground transition"
                 >
                   Clear
                 </button>
@@ -1875,7 +1875,7 @@ export default function ProjectBoardPage({
                       setShowAssignDropdown(false);
                     }}
                     disabled={bulkMoveMutation.isPending}
-                    className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition flex items-center gap-1.5 disabled:opacity-50"
+                    className="px-3 py-1.5 bg-accent hover:bg-muted text-foreground rounded-lg text-sm transition flex items-center gap-1.5 disabled:opacity-50"
                   >
                     {bulkMoveMutation.isPending ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1884,26 +1884,26 @@ export default function ProjectBoardPage({
                     <ChevronDown className="w-3.5 h-3.5" />
                   </button>
                   {showSprintDropdown && (
-                    <div className="absolute top-full right-0 mt-1 w-56 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1 z-50">
+                    <div className="absolute top-full right-0 mt-1 w-56 bg-muted border border-border rounded-lg shadow-xl py-1 z-50">
                       {sprints
                         .filter((s) => s.status !== "completed")
                         .map((sprint) => (
                           <button
                             key={sprint.id}
                             onClick={() => bulkMoveMutation.mutate({ targetSprintId: sprint.id })}
-                            className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                            className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                           >
                             <span
                               className={cn(
                                 "w-2 h-2 rounded-full",
-                                SPRINT_STATUS_COLORS[sprint.status] || "bg-slate-500"
+                                SPRINT_STATUS_COLORS[sprint.status] || "bg-muted-foreground"
                               )}
                             />
                             {sprint.name}
                           </button>
                         ))}
                       {sprints.filter((s) => s.status !== "completed").length === 0 && (
-                        <div className="px-3 py-2 text-sm text-slate-500">No active sprints</div>
+                        <div className="px-3 py-2 text-sm text-muted-foreground">No active sprints</div>
                       )}
                     </div>
                   )}
@@ -1918,7 +1918,7 @@ export default function ProjectBoardPage({
                       setShowAssignDropdown(false);
                     }}
                     disabled={bulkStatusMutation.isPending}
-                    className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition flex items-center gap-1.5 disabled:opacity-50"
+                    className="px-3 py-1.5 bg-accent hover:bg-muted text-foreground rounded-lg text-sm transition flex items-center gap-1.5 disabled:opacity-50"
                   >
                     {bulkStatusMutation.isPending ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1927,16 +1927,16 @@ export default function ProjectBoardPage({
                     <ChevronDown className="w-3.5 h-3.5" />
                   </button>
                   {showStatusDropdown && (
-                    <div className="absolute top-full right-0 mt-1 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1 z-50">
+                    <div className="absolute top-full right-0 mt-1 w-48 bg-muted border border-border rounded-lg shadow-xl py-1 z-50">
                       {(Object.entries(STATUS_CONFIG) as [TaskStatus, typeof STATUS_CONFIG[TaskStatus]][]).map(
                         ([status, config]) => (
                           <button
                             key={status}
                             onClick={() => bulkStatusMutation.mutate({ status })}
-                            className="w-full px-3 py-2 text-left text-sm hover:bg-slate-700 flex items-center gap-2"
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2"
                           >
                             <span className={cn("w-2 h-2 rounded-full", config.bgColor, config.color)} />
-                            <span className="text-slate-200">{config.label}</span>
+                            <span className="text-foreground">{config.label}</span>
                           </button>
                         )
                       )}
@@ -1953,7 +1953,7 @@ export default function ProjectBoardPage({
                       setShowStatusDropdown(false);
                     }}
                     disabled={bulkAssignMutation.isPending}
-                    className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition flex items-center gap-1.5 disabled:opacity-50"
+                    className="px-3 py-1.5 bg-accent hover:bg-muted text-foreground rounded-lg text-sm transition flex items-center gap-1.5 disabled:opacity-50"
                   >
                     {bulkAssignMutation.isPending ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1962,20 +1962,20 @@ export default function ProjectBoardPage({
                     <ChevronDown className="w-3.5 h-3.5" />
                   </button>
                   {showAssignDropdown && (
-                    <div className="absolute top-full right-0 mt-1 w-56 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1 z-50 max-h-64 overflow-y-auto">
+                    <div className="absolute top-full right-0 mt-1 w-56 bg-muted border border-border rounded-lg shadow-xl py-1 z-50 max-h-64 overflow-y-auto">
                       <button
                         onClick={() => bulkAssignMutation.mutate({ developerId: null })}
-                        className="w-full px-3 py-2 text-left text-sm text-slate-400 hover:bg-slate-700 flex items-center gap-2"
+                        className="w-full px-3 py-2 text-left text-sm text-muted-foreground hover:bg-accent flex items-center gap-2"
                       >
                         <UserX className="w-4 h-4" />
                         Unassign
                       </button>
-                      <div className="border-t border-slate-700 my-1" />
+                      <div className="border-t border-border my-1" />
                       {mentionUsers.map((user) => (
                         <button
                           key={user.id}
                           onClick={() => bulkAssignMutation.mutate({ developerId: user.id })}
-                          className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                          className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                         >
                           {user.avatar_url ? (
                             <img
@@ -1984,15 +1984,15 @@ export default function ProjectBoardPage({
                               className="w-5 h-5 rounded-full"
                             />
                           ) : (
-                            <div className="w-5 h-5 rounded-full bg-slate-600 flex items-center justify-center">
-                              <User className="w-3 h-3 text-slate-400" />
+                            <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center">
+                              <User className="w-3 h-3 text-muted-foreground" />
                             </div>
                           )}
                           {user.name}
                         </button>
                       ))}
                       {mentionUsers.length === 0 && (
-                        <div className="px-3 py-2 text-sm text-slate-500">No team members</div>
+                        <div className="px-3 py-2 text-sm text-muted-foreground">No team members</div>
                       )}
                     </div>
                   )}
@@ -2022,7 +2022,7 @@ export default function ProjectBoardPage({
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="flex-shrink-0 w-[300px] bg-slate-800/30 rounded-xl p-3"
+                className="flex-shrink-0 w-[300px] bg-muted/30 rounded-xl p-3"
               >
                 <div className="flex items-center gap-2 mb-3">
                   <Skeleton variant="text" className="h-5 w-24" />
@@ -2072,10 +2072,10 @@ export default function ProjectBoardPage({
 
                   {/* Completed sprints section (collapsed by default) */}
                   {sprints.filter((s) => s.status === "completed").length > 0 && (
-                    <div className="flex-shrink-0 w-[60px] rounded-xl bg-slate-800/30 border border-slate-700/50 p-2">
+                    <div className="flex-shrink-0 w-[60px] rounded-xl bg-muted/30 border border-border/50 p-2">
                       <div className="flex flex-col items-center gap-2">
                         <span
-                          className="text-xs font-medium text-slate-500 writing-mode-vertical"
+                          className="text-xs font-medium text-muted-foreground writing-mode-vertical"
                           style={{ writingMode: "vertical-rl" }}
                         >
                           Completed ({sprints.filter((s) => s.status === "completed").length})
@@ -2124,21 +2124,21 @@ export default function ProjectBoardPage({
       </main>
 
       {/* Keyboard shortcuts hint */}
-      <div className="flex-shrink-0 border-t border-slate-700 bg-slate-800/30 px-4 py-2">
-        <div className="max-w-[1800px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-slate-500">
+      <div className="flex-shrink-0 border-t border-border bg-muted/30 px-4 py-2">
+        <div className="max-w-[1800px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-4">
             <span>
-              <kbd className="px-1.5 py-0.5 bg-slate-700 rounded text-slate-400">⌘K</kbd> Search
+              <kbd className="px-1.5 py-0.5 bg-accent rounded text-muted-foreground">⌘K</kbd> Search
             </span>
             <span>
-              <kbd className="px-1.5 py-0.5 bg-slate-700 rounded text-slate-400">C</kbd> Create task
+              <kbd className="px-1.5 py-0.5 bg-accent rounded text-muted-foreground">C</kbd> Create task
             </span>
             <span>
-              <kbd className="px-1.5 py-0.5 bg-slate-700 rounded text-slate-400">Shift+Click</kbd> Select
+              <kbd className="px-1.5 py-0.5 bg-accent rounded text-muted-foreground">Shift+Click</kbd> Select
             </span>
           </div>
           <div>
-            <span>Press <kbd className="px-1.5 py-0.5 bg-slate-700 rounded text-slate-400">?</kbd> for all shortcuts</span>
+            <span>Press <kbd className="px-1.5 py-0.5 bg-accent rounded text-muted-foreground">?</kbd> for all shortcuts</span>
           </div>
         </div>
       </div>

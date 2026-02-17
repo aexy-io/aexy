@@ -66,7 +66,7 @@ export function ReminderCard({
   return (
     <div
       className={cn(
-        "group relative bg-slate-800/50 border border-slate-700/50 rounded-lg p-4 hover:border-slate-600/50 hover:bg-slate-800/70 transition-all",
+        "group relative bg-muted/50 border border-border/50 rounded-lg p-4 hover:border-border/50 hover:bg-muted/70 transition-all",
         onClick && "cursor-pointer",
         className
       )}
@@ -86,27 +86,27 @@ export function ReminderCard({
                 e.stopPropagation();
                 setShowMenu(!showMenu);
               }}
-              className="p-1 rounded hover:bg-slate-700/50 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="p-1 rounded hover:bg-accent/50 opacity-0 group-hover:opacity-100 transition-opacity"
             >
-              <MoreVertical className="h-4 w-4 text-slate-400" />
+              <MoreVertical className="h-4 w-4 text-muted-foreground" />
             </button>
           )}
         </div>
       </div>
 
       {/* Title */}
-      <h3 className="text-sm font-medium text-white mb-2 line-clamp-2">{reminder.title}</h3>
+      <h3 className="text-sm font-medium text-foreground mb-2 line-clamp-2">{reminder.title}</h3>
 
       {/* Description preview */}
       {reminder.description && (
-        <p className="text-xs text-slate-400 mb-3 line-clamp-2">{reminder.description}</p>
+        <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{reminder.description}</p>
       )}
 
       {/* Schedule Info */}
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <FrequencyBadge frequency={reminder.frequency} />
         {reminder.next_occurrence && (
-          <span className="text-xs text-slate-400 flex items-center gap-1">
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
             <Calendar className="h-3 w-3" />
             Next: {format(parseISO(reminder.next_occurrence), "MMM d")}
           </span>
@@ -115,7 +115,7 @@ export function ReminderCard({
 
       {/* Footer */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs text-slate-500">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           {reminder.requires_acknowledgment && (
             <span className="flex items-center gap-1 text-amber-400/80">
               <Bell className="h-3 w-3" />
@@ -126,20 +126,20 @@ export function ReminderCard({
         <div className="flex items-center gap-1">
           {reminder.default_owner && (
             <div className="flex items-center gap-1" title={`Assigned to ${reminder.default_owner.name}`}>
-              <div className="w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center">
-                <User className="h-3 w-3 text-slate-300" />
+              <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
+                <User className="h-3 w-3 text-foreground" />
               </div>
-              <span className="text-xs text-slate-400 max-w-[80px] truncate">
+              <span className="text-xs text-muted-foreground max-w-[80px] truncate">
                 {reminder.default_owner.name}
               </span>
             </div>
           )}
           {!reminder.default_owner && reminder.default_team && (
             <div className="flex items-center gap-1" title={`Assigned to ${reminder.default_team.name}`}>
-              <div className="w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center">
-                <Users className="h-3 w-3 text-slate-300" />
+              <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
+                <Users className="h-3 w-3 text-foreground" />
               </div>
-              <span className="text-xs text-slate-400 max-w-[80px] truncate">
+              <span className="text-xs text-muted-foreground max-w-[80px] truncate">
                 {reminder.default_team.name}
               </span>
             </div>
@@ -151,12 +151,12 @@ export function ReminderCard({
       {showMenu && (
         <div
           ref={menuRef}
-          className="absolute right-2 top-10 z-10 bg-slate-800 border border-slate-700 rounded-lg shadow-lg py-1 min-w-[160px]"
+          className="absolute right-2 top-10 z-10 bg-muted border border-border rounded-lg shadow-lg py-1 min-w-[160px]"
           onClick={(e) => e.stopPropagation()}
         >
           {onEdit && (
             <button
-              className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700/50 flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent/50 flex items-center gap-2"
               onClick={() => handleMenuAction(() => onEdit(reminder))}
             >
               <Edit2 className="h-4 w-4" />
@@ -165,7 +165,7 @@ export function ReminderCard({
           )}
           {reminder.status === "active" && onPause && (
             <button
-              className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700/50 flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent/50 flex items-center gap-2"
               onClick={() => handleMenuAction(() => onPause(reminder.id))}
             >
               <Pause className="h-4 w-4" />
@@ -174,7 +174,7 @@ export function ReminderCard({
           )}
           {reminder.status === "paused" && onResume && (
             <button
-              className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700/50 flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent/50 flex items-center gap-2"
               onClick={() => handleMenuAction(() => onResume(reminder.id))}
             >
               <Play className="h-4 w-4" />
@@ -183,7 +183,7 @@ export function ReminderCard({
           )}
           {reminder.status !== "archived" && onArchive && (
             <button
-              className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700/50 flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent/50 flex items-center gap-2"
               onClick={() => handleMenuAction(() => onArchive(reminder.id))}
             >
               <Archive className="h-4 w-4" />
@@ -192,7 +192,7 @@ export function ReminderCard({
           )}
           {onDelete && (
             <button
-              className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-700/50 flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-accent/50 flex items-center gap-2"
               onClick={() => handleMenuAction(() => onDelete(reminder.id))}
             >
               <Trash2 className="h-4 w-4" />

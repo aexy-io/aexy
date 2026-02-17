@@ -49,7 +49,7 @@ export function ConfidenceSlider({
       {(label || showPercentage) && (
         <div className="flex items-center justify-between">
           {label && (
-            <label className="text-sm font-medium text-slate-300">{label}</label>
+            <label className="text-sm font-medium text-foreground">{label}</label>
           )}
           {showPercentage && (
             <span className={cn("text-sm font-medium", getColor(value))}>
@@ -60,7 +60,7 @@ export function ConfidenceSlider({
       )}
 
       {description && (
-        <p className="text-xs text-slate-400">{description}</p>
+        <p className="text-xs text-muted-foreground">{description}</p>
       )}
 
       <div className="relative">
@@ -74,7 +74,7 @@ export function ConfidenceSlider({
           disabled={disabled}
           className={cn(
             "w-full h-2 rounded-lg appearance-none cursor-pointer",
-            "bg-slate-700",
+            "bg-accent",
             "[&::-webkit-slider-thumb]:appearance-none",
             "[&::-webkit-slider-thumb]:w-4",
             "[&::-webkit-slider-thumb]:h-4",
@@ -83,13 +83,13 @@ export function ConfidenceSlider({
             "[&::-webkit-slider-thumb]:shadow-md",
             "[&::-webkit-slider-thumb]:cursor-pointer",
             "[&::-webkit-slider-thumb]:border-2",
-            "[&::-webkit-slider-thumb]:border-slate-300",
+            "[&::-webkit-slider-thumb]:border-border",
             "[&::-moz-range-thumb]:w-4",
             "[&::-moz-range-thumb]:h-4",
             "[&::-moz-range-thumb]:rounded-full",
             "[&::-moz-range-thumb]:bg-white",
             "[&::-moz-range-thumb]:border-2",
-            "[&::-moz-range-thumb]:border-slate-300",
+            "[&::-moz-range-thumb]:border-border",
             "[&::-moz-range-thumb]:cursor-pointer",
             disabled && "opacity-50 cursor-not-allowed"
           )}
@@ -104,7 +104,7 @@ export function ConfidenceSlider({
       </div>
 
       {/* Reference markers */}
-      <div className="flex justify-between text-xs text-slate-500">
+      <div className="flex justify-between text-xs text-muted-foreground">
         <span>0%</span>
         <span>50%</span>
         <span>100%</span>
@@ -148,7 +148,7 @@ export function ConfidenceIndicator({
     <div className={cn("space-y-1", className)}>
       {showLabel && (
         <div className="flex items-center justify-between">
-          <span className={cn(sizeClasses[size].text, "text-slate-400")}>
+          <span className={cn(sizeClasses[size].text, "text-muted-foreground")}>
             Confidence
           </span>
           <span className={cn(sizeClasses[size].text, "font-medium", colors.text)}>
@@ -156,7 +156,7 @@ export function ConfidenceIndicator({
           </span>
         </div>
       )}
-      <div className={cn("w-full bg-slate-700 rounded-full overflow-hidden", sizeClasses[size].bar)}>
+      <div className={cn("w-full bg-accent rounded-full overflow-hidden", sizeClasses[size].bar)}>
         <div
           className={cn("h-full rounded-full transition-all", colors.bg)}
           style={{ width: `${percentage}%` }}

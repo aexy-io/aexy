@@ -52,17 +52,17 @@ interface TestResultsPanelProps {
 const statusIcons: Record<string, React.ReactNode> = {
   success: <CheckCircle2 className="h-4 w-4 text-emerald-400" />,
   failed: <XCircle className="h-4 w-4 text-red-400" />,
-  skipped: <SkipForward className="h-4 w-4 text-slate-400" />,
+  skipped: <SkipForward className="h-4 w-4 text-muted-foreground" />,
   waiting: <Clock className="h-4 w-4 text-amber-400" />,
-  pending: <Clock className="h-4 w-4 text-slate-400" />,
+  pending: <Clock className="h-4 w-4 text-muted-foreground" />,
 };
 
 const statusColors: Record<string, string> = {
   success: "border-emerald-500/30 bg-emerald-500/10",
   failed: "border-red-500/30 bg-red-500/10",
-  skipped: "border-slate-500/30 bg-slate-500/10",
+  skipped: "border-muted-foreground/30 bg-muted-foreground/10",
   waiting: "border-amber-500/30 bg-amber-500/10",
-  pending: "border-slate-500/30 bg-slate-500/10",
+  pending: "border-muted-foreground/30 bg-muted-foreground/10",
 };
 
 const nodeTypeLabels: Record<string, string> = {
@@ -132,23 +132,23 @@ export function TestResultsPanel({
   const statusCounts = getStatusCounts();
 
   return (
-    <div className="fixed inset-y-0 right-0 w-96 bg-slate-800/95 backdrop-blur-sm border-l border-slate-700 shadow-2xl z-[100] flex flex-col">
+    <div className="fixed inset-y-0 right-0 w-96 bg-muted/95 backdrop-blur-sm border-l border-border shadow-2xl z-[100] flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+      <div className="p-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-blue-500/20">
             <Play className="h-5 w-5 text-blue-400" />
           </div>
           <div>
-            <h3 className="text-white font-semibold">Test Results</h3>
-            <p className="text-xs text-slate-400">
+            <h3 className="text-foreground font-semibold">Test Results</h3>
+            <p className="text-xs text-muted-foreground">
               {isRunning ? "Running..." : testResult?.status === "completed" ? "Completed" : testResult?.status || "Ready"}
             </p>
           </div>
         </div>
         <button
           onClick={onClose}
-          className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-700"
+          className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent"
         >
           <X className="h-5 w-5" />
         </button>
@@ -156,7 +156,7 @@ export function TestResultsPanel({
 
       {/* Status summary */}
       {testResult && (
-        <div className="p-4 border-b border-slate-700 bg-slate-800/50">
+        <div className="p-4 border-b border-border bg-muted/50">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               {testResult.status === "completed" ? (
@@ -166,11 +166,11 @@ export function TestResultsPanel({
               ) : (
                 <Loader2 className="h-5 w-5 text-blue-400 animate-spin" />
               )}
-              <span className="text-white font-medium capitalize">
+              <span className="text-foreground font-medium capitalize">
                 {testResult.status}
               </span>
             </div>
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-muted-foreground">
               {(getTotalDuration() / 1000).toFixed(2)}s
             </span>
           </div>
@@ -178,15 +178,15 @@ export function TestResultsPanel({
           <div className="flex gap-4 text-sm">
             <div className="flex items-center gap-1">
               <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-              <span className="text-slate-300">{statusCounts.success}</span>
+              <span className="text-foreground">{statusCounts.success}</span>
             </div>
             <div className="flex items-center gap-1">
               <XCircle className="h-4 w-4 text-red-400" />
-              <span className="text-slate-300">{statusCounts.failed}</span>
+              <span className="text-foreground">{statusCounts.failed}</span>
             </div>
             <div className="flex items-center gap-1">
-              <SkipForward className="h-4 w-4 text-slate-400" />
-              <span className="text-slate-300">{statusCounts.skipped}</span>
+              <SkipForward className="h-4 w-4 text-muted-foreground" />
+              <span className="text-foreground">{statusCounts.skipped}</span>
             </div>
           </div>
 
@@ -206,7 +206,7 @@ export function TestResultsPanel({
         {isRunning && !testResult && (
           <div className="flex flex-col items-center justify-center h-full gap-3">
             <Loader2 className="h-8 w-8 text-blue-400 animate-spin" />
-            <p className="text-slate-400">Executing workflow...</p>
+            <p className="text-muted-foreground">Executing workflow...</p>
           </div>
         )}
 
@@ -225,23 +225,23 @@ export function TestResultsPanel({
               >
                 {/* Node header */}
                 <button
-                  className="w-full flex items-center gap-2 p-3 text-left hover:bg-slate-700/30"
+                  className="w-full flex items-center gap-2 p-3 text-left hover:bg-accent/30"
                   onClick={() => {
                     toggleNode(result.node_id);
                     onSelectNode(result.node_id);
                   }}
                 >
                   {expandedNodes.has(result.node_id) ? (
-                    <ChevronDown className="h-4 w-4 text-slate-400" />
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   ) : (
-                    <ChevronRight className="h-4 w-4 text-slate-400" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   )}
                   {statusIcons[result.status]}
                   <div className="flex-1 min-w-0">
-                    <div className="text-white font-medium text-sm truncate">
+                    <div className="text-foreground font-medium text-sm truncate">
                       {result.node_label || result.node_id}
                     </div>
-                    <div className="text-xs text-slate-400">
+                    <div className="text-xs text-muted-foreground">
                       {nodeTypeLabels[result.node_type] || result.node_type}
                       {result.duration_ms !== undefined && (
                         <span className="ml-2">({result.duration_ms}ms)</span>
@@ -252,11 +252,11 @@ export function TestResultsPanel({
 
                 {/* Expanded content */}
                 {expandedNodes.has(result.node_id) && (
-                  <div className="border-t border-slate-700/50 p-3 space-y-3 bg-slate-900/30">
+                  <div className="border-t border-border/50 p-3 space-y-3 bg-background/30">
                     {/* Condition result */}
                     {result.condition_result !== undefined && (
                       <div>
-                        <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">
+                        <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
                           Condition Result
                         </div>
                         <div className="flex items-center gap-2">
@@ -278,7 +278,7 @@ export function TestResultsPanel({
                     {/* Selected branch */}
                     {result.selected_branch && (
                       <div>
-                        <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">
+                        <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
                           Selected Branch
                         </div>
                         <div className="text-sm text-blue-400">
@@ -290,10 +290,10 @@ export function TestResultsPanel({
                     {/* Input data */}
                     {result.input && Object.keys(result.input).length > 0 && (
                       <div>
-                        <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">
+                        <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
                           Input
                         </div>
-                        <pre className="text-xs text-slate-300 bg-slate-900/50 rounded p-2 overflow-x-auto">
+                        <pre className="text-xs text-foreground bg-background/50 rounded p-2 overflow-x-auto">
                           {JSON.stringify(result.input, null, 2)}
                         </pre>
                       </div>
@@ -302,10 +302,10 @@ export function TestResultsPanel({
                     {/* Output data */}
                     {result.output && Object.keys(result.output).length > 0 && (
                       <div>
-                        <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">
+                        <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
                           Output
                         </div>
-                        <pre className="text-xs text-slate-300 bg-slate-900/50 rounded p-2 overflow-x-auto">
+                        <pre className="text-xs text-foreground bg-background/50 rounded p-2 overflow-x-auto">
                           {JSON.stringify(result.output, null, 2)}
                         </pre>
                       </div>
@@ -314,7 +314,7 @@ export function TestResultsPanel({
                     {/* Error */}
                     {result.error && (
                       <div>
-                        <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">
+                        <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
                           Error
                         </div>
                         <div className="text-sm text-red-400 bg-red-500/10 rounded p-2">
@@ -331,10 +331,10 @@ export function TestResultsPanel({
 
         {!isRunning && !testResult && (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
-            <Play className="h-12 w-12 text-slate-600" />
+            <Play className="h-12 w-12 text-muted-foreground" />
             <div>
-              <p className="text-slate-400">No test results yet</p>
-              <p className="text-sm text-slate-500">
+              <p className="text-muted-foreground">No test results yet</p>
+              <p className="text-sm text-muted-foreground">
                 Click &quot;Test&quot; in the toolbar to run a test
               </p>
             </div>
@@ -344,8 +344,8 @@ export function TestResultsPanel({
 
       {/* Footer with dry run notice */}
       {testResult && (
-        <div className="p-4 border-t border-slate-700 bg-slate-800/50">
-          <div className="flex items-center gap-2 text-xs text-slate-400">
+        <div className="p-4 border-t border-border bg-muted/50">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <AlertCircle className="h-4 w-4" />
             <span>
               This was a dry run. No actual actions were performed.

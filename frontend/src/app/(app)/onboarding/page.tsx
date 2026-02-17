@@ -64,11 +64,11 @@ export default function OnboardingWelcome() {
             <span>Welcome to Aexy</span>
           </div>
 
-          <h1 className="text-4xl font-bold text-white mb-4">
+          <h1 className="text-4xl font-bold text-foreground mb-4">
             Your team&apos;s command center
           </h1>
 
-          <p className="text-lg text-slate-400 mb-8">
+          <p className="text-lg text-muted-foreground mb-8">
             Aexy brings together development analytics, CRM, and team collaboration
             in one place. Let&apos;s set up your workspace in just a few steps.
           </p>
@@ -80,14 +80,14 @@ export default function OnboardingWelcome() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: 0.1 * index }}
-                className="flex items-start gap-4 p-4 rounded-xl bg-slate-800/30 border border-slate-700/50 hover:border-slate-600/50 transition-colors"
+                className="flex items-start gap-4 p-4 rounded-xl bg-muted/30 border border-border/50 hover:border-border/50 transition-colors"
               >
                 <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${feature.color} flex items-center justify-center flex-shrink-0`}>
-                  <feature.icon className="w-5 h-5 text-white" />
+                  <feature.icon className="w-5 h-5 text-foreground" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-white">{feature.title}</h3>
-                  <p className="text-sm text-slate-400">{feature.description}</p>
+                  <h3 className="font-medium text-foreground">{feature.title}</h3>
+                  <p className="text-sm text-muted-foreground">{feature.description}</p>
                 </div>
               </motion.div>
             ))}
@@ -114,14 +114,14 @@ export default function OnboardingWelcome() {
             <div className="absolute inset-0 bg-gradient-to-r from-primary-500/20 to-blue-500/20 blur-3xl rounded-full" />
 
             {/* Preview card */}
-            <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden shadow-2xl">
+            <div className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl overflow-hidden shadow-2xl">
               {/* Header */}
-              <div className="px-6 py-4 border-b border-slate-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="px-6 py-4 border-b border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
-                    <BarChart3 className="w-4 h-4 text-white" />
+                    <BarChart3 className="w-4 h-4 text-foreground" />
                   </div>
-                  <span className="font-medium text-white">Dashboard</span>
+                  <span className="font-medium text-foreground">Dashboard</span>
                 </div>
               </div>
 
@@ -137,10 +137,10 @@ export default function OnboardingWelcome() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: 0.5 + 0.1 * i }}
-                    className="bg-slate-800/50 rounded-lg p-3"
+                    className="bg-muted/50 rounded-lg p-3"
                   >
-                    <p className="text-xs text-slate-500">{stat.label}</p>
-                    <p className="text-xl font-bold text-white">{stat.value}</p>
+                    <p className="text-xs text-muted-foreground">{stat.label}</p>
+                    <p className="text-xl font-bold text-foreground">{stat.value}</p>
                     <p className="text-xs text-green-400">{stat.change}</p>
                   </motion.div>
                 ))}
@@ -148,7 +148,7 @@ export default function OnboardingWelcome() {
 
               {/* Activity preview */}
               <div className="px-6 pb-6">
-                <p className="text-xs text-slate-500 mb-3">Recent Activity</p>
+                <p className="text-xs text-muted-foreground mb-3">Recent Activity</p>
                 {[
                   { icon: GitBranch, text: "PR #234 merged to main", time: "2m ago", color: "text-green-400" },
                   { icon: Mail, text: "New email from Acme Corp", time: "15m ago", color: "text-blue-400" },
@@ -162,8 +162,8 @@ export default function OnboardingWelcome() {
                     className="flex items-center gap-3 py-2"
                   >
                     <item.icon className={`w-4 h-4 ${item.color}`} />
-                    <span className="text-sm text-slate-300 flex-1">{item.text}</span>
-                    <span className="text-xs text-slate-500">{item.time}</span>
+                    <span className="text-sm text-foreground flex-1">{item.text}</span>
+                    <span className="text-xs text-muted-foreground">{item.time}</span>
                   </motion.div>
                 ))}
               </div>

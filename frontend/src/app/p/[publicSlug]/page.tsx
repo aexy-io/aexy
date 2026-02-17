@@ -133,21 +133,21 @@ function PublicProjectContent() {
 
   // Loading state content
   const loadingContent = (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+    <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="text-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary-500 mx-auto mb-4" />
-        <p className="text-slate-400">Loading project...</p>
+        <p className="text-muted-foreground">Loading project...</p>
       </div>
     </div>
   );
 
   // Error state content
   const errorContent = (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="text-center max-w-md">
         <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-        <h1 className="text-2xl font-bold text-white mb-2">Project Not Found</h1>
-        <p className="text-slate-400 mb-6">
+        <h1 className="text-2xl font-bold text-foreground mb-2">Project Not Found</h1>
+        <p className="text-muted-foreground mb-6">
           {error || "The project you're looking for doesn't exist or is not publicly accessible."}
         </p>
         <Link
@@ -217,11 +217,11 @@ function PublicProjectContent() {
 
   // Main page content
   const pageContent = (
-    <div className={isAuthenticated ? "" : "min-h-screen bg-slate-900"}>
+    <div className={isAuthenticated ? "" : "min-h-screen bg-background"}>
       {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800/50">
+      <header className="border-b border-border bg-muted/50">
         <div className="max-w-5xl mx-auto px-4 py-6">
-          <div className="flex items-center gap-2 text-slate-400 text-sm mb-4">
+          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-4">
             <Globe className="h-4 w-4" />
             <span>Public Project</span>
           </div>
@@ -236,7 +236,7 @@ function PublicProjectContent() {
               />
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl font-bold text-white mb-2">{project.name}</h1>
+              <h1 className="text-2xl font-bold text-foreground mb-2">{project.name}</h1>
               <div className="flex items-center gap-3 flex-wrap">
                 <span
                   className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${statusStyle.bg} ${statusStyle.text}`}
@@ -252,7 +252,7 @@ function PublicProjectContent() {
 
       {/* Tabs */}
       {enabledTabs.length > 1 && (
-        <div className="border-b border-slate-700 bg-slate-800/30">
+        <div className="border-b border-border bg-muted/30">
           <div className="max-w-5xl mx-auto px-4">
             <div className="flex gap-1 overflow-x-auto py-2">
               {enabledTabs.map((tab) => {
@@ -265,7 +265,7 @@ function PublicProjectContent() {
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
                       isActive
                         ? "bg-primary-600 text-white"
-                        : "text-slate-400 hover:text-white hover:bg-slate-700"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
                     }`}
                   >
                     <Icon className="h-4 w-4" />
@@ -283,7 +283,7 @@ function PublicProjectContent() {
 
         {/* Footer - only show for non-authenticated users */}
         {!isAuthenticated && (
-          <div className="text-center text-slate-500 text-sm mt-12">
+          <div className="text-center text-muted-foreground text-sm mt-12">
             <p>
               Powered by{" "}
               <Link href="/" className="text-primary-400 hover:text-primary-300 transition">
@@ -312,10 +312,10 @@ export default function PublicProjectPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="h-12 w-12 animate-spin text-primary-500 mx-auto mb-4" />
-            <p className="text-slate-400">Loading project...</p>
+            <p className="text-muted-foreground">Loading project...</p>
           </div>
         </div>
       }

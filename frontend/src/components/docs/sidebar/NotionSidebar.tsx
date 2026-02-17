@@ -133,15 +133,15 @@ export function NotionSidebar({
 
   // Render empty state
   const EmptyState = ({ message }: { message: string }) => (
-    <div className="px-4 py-3 text-xs text-slate-500 text-center">
+    <div className="px-4 py-3 text-xs text-muted-foreground text-center">
       {message}
     </div>
   );
 
   return (
-    <div className="flex flex-col h-full bg-[#191919] border-r border-slate-800/50">
+    <div className="flex flex-col h-full bg-[#191919] border-r border-border/50">
       {/* Workspace Switcher */}
-      <div className="p-2 border-b border-slate-800/50">
+      <div className="p-2 border-b border-border/50">
         <WorkspaceSwitcher
           workspaces={workspaces || []}
           currentWorkspace={currentWorkspace ?? null}
@@ -157,13 +157,13 @@ export function NotionSidebar({
       />
 
       {/* Divider */}
-      <div className="h-px bg-slate-800/50 mx-3 my-1" />
+      <div className="h-px bg-muted/50 mx-3 my-1" />
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-5 w-5 text-slate-500 animate-spin" />
+            <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
           </div>
         ) : (
           <>
@@ -240,7 +240,7 @@ export function NotionSidebar({
             </SidebarSection>
 
             {/* Divider before spaces */}
-            <div className="h-px bg-slate-800/50 mx-3 my-2" />
+            <div className="h-px bg-muted/50 mx-3 my-2" />
 
             {/* Space Folders - Each space as a collapsible folder */}
             {spaces.map((space) => (
@@ -262,9 +262,9 @@ export function NotionSidebar({
             <div className="px-2 py-1">
               <button
                 onClick={() => setShowCreateSpaceModal(true)}
-                className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-white/5 rounded-md transition-colors text-slate-500 hover:text-slate-400"
+                className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-white/5 rounded-md transition-colors text-muted-foreground hover:text-muted-foreground"
               >
-                <div className="h-5 w-5 rounded border border-dashed border-slate-600 flex items-center justify-center">
+                <div className="h-5 w-5 rounded border border-dashed border-border flex items-center justify-center">
                   <Plus className="h-3 w-3" />
                 </div>
                 <span className="text-xs">Add space</span>

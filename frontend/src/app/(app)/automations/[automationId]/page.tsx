@@ -195,7 +195,7 @@ export default function EditAutomationPage() {
 
   if (isLoading || !workspaceId) {
     return (
-      <div className="min-h-screen bg-slate-900">
+      <div className="min-h-screen bg-background">
         <div className="flex items-center justify-center h-[calc(100vh-64px)]">
           <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
         </div>
@@ -205,7 +205,7 @@ export default function EditAutomationPage() {
 
   if (error && !workflow && !automation) {
     return (
-      <div className="min-h-screen bg-slate-900">
+      <div className="min-h-screen bg-background">
         <div className="flex flex-col items-center justify-center h-[calc(100vh-64px)]">
           <div className="text-red-400 text-lg mb-4">{error}</div>
           <button
@@ -220,14 +220,14 @@ export default function EditAutomationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-background">
       <div className="h-[calc(100vh-64px)] flex flex-col">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-4 py-3 border-b border-slate-700 bg-slate-800/50 relative z-10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-4 py-3 border-b border-border bg-muted/50 relative z-10">
           <div className="flex items-center gap-4">
             <button
               onClick={handleBack}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
@@ -237,11 +237,11 @@ export default function EditAutomationPage() {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="text-lg font-semibold text-white bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1 -ml-2"
+                  className="text-lg font-semibold text-foreground bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1 -ml-2"
                   placeholder="Automation name"
                 />
                 {automation?.module && (
-                  <span className="text-sm text-slate-400 bg-slate-700 px-2 py-0.5 rounded">
+                  <span className="text-sm text-muted-foreground bg-accent px-2 py-0.5 rounded">
                     {moduleLabels[automation.module] || automation.module}
                   </span>
                 )}
@@ -250,7 +250,7 @@ export default function EditAutomationPage() {
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="block text-sm text-slate-400 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-0.5 -ml-2 w-full max-w-md"
+                className="block text-sm text-muted-foreground bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-0.5 -ml-2 w-full max-w-md"
                 placeholder="Add a description..."
               />
             </div>
@@ -262,7 +262,7 @@ export default function EditAutomationPage() {
             </div>
           )}
 
-          <div className="text-sm text-slate-400">
+          <div className="text-sm text-muted-foreground">
             Version {workflow?.version || 1}
           </div>
         </div>

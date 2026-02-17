@@ -127,7 +127,7 @@ export function WorkflowToolbar({
 
   return (
     <>
-      <div className="flex items-center gap-2 bg-slate-800/90 backdrop-blur border border-slate-700 rounded-xl px-4 py-2 shadow-lg">
+      <div className="flex items-center gap-2 bg-muted/90 backdrop-blur border border-border rounded-xl px-4 py-2 shadow-lg">
         {/* Save button */}
         <button
           onClick={onSave}
@@ -136,7 +136,7 @@ export function WorkflowToolbar({
             flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
             ${hasChanges
               ? "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30"
-              : "bg-slate-700 text-slate-500 cursor-not-allowed"
+              : "bg-accent text-muted-foreground cursor-not-allowed"
             }
           `}
         >
@@ -150,13 +150,13 @@ export function WorkflowToolbar({
           {isSaving ? "Saving..." : hasChanges ? "Save" : "Saved"}
         </button>
 
-        <div className="w-px h-6 bg-slate-700" />
+        <div className="w-px h-6 bg-accent" />
 
         {/* Test button */}
         <button
           onClick={() => setShowTestModal(true)}
           disabled={testInProgress}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-accent text-foreground hover:bg-muted transition-colors"
         >
           {testInProgress ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -170,7 +170,7 @@ export function WorkflowToolbar({
         {onTestResultsOpen && (
           <button
             onClick={onTestResultsOpen}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             title="Test results"
           >
             <TestTube className="h-4 w-4" />
@@ -201,12 +201,12 @@ export function WorkflowToolbar({
           {isPublished ? "Unpublish" : "Publish"}
         </button>
 
-        <div className="w-px h-6 bg-slate-700" />
+        <div className="w-px h-6 bg-accent" />
 
         {/* Fit view button */}
         <button
           onClick={onFitView}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           title="Fit view"
         >
           <Maximize className="h-4 w-4" />
@@ -216,7 +216,7 @@ export function WorkflowToolbar({
         {onHistoryOpen && (
           <button
             onClick={onHistoryOpen}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             title="Execution history"
           >
             <History className="h-4 w-4" />
@@ -227,7 +227,7 @@ export function WorkflowToolbar({
         {onVersionHistoryOpen && (
           <button
             onClick={onVersionHistoryOpen}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             title={`Version history${currentVersion ? ` (v${currentVersion})` : ""}`}
           >
             <GitBranch className="h-4 w-4" />
@@ -237,12 +237,12 @@ export function WorkflowToolbar({
         {/* Import/Export buttons */}
         {(onExport || onImport) && (
           <>
-            <div className="w-px h-6 bg-slate-700" />
+            <div className="w-px h-6 bg-accent" />
             {onExport && (
               <button
                 onClick={handleExport}
                 disabled={isExporting}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors disabled:opacity-50"
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
                 title="Export workflow"
               >
                 {isExporting ? (
@@ -256,7 +256,7 @@ export function WorkflowToolbar({
               <button
                 onClick={() => setShowImportModal(true)}
                 disabled={isImporting}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors disabled:opacity-50"
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
                 title="Import workflow"
               >
                 {isImporting ? (
@@ -272,7 +272,7 @@ export function WorkflowToolbar({
         {/* Validation indicator */}
         {(validationErrors > 0 || validationWarnings > 0) && (
           <>
-            <div className="w-px h-6 bg-slate-700" />
+            <div className="w-px h-6 bg-accent" />
             <div className="flex items-center gap-1.5">
               {validationErrors > 0 && (
                 <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-500/20 text-red-400">
@@ -294,10 +294,10 @@ export function WorkflowToolbar({
         <div className="flex items-center gap-1.5 ml-2">
           <div
             className={`w-2 h-2 rounded-full ${
-              isPublished ? "bg-green-400" : "bg-slate-500"
+              isPublished ? "bg-green-400" : "bg-muted-foreground"
             }`}
           />
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-muted-foreground">
             {isPublished ? "Live" : "Draft"}
           </span>
         </div>
@@ -306,12 +306,12 @@ export function WorkflowToolbar({
       {/* Test Modal - rendered via portal to escape stacking context */}
       {showTestModal && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 w-full max-w-md shadow-xl">
-            <h3 className="text-lg font-semibold text-white mb-4">Test Workflow</h3>
+          <div className="bg-muted border border-border rounded-xl p-6 w-full max-w-md shadow-xl">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Test Workflow</h3>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-slate-400 mb-1">
+                <label className="block text-sm text-muted-foreground mb-1">
                   Record ID (optional)
                 </label>
                 <div className="flex gap-2">
@@ -320,17 +320,17 @@ export function WorkflowToolbar({
                     value={testRecordId}
                     onChange={(e) => setTestRecordId(e.target.value)}
                     placeholder="Enter a record ID to test with..."
-                    className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                    className="flex-1 bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                   />
                   <button
                     type="button"
                     onClick={() => setTestRecordId(crypto.randomUUID())}
-                    className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-300 text-sm hover:bg-slate-600 transition-colors whitespace-nowrap"
+                    className="px-3 py-2 bg-accent border border-border rounded-lg text-foreground text-sm hover:bg-muted transition-colors whitespace-nowrap"
                   >
                     Generate
                   </button>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Leave empty for a dry run, or generate a mock ID for testing
                 </p>
               </div>
@@ -348,7 +348,7 @@ export function WorkflowToolbar({
             <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={() => setShowTestModal(false)}
-                className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+                className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
               >
                 Cancel
               </button>
@@ -373,12 +373,12 @@ export function WorkflowToolbar({
       {/* Import Modal - rendered via portal to escape stacking context */}
       {showImportModal && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 w-full max-w-md shadow-xl">
-            <h3 className="text-lg font-semibold text-white mb-4">Import Workflow</h3>
+          <div className="bg-muted border border-border rounded-xl p-6 w-full max-w-md shadow-xl">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Import Workflow</h3>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-slate-400 mb-2">
+                <label className="block text-sm text-muted-foreground mb-2">
                   Select a workflow JSON file
                 </label>
                 <input
@@ -386,7 +386,7 @@ export function WorkflowToolbar({
                   type="file"
                   accept=".json,application/json"
                   onChange={handleFileSelect}
-                  className="w-full text-sm text-slate-400
+                  className="w-full text-sm text-muted-foreground
                     file:mr-4 file:py-2 file:px-4
                     file:rounded-lg file:border-0
                     file:text-sm file:font-medium
@@ -422,7 +422,7 @@ export function WorkflowToolbar({
                   setShowImportModal(false);
                   setImportError(null);
                 }}
-                className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+                className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
               >
                 Cancel
               </button>

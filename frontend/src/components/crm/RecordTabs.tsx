@@ -51,7 +51,7 @@ export function RecordTabs({
   ];
 
   return (
-    <div className={cn("border-b border-slate-700", className)}>
+    <div className={cn("border-b border-border", className)}>
       <div className="flex gap-1">
         {tabs.map((tab) => (
           <button
@@ -60,14 +60,14 @@ export function RecordTabs({
             className={cn(
               "flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px",
               activeTab === tab.id
-                ? "text-white border-purple-500"
-                : "text-slate-400 border-transparent hover:text-white hover:border-slate-600"
+                ? "text-foreground border-purple-500"
+                : "text-muted-foreground border-transparent hover:text-foreground hover:border-border"
             )}
           >
             {tab.icon}
             {tab.label}
             {tab.count !== undefined && tab.count > 0 && (
-              <span className="px-1.5 py-0.5 bg-slate-700 rounded text-xs">
+              <span className="px-1.5 py-0.5 bg-accent rounded text-xs">
                 {tab.count}
               </span>
             )}
@@ -89,12 +89,12 @@ export function NoteCard({ note, onDelete, onTogglePin }: NoteCardProps) {
   return (
     <div
       className={cn(
-        "bg-slate-800/50 border rounded-lg p-4",
-        note.is_pinned ? "border-yellow-500/30" : "border-slate-700"
+        "bg-muted/50 border rounded-lg p-4",
+        note.is_pinned ? "border-yellow-500/30" : "border-border"
       )}
     >
       <div className="flex items-start justify-between gap-4 mb-2">
-        <div className="flex items-center gap-2 text-sm text-slate-400">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <User className="h-3 w-3" />
           <span>{note.created_by?.name || "Unknown"}</span>
           <span>•</span>
@@ -104,8 +104,8 @@ export function NoteCard({ note, onDelete, onTogglePin }: NoteCardProps) {
           <button
             onClick={onTogglePin}
             className={cn(
-              "p-1 rounded hover:bg-slate-700",
-              note.is_pinned ? "text-yellow-400" : "text-slate-400 hover:text-white"
+              "p-1 rounded hover:bg-accent",
+              note.is_pinned ? "text-yellow-400" : "text-muted-foreground hover:text-foreground"
             )}
             title={note.is_pinned ? "Unpin note" : "Pin note"}
           >
@@ -113,14 +113,14 @@ export function NoteCard({ note, onDelete, onTogglePin }: NoteCardProps) {
           </button>
           <button
             onClick={onDelete}
-            className="p-1 rounded hover:bg-red-500/20 text-slate-400 hover:text-red-400"
+            className="p-1 rounded hover:bg-red-500/20 text-muted-foreground hover:text-red-400"
             title="Delete note"
           >
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
       </div>
-      <p className="text-white whitespace-pre-wrap">{note.content}</p>
+      <p className="text-foreground whitespace-pre-wrap">{note.content}</p>
     </div>
   );
 }
@@ -153,16 +153,16 @@ export function ActivityItem({ activity }: ActivityItemProps) {
   };
 
   return (
-    <div className="flex gap-3 py-3 border-b border-slate-700/50 last:border-0">
-      <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-400">
+    <div className="flex gap-3 py-3 border-b border-border/50 last:border-0">
+      <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-muted-foreground">
         {getActivityIcon()}
       </div>
       <div className="flex-1">
-        <p className="text-sm text-white">{activity.title}</p>
+        <p className="text-sm text-foreground">{activity.title}</p>
         {activity.description && (
-          <p className="text-xs text-slate-400 mt-0.5">{activity.description}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{activity.description}</p>
         )}
-        <p className="text-xs text-slate-500 mt-1">
+        <p className="text-xs text-muted-foreground mt-1">
           {activity.actor_name || "System"} • {new Date(activity.created_at).toLocaleString()}
         </p>
       </div>
@@ -204,13 +204,13 @@ export function NotesTabContent({
           onChange={(e) => onNewNoteChange(e.target.value)}
           placeholder="Add a note..."
           rows={3}
-          className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+          className="w-full px-4 py-3 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
         />
         <div className="flex justify-end">
           <button
             onClick={onCreateNote}
             disabled={!newNote.trim() || isCreating}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white rounded-lg text-sm transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-foreground rounded-lg text-sm transition-colors"
           >
             <Plus className="h-4 w-4" />
             {isCreating ? "Adding..." : "Add Note"}
@@ -221,7 +221,7 @@ export function NotesTabContent({
       {/* Pinned Notes */}
       {pinnedNotes.length > 0 && (
         <div className="space-y-2">
-          <h3 className="text-sm font-medium text-slate-400">Pinned</h3>
+          <h3 className="text-sm font-medium text-muted-foreground">Pinned</h3>
           {pinnedNotes.map((note) => (
             <NoteCard
               key={note.id}
@@ -237,7 +237,7 @@ export function NotesTabContent({
       {regularNotes.length > 0 && (
         <div className="space-y-2">
           {pinnedNotes.length > 0 && (
-            <h3 className="text-sm font-medium text-slate-400">All Notes</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">All Notes</h3>
           )}
           {regularNotes.map((note) => (
             <NoteCard
@@ -252,9 +252,9 @@ export function NotesTabContent({
 
       {notes.length === 0 && !isLoading && (
         <div className="text-center py-12">
-          <MessageSquare className="h-12 w-12 text-slate-600 mx-auto mb-3" />
-          <p className="text-slate-400">No notes yet</p>
-          <p className="text-sm text-slate-500 mt-1">Add your first note above</p>
+          <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground">No notes yet</p>
+          <p className="text-sm text-muted-foreground mt-1">Add your first note above</p>
         </div>
       )}
     </div>
@@ -277,16 +277,16 @@ interface ActivityTabContentProps {
 export function ActivityTabContent({ activities, isLoading = false }: ActivityTabContentProps) {
   if (isLoading) {
     return (
-      <div className="text-center py-12 text-slate-400">Loading activity...</div>
+      <div className="text-center py-12 text-muted-foreground">Loading activity...</div>
     );
   }
 
   if (activities.length === 0) {
     return (
       <div className="text-center py-12">
-        <Activity className="h-12 w-12 text-slate-600 mx-auto mb-3" />
-        <p className="text-slate-400">No activity yet</p>
-        <p className="text-sm text-slate-500 mt-1">Activity will appear here as changes are made</p>
+        <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+        <p className="text-muted-foreground">No activity yet</p>
+        <p className="text-sm text-muted-foreground mt-1">Activity will appear here as changes are made</p>
       </div>
     );
   }
@@ -321,16 +321,16 @@ export function RelatedTabContent({
 }: RelatedTabContentProps) {
   if (isLoading) {
     return (
-      <div className="text-center py-12 text-slate-400">Loading related records...</div>
+      <div className="text-center py-12 text-muted-foreground">Loading related records...</div>
     );
   }
 
   if (relatedRecords.length === 0) {
     return (
       <div className="text-center py-12">
-        <Link2 className="h-12 w-12 text-slate-600 mx-auto mb-3" />
-        <p className="text-slate-400">No related records</p>
-        <p className="text-sm text-slate-500 mt-1">Related records will appear here</p>
+        <Link2 className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+        <p className="text-muted-foreground">No related records</p>
+        <p className="text-sm text-muted-foreground mt-1">Related records will appear here</p>
       </div>
     );
   }
@@ -348,18 +348,18 @@ export function RelatedTabContent({
     <div className="space-y-6">
       {Object.entries(groupedRecords).map(([objectName, records]) => (
         <div key={objectName}>
-          <h3 className="text-sm font-medium text-slate-400 mb-2">{objectName}</h3>
+          <h3 className="text-sm font-medium text-muted-foreground mb-2">{objectName}</h3>
           <div className="space-y-2">
             {records.map((record) => (
               <button
                 key={record.id}
                 onClick={() => onRecordClick?.(record)}
-                className="w-full flex items-center gap-3 p-3 bg-slate-800/50 border border-slate-700 rounded-lg hover:border-slate-600 transition-colors text-left"
+                className="w-full flex items-center gap-3 p-3 bg-muted/50 border border-border rounded-lg hover:border-border transition-colors text-left"
               >
                 <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-400">
                   <Link2 className="h-4 w-4" />
                 </div>
-                <span className="text-white font-medium">{record.display_name}</span>
+                <span className="text-foreground font-medium">{record.display_name}</span>
               </button>
             ))}
           </div>
@@ -404,7 +404,7 @@ export function OverviewTabContent({
       {pinnedNotes.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-slate-400">Pinned Notes</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Pinned Notes</h3>
             {onViewAllNotes && (
               <button
                 onClick={onViewAllNotes}
@@ -431,7 +431,7 @@ export function OverviewTabContent({
       {recentActivities.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-slate-400">Recent Activity</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Recent Activity</h3>
             {onViewAllActivity && (
               <button
                 onClick={onViewAllActivity}
@@ -441,7 +441,7 @@ export function OverviewTabContent({
               </button>
             )}
           </div>
-          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
+          <div className="bg-muted/50 border border-border rounded-lg p-3">
             {recentActivities.slice(0, 5).map((activity) => (
               <ActivityItem key={activity.id} activity={activity} />
             ))}
@@ -452,9 +452,9 @@ export function OverviewTabContent({
       {/* Empty state */}
       {pinnedNotes.length === 0 && recentActivities.length === 0 && (
         <div className="text-center py-12">
-          <LayoutDashboard className="h-12 w-12 text-slate-600 mx-auto mb-3" />
-          <p className="text-slate-400">No overview content yet</p>
-          <p className="text-sm text-slate-500 mt-1">
+          <LayoutDashboard className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground">No overview content yet</p>
+          <p className="text-sm text-muted-foreground mt-1">
             Pin notes or add activity to see them here
           </p>
         </div>

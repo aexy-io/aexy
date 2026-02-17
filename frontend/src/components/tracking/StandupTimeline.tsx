@@ -55,11 +55,11 @@ export function StandupTimeline({ standups, isLoading = false, showAuthor = fals
     return (
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-slate-800 rounded-xl p-6 border border-slate-700 animate-pulse">
-            <div className="h-4 bg-slate-700 rounded w-1/4 mb-4" />
+          <div key={i} className="bg-muted rounded-xl p-6 border border-border animate-pulse">
+            <div className="h-4 bg-accent rounded w-1/4 mb-4" />
             <div className="space-y-2">
-              <div className="h-3 bg-slate-700 rounded w-3/4" />
-              <div className="h-3 bg-slate-700 rounded w-1/2" />
+              <div className="h-3 bg-accent rounded w-3/4" />
+              <div className="h-3 bg-accent rounded w-1/2" />
             </div>
           </div>
         ))}
@@ -70,41 +70,41 @@ export function StandupTimeline({ standups, isLoading = false, showAuthor = fals
   return (
     <div className="space-y-4">
       {/* Week Navigation */}
-      <div className="flex items-center justify-between bg-slate-800 rounded-xl p-4 border border-slate-700">
+      <div className="flex items-center justify-between bg-muted rounded-xl p-4 border border-border">
         <div className="flex items-center gap-2">
           <Calendar className="h-5 w-5 text-blue-400" />
-          <span className="font-medium text-white">{formatWeekRange()}</span>
+          <span className="font-medium text-foreground">{formatWeekRange()}</span>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setSelectedWeek(selectedWeek - 1)}
-            className="p-2 hover:bg-slate-700 rounded-lg transition"
+            className="p-2 hover:bg-accent rounded-lg transition"
           >
-            <ChevronLeft className="h-5 w-5 text-slate-400" />
+            <ChevronLeft className="h-5 w-5 text-muted-foreground" />
           </button>
           <button
             onClick={() => setSelectedWeek(0)}
             disabled={selectedWeek === 0}
-            className="px-3 py-1.5 text-sm bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition disabled:opacity-50"
+            className="px-3 py-1.5 text-sm bg-accent text-foreground rounded-lg hover:bg-muted transition disabled:opacity-50"
           >
             This Week
           </button>
           <button
             onClick={() => setSelectedWeek(selectedWeek + 1)}
             disabled={selectedWeek >= 0}
-            className="p-2 hover:bg-slate-700 rounded-lg transition disabled:opacity-50"
+            className="p-2 hover:bg-accent rounded-lg transition disabled:opacity-50"
           >
-            <ChevronRight className="h-5 w-5 text-slate-400" />
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </button>
         </div>
       </div>
 
       {/* Standups */}
       {Object.keys(groupedStandups).length === 0 ? (
-        <div className="bg-slate-800 rounded-xl p-8 border border-slate-700 text-center">
-          <MessageSquare className="h-12 w-12 text-slate-600 mx-auto mb-3" />
-          <p className="text-slate-400">No standups for this week</p>
-          <p className="text-sm text-slate-500 mt-1">
+        <div className="bg-muted rounded-xl p-8 border border-border text-center">
+          <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground">No standups for this week</p>
+          <p className="text-sm text-muted-foreground mt-1">
             Submit your standup to see it here
           </p>
         </div>
@@ -114,7 +114,7 @@ export function StandupTimeline({ standups, isLoading = false, showAuthor = fals
             .sort((a, b) => new Date(b[0]).getTime() - new Date(a[0]).getTime())
             .map(([dateKey, dayStandups]) => (
               <div key={dateKey}>
-                <h3 className="text-sm font-medium text-slate-400 mb-3">
+                <h3 className="text-sm font-medium text-muted-foreground mb-3">
                   {new Date(dateKey).toLocaleDateString("en-US", {
                     weekday: "long",
                     month: "long",

@@ -42,11 +42,11 @@ const CATEGORY_CONFIG: Record<RoadmapCategory, { label: string; icon: typeof Lig
   improvement: { label: "Improvement", icon: Zap, color: "text-yellow-400 bg-yellow-900/30" },
   integration: { label: "Integration", icon: Link2, color: "text-purple-400 bg-purple-900/30" },
   bug_fix: { label: "Bug Fix", icon: Bug, color: "text-red-400 bg-red-900/30" },
-  other: { label: "Other", icon: MoreHorizontal, color: "text-slate-400 bg-slate-700" },
+  other: { label: "Other", icon: MoreHorizontal, color: "text-muted-foreground bg-accent" },
 };
 
 const STATUS_CONFIG: Record<RoadmapStatus, { label: string; icon: typeof Clock; color: string }> = {
-  under_review: { label: "Under Review", icon: Clock, color: "text-slate-400" },
+  under_review: { label: "Under Review", icon: Clock, color: "text-muted-foreground" },
   planned: { label: "Planned", icon: CheckCircle2, color: "text-blue-400" },
   in_progress: { label: "In Progress", icon: Loader2, color: "text-yellow-400" },
   completed: { label: "Completed", icon: CheckCircle2, color: "text-green-400" },
@@ -82,15 +82,15 @@ function LoginModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div
-        className="bg-slate-800 rounded-xl max-w-md w-full"
+        className="bg-muted rounded-xl max-w-md w-full"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6 text-center">
           <div className="w-12 h-12 bg-primary-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <Lightbulb className="h-6 w-6 text-primary-400" />
           </div>
-          <h3 className="text-lg font-medium text-white mb-2">Login to Submit a Feature Request</h3>
-          <p className="text-sm text-slate-400 mb-6">
+          <h3 className="text-lg font-medium text-foreground mb-2">Login to Submit a Feature Request</h3>
+          <p className="text-sm text-muted-foreground mb-6">
             Sign in with your account to submit feature requests, comment and vote on ideas.
           </p>
 
@@ -105,7 +105,7 @@ function LoginModal({ onClose }: { onClose: () => void }) {
             </a>
             <a
               href={loginUrls.github}
-              className="group bg-slate-700 hover:bg-slate-600 text-white px-4 py-3 rounded-lg text-sm font-semibold transition-all border border-slate-600 hover:border-slate-500 flex items-center justify-center gap-3 w-full"
+              className="group bg-accent hover:bg-muted text-foreground px-4 py-3 rounded-lg text-sm font-semibold transition-all border border-border hover:border-muted-foreground flex items-center justify-center gap-3 w-full"
             >
               <Github className="h-5 w-5" />
               Continue with GitHub
@@ -114,7 +114,7 @@ function LoginModal({ onClose }: { onClose: () => void }) {
 
           <button
             onClick={onClose}
-            className="mt-4 text-sm text-slate-500 hover:text-slate-300 transition"
+            className="mt-4 text-sm text-muted-foreground hover:text-foreground transition"
           >
             Cancel
           </button>
@@ -151,7 +151,7 @@ function RequestCard({
   };
 
   return (
-    <div className="bg-slate-800 rounded-lg p-4">
+    <div className="bg-muted rounded-lg p-4">
       <div className="flex gap-4">
         {/* Vote button */}
         <button
@@ -159,7 +159,7 @@ function RequestCard({
           className={`flex flex-col items-center justify-center min-w-[60px] p-2 rounded-lg border transition cursor-pointer ${
             request.has_voted
               ? "bg-primary-600/20 border-primary-500 text-primary-400"
-              : "bg-slate-700/50 border-slate-600 text-slate-400 hover:border-slate-500"
+              : "bg-accent/50 border-border text-muted-foreground hover:border-muted-foreground"
           }`}
           title={isAuthenticated ? (request.has_voted ? "Remove vote" : "Upvote") : "Login to vote"}
         >
@@ -171,9 +171,9 @@ function RequestCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <h3 className="text-white font-medium">{request.title}</h3>
+              <h3 className="text-foreground font-medium">{request.title}</h3>
               {request.description && (
-                <p className="text-slate-400 text-sm mt-1 line-clamp-2">{request.description}</p>
+                <p className="text-muted-foreground text-sm mt-1 line-clamp-2">{request.description}</p>
               )}
             </div>
           </div>
@@ -194,28 +194,28 @@ function RequestCard({
             {/* Comments */}
             <button
               onClick={onOpenComments}
-              className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition"
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition"
             >
               <MessageSquare className="h-3 w-3" />
               {request.comment_count} comments
             </button>
 
             {/* Submitter */}
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-muted-foreground">
               by {request.submitted_by.name || "Anonymous"}
             </span>
 
             {/* Date */}
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-muted-foreground">
               {new Date(request.created_at).toLocaleDateString()}
             </span>
           </div>
 
           {/* Admin response */}
           {request.admin_response && (
-            <div className="mt-3 p-3 bg-slate-700/50 rounded-lg border-l-2 border-primary-500">
+            <div className="mt-3 p-3 bg-accent/50 rounded-lg border-l-2 border-primary-500">
               <p className="text-xs text-primary-400 font-medium mb-1">Official Response</p>
-              <p className="text-sm text-slate-300">{request.admin_response}</p>
+              <p className="text-sm text-foreground">{request.admin_response}</p>
             </div>
           )}
         </div>
@@ -281,20 +281,20 @@ function CommentsModal({
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div
-        className="bg-slate-800 rounded-xl max-w-2xl w-full max-h-[80vh] flex flex-col"
+        className="bg-muted rounded-xl max-w-2xl w-full max-h-[80vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-4 border-b border-slate-700">
-          <h3 className="text-lg font-medium text-white">{request.title}</h3>
-          <p className="text-sm text-slate-400 mt-1">{request.vote_count} votes · {comments.length} comments</p>
+        <div className="p-4 border-b border-border">
+          <h3 className="text-lg font-medium text-foreground">{request.title}</h3>
+          <p className="text-sm text-muted-foreground mt-1">{request.vote_count} votes · {comments.length} comments</p>
         </div>
 
         {/* Comments list */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : loadError ? (
             <div className="flex flex-col items-center justify-center py-8 space-y-3">
@@ -304,42 +304,42 @@ function CommentsModal({
               </div>
               <button
                 onClick={loadComments}
-                className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition"
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-accent hover:bg-muted text-foreground rounded-lg text-sm transition"
               >
                 <RefreshCw className="h-4 w-4" />
                 Retry
               </button>
             </div>
           ) : comments.length === 0 ? (
-            <p className="text-center text-slate-500 py-8">No comments yet. Be the first to comment!</p>
+            <p className="text-center text-muted-foreground py-8">No comments yet. Be the first to comment!</p>
           ) : (
             comments.map((comment) => (
               <div
                 key={comment.id}
-                className={`p-3 rounded-lg ${comment.is_admin_response ? "bg-primary-900/20 border border-primary-700/50" : "bg-slate-700/50"}`}
+                className={`p-3 rounded-lg ${comment.is_admin_response ? "bg-primary-900/20 border border-primary-700/50" : "bg-accent/50"}`}
               >
                 <div className="flex items-center gap-2 mb-2">
                   {comment.author.avatar_url ? (
                     <img src={comment.author.avatar_url} alt="" className="w-6 h-6 rounded-full" />
                   ) : (
-                    <div className="w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center text-xs text-slate-300">
+                    <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs text-foreground">
                       {(comment.author.name || "A")[0].toUpperCase()}
                     </div>
                   )}
-                  <span className="text-sm font-medium text-white">{comment.author.name || "Anonymous"}</span>
+                  <span className="text-sm font-medium text-foreground">{comment.author.name || "Anonymous"}</span>
                   {comment.is_admin_response && (
                     <span className="text-xs text-primary-400 bg-primary-900/50 px-1.5 py-0.5 rounded">Admin</span>
                   )}
-                  <span className="text-xs text-slate-500">{new Date(comment.created_at).toLocaleDateString()}</span>
+                  <span className="text-xs text-muted-foreground">{new Date(comment.created_at).toLocaleDateString()}</span>
                 </div>
-                <p className="text-sm text-slate-300">{comment.content}</p>
+                <p className="text-sm text-foreground">{comment.content}</p>
               </div>
             ))
           )}
         </div>
 
         {/* Comment input */}
-        <div className="p-4 border-t border-slate-700">
+        <div className="p-4 border-t border-border">
           {isAuthenticated ? (
             <div className="space-y-2">
               {submitError && (
@@ -354,13 +354,13 @@ function CommentsModal({
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   placeholder="Add a comment..."
-                  className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500"
+                  className="flex-1 bg-accent border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary-500"
                   onKeyDown={(e) => e.key === "Enter" && handleSubmitComment()}
                 />
                 <button
                   onClick={handleSubmitComment}
                   disabled={!newComment.trim() || isSubmitting}
-                  className="px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition"
+                  className="px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-foreground rounded-lg transition"
                 >
                   {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </button>
@@ -434,12 +434,12 @@ function CreateRequestModal({
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div
-        className="bg-slate-800 rounded-xl max-w-lg w-full"
+        className="bg-muted rounded-xl max-w-lg w-full"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-4 border-b border-slate-700">
-          <h3 className="text-lg font-medium text-white">Submit a Request</h3>
-          <p className="text-sm text-slate-400 mt-1">Share your idea with the community</p>
+        <div className="p-4 border-b border-border">
+          <h3 className="text-lg font-medium text-foreground">Submit a Request</h3>
+          <p className="text-sm text-muted-foreground mt-1">Share your idea with the community</p>
         </div>
 
         <div className="p-4 space-y-4">
@@ -450,29 +450,29 @@ function CreateRequestModal({
           )}
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Title *</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Title *</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Brief description of your request"
-              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500"
+              className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Description</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Provide more details about your request..."
               rows={3}
-              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500 resize-none"
+              className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary-500 resize-none"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Category</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Category</label>
             <div className="grid grid-cols-2 gap-2">
               {(Object.entries(CATEGORY_CONFIG) as [RoadmapCategory, typeof CATEGORY_CONFIG.feature][]).map(
                 ([key, config]) => {
@@ -484,8 +484,8 @@ function CreateRequestModal({
                       onClick={() => setCategory(key)}
                       className={`flex items-center gap-2 p-2 rounded-lg border text-sm transition ${
                         category === key
-                          ? "bg-primary-600/20 border-primary-500 text-white"
-                          : "bg-slate-700/50 border-slate-600 text-slate-400 hover:border-slate-500"
+                          ? "bg-primary-600/20 border-primary-500 text-foreground"
+                          : "bg-accent/50 border-border text-muted-foreground hover:border-muted-foreground"
                       }`}
                     >
                       <Icon className="h-4 w-4" />
@@ -498,17 +498,17 @@ function CreateRequestModal({
           </div>
         </div>
 
-        <div className="p-4 border-t border-slate-700 flex justify-end gap-2">
+        <div className="p-4 border-t border-border flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-slate-400 hover:text-white transition"
+            className="px-4 py-2 text-muted-foreground hover:text-foreground transition"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white rounded-lg transition"
+            className="px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-foreground rounded-lg transition"
           >
             {isSubmitting ? "Submitting..." : "Submit Request"}
           </button>
@@ -608,7 +608,7 @@ export function RoadmapTab({ publicSlug, isAuthenticated = false }: RoadmapTabPr
         </div>
         <button
           onClick={()=>loadRequests(1)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-muted text-foreground rounded-lg text-sm font-medium transition"
         >
           <RefreshCw className="h-4 w-4" />
           Try Again
@@ -634,7 +634,7 @@ export function RoadmapTab({ publicSlug, isAuthenticated = false }: RoadmapTabPr
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-            className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-primary-500"
+            className="bg-accent border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:border-primary-500"
           >
             <option value="votes">Most Voted</option>
             <option value="newest">Newest</option>
@@ -645,7 +645,7 @@ export function RoadmapTab({ publicSlug, isAuthenticated = false }: RoadmapTabPr
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as RoadmapStatus | "")}
-            className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-primary-500"
+            className="bg-accent border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:border-primary-500"
           >
             <option value="">All Statuses</option>
             {(Object.entries(STATUS_CONFIG) as [RoadmapStatus, typeof STATUS_CONFIG.under_review][]).map(
@@ -661,7 +661,7 @@ export function RoadmapTab({ publicSlug, isAuthenticated = false }: RoadmapTabPr
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value as RoadmapCategory | "")}
-            className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-primary-500"
+            className="bg-accent border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:border-primary-500"
           >
             <option value="">All Categories</option>
             {(Object.entries(CATEGORY_CONFIG) as [RoadmapCategory, typeof CATEGORY_CONFIG.feature][]).map(

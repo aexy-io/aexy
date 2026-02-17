@@ -56,7 +56,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             <div className="bg-purple-600 text-white rounded-2xl rounded-tr-md px-4 py-3">
               <p className="whitespace-pre-wrap">{message.content}</p>
             </div>
-            <span className="text-xs text-slate-500 mt-1">
+            <span className="text-xs text-muted-foreground mt-1">
               {formatTime(message.created_at)}
             </span>
           </div>
@@ -77,11 +77,11 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             <Bot className="h-4 w-4 text-purple-400" />
           </div>
           <div className="flex flex-col">
-            <div className="bg-slate-700/50 rounded-2xl rounded-tl-md px-4 py-3">
+            <div className="bg-accent/50 rounded-2xl rounded-tl-md px-4 py-3">
               {message.content ? (
-                <p className="text-slate-100 whitespace-pre-wrap">{message.content}</p>
+                <p className="text-foreground whitespace-pre-wrap">{message.content}</p>
               ) : (
-                <p className="text-slate-400 italic">Processing...</p>
+                <p className="text-muted-foreground italic">Processing...</p>
               )}
 
               {/* Display tool calls if present */}
@@ -98,7 +98,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                 </div>
               )}
             </div>
-            <span className="text-xs text-slate-500 mt-1">
+            <span className="text-xs text-muted-foreground mt-1">
               {formatTime(message.created_at)}
             </span>
           </div>
@@ -110,7 +110,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   // System message
   return (
     <div className="flex justify-center">
-      <div className="bg-slate-700/30 rounded-lg px-4 py-2 text-sm text-slate-400 max-w-2xl text-center">
+      <div className="bg-accent/30 rounded-lg px-4 py-2 text-sm text-muted-foreground max-w-2xl text-center">
         {message.content}
       </div>
     </div>

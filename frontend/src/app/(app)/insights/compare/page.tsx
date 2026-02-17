@@ -204,20 +204,20 @@ export default function ComparePage() {
           <div className="flex items-center gap-2 mb-1">
             <Link
               href="/insights"
-              className="text-slate-400 hover:text-white transition"
+              className="text-muted-foreground hover:text-foreground transition"
             >
               <ArrowLeft className="h-4 w-4" />
             </Link>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <GitCompare className="h-6 w-6 text-indigo-400" />
               Developer Comparison
             </h1>
           </div>
-          <p className="text-slate-400 text-sm">
+          <p className="text-muted-foreground text-sm">
             Side-by-side comparison with radar chart and activity heatmap
           </p>
         </div>
-        <div className="flex bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+        <div className="flex bg-muted rounded-lg border border-border overflow-hidden">
           {PERIOD_OPTIONS.map((opt) => (
             <button
               key={opt.value}
@@ -225,7 +225,7 @@ export default function ComparePage() {
               className={`px-3 py-1.5 text-sm font-medium transition ${
                 periodType === opt.value
                   ? "bg-indigo-600 text-white"
-                  : "text-slate-400 hover:text-white"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {opt.label}
@@ -235,10 +235,10 @@ export default function ComparePage() {
       </div>
 
       {/* Developer Selector */}
-      <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+      <div className="bg-muted rounded-xl p-4 border border-border">
         <div className="flex items-center gap-2 mb-3">
-          <Users className="h-4 w-4 text-slate-400" />
-          <span className="text-sm text-slate-300">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm text-foreground">
             Select developers to compare (2-6)
           </span>
         </div>
@@ -253,7 +253,7 @@ export default function ComparePage() {
               </span>
               <button
                 onClick={() => removeDeveloper(devId)}
-                className="text-indigo-400 hover:text-white transition"
+                className="text-indigo-400 hover:text-foreground transition"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -263,24 +263,24 @@ export default function ComparePage() {
             <div className="relative">
               <button
                 onClick={() => setShowPicker(!showPicker)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-lg text-sm text-slate-300 transition"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-muted border border-border rounded-lg text-sm text-foreground transition"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Add Developer
                 <ChevronDown className="h-3.5 w-3.5" />
               </button>
               {showPicker && (
-                <div className="absolute top-full left-0 mt-1 w-56 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-10 max-h-60 overflow-y-auto">
+                <div className="absolute top-full left-0 mt-1 w-56 bg-muted border border-border rounded-lg shadow-xl z-10 max-h-60 overflow-y-auto">
                   {availableMembers
                     .filter((m) => !selectedDevIds.includes(m.developer_id))
                     .map((m) => (
                       <button
                         key={m.developer_id}
                         onClick={() => addDeveloper(m.developer_id)}
-                        className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 transition"
+                        className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-accent transition"
                       >
                         {m.developer_name || m.developer_id.slice(0, 8)}
-                        <span className="ml-2 text-xs text-slate-500">
+                        <span className="ml-2 text-xs text-muted-foreground">
                           ({m.commits_count}c, {m.prs_merged}pr)
                         </span>
                       </button>
@@ -288,7 +288,7 @@ export default function ComparePage() {
                   {availableMembers.filter(
                     (m) => !selectedDevIds.includes(m.developer_id)
                   ).length === 0 && (
-                    <div className="px-4 py-3 text-xs text-slate-500">
+                    <div className="px-4 py-3 text-xs text-muted-foreground">
                       No more developers available
                     </div>
                   )}
@@ -300,8 +300,8 @@ export default function ComparePage() {
       </div>
 
       {selectedDevIds.length < 2 && (
-        <div className="bg-slate-800 rounded-xl p-8 border border-slate-700 text-center">
-          <p className="text-slate-400">
+        <div className="bg-muted rounded-xl p-8 border border-border text-center">
+          <p className="text-muted-foreground">
             Select at least 2 developers to see the comparison.
           </p>
         </div>
@@ -318,8 +318,8 @@ export default function ComparePage() {
           {/* Radar Chart + Summary Table */}
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Radar Chart */}
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-              <h2 className="text-lg font-semibold text-white mb-4">
+            <div className="bg-muted rounded-xl p-6 border border-border">
+              <h2 className="text-lg font-semibold text-foreground mb-4">
                 Metrics Radar
               </h2>
               <MetricsRadar
@@ -330,13 +330,13 @@ export default function ComparePage() {
             </div>
 
             {/* Summary Table */}
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 overflow-x-auto">
-              <h2 className="text-lg font-semibold text-white mb-4">
+            <div className="bg-muted rounded-xl p-6 border border-border overflow-x-auto">
+              <h2 className="text-lg font-semibold text-foreground mb-4">
                 Side-by-Side Metrics
               </h2>
               <table className="w-full min-w-[600px]">
                 <thead>
-                  <tr className="text-left text-xs text-slate-400 border-b border-slate-700">
+                  <tr className="text-left text-xs text-muted-foreground border-b border-border">
                     <th className="pb-2 font-medium">Metric</th>
                     {compareResults.map((dev) => (
                       <th
@@ -424,13 +424,13 @@ export default function ComparePage() {
                     return (
                       <tr
                         key={row.label}
-                        className="border-b border-slate-700/30"
+                        className="border-b border-border/30"
                       >
-                        <td className="py-2 text-xs text-slate-400">
+                        <td className="py-2 text-xs text-muted-foreground">
                           <span className="group relative inline-flex items-center gap-1 cursor-help">
                             {row.label}
-                            <Info className="h-3 w-3 text-slate-600 group-hover:text-slate-400 transition" />
-                            <span className="invisible group-hover:visible absolute left-0 bottom-full mb-1 w-52 px-3 py-2 text-xs text-slate-200 bg-slate-900 border border-slate-700 rounded-lg shadow-lg z-20">
+                            <Info className="h-3 w-3 text-muted-foreground group-hover:text-muted-foreground transition" />
+                            <span className="invisible group-hover:visible absolute left-0 bottom-full mb-1 w-52 px-3 py-2 text-xs text-foreground bg-background border border-border rounded-lg shadow-lg z-20">
                               {row.desc}
                             </span>
                           </span>
@@ -445,7 +445,7 @@ export default function ComparePage() {
                               className={`py-2 text-right text-sm font-mono ${
                                 isBest
                                   ? "text-green-400 font-semibold"
-                                  : "text-slate-300"
+                                  : "text-foreground"
                               }`}
                             >
                               {row.pct
@@ -466,8 +466,8 @@ export default function ComparePage() {
 
           {/* Activity Heatmap */}
           {heatmapData.length > 0 && (
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-              <h2 className="text-lg font-semibold text-white mb-4">
+            <div className="bg-muted rounded-xl p-6 border border-border">
+              <h2 className="text-lg font-semibold text-foreground mb-4">
                 Activity Heatmap
               </h2>
               <ActivityHeatmap data={heatmapData} metric="commits" />

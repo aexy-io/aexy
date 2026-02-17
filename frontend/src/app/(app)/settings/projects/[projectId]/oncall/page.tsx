@@ -219,7 +219,7 @@ export default function OnCallSettingsPage() {
         {/* Not Enabled State */}
         {!config?.is_enabled && (
           <div className="bg-card rounded-xl p-8 text-center">
-            <Phone className="h-12 w-12 text-slate-600 mx-auto mb-4" />
+            <Phone className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-foreground mb-2">On-Call Not Enabled</h2>
             <p className="text-muted-foreground mb-6 max-w-md mx-auto">
               Enable on-call scheduling for this team to manage who&apos;s on-call and when.

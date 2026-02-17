@@ -62,14 +62,14 @@ export function CollaborationGraph({
   if (isLoading) {
     return (
       <div className="animate-pulse">
-        <div className="h-72 bg-slate-700 rounded-lg" />
+        <div className="h-72 bg-accent rounded-lg" />
       </div>
     );
   }
 
   if (!data || data.nodes.length === 0) {
     return (
-      <div className="flex items-center justify-center h-72 text-slate-400">
+      <div className="flex items-center justify-center h-72 text-muted-foreground">
         No collaboration data available
       </div>
     );
@@ -140,7 +140,7 @@ export function CollaborationGraph({
       </svg>
 
       {/* Legend */}
-      <div className="flex items-center justify-between mt-2 text-xs text-slate-400">
+      <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
         <div className="flex items-center gap-4">
           <span className="font-medium">Edge types:</span>
           <div className="flex items-center gap-1">
@@ -157,7 +157,7 @@ export function CollaborationGraph({
           </div>
         </div>
         <div>
-          Density: <span className="text-white">{(data.density * 100).toFixed(0)}%</span>
+          Density: <span className="text-foreground">{(data.density * 100).toFixed(0)}%</span>
         </div>
       </div>
     </div>

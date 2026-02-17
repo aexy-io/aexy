@@ -177,7 +177,7 @@ export default function ProjectPermissionsPage() {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
-          <FolderKanban className="h-16 w-16 text-slate-600 mx-auto mb-4" />
+          <FolderKanban className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-xl font-medium text-foreground mb-2">Project Not Found</h3>
           <p className="text-muted-foreground mb-6">
             The project you're looking for doesn't exist.
@@ -253,7 +253,7 @@ export default function ProjectPermissionsPage() {
           </div>
 
           {/* Members List */}
-          <div className="divide-y divide-slate-700/50">
+          <div className="divide-y divide-border/50">
             {members.map((member) => (
               <div
                 key={member.id}

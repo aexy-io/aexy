@@ -55,15 +55,15 @@ export default function OnboardingLayoutClient({
       <OnboardingGuard>
         <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
           {/* Header */}
-          <header className="border-b border-slate-800/50 bg-slate-950/50 backdrop-blur-xl">
+          <header className="border-b border-border/50 bg-background/50 backdrop-blur-xl">
             <div className="max-w-7xl mx-auto px-6 py-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-white" />
+                  <Zap className="w-5 h-5 text-foreground" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-semibold text-white">Aexy</h1>
-                  <p className="text-xs text-slate-500">Setup your workspace</p>
+                  <h1 className="text-lg font-semibold text-foreground">Aexy</h1>
+                  <p className="text-xs text-muted-foreground">Setup your workspace</p>
                 </div>
               </div>
             </div>

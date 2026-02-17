@@ -119,7 +119,7 @@ export default function AnalyticsPage() {
 
   if (isLoading || loadingStates.developers) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
       </div>
     );
@@ -130,46 +130,46 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800">
+      <header className="border-b border-border bg-muted">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <GitBranch className="h-8 w-8 text-primary-500" />
-              <span className="text-2xl font-bold text-white">Aexy</span>
+              <span className="text-2xl font-bold text-foreground">Aexy</span>
             </div>
             <nav className="hidden md:flex items-center gap-1 ml-6">
               <Link
                 href="/dashboard"
-                className="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm font-medium transition"
+                className="px-3 py-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg text-sm font-medium transition"
               >
                 Dashboard
               </Link>
               <Link
                 href="/analytics"
-                className="px-3 py-2 text-white bg-slate-700 rounded-lg text-sm font-medium flex items-center gap-2"
+                className="px-3 py-2 text-foreground bg-accent rounded-lg text-sm font-medium flex items-center gap-2"
               >
                 <BarChart3 className="h-4 w-4" />
                 Analytics
               </Link>
               <Link
                 href="/insights"
-                className="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm font-medium transition flex items-center gap-2"
+                className="px-3 py-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg text-sm font-medium transition flex items-center gap-2"
               >
                 <Lightbulb className="h-4 w-4" />
                 Insights
               </Link>
               <Link
                 href="/learning"
-                className="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm font-medium transition flex items-center gap-2"
+                className="px-3 py-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg text-sm font-medium transition flex items-center gap-2"
               >
                 <GraduationCap className="h-4 w-4" />
                 Learning
               </Link>
               <Link
                 href="/hiring"
-                className="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg text-sm font-medium transition flex items-center gap-2"
+                className="px-3 py-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg text-sm font-medium transition flex items-center gap-2"
               >
                 <Users className="h-4 w-4" />
                 Hiring
@@ -187,11 +187,11 @@ export default function AnalyticsPage() {
                   className="rounded-full"
                 />
               )}
-              <span className="text-white">{user?.name || user?.email}</span>
+              <span className="text-foreground">{user?.name || user?.email}</span>
             </div>
             <button
               onClick={logout}
-              className="text-slate-400 hover:text-white transition"
+              className="text-muted-foreground hover:text-foreground transition"
             >
               <LogOut className="h-5 w-5" />
             </button>
@@ -203,15 +203,15 @@ export default function AnalyticsPage() {
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">Team Analytics</h1>
-            <p className="text-slate-400 mt-1">
+            <h1 className="text-3xl font-bold text-foreground">Team Analytics</h1>
+            <p className="text-muted-foreground mt-1">
               Visualize team skills, productivity, and collaboration patterns
             </p>
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={handleRefresh}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+              className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-muted text-foreground rounded-lg transition"
             >
               <RefreshCw className="h-4 w-4" />
               Refresh
@@ -224,11 +224,11 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Developer Count */}
-        <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-8">
-          <div className="flex items-center gap-4 text-sm text-slate-400">
+        <div className="bg-muted rounded-xl p-4 border border-border mb-8">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <Users className="h-5 w-5" />
             <span>
-              Analyzing <span className="text-white font-semibold">{developers.length}</span> developers
+              Analyzing <span className="text-foreground font-semibold">{developers.length}</span> developers
             </span>
           </div>
         </div>
@@ -236,10 +236,10 @@ export default function AnalyticsPage() {
         {/* Analytics Grid */}
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Skill Heatmap */}
-          <div className="lg:col-span-2 bg-slate-800 rounded-xl p-6 border border-slate-700">
+          <div className="lg:col-span-2 bg-muted rounded-xl p-6 border border-border">
             <div className="flex items-center gap-2 mb-6">
               <BarChart3 className="h-5 w-5 text-primary-400" />
-              <h2 className="text-lg font-semibold text-white">
+              <h2 className="text-lg font-semibold text-foreground">
                 Team Skill Distribution
               </h2>
             </div>
@@ -247,10 +247,10 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Productivity Trends */}
-          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+          <div className="bg-muted rounded-xl p-6 border border-border">
             <div className="flex items-center gap-2 mb-6">
               <TrendingUp className="h-5 w-5 text-primary-400" />
-              <h2 className="text-lg font-semibold text-white">
+              <h2 className="text-lg font-semibold text-foreground">
                 Productivity Trends
               </h2>
             </div>
@@ -261,10 +261,10 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Workload Distribution */}
-          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+          <div className="bg-muted rounded-xl p-6 border border-border">
             <div className="flex items-center gap-2 mb-6">
               <Users className="h-5 w-5 text-primary-400" />
-              <h2 className="text-lg font-semibold text-white">
+              <h2 className="text-lg font-semibold text-foreground">
                 Workload Distribution
               </h2>
             </div>
@@ -275,10 +275,10 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Collaboration Network */}
-          <div className="lg:col-span-2 bg-slate-800 rounded-xl p-6 border border-slate-700">
+          <div className="lg:col-span-2 bg-muted rounded-xl p-6 border border-border">
             <div className="flex items-center gap-2 mb-6">
               <Network className="h-5 w-5 text-primary-400" />
-              <h2 className="text-lg font-semibold text-white">
+              <h2 className="text-lg font-semibold text-foreground">
                 Collaboration Network
               </h2>
             </div>

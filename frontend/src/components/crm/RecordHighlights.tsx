@@ -30,16 +30,16 @@ function HighlightCard({ icon, label, value, href, className }: HighlightCardPro
   const content = (
     <div
       className={cn(
-        "bg-slate-800/50 border border-slate-700 rounded-xl p-4 hover:border-slate-600 transition-colors",
+        "bg-muted/50 border border-border rounded-xl p-4 hover:border-border transition-colors",
         href && "cursor-pointer",
         className
       )}
     >
       <div className="flex items-start gap-3">
-        <div className="p-2 bg-slate-700/50 rounded-lg text-slate-400">{icon}</div>
+        <div className="p-2 bg-accent/50 rounded-lg text-muted-foreground">{icon}</div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-slate-500 mb-0.5">{label}</p>
-          <div className="text-sm text-white truncate">{value}</div>
+          <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
+          <div className="text-sm text-foreground truncate">{value}</div>
         </div>
       </div>
     </div>
@@ -102,7 +102,7 @@ function getAttributeIcon(type: string, slug: string) {
 // Format value for display
 function formatValue(value: unknown, attribute: CRMAttribute): React.ReactNode {
   if (value === null || value === undefined || value === "") {
-    return <span className="text-slate-500">Not set</span>;
+    return <span className="text-muted-foreground">Not set</span>;
   }
 
   switch (attribute.attribute_type) {
@@ -237,11 +237,11 @@ export function RecordHighlightsCompact({
 
         return (
           <div key={attr.slug} className="flex items-start gap-3">
-            <div className="text-slate-500 mt-0.5">
+            <div className="text-muted-foreground mt-0.5">
               {getAttributeIcon(attr.attribute_type, attr.slug)}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-slate-500 mb-0.5">{attr.name}</p>
+              <p className="text-xs text-muted-foreground mb-0.5">{attr.name}</p>
               {href ? (
                 <a
                   href={href}
@@ -252,7 +252,7 @@ export function RecordHighlightsCompact({
                   {formattedValue}
                 </a>
               ) : (
-                <div className="text-sm text-white truncate">{formattedValue}</div>
+                <div className="text-sm text-foreground truncate">{formattedValue}</div>
               )}
             </div>
           </div>

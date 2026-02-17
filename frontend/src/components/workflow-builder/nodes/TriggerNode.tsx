@@ -39,7 +39,7 @@ export const TriggerNode = memo(({ data, selected }: NodeProps<TriggerNodeType>)
     if (isRunning) return "border-blue-400 shadow-blue-500/30 animate-pulse";
     if (isSuccess) return "border-emerald-400 shadow-emerald-500/30";
     if (isFailed) return "border-red-500 shadow-red-500/30";
-    if (isSkipped) return "border-slate-500 shadow-slate-500/20 opacity-60";
+    if (isSkipped) return "border-muted-foreground shadow-muted-foreground/20 opacity-60";
     if (data.hasError) return "border-red-500 shadow-red-500/20";
     if (selected) return "border-emerald-400 shadow-emerald-500/20";
     return "border-emerald-500/50";
@@ -52,7 +52,7 @@ export const TriggerNode = memo(({ data, selected }: NodeProps<TriggerNodeType>)
         bg-gradient-to-br from-emerald-500/20 to-emerald-600/10
         border-2 transition-all
         ${getStyles()}
-        ${isHighlighted ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-slate-900" : ""}
+        ${isHighlighted ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-background" : ""}
       `}
     >
       {StatusIndicator}
@@ -66,7 +66,7 @@ export const TriggerNode = memo(({ data, selected }: NodeProps<TriggerNodeType>)
           <div className={`text-[10px] uppercase tracking-wider font-medium ${data.hasError ? "text-red-400/70" : "text-emerald-400/70"}`}>
             Trigger
           </div>
-          <div className="text-white font-medium text-sm">
+          <div className="text-foreground font-medium text-sm">
             {data.label as string}
           </div>
         </div>

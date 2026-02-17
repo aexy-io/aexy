@@ -56,15 +56,15 @@ export function ScheduleStep({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-white mb-2">Schedule</h2>
-        <p className="text-slate-400">
+        <h2 className="text-xl font-semibold text-foreground mb-2">Schedule</h2>
+        <p className="text-muted-foreground">
           Configure when and how often this reminder should occur
         </p>
       </div>
 
       {/* Frequency */}
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-3">
+        <label className="block text-sm font-medium text-foreground mb-3">
           Frequency <span className="text-red-400">*</span>
         </label>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -76,14 +76,14 @@ export function ScheduleStep({
                 "p-3 rounded-lg border text-left transition-all",
                 frequency === freq.value
                   ? "border-blue-500 bg-blue-500/10"
-                  : "border-slate-700 hover:border-slate-600"
+                  : "border-border hover:border-border"
               )}
             >
               <div className="flex items-center gap-2">
-                <RefreshCw className="h-4 w-4 text-slate-400" />
-                <span className="text-sm font-medium text-white">{freq.label}</span>
+                <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">{freq.label}</span>
               </div>
-              <p className="text-xs text-slate-400 mt-1">{freq.description}</p>
+              <p className="text-xs text-muted-foreground mt-1">{freq.description}</p>
             </button>
           ))}
         </div>
@@ -92,7 +92,7 @@ export function ScheduleStep({
       {/* Custom Cron Expression */}
       {frequency === "custom" && (
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">
+          <label className="block text-sm font-medium text-foreground mb-2">
             Cron Expression <span className="text-red-400">*</span>
           </label>
           <input
@@ -100,17 +100,17 @@ export function ScheduleStep({
             value={cronExpression}
             onChange={(e) => setCronExpression(e.target.value)}
             placeholder="e.g., 0 9 * * 1 (Every Monday at 9 AM)"
-            className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 font-mono focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+            className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground font-mono focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
           />
-          <p className="text-xs text-slate-500 mt-2">
+          <p className="text-xs text-muted-foreground mt-2">
             Format: minute hour day-of-month month day-of-week
           </p>
-          <div className="mt-2 p-3 bg-slate-700/50 rounded-lg">
-            <p className="text-xs text-slate-400 font-medium mb-1">Examples:</p>
-            <ul className="text-xs text-slate-500 space-y-1">
-              <li><code className="text-slate-400">0 9 * * 1</code> - Every Monday at 9 AM</li>
-              <li><code className="text-slate-400">0 0 1 * *</code> - First day of every month</li>
-              <li><code className="text-slate-400">0 10 * * 1-5</code> - Weekdays at 10 AM</li>
+          <div className="mt-2 p-3 bg-accent/50 rounded-lg">
+            <p className="text-xs text-muted-foreground font-medium mb-1">Examples:</p>
+            <ul className="text-xs text-muted-foreground space-y-1">
+              <li><code className="text-muted-foreground">0 9 * * 1</code> - Every Monday at 9 AM</li>
+              <li><code className="text-muted-foreground">0 0 1 * *</code> - First day of every month</li>
+              <li><code className="text-muted-foreground">0 10 * * 1-5</code> - Weekdays at 10 AM</li>
             </ul>
           </div>
         </div>
@@ -119,35 +119,35 @@ export function ScheduleStep({
       {/* Start Date */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">
+          <label className="block text-sm font-medium text-foreground mb-2">
             Start Date <span className="text-red-400">*</span>
           </label>
           <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+              className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">
+          <label className="block text-sm font-medium text-foreground mb-2">
             End Date (Optional)
           </label>
           <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               min={startDate}
-              className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+              className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
             />
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Leave blank for no end date
           </p>
         </div>
@@ -155,15 +155,15 @@ export function ScheduleStep({
 
       {/* Timezone */}
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-2">
+        <label className="block text-sm font-medium text-foreground mb-2">
           Timezone
         </label>
         <div className="relative">
-          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <select
             value={timezone}
             onChange={(e) => setTimezone(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none"
+            className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none"
           >
             {TIMEZONES.map((tz) => (
               <option key={tz} value={tz}>

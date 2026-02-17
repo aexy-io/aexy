@@ -42,8 +42,8 @@ function StatusBadge({ status }: { status: string }) {
       label: "Failed",
     },
     pending: {
-      bg: "bg-slate-500/10",
-      text: "text-slate-400",
+      bg: "bg-muted/10",
+      text: "text-muted-foreground",
       icon: <Clock className="h-3 w-3" />,
       label: "Pending",
     },
@@ -86,12 +86,12 @@ function DeveloperRow({ developer }: { developer: DeveloperSyncStatusData }) {
   const failedCount = developer.repositories.filter((r) => r.sync_status === "failed").length;
 
   return (
-    <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+    <div className="bg-muted rounded-xl border border-border overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full px-4 py-3 flex items-center gap-4 hover:bg-slate-700/30 transition text-left"
+        className="w-full px-4 py-3 flex items-center gap-4 hover:bg-accent/30 transition text-left"
       >
-        <span className="text-slate-400">
+        <span className="text-muted-foreground">
           {expanded ? (
             <ChevronDown className="h-4 w-4" />
           ) : (
@@ -99,7 +99,7 @@ function DeveloperRow({ developer }: { developer: DeveloperSyncStatusData }) {
           )}
         </span>
         <div className="flex-1 min-w-0">
-          <span className="text-sm font-medium text-white">
+          <span className="text-sm font-medium text-foreground">
             {developer.developer_name || developer.developer_id.slice(0, 12)}
           </span>
           {!developer.is_workspace_member && (
@@ -107,14 +107,14 @@ function DeveloperRow({ developer }: { developer: DeveloperSyncStatusData }) {
               External
             </span>
           )}
-          <span className="text-xs text-slate-500 ml-2">
+          <span className="text-xs text-muted-foreground ml-2">
             {enabledCount} repos enabled
             {failedCount > 0 && (
               <span className="text-red-400 ml-1">({failedCount} failed)</span>
             )}
           </span>
         </div>
-        <div className="flex items-center gap-4 text-xs text-slate-400 shrink-0">
+        <div className="flex items-center gap-4 text-xs text-muted-foreground shrink-0">
           <span className="inline-flex items-center gap-1">
             <GitCommit className="h-3 w-3" /> {totalCommits.toLocaleString()}
           </span>
@@ -128,52 +128,52 @@ function DeveloperRow({ developer }: { developer: DeveloperSyncStatusData }) {
       </button>
 
       {expanded && developer.repositories.length > 0 && (
-        <div className="border-t border-slate-700 overflow-x-auto">
+        <div className="border-t border-border overflow-x-auto">
           <table className="w-full min-w-[600px]">
             <thead>
-              <tr className="text-left border-b border-slate-700/50">
-                <th className="px-4 py-2 text-xs font-medium text-slate-500 uppercase pl-12">
+              <tr className="text-left border-b border-border/50">
+                <th className="px-4 py-2 text-xs font-medium text-muted-foreground uppercase pl-12">
                   Repository
                 </th>
-                <th className="px-4 py-2 text-xs font-medium text-slate-500 uppercase text-center">
+                <th className="px-4 py-2 text-xs font-medium text-muted-foreground uppercase text-center">
                   Status
                 </th>
-                <th className="px-4 py-2 text-xs font-medium text-slate-500 uppercase text-right">
+                <th className="px-4 py-2 text-xs font-medium text-muted-foreground uppercase text-right">
                   Commits
                 </th>
-                <th className="px-4 py-2 text-xs font-medium text-slate-500 uppercase text-right">
+                <th className="px-4 py-2 text-xs font-medium text-muted-foreground uppercase text-right">
                   PRs
                 </th>
-                <th className="px-4 py-2 text-xs font-medium text-slate-500 uppercase text-right">
+                <th className="px-4 py-2 text-xs font-medium text-muted-foreground uppercase text-right">
                   Reviews
                 </th>
-                <th className="px-4 py-2 text-xs font-medium text-slate-500 uppercase text-right">
+                <th className="px-4 py-2 text-xs font-medium text-muted-foreground uppercase text-right">
                   Last Sync
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-700/30">
+            <tbody className="divide-y divide-border/30">
               {sortedRepos.map((repo) => (
-                <tr key={repo.repository_id} className="hover:bg-slate-700/20 transition">
+                <tr key={repo.repository_id} className="hover:bg-accent/20 transition">
                   <td className="px-4 py-2 pl-12">
-                    <span className="text-sm text-white">{repo.repository_full_name}</span>
+                    <span className="text-sm text-foreground">{repo.repository_full_name}</span>
                     {!repo.is_enabled && (
-                      <span className="text-xs text-slate-500 ml-1">(disabled)</span>
+                      <span className="text-xs text-muted-foreground ml-1">(disabled)</span>
                     )}
                   </td>
                   <td className="px-4 py-2 text-center">
                     <StatusBadge status={repo.sync_status} />
                   </td>
-                  <td className="px-4 py-2 text-right text-sm font-mono text-slate-300">
+                  <td className="px-4 py-2 text-right text-sm font-mono text-foreground">
                     {repo.commits_synced.toLocaleString()}
                   </td>
-                  <td className="px-4 py-2 text-right text-sm font-mono text-slate-300">
+                  <td className="px-4 py-2 text-right text-sm font-mono text-foreground">
                     {repo.prs_synced.toLocaleString()}
                   </td>
-                  <td className="px-4 py-2 text-right text-sm font-mono text-slate-300">
+                  <td className="px-4 py-2 text-right text-sm font-mono text-foreground">
                     {repo.reviews_synced.toLocaleString()}
                   </td>
-                  <td className="px-4 py-2 text-right text-xs text-slate-400">
+                  <td className="px-4 py-2 text-right text-xs text-muted-foreground">
                     {formatDate(repo.last_sync_at)}
                     {repo.sync_error && (
                       <div className="text-red-400 mt-0.5 truncate max-w-[200px]" title={repo.sync_error}>
@@ -189,7 +189,7 @@ function DeveloperRow({ developer }: { developer: DeveloperSyncStatusData }) {
       )}
 
       {expanded && developer.repositories.length === 0 && (
-        <div className="border-t border-slate-700 px-4 py-4 pl-12 text-sm text-slate-500">
+        <div className="border-t border-border px-4 py-4 pl-12 text-sm text-muted-foreground">
           No repositories linked.
         </div>
       )}
@@ -232,23 +232,23 @@ export default function SyncStatusPage() {
         <div className="flex items-center gap-4">
           <Link
             href="/insights"
-            className="text-slate-400 hover:text-white transition"
+            className="text-muted-foreground hover:text-foreground transition"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <RefreshCw className="h-6 w-6 text-indigo-400" />
               Sync Status
             </h1>
-            <p className="text-slate-400 text-sm mt-1">
+            <p className="text-muted-foreground text-sm mt-1">
               Data sync status per developer and repository
             </p>
           </div>
         </div>
         <button
           onClick={() => refetch()}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-slate-800 text-slate-300 rounded-lg border border-slate-700 hover:text-white hover:border-slate-600 transition"
+          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-muted text-foreground rounded-lg border border-border hover:text-foreground hover:border-border transition"
         >
           <RefreshCw className="h-4 w-4" />
           Refresh
@@ -257,7 +257,7 @@ export default function SyncStatusPage() {
 
       {/* Summary */}
       {syncStatus && (
-        <div className="text-sm text-slate-400">
+        <div className="text-sm text-muted-foreground">
           {syncStatus.total_developers} developers
         </div>
       )}
@@ -268,7 +268,7 @@ export default function SyncStatusPage() {
           {Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
-              className="h-14 bg-slate-800 rounded-xl animate-pulse border border-slate-700"
+              className="h-14 bg-muted rounded-xl animate-pulse border border-border"
             />
           ))}
         </div>
@@ -279,9 +279,9 @@ export default function SyncStatusPage() {
           ))}
         </div>
       ) : (
-        <div className="bg-slate-800 rounded-xl p-8 border border-slate-700 text-center">
-          <RefreshCw className="h-12 w-12 text-slate-600 mx-auto mb-3" />
-          <p className="text-slate-400">No developers found in this workspace.</p>
+        <div className="bg-muted rounded-xl p-8 border border-border text-center">
+          <RefreshCw className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground">No developers found in this workspace.</p>
         </div>
       )}
     </div>

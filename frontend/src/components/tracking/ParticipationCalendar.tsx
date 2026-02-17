@@ -83,15 +83,15 @@ export function ParticipationCalendar({
 
       {/* Stats */}
       <div className="mt-4 grid grid-cols-3 gap-4">
-        <div className="bg-slate-900 rounded-lg p-3 text-center">
-          <p className="text-2xl font-bold text-white">{stats.totalStandups}</p>
-          <p className="text-xs text-slate-400">Total Standups</p>
+        <div className="bg-background rounded-lg p-3 text-center">
+          <p className="text-2xl font-bold text-foreground">{stats.totalStandups}</p>
+          <p className="text-xs text-muted-foreground">Total Standups</p>
         </div>
-        <div className="bg-slate-900 rounded-lg p-3 text-center">
-          <p className="text-2xl font-bold text-white">{stats.weekdays}</p>
-          <p className="text-xs text-slate-400">Weekdays</p>
+        <div className="bg-background rounded-lg p-3 text-center">
+          <p className="text-2xl font-bold text-foreground">{stats.weekdays}</p>
+          <p className="text-xs text-muted-foreground">Weekdays</p>
         </div>
-        <div className="bg-slate-900 rounded-lg p-3 text-center">
+        <div className="bg-background rounded-lg p-3 text-center">
           <p className={`text-2xl font-bold ${
             stats.participationRate >= 80
               ? "text-green-400"
@@ -101,7 +101,7 @@ export function ParticipationCalendar({
           }`}>
             {stats.participationRate}%
           </p>
-          <p className="text-xs text-slate-400">Participation Rate</p>
+          <p className="text-xs text-muted-foreground">Participation Rate</p>
         </div>
       </div>
     </div>
@@ -173,13 +173,13 @@ export function StandupStreak({
   }, [standups]);
 
   return (
-    <div className={`bg-slate-800 rounded-xl border border-slate-700 p-6 ${className}`}>
+    <div className={`bg-muted rounded-xl border border-border p-6 ${className}`}>
       <div className="text-center">
-        <div className="text-5xl font-bold text-white mb-2">
+        <div className="text-5xl font-bold text-foreground mb-2">
           {currentStreak}
-          <span className="text-2xl text-slate-400 ml-1">days</span>
+          <span className="text-2xl text-muted-foreground ml-1">days</span>
         </div>
-        <p className="text-slate-400 text-sm">Current Streak</p>
+        <p className="text-muted-foreground text-sm">Current Streak</p>
       </div>
 
       {currentStreak >= 5 && (
@@ -191,8 +191,8 @@ export function StandupStreak({
       )}
 
       {lastStandup && (
-        <div className="mt-4 pt-4 border-t border-slate-700 text-center">
-          <p className="text-xs text-slate-500">
+        <div className="mt-4 pt-4 border-t border-border text-center">
+          <p className="text-xs text-muted-foreground">
             Last standup:{" "}
             {new Date(lastStandup.standup_date).toLocaleDateString("en-US", {
               weekday: "short",

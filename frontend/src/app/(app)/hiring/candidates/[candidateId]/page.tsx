@@ -109,8 +109,8 @@ function StageTimeline({ currentStage }: { currentStage: CandidateStage }) {
               className={cn(
                 "flex items-center justify-center w-8 h-8 rounded-full text-xs font-medium transition",
                 isCompleted ? cn(config.bgColor, "text-white") :
-                isCurrent ? cn(config.bgColor, "text-white ring-2 ring-offset-2 ring-offset-slate-900", `ring-${config.bgColor.replace("bg-", "")}`) :
-                "bg-slate-700 text-slate-400"
+                isCurrent ? cn(config.bgColor, "text-white ring-2 ring-offset-2 ring-offset-background", `ring-${config.bgColor.replace("bg-", "")}`) :
+                "bg-accent text-muted-foreground"
               )}
             >
               {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
@@ -119,7 +119,7 @@ function StageTimeline({ currentStage }: { currentStage: CandidateStage }) {
               <div
                 className={cn(
                   "w-8 h-0.5 mx-1",
-                  isCompleted ? config.bgColor : "bg-slate-700"
+                  isCompleted ? config.bgColor : "bg-accent"
                 )}
               />
             )}
@@ -144,15 +144,15 @@ function ActivityItem({ activity }: { activity: Activity }) {
   return (
     <div className="flex gap-4">
       <div className="flex flex-col items-center">
-        <div className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center">
+        <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
           {getIcon()}
         </div>
-        <div className="w-0.5 flex-1 bg-slate-800 mt-2" />
+        <div className="w-0.5 flex-1 bg-muted mt-2" />
       </div>
       <div className="flex-1 pb-6">
-        <p className="text-sm font-medium text-white">{activity.title}</p>
-        <p className="text-sm text-slate-400 mt-0.5">{activity.description}</p>
-        <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
+        <p className="text-sm font-medium text-foreground">{activity.title}</p>
+        <p className="text-sm text-muted-foreground mt-0.5">{activity.description}</p>
+        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
           <span>{activity.timestamp}</span>
           <span className="flex items-center gap-1">
             <User className="h-3 w-3" />
@@ -180,13 +180,13 @@ export default function CandidateDetailPage() {
 
   if (isLoading || workspacesLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
             <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
           </div>
-          <p className="text-slate-400 text-sm">Loading candidate...</p>
+          <p className="text-muted-foreground text-sm">Loading candidate...</p>
         </div>
       </div>
     );
@@ -207,7 +207,7 @@ export default function CandidateDetailPage() {
         {/* Back Button */}
         <Link
           href="/hiring/candidates"
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white mb-6 transition"
+          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Pipeline
@@ -217,15 +217,15 @@ export default function CandidateDetailPage() {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Header Card */}
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+            <div className="bg-background/50 border border-border rounded-xl p-6">
               <div className="flex items-start justify-between mb-6">
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary-500 to-blue-500 flex items-center justify-center text-white text-xl font-bold">
                     {candidate.name.split(" ").map((n) => n[0]).join("")}
                   </div>
                   <div>
-                    <h1 className="text-2xl font-bold text-white">{candidate.name}</h1>
-                    <p className="text-slate-400">{candidate.role}</p>
+                    <h1 className="text-2xl font-bold text-foreground">{candidate.name}</h1>
+                    <p className="text-muted-foreground">{candidate.role}</p>
                     <div className="flex items-center gap-2 mt-2">
                       <span className={cn("text-xs px-2 py-1 rounded", stageConfig.bgColor + "/20", stageConfig.color)}>
                         {stageConfig.label}
@@ -245,10 +245,10 @@ export default function CandidateDetailPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition">
+                  <button className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition">
                     <Edit className="h-5 w-5" />
                   </button>
-                  <button className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition">
+                  <button className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition">
                     <MoreVertical className="h-5 w-5" />
                   </button>
                 </div>
@@ -256,7 +256,7 @@ export default function CandidateDetailPage() {
 
               {/* Stage Timeline */}
               <div className="mb-6">
-                <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">Pipeline Progress</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Pipeline Progress</p>
                 <StageTimeline currentStage={candidate.stage} />
               </div>
 
@@ -266,11 +266,11 @@ export default function CandidateDetailPage() {
                   <Send className="h-4 w-4" />
                   Send Assessment
                 </button>
-                <button className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                <button className="flex items-center gap-2 bg-muted hover:bg-accent text-foreground px-4 py-2 rounded-lg text-sm font-medium transition">
                   <Calendar className="h-4 w-4" />
                   Schedule Interview
                 </button>
-                <button className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                <button className="flex items-center gap-2 bg-muted hover:bg-accent text-foreground px-4 py-2 rounded-lg text-sm font-medium transition">
                   <Mail className="h-4 w-4" />
                   Send Email
                 </button>
@@ -286,7 +286,7 @@ export default function CandidateDetailPage() {
             </div>
 
             {/* Tabs */}
-            <div className="border-b border-slate-800">
+            <div className="border-b border-border">
               <div className="flex gap-4">
                 {[
                   { id: "overview", label: "Overview" },
@@ -301,7 +301,7 @@ export default function CandidateDetailPage() {
                       "px-4 py-3 text-sm font-medium border-b-2 transition",
                       activeTab === tab.id
                         ? "border-primary-500 text-primary-400"
-                        : "border-transparent text-slate-400 hover:text-white"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
                     )}
                   >
                     {tab.label}
@@ -312,53 +312,53 @@ export default function CandidateDetailPage() {
 
             {/* Tab Content */}
             {activeTab === "overview" && (
-              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Candidate Information</h3>
+              <div className="bg-background/50 border border-border rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-foreground mb-4">Candidate Information</h3>
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <div className="flex items-center gap-3">
-                      <Briefcase className="h-5 w-5 text-slate-400" />
+                      <Briefcase className="h-5 w-5 text-muted-foreground" />
                       <div>
-                        <p className="text-xs text-slate-500">Current Position</p>
-                        <p className="text-sm text-white">{candidate.currentRole} at {candidate.currentCompany}</p>
+                        <p className="text-xs text-muted-foreground">Current Position</p>
+                        <p className="text-sm text-foreground">{candidate.currentRole} at {candidate.currentCompany}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Clock className="h-5 w-5 text-slate-400" />
+                      <Clock className="h-5 w-5 text-muted-foreground" />
                       <div>
-                        <p className="text-xs text-slate-500">Experience</p>
-                        <p className="text-sm text-white">{candidate.experience}</p>
+                        <p className="text-xs text-muted-foreground">Experience</p>
+                        <p className="text-sm text-foreground">{candidate.experience}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <GraduationCap className="h-5 w-5 text-slate-400" />
+                      <GraduationCap className="h-5 w-5 text-muted-foreground" />
                       <div>
-                        <p className="text-xs text-slate-500">Education</p>
-                        <p className="text-sm text-white">{candidate.education}</p>
+                        <p className="text-xs text-muted-foreground">Education</p>
+                        <p className="text-sm text-foreground">{candidate.education}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <MapPin className="h-5 w-5 text-slate-400" />
+                      <MapPin className="h-5 w-5 text-muted-foreground" />
                       <div>
-                        <p className="text-xs text-slate-500">Location</p>
-                        <p className="text-sm text-white">{candidate.location}</p>
+                        <p className="text-xs text-muted-foreground">Location</p>
+                        <p className="text-sm text-foreground">{candidate.location}</p>
                       </div>
                     </div>
                   </div>
                   <div className="space-y-4">
                     <div>
-                      <p className="text-xs text-slate-500 mb-2">Skills</p>
+                      <p className="text-xs text-muted-foreground mb-2">Skills</p>
                       <div className="flex flex-wrap gap-2">
                         {candidate.tags.map((tag) => (
-                          <span key={tag} className="text-xs px-2 py-1 bg-slate-800 text-slate-300 rounded">
+                          <span key={tag} className="text-xs px-2 py-1 bg-muted text-foreground rounded">
                             {tag}
                           </span>
                         ))}
                       </div>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500 mb-2">Notes</p>
-                      <p className="text-sm text-slate-300">{candidate.notes}</p>
+                      <p className="text-xs text-muted-foreground mb-2">Notes</p>
+                      <p className="text-sm text-foreground">{candidate.notes}</p>
                     </div>
                   </div>
                 </div>
@@ -366,9 +366,9 @@ export default function CandidateDetailPage() {
             )}
 
             {activeTab === "activity" && (
-              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+              <div className="bg-background/50 border border-border rounded-xl p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                  <h3 className="text-lg font-semibold text-white">Activity Timeline</h3>
+                  <h3 className="text-lg font-semibold text-foreground">Activity Timeline</h3>
                   <button
                     onClick={() => setShowAddNote(!showAddNote)}
                     className="flex items-center gap-2 text-sm text-primary-400 hover:text-primary-300 transition"
@@ -379,13 +379,13 @@ export default function CandidateDetailPage() {
                 </div>
 
                 {showAddNote && (
-                  <div className="mb-6 p-4 bg-slate-800/50 rounded-lg">
+                  <div className="mb-6 p-4 bg-muted/50 rounded-lg">
                     <textarea
                       value={noteText}
                       onChange={(e) => setNoteText(e.target.value)}
                       placeholder="Add a note about this candidate..."
                       rows={3}
-                      className="w-full bg-slate-800 text-white rounded-lg px-4 py-2 border border-slate-700 focus:border-primary-500 focus:outline-none resize-none mb-3"
+                      className="w-full bg-muted text-foreground rounded-lg px-4 py-2 border border-border focus:border-primary-500 focus:outline-none resize-none mb-3"
                     />
                     <div className="flex justify-end gap-2">
                       <button
@@ -393,7 +393,7 @@ export default function CandidateDetailPage() {
                           setShowAddNote(false);
                           setNoteText("");
                         }}
-                        className="px-3 py-1.5 text-sm text-slate-400 hover:text-white transition"
+                        className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition"
                       >
                         Cancel
                       </button>
@@ -413,41 +413,41 @@ export default function CandidateDetailPage() {
             )}
 
             {activeTab === "assessments" && (
-              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Assessment Results</h3>
+              <div className="bg-background/50 border border-border rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-foreground mb-4">Assessment Results</h3>
                 <div className="space-y-4">
-                  <div className="p-4 bg-slate-800/50 rounded-lg">
+                  <div className="p-4 bg-muted/50 rounded-lg">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
                           <ClipboardCheck className="h-5 w-5 text-green-400" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-white">Frontend Technical Assessment</p>
-                          <p className="text-xs text-slate-400">Completed Jan 15, 2024</p>
+                          <p className="text-sm font-medium text-foreground">Frontend Technical Assessment</p>
+                          <p className="text-xs text-muted-foreground">Completed Jan 15, 2024</p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="text-2xl font-bold text-green-400">85%</p>
-                        <p className="text-xs text-slate-400">Score</p>
+                        <p className="text-xs text-muted-foreground">Score</p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-3 border-t border-slate-700">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-3 border-t border-border">
                       <div>
-                        <p className="text-xs text-slate-500">React</p>
-                        <p className="text-sm font-medium text-white">90%</p>
+                        <p className="text-xs text-muted-foreground">React</p>
+                        <p className="text-sm font-medium text-foreground">90%</p>
                       </div>
                       <div>
-                        <p className="text-xs text-slate-500">TypeScript</p>
-                        <p className="text-sm font-medium text-white">85%</p>
+                        <p className="text-xs text-muted-foreground">TypeScript</p>
+                        <p className="text-sm font-medium text-foreground">85%</p>
                       </div>
                       <div>
-                        <p className="text-xs text-slate-500">System Design</p>
-                        <p className="text-sm font-medium text-white">80%</p>
+                        <p className="text-xs text-muted-foreground">System Design</p>
+                        <p className="text-sm font-medium text-foreground">80%</p>
                       </div>
                       <div>
-                        <p className="text-xs text-slate-500">Problem Solving</p>
-                        <p className="text-sm font-medium text-white">85%</p>
+                        <p className="text-xs text-muted-foreground">Problem Solving</p>
+                        <p className="text-sm font-medium text-foreground">85%</p>
                       </div>
                     </div>
                   </div>
@@ -456,13 +456,13 @@ export default function CandidateDetailPage() {
             )}
 
             {activeTab === "notes" && (
-              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Notes</h3>
+              <div className="bg-background/50 border border-border rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-foreground mb-4">Notes</h3>
                 <div className="space-y-4">
                   {activities.filter((a) => a.type === "note").map((note) => (
-                    <div key={note.id} className="p-4 bg-slate-800/50 rounded-lg">
-                      <p className="text-sm text-slate-300">{note.description}</p>
-                      <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                    <div key={note.id} className="p-4 bg-muted/50 rounded-lg">
+                      <p className="text-sm text-foreground">{note.description}</p>
+                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                         <span>{note.timestamp}</span>
                         <span>by {note.user}</span>
                       </div>
@@ -476,19 +476,19 @@ export default function CandidateDetailPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Contact Info */}
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-white mb-4">Contact Information</h3>
+            <div className="bg-background/50 border border-border rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-foreground mb-4">Contact Information</h3>
               <div className="space-y-3">
-                <a href={`mailto:${candidate.email}`} className="flex items-center gap-3 text-sm text-slate-400 hover:text-primary-400 transition">
+                <a href={`mailto:${candidate.email}`} className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary-400 transition">
                   <Mail className="h-4 w-4" />
                   {candidate.email}
                 </a>
-                <a href={`tel:${candidate.phone}`} className="flex items-center gap-3 text-sm text-slate-400 hover:text-primary-400 transition">
+                <a href={`tel:${candidate.phone}`} className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary-400 transition">
                   <Phone className="h-4 w-4" />
                   {candidate.phone}
                 </a>
                 {candidate.linkedIn && (
-                  <a href={candidate.linkedIn} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-sm text-slate-400 hover:text-primary-400 transition">
+                  <a href={candidate.linkedIn} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary-400 transition">
                     <ExternalLink className="h-4 w-4" />
                     LinkedIn Profile
                   </a>
@@ -497,34 +497,34 @@ export default function CandidateDetailPage() {
             </div>
 
             {/* Documents */}
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-white mb-4">Documents</h3>
+            <div className="bg-background/50 border border-border rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-foreground mb-4">Documents</h3>
               <div className="space-y-2">
-                <button className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-slate-800/50 rounded-lg hover:bg-slate-800 transition">
+                <button className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-muted/50 rounded-lg hover:bg-muted transition">
                   <div className="flex items-center gap-3">
                     <FileText className="h-4 w-4 text-blue-400" />
-                    <span className="text-sm text-white">Resume.pdf</span>
+                    <span className="text-sm text-foreground">Resume.pdf</span>
                   </div>
-                  <Download className="h-4 w-4 text-slate-400" />
+                  <Download className="h-4 w-4 text-muted-foreground" />
                 </button>
               </div>
             </div>
 
             {/* Application Details */}
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-white mb-4">Application Details</h3>
+            <div className="bg-background/50 border border-border rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-foreground mb-4">Application Details</h3>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Applied</span>
-                  <span className="text-white">{candidate.appliedAt}</span>
+                  <span className="text-muted-foreground">Applied</span>
+                  <span className="text-foreground">{candidate.appliedAt}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Source</span>
-                  <span className="text-white">{candidate.source}</span>
+                  <span className="text-muted-foreground">Source</span>
+                  <span className="text-foreground">{candidate.source}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Role</span>
-                  <span className="text-white">{candidate.role}</span>
+                  <span className="text-muted-foreground">Role</span>
+                  <span className="text-foreground">{candidate.role}</span>
                 </div>
               </div>
             </div>

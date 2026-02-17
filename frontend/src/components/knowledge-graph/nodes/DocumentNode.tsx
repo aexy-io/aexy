@@ -35,7 +35,7 @@ export const DocumentNode = memo(({ data, selected }: NodeProps<DocumentNodeType
         transition-all duration-200 cursor-pointer
         ${isSelected
           ? "border-blue-400 bg-blue-500/20 shadow-lg shadow-blue-500/20 scale-110"
-          : "border-blue-500/50 bg-slate-800 hover:border-blue-400 hover:bg-slate-750"
+          : "border-blue-500/50 bg-muted hover:border-blue-400 hover:bg-accent"
         }
       `}
       style={{
@@ -46,12 +46,12 @@ export const DocumentNode = memo(({ data, selected }: NodeProps<DocumentNodeType
       <Handle
         type="target"
         position={Position.Top}
-        className="!w-3 !h-3 !bg-blue-400 !border-2 !border-slate-800"
+        className="!w-3 !h-3 !bg-blue-400 !border-2 !border-border"
       />
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!w-3 !h-3 !bg-blue-400 !border-2 !border-slate-800"
+        className="!w-3 !h-3 !bg-blue-400 !border-2 !border-border"
       />
 
       {/* Node content */}
@@ -67,10 +67,10 @@ export const DocumentNode = memo(({ data, selected }: NodeProps<DocumentNodeType
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-white truncate" title={data.label}>
+          <p className="text-sm font-medium text-foreground truncate" title={data.label}>
             {data.label}
           </p>
-          <p className="text-xs text-slate-400">Document</p>
+          <p className="text-xs text-muted-foreground">Document</p>
         </div>
       </div>
 

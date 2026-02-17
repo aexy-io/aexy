@@ -113,24 +113,24 @@ export function LeaveRequestForm({ isOpen, onClose }: LeaveRequestFormProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="leave-request-title"
-        className="relative w-full max-w-lg mx-4 bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden"
+        className="relative w-full max-w-lg mx-4 bg-background border border-border/50 rounded-2xl shadow-2xl overflow-hidden"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-800">
+        <div className="flex items-center justify-between p-5 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-500/10 rounded-lg">
               <Calendar className="h-5 w-5 text-blue-400" />
             </div>
             <div>
-              <h2 id="leave-request-title" className="text-lg font-semibold text-white">Request Leave</h2>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <h2 id="leave-request-title" className="text-lg font-semibold text-foreground">Request Leave</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
                 Submit a new leave request
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition"
           >
             <X className="h-5 w-5" />
           </button>
@@ -140,16 +140,16 @@ export function LeaveRequestForm({ isOpen, onClose }: LeaveRequestFormProps) {
         <form onSubmit={handleSubmit} className="p-5 space-y-5">
           {/* Leave Type */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-foreground mb-1.5">
               Leave Type
             </label>
             {typesLoading ? (
-              <div className="h-10 bg-slate-800 rounded-lg animate-pulse" />
+              <div className="h-10 bg-muted rounded-lg animate-pulse" />
             ) : (
               <select
                 value={leaveTypeId}
                 onChange={(e) => setLeaveTypeId(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50 transition"
+                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-blue-500/50 transition"
                 required
               >
                 <option value="" disabled>
@@ -169,7 +169,7 @@ export function LeaveRequestForm({ isOpen, onClose }: LeaveRequestFormProps) {
                   className="w-2 h-2 rounded-full"
                   style={{ backgroundColor: selectedType?.color || "#6366f1" }}
                 />
-                <span className="text-slate-400">
+                <span className="text-muted-foreground">
                   <span className="font-medium text-emerald-400">
                     {selectedBalance.available}
                   </span>{" "}
@@ -183,7 +183,7 @@ export function LeaveRequestForm({ isOpen, onClose }: LeaveRequestFormProps) {
           {/* Date Range */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
+              <label className="block text-sm font-medium text-foreground mb-1.5">
                 Start Date
               </label>
               <input
@@ -195,12 +195,12 @@ export function LeaveRequestForm({ isOpen, onClose }: LeaveRequestFormProps) {
                     setEndDate(e.target.value);
                   }
                 }}
-                className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50 transition [color-scheme:dark]"
+                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-blue-500/50 transition [color-scheme:dark]"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
+              <label className="block text-sm font-medium text-foreground mb-1.5">
                 End Date
               </label>
               <input
@@ -209,7 +209,7 @@ export function LeaveRequestForm({ isOpen, onClose }: LeaveRequestFormProps) {
                 onChange={(e) => setEndDate(e.target.value)}
                 min={startDate}
                 disabled={isHalfDay}
-                className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50 transition disabled:opacity-50 disabled:cursor-not-allowed [color-scheme:dark]"
+                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-blue-500/50 transition disabled:opacity-50 disabled:cursor-not-allowed [color-scheme:dark]"
                 required
               />
             </div>
@@ -217,17 +217,17 @@ export function LeaveRequestForm({ isOpen, onClose }: LeaveRequestFormProps) {
 
           {/* Half Day Toggle */}
           {selectedType?.allows_half_day !== false && (
-            <div className="flex items-center justify-between p-3 bg-slate-800/50 border border-slate-700/50 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-muted/50 border border-border/50 rounded-lg">
               <div>
-                <p className="text-sm font-medium text-slate-300">Half Day</p>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-sm font-medium text-foreground">Half Day</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Apply for half a day only
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsHalfDay(!isHalfDay)}
-                className="text-slate-400 hover:text-white transition"
+                className="text-muted-foreground hover:text-foreground transition"
               >
                 {isHalfDay ? (
                   <ToggleRight className="h-8 w-8 text-blue-400" />
@@ -241,7 +241,7 @@ export function LeaveRequestForm({ isOpen, onClose }: LeaveRequestFormProps) {
           {/* Half Day Period */}
           {isHalfDay && (
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
+              <label className="block text-sm font-medium text-foreground mb-1.5">
                 Half Day Period
               </label>
               <div className="flex gap-2">
@@ -251,7 +251,7 @@ export function LeaveRequestForm({ isOpen, onClose }: LeaveRequestFormProps) {
                   className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg border transition ${
                     halfDayPeriod === "first_half"
                       ? "bg-blue-600/20 border-blue-500/30 text-blue-400"
-                      : "bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700"
+                      : "bg-muted border-border text-muted-foreground hover:bg-accent"
                   }`}
                 >
                   First Half
@@ -262,7 +262,7 @@ export function LeaveRequestForm({ isOpen, onClose }: LeaveRequestFormProps) {
                   className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg border transition ${
                     halfDayPeriod === "second_half"
                       ? "bg-blue-600/20 border-blue-500/30 text-blue-400"
-                      : "bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700"
+                      : "bg-muted border-border text-muted-foreground hover:bg-accent"
                   }`}
                 >
                   Second Half
@@ -273,15 +273,15 @@ export function LeaveRequestForm({ isOpen, onClose }: LeaveRequestFormProps) {
 
           {/* Reason */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
-              Reason <span className="text-slate-500 font-normal">(optional)</span>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Reason <span className="text-muted-foreground font-normal">(optional)</span>
             </label>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Briefly describe your reason for leave..."
               rows={3}
-              className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500/50 resize-none transition"
+              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-blue-500/50 resize-none transition"
             />
           </div>
 
@@ -297,7 +297,7 @@ export function LeaveRequestForm({ isOpen, onClose }: LeaveRequestFormProps) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition"
+              className="flex-1 px-4 py-2.5 text-sm font-medium rounded-lg border border-border text-foreground hover:bg-muted transition"
             >
               Cancel
             </button>

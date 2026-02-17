@@ -77,7 +77,7 @@ export function Pagination({
         size="icon"
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="h-9 w-9 bg-slate-700 border-slate-600 text-white hover:bg-slate-600 disabled:opacity-50"
+        className="h-9 w-9 bg-accent border-border text-foreground hover:bg-muted disabled:opacity-50"
         aria-label="Previous page"
       >
         <ChevronLeft className="h-4 w-4" />
@@ -89,7 +89,7 @@ export function Pagination({
           page === "ellipsis" ? (
             <span
               key={`ellipsis-${index}`}
-              className="px-2 text-slate-500"
+              className="px-2 text-muted-foreground"
               aria-hidden="true"
             >
               <MoreHorizontal className="h-4 w-4" />
@@ -104,7 +104,7 @@ export function Pagination({
                 "h-9 min-w-9 px-3",
                 currentPage === page
                   ? "bg-primary-600 text-white hover:bg-primary-700"
-                  : "text-slate-400 hover:bg-slate-700 hover:text-white"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
               )}
               aria-label={`Page ${page}`}
               aria-current={currentPage === page ? "page" : undefined}
@@ -121,7 +121,7 @@ export function Pagination({
         size="icon"
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="h-9 w-9 bg-slate-700 border-slate-600 text-white hover:bg-slate-600 disabled:opacity-50"
+        className="h-9 w-9 bg-accent border-border text-foreground hover:bg-muted disabled:opacity-50"
         aria-label="Next page"
       >
         <ChevronRight className="h-4 w-4" />
@@ -129,7 +129,7 @@ export function Pagination({
 
       {/* Total items display */}
       {showTotalItems && totalItems !== undefined && (
-        <span className="ml-2 text-sm text-slate-500">{totalItems} total</span>
+        <span className="ml-2 text-sm text-muted-foreground">{totalItems} total</span>
       )}
     </div>
   );

@@ -52,12 +52,12 @@ export function TimeLogForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-      <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+    <form onSubmit={handleSubmit} className="bg-muted rounded-xl p-6 border border-border">
+      <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
         <Clock className="h-5 w-5 text-green-400" />
         Log Time
         {taskTitle && (
-          <span className="text-sm font-normal text-slate-400">for {taskTitle}</span>
+          <span className="text-sm font-normal text-muted-foreground">for {taskTitle}</span>
         )}
       </h3>
 
@@ -71,7 +71,7 @@ export function TimeLogForm({
       <div className="space-y-4">
         {/* Duration */}
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">Duration</label>
+          <label className="block text-sm font-medium text-foreground mb-2">Duration</label>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1">
               <input
@@ -81,9 +81,9 @@ export function TimeLogForm({
                 placeholder="0"
                 min="0"
                 max="24"
-                className="w-16 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-center focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-16 px-3 py-2 bg-accent border border-border rounded-lg text-foreground text-center focus:outline-none focus:ring-2 focus:ring-green-500"
               />
-              <span className="text-slate-400 text-sm">hours</span>
+              <span className="text-muted-foreground text-sm">hours</span>
             </div>
             <div className="flex items-center gap-1">
               <input
@@ -93,9 +93,9 @@ export function TimeLogForm({
                 placeholder="0"
                 min="0"
                 max="59"
-                className="w-16 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-center focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-16 px-3 py-2 bg-accent border border-border rounded-lg text-foreground text-center focus:outline-none focus:ring-2 focus:ring-green-500"
               />
-              <span className="text-slate-400 text-sm">minutes</span>
+              <span className="text-muted-foreground text-sm">minutes</span>
             </div>
           </div>
         </div>
@@ -117,7 +117,7 @@ export function TimeLogForm({
                 setHours(String(Math.floor(option.mins / 60)));
                 setMinutes(String(option.mins % 60));
               }}
-              className="px-3 py-1.5 bg-slate-700 text-slate-300 rounded-lg text-sm hover:bg-slate-600 transition"
+              className="px-3 py-1.5 bg-accent text-foreground rounded-lg text-sm hover:bg-muted transition"
             >
               {option.label}
             </button>
@@ -126,25 +126,25 @@ export function TimeLogForm({
 
         {/* Date */}
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">Date</label>
+          <label className="block text-sm font-medium text-foreground mb-2">Date</label>
           <input
             type="date"
             value={entryDate}
             onChange={(e) => setEntryDate(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full px-3 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-green-500"
           />
         </div>
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">
+          <label className="block text-sm font-medium text-foreground mb-2">
             Description (optional)
           </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="What did you work on?"
-            className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+            className="w-full px-4 py-3 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
             rows={2}
           />
         </div>

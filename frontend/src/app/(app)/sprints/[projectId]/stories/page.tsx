@@ -92,7 +92,7 @@ export default function StoriesPage() {
   if (!user) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-slate-400">Please log in to view stories.</p>
+        <p className="text-muted-foreground">Please log in to view stories.</p>
       </div>
     );
   }
@@ -100,22 +100,22 @@ export default function StoriesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <header className="flex-shrink-0 border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm sticky top-0 z-30">
+      <header className="flex-shrink-0 border-b border-border bg-muted/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="max-w-[1800px] mx-auto px-4 py-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href={`/sprints/${projectId}`}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Link>
               <div>
-                <h1 className="text-lg font-semibold text-white flex items-center gap-2">
+                <h1 className="text-lg font-semibold text-foreground flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-blue-400" />
                   User Stories
                 </h1>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   {total} {total === 1 ? "story" : "stories"} in this project
                 </p>
               </div>
@@ -135,13 +135,13 @@ export default function StoriesPage() {
       <div className="flex flex-wrap items-center gap-4">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search stories..."
-            className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           />
         </div>
 
@@ -149,7 +149,7 @@ export default function StoriesPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as StoryStatus | "all")}
-          className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+          className="px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50"
         >
           {STATUS_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -162,7 +162,7 @@ export default function StoriesPage() {
         <select
           value={priorityFilter}
           onChange={(e) => setPriorityFilter(e.target.value as StoryPriority | "all")}
-          className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+          className="px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50"
         >
           {PRIORITY_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -172,16 +172,16 @@ export default function StoriesPage() {
         </select>
 
         {/* View Toggle */}
-        <div className="flex items-center bg-slate-800 border border-slate-700 rounded-lg p-1">
+        <div className="flex items-center bg-muted border border-border rounded-lg p-1">
           <button
             onClick={() => setViewMode("grid")}
-            className={`p-2 rounded ${viewMode === "grid" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"}`}
+            className={`p-2 rounded ${viewMode === "grid" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Grid3X3 className="h-4 w-4" />
           </button>
           <button
             onClick={() => setViewMode("list")}
-            className={`p-2 rounded ${viewMode === "list" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"}`}
+            className={`p-2 rounded ${viewMode === "list" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             <List className="h-4 w-4" />
           </button>
@@ -195,9 +195,9 @@ export default function StoriesPage() {
         </div>
       ) : filteredStories.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 text-center">
-          <BookOpen className="h-12 w-12 text-slate-600 mb-4" />
-          <p className="text-slate-400 mb-2">No stories found</p>
-          <p className="text-slate-500 text-sm">
+          <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
+          <p className="text-muted-foreground mb-2">No stories found</p>
+          <p className="text-muted-foreground text-sm">
             {searchQuery || statusFilter !== "all" || priorityFilter !== "all"
               ? "Try adjusting your filters"
               : "Create your first user story to get started"}
@@ -225,12 +225,12 @@ export default function StoriesPage() {
       {/* Create Story Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-700">
-              <h2 className="text-lg font-semibold text-white">Create User Story</h2>
+          <div className="bg-background border border-border rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-border">
+              <h2 className="text-lg font-semibold text-foreground">Create User Story</h2>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="p-1 text-slate-400 hover:text-white transition-colors"
+                className="p-1 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -250,33 +250,33 @@ export default function StoriesPage() {
       {/* Story Detail Modal */}
       {selectedStory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto m-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-700">
+          <div className="bg-background border border-border rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto m-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-border">
               <div>
-                <span className="text-sm font-mono text-slate-400">{selectedStory.key}</span>
-                <h2 className="text-lg font-semibold text-white">{selectedStory.title}</h2>
+                <span className="text-sm font-mono text-muted-foreground">{selectedStory.key}</span>
+                <h2 className="text-lg font-semibold text-foreground">{selectedStory.title}</h2>
               </div>
               <button
                 onClick={() => setSelectedStory(null)}
-                className="p-1 text-slate-400 hover:text-white transition-colors"
+                className="p-1 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="p-4 space-y-4">
               {/* Story Format */}
-              <div className="bg-slate-800/50 rounded-lg p-4 space-y-2">
-                <p className="text-slate-300">
-                  <span className="text-slate-500">As a</span>{" "}
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                <p className="text-foreground">
+                  <span className="text-muted-foreground">As a</span>{" "}
                   <span className="font-medium">{selectedStory.as_a}</span>
                 </p>
-                <p className="text-slate-300">
-                  <span className="text-slate-500">I want</span>{" "}
+                <p className="text-foreground">
+                  <span className="text-muted-foreground">I want</span>{" "}
                   <span className="font-medium">{selectedStory.i_want}</span>
                 </p>
                 {selectedStory.so_that && (
-                  <p className="text-slate-300">
-                    <span className="text-slate-500">So that</span>{" "}
+                  <p className="text-foreground">
+                    <span className="text-muted-foreground">So that</span>{" "}
                     <span className="font-medium">{selectedStory.so_that}</span>
                   </p>
                 )}
@@ -285,24 +285,24 @@ export default function StoriesPage() {
               {/* Description */}
               {selectedStory.description && (
                 <div>
-                  <h4 className="text-sm font-medium text-white mb-2">Description</h4>
-                  <p className="text-slate-400 text-sm">{selectedStory.description}</p>
+                  <h4 className="text-sm font-medium text-foreground mb-2">Description</h4>
+                  <p className="text-muted-foreground text-sm">{selectedStory.description}</p>
                 </div>
               )}
 
               {/* Acceptance Criteria */}
               {selectedStory.acceptance_criteria.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-medium text-white mb-2">
+                  <h4 className="text-sm font-medium text-foreground mb-2">
                     Acceptance Criteria ({selectedStory.acceptance_criteria.filter(c => c.completed).length}/{selectedStory.acceptance_criteria.length})
                   </h4>
                   <div className="space-y-2">
                     {selectedStory.acceptance_criteria.map((criterion) => (
                       <div key={criterion.id} className="flex items-start gap-2 text-sm">
-                        <span className={criterion.completed ? "text-green-400" : "text-slate-500"}>
+                        <span className={criterion.completed ? "text-green-400" : "text-muted-foreground"}>
                           {criterion.completed ? "✓" : "○"}
                         </span>
-                        <span className={criterion.completed ? "text-slate-500 line-through" : "text-slate-300"}>
+                        <span className={criterion.completed ? "text-muted-foreground line-through" : "text-foreground"}>
                           {criterion.description}
                         </span>
                       </div>
@@ -312,22 +312,22 @@ export default function StoriesPage() {
               )}
 
               {/* Metadata */}
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-700">
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
                 <div>
-                  <span className="text-xs text-slate-500">Status</span>
-                  <p className="text-sm text-white capitalize">{selectedStory.status.replace("_", " ")}</p>
+                  <span className="text-xs text-muted-foreground">Status</span>
+                  <p className="text-sm text-foreground capitalize">{selectedStory.status.replace("_", " ")}</p>
                 </div>
                 <div>
-                  <span className="text-xs text-slate-500">Priority</span>
-                  <p className="text-sm text-white capitalize">{selectedStory.priority}</p>
+                  <span className="text-xs text-muted-foreground">Priority</span>
+                  <p className="text-sm text-foreground capitalize">{selectedStory.priority}</p>
                 </div>
                 <div>
-                  <span className="text-xs text-slate-500">Story Points</span>
-                  <p className="text-sm text-white">{selectedStory.story_points ?? "Not estimated"}</p>
+                  <span className="text-xs text-muted-foreground">Story Points</span>
+                  <p className="text-sm text-foreground">{selectedStory.story_points ?? "Not estimated"}</p>
                 </div>
                 <div>
-                  <span className="text-xs text-slate-500">Created</span>
-                  <p className="text-sm text-white">{new Date(selectedStory.created_at).toLocaleDateString()}</p>
+                  <span className="text-xs text-muted-foreground">Created</span>
+                  <p className="text-sm text-foreground">{new Date(selectedStory.created_at).toLocaleDateString()}</p>
                 </div>
               </div>
             </div>

@@ -81,21 +81,21 @@ export function StandupCalendarView({
   const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
-    <div className={`bg-slate-800 rounded-xl border border-slate-700 p-6 ${className}`}>
+    <div className={`bg-muted rounded-xl border border-border p-6 ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
           <MessageSquare className="h-5 w-5 text-blue-400" />
           Standup Calendar
         </h3>
         <div className="flex items-center gap-2">
           <button
             onClick={() => navigateMonth(-1)}
-            className="p-2 hover:bg-slate-700 rounded-lg transition"
+            className="p-2 hover:bg-accent rounded-lg transition"
           >
-            <ChevronLeft className="h-4 w-4 text-slate-400" />
+            <ChevronLeft className="h-4 w-4 text-muted-foreground" />
           </button>
-          <span className="text-white font-medium min-w-[140px] text-center">
+          <span className="text-foreground font-medium min-w-[140px] text-center">
             {currentMonth.toLocaleDateString("en-US", {
               month: "long",
               year: "numeric",
@@ -103,9 +103,9 @@ export function StandupCalendarView({
           </span>
           <button
             onClick={() => navigateMonth(1)}
-            className="p-2 hover:bg-slate-700 rounded-lg transition"
+            className="p-2 hover:bg-accent rounded-lg transition"
           >
-            <ChevronRight className="h-4 w-4 text-slate-400" />
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </button>
         </div>
       </div>
@@ -115,7 +115,7 @@ export function StandupCalendarView({
         {weekdays.map((day) => (
           <div
             key={day}
-            className="text-center text-xs font-medium text-slate-500 py-2"
+            className="text-center text-xs font-medium text-muted-foreground py-2"
           >
             {day}
           </div>
@@ -136,9 +136,9 @@ export function StandupCalendarView({
               onClick={() => onSelectDate?.(day.date, day.standup)}
               className={`
                 relative aspect-square p-1 rounded-lg transition flex flex-col items-center justify-center
-                ${day.isCurrentMonth ? "text-white" : "text-slate-600"}
+                ${day.isCurrentMonth ? "text-foreground" : "text-muted-foreground"}
                 ${day.isToday ? "ring-2 ring-blue-500" : ""}
-                ${hasStandup ? "bg-green-900/30 hover:bg-green-900/50" : "hover:bg-slate-700"}
+                ${hasStandup ? "bg-green-900/30 hover:bg-green-900/50" : "hover:bg-accent"}
                 ${isMissed ? "bg-red-900/20" : ""}
               `}
             >
@@ -165,16 +165,16 @@ export function StandupCalendarView({
       </div>
 
       {/* Legend */}
-      <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-slate-700">
-        <div className="flex items-center gap-2 text-xs text-slate-400">
+      <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-border">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <div className="w-3 h-3 rounded bg-green-900/30" />
           <span>Submitted</span>
         </div>
-        <div className="flex items-center gap-2 text-xs text-slate-400">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <div className="w-3 h-3 rounded bg-red-900/20" />
           <span>Missed</span>
         </div>
-        <div className="flex items-center gap-2 text-xs text-slate-400">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <div className="w-3 h-3 rounded ring-2 ring-blue-500" />
           <span>Today</span>
         </div>
@@ -214,10 +214,10 @@ export function StandupCalendarWidget({
   const completedCount = last7Days.filter((d) => d.hasStandup).length;
 
   return (
-    <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+    <div className="bg-muted rounded-xl border border-border p-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium text-white">This Week</span>
-        <span className="text-xs text-slate-400">{completedCount}/7 days</span>
+        <span className="text-sm font-medium text-foreground">This Week</span>
+        <span className="text-xs text-muted-foreground">{completedCount}/7 days</span>
       </div>
       <div className="flex gap-1">
         {last7Days.map((day, i) => (
@@ -227,11 +227,11 @@ export function StandupCalendarWidget({
               day.hasStandup
                 ? "bg-green-600"
                 : day.isToday
-                ? "bg-slate-600 ring-1 ring-blue-500"
-                : "bg-slate-700"
+                ? "bg-muted ring-1 ring-blue-500"
+                : "bg-accent"
             }`}
           >
-            <span className="text-[10px] text-white/70">
+            <span className="text-[10px] text-foreground/70">
               {day.date.toLocaleDateString("en-US", { weekday: "narrow" })}
             </span>
           </div>

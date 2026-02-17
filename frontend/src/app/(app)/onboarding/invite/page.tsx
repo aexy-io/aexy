@@ -124,7 +124,7 @@ export default function InviteTeam() {
             className={`h-1.5 rounded-full transition-all ${
               step <= 6
                 ? "w-8 bg-primary-500"
-                : "w-4 bg-slate-700"
+                : "w-4 bg-accent"
             }`}
           />
         ))}
@@ -138,12 +138,12 @@ export default function InviteTeam() {
         {/* Header */}
         <div className="text-center mb-10">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center mx-auto mb-6">
-            <Users className="w-8 h-8 text-white" />
+            <Users className="w-8 h-8 text-foreground" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-3">
+          <h1 className="text-3xl font-bold text-foreground mb-3">
             Invite your team
           </h1>
-          <p className="text-slate-400 max-w-lg mx-auto">
+          <p className="text-muted-foreground max-w-lg mx-auto">
             Collaboration is better together. Invite your teammates to join
             your workspace.
           </p>
@@ -152,12 +152,12 @@ export default function InviteTeam() {
         <div className="max-w-xl mx-auto">
           {/* Email input */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-slate-300 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               Email addresses
             </label>
             <div className="flex gap-2">
               <div className="flex-1 relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   type="email"
                   value={email}
@@ -167,12 +167,12 @@ export default function InviteTeam() {
                   }}
                   onKeyDown={handleKeyDown}
                   placeholder="colleague@company.com"
-                  className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50"
+                  className="w-full pl-10 pr-4 py-3 bg-muted/50 border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary-500/50"
                 />
               </div>
               <button
                 onClick={addEmail}
-                className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors flex items-center gap-2"
+                className="px-4 py-3 bg-accent hover:bg-muted text-foreground rounded-lg transition-colors flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Add
@@ -192,7 +192,7 @@ export default function InviteTeam() {
                   <p className="text-sm text-red-400">{error}</p>
                   <button
                     onClick={() => router.push("/onboarding/complete")}
-                    className="mt-2 text-sm text-slate-400 hover:text-white underline transition-colors"
+                    className="mt-2 text-sm text-muted-foreground hover:text-foreground underline transition-colors"
                   >
                     Continue anyway
                   </button>
@@ -204,7 +204,7 @@ export default function InviteTeam() {
           {/* Email list */}
           {emails.length > 0 && (
             <div className="space-y-2 mb-8">
-              <p className="text-sm text-slate-400 mb-3">
+              <p className="text-sm text-muted-foreground mb-3">
                 {emails.length} invite{emails.length !== 1 ? "s" : ""} ready to send
               </p>
               {emails.map((inviteEmail, index) => (
@@ -216,18 +216,18 @@ export default function InviteTeam() {
                   className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 rounded-lg ${
                     failedEmails.includes(inviteEmail)
                       ? "bg-red-500/10 border border-red-500/30"
-                      : "bg-slate-800/30 border border-slate-700/50"
+                      : "bg-muted/30 border border-border/50"
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center">
-                      <UserPlus className="w-4 h-4 text-slate-400" />
+                    <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center">
+                      <UserPlus className="w-4 h-4 text-muted-foreground" />
                     </div>
-                    <span className="text-slate-300">{inviteEmail}</span>
+                    <span className="text-foreground">{inviteEmail}</span>
                   </div>
                   <button
                     onClick={() => removeEmail(inviteEmail)}
-                    className="p-1 text-slate-500 hover:text-white transition-colors"
+                    className="p-1 text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -238,26 +238,26 @@ export default function InviteTeam() {
 
           {/* Empty state */}
           {emails.length === 0 && (
-            <div className="text-center py-8 bg-slate-800/20 border border-slate-700/30 rounded-xl mb-8">
-              <UserPlus className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-400 mb-1">No invites added yet</p>
-              <p className="text-sm text-slate-500">
+            <div className="text-center py-8 bg-muted/20 border border-border/30 rounded-xl mb-8">
+              <UserPlus className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground mb-1">No invites added yet</p>
+              <p className="text-sm text-muted-foreground">
                 You can always invite teammates later from Settings
               </p>
             </div>
           )}
 
           {/* Tip */}
-          <div className="bg-slate-800/20 border border-slate-700/30 rounded-xl p-4 mb-8">
-            <p className="text-sm text-slate-400">
-              <strong className="text-slate-300">Tip:</strong> You can paste multiple
+          <div className="bg-muted/20 border border-border/30 rounded-xl p-4 mb-8">
+            <p className="text-sm text-muted-foreground">
+              <strong className="text-foreground">Tip:</strong> You can paste multiple
               email addresses separated by commas or spaces.
             </p>
           </div>
         </div>
 
         {/* Navigation */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 border-t border-slate-800 max-w-xl mx-auto">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 border-t border-border max-w-xl mx-auto">
           <button
             onClick={() => {
               if (data.connections.google) {
@@ -268,7 +268,7 @@ export default function InviteTeam() {
                 router.push("/onboarding/connect");
               }
             }}
-            className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-white transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
@@ -277,7 +277,7 @@ export default function InviteTeam() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push("/onboarding/complete")}
-              className="text-slate-400 hover:text-white transition-colors"
+              className="text-muted-foreground hover:text-foreground transition-colors"
             >
               Skip
             </button>

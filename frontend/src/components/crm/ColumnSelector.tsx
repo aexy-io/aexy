@@ -58,7 +58,7 @@ export function ColumnSelector({
             "p-1.5 rounded-lg transition-colors",
             isOpen
               ? "bg-purple-500/20 text-purple-400"
-              : "text-slate-500 hover:text-slate-300 hover:bg-slate-700"
+              : "text-muted-foreground hover:text-foreground hover:bg-accent"
           )}
           title="Add column"
         >
@@ -66,22 +66,22 @@ export function ColumnSelector({
         </button>
 
         {isOpen && (
-          <div className="absolute right-0 top-full mt-1 z-50 w-72 bg-slate-800 border border-slate-700 rounded-lg shadow-xl">
+          <div className="absolute right-0 top-full mt-1 z-50 w-72 bg-muted border border-border rounded-lg shadow-xl">
             {/* Search */}
-            <div className="p-2 border-b border-slate-700">
+            <div className="p-2 border-b border-border">
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search columns..."
-                  className="w-full pl-8 pr-8 py-1.5 text-sm bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  className="w-full pl-8 pr-8 py-1.5 text-sm bg-accent border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-purple-500"
                 />
                 {search && (
                   <button
                     onClick={() => setSearch("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -91,7 +91,7 @@ export function ColumnSelector({
 
             {/* Quick actions */}
             {(onShowAll || onHideAll) && (
-              <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-700">
+              <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
                 {onShowAll && (
                   <button
                     onClick={() => {
@@ -103,7 +103,7 @@ export function ColumnSelector({
                   </button>
                 )}
                 {onShowAll && onHideAll && (
-                  <span className="text-slate-600">•</span>
+                  <span className="text-muted-foreground">•</span>
                 )}
                 {onHideAll && (
                   <button
@@ -121,7 +121,7 @@ export function ColumnSelector({
             {/* Column list */}
             <div className="max-h-64 overflow-y-auto py-1">
               {selectableAttributes.length === 0 ? (
-                <div className="px-3 py-4 text-center text-sm text-slate-400">
+                <div className="px-3 py-4 text-center text-sm text-muted-foreground">
                   {search ? "No columns match your search" : "No columns available"}
                 </div>
               ) : (
@@ -131,19 +131,19 @@ export function ColumnSelector({
                     <button
                       key={attr.id}
                       onClick={() => onToggleColumn(attr.slug)}
-                      className="w-full flex items-center gap-3 px-3 py-2 hover:bg-slate-700 transition-colors"
+                      className="w-full flex items-center gap-3 px-3 py-2 hover:bg-accent transition-colors"
                     >
                       <div
                         className={cn(
                           "w-4 h-4 rounded border flex items-center justify-center transition-colors",
                           isVisible
                             ? "bg-purple-500 border-purple-500"
-                            : "border-slate-600"
+                            : "border-border"
                         )}
                       >
                         {isVisible && <Check className="h-3 w-3 text-white" />}
                       </div>
-                      <span className="flex-1 text-left text-sm text-slate-300 truncate">
+                      <span className="flex-1 text-left text-sm text-foreground truncate">
                         {attr.name}
                       </span>
                       <TypeBadge type={attr.attribute_type} />
@@ -154,7 +154,7 @@ export function ColumnSelector({
             </div>
 
             {/* Footer */}
-            <div className="px-3 py-2 border-t border-slate-700 text-xs text-slate-500">
+            <div className="px-3 py-2 border-t border-border text-xs text-muted-foreground">
               {visibleColumns.length} of {attributes.filter((a) => !a.is_system).length} columns visible
             </div>
           </div>
@@ -204,8 +204,8 @@ export function ColumnVisibilityMenu({
         className={cn(
           "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
           isOpen
-            ? "bg-slate-700 text-white"
-            : "bg-slate-800 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700"
+            ? "bg-accent text-foreground"
+            : "bg-muted border border-border text-foreground hover:text-foreground hover:bg-accent"
         )}
       >
         <Plus className="h-4 w-4" />
@@ -213,28 +213,28 @@ export function ColumnVisibilityMenu({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-1 z-50 w-72 bg-slate-800 border border-slate-700 rounded-lg shadow-xl">
-          <div className="p-2 border-b border-slate-700">
+        <div className="absolute right-0 top-full mt-1 z-50 w-72 bg-muted border border-border rounded-lg shadow-xl">
+          <div className="p-2 border-b border-border">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search columns..."
-                className="w-full pl-8 pr-8 py-1.5 text-sm bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                className="w-full pl-8 pr-8 py-1.5 text-sm bg-accent border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-purple-500"
               />
             </div>
           </div>
 
           {(onShowAll || onHideAll) && (
-            <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-700">
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
               {onShowAll && (
                 <button onClick={onShowAll} className="text-xs text-purple-400 hover:text-purple-300">
                   Show all
                 </button>
               )}
-              {onShowAll && onHideAll && <span className="text-slate-600">•</span>}
+              {onShowAll && onHideAll && <span className="text-muted-foreground">•</span>}
               {onHideAll && (
                 <button onClick={onHideAll} className="text-xs text-purple-400 hover:text-purple-300">
                   Hide all
@@ -250,24 +250,24 @@ export function ColumnVisibilityMenu({
                 <button
                   key={attr.id}
                   onClick={() => onToggleColumn(attr.slug)}
-                  className="w-full flex items-center gap-3 px-3 py-2 hover:bg-slate-700 transition-colors"
+                  className="w-full flex items-center gap-3 px-3 py-2 hover:bg-accent transition-colors"
                 >
                   <div
                     className={cn(
                       "w-4 h-4 rounded border flex items-center justify-center transition-colors",
-                      isVisible ? "bg-purple-500 border-purple-500" : "border-slate-600"
+                      isVisible ? "bg-purple-500 border-purple-500" : "border-border"
                     )}
                   >
                     {isVisible && <Check className="h-3 w-3 text-white" />}
                   </div>
-                  <span className="flex-1 text-left text-sm text-slate-300 truncate">{attr.name}</span>
+                  <span className="flex-1 text-left text-sm text-foreground truncate">{attr.name}</span>
                   <TypeBadge type={attr.attribute_type} />
                 </button>
               );
             })}
           </div>
 
-          <div className="px-3 py-2 border-t border-slate-700 text-xs text-slate-500">
+          <div className="px-3 py-2 border-t border-border text-xs text-muted-foreground">
             {visibleColumns.length} of {attributes.filter((a) => !a.is_system).length} columns visible
           </div>
         </div>

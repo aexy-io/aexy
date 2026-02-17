@@ -28,14 +28,14 @@ export function SkillHeatmap({ data, isLoading }: SkillHeatmapProps) {
   if (isLoading) {
     return (
       <div className="animate-pulse">
-        <div className="h-64 bg-slate-700 rounded-lg" />
+        <div className="h-64 bg-accent rounded-lg" />
       </div>
     );
   }
 
   if (!data || skills.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-slate-400">
+      <div className="flex items-center justify-center h-64 text-muted-foreground">
         No skill data available
       </div>
     );
@@ -47,7 +47,7 @@ export function SkillHeatmap({ data, isLoading }: SkillHeatmapProps) {
     if (value >= 40) return "bg-yellow-400";
     if (value >= 20) return "bg-orange-400";
     if (value > 0) return "bg-red-400";
-    return "bg-slate-700";
+    return "bg-accent";
   };
 
   return (
@@ -55,13 +55,13 @@ export function SkillHeatmap({ data, isLoading }: SkillHeatmapProps) {
       <table className="w-full text-sm">
         <thead>
           <tr>
-            <th className="sticky left-0 bg-slate-800 px-3 py-2 text-left text-slate-400 font-medium">
+            <th className="sticky left-0 bg-muted px-3 py-2 text-left text-muted-foreground font-medium">
               Developer
             </th>
             {skills.map((skill) => (
               <th
                 key={skill}
-                className="px-2 py-2 text-center text-slate-400 font-medium whitespace-nowrap"
+                className="px-2 py-2 text-center text-muted-foreground font-medium whitespace-nowrap"
                 style={{ writingMode: "vertical-rl", maxWidth: "2rem" }}
               >
                 {skill}
@@ -75,8 +75,8 @@ export function SkillHeatmap({ data, isLoading }: SkillHeatmapProps) {
               dev.skills.map((s) => [s.skill, s.value])
             );
             return (
-              <tr key={dev.developer_id} className="border-t border-slate-700">
-                <td className="sticky left-0 bg-slate-800 px-3 py-2 text-white font-medium whitespace-nowrap">
+              <tr key={dev.developer_id} className="border-t border-border">
+                <td className="sticky left-0 bg-muted px-3 py-2 text-foreground font-medium whitespace-nowrap">
                   {dev.developer_name}
                 </td>
                 {skills.map((skill) => {
@@ -85,7 +85,7 @@ export function SkillHeatmap({ data, isLoading }: SkillHeatmapProps) {
                     <td key={skill} className="px-1 py-1">
                       <div
                         className={`w-8 h-8 rounded ${getColorClass(value)} flex items-center justify-center text-xs font-medium ${
-                          value > 50 ? "text-white" : "text-slate-800"
+                          value > 50 ? "text-foreground" : "text-foreground"
                         }`}
                         title={`${dev.developer_name}: ${skill} - ${value}%`}
                       >
@@ -101,7 +101,7 @@ export function SkillHeatmap({ data, isLoading }: SkillHeatmapProps) {
       </table>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 mt-4 text-xs text-slate-400">
+      <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
         <span>Proficiency:</span>
         <div className="flex items-center gap-1">
           <div className="w-4 h-4 rounded bg-red-400" />

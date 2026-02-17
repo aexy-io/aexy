@@ -16,8 +16,8 @@ const statusConfig: Record<
   pending: { label: "Pending", className: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
   approved: { label: "Approved", className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
   rejected: { label: "Rejected", className: "bg-red-500/10 text-red-400 border-red-500/20" },
-  cancelled: { label: "Cancelled", className: "bg-slate-500/10 text-slate-400 border-slate-500/20" },
-  withdrawn: { label: "Withdrawn", className: "bg-slate-500/10 text-slate-400 border-slate-500/20" },
+  cancelled: { label: "Cancelled", className: "bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20" },
+  withdrawn: { label: "Withdrawn", className: "bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20" },
 };
 
 function formatDate(dateStr: string): string {
@@ -55,7 +55,7 @@ export function LeaveRequestCard({ request }: LeaveRequestCardProps) {
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+    <div className="bg-background border border-border rounded-xl p-5">
       {/* Top row: leave type + status */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -63,7 +63,7 @@ export function LeaveRequestCard({ request }: LeaveRequestCardProps) {
             className="w-2.5 h-2.5 rounded-full flex-shrink-0"
             style={{ backgroundColor: leaveType?.color || "#6366f1" }}
           />
-          <h3 className="text-sm font-semibold text-white truncate">
+          <h3 className="text-sm font-semibold text-foreground truncate">
             {leaveType?.name || "Leave"}
           </h3>
         </div>
@@ -75,8 +75,8 @@ export function LeaveRequestCard({ request }: LeaveRequestCardProps) {
       </div>
 
       {/* Dates */}
-      <div className="flex items-center gap-2 mt-3 text-sm text-slate-300">
-        <Calendar className="h-4 w-4 text-slate-500 flex-shrink-0" />
+      <div className="flex items-center gap-2 mt-3 text-sm text-foreground">
+        <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
         <span>
           {isSingleDay
             ? formatDate(request.start_date)
@@ -85,12 +85,12 @@ export function LeaveRequestCard({ request }: LeaveRequestCardProps) {
       </div>
 
       {/* Days + half-day info */}
-      <div className="flex items-center gap-2 mt-1.5 text-sm text-slate-400">
-        <Clock className="h-4 w-4 text-slate-500 flex-shrink-0" />
+      <div className="flex items-center gap-2 mt-1.5 text-sm text-muted-foreground">
+        <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
         <span>
           {request.total_days} {request.total_days === 1 ? "day" : "days"}
           {request.is_half_day && (
-            <span className="ml-1 text-slate-500">
+            <span className="ml-1 text-muted-foreground">
               ({request.half_day_period === "first_half" ? "First half" : "Second half"})
             </span>
           )}
@@ -99,7 +99,7 @@ export function LeaveRequestCard({ request }: LeaveRequestCardProps) {
 
       {/* Reason */}
       {request.reason && (
-        <p className="mt-3 text-sm text-slate-400 bg-slate-800/50 rounded-lg px-3 py-2">
+        <p className="mt-3 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
           {request.reason}
         </p>
       )}
@@ -114,12 +114,12 @@ export function LeaveRequestCard({ request }: LeaveRequestCardProps) {
 
       {/* Actions */}
       {(request.status === "pending" || request.status === "approved") && (
-        <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-800">
+        <div className="flex items-center gap-2 mt-4 pt-3 border-t border-border">
           {request.status === "pending" && (
             <button
               onClick={handleWithdraw}
               disabled={withdraw.isPending}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white transition disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-foreground hover:bg-muted hover:text-foreground transition disabled:opacity-50"
             >
               <Undo2 className="h-3.5 w-3.5" />
               {confirming === "withdraw" ? "Confirm Withdraw?" : "Withdraw"}
@@ -138,7 +138,7 @@ export function LeaveRequestCard({ request }: LeaveRequestCardProps) {
           {confirming && (
             <button
               onClick={() => setConfirming(null)}
-              className="text-xs text-slate-500 hover:text-slate-300 transition"
+              className="text-xs text-muted-foreground hover:text-foreground transition"
             >
               Never mind
             </button>

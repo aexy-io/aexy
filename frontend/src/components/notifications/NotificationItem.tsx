@@ -74,7 +74,7 @@ export function NotificationItem({
       onClick={handleClick}
       className={`group relative flex items-start gap-3 p-3 cursor-pointer transition-colors ${
         notification.is_read
-          ? "bg-transparent hover:bg-slate-800/50"
+          ? "bg-transparent hover:bg-muted/50"
           : "bg-primary-500/5 hover:bg-primary-500/10"
       }`}
     >
@@ -84,17 +84,17 @@ export function NotificationItem({
       )}
 
       {/* Icon */}
-      <div className={`flex-shrink-0 w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center ${colorClass}`}>
+      <div className={`flex-shrink-0 w-8 h-8 rounded-lg bg-muted flex items-center justify-center ${colorClass}`}>
         <Icon className="h-4 w-4" />
       </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium ${notification.is_read ? "text-slate-300" : "text-white"}`}>
+        <p className={`text-sm font-medium ${notification.is_read ? "text-foreground" : "text-foreground"}`}>
           {notification.title}
         </p>
-        <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">{notification.body}</p>
-        <p className="text-xs text-slate-500 mt-1">
+        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{notification.body}</p>
+        <p className="text-xs text-muted-foreground mt-1">
           {formatNotificationTime(notification.created_at)}
         </p>
       </div>
@@ -102,10 +102,10 @@ export function NotificationItem({
       {/* Delete button */}
       <button
         onClick={handleDelete}
-        className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-slate-700 transition-all"
+        className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-accent transition-all"
         title="Delete notification"
       >
-        <X className="h-3.5 w-3.5 text-slate-500 hover:text-slate-300" />
+        <X className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
       </button>
     </div>
   );

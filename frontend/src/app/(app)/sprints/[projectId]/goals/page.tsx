@@ -265,7 +265,7 @@ export default function GoalsPage() {
   if (!user) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-slate-400">Please log in to view goals.</p>
+        <p className="text-muted-foreground">Please log in to view goals.</p>
       </div>
     );
   }
@@ -273,22 +273,22 @@ export default function GoalsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <header className="flex-shrink-0 border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm sticky top-0 z-30 -mx-4 -mt-2 mb-6 sm:-mx-6 lg:-mx-8">
+      <header className="flex-shrink-0 border-b border-border bg-muted/50 backdrop-blur-sm sticky top-0 z-30 -mx-4 -mt-2 mb-6 sm:-mx-6 lg:-mx-8">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href={`/sprints/${projectId}`}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Link>
               <div>
-                <h1 className="text-lg font-semibold text-white flex items-center gap-2">
+                <h1 className="text-lg font-semibold text-foreground flex items-center gap-2">
                   <Target className="h-5 w-5 text-purple-400" />
                   Goals & OKRs
                 </h1>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   {total} {total === 1 ? "goal" : "goals"} in workspace
                 </p>
               </div>
@@ -306,25 +306,25 @@ export default function GoalsPage() {
 
       {/* Dashboard Summary */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4">
-          <div className="text-2xl font-bold text-white">{summary.total_objectives}</div>
-          <div className="text-sm text-slate-400">Objectives</div>
+        <div className="bg-muted/50 border border-border/50 rounded-lg p-4">
+          <div className="text-2xl font-bold text-foreground">{summary.total_objectives}</div>
+          <div className="text-sm text-muted-foreground">Objectives</div>
         </div>
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4">
+        <div className="bg-muted/50 border border-border/50 rounded-lg p-4">
           <div className="text-2xl font-bold text-green-400">{summary.on_track}</div>
-          <div className="text-sm text-slate-400">On Track</div>
+          <div className="text-sm text-muted-foreground">On Track</div>
         </div>
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4">
+        <div className="bg-muted/50 border border-border/50 rounded-lg p-4">
           <div className="text-2xl font-bold text-amber-400">{summary.at_risk}</div>
-          <div className="text-sm text-slate-400">At Risk</div>
+          <div className="text-sm text-muted-foreground">At Risk</div>
         </div>
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4">
+        <div className="bg-muted/50 border border-border/50 rounded-lg p-4">
           <div className="text-2xl font-bold text-red-400">{summary.behind}</div>
-          <div className="text-sm text-slate-400">Behind</div>
+          <div className="text-sm text-muted-foreground">Behind</div>
         </div>
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4">
+        <div className="bg-muted/50 border border-border/50 rounded-lg p-4">
           <div className="text-2xl font-bold text-blue-400">{summary.average_progress.toFixed(0)}%</div>
-          <div className="text-sm text-slate-400">Avg Progress</div>
+          <div className="text-sm text-muted-foreground">Avg Progress</div>
         </div>
       </div>
 
@@ -332,13 +332,13 @@ export default function GoalsPage() {
       <div className="flex flex-wrap items-center gap-4">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search goals..."
-            className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+            className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50"
           />
         </div>
 
@@ -346,7 +346,7 @@ export default function GoalsPage() {
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value as OKRGoalType | "all")}
-          className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+          className="px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50"
         >
           {TYPE_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -359,7 +359,7 @@ export default function GoalsPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as OKRGoalStatus | "all")}
-          className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+          className="px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50"
         >
           {STATUS_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -372,7 +372,7 @@ export default function GoalsPage() {
         <select
           value={periodFilter}
           onChange={(e) => setPeriodFilter(e.target.value as OKRPeriodType | "all")}
-          className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+          className="px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50"
         >
           {PERIOD_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -389,9 +389,9 @@ export default function GoalsPage() {
         </div>
       ) : filteredGoals.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 text-center">
-          <Target className="h-12 w-12 text-slate-600 mb-4" />
-          <p className="text-slate-400 mb-2">No goals found</p>
-          <p className="text-slate-500 text-sm">
+          <Target className="h-12 w-12 text-muted-foreground mb-4" />
+          <p className="text-muted-foreground mb-2">No goals found</p>
+          <p className="text-muted-foreground text-sm">
             {searchQuery || statusFilter !== "all" || typeFilter !== "all"
               ? "Try adjusting your filters"
               : "Create your first objective to get started"}
@@ -421,14 +421,14 @@ export default function GoalsPage() {
       {/* Create/Edit Goal Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto m-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-700">
-              <h2 className="text-lg font-semibold text-white">
+          <div className="bg-background border border-border rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto m-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-border">
+              <h2 className="text-lg font-semibold text-foreground">
                 {editingGoal ? "Edit Goal" : "Create Goal"}
               </h2>
               <button
                 onClick={handleCloseModal}
-                className="p-1 text-slate-400 hover:text-white transition-colors"
+                className="p-1 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -443,13 +443,13 @@ export default function GoalsPage() {
 
               {!editingGoal && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Goal Type *
                   </label>
                   <select
                     value={formData.goal_type}
                     onChange={(e) => setFormData({ ...formData, goal_type: e.target.value as OKRGoalType })}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50"
                   >
                     <option value="objective">Objective</option>
                     <option value="key_result">Key Result</option>
@@ -460,13 +460,13 @@ export default function GoalsPage() {
 
               {!editingGoal && formData.goal_type === "key_result" && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Parent Objective
                   </label>
                   <select
                     value={formData.parent_goal_id || ""}
                     onChange={(e) => setFormData({ ...formData, parent_goal_id: e.target.value || undefined })}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50"
                   >
                     <option value="">Select an objective...</option>
                     {objectives.map((obj) => (
@@ -479,7 +479,7 @@ export default function GoalsPage() {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Title *
                 </label>
                 <input
@@ -487,13 +487,13 @@ export default function GoalsPage() {
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder={formData.goal_type === "objective" ? "e.g., Increase customer retention" : "e.g., Achieve 90% NPS score"}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Description
                 </label>
                 <textarea
@@ -501,24 +501,24 @@ export default function GoalsPage() {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Describe this goal..."
                   rows={3}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Target Value
                   </label>
                   <input
                     type="number"
                     value={formData.target_value}
                     onChange={(e) => setFormData({ ...formData, target_value: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Unit
                   </label>
                   <input
@@ -526,13 +526,13 @@ export default function GoalsPage() {
                     value={formData.unit}
                     onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
                     placeholder="%, $, users, etc."
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Period *
                 </label>
                 <select
@@ -552,7 +552,7 @@ export default function GoalsPage() {
                       end_date: dates.end,
                     });
                   }}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50"
                 >
                   <option value="quarter">Quarterly</option>
                   <option value="year">Yearly</option>
@@ -562,26 +562,26 @@ export default function GoalsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Start Date *
                   </label>
                   <input
                     type="date"
                     value={formData.start_date}
                     onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     End Date *
                   </label>
                   <input
                     type="date"
                     value={formData.end_date}
                     onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50"
                     required
                   />
                 </div>
@@ -590,7 +590,7 @@ export default function GoalsPage() {
               {/* Comment field - only show when editing */}
               {editingGoal && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Comment (optional)
                   </label>
                   <textarea
@@ -598,9 +598,9 @@ export default function GoalsPage() {
                     onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
                     placeholder="Add a note about this change..."
                     rows={2}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none"
                   />
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     This comment will be added to the goal&apos;s timeline
                   </p>
                 </div>
@@ -610,7 +610,7 @@ export default function GoalsPage() {
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+                  className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Cancel
                 </button>
@@ -682,32 +682,32 @@ function GoalDetailModal({ goal, workspaceId, onClose }: GoalDetailModalProps) {
       case "at_risk": return "text-amber-400";
       case "behind": return "text-red-400";
       case "achieved": return "text-green-400";
-      default: return "text-slate-400";
+      default: return "text-muted-foreground";
     }
   };
 
   const getTrendIcon = () => {
     if (currentGoal.progress_percentage >= 70) return <TrendingUp className="h-5 w-5 text-green-400" />;
     if (currentGoal.progress_percentage <= 30) return <TrendingDown className="h-5 w-5 text-red-400" />;
-    return <Minus className="h-5 w-5 text-slate-400" />;
+    return <Minus className="h-5 w-5 text-muted-foreground" />;
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto m-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-700">
+      <div className="bg-background border border-border rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto m-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-border">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-mono text-slate-400">{currentGoal.key}</span>
+              <span className="text-sm font-mono text-muted-foreground">{currentGoal.key}</span>
               <span className={`text-xs px-2 py-0.5 rounded capitalize ${getStatusColor(currentGoal.status)}`}>
                 {currentGoal.status.replace("_", " ")}
               </span>
             </div>
-            <h2 className="text-lg font-semibold text-white">{currentGoal.title}</h2>
+            <h2 className="text-lg font-semibold text-foreground">{currentGoal.title}</h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-white transition-colors"
+            className="p-1 text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -715,17 +715,17 @@ function GoalDetailModal({ goal, workspaceId, onClose }: GoalDetailModalProps) {
 
         <div className="p-4 space-y-6">
           {/* Progress Section */}
-          <div className="bg-slate-800/50 rounded-lg p-4">
+          <div className="bg-muted/50 rounded-lg p-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
-              <span className="text-sm font-medium text-white">Progress</span>
+              <span className="text-sm font-medium text-foreground">Progress</span>
               <div className="flex items-center gap-2">
                 {getTrendIcon()}
-                <span className="text-xl font-bold text-white">
+                <span className="text-xl font-bold text-foreground">
                   {currentGoal.progress_percentage.toFixed(0)}%
                 </span>
               </div>
             </div>
-            <div className="h-3 bg-slate-700 rounded-full overflow-hidden mb-3">
+            <div className="h-3 bg-accent rounded-full overflow-hidden mb-3">
               <div
                 className={`h-full transition-all duration-300 ${currentGoal.progress_percentage >= 100
                     ? "bg-green-500"
@@ -739,10 +739,10 @@ function GoalDetailModal({ goal, workspaceId, onClose }: GoalDetailModalProps) {
               />
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-400">
+              <span className="text-muted-foreground">
                 Current: {currentGoal.current_value} {currentGoal.unit || ""}
               </span>
-              <span className="text-slate-400">
+              <span className="text-muted-foreground">
                 Target: {currentGoal.target_value} {currentGoal.unit || ""}
               </span>
             </div>
@@ -761,7 +761,7 @@ function GoalDetailModal({ goal, workspaceId, onClose }: GoalDetailModalProps) {
                   type="number"
                   value={newProgress}
                   onChange={(e) => setNewProgress(parseFloat(e.target.value) || 0)}
-                  className="flex-1 px-3 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  className="flex-1 px-3 py-1.5 bg-accent border border-border rounded text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                 />
                 <button
                   onClick={handleUpdateProgress}
@@ -772,7 +772,7 @@ function GoalDetailModal({ goal, workspaceId, onClose }: GoalDetailModalProps) {
                 </button>
                 <button
                   onClick={() => setShowProgressForm(false)}
-                  className="px-3 py-1.5 text-slate-400 hover:text-white text-sm"
+                  className="px-3 py-1.5 text-muted-foreground hover:text-foreground text-sm"
                 >
                   Cancel
                 </button>
@@ -783,15 +783,15 @@ function GoalDetailModal({ goal, workspaceId, onClose }: GoalDetailModalProps) {
           {/* Description */}
           {currentGoal.description && (
             <div>
-              <h4 className="text-sm font-medium text-white mb-2">Description</h4>
-              <p className="text-slate-400 text-sm">{currentGoal.description}</p>
+              <h4 className="text-sm font-medium text-foreground mb-2">Description</h4>
+              <p className="text-muted-foreground text-sm">{currentGoal.description}</p>
             </div>
           )}
 
           {/* Key Results */}
           {currentGoal.goal_type === "objective" && keyResults.length > 0 && (
             <div>
-              <h4 className="text-sm font-medium text-white mb-3">
+              <h4 className="text-sm font-medium text-foreground mb-3">
                 Key Results ({keyResults.length})
               </h4>
               <div className="space-y-3">
@@ -807,26 +807,26 @@ function GoalDetailModal({ goal, workspaceId, onClose }: GoalDetailModalProps) {
 
           {/* Period and Dates */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-slate-800/50 rounded-lg p-3">
-              <div className="text-xs text-slate-500 uppercase mb-1">Period</div>
-              <p className="text-white capitalize">{currentGoal.period_type || "Not set"}</p>
+            <div className="bg-muted/50 rounded-lg p-3">
+              <div className="text-xs text-muted-foreground uppercase mb-1">Period</div>
+              <p className="text-foreground capitalize">{currentGoal.period_type || "Not set"}</p>
             </div>
-            <div className="bg-slate-800/50 rounded-lg p-3">
-              <div className="text-xs text-slate-500 uppercase mb-1">Start</div>
-              <p className="text-white text-sm">{formatDate(currentGoal.period_start)}</p>
+            <div className="bg-muted/50 rounded-lg p-3">
+              <div className="text-xs text-muted-foreground uppercase mb-1">Start</div>
+              <p className="text-foreground text-sm">{formatDate(currentGoal.period_start)}</p>
             </div>
-            <div className="bg-slate-800/50 rounded-lg p-3">
-              <div className="text-xs text-slate-500 uppercase mb-1">End</div>
-              <p className="text-white text-sm">{formatDate(currentGoal.period_end)}</p>
+            <div className="bg-muted/50 rounded-lg p-3">
+              <div className="text-xs text-muted-foreground uppercase mb-1">End</div>
+              <p className="text-foreground text-sm">{formatDate(currentGoal.period_end)}</p>
             </div>
           </div>
 
           {/* Confidence */}
           {currentGoal.confidence_level > 0 && (
-            <div className="bg-slate-800/50 rounded-lg p-4">
+            <div className="bg-muted/50 rounded-lg p-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
-                <span className="text-sm font-medium text-white">Confidence Level</span>
-                <span className="text-white font-bold">{currentGoal.confidence_level}/10</span>
+                <span className="text-sm font-medium text-foreground">Confidence Level</span>
+                <span className="text-foreground font-bold">{currentGoal.confidence_level}/10</span>
               </div>
               <div className="flex gap-1">
                 {Array.from({ length: 10 }).map((_, i) => (
@@ -838,7 +838,7 @@ function GoalDetailModal({ goal, workspaceId, onClose }: GoalDetailModalProps) {
                           : currentGoal.confidence_level >= 4
                             ? "bg-amber-500"
                             : "bg-red-500"
-                        : "bg-slate-700"
+                        : "bg-accent"
                       }`}
                   />
                 ))}
@@ -847,21 +847,21 @@ function GoalDetailModal({ goal, workspaceId, onClose }: GoalDetailModalProps) {
           )}
 
           {/* Metadata */}
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-700">
+          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
             <div>
-              <span className="text-xs text-slate-500">Created</span>
-              <p className="text-sm text-white">{formatDate(currentGoal.created_at)}</p>
+              <span className="text-xs text-muted-foreground">Created</span>
+              <p className="text-sm text-foreground">{formatDate(currentGoal.created_at)}</p>
             </div>
             <div>
-              <span className="text-xs text-slate-500">Last Updated</span>
-              <p className="text-sm text-white">{formatDate(currentGoal.updated_at)}</p>
+              <span className="text-xs text-muted-foreground">Last Updated</span>
+              <p className="text-sm text-foreground">{formatDate(currentGoal.updated_at)}</p>
             </div>
           </div>
 
           {/* Timeline / Activity */}
           {workspaceId && (
-            <div className="pt-4 border-t border-slate-700">
-              <h4 className="text-sm font-medium text-white mb-4">Activity Timeline</h4>
+            <div className="pt-4 border-t border-border">
+              <h4 className="text-sm font-medium text-foreground mb-4">Activity Timeline</h4>
               <EntityTimeline
                 workspaceId={workspaceId}
                 entityType="goal"

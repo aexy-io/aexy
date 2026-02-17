@@ -81,13 +81,13 @@ export default function NewReviewCyclePage() {
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
             <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
           </div>
-          <p className="text-slate-400 text-sm">Loading...</p>
+          <p className="text-muted-foreground text-sm">Loading...</p>
         </div>
       </div>
     );
@@ -99,14 +99,14 @@ export default function NewReviewCyclePage() {
 
   if (!hasWorkspaces || !currentWorkspaceId) {
     return (
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen bg-background">
 <main className="max-w-7xl mx-auto px-4 py-8">
           <div className="text-center py-16">
-            <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Calendar className="w-10 h-10 text-slate-500" />
+            <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <Calendar className="w-10 h-10 text-muted-foreground" />
             </div>
-            <h2 className="text-xl font-semibold text-white mb-2">No Workspace Selected</h2>
-            <p className="text-slate-400 mb-6">
+            <h2 className="text-xl font-semibold text-foreground mb-2">No Workspace Selected</h2>
+            <p className="text-muted-foreground mb-6">
               Please create or select a workspace first.
             </p>
             <Link
@@ -123,12 +123,12 @@ export default function NewReviewCyclePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
 <main className="max-w-3xl mx-auto px-4 py-8">
         {/* Back Link */}
         <Link
           href="/reviews/cycles"
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white mb-6 transition"
+          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Cycles
@@ -140,8 +140,8 @@ export default function NewReviewCyclePage() {
             <Calendar className="h-7 w-7 text-purple-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Create Review Cycle</h1>
-            <p className="text-slate-400 text-sm">
+            <h1 className="text-2xl font-bold text-foreground">Create Review Cycle</h1>
+            <p className="text-muted-foreground text-sm">
               Set up a new performance review cycle for your team
             </p>
           </div>
@@ -150,11 +150,11 @@ export default function NewReviewCyclePage() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Basic Info */}
-          <div className="bg-slate-900/50 rounded-xl border border-slate-800 p-6">
-            <h2 className="text-lg font-semibold text-white mb-4">Basic Information</h2>
+          <div className="bg-background/50 rounded-xl border border-border p-6">
+            <h2 className="text-lg font-semibold text-foreground mb-4">Basic Information</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                <label className="block text-sm font-medium text-foreground mb-1.5">
                   Cycle Name *
                 </label>
                 <input
@@ -163,18 +163,18 @@ export default function NewReviewCyclePage() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g., Q1 2024 Performance Review"
                   required
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                <label className="block text-sm font-medium text-foreground mb-1.5">
                   Cycle Type
                 </label>
                 <select
                   value={cycleType}
                   onChange={(e) => setCycleType(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="annual">Annual</option>
                   <option value="semi_annual">Semi-Annual</option>
@@ -185,7 +185,7 @@ export default function NewReviewCyclePage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                  <label className="block text-sm font-medium text-foreground mb-1.5">
                     Period Start *
                   </label>
                   <input
@@ -193,11 +193,11 @@ export default function NewReviewCyclePage() {
                     value={periodStart}
                     onChange={(e) => setPeriodStart(e.target.value)}
                     required
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                  <label className="block text-sm font-medium text-foreground mb-1.5">
                     Period End *
                   </label>
                   <input
@@ -205,7 +205,7 @@ export default function NewReviewCyclePage() {
                     value={periodEnd}
                     onChange={(e) => setPeriodEnd(e.target.value)}
                     required
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
               </div>
@@ -213,87 +213,87 @@ export default function NewReviewCyclePage() {
           </div>
 
           {/* Deadlines */}
-          <div className="bg-slate-900/50 rounded-xl border border-slate-800 p-6">
-            <h2 className="text-lg font-semibold text-white mb-4">Phase Deadlines</h2>
-            <p className="text-slate-400 text-sm mb-4">
+          <div className="bg-background/50 rounded-xl border border-border p-6">
+            <h2 className="text-lg font-semibold text-foreground mb-4">Phase Deadlines</h2>
+            <p className="text-muted-foreground text-sm mb-4">
               Set deadlines for each review phase. Leave blank for no deadline.
             </p>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                <label className="block text-sm font-medium text-foreground mb-1.5">
                   Self Review Deadline
                 </label>
                 <input
                   type="date"
                   value={selfReviewDeadline}
                   onChange={(e) => setSelfReviewDeadline(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                <label className="block text-sm font-medium text-foreground mb-1.5">
                   Peer Review Deadline
                 </label>
                 <input
                   type="date"
                   value={peerReviewDeadline}
                   onChange={(e) => setPeerReviewDeadline(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                <label className="block text-sm font-medium text-foreground mb-1.5">
                   Manager Review Deadline
                 </label>
                 <input
                   type="date"
                   value={managerReviewDeadline}
                   onChange={(e) => setManagerReviewDeadline(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               </div>
             </div>
           </div>
 
           {/* Review Settings */}
-          <div className="bg-slate-900/50 rounded-xl border border-slate-800 p-6">
-            <h2 className="text-lg font-semibold text-white mb-4">Review Settings</h2>
+          <div className="bg-background/50 rounded-xl border border-border p-6">
+            <h2 className="text-lg font-semibold text-foreground mb-4">Review Settings</h2>
             <div className="space-y-4">
               {/* Enable/Disable Phases */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <label className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg cursor-pointer hover:bg-slate-800 transition">
+                <label className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition">
                   <input
                     type="checkbox"
                     checked={enableSelfReview}
                     onChange={(e) => setEnableSelfReview(e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-600 text-purple-600 focus:ring-purple-500"
+                    className="w-4 h-4 rounded border-border text-purple-600 focus:ring-purple-500"
                   />
-                  <span className="text-sm text-slate-300">Self Review</span>
+                  <span className="text-sm text-foreground">Self Review</span>
                 </label>
-                <label className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg cursor-pointer hover:bg-slate-800 transition">
+                <label className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition">
                   <input
                     type="checkbox"
                     checked={enablePeerReview}
                     onChange={(e) => setEnablePeerReview(e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-600 text-purple-600 focus:ring-purple-500"
+                    className="w-4 h-4 rounded border-border text-purple-600 focus:ring-purple-500"
                   />
-                  <span className="text-sm text-slate-300">Peer Review</span>
+                  <span className="text-sm text-foreground">Peer Review</span>
                 </label>
-                <label className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg cursor-pointer hover:bg-slate-800 transition">
+                <label className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition">
                   <input
                     type="checkbox"
                     checked={enableManagerReview}
                     onChange={(e) => setEnableManagerReview(e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-600 text-purple-600 focus:ring-purple-500"
+                    className="w-4 h-4 rounded border-border text-purple-600 focus:ring-purple-500"
                   />
-                  <span className="text-sm text-slate-300">Manager Review</span>
+                  <span className="text-sm text-foreground">Manager Review</span>
                 </label>
               </div>
 
               {/* Peer Review Settings */}
               {enablePeerReview && (
-                <div className="mt-4 pt-4 border-t border-slate-700 space-y-4">
-                  <h3 className="text-sm font-medium text-slate-400 flex items-center gap-2">
+                <div className="mt-4 pt-4 border-t border-border space-y-4">
+                  <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                     <Users className="h-4 w-4" />
                     Peer Review Settings
                   </h3>
@@ -303,14 +303,14 @@ export default function NewReviewCyclePage() {
                       type="checkbox"
                       checked={anonymousPeerReviews}
                       onChange={(e) => setAnonymousPeerReviews(e.target.checked)}
-                      className="w-4 h-4 rounded border-slate-600 text-purple-600 focus:ring-purple-500"
+                      className="w-4 h-4 rounded border-border text-purple-600 focus:ring-purple-500"
                     />
-                    <span className="text-sm text-slate-300">Anonymous peer reviews</span>
+                    <span className="text-sm text-foreground">Anonymous peer reviews</span>
                   </label>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                      <label className="block text-sm font-medium text-foreground mb-1.5">
                         Min Peer Reviewers
                       </label>
                       <input
@@ -319,11 +319,11 @@ export default function NewReviewCyclePage() {
                         max="10"
                         value={minPeerReviewers}
                         onChange={(e) => setMinPeerReviewers(parseInt(e.target.value))}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="w-full bg-muted border border-border rounded-lg px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                      <label className="block text-sm font-medium text-foreground mb-1.5">
                         Max Peer Reviewers
                       </label>
                       <input
@@ -332,25 +332,25 @@ export default function NewReviewCyclePage() {
                         max="20"
                         value={maxPeerReviewers}
                         onChange={(e) => setMaxPeerReviewers(parseInt(e.target.value))}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="w-full bg-muted border border-border rounded-lg px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                    <label className="block text-sm font-medium text-foreground mb-1.5">
                       Peer Selection Mode
                     </label>
                     <select
                       value={peerSelectionMode}
                       onChange={(e) => setPeerSelectionMode(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                     >
                       <option value="employee_choice">Employee Choice Only</option>
                       <option value="manager_assigned">Manager Assigned Only</option>
                       <option value="both">Both (Recommended)</option>
                     </select>
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       &quot;Both&quot; allows employees to request reviewers and managers to assign additional ones.
                     </p>
                   </div>
@@ -358,17 +358,17 @@ export default function NewReviewCyclePage() {
               )}
 
               {/* GitHub Integration */}
-              <div className="mt-4 pt-4 border-t border-slate-700">
+              <div className="mt-4 pt-4 border-t border-border">
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={includeGitHubMetrics}
                     onChange={(e) => setIncludeGitHubMetrics(e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-600 text-purple-600 focus:ring-purple-500"
+                    className="w-4 h-4 rounded border-border text-purple-600 focus:ring-purple-500"
                   />
                   <div>
-                    <span className="text-sm text-slate-300">Include GitHub metrics</span>
-                    <p className="text-xs text-slate-500">
+                    <span className="text-sm text-foreground">Include GitHub metrics</span>
+                    <p className="text-xs text-muted-foreground">
                       Auto-import commits, PRs, and code reviews from the review period
                     </p>
                   </div>
@@ -388,7 +388,7 @@ export default function NewReviewCyclePage() {
           <div className="flex items-center justify-end gap-3">
             <Link
               href="/reviews/cycles"
-              className="px-6 py-2.5 text-slate-400 hover:text-white transition"
+              className="px-6 py-2.5 text-muted-foreground hover:text-foreground transition"
             >
               Cancel
             </Link>

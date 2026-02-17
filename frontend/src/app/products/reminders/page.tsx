@@ -100,14 +100,14 @@ export default function RemindersProductPage() {
                 <span>Compliance Reminders</span>
               </div>
 
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight leading-tight">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 tracking-tight leading-tight">
                 Never miss a{" "}
                 <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
                   compliance deadline
                 </span>
               </h1>
 
-              <p className="text-xl text-white/60 mb-8 leading-relaxed">
+              <p className="text-xl text-foreground/60 mb-8 leading-relaxed">
                 Track recurring compliance commitments, scheduled reviews, and periodic tasks
                 with smart assignment, escalation workflows, and evidence tracking.
               </p>
@@ -122,13 +122,13 @@ export default function RemindersProductPage() {
                 </a>
                 <Link
                   href="/manifesto"
-                  className="group inline-flex items-center justify-center gap-2 bg-white/5 text-white px-8 py-4 rounded-full text-lg font-medium border border-white/10 hover:border-white/20 transition-all"
+                  className="group inline-flex items-center justify-center gap-2 bg-white/5 text-foreground px-8 py-4 rounded-full text-lg font-medium border border-white/10 hover:border-white/20 transition-all"
                 >
                   Learn More
                 </Link>
               </div>
 
-              <div className="flex items-center gap-6 text-sm text-white/40">
+              <div className="flex items-center gap-6 text-sm text-foreground/40">
                 <span className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-blue-500" />
                   Smart scheduling
@@ -151,7 +151,7 @@ export default function RemindersProductPage() {
                       {categories.slice(0, 4).map((cat, idx) => (
                         <span key={idx} className={`px-2 py-1 ${cat.color}/20 rounded text-xs flex items-center gap-1`}>
                           <cat.icon className={`h-3 w-3 ${cat.color.replace('bg-', 'text-')}`} />
-                          <span className="text-white/60">{cat.name}</span>
+                          <span className="text-foreground/60">{cat.name}</span>
                         </span>
                       ))}
                     </div>
@@ -176,7 +176,7 @@ export default function RemindersProductPage() {
                         "bg-amber-500"
                       }`} />
                       <div className="flex-1 min-w-0">
-                        <span className="text-white text-sm font-medium">{reminder.name}</span>
+                        <span className="text-foreground text-sm font-medium">{reminder.name}</span>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className={`px-1.5 py-0.5 rounded text-[10px] ${
                             reminder.category === "Compliance" ? "bg-blue-500/20 text-blue-400" :
@@ -189,7 +189,7 @@ export default function RemindersProductPage() {
                           <span className={`px-1.5 py-0.5 rounded text-[10px] ${
                             reminder.priority === "critical" ? "bg-red-500/20 text-red-400" :
                             reminder.priority === "high" ? "bg-amber-500/20 text-amber-400" :
-                            "bg-slate-500/20 text-slate-400"
+                            "bg-muted-foreground/20 text-muted-foreground"
                           }`}>
                             {reminder.priority}
                           </span>
@@ -199,11 +199,11 @@ export default function RemindersProductPage() {
                         <span className={`text-sm font-medium ${
                           reminder.status === "completed" ? "text-emerald-400" :
                           reminder.status === "overdue" ? "text-red-400" :
-                          "text-white/60"
+                          "text-foreground/60"
                         }`}>
                           {reminder.status === "completed" ? "Done" : reminder.status === "overdue" ? "Overdue" : "Due"}
                         </span>
-                        <p className="text-xs text-white/40">{reminder.due}</p>
+                        <p className="text-xs text-foreground/40">{reminder.due}</p>
                       </div>
                     </div>
                   ))}
@@ -211,20 +211,20 @@ export default function RemindersProductPage() {
                 {/* Stats Footer */}
                 <div className="grid grid-cols-4 gap-4 p-4 border-t border-white/5 bg-white/5">
                   <div className="text-center">
-                    <div className="text-lg font-bold text-white">24</div>
-                    <div className="text-[10px] text-white/40">Active</div>
+                    <div className="text-lg font-bold text-foreground">24</div>
+                    <div className="text-[10px] text-foreground/40">Active</div>
                   </div>
                   <div className="text-center">
                     <div className="text-lg font-bold text-amber-400">8</div>
-                    <div className="text-[10px] text-white/40">Pending</div>
+                    <div className="text-[10px] text-foreground/40">Pending</div>
                   </div>
                   <div className="text-center">
                     <div className="text-lg font-bold text-red-400">2</div>
-                    <div className="text-[10px] text-white/40">Overdue</div>
+                    <div className="text-[10px] text-foreground/40">Overdue</div>
                   </div>
                   <div className="text-center">
                     <div className="text-lg font-bold text-emerald-400">85%</div>
-                    <div className="text-[10px] text-white/40">On-time</div>
+                    <div className="text-[10px] text-foreground/40">On-time</div>
                   </div>
                 </div>
               </div>
@@ -237,10 +237,10 @@ export default function RemindersProductPage() {
       <section className="py-20 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
               Everything you need for compliance tracking
             </h2>
-            <p className="text-white/50 text-lg max-w-2xl mx-auto">
+            <p className="text-foreground/50 text-lg max-w-2xl mx-auto">
               From simple reminders to complex escalation workflows with evidence tracking.
             </p>
           </div>
@@ -251,10 +251,10 @@ export default function RemindersProductPage() {
                 <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} rounded-3xl opacity-0 group-hover:opacity-10 blur-xl transition-all duration-500`} />
                 <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-white/20 transition-all h-full">
                   <div className={`p-4 bg-gradient-to-br ${feature.color} rounded-2xl w-fit mb-6`}>
-                    <feature.icon className="h-6 w-6 text-white" />
+                    <feature.icon className="h-6 w-6 text-foreground" />
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-3">{feature.title}</h3>
-                  <p className="text-white/60">{feature.description}</p>
+                  <h3 className="text-xl font-bold text-foreground mb-3">{feature.title}</h3>
+                  <p className="text-foreground/60">{feature.description}</p>
                 </div>
               </div>
             ))}
@@ -266,10 +266,10 @@ export default function RemindersProductPage() {
       <section className="py-20 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
               Built for engineering teams
             </h2>
-            <p className="text-white/50 text-lg max-w-2xl mx-auto">
+            <p className="text-foreground/50 text-lg max-w-2xl mx-auto">
               Track any recurring task - from SOC 2 compliance to team retrospectives.
             </p>
           </div>
@@ -277,11 +277,11 @@ export default function RemindersProductPage() {
           <div className="grid md:grid-cols-3 gap-6">
             {useCases.map((useCase, idx) => (
               <div key={idx} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all">
-                <h3 className="text-lg font-bold text-white mb-2">{useCase.title}</h3>
-                <p className="text-white/50 text-sm mb-4">{useCase.description}</p>
+                <h3 className="text-lg font-bold text-foreground mb-2">{useCase.title}</h3>
+                <p className="text-foreground/50 text-sm mb-4">{useCase.description}</p>
                 <ul className="space-y-2">
                   {useCase.items.map((item, itemIdx) => (
-                    <li key={itemIdx} className="flex items-center gap-2 text-sm text-white/70">
+                    <li key={itemIdx} className="flex items-center gap-2 text-sm text-foreground/70">
                       <CheckCircle2 className="h-4 w-4 text-blue-400" />
                       {item}
                     </li>
@@ -301,10 +301,10 @@ export default function RemindersProductPage() {
             <div className="relative bg-white/5 backdrop-blur-sm rounded-3xl p-10 md:p-12 border border-white/10">
               <div className="grid md:grid-cols-2 gap-8 items-center">
                 <div>
-                  <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
+                  <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
                     Automatic escalation when things slip
                   </h2>
-                  <p className="text-white/60 mb-6">
+                  <p className="text-foreground/60 mb-6">
                     Configure multi-level escalation chains. If a reminder goes overdue,
                     the right people get notified automatically - from team leads to directors.
                   </p>
@@ -325,8 +325,8 @@ export default function RemindersProductPage() {
                           {item.step}
                         </div>
                         <div>
-                          <h4 className="text-white font-medium">{item.title}</h4>
-                          <p className="text-white/50 text-sm">{item.desc}</p>
+                          <h4 className="text-foreground font-medium">{item.title}</h4>
+                          <p className="text-foreground/50 text-sm">{item.desc}</p>
                         </div>
                       </div>
                     ))}
@@ -336,12 +336,12 @@ export default function RemindersProductPage() {
                   <div className="inline-flex flex-col items-center gap-4 p-6 bg-white/5 rounded-xl border border-white/10">
                     <div className="flex items-center gap-3">
                       <Bell className="h-8 w-8 text-blue-400" />
-                      <ArrowRight className="h-5 w-5 text-white/30" />
+                      <ArrowRight className="h-5 w-5 text-foreground/30" />
                       <AlertTriangle className="h-8 w-8 text-amber-400" />
-                      <ArrowRight className="h-5 w-5 text-white/30" />
+                      <ArrowRight className="h-5 w-5 text-foreground/30" />
                       <Zap className="h-8 w-8 text-red-400" />
                     </div>
-                    <div className="text-white/60 text-sm">
+                    <div className="text-foreground/60 text-sm">
                       Progressive escalation
                     </div>
                   </div>
@@ -355,10 +355,10 @@ export default function RemindersProductPage() {
       {/* CTA */}
       <section className="py-24 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
             Start tracking compliance today
           </h2>
-          <p className="text-xl text-white/50 mb-10">
+          <p className="text-xl text-foreground/50 mb-10">
             Free for unlimited reminders. No credit card required.
           </p>
 
@@ -372,7 +372,7 @@ export default function RemindersProductPage() {
             </a>
             <a
               href="https://github.com/aexy-io/aexy"
-              className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
+              className="group bg-white/5 hover:bg-white/10 text-foreground px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
             >
               <Github className="h-5 w-5" />
               View on GitHub

@@ -133,12 +133,12 @@ export default function TemplateDetailPage() {
 
   if (!currentWorkspace) {
     return (
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen bg-background">
 <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <div className="text-center">
-            <AlertCircle className="h-12 w-12 text-slate-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-white mb-2">No Workspace Selected</h2>
-            <p className="text-slate-400">Please select a workspace to view this template.</p>
+            <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-foreground mb-2">No Workspace Selected</h2>
+            <p className="text-muted-foreground">Please select a workspace to view this template.</p>
           </div>
         </div>
       </div>
@@ -147,7 +147,7 @@ export default function TemplateDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen bg-background">
 <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <Loader2 className="h-8 w-8 text-sky-500 animate-spin" />
         </div>
@@ -157,12 +157,12 @@ export default function TemplateDetailPage() {
 
   if (error || !template) {
     return (
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen bg-background">
 <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <div className="text-center">
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-white mb-2">Template Not Found</h2>
-            <p className="text-slate-400 mb-4">The template you're looking for doesn't exist.</p>
+            <h2 className="text-xl font-semibold text-foreground mb-2">Template Not Found</h2>
+            <p className="text-muted-foreground mb-4">The template you're looking for doesn't exist.</p>
             <Link
               href="/email-marketing/templates"
               className="text-sky-400 hover:text-sky-300"
@@ -176,14 +176,14 @@ export default function TemplateDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
 <div className="p-8">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="flex items-start gap-4 mb-6">
             <button
               onClick={() => router.push("/email-marketing/templates")}
-              className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition mt-1"
+              className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition mt-1"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
@@ -195,12 +195,12 @@ export default function TemplateDetailPage() {
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="text-2xl font-bold text-white bg-transparent border-b border-slate-700 focus:border-sky-500 focus:outline-none"
+                    className="text-2xl font-bold text-foreground bg-transparent border-b border-border focus:border-sky-500 focus:outline-none"
                   />
                 ) : (
-                  <h1 className="text-2xl font-bold text-white">{template.name}</h1>
+                  <h1 className="text-2xl font-bold text-foreground">{template.name}</h1>
                 )}
-                <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-500/20 text-slate-400 border border-slate-500/30">
+                <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground border border-border">
                   {template.template_type}
                 </span>
               </div>
@@ -210,10 +210,10 @@ export default function TemplateDetailPage() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Add a description..."
-                  className="text-slate-400 bg-transparent border-b border-slate-700 focus:border-sky-500 focus:outline-none w-full max-w-md"
+                  className="text-muted-foreground bg-transparent border-b border-border focus:border-sky-500 focus:outline-none w-full max-w-md"
                 />
               ) : (
-                <p className="text-slate-400">{template.description || "No description"}</p>
+                <p className="text-muted-foreground">{template.description || "No description"}</p>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -221,7 +221,7 @@ export default function TemplateDetailPage() {
                 <>
                   <button
                     onClick={() => setIsEditing(false)}
-                    className="px-4 py-2 text-slate-400 hover:text-white transition"
+                    className="px-4 py-2 text-muted-foreground hover:text-foreground transition"
                   >
                     Cancel
                   </button>
@@ -242,27 +242,27 @@ export default function TemplateDetailPage() {
                 <>
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition"
+                    className="px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-accent transition"
                   >
                     Edit
                   </button>
                   <button
                     onClick={handlePreview}
-                    className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition"
+                    className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition"
                     title="Preview"
                   >
                     <Eye className="h-4 w-4" />
                   </button>
                   <button
                     onClick={handleDuplicate}
-                    className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition"
+                    className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition"
                     title="Duplicate"
                   >
                     <Copy className="h-4 w-4" />
                   </button>
                   <button
                     onClick={handleDelete}
-                    className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition"
+                    className="p-2 text-muted-foreground hover:text-red-400 hover:bg-muted rounded-lg transition"
                     title="Delete"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -276,33 +276,33 @@ export default function TemplateDetailPage() {
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
               {/* Subject */}
-              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-                <h3 className="text-lg font-medium text-white mb-4">Subject Line</h3>
+              <div className="bg-background/50 border border-border rounded-xl p-6">
+                <h3 className="text-lg font-medium text-foreground mb-4">Subject Line</h3>
                 {isEditing ? (
                   <input
                     type="text"
                     value={subjectTemplate}
                     onChange={(e) => setSubjectTemplate(e.target.value)}
                     placeholder="Email subject..."
-                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
                   />
                 ) : (
-                  <p className="text-slate-300">{template.subject_template || "No subject set"}</p>
+                  <p className="text-foreground">{template.subject_template || "No subject set"}</p>
                 )}
               </div>
 
               {/* HTML Content */}
-              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-                <h3 className="text-lg font-medium text-white mb-4">HTML Content</h3>
+              <div className="bg-background/50 border border-border rounded-xl p-6">
+                <h3 className="text-lg font-medium text-foreground mb-4">HTML Content</h3>
                 {isEditing ? (
                   <textarea
                     value={bodyHtml}
                     onChange={(e) => setBodyHtml(e.target.value)}
                     rows={20}
-                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono text-sm"
+                    className="w-full px-4 py-3 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono text-sm"
                   />
                 ) : (
-                  <pre className="p-4 bg-slate-800 rounded-lg overflow-auto max-h-96 text-sm text-slate-300 font-mono">
+                  <pre className="p-4 bg-muted rounded-lg overflow-auto max-h-96 text-sm text-foreground font-mono">
                     {template.body_html || "No content"}
                   </pre>
                 )}
@@ -313,20 +313,20 @@ export default function TemplateDetailPage() {
             <div className="space-y-6">
               {/* Variables */}
               {template.variables && template.variables.length > 0 && (
-                <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+                <div className="bg-background/50 border border-border rounded-xl p-6">
                   <div className="flex items-center gap-2 mb-4">
                     <Variable className="h-5 w-5 text-purple-400" />
-                    <h3 className="text-lg font-medium text-white">Variables</h3>
+                    <h3 className="text-lg font-medium text-foreground">Variables</h3>
                   </div>
                   <div className="space-y-3">
                     {template.variables.map((variable) => (
                       <div key={variable.name}>
-                        <label className="block text-xs text-slate-500 mb-1">
+                        <label className="block text-xs text-muted-foreground mb-1">
                           {`{{${variable.name}}}`}
                           {variable.required && <span className="text-red-400 ml-1">*</span>}
                         </label>
                         {variable.description && (
-                          <p className="text-xs text-slate-600 mb-1">{variable.description}</p>
+                          <p className="text-xs text-muted-foreground mb-1">{variable.description}</p>
                         )}
                         <input
                           type="text"
@@ -335,7 +335,7 @@ export default function TemplateDetailPage() {
                             setPreviewData((prev) => ({ ...prev, [variable.name]: e.target.value }))
                           }
                           placeholder={variable.default_value || `Enter ${variable.name}...`}
-                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                          className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
                         />
                       </div>
                     ))}
@@ -358,26 +358,26 @@ export default function TemplateDetailPage() {
               )}
 
               {/* Metadata */}
-              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-                <h3 className="text-lg font-medium text-white mb-4">Details</h3>
+              <div className="bg-background/50 border border-border rounded-xl p-6">
+                <h3 className="text-lg font-medium text-foreground mb-4">Details</h3>
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Type</span>
-                    <span className="text-white capitalize">{template.template_type}</span>
+                    <span className="text-muted-foreground">Type</span>
+                    <span className="text-foreground capitalize">{template.template_type}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Status</span>
-                    <span className={template.is_active ? "text-emerald-400" : "text-slate-400"}>
+                    <span className="text-muted-foreground">Status</span>
+                    <span className={template.is_active ? "text-emerald-400" : "text-muted-foreground"}>
                       {template.is_active ? "Active" : "Inactive"}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Created</span>
-                    <span className="text-white">{new Date(template.created_at).toLocaleDateString()}</span>
+                    <span className="text-muted-foreground">Created</span>
+                    <span className="text-foreground">{new Date(template.created_at).toLocaleDateString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Updated</span>
-                    <span className="text-white">{new Date(template.updated_at).toLocaleDateString()}</span>
+                    <span className="text-muted-foreground">Updated</span>
+                    <span className="text-foreground">{new Date(template.updated_at).toLocaleDateString()}</span>
                   </div>
                 </div>
               </div>
@@ -389,12 +389,12 @@ export default function TemplateDetailPage() {
       {/* Preview Modal */}
       {previewHtml && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-800">
-              <h3 className="text-lg font-medium text-white">Template Preview</h3>
+          <div className="bg-background border border-border rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-border">
+              <h3 className="text-lg font-medium text-foreground">Template Preview</h3>
               <button
                 onClick={() => setPreviewHtml(null)}
-                className="p-2 text-slate-400 hover:text-white transition"
+                className="p-2 text-muted-foreground hover:text-foreground transition"
               >
                 <span className="sr-only">Close</span>
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -257,7 +257,7 @@ export function EditorToolbar({ editor, onSave, editorMode = "rich", onModeToggl
             "flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition mr-2",
             editorMode === "markdown"
               ? "bg-amber-600 hover:bg-amber-500 text-white"
-              : "bg-slate-700 hover:bg-slate-600 text-slate-300"
+              : "bg-accent hover:bg-muted text-foreground"
           )}
           title={editorMode === "markdown" ? "Switch to Rich Editor" : "Switch to Markdown Mode"}
         >
@@ -279,7 +279,7 @@ export function EditorToolbar({ editor, onSave, editorMode = "rich", onModeToggl
       {onSave && (
         <button
           onClick={onSave}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-500 rounded-lg transition-all duration-200 shadow-md shadow-primary-500/20 hover:shadow-primary-500/30"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-foreground bg-primary-600 hover:bg-primary-500 rounded-lg transition-all duration-200 shadow-md shadow-primary-500/20 hover:shadow-primary-500/30"
         >
           <Save className="h-4 w-4" />
           Save
@@ -292,7 +292,7 @@ export function EditorToolbar({ editor, onSave, editorMode = "rich", onModeToggl
 // Toolbar Group Component
 function ToolbarGroup({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-0.5 bg-slate-800/40 rounded-md p-0.5">
+    <div className="flex items-center gap-0.5 bg-muted/40 rounded-md p-0.5">
       {children}
     </div>
   );
@@ -329,8 +329,8 @@ function ToolbarButton({
           "p-1.5 rounded transition-all duration-150",
           isActive
             ? "bg-primary-500/20 text-primary-400"
-            : "text-slate-400 hover:text-white hover:bg-slate-700/80",
-          disabled && "opacity-40 cursor-not-allowed hover:bg-transparent hover:text-slate-400"
+            : "text-muted-foreground hover:text-foreground hover:bg-accent/80",
+          disabled && "opacity-40 cursor-not-allowed hover:bg-transparent hover:text-muted-foreground"
         )}
       >
         {children}
@@ -339,13 +339,13 @@ function ToolbarButton({
       {/* Tooltip */}
       {showTooltip && tooltip && !disabled && (
         <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 pointer-events-none">
-          <div className="bg-slate-900 border border-slate-700 text-white text-xs px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap flex items-center gap-2">
+          <div className="bg-background border border-border text-foreground text-xs px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap flex items-center gap-2">
             <span>{tooltip}</span>
             {shortcut && (
-              <span className="text-slate-500 font-mono text-[10px]">{shortcut}</span>
+              <span className="text-muted-foreground font-mono text-[10px]">{shortcut}</span>
             )}
           </div>
-          <div className="absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 bg-slate-900 border-l border-t border-slate-700 rotate-45" />
+          <div className="absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 bg-background border-l border-t border-border rotate-45" />
         </div>
       )}
     </div>
@@ -354,5 +354,5 @@ function ToolbarButton({
 
 // Divider Component
 function ToolbarDivider() {
-  return <div className="w-px h-5 bg-slate-700/50 mx-1" />;
+  return <div className="w-px h-5 bg-accent/50 mx-1" />;
 }

@@ -32,7 +32,7 @@ const SEVERITY_OPTIONS: { value: TicketSeverity; label: string; color: string }[
   { value: "critical", label: "Critical", color: "bg-red-500" },
   { value: "high", label: "High", color: "bg-orange-500" },
   { value: "medium", label: "Medium", color: "bg-blue-500" },
-  { value: "low", label: "Low", color: "bg-slate-500" },
+  { value: "low", label: "Low", color: "bg-muted-foreground" },
 ];
 
 const LEVEL_OPTIONS: { value: EscalationLevel; label: string; description: string }[] = [
@@ -105,7 +105,7 @@ function RuleEditor({ rule, onChange, onRemove, members, teams }: RuleEditorProp
               }}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition ${
                 (rule.channels || []).includes(opt.value)
-                  ? "bg-purple-600 border-purple-500 text-white"
+                  ? "bg-purple-600 border-purple-500 text-foreground"
                   : "bg-card border-border text-muted-foreground hover:border-purple-500"
               }`}
             >
@@ -373,7 +373,7 @@ export default function EscalationSettingsPage() {
                       }}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition ${
                         formData.severity_levels.includes(opt.value)
-                          ? `${opt.color} border-transparent text-white`
+                          ? `${opt.color} border-transparent text-foreground`
                           : "bg-card border-border text-muted-foreground hover:border-purple-500"
                       }`}
                     >
@@ -491,7 +491,7 @@ export default function EscalationSettingsPage() {
           <div className="text-center text-muted-foreground py-12">Loading...</div>
         ) : matrices.length === 0 && !isCreating ? (
           <div className="bg-card rounded-xl border border-border p-12 text-center">
-            <AlertTriangle className="h-12 w-12 text-slate-600 mx-auto mb-4" />
+            <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium text-foreground mb-2">No escalation matrices</h3>
             <p className="text-muted-foreground mb-6">
               Create an escalation matrix to automatically notify people based on ticket severity
@@ -553,7 +553,7 @@ export default function EscalationSettingsPage() {
                     return (
                       <span
                         key={sev}
-                        className={`px-3 py-1 rounded-full text-sm text-white ${opt?.color || "bg-slate-600"}`}
+                        className={`px-3 py-1 rounded-full text-sm text-foreground ${opt?.color || "bg-muted"}`}
                       >
                         {opt?.label || sev}
                       </span>

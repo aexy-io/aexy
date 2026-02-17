@@ -52,17 +52,17 @@ export function KanbanColumn({
       ref={setNodeRef}
       className={cn(
         "flex-shrink-0 w-[300px] flex flex-col rounded-xl transition-all duration-200",
-        "bg-slate-800/30",
+        "bg-muted/30",
         isOver && "ring-2 ring-purple-500/50 bg-purple-900/10",
         className
       )}
     >
       {/* Column header */}
-      <div className="flex items-center justify-between px-3 py-3 border-b border-slate-700/30">
+      <div className="flex items-center justify-between px-3 py-3 border-b border-border/30">
         <div className="flex items-center gap-2">
           <ColorDot color={color} size="md" />
-          <h3 className="font-medium text-sm text-white">{title}</h3>
-          <span className="px-1.5 py-0.5 bg-slate-700/50 rounded text-xs text-slate-400">
+          <h3 className="font-medium text-sm text-foreground">{title}</h3>
+          <span className="px-1.5 py-0.5 bg-accent/50 rounded text-xs text-muted-foreground">
             {records.length}
           </span>
         </div>
@@ -77,7 +77,7 @@ export function KanbanColumn({
       {onCreateClick && (
         <button
           onClick={onCreateClick}
-          className="flex items-center gap-2 mx-2 mt-2 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
+          className="flex items-center gap-2 mx-2 mt-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-colors"
         >
           <Plus className="h-4 w-4" />
           New
@@ -118,7 +118,7 @@ export function KanbanColumn({
           )}
 
           {!isLoading && records.length === 0 && (
-            <div className="text-center py-8 text-slate-500 text-sm">
+            <div className="text-center py-8 text-muted-foreground text-sm">
               Drop records here
             </div>
           )}

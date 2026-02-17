@@ -107,24 +107,24 @@ export function KnowledgeGraphSidebar({
 }: KnowledgeGraphSidebarProps) {
   if (isLoading) {
     return (
-      <div className="w-80 border-l border-slate-700 bg-slate-800/50 flex items-center justify-center">
-        <RefreshCw className="h-6 w-6 text-slate-400 animate-spin" />
+      <div className="w-80 border-l border-border bg-muted/50 flex items-center justify-center">
+        <RefreshCw className="h-6 w-6 text-muted-foreground animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="w-80 border-l border-slate-700 bg-slate-800/50 flex flex-col">
+    <div className="w-80 border-l border-border bg-muted/50 flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
-        <h3 className="font-medium text-white">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <h3 className="font-medium text-foreground">
           {nodeType === "entity" ? "Entity Details" : "Document Details"}
         </h3>
         <button
           onClick={onClose}
-          className="p-1 hover:bg-slate-700 rounded transition-colors"
+          className="p-1 hover:bg-accent rounded transition-colors"
         >
-          <X className="h-5 w-5 text-slate-400" />
+          <X className="h-5 w-5 text-muted-foreground" />
         </button>
       </div>
 
@@ -163,7 +163,7 @@ function EntityDetails({
           <Icon className="h-6 w-6" style={{ color }} />
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="text-lg font-semibold text-white truncate" title={data.name}>
+          <h4 className="text-lg font-semibold text-foreground truncate" title={data.name}>
             {data.name}
           </h4>
           <p className="text-sm capitalize" style={{ color }}>
@@ -175,24 +175,24 @@ function EntityDetails({
       {/* Description */}
       {data.description && (
         <div>
-          <p className="text-sm text-slate-300">{data.description}</p>
+          <p className="text-sm text-foreground">{data.description}</p>
         </div>
       )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-slate-700/30 rounded-lg p-3">
-          <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
+        <div className="bg-accent/30 rounded-lg p-3">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
             <Hash className="h-3.5 w-3.5" />
             Occurrences
           </div>
-          <p className="text-xl font-semibold text-white">{data.occurrence_count}</p>
+          <p className="text-xl font-semibold text-foreground">{data.occurrence_count}</p>
         </div>
-        <div className="bg-slate-700/30 rounded-lg p-3">
-          <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
+        <div className="bg-accent/30 rounded-lg p-3">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
             Confidence
           </div>
-          <p className="text-xl font-semibold text-white">
+          <p className="text-xl font-semibold text-foreground">
             {Math.round(data.confidence_score * 100)}%
           </p>
         </div>
@@ -201,12 +201,12 @@ function EntityDetails({
       {/* Aliases */}
       {data.aliases.length > 0 && (
         <div>
-          <p className="text-xs font-medium text-slate-400 mb-2">Also known as</p>
+          <p className="text-xs font-medium text-muted-foreground mb-2">Also known as</p>
           <div className="flex flex-wrap gap-2">
             {data.aliases.map((alias, i) => (
               <span
                 key={i}
-                className="px-2 py-1 bg-slate-700/50 rounded text-sm text-slate-300"
+                className="px-2 py-1 bg-accent/50 rounded text-sm text-foreground"
               >
                 {alias}
               </span>
@@ -216,7 +216,7 @@ function EntityDetails({
       )}
 
       {/* Timeline */}
-      <div className="flex items-center gap-4 text-sm text-slate-400">
+      <div className="flex items-center gap-4 text-sm text-muted-foreground">
         <div className="flex items-center gap-1.5">
           <Calendar className="h-4 w-4" />
           <span>First: {formatDate(data.first_seen_at)}</span>
@@ -229,7 +229,7 @@ function EntityDetails({
       {/* Documents */}
       {data.documents.length > 0 && (
         <div>
-          <p className="text-xs font-medium text-slate-400 mb-2">
+          <p className="text-xs font-medium text-muted-foreground mb-2">
             Found in {data.documents.length} documents
           </p>
           <div className="space-y-2">
@@ -237,17 +237,17 @@ function EntityDetails({
               <Link
                 key={doc.id}
                 href={`/docs/${doc.id}`}
-                className="flex items-center gap-2 p-2 bg-slate-700/30 hover:bg-slate-700/50 rounded-lg transition-colors group"
+                className="flex items-center gap-2 p-2 bg-accent/30 hover:bg-accent/50 rounded-lg transition-colors group"
               >
                 <FileText className="h-4 w-4 text-blue-400 flex-shrink-0" />
-                <span className="text-sm text-slate-300 truncate flex-1">
+                <span className="text-sm text-foreground truncate flex-1">
                   {doc.title}
                 </span>
-                <ChevronRight className="h-4 w-4 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
               </Link>
             ))}
             {data.documents.length > 5 && (
-              <p className="text-xs text-slate-500 text-center">
+              <p className="text-xs text-muted-foreground text-center">
                 +{data.documents.length - 5} more documents
               </p>
             )}
@@ -267,7 +267,7 @@ function DocumentDetails({
 }) {
   if (!data.document) {
     return (
-      <div className="p-4 text-center text-slate-400">
+      <div className="p-4 text-center text-muted-foreground">
         Document not found
       </div>
     );
@@ -281,7 +281,7 @@ function DocumentDetails({
           <FileText className="h-6 w-6 text-blue-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="text-lg font-semibold text-white truncate" title={data.document.title}>
+          <h4 className="text-lg font-semibold text-foreground truncate" title={data.document.title}>
             {data.document.title}
           </h4>
           <Link
@@ -296,25 +296,25 @@ function DocumentDetails({
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-slate-700/30 rounded-lg p-3">
-          <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
+        <div className="bg-accent/30 rounded-lg p-3">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
             Entities
           </div>
-          <p className="text-xl font-semibold text-white">{data.entities.length}</p>
+          <p className="text-xl font-semibold text-foreground">{data.entities.length}</p>
         </div>
-        <div className="bg-slate-700/30 rounded-lg p-3">
-          <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
+        <div className="bg-accent/30 rounded-lg p-3">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
             <LinkIcon className="h-3.5 w-3.5" />
             Related Docs
           </div>
-          <p className="text-xl font-semibold text-white">{data.related_documents.length}</p>
+          <p className="text-xl font-semibold text-foreground">{data.related_documents.length}</p>
         </div>
       </div>
 
       {/* Entities */}
       {data.entities.length > 0 && (
         <div>
-          <p className="text-xs font-medium text-slate-400 mb-2">
+          <p className="text-xs font-medium text-muted-foreground mb-2">
             Extracted Entities
           </p>
           <div className="space-y-2">
@@ -324,7 +324,7 @@ function DocumentDetails({
               return (
                 <div
                   key={entity.id}
-                  className="flex items-center gap-2 p-2 bg-slate-700/30 rounded-lg"
+                  className="flex items-center gap-2 p-2 bg-accent/30 rounded-lg"
                 >
                   <div
                     className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
@@ -333,17 +333,17 @@ function DocumentDetails({
                     <Icon className="h-3.5 w-3.5" style={{ color }} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-300 truncate">{entity.name}</p>
-                    <p className="text-xs text-slate-500 capitalize">{entity.type}</p>
+                    <p className="text-sm text-foreground truncate">{entity.name}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{entity.type}</p>
                   </div>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-muted-foreground">
                     {Math.round(entity.confidence * 100)}%
                   </span>
                 </div>
               );
             })}
             {data.entities.length > 8 && (
-              <p className="text-xs text-slate-500 text-center">
+              <p className="text-xs text-muted-foreground text-center">
                 +{data.entities.length - 8} more entities
               </p>
             )}
@@ -354,7 +354,7 @@ function DocumentDetails({
       {/* Related Documents */}
       {data.related_documents.length > 0 && (
         <div>
-          <p className="text-xs font-medium text-slate-400 mb-2">
+          <p className="text-xs font-medium text-muted-foreground mb-2">
             Related Documents
           </p>
           <div className="space-y-2">
@@ -362,20 +362,20 @@ function DocumentDetails({
               <Link
                 key={doc.id}
                 href={`/docs/${doc.id}`}
-                className="flex items-center gap-2 p-2 bg-slate-700/30 hover:bg-slate-700/50 rounded-lg transition-colors group"
+                className="flex items-center gap-2 p-2 bg-accent/30 hover:bg-accent/50 rounded-lg transition-colors group"
               >
                 <FileText className="h-4 w-4 text-blue-400 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-slate-300 truncate">{doc.title}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-sm text-foreground truncate">{doc.title}</p>
+                  <p className="text-xs text-muted-foreground">
                     {Math.round(doc.strength * 100)}% match
                   </p>
                 </div>
-                <ChevronRight className="h-4 w-4 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
               </Link>
             ))}
             {data.related_documents.length > 5 && (
-              <p className="text-xs text-slate-500 text-center">
+              <p className="text-xs text-muted-foreground text-center">
                 +{data.related_documents.length - 5} more documents
               </p>
             )}

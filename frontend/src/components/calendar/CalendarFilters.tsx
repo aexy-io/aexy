@@ -37,7 +37,7 @@ export function CalendarFilters({
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <div className="flex items-center gap-1.5 text-slate-400">
+      <div className="flex items-center gap-1.5 text-muted-foreground">
         <Filter className="h-4 w-4" />
         <span className="text-xs font-medium">Filters</span>
       </div>
@@ -47,7 +47,7 @@ export function CalendarFilters({
         <select
           value={selectedTeamId || ""}
           onChange={(e) => onTeamChange(e.target.value || null)}
-          className="px-2.5 py-1.5 text-xs bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500/50"
+          className="px-2.5 py-1.5 text-xs bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:border-blue-500/50"
         >
           <option value="">All Teams</option>
           {teams.map((team) => (
@@ -68,8 +68,8 @@ export function CalendarFilters({
               onClick={() => toggleEventType(option.id)}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition ${
                 isActive
-                  ? "bg-slate-800 border-slate-600 text-white"
-                  : "bg-transparent border-slate-700/50 text-slate-500 hover:text-slate-400"
+                  ? "bg-muted border-border text-foreground"
+                  : "bg-transparent border-border/50 text-muted-foreground hover:text-muted-foreground"
               }`}
             >
               <div

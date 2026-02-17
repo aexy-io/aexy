@@ -221,24 +221,24 @@ export default function BlockersPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => router.push("/tracking")}
-            className="flex items-center gap-2 text-slate-400 hover:text-white mb-4 transition"
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 transition"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Tracking
           </button>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+              <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
                 <AlertTriangle className="h-8 w-8 text-red-400" />
                 Blockers
               </h1>
-              <p className="text-slate-400 mt-2">
+              <p className="text-muted-foreground mt-2">
                 Track and manage blockers with SLA tracking
               </p>
             </div>
@@ -303,13 +303,13 @@ export default function BlockersPage() {
         {/* View Controls */}
         <div className="flex flex-col lg:flex-row gap-4 mb-6">
           {/* View Toggle */}
-          <div className="flex items-center gap-2 bg-slate-800 rounded-lg p-1">
+          <div className="flex items-center gap-2 bg-muted rounded-lg p-1">
             <button
               onClick={() => setViewMode("board")}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition ${
                 viewMode === "board"
                   ? "bg-red-600 text-white"
-                  : "text-slate-400 hover:text-white"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Columns className="h-4 w-4" />
@@ -320,7 +320,7 @@ export default function BlockersPage() {
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition ${
                 viewMode === "analytics"
                   ? "bg-red-600 text-white"
-                  : "text-slate-400 hover:text-white"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <BarChart3 className="h-4 w-4" />
@@ -330,18 +330,18 @@ export default function BlockersPage() {
 
           {/* Search */}
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search blockers..."
-              className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-red-500"
+              className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-red-500"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 <X className="h-4 w-4" />
               </button>

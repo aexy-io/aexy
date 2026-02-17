@@ -49,30 +49,30 @@ function EmailRow({
   const canResend = email.status === "failed" || email.status === "bounced";
 
   return (
-    <tr className="border-b border-slate-700 hover:bg-slate-800/50">
+    <tr className="border-b border-border hover:bg-muted/50">
       <td className="px-4 py-3">
         <div>
-          <p className="text-white">{email.recipient_email}</p>
+          <p className="text-foreground">{email.recipient_email}</p>
           {email.workspace_name && (
-            <p className="text-slate-500 text-xs">{email.workspace_name}</p>
+            <p className="text-muted-foreground text-xs">{email.workspace_name}</p>
           )}
         </div>
       </td>
       <td className="px-4 py-3">
-        <p className="text-slate-300 max-w-xs truncate">{email.subject}</p>
+        <p className="text-foreground max-w-xs truncate">{email.subject}</p>
       </td>
       <td className="px-4 py-3">
         <StatusBadge status={email.status} />
       </td>
       <td className="px-4 py-3">
         {email.template_name ? (
-          <span className="text-slate-400 text-sm">{email.template_name}</span>
+          <span className="text-muted-foreground text-sm">{email.template_name}</span>
         ) : (
-          <span className="text-slate-600 text-sm">-</span>
+          <span className="text-muted-foreground text-sm">-</span>
         )}
       </td>
       <td className="px-4 py-3">
-        <span className="text-slate-400 text-sm" title={email.created_at}>
+        <span className="text-muted-foreground text-sm" title={email.created_at}>
           {formatDistanceToNow(new Date(email.created_at), { addSuffix: true })}
         </span>
       </td>
@@ -154,15 +154,15 @@ export default function AdminEmailsPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
             <Mail className="h-7 w-7 text-blue-400" />
             Email Logs
           </h1>
-          <p className="text-slate-400 mt-1">Monitor and manage all email deliveries</p>
+          <p className="text-muted-foreground mt-1">Monitor and manage all email deliveries</p>
         </div>
         <button
           onClick={() => refetch()}
-          className="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition"
+          className="flex items-center gap-2 px-3 py-2 bg-muted border border-border rounded-lg text-foreground hover:text-foreground hover:bg-accent transition"
         >
           <RefreshCw className="h-4 w-4" />
           Refresh
@@ -173,23 +173,23 @@ export default function AdminEmailsPage() {
       <div className="flex items-center gap-4">
         <form onSubmit={handleSearch} className="flex-1 max-w-md">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by recipient email..."
-              className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
+              className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-blue-500"
             />
           </div>
         </form>
 
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-slate-400" />
+          <Filter className="h-4 w-4 text-muted-foreground" />
           <select
             value={statusFilter}
             onChange={(e) => handleStatusChange(e.target.value)}
-            className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+            className="bg-muted border border-border rounded-lg px-3 py-2 text-foreground focus:outline-none focus:border-blue-500"
           >
             {STATUS_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -201,7 +201,7 @@ export default function AdminEmailsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+      <div className="bg-muted rounded-xl border border-border overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
             <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
@@ -212,8 +212,8 @@ export default function AdminEmailsPage() {
             Failed to load email logs
           </div>
         ) : data?.items?.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-slate-400">
-            <Mail className="h-12 w-12 mb-3 text-slate-600" />
+          <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+            <Mail className="h-12 w-12 mb-3 text-muted-foreground" />
             <p>No email logs found</p>
             {(search || statusFilter) && (
               <button
@@ -231,8 +231,8 @@ export default function AdminEmailsPage() {
         ) : (
           <>
             <table className="w-full">
-              <thead className="bg-slate-900/50">
-                <tr className="text-left text-slate-400 text-sm">
+              <thead className="bg-background/50">
+                <tr className="text-left text-muted-foreground text-sm">
                   <th className="px-4 py-3 font-medium">Recipient</th>
                   <th className="px-4 py-3 font-medium">Subject</th>
                   <th className="px-4 py-3 font-medium">Status</th>
@@ -255,8 +255,8 @@ export default function AdminEmailsPage() {
 
             {/* Pagination */}
             {data && data.total > 25 && (
-              <div className="px-4 py-3 border-t border-slate-700 flex items-center justify-between">
-                <span className="text-slate-400 text-sm">
+              <div className="px-4 py-3 border-t border-border flex items-center justify-between">
+                <span className="text-muted-foreground text-sm">
                   Showing {(page - 1) * 25 + 1} - {Math.min(page * 25, data.total)} of{" "}
                   {data.total} emails
                 </span>
@@ -264,15 +264,15 @@ export default function AdminEmailsPage() {
                   <button
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    className="p-2 rounded-lg bg-slate-700 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-600"
+                    className="p-2 rounded-lg bg-accent text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </button>
-                  <span className="text-slate-300 px-3">Page {page}</span>
+                  <span className="text-foreground px-3">Page {page}</span>
                   <button
                     onClick={() => setPage((p) => p + 1)}
                     disabled={!data.has_next}
-                    className="p-2 rounded-lg bg-slate-700 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-600"
+                    className="p-2 rounded-lg bg-accent text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
                   >
                     <ChevronRight className="h-4 w-4" />
                   </button>

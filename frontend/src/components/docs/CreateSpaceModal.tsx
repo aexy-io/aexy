@@ -92,17 +92,17 @@ export function CreateSpaceModal({
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
-          className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md"
+          className="bg-muted border border-border rounded-xl shadow-2xl w-full max-w-md"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700">
-            <h2 className="text-lg font-semibold text-white">Create Space</h2>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+            <h2 className="text-lg font-semibold text-foreground">Create Space</h2>
             <button
               onClick={onClose}
-              className="p-1 hover:bg-slate-700 rounded-md transition-colors"
+              className="p-1 hover:bg-accent rounded-md transition-colors"
             >
-              <X className="h-5 w-5 text-slate-400" />
+              <X className="h-5 w-5 text-muted-foreground" />
             </button>
           </div>
 
@@ -122,15 +122,15 @@ export function CreateSpaceModal({
               <div className="flex-1 space-y-3">
                 {/* Icons */}
                 <div>
-                  <label className="text-xs text-slate-400 mb-1.5 block">Icon</label>
+                  <label className="text-xs text-muted-foreground mb-1.5 block">Icon</label>
                   <div className="flex flex-wrap gap-1">
                     {ICONS.map((i) => (
                       <button
                         key={i}
                         type="button"
                         onClick={() => setIcon(i)}
-                        className={`h-7 w-7 rounded flex items-center justify-center text-sm hover:bg-slate-700 transition-colors ${
-                          icon === i ? "bg-slate-700 ring-1 ring-primary-500" : ""
+                        className={`h-7 w-7 rounded flex items-center justify-center text-sm hover:bg-accent transition-colors ${
+                          icon === i ? "bg-accent ring-1 ring-primary-500" : ""
                         }`}
                       >
                         {i}
@@ -141,7 +141,7 @@ export function CreateSpaceModal({
 
                 {/* Colors */}
                 <div>
-                  <label className="text-xs text-slate-400 mb-1.5 block">Color</label>
+                  <label className="text-xs text-muted-foreground mb-1.5 block">Color</label>
                   <div className="flex flex-wrap gap-1">
                     {COLORS.map((c) => (
                       <button
@@ -161,7 +161,7 @@ export function CreateSpaceModal({
 
             {/* Name */}
             <div>
-              <label className="text-xs text-slate-400 mb-1.5 block">Name</label>
+              <label className="text-xs text-muted-foreground mb-1.5 block">Name</label>
               <input
                 ref={inputRef}
                 type="text"
@@ -171,21 +171,21 @@ export function CreateSpaceModal({
                   setError("");
                 }}
                 placeholder="e.g., Engineering, Design, Marketing"
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
               />
             </div>
 
             {/* Description */}
             <div>
-              <label className="text-xs text-slate-400 mb-1.5 block">
-                Description <span className="text-slate-500">(optional)</span>
+              <label className="text-xs text-muted-foreground mb-1.5 block">
+                Description <span className="text-muted-foreground">(optional)</span>
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="What is this space for?"
                 rows={2}
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm resize-none"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm resize-none"
               />
             </div>
 
@@ -199,7 +199,7 @@ export function CreateSpaceModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                className="px-4 py-2 text-sm text-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
               >
                 Cancel
               </button>

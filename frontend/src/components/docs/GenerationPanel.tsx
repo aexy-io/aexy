@@ -122,37 +122,37 @@ export function GenerationPanel({
       />
 
       {/* Panel */}
-      <div className="relative w-full max-w-2xl max-h-[85vh] bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="relative w-full max-w-2xl max-h-[85vh] bg-background border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-gradient-to-r from-purple-900/20 to-blue-900/20">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-gradient-to-r from-purple-900/20 to-blue-900/20">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl">
-              <Sparkles className="h-5 w-5 text-white" />
+              <Sparkles className="h-5 w-5 text-foreground" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-white">AI Documentation Generator</h2>
-              <p className="text-sm text-slate-400">
+              <h2 className="text-lg font-semibold text-foreground">AI Documentation Generator</h2>
+              <p className="text-sm text-muted-foreground">
                 Generate documentation from your source code
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Mode Tabs */}
-        <div className="flex border-b border-slate-800">
+        <div className="flex border-b border-border">
           <button
             onClick={() => setMode("from_code")}
             className={cn(
               "flex-1 px-4 py-3 text-sm font-medium transition",
               mode === "from_code"
-                ? "text-white border-b-2 border-primary-500"
-                : "text-slate-400 hover:text-white"
+                ? "text-foreground border-b-2 border-primary-500"
+                : "text-muted-foreground hover:text-foreground"
             )}
           >
             <Code2 className="h-4 w-4 inline-block mr-2" />
@@ -165,8 +165,8 @@ export function GenerationPanel({
                 className={cn(
                   "flex-1 px-4 py-3 text-sm font-medium transition",
                   mode === "from_link"
-                    ? "text-white border-b-2 border-primary-500"
-                    : "text-slate-400 hover:text-white"
+                    ? "text-foreground border-b-2 border-primary-500"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 <LinkIcon className="h-4 w-4 inline-block mr-2" />
@@ -177,8 +177,8 @@ export function GenerationPanel({
                 className={cn(
                   "flex-1 px-4 py-3 text-sm font-medium transition",
                   mode === "improve"
-                    ? "text-white border-b-2 border-primary-500"
-                    : "text-slate-400 hover:text-white"
+                    ? "text-foreground border-b-2 border-primary-500"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 <FileText className="h-4 w-4 inline-block mr-2" />
@@ -194,7 +194,7 @@ export function GenerationPanel({
             <>
               {/* Template Selection */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-3">
+                <label className="block text-sm font-medium text-foreground mb-3">
                   Documentation Type
                 </label>
                 <div className="grid grid-cols-2 gap-3">
@@ -206,21 +206,21 @@ export function GenerationPanel({
                         "flex items-start gap-3 p-3 rounded-lg border transition text-left",
                         templateCategory === option.value
                           ? "bg-primary-600/20 border-primary-500"
-                          : "bg-slate-800/50 border-slate-700 hover:border-slate-600"
+                          : "bg-muted/50 border-border hover:border-border"
                       )}
                     >
                       <option.icon className={cn(
                         "h-5 w-5 mt-0.5",
-                        templateCategory === option.value ? "text-primary-400" : "text-slate-400"
+                        templateCategory === option.value ? "text-primary-400" : "text-muted-foreground"
                       )} />
                       <div>
                         <span className={cn(
                           "text-sm font-medium",
-                          templateCategory === option.value ? "text-white" : "text-slate-300"
+                          templateCategory === option.value ? "text-foreground" : "text-foreground"
                         )}>
                           {option.label}
                         </span>
-                        <p className="text-xs text-slate-500">{option.description}</p>
+                        <p className="text-xs text-muted-foreground">{option.description}</p>
                       </div>
                     </button>
                   ))}
@@ -229,7 +229,7 @@ export function GenerationPanel({
 
               {/* Code Input */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Source Code
                 </label>
                 <textarea
@@ -237,14 +237,14 @@ export function GenerationPanel({
                   onChange={(e) => setCode(e.target.value)}
                   placeholder="Paste your source code here..."
                   rows={12}
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 resize-none"
+                  className="w-full px-4 py-3 bg-muted border border-border rounded-lg text-foreground font-mono text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 resize-none"
                 />
               </div>
 
               {/* Optional Fields */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label className="block text-sm font-medium text-foreground mb-2">
                     File Path (optional)
                   </label>
                   <input
@@ -252,17 +252,17 @@ export function GenerationPanel({
                     value={filePath}
                     onChange={(e) => setFilePath(e.target.value)}
                     placeholder="e.g., src/utils/api.ts"
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-500/50"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label className="block text-sm font-medium text-foreground mb-2">
                     Language (optional)
                   </label>
                   <select
                     value={language}
                     onChange={(e) => setLanguage(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/50"
                   >
                     <option value="">Auto-detect</option>
                     <option value="python">Python</option>
@@ -282,24 +282,24 @@ export function GenerationPanel({
 
           {mode === "from_link" && (
             <div className="text-center py-8">
-              <LinkIcon className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-white mb-2">
+              <LinkIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">
                 Generate from Code Link
               </h3>
-              <p className="text-slate-400 text-sm max-w-md mx-auto">
+              <p className="text-muted-foreground text-sm max-w-md mx-auto">
                 This will use the linked source code to regenerate the documentation
                 for this document. Make sure you have code links set up first.
               </p>
 
               {/* Template Selection */}
               <div className="mt-6 max-w-sm mx-auto">
-                <label className="block text-sm font-medium text-slate-300 mb-2 text-left">
+                <label className="block text-sm font-medium text-foreground mb-2 text-left">
                   Documentation Type
                 </label>
                 <select
                   value={templateCategory}
                   onChange={(e) => setTemplateCategory(e.target.value as TemplateCategory)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/50"
                 >
                   {templateOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -314,10 +314,10 @@ export function GenerationPanel({
           {mode === "improve" && (
             <div className="text-center py-8">
               <Sparkles className="h-12 w-12 text-purple-500 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-white mb-2">
+              <h3 className="text-lg font-medium text-foreground mb-2">
                 Get Improvement Suggestions
               </h3>
-              <p className="text-slate-400 text-sm max-w-md mx-auto">
+              <p className="text-muted-foreground text-sm max-w-md mx-auto">
                 AI will analyze your current documentation and suggest improvements
                 for clarity, completeness, and accuracy.
               </p>
@@ -342,10 +342,10 @@ export function GenerationPanel({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-800 bg-slate-900/50">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-background/50">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition"
+            className="px-4 py-2 text-sm font-medium text-foreground hover:text-foreground transition"
           >
             Cancel
           </button>

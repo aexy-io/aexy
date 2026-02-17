@@ -34,7 +34,7 @@ const STATUS_OPTIONS = [
   { value: "active", label: "Active", color: "bg-green-500" },
   { value: "on_hold", label: "On Hold", color: "bg-amber-500" },
   { value: "completed", label: "Completed", color: "bg-blue-500" },
-  { value: "archived", label: "Archived", color: "bg-slate-500" },
+  { value: "archived", label: "Archived", color: "bg-muted-foreground" },
 ];
 
 const COLORS = [
@@ -202,7 +202,7 @@ export default function ProjectSettingsPage() {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
-          <FolderKanban className="h-16 w-16 text-slate-600 mx-auto mb-4" />
+          <FolderKanban className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-xl font-medium text-foreground mb-2">Project Not Found</h3>
           <p className="text-muted-foreground mb-6">
             The project you're looking for doesn't exist.

@@ -64,21 +64,21 @@ export default function LeaderboardPage() {
         <div className="flex items-center gap-4">
           <Link
             href="/insights"
-            className="text-slate-400 hover:text-white transition"
+            className="text-muted-foreground hover:text-foreground transition"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <Crown className="h-6 w-6 text-amber-400" />
               Leaderboard
             </h1>
-            <p className="text-slate-400 text-sm mt-1">
+            <p className="text-muted-foreground text-sm mt-1">
               Ranked developer metrics
             </p>
           </div>
         </div>
-        <div className="flex bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+        <div className="flex bg-muted rounded-lg border border-border overflow-hidden">
           {PERIOD_OPTIONS.map((opt) => (
             <button
               key={opt.value}
@@ -86,7 +86,7 @@ export default function LeaderboardPage() {
               className={`px-3 py-1.5 text-sm font-medium transition ${
                 periodType === opt.value
                   ? "bg-indigo-600 text-white"
-                  : "text-slate-400 hover:text-white"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {opt.label}
@@ -106,7 +106,7 @@ export default function LeaderboardPage() {
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
                 metric === opt.value
                   ? "bg-indigo-600 text-white"
-                  : "bg-slate-800 text-slate-400 hover:text-white border border-slate-700"
+                  : "bg-muted text-muted-foreground hover:text-foreground border border-border"
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -122,7 +122,7 @@ export default function LeaderboardPage() {
           {Array.from({ length: 10 }).map((_, i) => (
             <div
               key={i}
-              className="h-14 bg-slate-800 rounded-xl animate-pulse border border-slate-700"
+              className="h-14 bg-muted rounded-xl animate-pulse border border-border"
             />
           ))}
         </div>
@@ -131,17 +131,17 @@ export default function LeaderboardPage() {
           {leaderboard.entries.map((entry, i) => (
             <div
               key={entry.developer_id}
-              className="bg-slate-800 rounded-xl border border-slate-700 p-4 flex items-center gap-4"
+              className="bg-muted rounded-xl border border-border p-4 flex items-center gap-4"
             >
               <span
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
                   i === 0
                     ? "bg-amber-500/20 text-amber-400"
                     : i === 1
-                      ? "bg-slate-400/20 text-slate-300"
+                      ? "bg-muted/20 text-foreground"
                       : i === 2
                         ? "bg-orange-500/20 text-orange-400"
-                        : "bg-slate-700 text-slate-400"
+                        : "bg-accent text-muted-foreground"
                 }`}
               >
                 {entry.rank}
@@ -149,11 +149,11 @@ export default function LeaderboardPage() {
               <div className="flex-1 min-w-0">
                 <Link
                   href={`/insights/developers/${entry.developer_id}`}
-                  className="text-sm text-white hover:text-indigo-300 font-medium"
+                  className="text-sm text-foreground hover:text-indigo-300 font-medium"
                 >
                   {entry.developer_name || entry.developer_id.slice(0, 12)}
                 </Link>
-                <div className="mt-1.5 w-full bg-slate-700 rounded-full h-1.5">
+                <div className="mt-1.5 w-full bg-accent rounded-full h-1.5">
                   <div
                     className="bg-indigo-500 h-1.5 rounded-full transition-all"
                     style={{
@@ -162,15 +162,15 @@ export default function LeaderboardPage() {
                   />
                 </div>
               </div>
-              <span className="text-lg font-mono font-bold text-white shrink-0">
+              <span className="text-lg font-mono font-bold text-foreground shrink-0">
                 {entry.value}
               </span>
             </div>
           ))}
         </div>
       ) : (
-        <div className="bg-slate-800 rounded-xl p-8 border border-slate-700 text-center">
-          <p className="text-slate-400">
+        <div className="bg-muted rounded-xl p-8 border border-border text-center">
+          <p className="text-muted-foreground">
             No leaderboard data available. Generate snapshots first.
           </p>
         </div>

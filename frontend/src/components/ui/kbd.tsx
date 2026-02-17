@@ -13,9 +13,9 @@ const Kbd = React.forwardRef<HTMLElement, KbdProps>(
     const keyArray = Array.isArray(keys) ? keys : [keys];
 
     const variants = {
-      default: "bg-slate-700 border-slate-600 text-slate-300 shadow-sm",
-      outline: "bg-transparent border-slate-600 text-slate-400",
-      ghost: "bg-slate-800/50 border-transparent text-slate-500",
+      default: "bg-accent border-border text-foreground shadow-sm",
+      outline: "bg-transparent border-border text-muted-foreground",
+      ghost: "bg-muted/50 border-transparent text-muted-foreground",
     };
 
     // Convert key names to symbols
@@ -58,7 +58,7 @@ const Kbd = React.forwardRef<HTMLElement, KbdProps>(
               {getKeySymbol(key)}
             </kbd>
             {index < keyArray.length - 1 && (
-              <span className="text-slate-600 text-xs mx-0.5">+</span>
+              <span className="text-muted-foreground text-xs mx-0.5">+</span>
             )}
           </React.Fragment>
         ))}
@@ -84,7 +84,7 @@ const ShortcutHint = React.forwardRef<HTMLDivElement, ShortcutHintProps>(
       )}
       {...props}
     >
-      {label && <span className="text-slate-400">{label}</span>}
+      {label && <span className="text-muted-foreground">{label}</span>}
       <Kbd keys={shortcut} variant="ghost" />
     </div>
   )

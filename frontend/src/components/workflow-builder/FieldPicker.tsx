@@ -295,7 +295,7 @@ export function FieldPicker({
     <div ref={containerRef} className={`relative ${className}`}>
       {/* Input field */}
       <div
-        className="flex items-center gap-2 w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 cursor-pointer hover:border-slate-500 transition-colors"
+        className="flex items-center gap-2 w-full bg-accent border border-border rounded-lg px-3 py-2 cursor-pointer hover:border-muted-foreground transition-colors"
         onClick={() => {
           setIsOpen(!isOpen);
           if (!isOpen) {
@@ -303,8 +303,8 @@ export function FieldPicker({
           }
         }}
       >
-        <Database className="h-4 w-4 text-slate-400 flex-shrink-0" />
-        <span className={`flex-1 text-sm truncate ${value ? "text-white" : "text-slate-400"}`}>
+        <Database className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        <span className={`flex-1 text-sm truncate ${value ? "text-foreground" : "text-muted-foreground"}`}>
           {getDisplayValue() || placeholder}
         </span>
         {value && (
@@ -313,28 +313,28 @@ export function FieldPicker({
               e.stopPropagation();
               onChange("");
             }}
-            className="text-slate-400 hover:text-white"
+            className="text-muted-foreground hover:text-foreground"
           >
             <X className="h-4 w-4" />
           </button>
         )}
-        <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
       </div>
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl max-h-[400px] overflow-hidden flex flex-col">
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-muted border border-border rounded-lg shadow-xl max-h-[400px] overflow-hidden flex flex-col">
           {/* Search input */}
-          <div className="p-2 border-b border-slate-700">
-            <div className="flex items-center gap-2 bg-slate-700 rounded-lg px-3 py-2">
-              <Search className="h-4 w-4 text-slate-400" />
+          <div className="p-2 border-b border-border">
+            <div className="flex items-center gap-2 bg-accent rounded-lg px-3 py-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
               <input
                 ref={inputRef}
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search fields..."
-                className="flex-1 bg-transparent text-white text-sm outline-none"
+                className="flex-1 bg-transparent text-foreground text-sm outline-none"
               />
             </div>
           </div>
@@ -342,14 +342,14 @@ export function FieldPicker({
           {/* Field list */}
           <div className="flex-1 overflow-y-auto p-2">
             {loading ? (
-              <div className="text-center py-4 text-slate-400 text-sm">Loading fields...</div>
+              <div className="text-center py-4 text-muted-foreground text-sm">Loading fields...</div>
             ) : (
               <>
                 {/* Schema categories */}
                 {Object.entries(filteredSchema).map(([key, category]) => (
                   <div key={key} className="mb-2">
                     <button
-                      className="flex items-center gap-2 w-full px-2 py-1.5 text-left text-sm font-medium text-slate-300 hover:bg-slate-700/50 rounded"
+                      className="flex items-center gap-2 w-full px-2 py-1.5 text-left text-sm font-medium text-foreground hover:bg-accent/50 rounded"
                       onClick={() => toggleCategory(key)}
                     >
                       {expandedCategories.has(key) ? (
@@ -359,7 +359,7 @@ export function FieldPicker({
                       )}
                       {categoryIcons[key]}
                       <span>{category.label}</span>
-                      <span className="text-slate-500 text-xs ml-auto">{category.fields.length}</span>
+                      <span className="text-muted-foreground text-xs ml-auto">{category.fields.length}</span>
                     </button>
 
                     {expandedCategories.has(key) && (
@@ -367,17 +367,17 @@ export function FieldPicker({
                         {category.fields.map((field) => (
                           <button
                             key={field.path}
-                            className="flex items-center gap-2 w-full px-2 py-1.5 text-left text-sm text-slate-300 hover:bg-slate-700 rounded group"
+                            className="flex items-center gap-2 w-full px-2 py-1.5 text-left text-sm text-foreground hover:bg-accent rounded group"
                             onClick={() => selectField(field.path)}
                           >
-                            <span className="w-5 h-5 flex items-center justify-center text-xs text-slate-500 bg-slate-700/50 rounded">
+                            <span className="w-5 h-5 flex items-center justify-center text-xs text-muted-foreground bg-accent/50 rounded">
                               {typeIcons[field.type] || "?"}
                             </span>
                             <span className="flex-1 truncate">{field.name}</span>
                             {field.required && (
                               <span className="text-amber-400 text-xs">*</span>
                             )}
-                            <span className="text-slate-500 text-xs opacity-0 group-hover:opacity-100 truncate max-w-[100px]">
+                            <span className="text-muted-foreground text-xs opacity-0 group-hover:opacity-100 truncate max-w-[100px]">
                               {field.path}
                             </span>
                           </button>
@@ -391,7 +391,7 @@ export function FieldPicker({
                 {filteredNodeOutputs.length > 0 && (
                   <div className="mb-2">
                     <button
-                      className="flex items-center gap-2 w-full px-2 py-1.5 text-left text-sm font-medium text-slate-300 hover:bg-slate-700/50 rounded"
+                      className="flex items-center gap-2 w-full px-2 py-1.5 text-left text-sm font-medium text-foreground hover:bg-accent/50 rounded"
                       onClick={() => toggleCategory("nodes")}
                     >
                       {expandedCategories.has("nodes") ? (
@@ -401,7 +401,7 @@ export function FieldPicker({
                       )}
                       {categoryIcons.nodes}
                       <span>Previous Node Outputs</span>
-                      <span className="text-slate-500 text-xs ml-auto">
+                      <span className="text-muted-foreground text-xs ml-auto">
                         {filteredNodeOutputs.reduce((sum, n) => sum + n.outputs.length, 0)}
                       </span>
                     </button>
@@ -410,17 +410,17 @@ export function FieldPicker({
                       <div className="ml-4 mt-1 space-y-2">
                         {filteredNodeOutputs.map((node) => (
                           <div key={node.node_id}>
-                            <div className="text-xs text-slate-500 px-2 py-1">
+                            <div className="text-xs text-muted-foreground px-2 py-1">
                               {node.node_label}
                             </div>
                             <div className="space-y-0.5">
                               {node.outputs.map((output) => (
                                 <button
                                   key={output.path}
-                                  className="flex items-center gap-2 w-full px-2 py-1.5 text-left text-sm text-slate-300 hover:bg-slate-700 rounded group"
+                                  className="flex items-center gap-2 w-full px-2 py-1.5 text-left text-sm text-foreground hover:bg-accent rounded group"
                                   onClick={() => selectField(output.path)}
                                 >
-                                  <span className="w-5 h-5 flex items-center justify-center text-xs text-slate-500 bg-slate-700/50 rounded">
+                                  <span className="w-5 h-5 flex items-center justify-center text-xs text-muted-foreground bg-accent/50 rounded">
                                     {typeIcons[output.type] || "?"}
                                   </span>
                                   <span className="flex-1 truncate">{output.name}</span>
@@ -436,7 +436,7 @@ export function FieldPicker({
 
                 {/* Empty state */}
                 {Object.keys(filteredSchema).length === 0 && filteredNodeOutputs.length === 0 && (
-                  <div className="text-center py-4 text-slate-400 text-sm">
+                  <div className="text-center py-4 text-muted-foreground text-sm">
                     {searchQuery ? "No matching fields found" : "No fields available"}
                   </div>
                 )}
@@ -446,12 +446,12 @@ export function FieldPicker({
 
           {/* Custom value input */}
           {allowCustom && (
-            <div className="p-2 border-t border-slate-700">
-              <div className="text-xs text-slate-500 mb-1">Or enter custom path:</div>
+            <div className="p-2 border-t border-border">
+              <div className="text-xs text-muted-foreground mb-1">Or enter custom path:</div>
               <input
                 type="text"
                 placeholder="e.g., record.values.custom_field"
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-white placeholder-slate-500"
+                className="w-full bg-accent border border-border rounded px-2 py-1.5 text-sm text-foreground placeholder-muted-foreground"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     const input = e.currentTarget.value.trim();

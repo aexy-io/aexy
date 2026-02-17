@@ -78,18 +78,18 @@ export function TemplateSelector({
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-3xl max-h-[80vh] bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-3xl max-h-[80vh] bg-background border border-border rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div>
-            <h2 className="text-lg font-semibold text-white">Create New Document</h2>
-            <p className="text-sm text-slate-400">
+            <h2 className="text-lg font-semibold text-foreground">Create New Document</h2>
+            <p className="text-sm text-muted-foreground">
               Choose a template or start with a blank document
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition"
           >
             <X className="h-5 w-5" />
           </button>
@@ -101,14 +101,14 @@ export function TemplateSelector({
           <div className="mb-6">
             <button
               onClick={handleSelectBlank}
-              className="w-full flex items-center gap-4 p-4 bg-slate-800/50 border border-slate-700 rounded-xl hover:bg-slate-800 hover:border-slate-600 transition group"
+              className="w-full flex items-center gap-4 p-4 bg-muted/50 border border-border rounded-xl hover:bg-muted hover:border-border transition group"
             >
-              <div className="p-3 bg-slate-700 rounded-xl group-hover:bg-slate-600 transition">
-                <FileText className="h-6 w-6 text-slate-300" />
+              <div className="p-3 bg-accent rounded-xl group-hover:bg-muted transition">
+                <FileText className="h-6 w-6 text-foreground" />
               </div>
               <div className="text-left">
-                <h3 className="text-white font-medium">Blank Document</h3>
-                <p className="text-sm text-slate-400">Start with an empty page</p>
+                <h3 className="text-foreground font-medium">Blank Document</h3>
+                <p className="text-sm text-muted-foreground">Start with an empty page</p>
               </div>
             </button>
           </div>
@@ -120,11 +120,11 @@ export function TemplateSelector({
               className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-700/50 rounded-xl hover:from-purple-900/50 hover:to-blue-900/50 transition group"
             >
               <div className="p-3 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl">
-                <Sparkles className="h-6 w-6 text-white" />
+                <Sparkles className="h-6 w-6 text-foreground" />
               </div>
               <div className="text-left flex-1">
-                <h3 className="text-white font-medium">Generate from Code</h3>
-                <p className="text-sm text-slate-400">
+                <h3 className="text-foreground font-medium">Generate from Code</h3>
+                <p className="text-sm text-muted-foreground">
                   Use AI to generate documentation from your source code
                 </p>
               </div>
@@ -141,7 +141,7 @@ export function TemplateSelector({
             </div>
           ) : (
             <div>
-              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
                 Templates
               </h3>
               <div className="grid grid-cols-2 gap-4">
@@ -162,19 +162,19 @@ export function TemplateSelector({
                       className={cn(
                         "flex flex-col items-start p-4 rounded-xl border transition text-left",
                         categoryTemplates.length > 0
-                          ? "bg-slate-800/50 border-slate-700 hover:bg-slate-800 hover:border-slate-600"
-                          : "bg-slate-900/50 border-slate-800 opacity-50 cursor-not-allowed"
+                          ? "bg-muted/50 border-border hover:bg-muted hover:border-border"
+                          : "bg-background/50 border-border opacity-50 cursor-not-allowed"
                       )}
                     >
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-slate-700 rounded-lg">
+                        <div className="p-2 bg-accent rounded-lg">
                           <Icon className="h-4 w-4 text-primary-400" />
                         </div>
-                        <span className="text-white font-medium">{label}</span>
+                        <span className="text-foreground font-medium">{label}</span>
                       </div>
-                      <p className="text-xs text-slate-500">{description}</p>
+                      <p className="text-xs text-muted-foreground">{description}</p>
                       {categoryTemplates.length > 0 && (
-                        <span className="mt-2 text-xs text-slate-500">
+                        <span className="mt-2 text-xs text-muted-foreground">
                           {categoryTemplates.length} template{categoryTemplates.length > 1 ? "s" : ""}
                         </span>
                       )}
@@ -188,7 +188,7 @@ export function TemplateSelector({
           {/* Custom Templates */}
           {templates && templates.filter(t => !t.is_system).length > 0 && (
             <div className="mt-6">
-              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
                 Custom Templates
               </h3>
               <div className="space-y-2">
@@ -200,20 +200,20 @@ export function TemplateSelector({
                       <button
                         key={template.id}
                         onClick={() => handleSelectTemplate(template)}
-                        className="w-full flex items-center gap-3 p-3 bg-slate-800/30 border border-slate-700/50 rounded-lg hover:bg-slate-800 hover:border-slate-600 transition"
+                        className="w-full flex items-center gap-3 p-3 bg-muted/30 border border-border/50 rounded-lg hover:bg-muted hover:border-border transition"
                       >
                         <span className="text-xl">{template.icon || "📄"}</span>
                         <div className="text-left flex-1">
-                          <span className="text-white text-sm font-medium">
+                          <span className="text-foreground text-sm font-medium">
                             {template.name}
                           </span>
                           {template.description && (
-                            <p className="text-xs text-slate-500 truncate">
+                            <p className="text-xs text-muted-foreground truncate">
                               {template.description}
                             </p>
                           )}
                         </div>
-                        <span className="text-xs text-slate-600 bg-slate-800 px-2 py-0.5 rounded">
+                        <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
                           {categoryLabels[template.category]}
                         </span>
                       </button>

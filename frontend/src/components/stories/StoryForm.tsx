@@ -86,76 +86,76 @@ export function StoryForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Title */}
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-2">Title *</label>
+        <label className="block text-sm font-medium text-foreground mb-2">Title *</label>
         <input
           type="text"
           value={formData.title || ""}
           onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
           placeholder="Brief title for the story"
-          className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+          className="w-full bg-muted border border-border rounded-lg px-3 py-2 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           required
         />
       </div>
 
       {/* User Story Format */}
-      <div className="space-y-4 p-4 bg-slate-800/50 rounded-lg border border-slate-700/50">
-        <h4 className="text-sm font-medium text-white">User Story</h4>
+      <div className="space-y-4 p-4 bg-muted/50 rounded-lg border border-border/50">
+        <h4 className="text-sm font-medium text-foreground">User Story</h4>
 
         <div>
-          <label className="block text-sm text-slate-400 mb-1">As a... *</label>
+          <label className="block text-sm text-muted-foreground mb-1">As a... *</label>
           <input
             type="text"
             value={formData.as_a || ""}
             onChange={(e) => setFormData((prev) => ({ ...prev, as_a: e.target.value }))}
             placeholder="e.g., product manager, developer, customer"
-            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             required
           />
         </div>
 
         <div>
-          <label className="block text-sm text-slate-400 mb-1">I want... *</label>
+          <label className="block text-sm text-muted-foreground mb-1">I want... *</label>
           <textarea
             value={formData.i_want || ""}
             onChange={(e) => setFormData((prev) => ({ ...prev, i_want: e.target.value }))}
             placeholder="What do you want to accomplish?"
-            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 min-h-[80px]"
+            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50 min-h-[80px]"
             required
           />
         </div>
 
         <div>
-          <label className="block text-sm text-slate-400 mb-1">So that...</label>
+          <label className="block text-sm text-muted-foreground mb-1">So that...</label>
           <textarea
             value={formData.so_that || ""}
             onChange={(e) => setFormData((prev) => ({ ...prev, so_that: e.target.value }))}
             placeholder="What benefit does this provide?"
-            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 min-h-[60px]"
+            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50 min-h-[60px]"
           />
         </div>
       </div>
 
       {/* Description */}
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-2">Additional Description</label>
+        <label className="block text-sm font-medium text-foreground mb-2">Additional Description</label>
         <textarea
           value={formData.description || ""}
           onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
           placeholder="Any additional context or details..."
-          className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 min-h-[100px]"
+          className="w-full bg-muted border border-border rounded-lg px-3 py-2 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50 min-h-[100px]"
         />
       </div>
 
       {/* Priority and Points */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">Priority</label>
+          <label className="block text-sm font-medium text-foreground mb-2">Priority</label>
           <select
             value={formData.priority || "medium"}
             onChange={(e) =>
               setFormData((prev) => ({ ...prev, priority: e.target.value as StoryPriority }))
             }
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            className="w-full bg-muted border border-border rounded-lg px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           >
             <option value="critical">Critical</option>
             <option value="high">High</option>
@@ -165,7 +165,7 @@ export function StoryForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">Story Points</label>
+          <label className="block text-sm font-medium text-foreground mb-2">Story Points</label>
           <input
             type="number"
             value={formData.story_points ?? ""}
@@ -177,25 +177,25 @@ export function StoryForm({
             }
             placeholder="Estimate"
             min={0}
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            className="w-full bg-muted border border-border rounded-lg px-3 py-2 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           />
         </div>
       </div>
 
       {/* Acceptance Criteria */}
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-2">Acceptance Criteria</label>
+        <label className="block text-sm font-medium text-foreground mb-2">Acceptance Criteria</label>
         <div className="space-y-2 mb-3">
           {formData.acceptance_criteria?.map((criterion) => (
             <div
               key={criterion.id}
-              className="flex items-center gap-2 bg-slate-800/50 px-3 py-2 rounded-lg"
+              className="flex items-center gap-2 bg-muted/50 px-3 py-2 rounded-lg"
             >
-              <span className="flex-1 text-sm text-slate-300">{criterion.description}</span>
+              <span className="flex-1 text-sm text-foreground">{criterion.description}</span>
               <button
                 type="button"
                 onClick={() => removeCriterion(criterion.id)}
-                className="p-1 text-slate-500 hover:text-red-400"
+                className="p-1 text-muted-foreground hover:text-red-400"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -214,12 +214,12 @@ export function StoryForm({
               }
             }}
             placeholder="Add acceptance criterion..."
-            className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            className="flex-1 bg-muted border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           />
           <button
             type="button"
             onClick={addCriterion}
-            className="p-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600"
+            className="p-2 bg-accent text-foreground rounded-lg hover:bg-muted"
           >
             <Plus className="h-4 w-4" />
           </button>
@@ -228,18 +228,18 @@ export function StoryForm({
 
       {/* Labels */}
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-2">Labels</label>
+        <label className="block text-sm font-medium text-foreground mb-2">Labels</label>
         <div className="flex flex-wrap gap-2 mb-3">
           {formData.labels?.map((label) => (
             <span
               key={label}
-              className="inline-flex items-center gap-1 bg-slate-700 text-slate-300 px-2 py-1 rounded text-sm"
+              className="inline-flex items-center gap-1 bg-accent text-foreground px-2 py-1 rounded text-sm"
             >
               {label}
               <button
                 type="button"
                 onClick={() => removeLabel(label)}
-                className="text-slate-500 hover:text-red-400"
+                className="text-muted-foreground hover:text-red-400"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -258,12 +258,12 @@ export function StoryForm({
               }
             }}
             placeholder="Add label..."
-            className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            className="flex-1 bg-muted border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           />
           <button
             type="button"
             onClick={addLabel}
-            className="p-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600"
+            className="p-2 bg-accent text-foreground rounded-lg hover:bg-muted"
           >
             <Plus className="h-4 w-4" />
           </button>
@@ -271,11 +271,11 @@ export function StoryForm({
       </div>
 
       {/* Actions */}
-      <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-700">
+      <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 text-slate-300 hover:text-white transition-colors"
+          className="px-4 py-2 text-foreground hover:text-foreground transition-colors"
         >
           Cancel
         </button>

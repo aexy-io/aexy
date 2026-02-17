@@ -99,14 +99,14 @@ function CandidateCard({ candidate, onDragStart, onDragEnd }: { candidate: Candi
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       className={cn(
-        "group relative bg-slate-800/80 border rounded-lg p-4 cursor-grab active:cursor-grabbing",
-        "hover:border-slate-600 hover:bg-slate-800 transition-all duration-200",
+        "group relative bg-muted/80 border rounded-lg p-4 cursor-grab active:cursor-grabbing",
+        "hover:border-border hover:bg-muted transition-all duration-200",
         stageConfig.borderColor
       )}
     >
       {/* Drag indicator */}
       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <GripVertical className="h-4 w-4 text-slate-500" />
+        <GripVertical className="h-4 w-4 text-muted-foreground" />
       </div>
 
       {/* Header */}
@@ -117,15 +117,15 @@ function CandidateCard({ candidate, onDragStart, onDragEnd }: { candidate: Candi
         <div className="flex-1 min-w-0">
           <Link
             href={`/hiring/candidates/${candidate.id}`}
-            className="text-sm font-medium text-white hover:text-primary-400 transition truncate block"
+            className="text-sm font-medium text-foreground hover:text-primary-400 transition truncate block"
           >
             {candidate.name}
           </Link>
-          <p className="text-xs text-slate-400 truncate">{candidate.role}</p>
+          <p className="text-xs text-muted-foreground truncate">{candidate.role}</p>
         </div>
         <button
           onClick={() => setShowMenu(!showMenu)}
-          className="p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition opacity-0 group-hover:opacity-100"
+          className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition opacity-0 group-hover:opacity-100"
         >
           <MoreVertical className="h-4 w-4" />
         </button>
@@ -134,7 +134,7 @@ function CandidateCard({ candidate, onDragStart, onDragEnd }: { candidate: Candi
       {/* Score */}
       {candidate.score && (
         <div className="flex items-center gap-2 mb-3">
-          <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+          <div className="flex-1 h-1.5 bg-accent rounded-full overflow-hidden">
             <div
               className={cn(
                 "h-full rounded-full",
@@ -156,23 +156,23 @@ function CandidateCard({ candidate, onDragStart, onDragEnd }: { candidate: Candi
       {candidate.tags.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-3">
           {candidate.tags.slice(0, 2).map((tag) => (
-            <span key={tag} className="text-xs px-1.5 py-0.5 bg-slate-700 text-slate-300 rounded">
+            <span key={tag} className="text-xs px-1.5 py-0.5 bg-accent text-foreground rounded">
               {tag}
             </span>
           ))}
           {candidate.tags.length > 2 && (
-            <span className="text-xs text-slate-500">+{candidate.tags.length - 2}</span>
+            <span className="text-xs text-muted-foreground">+{candidate.tags.length - 2}</span>
           )}
         </div>
       )}
 
       {/* Footer */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-slate-500">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
           <Clock className="h-3 w-3" />
           {getTimeAgo(candidate.appliedAt)}
         </span>
-        <span className="px-1.5 py-0.5 bg-slate-700/50 rounded">{candidate.source}</span>
+        <span className="px-1.5 py-0.5 bg-accent/50 rounded">{candidate.source}</span>
       </div>
 
       {/* Quick menu */}
@@ -180,26 +180,26 @@ function CandidateCard({ candidate, onDragStart, onDragEnd }: { candidate: Candi
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="absolute top-10 right-2 z-10 w-44 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1"
+          className="absolute top-10 right-2 z-10 w-44 bg-muted border border-border rounded-lg shadow-xl py-1"
         >
-          <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 transition">
+          <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition">
             <ExternalLink className="h-4 w-4" />
             View Profile
           </button>
-          <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 transition">
+          <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition">
             <Mail className="h-4 w-4" />
             Send Email
           </button>
-          <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 transition">
+          <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition">
             <FileText className="h-4 w-4" />
             Send Assessment
           </button>
-          <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 transition">
+          <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition">
             <Calendar className="h-4 w-4" />
             Schedule Interview
           </button>
-          <hr className="my-1 border-slate-700" />
-          <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-slate-700 transition">
+          <hr className="my-1 border-border" />
+          <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-accent transition">
             <Trash2 className="h-4 w-4" />
             Reject
           </button>
@@ -224,8 +224,8 @@ function StageColumn({
   return (
     <div
       className={cn(
-        "flex flex-col min-w-[280px] w-[280px] bg-slate-900/50 rounded-xl border transition-colors",
-        isDragOver ? "border-primary-500/50 bg-primary-500/5" : "border-slate-800"
+        "flex flex-col min-w-[280px] w-[280px] bg-background/50 rounded-xl border transition-colors",
+        isDragOver ? "border-primary-500/50 bg-primary-500/5" : "border-border"
       )}
       onDragOver={(e) => {
         e.preventDefault();
@@ -247,11 +247,11 @@ function StageColumn({
           <div className="flex items-center gap-2">
             <div className={cn("w-2 h-2 rounded-full", config.bgColor.replace("/10", ""))} />
             <span className={cn("font-medium", config.color)}>{config.label}</span>
-            <span className="text-xs text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">
+            <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
               {candidates.length}
             </span>
           </div>
-          <button className="p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition">
+          <button className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition">
             <Plus className="h-4 w-4" />
           </button>
         </div>
@@ -275,8 +275,8 @@ function StageColumn({
 
         {candidates.length === 0 && (
           <div className="py-8 text-center">
-            <User className="h-8 w-8 text-slate-600 mx-auto mb-2" />
-            <p className="text-sm text-slate-500">No candidates</p>
+            <User className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No candidates</p>
           </div>
         )}
       </div>
@@ -377,13 +377,13 @@ export default function CandidatesPage() {
 
   if (isLoading || workspacesLoading || (loading && currentWorkspaceId)) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
             <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
           </div>
-          <p className="text-slate-400 text-sm">Loading candidates...</p>
+          <p className="text-muted-foreground text-sm">Loading candidates...</p>
         </div>
       </div>
     );
@@ -391,13 +391,13 @@ export default function CandidatesPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center max-w-md">
           <div className="w-20 h-20 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
             <X className="h-10 w-10 text-red-500" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Error Loading Candidates</h2>
-          <p className="text-slate-400 mb-6">{error}</p>
+          <h2 className="text-2xl font-bold text-foreground mb-2">Error Loading Candidates</h2>
+          <p className="text-muted-foreground mb-6">{error}</p>
           <button
             onClick={() => window.location.reload()}
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition font-medium"
@@ -415,13 +415,13 @@ export default function CandidatesPage() {
 
   if (!hasWorkspaces) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center max-w-md">
-          <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <Building2 className="h-10 w-10 text-slate-600" />
+          <div className="w-20 h-20 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Building2 className="h-10 w-10 text-muted-foreground" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Workspace Required</h2>
-          <p className="text-slate-400 mb-6">
+          <h2 className="text-2xl font-bold text-foreground mb-2">Workspace Required</h2>
+          <p className="text-muted-foreground mb-6">
             Create a workspace first to manage candidates.
           </p>
           <Link
@@ -445,8 +445,8 @@ export default function CandidatesPage() {
               <Users className="h-7 w-7 text-blue-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">Candidate Pipeline</h1>
-              <p className="text-slate-400 text-sm">
+              <h1 className="text-2xl font-bold text-foreground">Candidate Pipeline</h1>
+              <p className="text-muted-foreground text-sm">
                 {filteredCandidates.length} candidates in pipeline
               </p>
             </div>
@@ -464,13 +464,13 @@ export default function CandidatesPage() {
         <div className="flex items-center gap-4 mb-6">
           {/* Search */}
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search candidates..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-800 text-white rounded-lg pl-10 pr-4 py-2 border border-slate-700 focus:border-primary-500 focus:outline-none text-sm"
+              className="w-full bg-muted text-foreground rounded-lg pl-10 pr-4 py-2 border border-border focus:border-primary-500 focus:outline-none text-sm"
             />
           </div>
 
@@ -478,7 +478,7 @@ export default function CandidatesPage() {
           <select
             value={filterStage}
             onChange={(e) => setFilterStage(e.target.value as CandidateStage | "all")}
-            className="bg-slate-800 text-white rounded-lg px-3 py-2 border border-slate-700 focus:border-primary-500 focus:outline-none text-sm"
+            className="bg-muted text-foreground rounded-lg px-3 py-2 border border-border focus:border-primary-500 focus:outline-none text-sm"
           >
             <option value="all">All Stages</option>
             {STAGES_ORDER.map((stage) => (
@@ -493,7 +493,7 @@ export default function CandidatesPage() {
           <select
             value={filterSource}
             onChange={(e) => setFilterSource(e.target.value)}
-            className="bg-slate-800 text-white rounded-lg px-3 py-2 border border-slate-700 focus:border-primary-500 focus:outline-none text-sm"
+            className="bg-muted text-foreground rounded-lg px-3 py-2 border border-border focus:border-primary-500 focus:outline-none text-sm"
           >
             <option value="all">All Sources</option>
             {sources.filter(Boolean).map((source) => (
@@ -504,12 +504,12 @@ export default function CandidatesPage() {
           </select>
 
           {/* View Toggle */}
-          <div className="flex items-center bg-slate-800 rounded-lg p-1 border border-slate-700">
+          <div className="flex items-center bg-muted rounded-lg p-1 border border-border">
             <button
               onClick={() => setViewMode("kanban")}
               className={cn(
                 "p-2 rounded transition",
-                viewMode === "kanban" ? "bg-primary-500 text-white" : "text-slate-400 hover:text-white"
+                viewMode === "kanban" ? "bg-primary-500 text-white" : "text-muted-foreground hover:text-foreground"
               )}
             >
               <LayoutGrid className="h-4 w-4" />
@@ -518,7 +518,7 @@ export default function CandidatesPage() {
               onClick={() => setViewMode("list")}
               className={cn(
                 "p-2 rounded transition",
-                viewMode === "list" ? "bg-primary-500 text-white" : "text-slate-400 hover:text-white"
+                viewMode === "list" ? "bg-primary-500 text-white" : "text-muted-foreground hover:text-foreground"
               )}
             >
               <List className="h-4 w-4" />
@@ -542,24 +542,24 @@ export default function CandidatesPage() {
 
         {/* List View */}
         {viewMode === "list" && (
-          <div className="bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden overflow-x-auto">
+          <div className="bg-background/50 rounded-xl border border-border overflow-hidden overflow-x-auto">
             <table className="w-full min-w-[600px]">
               <thead>
-                <tr className="border-b border-slate-800">
-                  <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wide px-4 py-3">Candidate</th>
-                  <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wide px-4 py-3">Role</th>
-                  <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wide px-4 py-3">Stage</th>
-                  <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wide px-4 py-3">Score</th>
-                  <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wide px-4 py-3">Source</th>
-                  <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wide px-4 py-3">Applied</th>
-                  <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wide px-4 py-3"></th>
+                <tr className="border-b border-border">
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Candidate</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Role</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Stage</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Score</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Source</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Applied</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-border">
                 {filteredCandidates.map((candidate) => {
                   const stageConfig = STAGE_CONFIG[candidate.stage];
                   return (
-                    <tr key={candidate.id} className="hover:bg-slate-800/50 transition">
+                    <tr key={candidate.id} className="hover:bg-muted/50 transition">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-blue-500 flex items-center justify-center text-white text-xs font-medium">
@@ -568,15 +568,15 @@ export default function CandidatesPage() {
                           <div>
                             <Link
                               href={`/hiring/candidates/${candidate.id}`}
-                              className="text-sm font-medium text-white hover:text-primary-400 transition"
+                              className="text-sm font-medium text-foreground hover:text-primary-400 transition"
                             >
                               {candidate.name}
                             </Link>
-                            <p className="text-xs text-slate-400">{candidate.email}</p>
+                            <p className="text-xs text-muted-foreground">{candidate.email}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-300">{candidate.role}</td>
+                      <td className="px-4 py-3 text-sm text-foreground">{candidate.role}</td>
                       <td className="px-4 py-3">
                         <span className={cn("text-xs px-2 py-1 rounded", stageConfig.bgColor, stageConfig.color)}>
                           {stageConfig.label}
@@ -591,13 +591,13 @@ export default function CandidatesPage() {
                             {candidate.score}%
                           </span>
                         ) : (
-                          <span className="text-slate-500 text-sm">-</span>
+                          <span className="text-muted-foreground text-sm">-</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-400">{candidate.source}</td>
-                      <td className="px-4 py-3 text-sm text-slate-400">{candidate.appliedAt}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{candidate.source}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{candidate.appliedAt}</td>
                       <td className="px-4 py-3">
-                        <button className="p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition">
+                        <button className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition">
                           <MoreVertical className="h-4 w-4" />
                         </button>
                       </td>
@@ -609,8 +609,8 @@ export default function CandidatesPage() {
 
             {filteredCandidates.length === 0 && (
               <div className="py-12 text-center">
-                <Users className="h-12 w-12 text-slate-600 mx-auto mb-3" />
-                <p className="text-slate-400">No candidates found</p>
+                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground">No candidates found</p>
               </div>
             )}
           </div>
@@ -630,14 +630,14 @@ export default function CandidatesPage() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-6"
+                className="bg-background border border-border rounded-xl w-full max-w-md p-6"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                  <h2 className="text-xl font-bold text-white">Add Candidate</h2>
+                  <h2 className="text-xl font-bold text-foreground">Add Candidate</h2>
                   <button
                     onClick={() => setShowAddModal(false)}
-                    className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition"
+                    className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -645,32 +645,32 @@ export default function CandidatesPage() {
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Name</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">Name</label>
                     <input
                       type="text"
                       placeholder="Enter candidate name"
-                      className="w-full bg-slate-800 text-white rounded-lg px-4 py-2 border border-slate-700 focus:border-primary-500 focus:outline-none"
+                      className="w-full bg-muted text-foreground rounded-lg px-4 py-2 border border-border focus:border-primary-500 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Email</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">Email</label>
                     <input
                       type="email"
                       placeholder="candidate@example.com"
-                      className="w-full bg-slate-800 text-white rounded-lg px-4 py-2 border border-slate-700 focus:border-primary-500 focus:outline-none"
+                      className="w-full bg-muted text-foreground rounded-lg px-4 py-2 border border-border focus:border-primary-500 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Role</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">Role</label>
                     <input
                       type="text"
                       placeholder="e.g., Senior Frontend Engineer"
-                      className="w-full bg-slate-800 text-white rounded-lg px-4 py-2 border border-slate-700 focus:border-primary-500 focus:outline-none"
+                      className="w-full bg-muted text-foreground rounded-lg px-4 py-2 border border-border focus:border-primary-500 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Source</label>
-                    <select className="w-full bg-slate-800 text-white rounded-lg px-4 py-2 border border-slate-700 focus:border-primary-500 focus:outline-none">
+                    <label className="block text-sm font-medium text-foreground mb-1">Source</label>
+                    <select className="w-full bg-muted text-foreground rounded-lg px-4 py-2 border border-border focus:border-primary-500 focus:outline-none">
                       <option value="linkedin">LinkedIn</option>
                       <option value="referral">Referral</option>
                       <option value="direct">Direct</option>
@@ -682,7 +682,7 @@ export default function CandidatesPage() {
                 <div className="flex gap-3 mt-6">
                   <button
                     onClick={() => setShowAddModal(false)}
-                    className="flex-1 px-4 py-2 bg-slate-800 text-slate-300 rounded-lg font-medium hover:bg-slate-700 transition"
+                    className="flex-1 px-4 py-2 bg-muted text-foreground rounded-lg font-medium hover:bg-accent transition"
                   >
                     Cancel
                   </button>

@@ -48,7 +48,7 @@ export function ChatInput({
   };
 
   return (
-    <div className="flex items-end gap-3 p-4 border-t border-slate-700 bg-slate-800/50">
+    <div className="flex items-end gap-3 p-4 border-t border-border bg-muted/50">
       <div className="flex-1 relative">
         <textarea
           ref={textareaRef}
@@ -59,8 +59,8 @@ export function ChatInput({
           disabled={disabled || isSending}
           rows={1}
           className={cn(
-            "w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl",
-            "text-white placeholder-slate-400 resize-none",
+            "w-full px-4 py-3 bg-accent border border-border rounded-xl",
+            "text-foreground placeholder-muted-foreground resize-none",
             "focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500",
             "disabled:opacity-50 disabled:cursor-not-allowed",
             "max-h-[200px] overflow-y-auto"

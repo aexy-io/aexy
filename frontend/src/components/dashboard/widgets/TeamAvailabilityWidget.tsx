@@ -13,12 +13,12 @@ export function TeamAvailabilityWidget() {
 
   if (isLoading) {
     return (
-      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 animate-pulse">
-        <div className="h-6 w-44 bg-slate-800 rounded mb-4" />
-        <div className="h-20 bg-slate-800 rounded-lg mb-3" />
+      <div className="bg-background/50 border border-border rounded-xl p-6 animate-pulse">
+        <div className="h-6 w-44 bg-muted rounded mb-4" />
+        <div className="h-20 bg-muted rounded-lg mb-3" />
         <div className="space-y-2">
           {[1, 2].map((i) => (
-            <div key={i} className="h-8 bg-slate-800 rounded-lg" />
+            <div key={i} className="h-8 bg-muted rounded-lg" />
           ))}
         </div>
       </div>
@@ -32,13 +32,13 @@ export function TeamAvailabilityWidget() {
   const availablePercent = total > 0 ? (available / total) * 100 : 100;
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+    <div className="bg-background/50 border border-border rounded-xl overflow-hidden">
+      <div className="px-6 py-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-emerald-500/10 rounded-lg">
             <Users className="h-5 w-5 text-emerald-400" />
           </div>
-          <h3 className="text-lg font-semibold text-white">
+          <h3 className="text-lg font-semibold text-foreground">
             Team Availability
           </h3>
         </div>
@@ -62,7 +62,7 @@ export function TeamAvailabilityWidget() {
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="3"
-                className="text-slate-800"
+                className="text-foreground"
               />
               <circle
                 cx="18"
@@ -77,8 +77,8 @@ export function TeamAvailabilityWidget() {
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-lg font-bold text-white">{available}</span>
-              <span className="text-[10px] text-slate-500">of {total}</span>
+              <span className="text-lg font-bold text-foreground">{available}</span>
+              <span className="text-[10px] text-muted-foreground">of {total}</span>
             </div>
           </div>
 
@@ -86,26 +86,26 @@ export function TeamAvailabilityWidget() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span className="text-xs text-slate-400">Available</span>
+                <span className="text-xs text-muted-foreground">Available</span>
               </div>
-              <span className="text-xs font-medium text-white">
+              <span className="text-xs font-medium text-foreground">
                 {available}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-amber-400" />
-                <span className="text-xs text-slate-400">On Leave</span>
+                <span className="text-xs text-muted-foreground">On Leave</span>
               </div>
-              <span className="text-xs font-medium text-white">{onLeave}</span>
+              <span className="text-xs font-medium text-foreground">{onLeave}</span>
             </div>
             {onHoliday > 0 && (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-red-400" />
-                  <span className="text-xs text-slate-400">Holiday</span>
+                  <span className="text-xs text-muted-foreground">Holiday</span>
                 </div>
-                <span className="text-xs font-medium text-white">
+                <span className="text-xs font-medium text-foreground">
                   {onHoliday}
                 </span>
               </div>
@@ -115,8 +115,8 @@ export function TeamAvailabilityWidget() {
 
         {/* Who is out list */}
         {whoIsOut && whoIsOut.entries.length > 0 && (
-          <div className="pt-3 border-t border-slate-800">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">
+          <div className="pt-3 border-t border-border">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
               Out Today
             </p>
             <div className="space-y-2">
@@ -132,11 +132,11 @@ export function TeamAvailabilityWidget() {
                       className="w-5 h-5 rounded-full"
                     />
                   ) : (
-                    <div className="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-[10px] text-slate-400">
+                    <div className="w-5 h-5 rounded-full bg-accent flex items-center justify-center text-[10px] text-muted-foreground">
                       {entry.developer_name?.[0] || "?"}
                     </div>
                   )}
-                  <span className="text-xs text-slate-300 truncate flex-1">
+                  <span className="text-xs text-foreground truncate flex-1">
                     {entry.developer_name || "Unknown"}
                   </span>
                   <span
@@ -151,7 +151,7 @@ export function TeamAvailabilityWidget() {
                 </div>
               ))}
               {whoIsOut.entries.length > 4 && (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   +{whoIsOut.entries.length - 4} more
                 </p>
               )}

@@ -806,7 +806,7 @@ export default function TaskConfigPage() {
       <div>
         {!hasWorkspaces ? (
           <div className="bg-card rounded-xl p-12 text-center">
-            <List className="h-16 w-16 text-slate-600 mx-auto mb-4" />
+            <List className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-xl font-medium text-foreground mb-2">No Workspace</h3>
             <p className="text-muted-foreground mb-6">
               Create a workspace first to configure task settings.
@@ -902,7 +902,7 @@ export default function TaskConfigPage() {
                   </DndContext>
                 ) : (
                   <div className="bg-card rounded-xl p-12 text-center">
-                    <Clock className="h-12 w-12 text-slate-600 mx-auto mb-4" />
+                    <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-foreground mb-2">No Statuses</h3>
                     <p className="text-muted-foreground mb-4">
                       Create your first status to define your task workflow.
@@ -995,7 +995,7 @@ export default function TaskConfigPage() {
                   </DndContext>
                 ) : (
                   <div className="bg-card rounded-xl p-12 text-center">
-                    <List className="h-12 w-12 text-slate-600 mx-auto mb-4" />
+                    <List className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-foreground mb-2">No Custom Fields</h3>
                     <p className="text-muted-foreground mb-4">
                       Create custom fields to add extra metadata to your tasks.

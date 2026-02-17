@@ -40,8 +40,8 @@ export function UsageTrendChart({ months = 6, className = "" }: UsageTrendChartP
 
   if (isLoading) {
     return (
-      <div className={`bg-slate-800 rounded-xl border border-slate-700 p-6 ${className}`}>
-        <h3 className="text-lg font-semibold text-white mb-4">Usage Trend</h3>
+      <div className={`bg-muted rounded-xl border border-border p-6 ${className}`}>
+        <h3 className="text-lg font-semibold text-foreground mb-4">Usage Trend</h3>
         <div className="h-64 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
         </div>
@@ -51,10 +51,10 @@ export function UsageTrendChart({ months = 6, className = "" }: UsageTrendChartP
 
   if (error || chartData.length === 0) {
     return (
-      <div className={`bg-slate-800 rounded-xl border border-slate-700 p-6 ${className}`}>
-        <h3 className="text-lg font-semibold text-white mb-4">Usage Trend</h3>
+      <div className={`bg-muted rounded-xl border border-border p-6 ${className}`}>
+        <h3 className="text-lg font-semibold text-foreground mb-4">Usage Trend</h3>
         <div className="h-64 flex items-center justify-center">
-          <p className="text-slate-400">
+          <p className="text-muted-foreground">
             {error ? "Failed to load usage data" : "No usage data available yet"}
           </p>
         </div>
@@ -63,8 +63,8 @@ export function UsageTrendChart({ months = 6, className = "" }: UsageTrendChartP
   }
 
   return (
-    <div className={`bg-slate-800 rounded-xl border border-slate-700 p-6 ${className}`}>
-      <h3 className="text-lg font-semibold text-white mb-4">Usage Trend</h3>
+    <div className={`bg-muted rounded-xl border border-border p-6 ${className}`}>
+      <h3 className="text-lg font-semibold text-foreground mb-4">Usage Trend</h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
@@ -128,7 +128,7 @@ export function UsageTrendChart({ months = 6, className = "" }: UsageTrendChartP
                   cost: "Cost ($)",
                   requests: "Requests",
                 };
-                return <span className="text-slate-300 text-sm">{labels[value] || value}</span>;
+                return <span className="text-foreground text-sm">{labels[value] || value}</span>;
               }}
             />
             <Area

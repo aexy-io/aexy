@@ -19,7 +19,7 @@ export function WizardProgress({ steps, currentStep, className }: WizardProgress
   return (
     <div className={cn("relative", className)}>
       {/* Progress line */}
-      <div className="absolute top-5 left-5 right-5 h-0.5 bg-slate-700">
+      <div className="absolute top-5 left-5 right-5 h-0.5 bg-accent">
         <div
           className="h-full bg-purple-500 transition-all duration-300"
           style={{
@@ -43,17 +43,17 @@ export function WizardProgress({ steps, currentStep, className }: WizardProgress
                   isCompleted
                     ? "bg-purple-500 border-purple-500"
                     : isCurrent
-                    ? "bg-slate-800 border-purple-500"
-                    : "bg-slate-800 border-slate-600"
+                    ? "bg-muted border-purple-500"
+                    : "bg-muted border-border"
                 )}
               >
                 {isCompleted ? (
-                  <Check className="h-5 w-5 text-white" />
+                  <Check className="h-5 w-5 text-foreground" />
                 ) : (
                   <span
                     className={cn(
                       "text-sm font-medium",
-                      isCurrent ? "text-purple-400" : "text-slate-500"
+                      isCurrent ? "text-purple-400" : "text-muted-foreground"
                     )}
                   >
                     {index + 1}
@@ -66,13 +66,13 @@ export function WizardProgress({ steps, currentStep, className }: WizardProgress
                 <div
                   className={cn(
                     "text-sm font-medium",
-                    isCompleted || isCurrent ? "text-white" : "text-slate-500"
+                    isCompleted || isCurrent ? "text-foreground" : "text-muted-foreground"
                   )}
                 >
                   {step.title}
                 </div>
                 {step.description && (
-                  <div className="text-xs text-slate-500 mt-0.5 hidden sm:block">
+                  <div className="text-xs text-muted-foreground mt-0.5 hidden sm:block">
                     {step.description}
                   </div>
                 )}
@@ -113,7 +113,7 @@ export function WizardProgressVertical({
             disabled={!isClickable}
             className={cn(
               "w-full flex items-center gap-3 p-2 rounded-lg text-left transition",
-              isClickable && "hover:bg-slate-700/50 cursor-pointer",
+              isClickable && "hover:bg-accent/50 cursor-pointer",
               !isClickable && "cursor-default"
             )}
           >
@@ -125,7 +125,7 @@ export function WizardProgressVertical({
                   ? "bg-purple-500 text-white"
                   : isCurrent
                   ? "bg-purple-500/20 text-purple-400 border border-purple-500"
-                  : "bg-slate-700 text-slate-500"
+                  : "bg-accent text-muted-foreground"
               )}
             >
               {isCompleted ? <Check className="h-4 w-4" /> : index + 1}
@@ -136,7 +136,7 @@ export function WizardProgressVertical({
               <div
                 className={cn(
                   "text-sm font-medium truncate",
-                  isCompleted || isCurrent ? "text-white" : "text-slate-500"
+                  isCompleted || isCurrent ? "text-foreground" : "text-muted-foreground"
                 )}
               >
                 {step.title}

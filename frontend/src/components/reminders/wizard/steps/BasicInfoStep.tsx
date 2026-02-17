@@ -47,15 +47,15 @@ export function BasicInfoStep({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-white mb-2">Basic Information</h2>
-        <p className="text-slate-400">
+        <h2 className="text-xl font-semibold text-foreground mb-2">Basic Information</h2>
+        <p className="text-muted-foreground">
           Provide basic details about this reminder
         </p>
       </div>
 
       {/* Title */}
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-2">
+        <label className="block text-sm font-medium text-foreground mb-2">
           Title <span className="text-red-400">*</span>
         </label>
         <input
@@ -63,13 +63,13 @@ export function BasicInfoStep({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="e.g., Quarterly Security Review"
-          className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+          className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
         />
       </div>
 
       {/* Description */}
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-2">
+        <label className="block text-sm font-medium text-foreground mb-2">
           Description
         </label>
         <textarea
@@ -77,13 +77,13 @@ export function BasicInfoStep({
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Describe what needs to be done..."
           rows={3}
-          className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
+          className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
         />
       </div>
 
       {/* Category */}
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-3">
+        <label className="block text-sm font-medium text-foreground mb-3">
           Category <span className="text-red-400">*</span>
         </label>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -95,11 +95,11 @@ export function BasicInfoStep({
                 "p-3 rounded-lg border text-left transition-all",
                 category === cat.value
                   ? "border-blue-500 bg-blue-500/10"
-                  : "border-slate-700 hover:border-slate-600"
+                  : "border-border hover:border-border"
               )}
             >
               <ReminderCategoryBadge category={cat.value} size="sm" />
-              <p className="text-xs text-slate-400 mt-2">{cat.description}</p>
+              <p className="text-xs text-muted-foreground mt-2">{cat.description}</p>
             </button>
           ))}
         </div>
@@ -107,7 +107,7 @@ export function BasicInfoStep({
 
       {/* Priority */}
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-3">
+        <label className="block text-sm font-medium text-foreground mb-3">
           Priority <span className="text-red-400">*</span>
         </label>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -119,11 +119,11 @@ export function BasicInfoStep({
                 "p-3 rounded-lg border text-left transition-all",
                 priority === prio.value
                   ? "border-blue-500 bg-blue-500/10"
-                  : "border-slate-700 hover:border-slate-600"
+                  : "border-border hover:border-border"
               )}
             >
               <ReminderPriorityBadge priority={prio.value} size="sm" />
-              <p className="text-xs text-slate-400 mt-2">{prio.description}</p>
+              <p className="text-xs text-muted-foreground mt-2">{prio.description}</p>
             </button>
           ))}
         </div>

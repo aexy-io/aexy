@@ -122,13 +122,13 @@ describe("SkillBar Component", () => {
         case "declining":
           return "text-red-400";
         default:
-          return "text-slate-500";
+          return "text-muted-foreground";
       }
     };
 
     expect(getTrendColor("growing")).toBe("text-green-400");
     expect(getTrendColor("declining")).toBe("text-red-400");
-    expect(getTrendColor("stable")).toBe("text-slate-500");
+    expect(getTrendColor("stable")).toBe("text-muted-foreground");
   });
 });
 

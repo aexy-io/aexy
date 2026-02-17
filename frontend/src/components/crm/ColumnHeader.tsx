@@ -106,7 +106,7 @@ export function ColumnHeader({
       style={style}
       className={cn(
         "px-4 py-3 text-left relative group",
-        isDragging && "opacity-50 bg-slate-700",
+        isDragging && "opacity-50 bg-accent",
         className
       )}
       {...attributes}
@@ -116,7 +116,7 @@ export function ColumnHeader({
         {isDraggable && (
           <button
             {...listeners}
-            className="p-0.5 -ml-1 cursor-grab opacity-0 group-hover:opacity-100 text-slate-500 hover:text-slate-300 transition-opacity"
+            className="p-0.5 -ml-1 cursor-grab opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
           >
             <GripVertical className="h-3 w-3" />
           </button>
@@ -125,7 +125,7 @@ export function ColumnHeader({
         {/* Label with sort */}
         <button
           onClick={onSort}
-          className="flex items-center gap-1.5 text-sm font-medium text-slate-400 hover:text-white transition-colors"
+          className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
           <span className="truncate">{label}</span>
           {onSort && (
@@ -139,7 +139,7 @@ export function ColumnHeader({
         {/* Menu button */}
         <button
           onClick={() => setShowMenu(!showMenu)}
-          className="p-0.5 opacity-0 group-hover:opacity-100 text-slate-500 hover:text-slate-300 transition-opacity"
+          className="p-0.5 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
         >
           <MoreVertical className="h-3 w-3" />
         </button>
@@ -149,7 +149,7 @@ export function ColumnHeader({
       {showMenu && (
         <div
           ref={menuRef}
-          className="absolute top-full left-0 mt-1 z-50 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1"
+          className="absolute top-full left-0 mt-1 z-50 w-48 bg-muted border border-border rounded-lg shadow-xl py-1"
         >
           {onSort && (
             <>
@@ -158,7 +158,7 @@ export function ColumnHeader({
                   onSort();
                   setShowMenu(false);
                 }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
               >
                 <ArrowUp className="h-4 w-4" />
                 Sort ascending
@@ -168,7 +168,7 @@ export function ColumnHeader({
                   onSort();
                   setShowMenu(false);
                 }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
               >
                 <ArrowDown className="h-4 w-4" />
                 Sort descending
@@ -181,7 +181,7 @@ export function ColumnHeader({
                 onFilter();
                 setShowMenu(false);
               }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 transition-colors"
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
             >
               <Filter className="h-4 w-4" />
               Filter by this column
@@ -189,13 +189,13 @@ export function ColumnHeader({
           )}
           {onHide && (
             <>
-              <div className="border-t border-slate-700 my-1" />
+              <div className="border-t border-border my-1" />
               <button
                 onClick={() => {
                   onHide();
                   setShowMenu(false);
                 }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
               >
                 <EyeOff className="h-4 w-4" />
                 Hide column
@@ -238,7 +238,7 @@ export function SimpleColumnHeader({
     <th className={cn("px-4 py-3 text-left", className)}>
       <button
         onClick={onSort}
-        className="flex items-center gap-2 text-sm font-medium text-slate-400 hover:text-white transition-colors"
+        className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
       >
         {label}
         {onSort && (

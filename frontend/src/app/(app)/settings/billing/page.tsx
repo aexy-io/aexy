@@ -133,22 +133,22 @@ function BillingContent() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white/20 rounded-lg">
-                  <TierIcon className="h-6 w-6 text-white" />
+                  <TierIcon className="h-6 w-6 text-foreground" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold text-white">
+                  <h2 className="text-xl font-semibold text-foreground">
                     {plan?.name || "Free"} Plan
                   </h2>
-                  <p className="text-white/80 text-sm">
+                  <p className="text-foreground/80 text-sm">
                     {currentWorkspace?.name || "Personal"}
                   </p>
                 </div>
               </div>
               {tier !== "free" && (
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-white">
+                  <p className="text-2xl font-bold text-foreground">
                     ${(plan?.price_monthly_cents || 0) / 100}
-                    <span className="text-sm font-normal text-white/80">/month</span>
+                    <span className="text-sm font-normal text-foreground/80">/month</span>
                   </p>
                 </div>
               )}
@@ -262,7 +262,7 @@ function BillingContent() {
                   {plan.enable_real_time_sync ? (
                     <Check className="h-5 w-5 text-green-400" />
                   ) : (
-                    <span className="h-5 w-5 text-slate-600">-</span>
+                    <span className="h-5 w-5 text-muted-foreground">-</span>
                   )}
                   <span className={plan.enable_real_time_sync ? "text-foreground" : "text-muted-foreground"}>
                     Real-time sync
@@ -272,7 +272,7 @@ function BillingContent() {
                   {plan.enable_advanced_analytics ? (
                     <Check className="h-5 w-5 text-green-400" />
                   ) : (
-                    <span className="h-5 w-5 text-slate-600">-</span>
+                    <span className="h-5 w-5 text-muted-foreground">-</span>
                   )}
                   <span className={plan.enable_advanced_analytics ? "text-foreground" : "text-muted-foreground"}>
                     Advanced analytics
@@ -282,7 +282,7 @@ function BillingContent() {
                   {plan.enable_team_features ? (
                     <Check className="h-5 w-5 text-green-400" />
                   ) : (
-                    <span className="h-5 w-5 text-slate-600">-</span>
+                    <span className="h-5 w-5 text-muted-foreground">-</span>
                   )}
                   <span className={plan.enable_team_features ? "text-foreground" : "text-muted-foreground"}>
                     Team features
@@ -292,7 +292,7 @@ function BillingContent() {
                   {plan.enable_exports ? (
                     <Check className="h-5 w-5 text-green-400" />
                   ) : (
-                    <span className="h-5 w-5 text-slate-600">-</span>
+                    <span className="h-5 w-5 text-muted-foreground">-</span>
                   )}
                   <span className={plan.enable_exports ? "text-foreground" : "text-muted-foreground"}>
                     Data exports
@@ -302,7 +302,7 @@ function BillingContent() {
                   {plan.enable_webhooks ? (
                     <Check className="h-5 w-5 text-green-400" />
                   ) : (
-                    <span className="h-5 w-5 text-slate-600">-</span>
+                    <span className="h-5 w-5 text-muted-foreground">-</span>
                   )}
                   <span className={plan.enable_webhooks ? "text-foreground" : "text-muted-foreground"}>
                     Webhooks

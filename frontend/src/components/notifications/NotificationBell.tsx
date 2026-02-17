@@ -49,14 +49,14 @@ export function NotificationBell({ developerId }: NotificationBellProps) {
       {/* Bell Button */}
       <button
         onClick={handleToggle}
-        className="relative p-2 rounded-lg hover:bg-slate-800/50 transition group"
+        className="relative p-2 rounded-lg hover:bg-muted/50 transition group"
         title="Notifications"
       >
-        <Bell className={`h-5 w-5 ${isOpen ? "text-white" : "text-slate-400 group-hover:text-white"} transition`} />
+        <Bell className={`h-5 w-5 ${isOpen ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"} transition`} />
 
         {/* Badge */}
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold text-white bg-red-500 rounded-full">
+          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold text-foreground bg-red-500 rounded-full">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
@@ -64,10 +64,10 @@ export function NotificationBell({ developerId }: NotificationBellProps) {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-slate-900 border border-slate-800 rounded-xl shadow-xl shadow-black/20 overflow-hidden z-50">
+        <div className="absolute right-0 mt-2 w-80 bg-background border border-border rounded-xl shadow-xl shadow-black/20 overflow-hidden z-50">
           {/* Header */}
-          <div className="flex items-center justify-between p-3 border-b border-slate-800">
-            <h3 className="text-sm font-semibold text-white">Notifications</h3>
+          <div className="flex items-center justify-between p-3 border-b border-border">
+            <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllAsRead}
@@ -83,16 +83,16 @@ export function NotificationBell({ developerId }: NotificationBellProps) {
           <div className="max-h-[400px] overflow-y-auto">
             {isLoading && notifications.length === 0 ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-5 w-5 text-slate-500 animate-spin" />
+                <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
               </div>
             ) : notifications.length === 0 ? (
               <div className="py-8 text-center">
-                <Bell className="h-8 w-8 text-slate-600 mx-auto mb-2" />
-                <p className="text-sm text-slate-500">No notifications yet</p>
+                <Bell className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">No notifications yet</p>
               </div>
             ) : (
               <>
-                <div className="divide-y divide-slate-800/50">
+                <div className="divide-y divide-border/50">
                   {notifications.map((notification) => (
                     <NotificationItem
                       key={notification.id}
@@ -109,7 +109,7 @@ export function NotificationBell({ developerId }: NotificationBellProps) {
                   <button
                     onClick={loadMore}
                     disabled={isLoading}
-                    className="w-full py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 transition flex items-center justify-center gap-2"
+                    className="w-full py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition flex items-center justify-center gap-2"
                   >
                     {isLoading ? (
                       <>
@@ -126,11 +126,11 @@ export function NotificationBell({ developerId }: NotificationBellProps) {
           </div>
 
           {/* Footer */}
-          <div className="border-t border-slate-800 p-2">
+          <div className="border-t border-border p-2">
             <Link
               href="/settings/notifications"
               onClick={() => setIsOpen(false)}
-              className="block text-center text-xs text-slate-400 hover:text-white py-1.5 rounded hover:bg-slate-800/50 transition"
+              className="block text-center text-xs text-muted-foreground hover:text-foreground py-1.5 rounded hover:bg-muted/50 transition"
             >
               Notification Settings
             </Link>

@@ -69,7 +69,7 @@ export function ExportMenu({
       <button
         onClick={() => handleExport(option.format)}
         disabled={disabled || loading}
-        className={`flex items-center gap-2 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-slate-200 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${className}`}
+        className={`flex items-center gap-2 px-3 py-2 bg-accent border border-border rounded-lg text-sm text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${className}`}
       >
         {exportingFormat === option.format ? (
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -86,7 +86,7 @@ export function ExportMenu({
       <button
         onClick={() => setIsOpen(!isOpen)}
         disabled={disabled || loading}
-        className="flex items-center gap-2 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-slate-200 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="flex items-center gap-2 px-3 py-2 bg-accent border border-border rounded-lg text-sm text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {loading ? (
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -98,7 +98,7 @@ export function ExportMenu({
       </button>
 
       {isOpen && (
-        <div className="absolute top-full mt-2 right-0 z-50 bg-slate-800 border border-slate-700 rounded-lg shadow-lg min-w-[180px] overflow-hidden">
+        <div className="absolute top-full mt-2 right-0 z-50 bg-muted border border-border rounded-lg shadow-lg min-w-[180px] overflow-hidden">
           {availableOptions.map((option) => {
             const Icon = option.icon;
             const isExporting = exportingFormat === option.format;
@@ -107,17 +107,17 @@ export function ExportMenu({
                 key={option.format}
                 onClick={() => handleExport(option.format)}
                 disabled={isExporting}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-700 transition-colors disabled:opacity-50"
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors disabled:opacity-50"
               >
                 {isExporting ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 ) : (
-                  <Icon className="h-4 w-4 text-slate-400" />
+                  <Icon className="h-4 w-4 text-muted-foreground" />
                 )}
                 <div>
-                  <p className="text-sm text-slate-200">{option.label}</p>
+                  <p className="text-sm text-foreground">{option.label}</p>
                   {option.description && (
-                    <p className="text-xs text-slate-500">{option.description}</p>
+                    <p className="text-xs text-muted-foreground">{option.description}</p>
                   )}
                 </div>
               </button>

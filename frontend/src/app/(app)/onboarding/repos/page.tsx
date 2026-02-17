@@ -161,7 +161,7 @@ export default function ReposSelection() {
             className={`h-1.5 rounded-full transition-all ${
               step <= 5
                 ? "w-8 bg-primary-500"
-                : "w-4 bg-slate-700"
+                : "w-4 bg-accent"
             }`}
           />
         ))}
@@ -174,10 +174,10 @@ export default function ReposSelection() {
       >
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-3">
+          <h1 className="text-3xl font-bold text-foreground mb-3">
             Select repositories
           </h1>
-          <p className="text-slate-400 max-w-lg mx-auto">
+          <p className="text-muted-foreground max-w-lg mx-auto">
             Choose which repositories to track. We&apos;ll analyze commits,
             PRs, and code reviews to provide insights.
           </p>
@@ -186,19 +186,19 @@ export default function ReposSelection() {
         {/* Search and refresh */}
         <div className="flex items-center gap-4 mb-6">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search repositories..."
-              className="w-full pl-10 pr-4 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50"
+              className="w-full pl-10 pr-4 py-2 bg-muted/50 border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary-500/50"
             />
           </div>
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-300 hover:text-white hover:border-slate-600/50 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-muted/50 border border-border/50 rounded-lg text-foreground hover:text-foreground hover:border-border/50 transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
             Refresh
@@ -206,14 +206,14 @@ export default function ReposSelection() {
         </div>
 
         {/* Selection summary */}
-        <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg px-4 py-3 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <span className="text-sm text-slate-400">
+        <div className="bg-muted/30 border border-border/50 rounded-lg px-4 py-3 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <span className="text-sm text-muted-foreground">
             {selectedRepos.size} of {repositories.length} repositories selected
           </span>
           {selectedRepos.size > 0 && (
             <button
               onClick={() => setSelectedRepos(new Set())}
-              className="text-sm text-slate-400 hover:text-white transition-colors"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               Clear selection
             </button>
@@ -224,14 +224,14 @@ export default function ReposSelection() {
         <div className="space-y-6 mb-8 max-h-[400px] overflow-y-auto pr-2">
           {loading ? (
             <div className="text-center py-12">
-              <RefreshCw className="w-8 h-8 text-slate-500 animate-spin mx-auto mb-4" />
-              <p className="text-slate-400">Loading repositories...</p>
+              <RefreshCw className="w-8 h-8 text-muted-foreground animate-spin mx-auto mb-4" />
+              <p className="text-muted-foreground">Loading repositories...</p>
             </div>
           ) : Object.keys(reposByOrg).length === 0 ? (
-            <div className="text-center py-12 bg-slate-800/30 border border-slate-700/50 rounded-xl">
-              <FolderGit2 className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-              <p className="text-slate-400 mb-2">No repositories found</p>
-              <p className="text-sm text-slate-500">
+            <div className="text-center py-12 bg-muted/30 border border-border/50 rounded-xl">
+              <FolderGit2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground mb-2">No repositories found</p>
+              <p className="text-sm text-muted-foreground">
                 Make sure you&apos;ve installed the GitHub App on your repositories.
               </p>
             </div>
@@ -248,12 +248,12 @@ export default function ReposSelection() {
                   {/* Organization header */}
                   <button
                     onClick={() => toggleOrgExpanded(orgId)}
-                    className="w-full flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:border-slate-600/50 transition-colors"
+                    className="w-full flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border/50 hover:border-border/50 transition-colors"
                   >
                     {isExpanded ? (
-                      <ChevronDown className="w-4 h-4 text-slate-400" />
+                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
                     ) : (
-                      <ChevronRight className="w-4 h-4 text-slate-400" />
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
                     )}
                     <div
                       onClick={(e) => toggleOrgSelection(orgId, e)}
@@ -262,16 +262,16 @@ export default function ReposSelection() {
                         ? "bg-primary-500 border-primary-500"
                         : someSelected
                         ? "border-primary-500"
-                        : "border-slate-600"
+                        : "border-border"
                     }`}>
-                      {allSelected && <Check className="w-3 h-3 text-white" />}
+                      {allSelected && <Check className="w-3 h-3 text-foreground" />}
                       {someSelected && !allSelected && <div className="w-2 h-2 bg-primary-500 rounded-sm" />}
                     </div>
-                    <Building2 className="w-4 h-4 text-slate-400" />
-                    <span className="font-medium text-white flex-1 text-left">
+                    <Building2 className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-foreground flex-1 text-left">
                       {orgName}
                     </span>
-                    <span className="text-sm text-slate-500">{repos.length} repos</span>
+                    <span className="text-sm text-muted-foreground">{repos.length} repos</span>
                   </button>
 
                   {/* Repositories - only show when expanded */}
@@ -281,21 +281,21 @@ export default function ReposSelection() {
                         <button
                           key={repo.id}
                           onClick={() => toggleRepo(repo.id)}
-                          className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800/30 transition-colors"
+                          className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors"
                         >
                           <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
                             selectedRepos.has(repo.id)
                               ? "bg-primary-500 border-primary-500"
-                              : "border-slate-600"
+                              : "border-border"
                           }`}>
-                            {selectedRepos.has(repo.id) && <Check className="w-3 h-3 text-white" />}
+                            {selectedRepos.has(repo.id) && <Check className="w-3 h-3 text-foreground" />}
                           </div>
-                          <FolderGit2 className="w-4 h-4 text-slate-500" />
-                          <span className="text-slate-300 flex-1 text-left">{repo.name}</span>
+                          <FolderGit2 className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-foreground flex-1 text-left">{repo.name}</span>
                           {repo.is_private ? (
-                            <Lock className="w-3 h-3 text-slate-500" />
+                            <Lock className="w-3 h-3 text-muted-foreground" />
                           ) : (
-                            <Globe className="w-3 h-3 text-slate-500" />
+                            <Globe className="w-3 h-3 text-muted-foreground" />
                           )}
                         </button>
                       ))}
@@ -308,10 +308,10 @@ export default function ReposSelection() {
         </div>
 
         {/* Navigation */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 border-t border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 border-t border-border">
           <button
             onClick={() => router.push("/onboarding/connect")}
-            className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-white transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
@@ -326,7 +326,7 @@ export default function ReposSelection() {
                   router.push("/onboarding/invite");
                 }
               }}
-              className="text-slate-400 hover:text-white transition-colors"
+              className="text-muted-foreground hover:text-foreground transition-colors"
             >
               Skip
             </button>
@@ -336,7 +336,7 @@ export default function ReposSelection() {
               className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
                 selectedRepos.size > 0
                   ? "bg-gradient-to-r from-primary-500 to-primary-600 text-white hover:from-primary-600 hover:to-primary-700 shadow-lg shadow-primary-500/25"
-                  : "bg-slate-800 text-slate-500 cursor-not-allowed"
+                  : "bg-muted text-muted-foreground cursor-not-allowed"
               }`}
             >
               Continue

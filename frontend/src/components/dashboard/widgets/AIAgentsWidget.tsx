@@ -18,11 +18,11 @@ export function AIAgentsWidget() {
 
   if (isLoading) {
     return (
-      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 animate-pulse">
-        <div className="h-6 w-36 bg-slate-800 rounded mb-4" />
+      <div className="bg-background/50 border border-border rounded-xl p-6 animate-pulse">
+        <div className="h-6 w-36 bg-muted rounded mb-4" />
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-12 bg-slate-800 rounded-lg" />
+            <div key={i} className="h-12 bg-muted rounded-lg" />
           ))}
         </div>
       </div>
@@ -35,13 +35,13 @@ export function AIAgentsWidget() {
   const successRate = totalExecutions > 0 ? Math.round((successfulExecutions / totalExecutions) * 100) : 0;
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+    <div className="bg-background/50 border border-border rounded-xl overflow-hidden">
+      <div className="px-6 py-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-purple-500/10 rounded-lg">
             <Bot className="h-5 w-5 text-purple-400" />
           </div>
-          <h3 className="text-lg font-semibold text-white">AI Agents</h3>
+          <h3 className="text-lg font-semibold text-foreground">AI Agents</h3>
         </div>
         <Link
           href="/agents"
@@ -53,10 +53,10 @@ export function AIAgentsWidget() {
       <div className="p-6">
         {!currentWorkspace ? (
           <div className="text-center py-6">
-            <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Bot className="w-8 h-8 text-slate-600" />
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <Bot className="w-8 h-8 text-muted-foreground" />
             </div>
-            <p className="text-slate-400 text-sm">
+            <p className="text-muted-foreground text-sm">
               Select a workspace to view AI agents.
             </p>
           </div>
@@ -64,55 +64,55 @@ export function AIAgentsWidget() {
           <div className="space-y-4">
             {/* Summary stats */}
             <div className="grid grid-cols-3 gap-3">
-              <div className="text-center p-3 bg-slate-800/50 rounded-lg">
+              <div className="text-center p-3 bg-muted/50 rounded-lg">
                 <div className="flex items-center justify-center gap-1 mb-1">
                   <Play className="h-3 w-3 text-green-400" />
-                  <span className="text-xs text-slate-400">Active</span>
+                  <span className="text-xs text-muted-foreground">Active</span>
                 </div>
-                <p className="text-lg font-bold text-white">{activeAgents.length}</p>
+                <p className="text-lg font-bold text-foreground">{activeAgents.length}</p>
               </div>
-              <div className="text-center p-3 bg-slate-800/50 rounded-lg">
+              <div className="text-center p-3 bg-muted/50 rounded-lg">
                 <div className="flex items-center justify-center gap-1 mb-1">
                   <Zap className="h-3 w-3 text-amber-400" />
-                  <span className="text-xs text-slate-400">Runs</span>
+                  <span className="text-xs text-muted-foreground">Runs</span>
                 </div>
-                <p className="text-lg font-bold text-white">{totalExecutions}</p>
+                <p className="text-lg font-bold text-foreground">{totalExecutions}</p>
               </div>
-              <div className="text-center p-3 bg-slate-800/50 rounded-lg">
+              <div className="text-center p-3 bg-muted/50 rounded-lg">
                 <div className="flex items-center justify-center gap-1 mb-1">
                   <CheckCircle className="h-3 w-3 text-emerald-400" />
-                  <span className="text-xs text-slate-400">Success</span>
+                  <span className="text-xs text-muted-foreground">Success</span>
                 </div>
-                <p className="text-lg font-bold text-white">{successRate}%</p>
+                <p className="text-lg font-bold text-foreground">{successRate}%</p>
               </div>
             </div>
 
             {/* Agent list */}
             {activeAgents.length > 0 ? (
               <div className="space-y-2">
-                <p className="text-xs text-slate-500 uppercase tracking-wider">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">
                   Recent Agents
                 </p>
                 {activeAgents.slice(0, 4).map((agent) => (
                   <Link
                     key={agent.id}
                     href={`/agents/${agent.id}`}
-                    className="flex items-center justify-between p-2 bg-slate-800/30 rounded-lg hover:bg-slate-800/50 transition"
+                    className="flex items-center justify-between p-2 bg-muted/30 rounded-lg hover:bg-muted/50 transition"
                   >
                     <div className="flex items-center gap-2">
                       <Bot className="h-4 w-4 text-purple-400" />
-                      <span className="text-sm text-slate-300">{agent.name}</span>
+                      <span className="text-sm text-foreground">{agent.name}</span>
                       {agent.mention_handle && (
-                        <span className="text-xs text-slate-500">@{agent.mention_handle}</span>
+                        <span className="text-xs text-muted-foreground">@{agent.mention_handle}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       {agent.total_executions > 0 ? (
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-muted-foreground">
                           {agent.successful_executions}/{agent.total_executions} runs
                         </span>
                       ) : (
-                        <span className="text-xs text-slate-600">No runs yet</span>
+                        <span className="text-xs text-muted-foreground">No runs yet</span>
                       )}
                     </div>
                   </Link>
@@ -120,7 +120,7 @@ export function AIAgentsWidget() {
               </div>
             ) : (
               <div className="text-center py-4">
-                <p className="text-slate-500 text-sm">No active agents yet.</p>
+                <p className="text-muted-foreground text-sm">No active agents yet.</p>
                 <Link
                   href="/agents/new"
                   className="inline-flex items-center gap-1 mt-2 text-purple-400 hover:text-purple-300 text-sm transition"

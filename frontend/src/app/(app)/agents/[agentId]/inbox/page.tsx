@@ -55,13 +55,13 @@ const statusConfig = {
   archived: {
     label: "Archived",
     icon: Archive,
-    color: "text-slate-400",
-    bgColor: "bg-slate-500/20",
+    color: "text-muted-foreground",
+    bgColor: "bg-muted-foreground/20",
   },
 };
 
 const priorityConfig = {
-  low: { label: "Low", color: "text-slate-400", bgColor: "bg-slate-500/20" },
+  low: { label: "Low", color: "text-muted-foreground", bgColor: "bg-muted-foreground/20" },
   normal: { label: "Normal", color: "text-blue-400", bgColor: "bg-blue-500/20" },
   high: { label: "High", color: "text-orange-400", bgColor: "bg-orange-500/20" },
   urgent: { label: "Urgent", color: "text-red-400", bgColor: "bg-red-500/20" },
@@ -105,14 +105,14 @@ function MessageCard({
     <button
       onClick={onClick}
       className={cn(
-        "w-full text-left p-4 border-b border-slate-700 hover:bg-slate-800/50 transition-colors",
-        isSelected && "bg-slate-800/50 border-l-2 border-l-blue-500"
+        "w-full text-left p-4 border-b border-border hover:bg-muted/50 transition-colors",
+        isSelected && "bg-muted/50 border-l-2 border-l-blue-500"
       )}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-medium text-white truncate">
+            <span className="text-sm font-medium text-foreground truncate">
               {message.from_name || message.from_email}
             </span>
             {message.priority !== "normal" && (
@@ -121,15 +121,15 @@ function MessageCard({
               </span>
             )}
           </div>
-          <p className="text-sm text-slate-300 truncate">
+          <p className="text-sm text-foreground truncate">
             {message.subject || "(No subject)"}
           </p>
-          <p className="text-xs text-slate-500 truncate mt-1">
+          <p className="text-xs text-muted-foreground truncate mt-1">
             {message.body_text?.slice(0, 100) || "(No content)"}
           </p>
         </div>
         <div className="flex flex-col items-end gap-1">
-          <span className="text-xs text-slate-500">{formatDate(message.created_at)}</span>
+          <span className="text-xs text-muted-foreground">{formatDate(message.created_at)}</span>
           <div className={cn("p-1 rounded", status.bgColor)}>
             <status.icon className={cn("h-3 w-3", status.color)} />
           </div>
@@ -180,7 +180,7 @@ function MessageDetail({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b border-slate-700">
+      <div className="p-4 border-b border-border">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
           <div className="flex items-center gap-2">
             <div className={cn("p-1.5 rounded-lg", status.bgColor)}>
@@ -195,19 +195,19 @@ function MessageDetail({
               </span>
             )}
           </div>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-muted-foreground">
             {new Date(message.created_at).toLocaleString()}
           </span>
         </div>
-        <h2 className="text-lg font-semibold text-white mb-2">
+        <h2 className="text-lg font-semibold text-foreground mb-2">
           {message.subject || "(No subject)"}
         </h2>
-        <div className="flex items-center gap-4 text-sm text-slate-400">
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-1">
             <User className="h-4 w-4" />
             <span>{message.from_name || message.from_email}</span>
           </div>
-          <span className="text-slate-600">to</span>
+          <span className="text-muted-foreground">to</span>
           <span>{message.to_email}</span>
         </div>
       </div>
@@ -227,22 +227,22 @@ function MessageDetail({
               )}
             </div>
             {message.summary && (
-              <p className="text-sm text-slate-300 mb-2">{message.summary}</p>
+              <p className="text-sm text-foreground mb-2">{message.summary}</p>
             )}
             {message.classification && (
               <div className="flex flex-wrap gap-2 text-xs">
                 {message.classification.sentiment && (
-                  <span className="px-2 py-1 bg-slate-700 rounded text-slate-300">
+                  <span className="px-2 py-1 bg-accent rounded text-foreground">
                     Sentiment: {message.classification.sentiment}
                   </span>
                 )}
                 {message.classification.urgency && (
-                  <span className="px-2 py-1 bg-slate-700 rounded text-slate-300">
+                  <span className="px-2 py-1 bg-accent rounded text-foreground">
                     Urgency: {message.classification.urgency}
                   </span>
                 )}
                 {message.classification.intent && (
-                  <span className="px-2 py-1 bg-slate-700 rounded text-slate-300">
+                  <span className="px-2 py-1 bg-accent rounded text-foreground">
                     Intent: {message.classification.intent}
                   </span>
                 )}
@@ -267,7 +267,7 @@ function MessageDetail({
               <Sparkles className="h-4 w-4 text-green-400" />
               <span className="text-sm font-medium text-green-300">Suggested Response</span>
             </div>
-            <p className="text-sm text-slate-300 whitespace-pre-wrap mb-4">
+            <p className="text-sm text-foreground whitespace-pre-wrap mb-4">
               {message.suggested_response}
             </p>
             <button
@@ -288,7 +288,7 @@ function MessageDetail({
 
       {/* Actions Footer */}
       {message.status === "pending" && (
-        <div className="p-4 border-t border-slate-700 bg-slate-800/50">
+        <div className="p-4 border-t border-border bg-muted/50">
           {!message.classification && (
             <button
               onClick={onProcess}
@@ -309,7 +309,7 @@ function MessageDetail({
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               placeholder="Write a custom reply..."
-              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
               rows={3}
             />
             <div className="flex gap-2">
@@ -341,7 +341,7 @@ function MessageDetail({
               <button
                 onClick={onArchive}
                 disabled={isArchiving}
-                className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition-colors disabled:opacity-50"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-accent transition-colors disabled:opacity-50"
               >
                 <Archive className="h-4 w-4" />
               </button>
@@ -351,7 +351,7 @@ function MessageDetail({
       )}
 
       {message.status === "responded" && (
-        <div className="p-4 border-t border-slate-700 bg-green-500/10">
+        <div className="p-4 border-t border-border bg-green-500/10">
           <div className="flex items-center gap-2 text-green-400">
             <CheckCircle className="h-5 w-5" />
             <span className="text-sm font-medium">
@@ -362,7 +362,7 @@ function MessageDetail({
       )}
 
       {message.status === "escalated" && (
-        <div className="p-4 border-t border-slate-700 bg-orange-500/10">
+        <div className="p-4 border-t border-border bg-orange-500/10">
           <div className="flex items-center gap-2 text-orange-400">
             <ArrowUpRight className="h-5 w-5" />
             <span className="text-sm font-medium">
@@ -444,27 +444,27 @@ export default function AgentInboxPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b border-slate-700 bg-slate-800/50">
+      <div className="border-b border-border bg-muted/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href={`/agents/${agentId}`}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Link>
               <div>
                 <div className="flex items-center gap-2">
                   <Mail className="h-5 w-5 text-blue-400" />
-                  <h1 className="text-xl font-bold text-white">
+                  <h1 className="text-xl font-bold text-foreground">
                     {agent?.name || "Agent"} Inbox
                   </h1>
                 </div>
                 {agent?.email_address && (
-                  <p className="text-sm text-slate-400 mt-1">{agent.email_address}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{agent.email_address}</p>
                 )}
               </div>
             </div>
@@ -473,7 +473,7 @@ export default function AgentInboxPage() {
               <select
                 value={statusFilter || ""}
                 onChange={(e) => setStatusFilter(e.target.value || undefined)}
-                className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="bg-accent border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">All Status</option>
                 <option value="pending">Pending</option>
@@ -484,7 +484,7 @@ export default function AgentInboxPage() {
               </select>
               <button
                 onClick={() => refetch()}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
               >
                 <RefreshCw className="h-5 w-5" />
               </button>
@@ -501,9 +501,9 @@ export default function AgentInboxPage() {
           </div>
         ) : !agent?.email_enabled ? (
           <div className="text-center py-12">
-            <Mail className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-            <h2 className="text-lg font-medium text-white mb-2">Email Not Enabled</h2>
-            <p className="text-slate-400 mb-4">
+            <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-lg font-medium text-foreground mb-2">Email Not Enabled</h2>
+            <p className="text-muted-foreground mb-4">
               Enable email for this agent to start receiving messages.
             </p>
             <Link
@@ -516,9 +516,9 @@ export default function AgentInboxPage() {
           </div>
         ) : messages.length === 0 ? (
           <div className="text-center py-12">
-            <MailOpen className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-            <h2 className="text-lg font-medium text-white mb-2">No Messages</h2>
-            <p className="text-slate-400">
+            <MailOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-lg font-medium text-foreground mb-2">No Messages</h2>
+            <p className="text-muted-foreground">
               {statusFilter
                 ? `No ${statusFilter} messages found.`
                 : "This inbox is empty. Send an email to start."}
@@ -527,7 +527,7 @@ export default function AgentInboxPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
             {/* Message List */}
-            <div className="lg:col-span-1 bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+            <div className="lg:col-span-1 bg-muted border border-border rounded-xl overflow-hidden">
               <div className="overflow-y-auto h-full">
                 {messages.map((message) => (
                   <MessageCard
@@ -541,7 +541,7 @@ export default function AgentInboxPage() {
             </div>
 
             {/* Message Detail */}
-            <div className="lg:col-span-2 bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+            <div className="lg:col-span-2 bg-muted border border-border rounded-xl overflow-hidden">
               {selectedMessage ? (
                 <MessageDetail
                   message={selectedMessage}
@@ -557,7 +557,7 @@ export default function AgentInboxPage() {
                   isProcessing={isProcessing}
                 />
               ) : (
-                <div className="flex items-center justify-center h-full text-slate-500">
+                <div className="flex items-center justify-center h-full text-muted-foreground">
                   <div className="text-center">
                     <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>Select a message to view details</p>

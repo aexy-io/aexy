@@ -165,18 +165,18 @@ function KnowledgeGraphCanvasInner({
       onPaneClick={handlePaneClick}
       connectionMode={ConnectionMode.Loose}
       fitView
-      className="bg-slate-900"
+      className="bg-background"
       minZoom={0.1}
       maxZoom={2}
     >
       <Background color="#334155" gap={20} />
-      <Controls className="bg-slate-800 border-slate-700 [&>button]:bg-slate-800 [&>button]:border-slate-700 [&>button]:text-slate-300 [&>button:hover]:bg-slate-700" />
+      <Controls className="bg-muted border-border [&>button]:bg-muted [&>button]:border-border [&>button]:text-foreground [&>button:hover]:bg-accent" />
       <MiniMap
         nodeColor={(node) => {
           const color = ENTITY_TYPE_COLORS[node.data?.nodeType as string];
           return color || "#64748b";
         }}
-        className="bg-slate-800 border-slate-700"
+        className="bg-muted border-border"
         maskColor="rgb(30 41 59 / 0.7)"
       />
     </ReactFlow>

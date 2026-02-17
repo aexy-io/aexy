@@ -69,13 +69,13 @@ export function ChangePlanModal({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="relative bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden"
+            className="relative bg-background border border-border rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden"
           >
             {/* Header */}
             <div className={`p-6 ${isUpgrade ? "bg-gradient-to-r from-primary-500/20 to-primary-600/20" : "bg-gradient-to-r from-amber-500/20 to-orange-500/20"}`}>
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -89,10 +89,10 @@ export function ChangePlanModal({
                   )}
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold text-white">
+                  <h2 className="text-xl font-semibold text-foreground">
                     {isUpgrade ? "Upgrade to" : "Downgrade to"} {targetPlan.name}
                   </h2>
-                  <p className="text-slate-400 text-sm">
+                  <p className="text-muted-foreground text-sm">
                     {isUpgrade
                       ? "Unlock more features for your team"
                       : "You'll lose access to some features"}
@@ -105,15 +105,15 @@ export function ChangePlanModal({
             <div className="p-6 space-y-6">
               {/* Price info for upgrades */}
               {isUpgrade && targetPlan.price_monthly_cents > 0 && (
-                <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                <div className="bg-muted/50 rounded-xl p-4 border border-border">
                   <div className="flex items-baseline justify-between">
-                    <span className="text-slate-400">New monthly rate</span>
-                    <span className="text-2xl font-bold text-white">
+                    <span className="text-muted-foreground">New monthly rate</span>
+                    <span className="text-2xl font-bold text-foreground">
                       ${price}
-                      <span className="text-sm font-normal text-slate-400">/month</span>
+                      <span className="text-sm font-normal text-muted-foreground">/month</span>
                     </span>
                   </div>
-                  <p className="text-slate-500 text-sm mt-2">
+                  <p className="text-muted-foreground text-sm mt-2">
                     Prorated for the current billing period
                   </p>
                 </div>
@@ -126,7 +126,7 @@ export function ChangePlanModal({
                     <AlertTriangle className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="text-amber-400 font-medium">You'll lose access to premium features</p>
-                      <p className="text-slate-400 text-sm mt-1">
+                      <p className="text-muted-foreground text-sm mt-1">
                         Your data will be preserved, but some features will be disabled until you upgrade again.
                       </p>
                     </div>
@@ -150,11 +150,11 @@ export function ChangePlanModal({
             </div>
 
             {/* Footer */}
-            <div className="p-6 border-t border-slate-700 flex gap-3">
+            <div className="p-6 border-t border-border flex gap-3">
               <button
                 onClick={onClose}
                 disabled={isLoading}
-                className="flex-1 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition font-medium disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 bg-accent hover:bg-muted text-foreground rounded-lg transition font-medium disabled:opacity-50"
               >
                 {isUpgrade ? "Cancel" : `Keep ${currentPlan?.name || "Current Plan"}`}
               </button>

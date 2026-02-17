@@ -17,7 +17,7 @@ const STATUS_CONFIG: Record<ReminderStatus, { label: string; className: string; 
   },
   archived: {
     label: "Archived",
-    className: "bg-slate-500/20 text-slate-400",
+    className: "bg-muted-foreground/20 text-muted-foreground",
     icon: <Archive className="h-3 w-3" />,
   },
 };

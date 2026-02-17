@@ -24,7 +24,7 @@ import { StatusBadge } from "./CRMBadge";
 // Value renderer for different attribute types
 function RecordValue({ value, attribute }: { value: unknown; attribute?: CRMAttribute }) {
   if (value === null || value === undefined) {
-    return <span className="text-slate-500">—</span>;
+    return <span className="text-muted-foreground">—</span>;
   }
 
   const type = attribute?.attribute_type || "text";
@@ -34,7 +34,7 @@ function RecordValue({ value, attribute }: { value: unknown; attribute?: CRMAttr
       return value ? (
         <Check className="h-4 w-4 text-green-400" />
       ) : (
-        <X className="h-4 w-4 text-slate-500" />
+        <X className="h-4 w-4 text-muted-foreground" />
       );
     case "currency":
       return (
@@ -77,7 +77,7 @@ function RecordValue({ value, attribute }: { value: unknown; attribute?: CRMAttr
     }
     case "phone":
       return (
-        <a href={`tel:${value}`} className="text-slate-300 hover:text-white">
+        <a href={`tel:${value}`} className="text-foreground hover:text-foreground">
           {String(value)}
         </a>
       );
@@ -214,7 +214,7 @@ export function DataTable({
   const isAllSelected = records.length > 0 && selectedRecords.length === records.length;
 
   return (
-    <div className={cn("bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden", className)}>
+    <div className={cn("bg-muted/50 border border-border rounded-xl overflow-hidden", className)}>
       <div className="overflow-x-auto">
         <DndContext
           sensors={sensors}
@@ -223,7 +223,7 @@ export function DataTable({
         >
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-700">
+              <tr className="border-b border-border">
                 {/* Checkbox column */}
                 {showCheckboxes && (
                   <th className="w-12 px-4 py-3">
@@ -231,7 +231,7 @@ export function DataTable({
                       type="checkbox"
                       checked={isAllSelected}
                       onChange={onSelectAll}
-                      className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-purple-500 focus:ring-purple-500"
+                      className="w-4 h-4 rounded border-border bg-accent text-purple-500 focus:ring-purple-500"
                     />
                   </th>
                 )}
@@ -286,7 +286,7 @@ export function DataTable({
                 <tr>
                   <td
                     colSpan={visibleAttributes.length + (showCheckboxes ? 1 : 0) + (showActions ? 1 : 0) + (enableColumnSelector ? 1 : 0) + 1}
-                    className="px-4 py-8 text-center text-slate-400"
+                    className="px-4 py-8 text-center text-muted-foreground"
                   >
                     Loading records...
                   </td>
@@ -295,7 +295,7 @@ export function DataTable({
                 <tr>
                   <td
                     colSpan={visibleAttributes.length + (showCheckboxes ? 1 : 0) + (showActions ? 1 : 0) + (enableColumnSelector ? 1 : 0) + 1}
-                    className="px-4 py-8 text-center text-slate-400"
+                    className="px-4 py-8 text-center text-muted-foreground"
                   >
                     {emptyMessage}
                   </td>
@@ -304,7 +304,7 @@ export function DataTable({
                 records.map((record) => (
                   <tr
                     key={record.id}
-                    className="border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors"
+                    className="border-b border-border/50 hover:bg-muted/50 transition-colors"
                   >
                     {/* Checkbox */}
                     {showCheckboxes && (
@@ -313,7 +313,7 @@ export function DataTable({
                           type="checkbox"
                           checked={selectedRecords.includes(record.id)}
                           onChange={() => onSelectRecord?.(record.id)}
-                          className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-purple-500 focus:ring-purple-500"
+                          className="w-4 h-4 rounded border-border bg-accent text-purple-500 focus:ring-purple-500"
                         />
                       </td>
                     )}
@@ -322,7 +322,7 @@ export function DataTable({
                     <td className="px-4 py-3">
                       <button
                         onClick={() => onRecordClick?.(record)}
-                        className="text-white font-medium hover:text-purple-400 transition-colors text-left"
+                        className="text-foreground font-medium hover:text-purple-400 transition-colors text-left"
                       >
                         {record.display_name || "Untitled"}
                       </button>
@@ -332,7 +332,7 @@ export function DataTable({
                     {visibleAttributes.map((attr) => (
                       <td
                         key={attr.slug}
-                        className="px-4 py-3 text-slate-300"
+                        className="px-4 py-3 text-foreground"
                         style={{ width: columnWidths[attr.slug] ? `${columnWidths[attr.slug]}px` : undefined }}
                       >
                         <RecordValue value={record.values[attr.slug]} attribute={attr} />
@@ -348,7 +348,7 @@ export function DataTable({
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => onRecordClick?.(record)}
-                            className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white"
+                            className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground"
                             title="View"
                           >
                             <Eye className="h-4 w-4" />
@@ -356,7 +356,7 @@ export function DataTable({
                           {onRecordDelete && (
                             <button
                               onClick={() => onRecordDelete(record.id)}
-                              className="p-1 hover:bg-red-500/20 rounded text-slate-400 hover:text-red-400"
+                              className="p-1 hover:bg-red-500/20 rounded text-muted-foreground hover:text-red-400"
                               title="Delete"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -375,7 +375,7 @@ export function DataTable({
 
       {/* Footer with record count */}
       {!isLoading && records.length > 0 && (
-        <div className="px-4 py-2 border-t border-slate-700 text-sm text-slate-500">
+        <div className="px-4 py-2 border-t border-border text-sm text-muted-foreground">
           {records.length} record{records.length !== 1 ? "s" : ""}
         </div>
       )}

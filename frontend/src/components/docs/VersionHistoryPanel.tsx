@@ -104,17 +104,17 @@ export function VersionHistoryPanel({
   }, {} as Record<string, DocumentVersion[]>);
 
   return (
-    <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden flex flex-col h-full max-h-[600px]">
+    <div className="bg-background border border-border rounded-xl overflow-hidden flex flex-col h-full max-h-[600px]">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700 bg-slate-800/50 shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/50 shrink-0">
         <div className="flex items-center gap-2">
-          <History className="h-5 w-5 text-slate-400" />
-          <span className="font-medium text-white">Version History</span>
+          <History className="h-5 w-5 text-muted-foreground" />
+          <span className="font-medium text-foreground">Version History</span>
         </div>
         {onClose && (
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-white rounded"
+            className="p-1 text-muted-foreground hover:text-foreground rounded"
           >
             <X className="h-4 w-4" />
           </button>
@@ -131,22 +131,22 @@ export function VersionHistoryPanel({
 
         {!isLoading && !versions?.length && (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center mb-3">
-              <History className="h-6 w-6 text-slate-500" />
+            <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-3">
+              <History className="h-6 w-6 text-muted-foreground" />
             </div>
-            <p className="text-slate-400 text-sm">No version history yet</p>
-            <p className="text-slate-500 text-xs mt-1">
+            <p className="text-muted-foreground text-sm">No version history yet</p>
+            <p className="text-muted-foreground text-xs mt-1">
               Versions are created when you save the document
             </p>
           </div>
         )}
 
         {!isLoading && versions && versions.length > 0 && (
-          <div className="divide-y divide-slate-800">
+          <div className="divide-y divide-border">
             {Object.entries(groupedVersions || {}).map(([date, dateVersions]) => (
               <div key={date}>
                 {/* Date Header */}
-                <div className="sticky top-0 px-4 py-2 bg-slate-900/95 backdrop-blur text-xs text-slate-500 font-medium">
+                <div className="sticky top-0 px-4 py-2 bg-background/95 backdrop-blur text-xs text-muted-foreground font-medium">
                   {new Date(date).toLocaleDateString("en-US", {
                     weekday: "long",
                     month: "long",
@@ -179,7 +179,7 @@ export function VersionHistoryPanel({
               <div className="p-4">
                 <button
                   onClick={() => setLimit((prev) => prev + 20)}
-                  className="w-full py-2 text-sm text-slate-400 hover:text-white border border-dashed border-slate-700 hover:border-slate-600 rounded-lg transition"
+                  className="w-full py-2 text-sm text-muted-foreground hover:text-foreground border border-dashed border-border hover:border-border rounded-lg transition"
                 >
                   Load More
                 </button>
@@ -231,8 +231,8 @@ function VersionItem({
   return (
     <div
       className={cn(
-        "px-4 py-3 hover:bg-slate-800/50 cursor-pointer transition",
-        isSelected && "bg-slate-800/50"
+        "px-4 py-3 hover:bg-muted/50 cursor-pointer transition",
+        isSelected && "bg-muted/50"
       )}
       onClick={onClick}
     >
@@ -245,7 +245,7 @@ function VersionItem({
               ? "bg-blue-900/30 text-blue-400"
               : version.is_auto_generated
               ? "bg-purple-900/30 text-purple-400"
-              : "bg-slate-800 text-slate-400"
+              : "bg-muted text-muted-foreground"
           )}
         >
           {version.is_auto_save ? (
@@ -260,7 +260,7 @@ function VersionItem({
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-white">
+            <span className="text-sm font-medium text-foreground">
               Version {version.version_number}
             </span>
             {version.is_auto_save && (
@@ -276,12 +276,12 @@ function VersionItem({
           </div>
 
           {version.change_summary && (
-            <p className="text-xs text-slate-400 mt-0.5 truncate">
+            <p className="text-xs text-muted-foreground mt-0.5 truncate">
               {version.change_summary}
             </p>
           )}
 
-          <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
+          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
             <span title={formatFullDate(version.created_at)}>
               <Clock className="h-3 w-3 inline mr-1" />
               {formatDate(version.created_at)}
@@ -302,7 +302,7 @@ function VersionItem({
               e.stopPropagation();
               onPreview();
             }}
-            className="p-1.5 text-slate-400 hover:text-white rounded hover:bg-slate-700 transition"
+            className="p-1.5 text-muted-foreground hover:text-foreground rounded hover:bg-accent transition"
             title="Preview"
           >
             <Eye className="h-4 w-4" />
@@ -313,7 +313,7 @@ function VersionItem({
               onRestore();
             }}
             disabled={isRestoring}
-            className="p-1.5 text-slate-400 hover:text-white rounded hover:bg-slate-700 transition disabled:opacity-50"
+            className="p-1.5 text-muted-foreground hover:text-foreground rounded hover:bg-accent transition disabled:opacity-50"
             title="Restore"
           >
             {isRestoring ? (
@@ -394,21 +394,21 @@ function VersionPreview({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-4xl max-h-[80vh] flex flex-col overflow-hidden">
+      <div className="bg-background border border-border rounded-xl w-full max-w-4xl max-h-[80vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700 bg-slate-800/50">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/50">
           <div className="flex items-center gap-3">
-            <span className="font-medium text-white">
+            <span className="font-medium text-foreground">
               Version {version.version_number}
             </span>
-            <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-0.5">
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
               <button
                 onClick={() => setViewMode("preview")}
                 className={cn(
                   "px-3 py-1 text-xs rounded-md transition",
                   viewMode === "preview"
-                    ? "bg-slate-700 text-white"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-accent text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 Preview
@@ -418,8 +418,8 @@ function VersionPreview({
                 className={cn(
                   "px-3 py-1 text-xs rounded-md transition",
                   viewMode === "diff"
-                    ? "bg-slate-700 text-white"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-accent text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 Diff
@@ -441,7 +441,7 @@ function VersionPreview({
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-white rounded"
+              className="p-1.5 text-muted-foreground hover:text-foreground rounded"
             >
               <X className="h-4 w-4" />
             </button>
@@ -459,7 +459,7 @@ function VersionPreview({
 
           {viewMode === "diff" && (
             <div className="font-mono text-sm space-y-0.5">
-              <div className="flex items-center gap-4 mb-4 text-xs text-slate-400">
+              <div className="flex items-center gap-4 mb-4 text-xs text-muted-foreground">
                 <div className="flex items-center gap-1">
                   <span className="w-3 h-3 bg-red-900/50 rounded" />
                   <span>Removed (version {version.version_number})</span>
@@ -472,7 +472,7 @@ function VersionPreview({
               {diff.map((line, i) => (
                 <div key={i}>
                   {line.type === "same" && (
-                    <div className="px-2 py-0.5 text-slate-400">{line.old || "\u00A0"}</div>
+                    <div className="px-2 py-0.5 text-muted-foreground">{line.old || "\u00A0"}</div>
                   )}
                   {line.type === "removed" && (
                     <div className="px-2 py-0.5 bg-red-900/30 text-red-300 border-l-2 border-red-500">
@@ -497,7 +497,7 @@ function VersionPreview({
                 </div>
               ))}
               {diff.length === 0 && (
-                <div className="text-center py-8 text-slate-400">
+                <div className="text-center py-8 text-muted-foreground">
                   <Check className="h-8 w-8 mx-auto mb-2 text-green-400" />
                   <p>No differences found</p>
                 </div>
@@ -571,7 +571,7 @@ function ContentPreview({ content }: { content: Record<string, unknown> }) {
 
       case "codeBlock":
         return (
-          <pre key={index} className="bg-slate-800 p-4 rounded-lg overflow-x-auto">
+          <pre key={index} className="bg-muted p-4 rounded-lg overflow-x-auto">
             <code>
               {Array.isArray(node.content)
                 ? node.content.map((child, i) => renderNode(child as Record<string, unknown>, i))
@@ -613,7 +613,7 @@ function ContentPreview({ content }: { content: Record<string, unknown> }) {
   };
 
   if (!content || typeof content !== "object") {
-    return <p className="text-slate-400">No content</p>;
+    return <p className="text-muted-foreground">No content</p>;
   }
 
   return <>{renderNode(content, 0)}</>;

@@ -119,10 +119,10 @@ export function GettingStartedChecklist({ onDismiss }: GettingStartedChecklistPr
   };
 
   return (
-    <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl overflow-hidden">
+    <div className="bg-muted/30 border border-border/50 rounded-xl overflow-hidden">
       {/* Header */}
       <div
-        className="px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-slate-800/50 transition-colors"
+        className="px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-muted/50 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-3">
@@ -136,7 +136,7 @@ export function GettingStartedChecklist({ onDismiss }: GettingStartedChecklistPr
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="3"
-                className="text-slate-700"
+                className="text-border"
               />
               <circle
                 cx="16"
@@ -149,13 +149,13 @@ export function GettingStartedChecklist({ onDismiss }: GettingStartedChecklistPr
                 className="text-purple-500 transition-all duration-500"
               />
             </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white">
+            <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-foreground">
               {completedCount}
             </span>
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white">Getting Started</h3>
-            <p className="text-xs text-slate-500">
+            <h3 className="text-sm font-medium text-foreground">Getting Started</h3>
+            <p className="text-xs text-muted-foreground">
               {completedCount}/{items.length} completed
             </p>
           </div>
@@ -166,14 +166,14 @@ export function GettingStartedChecklist({ onDismiss }: GettingStartedChecklistPr
               e.stopPropagation();
               handleDismiss();
             }}
-            className="p-1 text-slate-500 hover:text-slate-300 transition-colors"
+            className="p-1 text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
           {isExpanded ? (
-            <ChevronUp className="w-4 h-4 text-slate-500" />
+            <ChevronUp className="w-4 h-4 text-muted-foreground" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-slate-500" />
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
           )}
         </div>
       </div>
@@ -186,7 +186,7 @@ export function GettingStartedChecklist({ onDismiss }: GettingStartedChecklistPr
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="border-t border-slate-700/50"
+            className="border-t border-border/50"
           >
             <div className="p-2 space-y-1">
               {items.map((item) => (
@@ -200,7 +200,7 @@ export function GettingStartedChecklist({ onDismiss }: GettingStartedChecklistPr
 
             {/* Completion message */}
             {completedCount === items.length && (
-              <div className="px-4 py-3 border-t border-slate-700/50 bg-green-500/5">
+              <div className="px-4 py-3 border-t border-border/50 bg-green-500/5">
                 <div className="flex items-center gap-2 text-green-400">
                   <Sparkles className="w-4 h-4" />
                   <span className="text-sm font-medium">All done! Great job!</span>
@@ -226,7 +226,7 @@ function ChecklistItemRow({
       className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
         item.completed
           ? "opacity-60"
-          : "hover:bg-slate-800/50 cursor-pointer"
+          : "hover:bg-muted/50 cursor-pointer"
       }`}
       onClick={() => {
         if (!item.completed && item.action) {
@@ -247,16 +247,16 @@ function ChecklistItemRow({
         {item.completed ? (
           <CheckCircle2 className="w-5 h-5 text-green-400" />
         ) : (
-          <Circle className="w-5 h-5 text-slate-600 hover:text-purple-400 transition-colors" />
+          <Circle className="w-5 h-5 text-border hover:text-purple-400 transition-colors" />
         )}
       </button>
       <div className="flex-1 min-w-0">
-        <p className={`text-sm ${item.completed ? "text-slate-500 line-through" : "text-white"}`}>
+        <p className={`text-sm ${item.completed ? "text-muted-foreground line-through" : "text-foreground"}`}>
           {item.label}
         </p>
-        <p className="text-xs text-slate-500 truncate">{item.description}</p>
+        <p className="text-xs text-muted-foreground truncate">{item.description}</p>
       </div>
-      <item.icon className={`w-4 h-4 flex-shrink-0 ${item.completed ? "text-slate-600" : "text-slate-500"}`} />
+      <item.icon className={`w-4 h-4 flex-shrink-0 ${item.completed ? "text-border" : "text-muted-foreground"}`} />
     </div>
   );
 

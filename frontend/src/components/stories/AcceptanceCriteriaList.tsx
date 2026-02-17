@@ -41,15 +41,15 @@ export function AcceptanceCriteriaList({
     <div className={cn("space-y-3", className)}>
       {/* Header with progress */}
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium text-white">Acceptance Criteria</h4>
-        <span className="text-xs text-slate-400">
+        <h4 className="text-sm font-medium text-foreground">Acceptance Criteria</h4>
+        <span className="text-xs text-muted-foreground">
           {completedCount}/{totalCount} completed
         </span>
       </div>
 
       {/* Progress bar */}
       {totalCount > 0 && (
-        <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+        <div className="h-1.5 bg-accent rounded-full overflow-hidden">
           <div
             className={cn(
               "h-full transition-all duration-300",
@@ -67,7 +67,7 @@ export function AcceptanceCriteriaList({
             key={criterion.id}
             className={cn(
               "group flex items-start gap-3 p-2 rounded-lg transition-colors",
-              !readOnly && "hover:bg-slate-800/50",
+              !readOnly && "hover:bg-muted/50",
               criterion.completed && "opacity-70"
             )}
           >
@@ -77,7 +77,7 @@ export function AcceptanceCriteriaList({
               className={cn(
                 "mt-0.5 flex-shrink-0 transition-colors",
                 readOnly ? "cursor-default" : "cursor-pointer",
-                criterion.completed ? "text-green-500" : "text-slate-500 hover:text-slate-400"
+                criterion.completed ? "text-green-500" : "text-muted-foreground hover:text-muted-foreground"
               )}
             >
               {criterion.completed ? (
@@ -89,7 +89,7 @@ export function AcceptanceCriteriaList({
             <span
               className={cn(
                 "flex-1 text-sm",
-                criterion.completed ? "text-slate-500 line-through" : "text-slate-300"
+                criterion.completed ? "text-muted-foreground line-through" : "text-foreground"
               )}
             >
               {criterion.description}
@@ -97,7 +97,7 @@ export function AcceptanceCriteriaList({
             {!readOnly && onRemove && (
               <button
                 onClick={() => onRemove(criterion.id)}
-                className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-red-400 transition-all"
+                className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-red-400 transition-all"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -106,7 +106,7 @@ export function AcceptanceCriteriaList({
         ))}
 
         {criteria.length === 0 && (
-          <p className="text-sm text-slate-500 text-center py-4">
+          <p className="text-sm text-muted-foreground text-center py-4">
             No acceptance criteria defined yet.
           </p>
         )}
@@ -129,7 +129,7 @@ export function AcceptanceCriteriaList({
                   }
                 }}
                 placeholder="Enter acceptance criterion..."
-                className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                className="flex-1 bg-muted border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                 autoFocus
               />
               <button
@@ -144,7 +144,7 @@ export function AcceptanceCriteriaList({
                   setIsAdding(false);
                   setNewCriterion("");
                 }}
-                className="px-3 py-2 text-slate-400 text-sm hover:text-white transition-colors"
+                className="px-3 py-2 text-muted-foreground text-sm hover:text-foreground transition-colors"
               >
                 Cancel
               </button>
@@ -152,7 +152,7 @@ export function AcceptanceCriteriaList({
           ) : (
             <button
               onClick={() => setIsAdding(true)}
-              className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <Plus className="h-4 w-4" />
               Add acceptance criterion

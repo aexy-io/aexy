@@ -34,14 +34,14 @@ export function ThemePreview({ theme, formName, fields }: ThemePreviewProps) {
         <button
           type="button"
           onClick={() => setDevice("desktop")}
-          className={`p-2 rounded ${device === "desktop" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"}`}
+          className={`p-2 rounded ${device === "desktop" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"}`}
         >
           <Monitor className="w-4 h-4" />
         </button>
         <button
           type="button"
           onClick={() => setDevice("mobile")}
-          className={`p-2 rounded ${device === "mobile" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"}`}
+          className={`p-2 rounded ${device === "mobile" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"}`}
         >
           <Smartphone className="w-4 h-4" />
         </button>
