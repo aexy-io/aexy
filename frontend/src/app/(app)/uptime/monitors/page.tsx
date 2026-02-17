@@ -29,9 +29,9 @@ import {
 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-  up: { bg: "bg-emerald-900/30", text: "text-emerald-400", dot: "bg-emerald-500", label: "Up" },
-  down: { bg: "bg-red-900/30", text: "text-red-400", dot: "bg-red-500", label: "Down" },
-  degraded: { bg: "bg-amber-900/30", text: "text-amber-400", dot: "bg-amber-500", label: "Degraded" },
+  up: { bg: "bg-emerald-50 dark:bg-emerald-900/30", text: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500", label: "Up" },
+  down: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400", dot: "bg-red-500", label: "Down" },
+  degraded: { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500", label: "Degraded" },
   paused: { bg: "bg-accent/50", text: "text-muted-foreground", dot: "bg-muted-foreground", label: "Paused" },
   unknown: { bg: "bg-accent/50", text: "text-muted-foreground", dot: "bg-muted-foreground", label: "Unknown" },
 };
@@ -421,7 +421,7 @@ export default function MonitorsPage() {
 
               <form onSubmit={handleCreateMonitor} className="p-4 space-y-4">
                 {createError && (
-                  <div className="p-3 bg-red-900/30 border border-red-500/30 rounded-lg flex items-center gap-2 text-red-400 text-sm">
+                  <div className="p-3 bg-red-100 dark:bg-red-900/30 border border-red-500/30 rounded-lg flex items-center gap-2 text-red-600 dark:text-red-400 text-sm">
                     <AlertTriangle className="h-4 w-4" />
                     {createError}
                   </div>
@@ -451,7 +451,7 @@ export default function MonitorsPage() {
                           onClick={() => setFormData({ ...formData, check_type: type })}
                           className={`flex-1 p-3 rounded-lg border flex flex-col items-center gap-1 transition ${
                             formData.check_type === type
-                              ? "border-emerald-500 bg-emerald-500/10 text-emerald-400"
+                              ? "border-emerald-500 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
                               : "border-border text-muted-foreground hover:border-border"
                           }`}
                         >

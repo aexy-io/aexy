@@ -192,13 +192,13 @@ export default function LearningIntegrationsPage() {
   const getStatusColor = (status: IntegrationStatus) => {
     switch (status) {
       case "active":
-        return "bg-green-900/50 text-green-400 border-green-700";
+        return "bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-400 border-green-200 dark:border-green-700";
       case "inactive":
         return "bg-accent text-muted-foreground border-border";
       case "error":
-        return "bg-red-900/50 text-red-400 border-red-700";
+        return "bg-red-50 text-red-600 dark:bg-red-900/50 dark:text-red-400 border-red-200 dark:border-red-700";
       case "pending_setup":
-        return "bg-yellow-900/50 text-yellow-400 border-yellow-700";
+        return "bg-yellow-50 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-400 border-yellow-200 dark:border-yellow-700";
       default:
         return "bg-accent text-muted-foreground border-border";
     }
@@ -301,7 +301,7 @@ export default function LearningIntegrationsPage() {
             <div className="grid md:grid-cols-4 gap-4">
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-blue-900/50 rounded-lg">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
                     <Users className="h-5 w-5 text-blue-400" />
                   </div>
                   <span className="text-muted-foreground text-sm">HR Integrations</span>
@@ -312,7 +312,7 @@ export default function LearningIntegrationsPage() {
 
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-purple-900/50 rounded-lg">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
                     <BookOpen className="h-5 w-5 text-purple-400" />
                   </div>
                   <span className="text-muted-foreground text-sm">LMS Integrations</span>
@@ -323,7 +323,7 @@ export default function LearningIntegrationsPage() {
 
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-green-900/50 rounded-lg">
+                  <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg">
                     <Package className="h-5 w-5 text-green-400" />
                   </div>
                   <span className="text-muted-foreground text-sm">SCORM Packages</span>
@@ -334,7 +334,7 @@ export default function LearningIntegrationsPage() {
 
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-amber-900/50 rounded-lg">
+                  <div className="p-2 bg-amber-100 dark:bg-amber-900/50 rounded-lg">
                     <Calendar className="h-5 w-5 text-amber-400" />
                   </div>
                   <span className="text-muted-foreground text-sm">Calendar Syncs</span>
@@ -513,10 +513,10 @@ export default function LearningIntegrationsPage() {
 
                     <div className="flex flex-wrap gap-2 mb-3">
                       {integration.scorm_support && (
-                        <span className="text-xs px-2 py-0.5 bg-green-900/50 text-green-400 rounded">SCORM</span>
+                        <span className="text-xs px-2 py-0.5 bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-400 rounded">SCORM</span>
                       )}
                       {integration.xapi_support && (
-                        <span className="text-xs px-2 py-0.5 bg-purple-900/50 text-purple-400 rounded">xAPI</span>
+                        <span className="text-xs px-2 py-0.5 bg-purple-50 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400 rounded">xAPI</span>
                       )}
                     </div>
 
@@ -572,7 +572,7 @@ export default function LearningIntegrationsPage() {
                         <h3 className="text-foreground font-medium line-clamp-1">{pkg.title}</h3>
                         <p className="text-muted-foreground text-xs">{pkg.version}</p>
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded border ${pkg.is_active ? "bg-green-900/50 text-green-400 border-green-700" : "bg-accent text-muted-foreground border-border"}`}>
+                      <span className={`text-xs px-2 py-1 rounded border ${pkg.is_active ? "bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-400 border-green-200 dark:border-green-700" : "bg-accent text-muted-foreground border-border"}`}>
                         {pkg.is_active ? "Active" : "Inactive"}
                       </span>
                     </div>
@@ -662,13 +662,13 @@ export default function LearningIntegrationsPage() {
 
                     <div className="flex flex-wrap gap-2 mb-3">
                       {integration.sync_learning_sessions && (
-                        <span className="text-xs px-2 py-0.5 bg-blue-900/50 text-blue-400 rounded">Sessions</span>
+                        <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400 rounded">Sessions</span>
                       )}
                       {integration.sync_deadlines && (
-                        <span className="text-xs px-2 py-0.5 bg-amber-900/50 text-amber-400 rounded">Deadlines</span>
+                        <span className="text-xs px-2 py-0.5 bg-amber-50 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400 rounded">Deadlines</span>
                       )}
                       {integration.sync_certifications && (
-                        <span className="text-xs px-2 py-0.5 bg-green-900/50 text-green-400 rounded">Certifications</span>
+                        <span className="text-xs px-2 py-0.5 bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-400 rounded">Certifications</span>
                       )}
                     </div>
 

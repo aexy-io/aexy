@@ -19,12 +19,12 @@ import { cn } from "@/lib/utils";
 const STATUS_CONFIG: Record<OKRGoalStatus, { label: string; color: string; bgColor: string }> = {
   not_started: { label: "Not Started", color: "text-muted-foreground", bgColor: "bg-muted-foreground" },
   draft: { label: "Draft", color: "text-muted-foreground", bgColor: "bg-muted-foreground" },
-  active: { label: "Active", color: "text-blue-400", bgColor: "bg-blue-500" },
-  on_track: { label: "On Track", color: "text-green-400", bgColor: "bg-green-500" },
-  at_risk: { label: "At Risk", color: "text-amber-400", bgColor: "bg-amber-500" },
-  behind: { label: "Behind", color: "text-red-400", bgColor: "bg-red-500" },
-  achieved: { label: "Achieved", color: "text-green-400", bgColor: "bg-green-600" },
-  missed: { label: "Missed", color: "text-red-400", bgColor: "bg-red-600" },
+  active: { label: "Active", color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-500" },
+  on_track: { label: "On Track", color: "text-green-600 dark:text-green-400", bgColor: "bg-green-500" },
+  at_risk: { label: "At Risk", color: "text-amber-600 dark:text-amber-400", bgColor: "bg-amber-500" },
+  behind: { label: "Behind", color: "text-red-600 dark:text-red-400", bgColor: "bg-red-500" },
+  achieved: { label: "Achieved", color: "text-green-600 dark:text-green-400", bgColor: "bg-green-600" },
+  missed: { label: "Missed", color: "text-red-600 dark:text-red-400", bgColor: "bg-red-600" },
   cancelled: { label: "Cancelled", color: "text-muted-foreground", bgColor: "bg-muted" },
 };
 

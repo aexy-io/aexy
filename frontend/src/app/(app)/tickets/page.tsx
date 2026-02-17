@@ -23,27 +23,27 @@ import { useTickets, useTicketStats, useTicketForms } from "@/hooks/useTicketing
 import { TicketStatus, TicketPriority, developerApi } from "@/lib/api";
 
 const STATUS_COLORS: Record<TicketStatus, { bg: string; text: string; label: string }> = {
-  new: { bg: "bg-blue-900/30", text: "text-blue-400", label: "New" },
-  acknowledged: { bg: "bg-purple-900/30", text: "text-purple-400", label: "Acknowledged" },
-  in_progress: { bg: "bg-yellow-900/30", text: "text-yellow-400", label: "In Progress" },
-  waiting_on_submitter: { bg: "bg-orange-900/30", text: "text-orange-400", label: "Waiting" },
-  resolved: { bg: "bg-green-900/30", text: "text-green-400", label: "Resolved" },
+  new: { bg: "bg-blue-50 dark:bg-blue-900/30", text: "text-blue-600 dark:text-blue-400", label: "New" },
+  acknowledged: { bg: "bg-purple-50 dark:bg-purple-900/30", text: "text-purple-600 dark:text-purple-400", label: "Acknowledged" },
+  in_progress: { bg: "bg-yellow-50 dark:bg-yellow-900/30", text: "text-yellow-600 dark:text-yellow-400", label: "In Progress" },
+  waiting_on_submitter: { bg: "bg-orange-50 dark:bg-orange-900/30", text: "text-orange-600 dark:text-orange-400", label: "Waiting" },
+  resolved: { bg: "bg-green-50 dark:bg-green-900/30", text: "text-green-600 dark:text-green-400", label: "Resolved" },
   closed: { bg: "bg-accent/50", text: "text-muted-foreground", label: "Closed" },
 };
 
 const PRIORITY_COLORS: Record<TicketPriority, { bg: string; text: string }> = {
   low: { bg: "bg-accent", text: "text-foreground" },
-  medium: { bg: "bg-blue-900/30", text: "text-blue-400" },
-  high: { bg: "bg-orange-900/30", text: "text-orange-400" },
-  urgent: { bg: "bg-red-900/30", text: "text-red-400" },
+  medium: { bg: "bg-blue-50 dark:bg-blue-900/30", text: "text-blue-600 dark:text-blue-400" },
+  high: { bg: "bg-orange-50 dark:bg-orange-900/30", text: "text-orange-600 dark:text-orange-400" },
+  urgent: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400" },
 };
 
 const TASK_STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
   backlog: { bg: "bg-accent/50", text: "text-muted-foreground", label: "Backlog" },
-  todo: { bg: "bg-blue-900/30", text: "text-blue-400", label: "To Do" },
-  in_progress: { bg: "bg-yellow-900/30", text: "text-yellow-400", label: "In Progress" },
-  review: { bg: "bg-purple-900/30", text: "text-purple-400", label: "Review" },
-  done: { bg: "bg-green-900/30", text: "text-green-400", label: "Done" },
+  todo: { bg: "bg-blue-50 dark:bg-blue-900/30", text: "text-blue-600 dark:text-blue-400", label: "To Do" },
+  in_progress: { bg: "bg-yellow-50 dark:bg-yellow-900/30", text: "text-yellow-600 dark:text-yellow-400", label: "In Progress" },
+  review: { bg: "bg-purple-50 dark:bg-purple-900/30", text: "text-purple-600 dark:text-purple-400", label: "Review" },
+  done: { bg: "bg-green-50 dark:bg-green-900/30", text: "text-green-600 dark:text-green-400", label: "Done" },
 };
 
 type TabType = "tickets" | "my-tasks";
@@ -171,7 +171,7 @@ export default function TicketsPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-purple-900/30">
+                  <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
                     <ListTodo className="h-5 w-5 text-purple-400" />
                   </div>
                   <div>
@@ -182,7 +182,7 @@ export default function TicketsPage() {
               </div>
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-yellow-900/30">
+                  <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
                     <Clock className="h-5 w-5 text-yellow-400" />
                   </div>
                   <div>
@@ -195,7 +195,7 @@ export default function TicketsPage() {
               </div>
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-900/30">
+                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
                     <Layers className="h-5 w-5 text-blue-400" />
                   </div>
                   <div>
@@ -208,7 +208,7 @@ export default function TicketsPage() {
               </div>
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-purple-900/30">
+                  <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
                     <CheckCircle2 className="h-5 w-5 text-purple-400" />
                   </div>
                   <div>
@@ -290,7 +290,7 @@ export default function TicketsPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-purple-900/30">
+                  <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
                     <Ticket className="h-5 w-5 text-purple-400" />
                   </div>
                   <div>
@@ -301,7 +301,7 @@ export default function TicketsPage() {
               </div>
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-900/30">
+                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
                     <Clock className="h-5 w-5 text-blue-400" />
                   </div>
                   <div>
@@ -312,7 +312,7 @@ export default function TicketsPage() {
               </div>
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-red-900/30">
+                  <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
                     <AlertTriangle className="h-5 w-5 text-red-400" />
                   </div>
                   <div>
@@ -323,7 +323,7 @@ export default function TicketsPage() {
               </div>
               <div className="bg-muted rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-green-900/30">
+                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
                     <FileText className="h-5 w-5 text-green-400" />
                   </div>
                   <div>
@@ -419,7 +419,7 @@ export default function TicketsPage() {
                             </span>
                           )}
                           {ticket.sla_breached && (
-                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-900/30 text-red-400">
+                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400">
                               SLA Breached
                             </span>
                           )}

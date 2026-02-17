@@ -115,10 +115,10 @@ export function ReadinessChecklist({
           className={cn(
             "p-3 rounded-lg text-sm",
             allRequiredComplete && progress === 100
-              ? "bg-green-500/10 text-green-400"
+              ? "bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400"
               : allRequiredComplete
-              ? "bg-blue-500/10 text-blue-400"
-              : "bg-amber-500/10 text-amber-400"
+              ? "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
+              : "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"
           )}
         >
           {allRequiredComplete && progress === 100 ? (

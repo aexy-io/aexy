@@ -241,7 +241,7 @@ export default function RepositoryDetailPage() {
                           {dev.developer_name || dev.developer_id.slice(0, 12)}
                         </Link>
                         {!dev.is_workspace_member && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-medium">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 font-medium">
                             External
                           </span>
                         )}

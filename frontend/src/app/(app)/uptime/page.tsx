@@ -19,9 +19,9 @@ import {
 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-  up: { bg: "bg-emerald-900/30", text: "text-emerald-400", dot: "bg-emerald-500" },
-  down: { bg: "bg-red-900/30", text: "text-red-400", dot: "bg-red-500" },
-  degraded: { bg: "bg-amber-900/30", text: "text-amber-400", dot: "bg-amber-500" },
+  up: { bg: "bg-emerald-50 dark:bg-emerald-900/30", text: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500" },
+  down: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400", dot: "bg-red-500" },
+  degraded: { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500" },
   paused: { bg: "bg-accent/50", text: "text-muted-foreground", dot: "bg-muted-foreground" },
   unknown: { bg: "bg-accent/50", text: "text-muted-foreground", dot: "bg-muted-foreground" },
 };
@@ -119,7 +119,7 @@ export default function UptimeDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
             <div className="bg-muted rounded-xl p-4 border border-border">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-emerald-900/30">
+                <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
                   <CheckCircle2 className="h-5 w-5 text-emerald-400" />
                 </div>
                 <div>
@@ -130,7 +130,7 @@ export default function UptimeDashboard() {
             </div>
             <div className="bg-muted rounded-xl p-4 border border-border">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-red-900/30">
+                <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
                   <AlertTriangle className="h-5 w-5 text-red-400" />
                 </div>
                 <div>
@@ -141,7 +141,7 @@ export default function UptimeDashboard() {
             </div>
             <div className="bg-muted rounded-xl p-4 border border-border">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-amber-900/30">
+                <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
                   <Activity className="h-5 w-5 text-amber-400" />
                 </div>
                 <div>
@@ -152,7 +152,7 @@ export default function UptimeDashboard() {
             </div>
             <div className="bg-muted rounded-xl p-4 border border-border">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-blue-900/30">
+                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
                   <Clock className="h-5 w-5 text-blue-400" />
                 </div>
                 <div>
@@ -163,7 +163,7 @@ export default function UptimeDashboard() {
             </div>
             <div className="bg-muted rounded-xl p-4 border border-border">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-purple-900/30">
+                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
                   <MonitorCheck className="h-5 w-5 text-purple-400" />
                 </div>
                 <div>

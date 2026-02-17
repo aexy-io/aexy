@@ -47,7 +47,7 @@ export default function CurrentOnCallBadge({
   const hoursRemaining = Math.max(0, Math.round((endTime.getTime() - now.getTime()) / (1000 * 60 * 60)));
 
   return (
-    <div className={`flex items-center gap-3 ${compact ? "" : "p-3 bg-green-900/20 rounded-lg border border-green-800/50"}`}>
+    <div className={`flex items-center gap-3 ${compact ? "" : "p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-800/50"}`}>
       <div className={`${compact ? "hidden" : "flex"} items-center justify-center w-10 h-10 bg-green-600 rounded-full`}>
         <Phone className="h-5 w-5 text-foreground" />
       </div>

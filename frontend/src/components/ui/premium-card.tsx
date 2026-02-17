@@ -185,10 +185,10 @@ const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
   ({ className, variant = "default", size = "sm", pulse = false, children, ...props }, ref) => {
     const variants = {
       default: "bg-accent text-foreground",
-      success: "bg-green-900/50 text-green-400 border-green-800/50",
-      warning: "bg-amber-900/50 text-amber-400 border-amber-800/50",
-      error: "bg-red-900/50 text-red-400 border-red-800/50",
-      info: "bg-blue-900/50 text-blue-400 border-blue-800/50",
+      success: "bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-400 border-green-200 dark:border-green-800/50",
+      warning: "bg-amber-50 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400 border-amber-200 dark:border-amber-800/50",
+      error: "bg-red-50 text-red-600 dark:bg-red-900/50 dark:text-red-400 border-red-200 dark:border-red-800/50",
+      info: "bg-blue-50 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400 border-blue-200 dark:border-blue-800/50",
       outline: "bg-transparent border-border text-muted-foreground",
     };
 

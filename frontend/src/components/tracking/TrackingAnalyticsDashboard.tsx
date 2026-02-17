@@ -143,10 +143,10 @@ function SprintHealthIndicator({
       score += 15; // Neutral if no data
     }
 
-    if (score >= 80) return { label: "Excellent", color: "text-green-400", bgColor: "bg-green-900/30" };
-    if (score >= 60) return { label: "Good", color: "text-blue-400", bgColor: "bg-blue-900/30" };
-    if (score >= 40) return { label: "Fair", color: "text-yellow-400", bgColor: "bg-yellow-900/30" };
-    return { label: "Needs Attention", color: "text-red-400", bgColor: "bg-red-900/30" };
+    if (score >= 80) return { label: "Excellent", color: "text-green-600 dark:text-green-400", bgColor: "bg-green-100 dark:bg-green-900/30" };
+    if (score >= 60) return { label: "Good", color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-100 dark:bg-blue-900/30" };
+    if (score >= 40) return { label: "Fair", color: "text-yellow-600 dark:text-yellow-400", bgColor: "bg-yellow-100 dark:bg-yellow-900/30" };
+    return { label: "Needs Attention", color: "text-red-600 dark:text-red-400", bgColor: "bg-red-100 dark:bg-red-900/30" };
   };
 
   const health = getHealthStatus();
@@ -318,7 +318,7 @@ export function TrackingAnalyticsDashboard({
         {metrics.avgSentiment !== undefined && (
           <div className="bg-muted rounded-xl border border-border p-6">
             <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-amber-900/30 rounded-lg">
+              <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
                 <Smile className="h-5 w-5 text-amber-400" />
               </div>
               <span className="text-muted-foreground text-sm">Team Mood</span>

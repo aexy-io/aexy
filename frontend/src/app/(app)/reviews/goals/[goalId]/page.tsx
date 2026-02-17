@@ -27,27 +27,27 @@ import { GoalType, GoalPriority } from "@/lib/api";
 
 // Goal type colors
 const goalTypeColors: Record<GoalType, { text: string; bg: string }> = {
-  performance: { text: "text-cyan-400", bg: "bg-cyan-500/10" },
-  skill_development: { text: "text-purple-400", bg: "bg-purple-500/10" },
-  project: { text: "text-emerald-400", bg: "bg-emerald-500/10" },
-  leadership: { text: "text-amber-400", bg: "bg-amber-500/10" },
-  team_contribution: { text: "text-blue-400", bg: "bg-blue-500/10" },
+  performance: { text: "text-cyan-600 dark:text-cyan-400", bg: "bg-cyan-500/10" },
+  skill_development: { text: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10" },
+  project: { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10" },
+  leadership: { text: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10" },
+  team_contribution: { text: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10" },
 };
 
 // Goal status colors
 const goalStatusColors: Record<string, { text: string; bg: string; icon: React.ReactNode }> = {
   draft: { text: "text-muted-foreground", bg: "bg-muted-foreground/10", icon: <Clock className="h-4 w-4" /> },
-  active: { text: "text-blue-400", bg: "bg-blue-500/10", icon: <Clock className="h-4 w-4" /> },
-  completed: { text: "text-emerald-400", bg: "bg-emerald-500/10", icon: <CheckCircle className="h-4 w-4" /> },
+  active: { text: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10", icon: <Clock className="h-4 w-4" /> },
+  completed: { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10", icon: <CheckCircle className="h-4 w-4" /> },
   cancelled: { text: "text-muted-foreground", bg: "bg-muted-foreground/10", icon: <AlertCircle className="h-4 w-4" /> },
-  deferred: { text: "text-yellow-400", bg: "bg-yellow-500/10", icon: <Clock className="h-4 w-4" /> },
+  deferred: { text: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-500/10", icon: <Clock className="h-4 w-4" /> },
 };
 
 // Priority colors
 const priorityColors: Record<GoalPriority, { text: string; bg: string }> = {
-  critical: { text: "text-red-400", bg: "bg-red-500/10" },
-  high: { text: "text-orange-400", bg: "bg-orange-500/10" },
-  medium: { text: "text-yellow-400", bg: "bg-yellow-500/10" },
+  critical: { text: "text-red-600 dark:text-red-400", bg: "bg-red-500/10" },
+  high: { text: "text-orange-600 dark:text-orange-400", bg: "bg-orange-500/10" },
+  medium: { text: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-500/10" },
   low: { text: "text-muted-foreground", bg: "bg-muted-foreground/10" },
 };
 

@@ -1185,7 +1185,7 @@ function AutomationsTab({
                   <Link2 className="h-4 w-4 text-purple-400" />
                   <span className="text-foreground">{link.automation_name || link.automation_id}</span>
                   {link.is_active ? (
-                    <span className="text-xs text-green-400 bg-green-900/30 px-2 py-0.5 rounded">
+                    <span className="text-xs text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded">
                       Active
                     </span>
                   ) : (
@@ -1252,13 +1252,13 @@ function SubmissionsTab({
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
-        return "bg-green-900/30 text-green-400";
+        return "bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400";
       case "pending":
-        return "bg-yellow-900/30 text-yellow-400";
+        return "bg-yellow-50 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400";
       case "processing":
-        return "bg-blue-900/30 text-blue-400";
+        return "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400";
       case "failed":
-        return "bg-red-900/30 text-red-400";
+        return "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400";
       default:
         return "bg-accent text-muted-foreground";
     }
@@ -1524,19 +1524,19 @@ export default function FormEditorPage() {
         {/* Destination indicators */}
         <div className="flex items-center gap-2 mb-6">
           {form.auto_create_ticket && (
-            <div className="flex items-center gap-1 px-3 py-1 bg-blue-900/20 rounded-full text-sm text-blue-400">
+            <div className="flex items-center gap-1 px-3 py-1 bg-blue-50 dark:bg-blue-900/20 rounded-full text-sm text-blue-600 dark:text-blue-400">
               <Ticket className="h-3 w-3" />
               Creates Tickets
             </div>
           )}
           {form.auto_create_record && (
-            <div className="flex items-center gap-1 px-3 py-1 bg-green-900/20 rounded-full text-sm text-green-400">
+            <div className="flex items-center gap-1 px-3 py-1 bg-green-50 dark:bg-green-900/20 rounded-full text-sm text-green-600 dark:text-green-400">
               <Users className="h-3 w-3" />
               Creates {form.crm_object_name || "CRM Records"}
             </div>
           )}
           {form.auto_create_deal && (
-            <div className="flex items-center gap-1 px-3 py-1 bg-orange-900/20 rounded-full text-sm text-orange-400">
+            <div className="flex items-center gap-1 px-3 py-1 bg-orange-50 dark:bg-orange-900/20 rounded-full text-sm text-orange-600 dark:text-orange-400">
               <DollarSign className="h-3 w-3" />
               Creates Deals
             </div>

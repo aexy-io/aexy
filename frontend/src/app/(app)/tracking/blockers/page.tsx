@@ -268,7 +268,7 @@ export default function BlockersPage() {
             subtitle="Waiting for help"
             icon={AlertTriangle}
             iconColor="text-purple-400"
-            iconBgColor="bg-purple-900/30"
+            iconBgColor="bg-purple-100 dark:bg-purple-900/30"
             loading={isLoading}
           />
           <MetricCard
@@ -277,7 +277,7 @@ export default function BlockersPage() {
             subtitle="Completed"
             icon={AlertTriangle}
             iconColor="text-green-400"
-            iconBgColor="bg-green-900/30"
+            iconBgColor="bg-green-100 dark:bg-green-900/30"
             loading={isLoading}
           />
           <MetricCard
@@ -286,7 +286,7 @@ export default function BlockersPage() {
             subtitle="> 24 hours old"
             icon={Clock}
             iconColor="text-amber-400"
-            iconBgColor="bg-amber-900/30"
+            iconBgColor="bg-amber-100 dark:bg-amber-900/30"
             loading={isLoading}
           />
           <MetricCard
@@ -295,7 +295,7 @@ export default function BlockersPage() {
             subtitle="Active blockers"
             icon={Clock}
             iconColor="text-blue-400"
-            iconBgColor="bg-blue-900/30"
+            iconBgColor="bg-blue-100 dark:bg-blue-900/30"
             loading={isLoading}
           />
         </div>

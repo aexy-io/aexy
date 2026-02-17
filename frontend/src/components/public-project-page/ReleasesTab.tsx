@@ -11,11 +11,11 @@ interface ReleasesTabProps {
 
 const RELEASE_STATUS_COLORS: Record<string, string> = {
   planning: "text-muted-foreground bg-accent",
-  in_progress: "text-blue-400 bg-blue-900/30",
-  code_freeze: "text-purple-400 bg-purple-900/30",
-  testing: "text-yellow-400 bg-yellow-900/30",
-  released: "text-green-400 bg-green-900/30",
-  cancelled: "text-red-400 bg-red-900/30",
+  in_progress: "text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30",
+  code_freeze: "text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30",
+  testing: "text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30",
+  released: "text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30",
+  cancelled: "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30",
 };
 
 export function ReleasesTab({ publicSlug }: ReleasesTabProps) {

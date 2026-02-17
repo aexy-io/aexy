@@ -158,7 +158,7 @@ function FieldEditor({
           <span className="text-muted-foreground text-sm">{fieldConfig.label}</span>
         </div>
         {hasChanges && (
-          <span className="text-yellow-400 text-xs px-2 py-1 bg-yellow-900/30 rounded">
+          <span className="text-yellow-600 dark:text-yellow-400 text-xs px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 rounded">
             Unsaved
           </span>
         )}
@@ -278,7 +278,7 @@ function FieldEditor({
             <button
               onClick={handleDelete}
               disabled={isDeleting}
-              className="flex items-center gap-2 px-3 py-2 text-red-400 hover:bg-red-900/20 rounded-lg transition text-sm"
+              className="flex items-center gap-2 px-3 py-2 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition text-sm"
             >
               {isDeleting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

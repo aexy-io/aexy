@@ -305,12 +305,12 @@ export function HolidaySettings() {
                 </td>
                 <td className="px-4 py-3">
                   {holiday.is_optional ? (
-                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 border border-amber-500/20">
                       <Star className="h-3 w-3" />
                       Optional
                     </span>
                   ) : (
-                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400">
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
                       Mandatory
                     </span>
                   )}

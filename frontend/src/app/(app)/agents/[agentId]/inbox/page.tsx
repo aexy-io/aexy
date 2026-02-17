@@ -31,25 +31,25 @@ const statusConfig = {
   pending: {
     label: "Pending",
     icon: Clock,
-    color: "text-yellow-400",
+    color: "text-yellow-600 dark:text-yellow-400",
     bgColor: "bg-yellow-500/20",
   },
   processing: {
     label: "Processing",
     icon: RefreshCw,
-    color: "text-blue-400",
+    color: "text-blue-600 dark:text-blue-400",
     bgColor: "bg-blue-500/20",
   },
   responded: {
     label: "Responded",
     icon: CheckCircle,
-    color: "text-green-400",
+    color: "text-green-600 dark:text-green-400",
     bgColor: "bg-green-500/20",
   },
   escalated: {
     label: "Escalated",
     icon: ArrowUpRight,
-    color: "text-orange-400",
+    color: "text-orange-600 dark:text-orange-400",
     bgColor: "bg-orange-500/20",
   },
   archived: {
@@ -62,9 +62,9 @@ const statusConfig = {
 
 const priorityConfig = {
   low: { label: "Low", color: "text-muted-foreground", bgColor: "bg-muted-foreground/20" },
-  normal: { label: "Normal", color: "text-blue-400", bgColor: "bg-blue-500/20" },
-  high: { label: "High", color: "text-orange-400", bgColor: "bg-orange-500/20" },
-  urgent: { label: "Urgent", color: "text-red-400", bgColor: "bg-red-500/20" },
+  normal: { label: "Normal", color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-500/20" },
+  high: { label: "High", color: "text-orange-600 dark:text-orange-400", bgColor: "bg-orange-500/20" },
+  urgent: { label: "Urgent", color: "text-red-600 dark:text-red-400", bgColor: "bg-red-500/20" },
 };
 
 function formatDate(dateString: string): string {

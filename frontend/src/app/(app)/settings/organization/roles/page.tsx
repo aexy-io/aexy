@@ -23,13 +23,13 @@ import { CustomRole, RoleTemplateInfo, PermissionInfo } from "@/lib/api";
 
 function getRoleBadgeColor(roleName: string) {
   const name = roleName.toLowerCase();
-  if (name.includes("owner")) return "bg-amber-900/30 text-amber-400 border-amber-700";
-  if (name.includes("admin")) return "bg-purple-900/30 text-purple-400 border-purple-700";
-  if (name.includes("manager")) return "bg-green-900/30 text-green-400 border-green-700";
-  if (name.includes("developer")) return "bg-blue-900/30 text-blue-400 border-blue-700";
-  if (name.includes("hr")) return "bg-rose-900/30 text-rose-400 border-rose-700";
-  if (name.includes("support")) return "bg-pink-900/30 text-pink-400 border-pink-700";
-  if (name.includes("sales")) return "bg-cyan-900/30 text-cyan-400 border-cyan-700";
+  if (name.includes("owner")) return "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-700";
+  if (name.includes("admin")) return "bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 border-purple-200 dark:border-purple-700";
+  if (name.includes("manager")) return "bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-700";
+  if (name.includes("developer")) return "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-700";
+  if (name.includes("hr")) return "bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400 border-rose-200 dark:border-rose-700";
+  if (name.includes("support")) return "bg-pink-50 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400 border-pink-200 dark:border-pink-700";
+  if (name.includes("sales")) return "bg-cyan-50 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400 border-cyan-200 dark:border-cyan-700";
   if (name.includes("viewer")) return "bg-muted text-foreground border-border";
   return "bg-muted text-foreground border-border";
 }

@@ -289,10 +289,10 @@ export default function ManifestoPage() {
 
               <div className="grid md:grid-cols-2 gap-4">
                 {[
-                  { label: "Auditable", icon: Eye, color: "text-blue-400" },
-                  { label: "Forkable", icon: GitFork, color: "text-purple-400" },
-                  { label: "Self-hostable", icon: Server, color: "text-emerald-400" },
-                  { label: "Community-driven", icon: Users, color: "text-amber-400" },
+                  { label: "Auditable", icon: Eye, color: "text-blue-600 dark:text-blue-400" },
+                  { label: "Forkable", icon: GitFork, color: "text-purple-600 dark:text-purple-400" },
+                  { label: "Self-hostable", icon: Server, color: "text-emerald-600 dark:text-emerald-400" },
+                  { label: "Community-driven", icon: Users, color: "text-amber-600 dark:text-amber-400" },
                 ].map((item, idx) => (
                   <div
                     key={idx}

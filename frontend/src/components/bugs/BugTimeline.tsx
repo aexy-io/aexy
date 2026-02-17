@@ -37,7 +37,7 @@ const actionConfig: Record<
   created: {
     icon: Plus,
     label: "created this bug",
-    color: "text-blue-400",
+    color: "text-blue-600 dark:text-blue-400",
     bgColor: "bg-blue-500/10",
   },
   updated: {
@@ -49,31 +49,31 @@ const actionConfig: Record<
   status_changed: {
     icon: ArrowRight,
     label: "changed status",
-    color: "text-purple-400",
+    color: "text-purple-600 dark:text-purple-400",
     bgColor: "bg-purple-500/10",
   },
   assigned: {
     icon: UserCheck,
     label: "assigned",
-    color: "text-cyan-400",
+    color: "text-cyan-600 dark:text-cyan-400",
     bgColor: "bg-cyan-500/10",
   },
   comment: {
     icon: MessageSquare,
     label: "commented",
-    color: "text-green-400",
+    color: "text-green-600 dark:text-green-400",
     bgColor: "bg-green-500/10",
   },
   verified: {
     icon: CheckCircle2,
     label: "verified the fix",
-    color: "text-emerald-400",
+    color: "text-emerald-600 dark:text-emerald-400",
     bgColor: "bg-emerald-500/10",
   },
   reopened: {
     icon: RefreshCw,
     label: "reopened this bug",
-    color: "text-orange-400",
+    color: "text-orange-600 dark:text-orange-400",
     bgColor: "bg-orange-500/10",
   },
 };

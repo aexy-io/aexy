@@ -151,7 +151,7 @@ export default function TrackingAnalyticsPage() {
 
         {/* No Team Warning */}
         {teams.length === 0 && !teamsLoading && (
-          <div className="mb-8 p-4 bg-amber-900/20 border border-amber-700/50 rounded-xl">
+          <div className="mb-8 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-700/50 rounded-xl">
             <p className="text-amber-400 text-sm">
               You need to be part of a team to view team analytics. Please contact your workspace admin to be added to a team.
             </p>

@@ -32,12 +32,12 @@ import { useForms, useFormTemplates } from "@/hooks/useForms";
 import type { FormListItem, FormTemplateType } from "@/lib/formsApi";
 
 const TEMPLATE_LABELS: Record<FormTemplateType, { label: string; color: string; bg: string }> = {
-  bug_report: { label: "Bug Report", color: "text-red-400", bg: "bg-red-900/30" },
-  feature_request: { label: "Feature Request", color: "text-blue-400", bg: "bg-blue-900/30" },
-  support: { label: "Support", color: "text-purple-400", bg: "bg-purple-900/30" },
-  contact: { label: "Contact", color: "text-green-400", bg: "bg-green-900/30" },
-  lead_capture: { label: "Lead Capture", color: "text-orange-400", bg: "bg-orange-900/30" },
-  feedback: { label: "Feedback", color: "text-cyan-400", bg: "bg-cyan-900/30" },
+  bug_report: { label: "Bug Report", color: "text-red-600 dark:text-red-400", bg: "bg-red-50 dark:bg-red-900/30" },
+  feature_request: { label: "Feature Request", color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-900/30" },
+  support: { label: "Support", color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-900/30" },
+  contact: { label: "Contact", color: "text-green-600 dark:text-green-400", bg: "bg-green-50 dark:bg-green-900/30" },
+  lead_capture: { label: "Lead Capture", color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-50 dark:bg-orange-900/30" },
+  feedback: { label: "Feedback", color: "text-cyan-600 dark:text-cyan-400", bg: "bg-cyan-50 dark:bg-cyan-900/30" },
   custom: { label: "Custom", color: "text-muted-foreground", bg: "bg-accent" },
 };
 
@@ -205,7 +205,7 @@ function FormCard({
                     onDelete();
                     setShowMenu(false);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-900/20 flex items-center gap-2"
+                  className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
                 >
                   <Trash2 className="h-4 w-4" /> Delete Form
                 </button>
@@ -221,7 +221,7 @@ function FormCard({
 
       {/* Submission Count - Prominent Display */}
       <div className="flex items-center gap-3 mb-3">
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-900/20 rounded-lg">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
           <Send className="h-4 w-4 text-purple-400" />
           <span className="text-lg font-semibold text-purple-400">{form.submission_count}</span>
           <span className="text-xs text-purple-400/70">submissions</span>
@@ -231,19 +231,19 @@ function FormCard({
       {/* Destination indicators */}
       <div className="flex items-center gap-2 mb-3">
         {form.auto_create_ticket && (
-          <div className="flex items-center gap-1 px-2 py-1 bg-blue-900/20 rounded text-xs text-blue-400">
+          <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/20 rounded text-xs text-blue-600 dark:text-blue-400">
             <Ticket className="h-3 w-3" />
             Tickets
           </div>
         )}
         {form.auto_create_record && (
-          <div className="flex items-center gap-1 px-2 py-1 bg-green-900/20 rounded text-xs text-green-400">
+          <div className="flex items-center gap-1 px-2 py-1 bg-green-50 dark:bg-green-900/20 rounded text-xs text-green-600 dark:text-green-400">
             <Users className="h-3 w-3" />
             CRM
           </div>
         )}
         {form.auto_create_deal && (
-          <div className="flex items-center gap-1 px-2 py-1 bg-orange-900/20 rounded text-xs text-orange-400">
+          <div className="flex items-center gap-1 px-2 py-1 bg-orange-50 dark:bg-orange-900/20 rounded text-xs text-orange-600 dark:text-orange-400">
             <DollarSign className="h-3 w-3" />
             Deals
           </div>
@@ -492,7 +492,7 @@ export default function FormsPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-muted rounded-xl p-4 border border-border">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-purple-900/30">
+              <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
                 <FileText className="h-5 w-5 text-purple-400" />
               </div>
               <div>
@@ -503,7 +503,7 @@ export default function FormsPage() {
           </div>
           <div className="bg-muted rounded-xl p-4 border border-border">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-900/30">
+              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
                 <Zap className="h-5 w-5 text-blue-400" />
               </div>
               <div>
@@ -514,7 +514,7 @@ export default function FormsPage() {
           </div>
           <div className="bg-muted rounded-xl p-4 border border-border">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-900/30">
+              <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
                 <Ticket className="h-5 w-5 text-green-400" />
               </div>
               <div>
@@ -525,7 +525,7 @@ export default function FormsPage() {
           </div>
           <div className="bg-muted rounded-xl p-4 border border-border">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-orange-900/30">
+              <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30">
                 <Users className="h-5 w-5 text-orange-400" />
               </div>
               <div>

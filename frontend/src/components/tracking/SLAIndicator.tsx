@@ -17,22 +17,22 @@ interface SLAIndicatorProps {
 const slaConfig = {
   ok: {
     icon: CheckCircle2,
-    color: "text-green-400",
-    bgColor: "bg-green-900/30",
+    color: "text-green-600 dark:text-green-400",
+    bgColor: "bg-green-100 dark:bg-green-900/30",
     borderColor: "border-green-700/50",
     label: "On Track",
   },
   warning: {
     icon: Clock,
-    color: "text-amber-400",
-    bgColor: "bg-amber-900/30",
+    color: "text-amber-600 dark:text-amber-400",
+    bgColor: "bg-amber-100 dark:bg-amber-900/30",
     borderColor: "border-amber-700/50",
     label: "At Risk",
   },
   breached: {
     icon: XCircle,
-    color: "text-red-400",
-    bgColor: "bg-red-900/30",
+    color: "text-red-600 dark:text-red-400",
+    bgColor: "bg-red-100 dark:bg-red-900/30",
     borderColor: "border-red-700/50",
     label: "SLA Breached",
   },

@@ -31,9 +31,9 @@ const CHECK_TYPE_ICONS = {
 };
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  up: { bg: "bg-emerald-900/30", text: "text-emerald-400", label: "Up" },
-  down: { bg: "bg-red-900/30", text: "text-red-400", label: "Down" },
-  degraded: { bg: "bg-amber-900/30", text: "text-amber-400", label: "Degraded" },
+  up: { bg: "bg-emerald-50 dark:bg-emerald-900/30", text: "text-emerald-600 dark:text-emerald-400", label: "Up" },
+  down: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400", label: "Down" },
+  degraded: { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", label: "Degraded" },
   paused: { bg: "bg-accent/50", text: "text-muted-foreground", label: "Paused" },
   unknown: { bg: "bg-accent/50", text: "text-muted-foreground", label: "Unknown" },
 };
@@ -259,7 +259,7 @@ export default function MonitorDetailPage() {
             className={`mb-6 p-4 rounded-xl border ${
               testResult.is_up
                 ? "bg-emerald-900/20 border-emerald-500/30"
-                : "bg-red-900/20 border-red-500/30"
+                : "bg-red-50 dark:bg-red-900/20 border-red-500/30"
             }`}
           >
             <div className="flex items-center gap-3">
@@ -352,8 +352,8 @@ export default function MonitorDetailPage() {
                           <span
                             className={`ml-2 px-1.5 py-0.5 rounded text-xs ${
                               check.status_code >= 200 && check.status_code < 300
-                                ? "bg-emerald-900/30 text-emerald-400"
-                                : "bg-red-900/30 text-red-400"
+                                ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+                                : "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400"
                             }`}
                           >
                             {check.status_code}
@@ -393,10 +393,10 @@ export default function MonitorDetailPage() {
                         <span
                           className={`px-2 py-0.5 rounded text-xs font-medium ${
                             incident.status === "ongoing"
-                              ? "bg-red-900/30 text-red-400"
+                              ? "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400"
                               : incident.status === "acknowledged"
-                              ? "bg-amber-900/30 text-amber-400"
-                              : "bg-emerald-900/30 text-emerald-400"
+                              ? "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
+                              : "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
                           }`}
                         >
                           {incident.status}

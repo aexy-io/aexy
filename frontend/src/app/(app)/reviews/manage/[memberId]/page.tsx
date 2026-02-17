@@ -42,17 +42,17 @@ import { reviewsApi, IndividualReviewDetail, WorkGoal, GoalSuggestion } from "@/
 import { useWorkspace } from "@/hooks/useWorkspace";
 
 const goalTypeColors: Record<string, { bg: string; text: string }> = {
-  performance: { bg: "bg-cyan-500/20", text: "text-cyan-400" },
-  skill_development: { bg: "bg-purple-500/20", text: "text-purple-400" },
-  project: { bg: "bg-emerald-500/20", text: "text-emerald-400" },
-  leadership: { bg: "bg-amber-500/20", text: "text-amber-400" },
-  team_contribution: { bg: "bg-blue-500/20", text: "text-blue-400" },
+  performance: { bg: "bg-cyan-500/20", text: "text-cyan-600 dark:text-cyan-400" },
+  skill_development: { bg: "bg-purple-500/20", text: "text-purple-600 dark:text-purple-400" },
+  project: { bg: "bg-emerald-500/20", text: "text-emerald-600 dark:text-emerald-400" },
+  leadership: { bg: "bg-amber-500/20", text: "text-amber-600 dark:text-amber-400" },
+  team_contribution: { bg: "bg-blue-500/20", text: "text-blue-600 dark:text-blue-400" },
 };
 
 const goalStatusColors: Record<string, { bg: string; text: string }> = {
-  in_progress: { bg: "bg-blue-500/20", text: "text-blue-400" },
-  completed: { bg: "bg-emerald-500/20", text: "text-emerald-400" },
-  at_risk: { bg: "bg-red-500/20", text: "text-red-400" },
+  in_progress: { bg: "bg-blue-500/20", text: "text-blue-600 dark:text-blue-400" },
+  completed: { bg: "bg-emerald-500/20", text: "text-emerald-600 dark:text-emerald-400" },
+  at_risk: { bg: "bg-red-500/20", text: "text-red-600 dark:text-red-400" },
   pending: { bg: "bg-muted-foreground/20", text: "text-muted-foreground" },
 };
 

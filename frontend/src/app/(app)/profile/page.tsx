@@ -132,7 +132,7 @@ export default function ProfilePage() {
                       {skillFingerprint.languages.map((lang) => (
                         <span
                           key={lang.name}
-                          className="px-3 py-1 bg-primary-900/50 text-primary-400 rounded-full text-sm"
+                          className="px-3 py-1 bg-primary-50 text-primary-600 dark:bg-primary-900/50 dark:text-primary-400 rounded-full text-sm"
                         >
                           {lang.name}
                         </span>

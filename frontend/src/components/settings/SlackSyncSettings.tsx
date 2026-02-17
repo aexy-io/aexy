@@ -191,8 +191,8 @@ export function SlackSyncSettings({ integrationId, teamId, slackTeamId = "", isC
           <div
             className={`mb-4 p-3 rounded-lg flex items-center gap-2 ${
               message.type === "success"
-                ? "bg-green-900/30 border border-green-700 text-green-400"
-                : "bg-red-900/30 border border-red-700 text-red-400"
+                ? "bg-green-100 dark:bg-green-900/30 border border-green-700 text-green-600 dark:text-green-400"
+                : "bg-red-100 dark:bg-red-900/30 border border-red-700 text-red-600 dark:text-red-400"
             }`}
           >
             {message.type === "success" ? (
@@ -320,7 +320,7 @@ export function SlackSyncSettings({ integrationId, teamId, slackTeamId = "", isC
                 </div>
                 <button
                   onClick={() => handleRemoveChannel(config.id)}
-                  className="p-2 text-muted-foreground hover:text-red-400 hover:bg-red-900/20 rounded-lg transition"
+                  className="p-2 text-muted-foreground hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>

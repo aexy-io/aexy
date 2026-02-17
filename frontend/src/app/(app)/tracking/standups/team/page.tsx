@@ -218,7 +218,7 @@ export default function TeamStandupsPage() {
             <Calendar className="h-5 w-5 text-purple-400" />
             <span className="text-foreground font-medium">{formatDate(selectedDate)}</span>
             {isToday && (
-              <span className="px-2 py-0.5 text-xs bg-purple-900/30 text-purple-400 rounded">
+              <span className="px-2 py-0.5 text-xs bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 rounded">
                 Today
               </span>
             )}
@@ -236,7 +236,7 @@ export default function TeamStandupsPage() {
                 setSelectedDate(new Date());
                 setSelectedStandup(null);
               }}
-              className="px-3 py-2 text-sm text-purple-400 hover:text-purple-300 hover:bg-purple-900/20 rounded-lg transition"
+              className="px-3 py-2 text-sm text-purple-400 hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition"
             >
               Go to Today
             </button>
@@ -250,7 +250,7 @@ export default function TeamStandupsPage() {
             value={stats.teamMembers}
             icon={Users}
             iconColor="text-purple-400"
-            iconBgColor="bg-purple-900/30"
+            iconBgColor="bg-purple-100 dark:bg-purple-900/30"
             loading={teamsLoading}
           />
           <MetricCard
@@ -259,7 +259,7 @@ export default function TeamStandupsPage() {
             subtitle={`${Math.round(stats.participationRate)}% participation`}
             icon={CheckCircle2}
             iconColor="text-green-400"
-            iconBgColor="bg-green-900/30"
+            iconBgColor="bg-green-100 dark:bg-green-900/30"
             loading={isLoading}
           />
           <MetricCard
@@ -267,7 +267,7 @@ export default function TeamStandupsPage() {
             value={stats.notSubmitted}
             icon={XCircle}
             iconColor="text-red-400"
-            iconBgColor="bg-red-900/30"
+            iconBgColor="bg-red-100 dark:bg-red-900/30"
             loading={isLoading}
           />
           <MetricCard
@@ -275,7 +275,7 @@ export default function TeamStandupsPage() {
             value={stats.withBlockers}
             icon={AlertTriangle}
             iconColor="text-amber-400"
-            iconBgColor="bg-amber-900/30"
+            iconBgColor="bg-amber-100 dark:bg-amber-900/30"
             loading={isLoading}
           />
           <div className="bg-muted rounded-xl border border-border p-6">
@@ -480,7 +480,7 @@ export default function TeamStandupsPage() {
                             return (
                               <span
                                 key={i}
-                                className="px-2 py-0.5 text-xs bg-blue-900/30 text-blue-400 rounded"
+                                className="px-2 py-0.5 text-xs bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded"
                               >
                                 {taskText}
                               </span>

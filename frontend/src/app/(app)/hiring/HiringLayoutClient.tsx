@@ -276,7 +276,7 @@ export default function HiringLayoutClient({
                               setShowUserMenu(false);
                               logout();
                             }}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-900/20"
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                           >
                             <LogOut className="h-4 w-4" />
                             Sign Out

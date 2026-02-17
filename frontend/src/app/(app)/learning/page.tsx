@@ -208,11 +208,11 @@ export default function LearningPage() {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "critical":
-        return "bg-red-900/50 text-red-400 border-red-700";
+        return "bg-red-50 text-red-600 dark:bg-red-900/50 dark:text-red-400 border-red-200 dark:border-red-700";
       case "high":
-        return "bg-orange-900/50 text-orange-400 border-orange-700";
+        return "bg-orange-50 text-orange-600 dark:bg-orange-900/50 dark:text-orange-400 border-orange-200 dark:border-orange-700";
       case "medium":
-        return "bg-yellow-900/50 text-yellow-400 border-yellow-700";
+        return "bg-yellow-50 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-400 border-yellow-200 dark:border-yellow-700";
       default:
         return "bg-accent text-foreground border-border";
     }
@@ -473,11 +473,11 @@ export default function LearningPage() {
                                 <span
                                   className={`text-xs px-2 py-1 rounded ${
                                     member.trajectory_status === "ahead"
-                                      ? "bg-green-900/50 text-green-400"
+                                      ? "bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-400"
                                       : member.trajectory_status === "on_track"
-                                      ? "bg-blue-900/50 text-blue-400"
+                                      ? "bg-blue-50 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400"
                                       : member.trajectory_status === "behind"
-                                      ? "bg-yellow-900/50 text-yellow-400"
+                                      ? "bg-yellow-50 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-400"
                                       : "bg-muted text-foreground"
                                   }`}
                                 >
@@ -599,7 +599,7 @@ export default function LearningPage() {
                     strokeWidth={5}
                     color="purple"
                     showLabel={false}
-                    className="bg-purple-900/50 rounded-full"
+                    className="bg-purple-100 dark:bg-purple-900/50 rounded-full"
                   />
                 </div>
                 <div className="space-y-1">
@@ -781,9 +781,9 @@ export default function LearningPage() {
                         <span
                           className={`text-xs px-2 py-1 rounded ${
                             path.status === "active"
-                              ? "bg-green-900/50 text-green-400"
+                              ? "bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-400"
                               : path.status === "paused"
-                              ? "bg-yellow-900/50 text-yellow-400"
+                              ? "bg-yellow-50 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-400"
                               : "bg-muted text-foreground"
                           }`}
                         >
@@ -946,11 +946,11 @@ export default function LearningPage() {
                           <div
                             className={`p-2 rounded-lg ${
                               activity.type === "task"
-                                ? "bg-blue-900/50"
+                                ? "bg-blue-100 dark:bg-blue-900/50"
                                 : activity.type === "pairing"
-                                ? "bg-purple-900/50"
+                                ? "bg-purple-100 dark:bg-purple-900/50"
                                 : activity.type === "course"
-                                ? "bg-green-900/50"
+                                ? "bg-green-100 dark:bg-green-900/50"
                                 : "bg-muted"
                             }`}
                           >

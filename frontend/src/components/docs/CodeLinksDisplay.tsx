@@ -129,13 +129,13 @@ export function CodeLinksDisplay({
                       {link.path}
                     </span>
                     {link.has_pending_changes && (
-                      <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium text-amber-400 bg-amber-900/30 rounded">
+                      <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 rounded">
                         <AlertTriangle className="h-3 w-3" />
                         Changes
                       </span>
                     )}
                     {!link.has_pending_changes && link.last_synced_at && (
-                      <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs text-green-400 bg-green-900/20 rounded">
+                      <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded">
                         <CheckCircle className="h-3 w-3" />
                         Synced
                       </span>
@@ -167,7 +167,7 @@ export function CodeLinksDisplay({
                     <button
                       onClick={() => handleRegenerate(link.id)}
                       disabled={regeneratingId === link.id}
-                      className="p-1.5 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-900/30 transition disabled:opacity-50"
+                      className="p-1.5 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition disabled:opacity-50"
                       title="Regenerate from updated code"
                     >
                       {regeneratingId === link.id ? (
@@ -180,7 +180,7 @@ export function CodeLinksDisplay({
                   <button
                     onClick={() => handleDelete(link.id)}
                     disabled={deletingId === link.id}
-                    className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-900/20 transition disabled:opacity-50"
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition disabled:opacity-50"
                     title="Remove link"
                   >
                     {deletingId === link.id ? (

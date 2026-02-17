@@ -30,16 +30,16 @@ const syncTypeConfig = {
     icon: Zap,
     label: "Real-time Sync",
     description: "Documentation updates automatically when code changes",
-    color: "text-green-400",
-    bgColor: "bg-green-900/20",
+    color: "text-green-600 dark:text-green-400",
+    bgColor: "bg-green-50 dark:bg-green-900/20",
     borderColor: "border-green-800/50",
   },
   daily_batch: {
     icon: Calendar,
     label: "Daily Sync",
     description: "Documentation syncs once per day with code changes",
-    color: "text-blue-400",
-    bgColor: "bg-blue-900/20",
+    color: "text-blue-600 dark:text-blue-400",
+    bgColor: "bg-blue-50 dark:bg-blue-900/20",
     borderColor: "border-blue-800/50",
   },
   manual: {
@@ -190,7 +190,7 @@ export function SyncStatusBadge({
 
   if (isProcessing) {
     return (
-      <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-900/30 text-blue-400 rounded-lg text-xs">
+      <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-lg text-xs">
         <Loader2 className="h-3 w-3 animate-spin" />
         Syncing
       </div>
@@ -199,7 +199,7 @@ export function SyncStatusBadge({
 
   if (pendingChanges > 0) {
     return (
-      <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-900/30 text-amber-400 rounded-lg text-xs">
+      <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 rounded-lg text-xs">
         <AlertCircle className="h-3 w-3" />
         {pendingChanges} pending
       </div>

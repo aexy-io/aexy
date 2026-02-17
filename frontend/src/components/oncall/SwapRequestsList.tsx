@@ -51,7 +51,7 @@ export default function SwapRequestsList({
                   <span className="font-medium text-foreground">
                     {isTarget ? "Swap Request Received" : "Swap Request Sent"}
                   </span>
-                  <span className="px-2 py-0.5 bg-amber-900/30 text-amber-400 rounded text-xs">
+                  <span className="px-2 py-0.5 bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 rounded text-xs">
                     Pending
                   </span>
                 </div>

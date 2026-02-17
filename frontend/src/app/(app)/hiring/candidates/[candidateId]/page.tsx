@@ -49,13 +49,13 @@ interface Activity {
 }
 
 const STAGE_CONFIG: Record<CandidateStage, { label: string; color: string; bgColor: string }> = {
-  applied: { label: "Applied", color: "text-blue-400", bgColor: "bg-blue-500" },
-  screening: { label: "Screening", color: "text-cyan-400", bgColor: "bg-cyan-500" },
+  applied: { label: "Applied", color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-500" },
+  screening: { label: "Screening", color: "text-cyan-600 dark:text-cyan-400", bgColor: "bg-cyan-500" },
   assessment: { label: "Assessment", color: "text-primary-400", bgColor: "bg-primary-500" },
-  interview: { label: "Interview", color: "text-purple-400", bgColor: "bg-purple-500" },
-  offer: { label: "Offer", color: "text-orange-400", bgColor: "bg-orange-500" },
-  hired: { label: "Hired", color: "text-green-400", bgColor: "bg-green-500" },
-  rejected: { label: "Rejected", color: "text-red-400", bgColor: "bg-red-500" },
+  interview: { label: "Interview", color: "text-purple-600 dark:text-purple-400", bgColor: "bg-purple-500" },
+  offer: { label: "Offer", color: "text-orange-600 dark:text-orange-400", bgColor: "bg-orange-500" },
+  hired: { label: "Hired", color: "text-green-600 dark:text-green-400", bgColor: "bg-green-500" },
+  rejected: { label: "Rejected", color: "text-red-600 dark:text-red-400", bgColor: "bg-red-500" },
 };
 
 const STAGES_ORDER: CandidateStage[] = ["applied", "screening", "assessment", "interview", "offer", "hired"];

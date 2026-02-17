@@ -25,9 +25,9 @@ const CHECK_TYPE_ICONS = {
 };
 
 const STATUS_COLORS = {
-  ongoing: { bg: "bg-red-900/30", text: "text-red-400", label: "Ongoing" },
-  acknowledged: { bg: "bg-amber-900/30", text: "text-amber-400", label: "Acknowledged" },
-  resolved: { bg: "bg-emerald-900/30", text: "text-emerald-400", label: "Resolved" },
+  ongoing: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400", label: "Ongoing" },
+  acknowledged: { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", label: "Acknowledged" },
+  resolved: { bg: "bg-emerald-50 dark:bg-emerald-900/30", text: "text-emerald-600 dark:text-emerald-400", label: "Resolved" },
 };
 
 export default function IncidentDetailPage() {
@@ -172,7 +172,7 @@ export default function IncidentDetailPage() {
                 {incident.ticket_id && (
                   <Link
                     href={`/tickets/${incident.ticket_id}`}
-                    className="px-3 py-1 rounded-full text-sm font-medium bg-purple-900/30 text-purple-400 flex items-center gap-1 hover:bg-purple-900/50 transition"
+                    className="px-3 py-1 rounded-full text-sm font-medium bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 flex items-center gap-1 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition"
                   >
                     <ExternalLink className="h-3 w-3" />
                     View Ticket
@@ -302,7 +302,7 @@ export default function IncidentDetailPage() {
             {incident.first_error_message && (
               <div>
                 <p className="text-sm text-muted-foreground mb-1">First Error</p>
-                <p className="text-red-400 bg-red-900/20 p-3 rounded-lg text-sm font-mono">
+                <p className="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg text-sm font-mono">
                   {incident.first_error_message}
                 </p>
               </div>
@@ -310,7 +310,7 @@ export default function IncidentDetailPage() {
             {incident.last_error_message && incident.last_error_message !== incident.first_error_message && (
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Last Error</p>
-                <p className="text-red-400 bg-red-900/20 p-3 rounded-lg text-sm font-mono">
+                <p className="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg text-sm font-mono">
                   {incident.last_error_message}
                 </p>
               </div>

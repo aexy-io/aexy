@@ -535,7 +535,7 @@ export default function InsightsPage() {
                             {m.developer_name || m.developer_id.slice(0, 8)}
                           </span>
                           {isBottleneck && (
-                            <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400">
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400">
                               bottleneck
                             </span>
                           )}

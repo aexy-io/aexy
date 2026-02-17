@@ -166,7 +166,7 @@ export default function HistoryPage() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div className="bg-muted rounded-xl p-4 border border-border">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-emerald-900/30">
+                    <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
                       <CheckCircle2 className="h-5 w-5 text-emerald-400" />
                     </div>
                     <div>
@@ -177,7 +177,7 @@ export default function HistoryPage() {
                 </div>
                 <div className="bg-muted rounded-xl p-4 border border-border">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-red-900/30">
+                    <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
                       <XCircle className="h-5 w-5 text-red-400" />
                     </div>
                     <div>
@@ -188,7 +188,7 @@ export default function HistoryPage() {
                 </div>
                 <div className="bg-muted rounded-xl p-4 border border-border">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-blue-900/30">
+                    <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
                       <Clock className="h-5 w-5 text-blue-400" />
                     </div>
                     <div>
@@ -201,7 +201,7 @@ export default function HistoryPage() {
                 </div>
                 <div className="bg-muted rounded-xl p-4 border border-border">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-purple-900/30">
+                    <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
                       <Activity className="h-5 w-5 text-purple-400" />
                     </div>
                     <div>
@@ -284,10 +284,10 @@ export default function HistoryPage() {
                               <span
                                 className={`px-2 py-0.5 rounded text-xs font-medium ${
                                   check.status_code >= 200 && check.status_code < 300
-                                    ? "bg-emerald-900/30 text-emerald-400"
+                                    ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
                                     : check.status_code >= 400
-                                    ? "bg-red-900/30 text-red-400"
-                                    : "bg-amber-900/30 text-amber-400"
+                                    ? "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+                                    : "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
                                 }`}
                               >
                                 {check.status_code}

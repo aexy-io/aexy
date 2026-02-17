@@ -53,13 +53,13 @@ interface Candidate {
 }
 
 const STAGE_CONFIG: Record<CandidateStage, { label: string; color: string; bgColor: string; borderColor: string }> = {
-  applied: { label: "Applied", color: "text-blue-400", bgColor: "bg-blue-500/10", borderColor: "border-blue-500/30" },
-  screening: { label: "Screening", color: "text-cyan-400", bgColor: "bg-cyan-500/10", borderColor: "border-cyan-500/30" },
+  applied: { label: "Applied", color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-500/10", borderColor: "border-blue-500/30" },
+  screening: { label: "Screening", color: "text-cyan-600 dark:text-cyan-400", bgColor: "bg-cyan-500/10", borderColor: "border-cyan-500/30" },
   assessment: { label: "Assessment", color: "text-primary-400", bgColor: "bg-primary-500/10", borderColor: "border-primary-500/30" },
-  interview: { label: "Interview", color: "text-purple-400", bgColor: "bg-purple-500/10", borderColor: "border-purple-500/30" },
-  offer: { label: "Offer", color: "text-orange-400", bgColor: "bg-orange-500/10", borderColor: "border-orange-500/30" },
-  hired: { label: "Hired", color: "text-green-400", bgColor: "bg-green-500/10", borderColor: "border-green-500/30" },
-  rejected: { label: "Rejected", color: "text-red-400", bgColor: "bg-red-500/10", borderColor: "border-red-500/30" },
+  interview: { label: "Interview", color: "text-purple-600 dark:text-purple-400", bgColor: "bg-purple-500/10", borderColor: "border-purple-500/30" },
+  offer: { label: "Offer", color: "text-orange-600 dark:text-orange-400", bgColor: "bg-orange-500/10", borderColor: "border-orange-500/30" },
+  hired: { label: "Hired", color: "text-green-600 dark:text-green-400", bgColor: "bg-green-500/10", borderColor: "border-green-500/30" },
+  rejected: { label: "Rejected", color: "text-red-600 dark:text-red-400", bgColor: "bg-red-500/10", borderColor: "border-red-500/30" },
 };
 
 const STAGES_ORDER: CandidateStage[] = ["applied", "screening", "assessment", "interview", "offer", "hired"];

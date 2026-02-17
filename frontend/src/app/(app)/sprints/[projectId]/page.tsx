@@ -36,26 +36,26 @@ import { redirect } from "next/navigation";
 const STATUS_CONFIG: Record<SprintStatus, { label: string; color: string; icon: React.ReactNode; bgColor: string }> = {
   planning: {
     label: "Planning",
-    color: "text-blue-400",
-    bgColor: "bg-blue-900/30",
+    color: "text-blue-600 dark:text-blue-400",
+    bgColor: "bg-blue-100 dark:bg-blue-900/30",
     icon: <Target className="h-4 w-4" />,
   },
   active: {
     label: "Active",
-    color: "text-green-400",
-    bgColor: "bg-green-900/30",
+    color: "text-green-600 dark:text-green-400",
+    bgColor: "bg-green-100 dark:bg-green-900/30",
     icon: <Play className="h-4 w-4" />,
   },
   review: {
     label: "In Review",
-    color: "text-amber-400",
-    bgColor: "bg-amber-900/30",
+    color: "text-amber-600 dark:text-amber-400",
+    bgColor: "bg-amber-100 dark:bg-amber-900/30",
     icon: <Pause className="h-4 w-4" />,
   },
   retrospective: {
     label: "Retrospective",
-    color: "text-purple-400",
-    bgColor: "bg-purple-900/30",
+    color: "text-purple-600 dark:text-purple-400",
+    bgColor: "bg-purple-100 dark:bg-purple-900/30",
     icon: <RotateCcw className="h-4 w-4" />,
   },
   completed: {
@@ -105,7 +105,7 @@ function SprintCard({ sprint, projectId, onDelete, isActive }: SprintCardProps) 
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               {isActive && (
-                <span className="px-2 py-0.5 text-xs font-medium bg-primary-900/30 text-primary-400 rounded">
+                <span className="px-2 py-0.5 text-xs font-medium bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400 rounded">
                   Current Sprint
                 </span>
               )}

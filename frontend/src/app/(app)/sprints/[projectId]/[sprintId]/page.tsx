@@ -49,16 +49,16 @@ import { redirect } from "next/navigation";
 
 const COLUMN_CONFIG: Record<TaskStatus, { label: string; color: string; bgColor: string }> = {
   backlog: { label: "Backlog", color: "text-muted-foreground", bgColor: "bg-accent/50" },
-  todo: { label: "To Do", color: "text-blue-400", bgColor: "bg-blue-900/20" },
-  in_progress: { label: "In Progress", color: "text-amber-400", bgColor: "bg-amber-900/20" },
-  review: { label: "Review", color: "text-purple-400", bgColor: "bg-purple-900/20" },
-  done: { label: "Done", color: "text-green-400", bgColor: "bg-green-900/20" },
+  todo: { label: "To Do", color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-50 dark:bg-blue-900/20" },
+  in_progress: { label: "In Progress", color: "text-amber-600 dark:text-amber-400", bgColor: "bg-amber-50 dark:bg-amber-900/20" },
+  review: { label: "Review", color: "text-purple-600 dark:text-purple-400", bgColor: "bg-purple-50 dark:bg-purple-900/20" },
+  done: { label: "Done", color: "text-green-600 dark:text-green-400", bgColor: "bg-green-50 dark:bg-green-900/20" },
 };
 
 const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string }> = {
-  critical: { label: "Critical", color: "text-red-400 bg-red-900/30" },
-  high: { label: "High", color: "text-orange-400 bg-orange-900/30" },
-  medium: { label: "Medium", color: "text-yellow-400 bg-yellow-900/30" },
+  critical: { label: "Critical", color: "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30" },
+  high: { label: "High", color: "text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30" },
+  medium: { label: "Medium", color: "text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30" },
   low: { label: "Low", color: "text-muted-foreground bg-accent" },
 };
 
@@ -981,7 +981,7 @@ function TaskDetailModal({ task, sprintId, onClose, onUpdate, onDelete, isUpdati
               <div className="flex justify-end">
                 <button
                   onClick={handleDelete}
-                  className="flex items-center gap-2 px-4 py-2 text-red-400 hover:bg-red-900/20 rounded-lg transition"
+                  className="flex items-center gap-2 px-4 py-2 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
                 >
                   <Trash2 className="h-4 w-4" />
                   Remove from Sprint

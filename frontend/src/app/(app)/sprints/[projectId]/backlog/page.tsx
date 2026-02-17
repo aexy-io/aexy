@@ -31,9 +31,9 @@ import { Badge, PremiumCard, Skeleton } from "@/components/ui/premium-card";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string; bgColor: string }> = {
-  critical: { label: "Critical", color: "text-red-400", bgColor: "bg-red-900/30" },
-  high: { label: "High", color: "text-orange-400", bgColor: "bg-orange-900/30" },
-  medium: { label: "Medium", color: "text-yellow-400", bgColor: "bg-yellow-900/30" },
+  critical: { label: "Critical", color: "text-red-600 dark:text-red-400", bgColor: "bg-red-100 dark:bg-red-900/30" },
+  high: { label: "High", color: "text-orange-600 dark:text-orange-400", bgColor: "bg-orange-100 dark:bg-orange-900/30" },
+  medium: { label: "Medium", color: "text-yellow-600 dark:text-yellow-400", bgColor: "bg-yellow-100 dark:bg-yellow-900/30" },
   low: { label: "Low", color: "text-muted-foreground", bgColor: "bg-accent" },
 };
 

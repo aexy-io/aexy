@@ -108,7 +108,7 @@ export function TaskMatcherCard() {
         </button>
 
         {error && (
-          <div className="bg-red-900/30 border border-red-700 rounded-lg p-3 text-red-300 text-sm">
+          <div className="bg-red-100 dark:bg-red-900/30 border border-red-700 rounded-lg p-3 text-red-300 text-sm">
             {error}
           </div>
         )}
@@ -123,7 +123,7 @@ export function TaskMatcherCard() {
               {result.task_signals.required_skills.map((skill) => (
                 <span
                   key={skill}
-                  className="bg-primary-900/50 text-primary-300 px-2 py-0.5 rounded text-xs"
+                  className="bg-primary-100 dark:bg-primary-900/50 text-primary-300 px-2 py-0.5 rounded text-xs"
                 >
                   {skill}
                 </span>
@@ -217,7 +217,7 @@ export function TaskMatcherCard() {
                       {candidate.match_score.strengths.slice(0, 3).map((s) => (
                         <span
                           key={s}
-                          className="bg-green-900/30 text-green-300 px-1.5 py-0.5 rounded text-xs"
+                          className="bg-green-100 dark:bg-green-900/30 text-green-300 px-1.5 py-0.5 rounded text-xs"
                         >
                           {s}
                         </span>
@@ -229,7 +229,7 @@ export function TaskMatcherCard() {
                       {candidate.match_score.gaps.slice(0, 2).map((g) => (
                         <span
                           key={g}
-                          className="bg-red-900/30 text-red-300 px-1.5 py-0.5 rounded text-xs"
+                          className="bg-red-100 dark:bg-red-900/30 text-red-300 px-1.5 py-0.5 rounded text-xs"
                         >
                           {g}
                         </span>
@@ -243,7 +243,7 @@ export function TaskMatcherCard() {
 
           {/* Warnings */}
           {result.warnings.length > 0 && (
-            <div className="mt-4 bg-amber-900/20 border border-amber-700/50 rounded-lg p-3">
+            <div className="mt-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-700/50 rounded-lg p-3">
               <div className="flex items-center gap-2 text-amber-400 text-sm mb-1">
                 <AlertTriangle className="h-4 w-4" />
                 <span>Warnings</span>

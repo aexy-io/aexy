@@ -130,10 +130,10 @@ export function ConfidenceIndicator({
   const percentage = Math.round(value * 100);
 
   const getColor = (val: number) => {
-    if (val < 0.5) return { bg: "bg-red-500", text: "text-red-400" };
-    if (val < 0.7) return { bg: "bg-amber-500", text: "text-amber-400" };
-    if (val < 0.85) return { bg: "bg-green-500", text: "text-green-400" };
-    return { bg: "bg-emerald-500", text: "text-emerald-400" };
+    if (val < 0.5) return { bg: "bg-red-500", text: "text-red-600 dark:text-red-400" };
+    if (val < 0.7) return { bg: "bg-amber-500", text: "text-amber-600 dark:text-amber-400" };
+    if (val < 0.85) return { bg: "bg-green-500", text: "text-green-600 dark:text-green-400" };
+    return { bg: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400" };
   };
 
   const colors = getColor(value);

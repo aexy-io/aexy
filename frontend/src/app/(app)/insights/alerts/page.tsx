@@ -23,9 +23,9 @@ import { useAlertRules, useAlertHistory } from "@/hooks/useInsights";
 import { AlertRuleData } from "@/lib/api";
 
 const SEVERITY_CONFIG: Record<string, { icon: typeof Info; color: string; bg: string }> = {
-  info: { icon: Info, color: "text-blue-400", bg: "bg-blue-500/10" },
-  warning: { icon: AlertTriangle, color: "text-yellow-400", bg: "bg-yellow-500/10" },
-  critical: { icon: ShieldAlert, color: "text-red-400", bg: "bg-red-500/10" },
+  info: { icon: Info, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10" },
+  warning: { icon: AlertTriangle, color: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-500/10" },
+  critical: { icon: ShieldAlert, color: "text-red-600 dark:text-red-400", bg: "bg-red-500/10" },
 };
 
 const METRIC_CATEGORIES = [
@@ -493,8 +493,8 @@ export default function AlertsPage() {
                       <span
                         className={`px-2 py-0.5 text-xs rounded-full ${
                           alert.status === "acknowledged"
-                            ? "bg-green-500/10 text-green-400"
-                            : "bg-yellow-500/10 text-yellow-400"
+                            ? "bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400"
+                            : "bg-yellow-50 text-yellow-600 dark:bg-yellow-500/10 dark:text-yellow-400"
                         }`}
                       >
                         {alert.status}

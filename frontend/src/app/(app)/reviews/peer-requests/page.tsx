@@ -17,10 +17,10 @@ import { usePeerRequests } from "@/hooks/useReviews";
 import { ReviewRequest } from "@/lib/api";
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
-  pending: { label: "Pending", color: "text-amber-400", bg: "bg-amber-500/10", icon: Clock },
-  accepted: { label: "Accepted", color: "text-blue-400", bg: "bg-blue-500/10", icon: CheckCircle },
-  declined: { label: "Declined", color: "text-red-400", bg: "bg-red-500/10", icon: XCircle },
-  completed: { label: "Completed", color: "text-green-400", bg: "bg-green-500/10", icon: CheckCircle },
+  pending: { label: "Pending", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10", icon: Clock },
+  accepted: { label: "Accepted", color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10", icon: CheckCircle },
+  declined: { label: "Declined", color: "text-red-600 dark:text-red-400", bg: "bg-red-500/10", icon: XCircle },
+  completed: { label: "Completed", color: "text-green-600 dark:text-green-400", bg: "bg-green-500/10", icon: CheckCircle },
 };
 
 function RequestCard({ request }: { request: ReviewRequest }) {

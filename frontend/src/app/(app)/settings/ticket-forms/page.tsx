@@ -33,9 +33,9 @@ const TEMPLATE_ICONS: Record<string, React.ReactNode> = {
 };
 
 const TEMPLATE_COLORS: Record<string, string> = {
-  bug_report: "bg-red-900/30 border-red-800/50",
-  feature_request: "bg-yellow-900/30 border-yellow-800/50",
-  support: "bg-blue-900/30 border-blue-800/50",
+  bug_report: "bg-red-100 dark:bg-red-900/30 border-red-800/50",
+  feature_request: "bg-yellow-100 dark:bg-yellow-900/30 border-yellow-800/50",
+  support: "bg-blue-100 dark:bg-blue-900/30 border-blue-800/50",
 };
 
 interface FormRowProps {
@@ -92,7 +92,7 @@ function FormRow({ form, onDuplicate, onDelete, isDuplicating, isDeleting }: For
           <div className="flex items-center gap-2 mb-1">
             <h3 className="text-foreground font-medium truncate">{form.name}</h3>
             {form.is_active ? (
-              <span className="flex items-center gap-1 px-2 py-0.5 bg-green-900/30 text-green-400 rounded-full text-xs">
+              <span className="flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400 rounded-full text-xs">
                 <CheckCircle className="h-3 w-3" />
                 Active
               </span>
@@ -381,7 +381,7 @@ export default function TicketFormsPage() {
                         onClick={() => setSelectedTemplate(type)}
                         className={`w-full p-4 rounded-lg border transition flex items-center gap-4 ${
                           selectedTemplate === type
-                            ? "border-purple-500 bg-purple-900/20"
+                            ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20"
                             : "border-border bg-muted/50 hover:border-border"
                         }`}
                       >

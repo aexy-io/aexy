@@ -25,19 +25,19 @@ const STATUS_CONFIG: Record<
   ready: {
     label: "Ready",
     icon: AlertCircle,
-    color: "text-blue-400",
+    color: "text-blue-600 dark:text-blue-400",
     bgColor: "bg-blue-500/20",
   },
   in_progress: {
     label: "In Progress",
     icon: PlayCircle,
-    color: "text-amber-400",
+    color: "text-amber-600 dark:text-amber-400",
     bgColor: "bg-amber-500/20",
   },
   done: {
     label: "Done",
     icon: CheckCircle2,
-    color: "text-green-400",
+    color: "text-green-600 dark:text-green-400",
     bgColor: "bg-green-500/20",
   },
 };

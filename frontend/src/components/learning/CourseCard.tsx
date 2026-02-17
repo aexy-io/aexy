@@ -28,9 +28,9 @@ const providerConfig: Record<string, { icon: typeof Youtube; color: string; labe
 };
 
 const difficultyConfig: Record<string, { color: string; bgColor: string }> = {
-  beginner: { color: "text-green-400", bgColor: "bg-green-900/30" },
-  intermediate: { color: "text-yellow-400", bgColor: "bg-yellow-900/30" },
-  advanced: { color: "text-red-400", bgColor: "bg-red-900/30" },
+  beginner: { color: "text-green-600 dark:text-green-400", bgColor: "bg-green-100 dark:bg-green-900/30" },
+  intermediate: { color: "text-yellow-600 dark:text-yellow-400", bgColor: "bg-yellow-100 dark:bg-yellow-900/30" },
+  advanced: { color: "text-red-600 dark:text-red-400", bgColor: "bg-red-100 dark:bg-red-900/30" },
 };
 
 export function CourseCard({
@@ -104,7 +104,7 @@ export function CourseCard({
           <button
             onClick={handleImport}
             disabled={importing || isImporting}
-            className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-900/30 rounded-lg transition disabled:opacity-50"
+            className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition disabled:opacity-50"
           >
             <Plus className="h-4 w-4" />
           </button>

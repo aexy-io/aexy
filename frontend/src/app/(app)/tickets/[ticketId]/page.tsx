@@ -29,26 +29,26 @@ import { useProjects } from "@/hooks/useProjects";
 import { TicketStatus, TicketPriority, TicketSeverity, ticketsApi } from "@/lib/api";
 
 const STATUS_OPTIONS: { value: TicketStatus; label: string; color: string }[] = [
-  { value: "new", label: "New", color: "text-blue-400" },
-  { value: "acknowledged", label: "Acknowledged", color: "text-purple-400" },
-  { value: "in_progress", label: "In Progress", color: "text-yellow-400" },
-  { value: "waiting_on_submitter", label: "Waiting on Submitter", color: "text-orange-400" },
-  { value: "resolved", label: "Resolved", color: "text-green-400" },
+  { value: "new", label: "New", color: "text-blue-600 dark:text-blue-400" },
+  { value: "acknowledged", label: "Acknowledged", color: "text-purple-600 dark:text-purple-400" },
+  { value: "in_progress", label: "In Progress", color: "text-yellow-600 dark:text-yellow-400" },
+  { value: "waiting_on_submitter", label: "Waiting on Submitter", color: "text-orange-600 dark:text-orange-400" },
+  { value: "resolved", label: "Resolved", color: "text-green-600 dark:text-green-400" },
   { value: "closed", label: "Closed", color: "text-muted-foreground" },
 ];
 
 const PRIORITY_OPTIONS: { value: TicketPriority; label: string; color: string }[] = [
   { value: "low", label: "Low", color: "text-muted-foreground" },
-  { value: "medium", label: "Medium", color: "text-blue-400" },
-  { value: "high", label: "High", color: "text-orange-400" },
-  { value: "urgent", label: "Urgent", color: "text-red-400" },
+  { value: "medium", label: "Medium", color: "text-blue-600 dark:text-blue-400" },
+  { value: "high", label: "High", color: "text-orange-600 dark:text-orange-400" },
+  { value: "urgent", label: "Urgent", color: "text-red-600 dark:text-red-400" },
 ];
 
 const SEVERITY_OPTIONS: { value: TicketSeverity; label: string; color: string; description: string }[] = [
   { value: "low", label: "Low", color: "text-muted-foreground", description: "Minor impact" },
-  { value: "medium", label: "Medium", color: "text-blue-400", description: "Moderate impact" },
-  { value: "high", label: "High", color: "text-orange-400", description: "Significant impact" },
-  { value: "critical", label: "Critical", color: "text-red-400", description: "System down" },
+  { value: "medium", label: "Medium", color: "text-blue-600 dark:text-blue-400", description: "Moderate impact" },
+  { value: "high", label: "High", color: "text-orange-600 dark:text-orange-400", description: "Significant impact" },
+  { value: "critical", label: "Critical", color: "text-red-600 dark:text-red-400", description: "System down" },
 ];
 
 export default function TicketDetailPage() {
@@ -179,7 +179,7 @@ export default function TicketDetailPage() {
                   </h1>
                 </div>
                 {ticket.sla_breached && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-red-900/30 text-red-400 rounded-lg text-sm">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded-lg text-sm">
                     <AlertTriangle className="h-4 w-4" />
                     SLA Breached
                   </div>
@@ -258,7 +258,7 @@ export default function TicketDetailPage() {
                       key={response.id}
                       className={`p-4 rounded-lg ${
                         response.is_internal
-                          ? "bg-yellow-900/20 border border-yellow-800/50"
+                          ? "bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-800/50"
                           : "bg-background"
                       }`}
                     >
@@ -534,7 +534,7 @@ export default function TicketDetailPage() {
               </div>
 
               {createTaskError && (
-                <div className="mb-4 p-3 bg-red-900/30 border border-red-800 rounded-lg text-red-400 text-sm">
+                <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
                   {createTaskError}
                 </div>
               )}

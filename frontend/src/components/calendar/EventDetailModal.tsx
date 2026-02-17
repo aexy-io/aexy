@@ -21,9 +21,9 @@ interface EventDetailModalProps {
 }
 
 const typeConfig = {
-  leave: { label: "Leave", icon: Palmtree, badgeClass: "bg-blue-500/10 text-blue-400" },
-  booking: { label: "Booking", icon: CalendarCheck, badgeClass: "bg-indigo-500/10 text-indigo-400" },
-  holiday: { label: "Holiday", icon: Calendar, badgeClass: "bg-red-500/10 text-red-400" },
+  leave: { label: "Leave", icon: Palmtree, badgeClass: "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400" },
+  booking: { label: "Booking", icon: CalendarCheck, badgeClass: "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400" },
+  holiday: { label: "Holiday", icon: Calendar, badgeClass: "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400" },
 };
 
 export function EventDetailModal({ event, onClose }: EventDetailModalProps) {

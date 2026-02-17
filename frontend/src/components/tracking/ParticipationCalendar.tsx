@@ -184,7 +184,7 @@ export function StandupStreak({
 
       {currentStreak >= 5 && (
         <div className="mt-4 text-center">
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-900/30 text-amber-400 text-sm rounded-full">
+          <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 text-sm rounded-full">
             {currentStreak >= 20 ? "On Fire!" : currentStreak >= 10 ? "Great Progress!" : "Keep Going!"}
           </span>
         </div>

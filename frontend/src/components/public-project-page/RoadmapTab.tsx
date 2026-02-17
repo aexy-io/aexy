@@ -38,19 +38,19 @@ interface RoadmapTabProps {
 }
 
 const CATEGORY_CONFIG: Record<RoadmapCategory, { label: string; icon: typeof Lightbulb; color: string }> = {
-  feature: { label: "Feature", icon: Lightbulb, color: "text-blue-400 bg-blue-900/30" },
-  improvement: { label: "Improvement", icon: Zap, color: "text-yellow-400 bg-yellow-900/30" },
-  integration: { label: "Integration", icon: Link2, color: "text-purple-400 bg-purple-900/30" },
-  bug_fix: { label: "Bug Fix", icon: Bug, color: "text-red-400 bg-red-900/30" },
+  feature: { label: "Feature", icon: Lightbulb, color: "text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30" },
+  improvement: { label: "Improvement", icon: Zap, color: "text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30" },
+  integration: { label: "Integration", icon: Link2, color: "text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30" },
+  bug_fix: { label: "Bug Fix", icon: Bug, color: "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30" },
   other: { label: "Other", icon: MoreHorizontal, color: "text-muted-foreground bg-accent" },
 };
 
 const STATUS_CONFIG: Record<RoadmapStatus, { label: string; icon: typeof Clock; color: string }> = {
   under_review: { label: "Under Review", icon: Clock, color: "text-muted-foreground" },
-  planned: { label: "Planned", icon: CheckCircle2, color: "text-blue-400" },
-  in_progress: { label: "In Progress", icon: Loader2, color: "text-yellow-400" },
-  completed: { label: "Completed", icon: CheckCircle2, color: "text-green-400" },
-  declined: { label: "Declined", icon: XCircle, color: "text-red-400" },
+  planned: { label: "Planned", icon: CheckCircle2, color: "text-blue-600 dark:text-blue-400" },
+  in_progress: { label: "In Progress", icon: Loader2, color: "text-yellow-600 dark:text-yellow-400" },
+  completed: { label: "Completed", icon: CheckCircle2, color: "text-green-600 dark:text-green-400" },
+  declined: { label: "Declined", icon: XCircle, color: "text-red-600 dark:text-red-400" },
 };
 
 function getLoginUrls() {
@@ -328,7 +328,7 @@ function CommentsModal({
                   )}
                   <span className="text-sm font-medium text-foreground">{comment.author.name || "Anonymous"}</span>
                   {comment.is_admin_response && (
-                    <span className="text-xs text-primary-400 bg-primary-900/50 px-1.5 py-0.5 rounded">Admin</span>
+                    <span className="text-xs text-primary-400 bg-primary-100 dark:bg-primary-900/50 px-1.5 py-0.5 rounded">Admin</span>
                   )}
                   <span className="text-xs text-muted-foreground">{new Date(comment.created_at).toLocaleDateString()}</span>
                 </div>
@@ -444,7 +444,7 @@ function CreateRequestModal({
 
         <div className="p-4 space-y-4">
           {error && (
-            <div className="p-3 bg-red-900/30 border border-red-700/50 rounded-lg text-sm text-red-400">
+            <div className="p-3 bg-red-100 dark:bg-red-900/30 border border-red-700/50 rounded-lg text-sm text-red-600 dark:text-red-400">
               {error}
             </div>
           )}

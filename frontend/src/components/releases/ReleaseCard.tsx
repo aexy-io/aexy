@@ -18,18 +18,18 @@ import { cn } from "@/lib/utils";
 
 const STATUS_CONFIG: Record<ReleaseStatus, { label: string; color: string; bgColor: string; icon: React.ReactNode }> = {
   planning: { label: "Planning", color: "text-muted-foreground", bgColor: "bg-muted-foreground", icon: <Circle className="h-3 w-3" /> },
-  in_progress: { label: "In Progress", color: "text-blue-400", bgColor: "bg-blue-500", icon: <Circle className="h-3 w-3" /> },
-  code_freeze: { label: "Code Freeze", color: "text-cyan-400", bgColor: "bg-cyan-500", icon: <Lock className="h-3 w-3" /> },
-  testing: { label: "Testing", color: "text-purple-400", bgColor: "bg-purple-500", icon: <Circle className="h-3 w-3" /> },
-  released: { label: "Released", color: "text-green-400", bgColor: "bg-green-500", icon: <Rocket className="h-3 w-3" /> },
+  in_progress: { label: "In Progress", color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-500", icon: <Circle className="h-3 w-3" /> },
+  code_freeze: { label: "Code Freeze", color: "text-cyan-600 dark:text-cyan-400", bgColor: "bg-cyan-500", icon: <Lock className="h-3 w-3" /> },
+  testing: { label: "Testing", color: "text-purple-600 dark:text-purple-400", bgColor: "bg-purple-500", icon: <Circle className="h-3 w-3" /> },
+  released: { label: "Released", color: "text-green-600 dark:text-green-400", bgColor: "bg-green-500", icon: <Rocket className="h-3 w-3" /> },
   cancelled: { label: "Cancelled", color: "text-muted-foreground", bgColor: "bg-muted", icon: <XCircle className="h-3 w-3" /> },
 };
 
 const RISK_CONFIG: Record<ReleaseRiskLevel, { label: string; color: string }> = {
-  low: { label: "Low Risk", color: "text-green-400" },
-  medium: { label: "Medium Risk", color: "text-amber-400" },
-  high: { label: "High Risk", color: "text-orange-400" },
-  critical: { label: "Critical Risk", color: "text-red-400" },
+  low: { label: "Low Risk", color: "text-green-600 dark:text-green-400" },
+  medium: { label: "Medium Risk", color: "text-amber-600 dark:text-amber-400" },
+  high: { label: "High Risk", color: "text-orange-600 dark:text-orange-400" },
+  critical: { label: "Critical Risk", color: "text-red-600 dark:text-red-400" },
 };
 
 interface ReleaseCardProps {

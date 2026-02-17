@@ -116,7 +116,7 @@ function BillingContent() {
       <div className="space-y-8">
         {/* Success Message */}
         {showSuccess && (
-          <div className="p-4 bg-green-900/30 border border-green-700 rounded-lg flex items-center gap-3">
+          <div className="p-4 bg-green-100 dark:bg-green-900/30 border border-green-700 rounded-lg flex items-center gap-3">
             <Check className="h-5 w-5 text-green-400" />
             <p className="text-green-400">
               Subscription activated successfully! Thank you for upgrading.

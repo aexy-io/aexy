@@ -22,17 +22,17 @@ interface BlockerCardProps {
 }
 
 const severityConfig = {
-  low: { color: "text-blue-400", bgColor: "bg-blue-900/20", borderColor: "border-blue-700/50" },
-  medium: { color: "text-yellow-400", bgColor: "bg-yellow-900/20", borderColor: "border-yellow-700/50" },
-  high: { color: "text-orange-400", bgColor: "bg-orange-900/20", borderColor: "border-orange-700/50" },
-  critical: { color: "text-red-400", bgColor: "bg-red-900/20", borderColor: "border-red-700/50" },
+  low: { color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-50 dark:bg-blue-900/20", borderColor: "border-blue-700/50" },
+  medium: { color: "text-yellow-600 dark:text-yellow-400", bgColor: "bg-yellow-50 dark:bg-yellow-900/20", borderColor: "border-yellow-700/50" },
+  high: { color: "text-orange-600 dark:text-orange-400", bgColor: "bg-orange-50 dark:bg-orange-900/20", borderColor: "border-orange-700/50" },
+  critical: { color: "text-red-600 dark:text-red-400", bgColor: "bg-red-50 dark:bg-red-900/20", borderColor: "border-red-700/50" },
 };
 
 const categoryConfig = {
-  technical: { label: "Technical", color: "text-purple-400" },
-  dependency: { label: "Dependency", color: "text-blue-400" },
-  resource: { label: "Resource", color: "text-green-400" },
-  external: { label: "External", color: "text-orange-400" },
+  technical: { label: "Technical", color: "text-purple-600 dark:text-purple-400" },
+  dependency: { label: "Dependency", color: "text-blue-600 dark:text-blue-400" },
+  resource: { label: "Resource", color: "text-green-600 dark:text-green-400" },
+  external: { label: "External", color: "text-orange-600 dark:text-orange-400" },
 };
 
 export function BlockerCard({
@@ -98,8 +98,8 @@ export function BlockerCard({
                 <span
                   className={`text-xs px-2 py-0.5 rounded ${
                     blocker.status === "resolved"
-                      ? "bg-green-900/30 text-green-400"
-                      : "bg-purple-900/30 text-purple-400"
+                      ? "bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
                   }`}
                 >
                   {blocker.status}
@@ -174,7 +174,7 @@ export function BlockerCard({
 
           {/* Resolution info */}
           {blocker.status === "resolved" && blocker.resolution_notes && (
-            <div className="mt-3 p-3 bg-green-900/20 border border-green-700/50 rounded-lg">
+            <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-700/50 rounded-lg">
               <div className="flex items-center gap-1.5 text-xs text-green-400 mb-1">
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 Resolution
@@ -185,7 +185,7 @@ export function BlockerCard({
 
           {/* Escalation info */}
           {blocker.status === "escalated" && blocker.escalated_to && (
-            <div className="mt-3 p-3 bg-purple-900/20 border border-purple-700/50 rounded-lg">
+            <div className="mt-3 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-700/50 rounded-lg">
               <div className="flex items-center gap-1.5 text-xs text-purple-400 mb-1">
                 <ArrowUp className="h-3.5 w-3.5" />
                 Escalated to

@@ -25,11 +25,11 @@ import { useSprint, useSprintRetrospective } from "@/hooks/useSprints";
 import { redirect } from "next/navigation";
 
 const MOOD_OPTIONS = [
-  { value: 1, icon: Frown, label: "Frustrated", color: "text-red-400" },
-  { value: 2, icon: Frown, label: "Unhappy", color: "text-orange-400" },
-  { value: 3, icon: Meh, label: "Neutral", color: "text-yellow-400" },
+  { value: 1, icon: Frown, label: "Frustrated", color: "text-red-600 dark:text-red-400" },
+  { value: 2, icon: Frown, label: "Unhappy", color: "text-orange-600 dark:text-orange-400" },
+  { value: 3, icon: Meh, label: "Neutral", color: "text-yellow-600 dark:text-yellow-400" },
   { value: 4, icon: Smile, label: "Happy", color: "text-lime-400" },
-  { value: 5, icon: Heart, label: "Amazing", color: "text-green-400" },
+  { value: 5, icon: Heart, label: "Amazing", color: "text-green-600 dark:text-green-400" },
 ];
 
 interface RetroItem {
@@ -172,8 +172,8 @@ function ActionItemsColumn({ items, onAdd, onUpdateStatus, onDelete }: ActionIte
 
   const statusColors = {
     pending: "bg-muted text-foreground",
-    in_progress: "bg-amber-900/50 text-amber-400",
-    done: "bg-green-900/50 text-green-400",
+    in_progress: "bg-amber-50 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400",
+    done: "bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-400",
   };
 
   return (

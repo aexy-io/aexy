@@ -68,11 +68,11 @@ const PRESET_COLORS = [
 function getCategoryBadgeColor(category: StatusCategory) {
   switch (category) {
     case "todo":
-      return "bg-blue-900/30 text-blue-400";
+      return "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400";
     case "in_progress":
-      return "bg-yellow-900/30 text-yellow-400";
+      return "bg-yellow-50 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400";
     case "done":
-      return "bg-green-900/30 text-green-400";
+      return "bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400";
     default:
       return "bg-muted text-muted-foreground";
   }
@@ -134,7 +134,7 @@ function SortableStatusItem({ status, isAdmin, onEdit, onDelete }: SortableStatu
             {status.category.replace("_", " ")}
           </span>
           {status.is_default && (
-            <span className="px-2 py-0.5 rounded text-xs bg-primary-900/30 text-primary-400">
+            <span className="px-2 py-0.5 rounded text-xs bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400">
               Default
             </span>
           )}
@@ -232,7 +232,7 @@ function SortableFieldItem({ field, isAdmin, onEdit, onDelete }: SortableFieldIt
             {field.field_type}
           </span>
           {field.is_required && (
-            <span className="px-2 py-0.5 rounded text-xs bg-red-900/30 text-red-400">
+            <span className="px-2 py-0.5 rounded text-xs bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400">
               Required
             </span>
           )}

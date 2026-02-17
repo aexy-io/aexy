@@ -242,9 +242,9 @@ function VersionItem({
           className={cn(
             "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
             version.is_auto_save
-              ? "bg-blue-900/30 text-blue-400"
+              ? "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
               : version.is_auto_generated
-              ? "bg-purple-900/30 text-purple-400"
+              ? "bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
               : "bg-muted text-muted-foreground"
           )}
         >
@@ -264,12 +264,12 @@ function VersionItem({
               Version {version.version_number}
             </span>
             {version.is_auto_save && (
-              <span className="px-1.5 py-0.5 text-[10px] bg-blue-900/30 text-blue-400 rounded">
+              <span className="px-1.5 py-0.5 text-[10px] bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded">
                 Auto-save
               </span>
             )}
             {version.is_auto_generated && (
-              <span className="px-1.5 py-0.5 text-[10px] bg-purple-900/30 text-purple-400 rounded">
+              <span className="px-1.5 py-0.5 text-[10px] bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 rounded">
                 AI Generated
               </span>
             )}
@@ -461,11 +461,11 @@ function VersionPreview({
             <div className="font-mono text-sm space-y-0.5">
               <div className="flex items-center gap-4 mb-4 text-xs text-muted-foreground">
                 <div className="flex items-center gap-1">
-                  <span className="w-3 h-3 bg-red-900/50 rounded" />
+                  <span className="w-3 h-3 bg-red-100 dark:bg-red-900/50 rounded" />
                   <span>Removed (version {version.version_number})</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="w-3 h-3 bg-green-900/50 rounded" />
+                  <span className="w-3 h-3 bg-green-100 dark:bg-green-900/50 rounded" />
                   <span>Added (current)</span>
                 </div>
               </div>
@@ -475,21 +475,21 @@ function VersionPreview({
                     <div className="px-2 py-0.5 text-muted-foreground">{line.old || "\u00A0"}</div>
                   )}
                   {line.type === "removed" && (
-                    <div className="px-2 py-0.5 bg-red-900/30 text-red-300 border-l-2 border-red-500">
+                    <div className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-300 border-l-2 border-red-500">
                       - {line.old}
                     </div>
                   )}
                   {line.type === "added" && (
-                    <div className="px-2 py-0.5 bg-green-900/30 text-green-300 border-l-2 border-green-500">
+                    <div className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-300 border-l-2 border-green-500">
                       + {line.new}
                     </div>
                   )}
                   {line.type === "changed" && (
                     <>
-                      <div className="px-2 py-0.5 bg-red-900/30 text-red-300 border-l-2 border-red-500">
+                      <div className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-300 border-l-2 border-red-500">
                         - {line.old}
                       </div>
-                      <div className="px-2 py-0.5 bg-green-900/30 text-green-300 border-l-2 border-green-500">
+                      <div className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-300 border-l-2 border-green-500">
                         + {line.new}
                       </div>
                     </>

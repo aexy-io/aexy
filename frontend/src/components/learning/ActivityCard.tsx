@@ -31,18 +31,18 @@ interface ActivityCardProps {
 }
 
 const activityTypeConfig: Record<ActivityType, { icon: typeof BookOpen; color: string; label: string }> = {
-  course: { icon: BookOpen, color: "text-blue-400", label: "Course" },
-  video: { icon: Video, color: "text-red-400", label: "Video" },
-  task: { icon: Code2, color: "text-green-400", label: "Task" },
-  project: { icon: Briefcase, color: "text-purple-400", label: "Project" },
-  pairing: { icon: Users, color: "text-orange-400", label: "Pairing" },
-  reading: { icon: FileText, color: "text-yellow-400", label: "Reading" },
+  course: { icon: BookOpen, color: "text-blue-600 dark:text-blue-400", label: "Course" },
+  video: { icon: Video, color: "text-red-600 dark:text-red-400", label: "Video" },
+  task: { icon: Code2, color: "text-green-600 dark:text-green-400", label: "Task" },
+  project: { icon: Briefcase, color: "text-purple-600 dark:text-purple-400", label: "Project" },
+  pairing: { icon: Users, color: "text-orange-600 dark:text-orange-400", label: "Pairing" },
+  reading: { icon: FileText, color: "text-yellow-600 dark:text-yellow-400", label: "Reading" },
 };
 
 const statusConfig: Record<ActivityStatus, { color: string; bgColor: string; label: string }> = {
   not_started: { color: "text-muted-foreground", bgColor: "bg-accent", label: "Not Started" },
-  in_progress: { color: "text-blue-400", bgColor: "bg-blue-900/30", label: "In Progress" },
-  completed: { color: "text-green-400", bgColor: "bg-green-900/30", label: "Completed" },
+  in_progress: { color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-100 dark:bg-blue-900/30", label: "In Progress" },
+  completed: { color: "text-green-600 dark:text-green-400", bgColor: "bg-green-100 dark:bg-green-900/30", label: "Completed" },
   skipped: { color: "text-muted-foreground", bgColor: "bg-muted", label: "Skipped" },
 };
 

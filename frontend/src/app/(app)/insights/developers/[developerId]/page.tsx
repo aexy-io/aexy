@@ -459,12 +459,12 @@ export default function DeveloperInsightsPage() {
                   <span
                     className={`px-2 py-0.5 text-xs rounded-full ${
                       gamingFlags.risk_level === "none"
-                        ? "bg-green-500/10 text-green-400"
+                        ? "bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400"
                         : gamingFlags.risk_level === "low"
-                        ? "bg-blue-500/10 text-blue-400"
+                        ? "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
                         : gamingFlags.risk_level === "medium"
-                        ? "bg-yellow-500/10 text-yellow-400"
-                        : "bg-red-500/10 text-red-400"
+                        ? "bg-yellow-50 text-yellow-600 dark:bg-yellow-500/10 dark:text-yellow-400"
+                        : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
                     }`}
                   >
                     Risk: {gamingFlags.risk_level}

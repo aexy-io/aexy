@@ -24,11 +24,11 @@ import { ReviewCycleStatus, reviewsApi } from "@/lib/api";
 // Status colors
 const statusColors: Record<ReviewCycleStatus, { text: string; bg: string; label: string }> = {
   draft: { text: "text-muted-foreground", bg: "bg-muted-foreground/10", label: "Draft" },
-  active: { text: "text-blue-400", bg: "bg-blue-500/10", label: "Active" },
-  self_review: { text: "text-cyan-400", bg: "bg-cyan-500/10", label: "Self Review" },
-  peer_review: { text: "text-purple-400", bg: "bg-purple-500/10", label: "Peer Review" },
-  manager_review: { text: "text-amber-400", bg: "bg-amber-500/10", label: "Manager Review" },
-  completed: { text: "text-emerald-400", bg: "bg-emerald-500/10", label: "Completed" },
+  active: { text: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10", label: "Active" },
+  self_review: { text: "text-cyan-600 dark:text-cyan-400", bg: "bg-cyan-500/10", label: "Self Review" },
+  peer_review: { text: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10", label: "Peer Review" },
+  manager_review: { text: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10", label: "Manager Review" },
+  completed: { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10", label: "Completed" },
 };
 
 // Cycle type labels

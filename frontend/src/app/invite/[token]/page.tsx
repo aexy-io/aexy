@@ -210,7 +210,7 @@ export default function AcceptInvitePage() {
 
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
             <span className="text-muted-foreground">Role</span>
-            <span className="px-3 py-1 bg-primary-500/10 text-primary-400 rounded-full text-sm font-medium capitalize">
+            <span className="px-3 py-1 bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-400 rounded-full text-sm font-medium capitalize">
               {inviteInfo.role}
             </span>
           </div>

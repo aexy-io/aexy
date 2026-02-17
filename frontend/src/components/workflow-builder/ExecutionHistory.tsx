@@ -64,19 +64,19 @@ interface ExecutionHistoryProps {
 }
 
 const statusConfig: Record<string, { icon: typeof CheckCircle; color: string; bg: string }> = {
-  completed: { icon: CheckCircle, color: "text-green-400", bg: "bg-green-500/10" },
-  failed: { icon: XCircle, color: "text-red-400", bg: "bg-red-500/10" },
-  running: { icon: Play, color: "text-blue-400", bg: "bg-blue-500/10" },
-  paused: { icon: Pause, color: "text-amber-400", bg: "bg-amber-500/10" },
+  completed: { icon: CheckCircle, color: "text-green-600 dark:text-green-400", bg: "bg-green-500/10" },
+  failed: { icon: XCircle, color: "text-red-600 dark:text-red-400", bg: "bg-red-500/10" },
+  running: { icon: Play, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10" },
+  paused: { icon: Pause, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10" },
   pending: { icon: Clock, color: "text-muted-foreground", bg: "bg-muted-foreground/10" },
   cancelled: { icon: AlertCircle, color: "text-muted-foreground", bg: "bg-muted-foreground/10" },
 };
 
 const stepStatusConfig: Record<string, { color: string; bg: string }> = {
-  success: { color: "text-green-400", bg: "bg-green-500" },
-  failed: { color: "text-red-400", bg: "bg-red-500" },
-  running: { color: "text-blue-400", bg: "bg-blue-500" },
-  waiting: { color: "text-amber-400", bg: "bg-amber-500" },
+  success: { color: "text-green-600 dark:text-green-400", bg: "bg-green-500" },
+  failed: { color: "text-red-600 dark:text-red-400", bg: "bg-red-500" },
+  running: { color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500" },
+  waiting: { color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500" },
   skipped: { color: "text-muted-foreground", bg: "bg-muted" },
   pending: { color: "text-muted-foreground", bg: "bg-muted" },
 };
@@ -256,7 +256,7 @@ export function ExecutionHistory({
                 {["running", "paused", "pending"].includes(selectedExecution.status) && (
                   <button
                     onClick={() => cancelExecution(selectedExecution.id)}
-                    className="w-full mb-4 px-3 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg text-sm font-medium transition-colors"
+                    className="w-full mb-4 px-3 py-2 bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 hover:bg-red-500/20 rounded-lg text-sm font-medium transition-colors"
                   >
                     Cancel Execution
                   </button>

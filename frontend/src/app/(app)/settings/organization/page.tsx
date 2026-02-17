@@ -500,13 +500,13 @@ function PendingInviteRow({ invite, onRevoke, onResend, isRevoking }: PendingInv
   return (
     <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent/30 transition">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-yellow-900/30 rounded-full flex items-center justify-center">
+        <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center">
           <Mail className="h-5 w-5 text-yellow-400" />
         </div>
         <div>
           <div className="flex items-center gap-2">
             <span className="text-foreground font-medium">{invite.email}</span>
-            <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-900/30 text-yellow-400">
+            <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-50 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400">
               Pending
             </span>
           </div>
@@ -847,8 +847,8 @@ export default function OrganizationSettingsPage() {
                     <div className="flex items-center gap-3 mt-2">
                       <span className={`px-2 py-1 rounded text-xs font-medium ${
                         currentWorkspace.type === "github_linked"
-                          ? "bg-purple-900/30 text-purple-400"
-                          : "bg-blue-900/30 text-blue-400"
+                          ? "bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
+                          : "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
                       }`}>
                         {currentWorkspace.type === "github_linked" ? "GitHub Linked" : "Internal"}
                       </span>

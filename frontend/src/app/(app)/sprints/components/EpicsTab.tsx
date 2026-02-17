@@ -18,9 +18,9 @@ import { EpicListItem, EpicStatus, EpicPriority } from "@/lib/api";
 
 const STATUS_COLORS: Record<EpicStatus, { bg: string; text: string; border: string }> = {
   open: { bg: "bg-accent/50", text: "text-foreground", border: "border-border" },
-  in_progress: { bg: "bg-blue-900/30", text: "text-blue-400", border: "border-blue-800/50" },
-  done: { bg: "bg-green-900/30", text: "text-green-400", border: "border-green-800/50" },
-  cancelled: { bg: "bg-red-900/30", text: "text-red-400", border: "border-red-800/50" },
+  in_progress: { bg: "bg-blue-50 dark:bg-blue-900/30", text: "text-blue-600 dark:text-blue-400", border: "border-blue-800/50" },
+  done: { bg: "bg-green-50 dark:bg-green-900/30", text: "text-green-600 dark:text-green-400", border: "border-green-800/50" },
+  cancelled: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400", border: "border-red-800/50" },
 };
 
 const PRIORITY_COLORS: Record<EpicPriority, string> = {
