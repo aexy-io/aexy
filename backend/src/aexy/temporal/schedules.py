@@ -305,6 +305,16 @@ SCHEDULES: list[dict] = [
         "interval": timedelta(minutes=5),
         "queue": TaskQueue.SYNC,
     },
+
+    # === Insights Auto-Snapshot ===
+    {
+        "id": "auto-generate-snapshots",
+        "activity": "auto_generate_snapshots",
+        "input_module": "aexy.temporal.activities.insights",
+        "input_class": "AutoGenerateSnapshotsInput",
+        "interval": timedelta(hours=24),
+        "queue": TaskQueue.ANALYSIS,
+    },
 ]
 
 

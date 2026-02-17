@@ -566,7 +566,7 @@ export default function RepositorySettingsPage() {
           </div>
         )}
 
-        {/* Auto-sync Settings */}
+        {/* Sync Settings */}
         {installationStatus?.has_installation && enabledRepos.length > 0 && (
           <div className="mt-8">
             <h2 className="text-lg font-medium text-foreground flex items-center gap-2 mb-4">
@@ -574,6 +574,7 @@ export default function RepositorySettingsPage() {
               Sync Settings
             </h2>
             <div className="bg-card rounded-xl divide-y divide-border">
+              {/* Auto-sync toggle */}
               <div className="p-4 flex items-center justify-between">
                 <div>
                   <h3 className="text-foreground font-medium">Auto-sync</h3>
@@ -591,27 +592,64 @@ export default function RepositorySettingsPage() {
                   <div className="w-11 h-6 bg-muted peer-focus:ring-2 peer-focus:ring-primary-500 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                 </label>
               </div>
-              {autoSyncEnabled && (
-                <div className="p-4 flex items-center justify-between">
-                  <div>
-                    <h3 className="text-foreground font-medium">Sync frequency</h3>
-                    <p className="text-muted-foreground text-sm mt-0.5">
-                      How often to sync commits, PRs, and reviews
-                    </p>
-                  </div>
-                  <select
-                    value={autoSyncFrequency}
-                    onChange={(e) => handleAutoSyncFrequencyChange(e.target.value)}
-                    className="bg-muted text-foreground border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  >
-                    <option value="30m">Every 30 minutes</option>
-                    <option value="1h">Every hour</option>
-                    <option value="6h">Every 6 hours</option>
-                    <option value="12h">Every 12 hours</option>
-                    <option value="24h">Once a day</option>
-                  </select>
+
+              {/* Frequency selector */}
+              <div className={`p-4 flex items-center justify-between transition-opacity ${autoSyncEnabled ? "opacity-100" : "opacity-50 pointer-events-none"}`}>
+                <div>
+                  <h3 className="text-foreground font-medium">Sync frequency</h3>
+                  <p className="text-muted-foreground text-sm mt-0.5">
+                    How often to sync commits, PRs, and reviews
+                  </p>
                 </div>
-              )}
+                <select
+                  value={autoSyncFrequency}
+                  onChange={(e) => handleAutoSyncFrequencyChange(e.target.value)}
+                  disabled={!autoSyncEnabled}
+                  className="bg-muted text-foreground border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
+                >
+                  <option value="30m">Every 30 minutes</option>
+                  <option value="1h">Every hour</option>
+                  <option value="6h">Every 6 hours</option>
+                  <option value="12h">Every 12 hours</option>
+                  <option value="24h">Once a day</option>
+                </select>
+              </div>
+
+              {/* Sync all button */}
+              <div className="p-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-foreground font-medium">Sync all repositories</h3>
+                  <p className="text-muted-foreground text-sm mt-0.5">
+                    Trigger a manual sync for all {enabledRepos.length} enabled {enabledRepos.length === 1 ? "repository" : "repositories"}
+                  </p>
+                </div>
+                <button
+                  onClick={async () => {
+                    for (const repo of enabledRepos) {
+                      await handleStartSync(repo.id);
+                    }
+                  }}
+                  disabled={enabledRepos.some(r => r.sync_status === "syncing")}
+                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-4 w-4 ${enabledRepos.some(r => r.sync_status === "syncing") ? "animate-spin" : ""}`} />
+                  Sync all
+                </button>
+              </div>
+
+              {/* Webhook info */}
+              <div className="p-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-foreground font-medium">Real-time webhooks</h3>
+                  <p className="text-muted-foreground text-sm mt-0.5">
+                    Push events, pull requests, and reviews are synced in real-time via GitHub webhooks
+                  </p>
+                </div>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                  Active
+                </span>
+              </div>
             </div>
           </div>
         )}
