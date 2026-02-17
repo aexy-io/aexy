@@ -49,15 +49,14 @@ export function DashboardCustomizeModal({
 
   const handleReorder = useCallback(
     async (newOrder: string[]) => {
-      // Compute the reorder as a from/to index operation
-      // by finding the first difference and moving it
+      // Find the first difference and pass the moved item + the item it displaced
       const currentOrder = preferences?.widget_order || preferences?.visible_widgets || [];
-      // Find what moved
       for (let i = 0; i < newOrder.length; i++) {
         if (newOrder[i] !== currentOrder[i]) {
           const movedItem = newOrder[i];
-          const fromIndex = currentOrder.indexOf(movedItem);
-          await reorderWidgets(fromIndex, i);
+          // The item that was previously at position i is where movedItem should go
+          const targetItem = currentOrder[i];
+          await reorderWidgets(movedItem, targetItem);
           break;
         }
       }

@@ -26,6 +26,7 @@ import {
   EscalationLevel,
   NotificationChannel,
 } from "@/lib/api";
+import { useRouter } from "next/navigation";
 
 const SEVERITY_OPTIONS: { value: TicketSeverity; label: string; color: string }[] = [
   { value: "critical", label: "Critical", color: "bg-red-500" },

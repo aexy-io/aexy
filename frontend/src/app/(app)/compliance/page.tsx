@@ -42,7 +42,7 @@ export default function ComplianceDashboardPage() {
       icon: Bell,
       stat: stats?.active_reminders || 0,
       statLabel: "Active",
-      alert: (stats?.overdue_instances || 0) > 0 ? `${stats?.overdue_instances} overdue` : null,
+      alert: (stats?.total_overdue_instances || 0) > 0 ? `${stats?.total_overdue_instances} overdue` : null,
     },
     {
       href: "/compliance/documents",
@@ -123,7 +123,7 @@ export default function ComplianceDashboardPage() {
             <span>Pending</span>
           </div>
           <div className="text-2xl font-bold text-amber-600 mt-1">
-            {stats?.pending_instances || 0}
+            {stats?.total_pending_instances || 0}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-red-200 dark:border-red-900/50 p-4">
@@ -132,7 +132,7 @@ export default function ComplianceDashboardPage() {
             <span>Overdue</span>
           </div>
           <div className="text-2xl font-bold text-red-600 mt-1">
-            {stats?.overdue_instances || 0}
+            {stats?.total_overdue_instances || 0}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
