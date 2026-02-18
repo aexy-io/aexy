@@ -43,14 +43,14 @@ export function WorkloadPieChart({ data, isLoading }: WorkloadPieChartProps) {
   if (isLoading) {
     return (
       <div className="animate-pulse">
-        <div className="h-64 bg-slate-700 rounded-lg" />
+        <div className="h-64 bg-accent rounded-lg" />
       </div>
     );
   }
 
   if (!data || data.workloads.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-slate-400">
+      <div className="flex items-center justify-center h-64 text-muted-foreground">
         No workload data available
       </div>
     );
@@ -117,16 +117,16 @@ export function WorkloadPieChart({ data, isLoading }: WorkloadPieChartProps) {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mt-4 text-center">
         <div>
-          <div className="text-2xl font-bold text-white">
+          <div className="text-2xl font-bold text-foreground">
             {data.total_workload}
           </div>
-          <div className="text-xs text-slate-400">Total Activities</div>
+          <div className="text-xs text-muted-foreground">Total Activities</div>
         </div>
         <div>
-          <div className="text-2xl font-bold text-white">
+          <div className="text-2xl font-bold text-foreground">
             {data.average_workload.toFixed(0)}
           </div>
-          <div className="text-xs text-slate-400">Avg per Developer</div>
+          <div className="text-xs text-muted-foreground">Avg per Developer</div>
         </div>
         <div>
           <div
@@ -136,7 +136,7 @@ export function WorkloadPieChart({ data, isLoading }: WorkloadPieChartProps) {
           >
             {(data.imbalance_score * 100).toFixed(0)}%
           </div>
-          <div className="text-xs text-slate-400">
+          <div className="text-xs text-muted-foreground">
             {getImbalanceLabel(data.imbalance_score)}
           </div>
         </div>

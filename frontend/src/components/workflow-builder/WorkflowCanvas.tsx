@@ -613,7 +613,7 @@ function WorkflowCanvasInner({
             className="fixed inset-0 bg-black/50 z-40 md:hidden"
             onClick={() => setShowMobilePalette(false)}
           />
-          <div className="fixed inset-y-0 left-0 w-72 bg-slate-800 z-50 md:hidden">
+          <div className="fixed inset-y-0 left-0 w-72 bg-muted z-50 md:hidden">
             <NodePalette
               workspaceId={workspaceId}
               module={module}
@@ -639,7 +639,7 @@ function WorkflowCanvasInner({
       </button>
 
       {/* Main Canvas */}
-      <div className="flex-1 h-full bg-slate-900">
+      <div className="flex-1 h-full bg-background">
         <ReactFlow
           nodes={enhancedNodes}
           edges={enhancedEdges}
@@ -656,10 +656,10 @@ function WorkflowCanvasInner({
           fitView
           snapToGrid
           snapGrid={[15, 15]}
-          className="bg-slate-900"
+          className="bg-background"
         >
           <Background color="#334155" gap={15} />
-          <Controls className="bg-slate-800 border-slate-700" />
+          <Controls className="bg-muted border-border" />
           <MiniMap
             pannable
             zoomable
@@ -683,7 +683,7 @@ function WorkflowCanvasInner({
                   return "#64748b";
               }
             }}
-            className="bg-slate-800 border-slate-700"
+            className="bg-muted border-border"
           />
           <Panel position="top-center">
             <WorkflowToolbar

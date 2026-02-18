@@ -165,17 +165,17 @@ export function GitHubSyncPanel({
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden">
+    <div className="bg-background border border-border rounded-xl overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700 bg-slate-800/50">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/50">
         <div className="flex items-center gap-2">
-          <Github className="h-5 w-5 text-slate-400" />
-          <span className="font-medium text-white">GitHub Sync</span>
+          <Github className="h-5 w-5 text-muted-foreground" />
+          <span className="font-medium text-foreground">GitHub Sync</span>
         </div>
         {onClose && (
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-white rounded"
+            className="p-1 text-muted-foreground hover:text-foreground rounded"
           >
             <X className="h-4 w-4" />
           </button>
@@ -219,10 +219,10 @@ export function GitHubSyncPanel({
         {/* Empty State */}
         {!loadingConfigs && syncConfigs?.length === 0 && !isAddingSync && (
           <div className="text-center py-6">
-            <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Github className="h-6 w-6 text-slate-500" />
+            <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
+              <Github className="h-6 w-6 text-muted-foreground" />
             </div>
-            <p className="text-slate-400 text-sm mb-4">
+            <p className="text-muted-foreground text-sm mb-4">
               No GitHub sync configured
             </p>
             <button
@@ -243,14 +243,14 @@ export function GitHubSyncPanel({
 
         {/* Add Sync Form */}
         {isAddingSync && (
-          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 space-y-4">
-            <h4 className="text-sm font-medium text-white">
+          <div className="bg-muted/50 border border-border rounded-lg p-4 space-y-4">
+            <h4 className="text-sm font-medium text-foreground">
               Configure GitHub Sync
             </h4>
 
             {/* Repository Select */}
             <div>
-              <label className="block text-xs text-slate-400 mb-1">
+              <label className="block text-xs text-muted-foreground mb-1">
                 Repository
               </label>
               <select
@@ -261,7 +261,7 @@ export function GitHubSyncPanel({
                     repository_id: e.target.value,
                   }))
                 }
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-500"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-primary-500"
               >
                 <option value="">Select a repository</option>
                 {repositories?.map((repo: Repository) => (
@@ -274,11 +274,11 @@ export function GitHubSyncPanel({
 
             {/* File Path */}
             <div>
-              <label className="block text-xs text-slate-400 mb-1">
+              <label className="block text-xs text-muted-foreground mb-1">
                 File Path
               </label>
               <div className="relative">
-                <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
                   type="text"
                   value={newSync.file_path}
@@ -289,18 +289,18 @@ export function GitHubSyncPanel({
                     }))
                   }
                   placeholder="docs/README.md"
-                  className="w-full pl-10 pr-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-500"
+                  className="w-full pl-10 pr-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-primary-500"
                 />
               </div>
             </div>
 
             {/* Branch */}
             <div>
-              <label className="block text-xs text-slate-400 mb-1">
+              <label className="block text-xs text-muted-foreground mb-1">
                 Branch
               </label>
               <div className="relative">
-                <GitBranch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <GitBranch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
                   type="text"
                   value={newSync.branch}
@@ -308,14 +308,14 @@ export function GitHubSyncPanel({
                     setNewSync((prev) => ({ ...prev, branch: e.target.value }))
                   }
                   placeholder="main"
-                  className="w-full pl-10 pr-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-500"
+                  className="w-full pl-10 pr-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-primary-500"
                 />
               </div>
             </div>
 
             {/* Sync Direction */}
             <div>
-              <label className="block text-xs text-slate-400 mb-2">
+              <label className="block text-xs text-muted-foreground mb-2">
                 Sync Direction
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -335,8 +335,8 @@ export function GitHubSyncPanel({
                         className={cn(
                           "flex flex-col items-center gap-1 p-2 rounded-lg border transition",
                           newSync.sync_direction === direction
-                            ? "border-primary-500 bg-primary-900/30 text-primary-400"
-                            : "border-slate-700 text-slate-400 hover:border-slate-600"
+                            ? "border-primary-500 bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
+                            : "border-border text-muted-foreground hover:border-border"
                         )}
                       >
                         <Icon className="h-4 w-4" />
@@ -360,9 +360,9 @@ export function GitHubSyncPanel({
                       auto_export: e.target.checked,
                     }))
                   }
-                  className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-primary-500 focus:ring-primary-500"
+                  className="w-4 h-4 rounded border-border bg-muted text-primary-500 focus:ring-primary-500"
                 />
-                <span className="text-xs text-slate-400">Auto-export</span>
+                <span className="text-xs text-muted-foreground">Auto-export</span>
               </label>
               <label className="flex items-center gap-2">
                 <input
@@ -374,9 +374,9 @@ export function GitHubSyncPanel({
                       auto_import: e.target.checked,
                     }))
                   }
-                  className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-primary-500 focus:ring-primary-500"
+                  className="w-4 h-4 rounded border-border bg-muted text-primary-500 focus:ring-primary-500"
                 />
-                <span className="text-xs text-slate-400">Auto-import</span>
+                <span className="text-xs text-muted-foreground">Auto-import</span>
               </label>
             </div>
 
@@ -384,7 +384,7 @@ export function GitHubSyncPanel({
             <div className="flex items-center gap-2 pt-2">
               <button
                 onClick={() => setIsAddingSync(false)}
-                className="flex-1 px-3 py-2 text-sm text-slate-400 hover:text-white transition"
+                className="flex-1 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition"
               >
                 Cancel
               </button>
@@ -421,7 +421,7 @@ export function GitHubSyncPanel({
                 }));
                 setIsAddingSync(true);
               }}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-slate-400 hover:text-white border border-dashed border-slate-700 hover:border-slate-600 rounded-lg transition"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground border border-dashed border-border hover:border-border rounded-lg transition"
             >
               <Plus className="h-4 w-4" />
               Add Another Sync
@@ -464,20 +464,20 @@ function SyncConfigCard({
   const DirectionIcon = syncDirectionConfig[config.sync_direction].icon;
 
   return (
-    <div className="bg-slate-800/50 border border-slate-700 rounded-lg overflow-hidden">
+    <div className="bg-muted/50 border border-border rounded-lg overflow-hidden">
       {/* Header */}
-      <div className="px-3 py-2 border-b border-slate-700 bg-slate-800">
+      <div className="px-3 py-2 border-b border-border bg-muted">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
-            <Github className="h-4 w-4 text-slate-400 shrink-0" />
-            <span className="text-sm font-medium text-white truncate">
+            <Github className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span className="text-sm font-medium text-foreground truncate">
               {config.repository_name || "Unknown Repo"}
             </span>
           </div>
           <button
             onClick={() => onDelete(config.id)}
             disabled={isDeleting}
-            className="p-1 text-slate-500 hover:text-red-400 transition"
+            className="p-1 text-muted-foreground hover:text-red-400 transition"
           >
             {isDeleting ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -491,22 +491,22 @@ function SyncConfigCard({
       {/* Details */}
       <div className="px-3 py-2 space-y-2">
         <div className="flex items-center gap-4 text-xs">
-          <div className="flex items-center gap-1 text-slate-400">
+          <div className="flex items-center gap-1 text-muted-foreground">
             <FileText className="h-3.5 w-3.5" />
             <span className="truncate max-w-[150px]">{config.file_path}</span>
           </div>
-          <div className="flex items-center gap-1 text-slate-400">
+          <div className="flex items-center gap-1 text-muted-foreground">
             <GitBranch className="h-3.5 w-3.5" />
             <span>{config.branch}</span>
           </div>
-          <div className="flex items-center gap-1 text-slate-400">
+          <div className="flex items-center gap-1 text-muted-foreground">
             <DirectionIcon className="h-3.5 w-3.5" />
             <span>{syncDirectionConfig[config.sync_direction].label}</span>
           </div>
         </div>
 
         {/* Last Sync Times */}
-        <div className="flex items-center gap-4 text-xs text-slate-500">
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
           {config.sync_direction !== "import_only" && (
             <div className="flex items-center gap-1">
               <Upload className="h-3 w-3" />
@@ -529,7 +529,7 @@ function SyncConfigCard({
           </div>
         )}
         {exportResult?.status === "no_changes" && (
-          <div className="flex items-center gap-1 text-xs text-slate-400">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <AlertCircle className="h-3 w-3" />
             <span>No changes to export</span>
           </div>
@@ -549,7 +549,7 @@ function SyncConfigCard({
               value={commitMessage}
               onChange={(e) => onCommitMessageChange(e.target.value)}
               placeholder="Commit message (optional)"
-              className="flex-1 px-2 py-1 bg-slate-900 border border-slate-700 rounded text-xs text-white focus:outline-none focus:border-primary-500"
+              className="flex-1 px-2 py-1 bg-background border border-border rounded text-xs text-foreground focus:outline-none focus:border-primary-500"
             />
             <button
               onClick={() => {
@@ -567,7 +567,7 @@ function SyncConfigCard({
             </button>
             <button
               onClick={() => setShowCommitInput(false)}
-              className="px-2 py-1 text-slate-400 hover:text-white text-xs"
+              className="px-2 py-1 text-muted-foreground hover:text-foreground text-xs"
             >
               Cancel
             </button>
@@ -581,7 +581,7 @@ function SyncConfigCard({
               <button
                 onClick={() => setShowCommitInput(true)}
                 disabled={isExporting}
-                className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded transition disabled:opacity-50"
+                className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-accent hover:bg-muted text-foreground text-xs rounded transition disabled:opacity-50"
               >
                 {isExporting ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -595,7 +595,7 @@ function SyncConfigCard({
               <button
                 onClick={() => onImport(config.id)}
                 disabled={isImporting}
-                className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded transition disabled:opacity-50"
+                className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-accent hover:bg-muted text-foreground text-xs rounded transition disabled:opacity-50"
               >
                 {isImporting ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />

@@ -126,8 +126,8 @@ export function HeatmapCalendar({
   const monthLabelOffset = showMonthLabels ? 20 : 0;
 
   return (
-    <div className={`bg-slate-800 rounded-xl border border-slate-700 p-6 ${className}`}>
-      {title && <h3 className="text-lg font-semibold text-white mb-4">{title}</h3>}
+    <div className={`bg-muted rounded-xl border border-border p-6 ${className}`}>
+      {title && <h3 className="text-lg font-semibold text-foreground mb-4">{title}</h3>}
 
       <div className="overflow-x-auto">
         <svg
@@ -180,7 +180,7 @@ export function HeatmapCalendar({
 
       {/* Legend */}
       <div className="flex items-center justify-end gap-2 mt-4">
-        <span className="text-xs text-slate-500">Less</span>
+        <span className="text-xs text-muted-foreground">Less</span>
         {colorScale.map((color, i) => (
           <div
             key={i}
@@ -188,7 +188,7 @@ export function HeatmapCalendar({
             style={{ backgroundColor: color }}
           />
         ))}
-        <span className="text-xs text-slate-500">More</span>
+        <span className="text-xs text-muted-foreground">More</span>
       </div>
     </div>
   );

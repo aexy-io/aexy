@@ -172,10 +172,10 @@ export function CollaborativeEditor({
       }),
       TableRow,
       TableCell.configure({
-        HTMLAttributes: { class: "border border-slate-700 p-2" },
+        HTMLAttributes: { class: "border border-border p-2" },
       }),
       TableHeader.configure({
-        HTMLAttributes: { class: "border border-slate-700 p-2 bg-slate-800 font-semibold" },
+        HTMLAttributes: { class: "border border-border p-2 bg-muted font-semibold" },
       }),
       Highlight.configure({ multicolor: true }),
       Typography,
@@ -183,7 +183,7 @@ export function CollaborativeEditor({
       CodeBlockLowlight.configure({
         lowlight,
         HTMLAttributes: {
-          class: "bg-slate-900 rounded-lg p-4 font-mono text-sm overflow-x-auto",
+          class: "bg-background rounded-lg p-4 font-mono text-sm overflow-x-auto",
         },
       }),
     ];
@@ -318,9 +318,9 @@ export function CollaborativeEditor({
   }
 
   return (
-    <div className="flex flex-col h-full bg-slate-950">
+    <div className="flex flex-col h-full bg-background">
       {/* Document Header */}
-      <div className="border-b border-slate-800/50 bg-gradient-to-b from-slate-900 to-slate-900/95 backdrop-blur-xl px-4 py-2">
+      <div className="border-b border-border/50 bg-gradient-to-b from-slate-900 to-slate-900/95 backdrop-blur-xl px-4 py-2">
         <div className="flex items-center gap-3">
           {icon && <span className="text-2xl">{icon}</span>}
           <div className="flex-1 min-w-0">
@@ -332,12 +332,12 @@ export function CollaborativeEditor({
                 onBlur={handleTitleBlur}
                 placeholder="Untitled"
                 disabled={readOnly}
-                className="flex-1 min-w-0 text-xl font-semibold bg-transparent border-none outline-none text-white placeholder-slate-500"
+                className="flex-1 min-w-0 text-xl font-semibold bg-transparent border-none outline-none text-foreground placeholder-muted-foreground"
               />
 
               {/* Saving Indicator */}
               {isSaving && (
-                <span className="text-xs text-slate-500 animate-pulse flex-shrink-0">Saving...</span>
+                <span className="text-xs text-muted-foreground animate-pulse flex-shrink-0">Saving...</span>
               )}
 
               {/* Collaboration Status */}
@@ -363,7 +363,7 @@ export function CollaborativeEditor({
 
       {/* Editor Toolbar */}
       {editor && !readOnly && (
-        <div className="flex items-center justify-between border-b border-slate-800">
+        <div className="flex items-center justify-between border-b border-border">
           <EditorToolbar editor={editor} onSave={handleManualSave} />
 
           {/* Compact collaboration badge */}
@@ -384,7 +384,7 @@ export function CollaborativeEditor({
         <BubbleMenu
           editor={editor}
           tippyOptions={{ duration: 100 }}
-          className="flex items-center gap-1 p-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl"
+          className="flex items-center gap-1 p-1 bg-muted border border-border rounded-lg shadow-xl"
         >
           <BubbleButton
             onClick={() => editor.chain().focus().toggleBold().run()}
@@ -410,7 +410,7 @@ export function CollaborativeEditor({
           >
             <StrikeIcon className="h-4 w-4" />
           </BubbleButton>
-          <div className="w-px h-4 bg-slate-700 mx-1" />
+          <div className="w-px h-4 bg-accent mx-1" />
           <BubbleButton
             onClick={() => editor.chain().focus().toggleCode().run()}
             isActive={editor.isActive("code")}
@@ -433,7 +433,7 @@ export function CollaborativeEditor({
 
       {/* Connection Status Bar (when disconnected) */}
       {collaborationEnabled && connectionStatus !== "connected" && (
-        <div className="px-4 py-2 bg-amber-900/20 border-t border-amber-800/50">
+        <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-t border-amber-800/50">
           <div className="flex items-center justify-between text-sm">
             <span className="text-amber-400">
               {connectionStatus === "connecting"
@@ -470,8 +470,8 @@ function BubbleButton({
   return (
     <button
       onClick={onClick}
-      className={`p-1.5 rounded hover:bg-slate-700 ${
-        isActive ? "bg-slate-700 text-primary-400" : "text-slate-300"
+      className={`p-1.5 rounded hover:bg-accent ${
+        isActive ? "bg-accent text-primary-400" : "text-foreground"
       }`}
     >
       {children}

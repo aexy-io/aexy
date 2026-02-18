@@ -37,12 +37,12 @@ export function SpaceFolder({
     <div className="py-0.5">
       {/* Space Header */}
       <div
-        className="flex items-center justify-between px-2 py-1.5 group cursor-pointer hover:bg-white/5 rounded-md mx-1"
+        className="flex items-center justify-between px-2 py-1.5 group cursor-pointer hover:bg-accent/50 rounded-md mx-1"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <ChevronRight
-            className={`h-3.5 w-3.5 text-slate-500 flex-shrink-0 transition-transform duration-200 ${
+            className={`h-3.5 w-3.5 text-muted-foreground flex-shrink-0 transition-transform duration-200 ${
               isExpanded ? "rotate-90" : ""
             }`}
           />
@@ -56,13 +56,13 @@ export function SpaceFolder({
           </div>
 
           {/* Space Name */}
-          <span className="text-sm text-slate-300 truncate">
+          <span className="text-sm text-foreground truncate">
             {space.name}
           </span>
 
           {/* Document count */}
           {space.document_count > 0 && (
-            <span className="text-[10px] text-slate-500 flex-shrink-0">
+            <span className="text-[10px] text-muted-foreground flex-shrink-0">
               {space.document_count}
             </span>
           )}
@@ -75,10 +75,10 @@ export function SpaceFolder({
               e.stopPropagation();
               onAddDocument(space.id);
             }}
-            className="p-1 hover:bg-white/10 rounded transition-colors"
+            className="p-1 hover:bg-accent rounded transition-colors"
             title="Add page"
           >
-            <Plus className="h-3.5 w-3.5 text-slate-400" />
+            <Plus className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
 
           {onManageSpace && !space.is_default && (
@@ -88,9 +88,9 @@ export function SpaceFolder({
                   e.stopPropagation();
                   setShowMenu(!showMenu);
                 }}
-                className="p-1 hover:bg-white/10 rounded transition-colors"
+                className="p-1 hover:bg-accent rounded transition-colors"
               >
-                <MoreHorizontal className="h-3.5 w-3.5 text-slate-400" />
+                <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
               </button>
 
               {showMenu && (
@@ -102,14 +102,14 @@ export function SpaceFolder({
                       setShowMenu(false);
                     }}
                   />
-                  <div className="absolute right-0 top-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-20 py-1 min-w-[140px]">
+                  <div className="absolute right-0 top-full mt-1 bg-muted border border-border rounded-lg shadow-xl z-20 py-1 min-w-[140px]">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         onManageSpace(space.id);
                         setShowMenu(false);
                       }}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-slate-700/50 text-left text-sm text-slate-300"
+                      className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-accent/50 text-left text-sm text-foreground"
                     >
                       <Settings className="h-3.5 w-3.5" />
                       Space settings
@@ -130,7 +130,7 @@ export function SpaceFolder({
       >
         <div className="pl-4">
           {isLoading ? (
-            <div className="px-3 py-2 text-xs text-slate-500">Loading...</div>
+            <div className="px-3 py-2 text-xs text-muted-foreground">Loading...</div>
           ) : documents.length > 0 ? (
             documents.map((doc) => (
               <DocumentItem
@@ -144,7 +144,7 @@ export function SpaceFolder({
               />
             ))
           ) : (
-            <div className="px-3 py-2 text-xs text-slate-500">
+            <div className="px-3 py-2 text-xs text-muted-foreground">
               No pages yet
             </div>
           )}

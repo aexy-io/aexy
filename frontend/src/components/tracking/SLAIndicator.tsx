@@ -17,30 +17,30 @@ interface SLAIndicatorProps {
 const slaConfig = {
   ok: {
     icon: CheckCircle2,
-    color: "text-green-400",
-    bgColor: "bg-green-900/30",
+    color: "text-green-600 dark:text-green-400",
+    bgColor: "bg-green-100 dark:bg-green-900/30",
     borderColor: "border-green-700/50",
     label: "On Track",
   },
   warning: {
     icon: Clock,
-    color: "text-amber-400",
-    bgColor: "bg-amber-900/30",
+    color: "text-amber-600 dark:text-amber-400",
+    bgColor: "bg-amber-100 dark:bg-amber-900/30",
     borderColor: "border-amber-700/50",
     label: "At Risk",
   },
   breached: {
     icon: XCircle,
-    color: "text-red-400",
-    bgColor: "bg-red-900/30",
+    color: "text-red-600 dark:text-red-400",
+    bgColor: "bg-red-100 dark:bg-red-900/30",
     borderColor: "border-red-700/50",
     label: "SLA Breached",
   },
   resolved: {
     icon: CheckCircle2,
-    color: "text-slate-400",
-    bgColor: "bg-slate-800",
-    borderColor: "border-slate-700",
+    color: "text-muted-foreground",
+    bgColor: "bg-muted",
+    borderColor: "border-border",
     label: "Resolved",
   },
 };
@@ -127,10 +127,10 @@ export function SLAIndicator({
       <span className={`${sizes.text} ${config.color} font-medium`}>
         {config.label}
         {showTime && status !== "resolved" && (
-          <span className="text-slate-400 ml-1">({formatDuration(hoursElapsed)})</span>
+          <span className="text-muted-foreground ml-1">({formatDuration(hoursElapsed)})</span>
         )}
         {showTime && status === "resolved" && (
-          <span className="text-slate-400 ml-1">in {formatDuration(hoursElapsed)}</span>
+          <span className="text-muted-foreground ml-1">in {formatDuration(hoursElapsed)}</span>
         )}
       </span>
     </span>
@@ -156,7 +156,7 @@ export function BlockerAge({
 
   const hoursElapsed = (endDate.getTime() - reportedDate.getTime()) / (1000 * 60 * 60);
 
-  let color = "text-slate-400";
+  let color = "text-muted-foreground";
   if (!resolvedAt) {
     if (hoursElapsed >= 72) color = "text-red-400"; // 3+ days
     else if (hoursElapsed >= 24) color = "text-amber-400"; // 1-3 days
@@ -196,18 +196,18 @@ export function SLASummary({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-slate-400">SLA Compliance</span>
+        <span className="text-sm text-muted-foreground">SLA Compliance</span>
         <span className={`text-lg font-bold ${slaRate >= 80 ? "text-green-400" : slaRate >= 50 ? "text-amber-400" : "text-red-400"}`}>
           {slaRate}%
         </span>
       </div>
-      <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+      <div className="h-2 bg-accent rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full ${slaRate >= 80 ? "bg-green-500" : slaRate >= 50 ? "bg-amber-500" : "bg-red-500"}`}
           style={{ width: `${slaRate}%` }}
         />
       </div>
-      <div className="flex justify-between text-xs text-slate-500">
+      <div className="flex justify-between text-xs text-muted-foreground">
         <span>{withinSla} within SLA</span>
         <span>{breachedSla} breached</span>
       </div>

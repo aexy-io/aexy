@@ -88,6 +88,9 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
     # Reminders (on-demand)
     "process_auto_assignment": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
     "send_reminder_notification": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=2)},
+
+    # Insights
+    "auto_generate_snapshots": {"retry": STANDARD_RETRY, "timeout": timedelta(hours=1)},
 }
 
 DEFAULT_CONFIG = {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)}

@@ -33,7 +33,7 @@ const SPRINT_STATUS_COLORS: Record<string, string> = {
   active: "bg-green-500",
   review: "bg-amber-500",
   retrospective: "bg-purple-500",
-  completed: "bg-slate-500",
+  completed: "bg-muted-foreground",
 };
 
 // Generate date range for timeline
@@ -123,9 +123,9 @@ function SprintBar({ sprint, style, onClick }: SprintBarProps) {
 
       {/* Content */}
       <div className="relative h-full flex items-center px-3 overflow-hidden">
-        <span className="text-xs font-medium text-white truncate">{sprint.name}</span>
+        <span className="text-xs font-medium text-foreground truncate">{sprint.name}</span>
         {style.width > 100 && (
-          <span className="ml-2 text-[10px] text-white/70">{completionRate}%</span>
+          <span className="ml-2 text-[10px] text-foreground/70">{completionRate}%</span>
         )}
       </div>
     </motion.div>
@@ -154,17 +154,17 @@ function EpicSwimlane({
   const epicSprints = sprints;
 
   return (
-    <div className="flex border-b border-slate-700/50 last:border-b-0">
+    <div className="flex border-b border-border/50 last:border-b-0">
       {/* Epic label */}
-      <div className="w-48 flex-shrink-0 px-4 py-3 bg-slate-800/50 border-r border-slate-700/50">
+      <div className="w-48 flex-shrink-0 px-4 py-3 bg-muted/50 border-r border-border/50">
         <div className="flex items-center gap-2">
           <div
             className="w-3 h-3 rounded-full flex-shrink-0"
             style={{ backgroundColor: epic.color }}
           />
           <div className="min-w-0">
-            <h3 className="text-sm font-medium text-white truncate">{epic.title}</h3>
-            <p className="text-[10px] text-slate-500">{epic.key}</p>
+            <h3 className="text-sm font-medium text-foreground truncate">{epic.title}</h3>
+            <p className="text-[10px] text-muted-foreground">{epic.key}</p>
           </div>
         </div>
       </div>
@@ -271,7 +271,7 @@ export default function TimelinePage({
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
       </div>
     );
@@ -289,23 +289,23 @@ export default function TimelinePage({
       ];
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       <CommandPalette workspaceId={currentWorkspaceId} projectId={projectId} />
 
       {/* Header */}
-      <header className="flex-shrink-0 border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm sticky top-0 z-30">
+      <header className="flex-shrink-0 border-b border-border bg-muted/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="max-w-[1800px] mx-auto px-4 py-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href={`/sprints/${projectId}`}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Link>
               <div>
-                <h1 className="text-lg font-semibold text-white">Timeline</h1>
-                <p className="text-xs text-slate-500">
+                <h1 className="text-lg font-semibold text-foreground">Timeline</h1>
+                <p className="text-xs text-muted-foreground">
                   {sprints?.length || 0} sprints • {displayEpics.length} epics
                 </p>
               </div>
@@ -313,21 +313,21 @@ export default function TimelinePage({
 
             <div className="flex items-center gap-3">
               {/* Zoom controls */}
-              <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-lg">
+              <div className="flex items-center gap-1 bg-muted border border-border rounded-lg">
                 <button
                   onClick={handleZoomOut}
                   disabled={zoomLevel === "quarter"}
-                  className="p-2 text-slate-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="p-2 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   <ZoomOut className="h-4 w-4" />
                 </button>
-                <span className="px-2 text-xs text-slate-400 capitalize min-w-[60px] text-center">
+                <span className="px-2 text-xs text-muted-foreground capitalize min-w-[60px] text-center">
                   {zoomLevel}
                 </span>
                 <button
                   onClick={handleZoomIn}
                   disabled={zoomLevel === "week"}
-                  className="p-2 text-slate-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="p-2 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   <ZoomIn className="h-4 w-4" />
                 </button>
@@ -340,7 +340,7 @@ export default function TimelinePage({
                     scrollContainerRef.current.scrollLeft = todayPosition - 200;
                   }
                 }}
-                className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition"
+                className="flex items-center gap-2 px-3 py-1.5 bg-accent hover:bg-muted text-foreground rounded-lg text-sm transition"
               >
                 <Calendar className="h-4 w-4" />
                 Today
@@ -359,11 +359,11 @@ export default function TimelinePage({
         ) : (
           <div className="flex-1 overflow-hidden flex flex-col">
             {/* Timeline header */}
-            <div className="flex-shrink-0 border-b border-slate-700 bg-slate-800/30">
+            <div className="flex-shrink-0 border-b border-border bg-muted/30">
               <div className="flex">
                 {/* Spacer for epic column */}
-                <div className="w-48 flex-shrink-0 px-4 py-2 border-r border-slate-700/50">
-                  <span className="text-xs text-slate-500 uppercase tracking-wider">Epics</span>
+                <div className="w-48 flex-shrink-0 px-4 py-2 border-r border-border/50">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Epics</span>
                 </div>
 
                 {/* Date headers */}
@@ -376,10 +376,10 @@ export default function TimelinePage({
                     {dateHeaders.map((date, index) => (
                       <div
                         key={index}
-                        className="flex-shrink-0 px-2 py-2 text-center border-r border-slate-700/30"
+                        className="flex-shrink-0 px-2 py-2 text-center border-r border-border/30"
                         style={{ width: `${columnWidth}px` }}
                       >
-                        <span className="text-xs text-slate-400">
+                        <span className="text-xs text-muted-foreground">
                           {formatDateHeader(date, zoomLevel)}
                         </span>
                       </div>
@@ -390,7 +390,7 @@ export default function TimelinePage({
                       className="absolute top-0 bottom-0 w-0.5 bg-primary-500 z-10"
                       style={{ left: `${todayPosition}px` }}
                     >
-                      <div className="absolute -top-1 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-primary-500 rounded text-[10px] text-white whitespace-nowrap">
+                      <div className="absolute -top-1 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-primary-500 rounded text-[10px] text-foreground whitespace-nowrap">
                         Today
                       </div>
                     </div>
@@ -418,11 +418,11 @@ export default function TimelinePage({
               {/* Empty state */}
               {(!sprints || sprints.length === 0) && (
                 <div className="text-center py-16">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800 flex items-center justify-center">
-                    <Layers className="h-8 w-8 text-slate-600" />
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+                    <Layers className="h-8 w-8 text-muted-foreground" />
                   </div>
-                  <h3 className="text-lg font-medium text-white mb-2">No sprints yet</h3>
-                  <p className="text-slate-500 mb-4">Create sprints to see them on the timeline</p>
+                  <h3 className="text-lg font-medium text-foreground mb-2">No sprints yet</h3>
+                  <p className="text-muted-foreground mb-4">Create sprints to see them on the timeline</p>
                   <Link
                     href={`/sprints/${projectId}`}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition"
@@ -438,18 +438,18 @@ export default function TimelinePage({
       </main>
 
       {/* Legend */}
-      <footer className="flex-shrink-0 border-t border-slate-700 bg-slate-800/30 px-4 py-2">
+      <footer className="flex-shrink-0 border-t border-border bg-muted/30 px-4 py-2">
         <div className="max-w-[1800px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <span className="text-xs text-slate-500">Status:</span>
+            <span className="text-xs text-muted-foreground">Status:</span>
             {Object.entries(SPRINT_STATUS_COLORS).map(([status, color]) => (
               <div key={status} className="flex items-center gap-1.5">
                 <div className={cn("w-3 h-3 rounded", color)} />
-                <span className="text-xs text-slate-400 capitalize">{status}</span>
+                <span className="text-xs text-muted-foreground capitalize">{status}</span>
               </div>
             ))}
           </div>
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-muted-foreground">
             Drag sprints to reschedule • Click to view details
           </div>
         </div>
@@ -461,13 +461,13 @@ export default function TimelinePage({
           initial={{ opacity: 0, x: 100 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 100 }}
-          className="fixed right-0 top-0 bottom-0 w-96 bg-slate-800 border-l border-slate-700 shadow-2xl z-40 overflow-y-auto"
+          className="fixed right-0 top-0 bottom-0 w-96 bg-muted border-l border-border shadow-2xl z-40 overflow-y-auto"
         >
-          <div className="p-4 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h3 className="font-medium text-white">Sprint Details</h3>
+          <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <h3 className="font-medium text-foreground">Sprint Details</h3>
             <button
               onClick={() => setSelectedSprintId(null)}
-              className="p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition"
+              className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition"
             >
               ✕
             </button>
@@ -484,7 +484,7 @@ export default function TimelinePage({
               return (
                 <div className="space-y-4">
                   <div>
-                    <h2 className="text-lg font-semibold text-white">{sprint.name}</h2>
+                    <h2 className="text-lg font-semibold text-foreground">{sprint.name}</h2>
                     <Badge
                       variant={sprint.status === "active" ? "success" : sprint.status === "planning" ? "info" : "default"}
                       className="mt-2"
@@ -494,22 +494,22 @@ export default function TimelinePage({
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 bg-slate-700/50 rounded-lg">
-                      <div className="text-2xl font-bold text-white">{sprint.tasks_count}</div>
-                      <div className="text-xs text-slate-400">Tasks</div>
+                    <div className="p-3 bg-accent/50 rounded-lg">
+                      <div className="text-2xl font-bold text-foreground">{sprint.tasks_count}</div>
+                      <div className="text-xs text-muted-foreground">Tasks</div>
                     </div>
-                    <div className="p-3 bg-slate-700/50 rounded-lg">
-                      <div className="text-2xl font-bold text-white">{sprint.total_points}</div>
-                      <div className="text-xs text-slate-400">Points</div>
+                    <div className="p-3 bg-accent/50 rounded-lg">
+                      <div className="text-2xl font-bold text-foreground">{sprint.total_points}</div>
+                      <div className="text-xs text-muted-foreground">Points</div>
                     </div>
                   </div>
 
                   <div>
-                    <div className="flex justify-between text-xs text-slate-400 mb-1">
+                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
                       <span>Progress</span>
                       <span>{completionRate}%</span>
                     </div>
-                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-2 bg-accent rounded-full overflow-hidden">
                       <div
                         className="h-full bg-primary-500 rounded-full"
                         style={{ width: `${completionRate}%` }}
@@ -517,7 +517,7 @@ export default function TimelinePage({
                     </div>
                   </div>
 
-                  <div className="text-xs text-slate-400">
+                  <div className="text-xs text-muted-foreground">
                     <div className="flex items-center gap-2 mb-1">
                       <Calendar className="h-3 w-3" />
                       {new Date(sprint.start_date).toLocaleDateString()} - {new Date(sprint.end_date).toLocaleDateString()}

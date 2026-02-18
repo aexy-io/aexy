@@ -46,7 +46,7 @@ export function AgentStatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full font-medium bg-slate-500/20 text-slate-400",
+        "inline-flex items-center gap-1.5 rounded-full font-medium bg-muted-foreground/20 text-muted-foreground",
         sizeClasses[size],
         className
       )}
@@ -92,7 +92,7 @@ export function ExecutionStatusBadge({
     },
     cancelled: {
       label: "Cancelled",
-      className: "bg-slate-500/20 text-slate-400",
+      className: "bg-muted-foreground/20 text-muted-foreground",
     },
   };
 

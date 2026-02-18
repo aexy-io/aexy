@@ -28,9 +28,9 @@ export function ReadinessChecklist({
     <div className={cn("space-y-4", className)}>
       {/* Header with summary */}
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium text-white">Readiness Checklist</h4>
+        <h4 className="text-sm font-medium text-foreground">Readiness Checklist</h4>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-muted-foreground">
             {completedCount}/{items.length} completed
           </span>
           {!allRequiredComplete && requiredItems.length > 0 && (
@@ -43,7 +43,7 @@ export function ReadinessChecklist({
       </div>
 
       {/* Progress bar */}
-      <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+      <div className="h-2 bg-accent rounded-full overflow-hidden">
         <div
           className={cn(
             "h-full transition-all duration-300",
@@ -60,7 +60,7 @@ export function ReadinessChecklist({
             key={item.id}
             className={cn(
               "group flex items-start gap-3 p-3 rounded-lg transition-colors",
-              !readOnly && "hover:bg-slate-800/50 cursor-pointer",
+              !readOnly && "hover:bg-muted/50 cursor-pointer",
               item.completed && "opacity-70"
             )}
             onClick={() => !readOnly && onToggle?.(item.id, !item.completed)}
@@ -72,7 +72,7 @@ export function ReadinessChecklist({
                 <Circle
                   className={cn(
                     "h-5 w-5",
-                    item.required ? "text-amber-500" : "text-slate-500"
+                    item.required ? "text-amber-500" : "text-muted-foreground"
                   )}
                 />
               )}
@@ -82,7 +82,7 @@ export function ReadinessChecklist({
                 <span
                   className={cn(
                     "text-sm",
-                    item.completed ? "text-slate-500 line-through" : "text-slate-300"
+                    item.completed ? "text-muted-foreground line-through" : "text-foreground"
                   )}
                 >
                   {item.item}
@@ -94,7 +94,7 @@ export function ReadinessChecklist({
                 )}
               </div>
               {item.completed && item.completed_at && (
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-muted-foreground">
                   Completed {new Date(item.completed_at).toLocaleDateString()}
                 </span>
               )}
@@ -103,7 +103,7 @@ export function ReadinessChecklist({
         ))}
 
         {items.length === 0 && (
-          <p className="text-sm text-slate-500 text-center py-4">
+          <p className="text-sm text-muted-foreground text-center py-4">
             No checklist items defined.
           </p>
         )}
@@ -115,10 +115,10 @@ export function ReadinessChecklist({
           className={cn(
             "p-3 rounded-lg text-sm",
             allRequiredComplete && progress === 100
-              ? "bg-green-500/10 text-green-400"
+              ? "bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400"
               : allRequiredComplete
-              ? "bg-blue-500/10 text-blue-400"
-              : "bg-amber-500/10 text-amber-400"
+              ? "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
+              : "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"
           )}
         >
           {allRequiredComplete && progress === 100 ? (

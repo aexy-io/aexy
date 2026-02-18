@@ -98,13 +98,13 @@ export function ActivityList({
           {showFilters && (
             <>
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
                   type="text"
                   placeholder="Search activities..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  className="w-full pl-9 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 />
               </div>
 
@@ -112,7 +112,7 @@ export function ActivityList({
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value as ActivityType | "all")}
-                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="all">All Types</option>
                   {activityTypeOptions.map((opt) => (
@@ -125,7 +125,7 @@ export function ActivityList({
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value as ActivityStatus | "all")}
-                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {statusOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -155,8 +155,8 @@ export function ActivityList({
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
         </div>
       ) : filteredActivities.length === 0 ? (
-        <div className="text-center py-12 text-slate-400">
-          <BookOpen className="h-12 w-12 mx-auto mb-3 text-slate-600" />
+        <div className="text-center py-12 text-muted-foreground">
+          <BookOpen className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
           <p>{emptyMessage}</p>
           {showCreateButton && onCreateActivity && (
             <button
@@ -187,12 +187,12 @@ export function ActivityList({
       {/* Create Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-slate-800 rounded-xl p-6 max-w-md w-full mx-4 border border-slate-700">
-            <h3 className="text-lg font-medium text-white mb-4">Add New Activity</h3>
+          <div className="bg-muted rounded-xl p-6 max-w-md w-full mx-4 border border-border">
+            <h3 className="text-lg font-medium text-foreground mb-4">Add New Activity</h3>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Activity Type</label>
+                <label className="block text-sm text-muted-foreground mb-1">Activity Type</label>
                 <div className="grid grid-cols-3 gap-2">
                   {activityTypeOptions.map((opt) => {
                     const Icon = opt.icon;
@@ -202,12 +202,12 @@ export function ActivityList({
                         onClick={() => setNewActivity({ ...newActivity, activity_type: opt.value })}
                         className={`flex flex-col items-center gap-1 p-3 rounded-lg border transition ${
                           newActivity.activity_type === opt.value
-                            ? "border-blue-500 bg-blue-900/30"
-                            : "border-slate-700 hover:border-slate-600"
+                            ? "border-blue-500 bg-blue-100 dark:bg-blue-900/30"
+                            : "border-border hover:border-border"
                         }`}
                       >
-                        <Icon className={`h-5 w-5 ${newActivity.activity_type === opt.value ? "text-blue-400" : "text-slate-400"}`} />
-                        <span className="text-xs text-slate-300">{opt.label}</span>
+                        <Icon className={`h-5 w-5 ${newActivity.activity_type === opt.value ? "text-blue-400" : "text-muted-foreground"}`} />
+                        <span className="text-xs text-foreground">{opt.label}</span>
                       </button>
                     );
                   })}
@@ -215,57 +215,57 @@ export function ActivityList({
               </div>
 
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Title</label>
+                <label className="block text-sm text-muted-foreground mb-1">Title</label>
                 <input
                   type="text"
                   value={newActivity.title || ""}
                   onChange={(e) => setNewActivity({ ...newActivity, title: e.target.value })}
                   placeholder="Enter activity title..."
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Description (optional)</label>
+                <label className="block text-sm text-muted-foreground mb-1">Description (optional)</label>
                 <textarea
                   value={newActivity.description || ""}
                   onChange={(e) => setNewActivity({ ...newActivity, description: e.target.value })}
                   placeholder="Describe the activity..."
                   rows={2}
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full px-3 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 />
               </div>
 
               <div>
-                <label className="block text-sm text-slate-400 mb-1">External URL (optional)</label>
+                <label className="block text-sm text-muted-foreground mb-1">External URL (optional)</label>
                 <input
                   type="url"
                   value={newActivity.external_url || ""}
                   onChange={(e) => setNewActivity({ ...newActivity, external_url: e.target.value })}
                   placeholder="https://..."
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Estimated Duration (minutes)</label>
+                <label className="block text-sm text-muted-foreground mb-1">Estimated Duration (minutes)</label>
                 <input
                   type="number"
                   value={newActivity.estimated_duration_minutes || ""}
                   onChange={(e) => setNewActivity({ ...newActivity, estimated_duration_minutes: parseInt(e.target.value) || undefined })}
                   placeholder="30"
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Skill Tags (comma separated)</label>
+                <label className="block text-sm text-muted-foreground mb-1">Skill Tags (comma separated)</label>
                 <input
                   type="text"
                   value={newActivity.skill_tags?.join(", ") || ""}
                   onChange={(e) => setNewActivity({ ...newActivity, skill_tags: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
                   placeholder="React, TypeScript, Testing"
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -273,7 +273,7 @@ export function ActivityList({
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition"
+                className="flex-1 px-4 py-2 bg-accent hover:bg-muted text-foreground rounded-lg text-sm font-medium transition"
               >
                 Cancel
               </button>

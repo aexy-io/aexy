@@ -78,9 +78,9 @@ export function TrendLineChart({
 
   if (data.length === 0) {
     return (
-      <div className={`bg-slate-800 rounded-xl border border-slate-700 p-6 ${className}`}>
-        {title && <h3 className="text-lg font-semibold text-white mb-4">{title}</h3>}
-        <div className="flex items-center justify-center h-48 text-slate-500">
+      <div className={`bg-muted rounded-xl border border-border p-6 ${className}`}>
+        {title && <h3 className="text-lg font-semibold text-foreground mb-4">{title}</h3>}
+        <div className="flex items-center justify-center h-48 text-muted-foreground">
           No trend data available
         </div>
       </div>
@@ -90,13 +90,13 @@ export function TrendLineChart({
   const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 shadow-lg">
-          <p className="text-sm font-medium text-white mb-2">{label}</p>
+        <div className="bg-muted border border-border rounded-lg p-3 shadow-lg">
+          <p className="text-sm font-medium text-foreground mb-2">{label}</p>
           {payload.map((entry, index) => (
             <div key={index} className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-              <span className="text-sm text-slate-400">{entry.name}:</span>
-              <span className="text-sm text-white">{valueFormatter(entry.value)}</span>
+              <span className="text-sm text-muted-foreground">{entry.name}:</span>
+              <span className="text-sm text-foreground">{valueFormatter(entry.value)}</span>
             </div>
           ))}
         </div>
@@ -108,8 +108,8 @@ export function TrendLineChart({
   const ChartComponent = hasAreaLines ? ComposedChart : LineChart;
 
   return (
-    <div className={`bg-slate-800 rounded-xl border border-slate-700 p-6 ${className}`}>
-      {title && <h3 className="text-lg font-semibold text-white mb-4">{title}</h3>}
+    <div className={`bg-muted rounded-xl border border-border p-6 ${className}`}>
+      {title && <h3 className="text-lg font-semibold text-foreground mb-4">{title}</h3>}
 
       <ResponsiveContainer width="100%" height={height}>
         <ChartComponent data={formattedData}>
@@ -132,7 +132,7 @@ export function TrendLineChart({
             <Legend
               verticalAlign="top"
               height={36}
-              formatter={(value) => <span className="text-slate-300 text-sm">{value}</span>}
+              formatter={(value) => <span className="text-foreground text-sm">{value}</span>}
             />
           )}
           {referenceValue !== undefined && (

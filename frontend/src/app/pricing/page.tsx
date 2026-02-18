@@ -241,11 +241,11 @@ function PricingContent() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="relative bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+              className="relative bg-background border border-border rounded-2xl p-6 max-w-md w-full shadow-2xl"
             >
               <button
                 onClick={() => setError(null)}
-                className="absolute top-4 right-4 text-slate-400 hover:text-white transition"
+                className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -254,14 +254,14 @@ function PricingContent() {
                   <AlertCircle className="h-6 w-6 text-red-400" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-2">Checkout Error</h3>
-                  <p className="text-slate-400">{error}</p>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Checkout Error</h3>
+                  <p className="text-muted-foreground">{error}</p>
                 </div>
               </div>
               <div className="mt-6 flex justify-end">
                 <button
                   onClick={() => setError(null)}
-                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+                  className="px-4 py-2 bg-accent hover:bg-muted text-foreground rounded-lg transition"
                 >
                   Close
                 </button>
@@ -282,7 +282,7 @@ function PricingContent() {
           >
             <Github className="h-4 w-4" />
             <span>Open Source</span>
-            <span className="text-white/40">·</span>
+            <span className="text-foreground/40">·</span>
             <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
             <span>Self-host free</span>
           </motion.div>
@@ -291,7 +291,7 @@ function PricingContent() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight"
+            className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 tracking-tight"
           >
             Simple pricing for the{" "}
             <motion.span
@@ -309,7 +309,7 @@ function PricingContent() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-xl text-white/50 max-w-2xl mx-auto mb-4"
+            className="text-xl text-foreground/50 max-w-2xl mx-auto mb-4"
           >
             Start open source. Scale with confidence.
             <br />
@@ -331,9 +331,9 @@ function PricingContent() {
             <div className="relative bg-white/5 backdrop-blur-sm rounded-3xl p-8 border border-white/10 text-center">
               <div className="flex items-center justify-center gap-3 mb-4">
                 <Shield className="h-6 w-6 text-emerald-400" />
-                <h2 className="text-2xl font-bold text-white">Built open. Priced fair. No lock-in.</h2>
+                <h2 className="text-2xl font-bold text-foreground">Built open. Priced fair. No lock-in.</h2>
               </div>
-              <p className="text-white/60 max-w-2xl mx-auto">
+              <p className="text-foreground/60 max-w-2xl mx-auto">
                 Aexy is open source by default. You can self-host, audit the code, and export your data anytime.
                 <br />
                 We earn your business by being valuable - not by trapping you.
@@ -421,7 +421,7 @@ function PricingContent() {
                       transition={{ duration: 0.5 }}
                       className={`p-3 bg-gradient-to-br ${plan.color} rounded-2xl shadow-lg`}
                     >
-                      <Icon className="h-6 w-6 text-white" />
+                      <Icon className="h-6 w-6 text-foreground" />
                     </motion.div>
                     <div>
                       <span className={`text-xs font-semibold tracking-wider ${plan.textColor}`}>
@@ -430,30 +430,30 @@ function PricingContent() {
                     </div>
                   </div>
 
-                  <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
-                  <p className="text-white/50 text-sm mb-6">{plan.description}</p>
+                  <h3 className="text-2xl font-bold text-foreground mb-2">{plan.name}</h3>
+                  <p className="text-foreground/50 text-sm mb-6">{plan.description}</p>
 
                   {/* Price */}
                   <div className="mb-6 h-16">
                     {isCustomPrice ? (
                       <div className="flex items-baseline gap-1">
-                        <span className="text-5xl font-bold text-white">Custom</span>
+                        <span className="text-5xl font-bold text-foreground">Custom</span>
                       </div>
                     ) : (
                       <div className="flex items-baseline gap-1">
-                        <span className="text-white/50 text-2xl">$</span>
+                        <span className="text-foreground/50 text-2xl">$</span>
                         <motion.span
                           key={displayPrice}
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                          className="text-5xl font-bold text-white"
+                          className="text-5xl font-bold text-foreground"
                         >
                           {displayPrice}
                         </motion.span>
                       </div>
                     )}
-                    <span className="text-white/40 text-sm">{plan.priceLabel}</span>
+                    <span className="text-foreground/40 text-sm">{plan.priceLabel}</span>
                   </div>
 
                   {/* CTA Button */}
@@ -467,7 +467,7 @@ function PricingContent() {
                         ? "bg-white text-black hover:bg-white/90 hover:shadow-lg hover:shadow-white/10"
                         : plan.tier === "enterprise"
                         ? "bg-gradient-to-r from-purple-500 to-violet-500 text-white hover:from-purple-600 hover:to-violet-600"
-                        : "bg-white/10 text-white hover:bg-white/20 border border-white/10"
+                        : "bg-white/10 text-foreground hover:bg-white/20 border border-white/10"
                     } disabled:opacity-50`}
                   >
                     {loading === plan.tier ? (
@@ -484,7 +484,7 @@ function PricingContent() {
 
                   {/* Features */}
                   <div className="mt-8 space-y-3">
-                    <div className="text-white/40 text-xs font-semibold tracking-wider mb-4">WHAT YOU GET</div>
+                    <div className="text-foreground/40 text-xs font-semibold tracking-wider mb-4">WHAT YOU GET</div>
                     {plan.features.map((feature, idx) => (
                       <motion.div
                         key={idx}
@@ -494,19 +494,19 @@ function PricingContent() {
                         className="flex items-start gap-3"
                       >
                         <CheckCircle2 className={`h-5 w-5 ${plan.textColor} flex-shrink-0 mt-0.5`} />
-                        <span className="text-white/70 text-sm">{feature}</span>
+                        <span className="text-foreground/70 text-sm">{feature}</span>
                       </motion.div>
                     ))}
                   </div>
 
                   {/* Best For */}
                   <div className="mt-8 pt-6 border-t border-white/10">
-                    <div className="text-white/40 text-xs font-semibold tracking-wider mb-3">BEST FOR</div>
+                    <div className="text-foreground/40 text-xs font-semibold tracking-wider mb-3">BEST FOR</div>
                     <div className="flex flex-wrap gap-2">
                       {plan.bestFor.map((item, idx) => (
                         <span
                           key={idx}
-                          className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-white/60 text-xs"
+                          className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-foreground/60 text-xs"
                         >
                           {item}
                         </span>
@@ -530,7 +530,7 @@ function PricingContent() {
             transition={{ duration: 0.5 }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
               Replace tool sprawl, not just one tool
             </h2>
           </motion.div>
@@ -547,7 +547,7 @@ function PricingContent() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-white/10">
-                    <th className="text-left py-4 px-6 text-white/40 text-sm font-medium">You need</th>
+                    <th className="text-left py-4 px-6 text-foreground/40 text-sm font-medium">You need</th>
                     <th className="text-left py-4 px-6 text-primary-400 text-sm font-medium">With Aexy</th>
                   </tr>
                 </thead>
@@ -561,7 +561,7 @@ function PricingContent() {
                       transition={{ duration: 0.3, delay: idx * 0.1 }}
                       className={idx !== comparisonItems.length - 1 ? "border-b border-white/5" : ""}
                     >
-                      <td className="py-4 px-6 text-white/60">{item.need}</td>
+                      <td className="py-4 px-6 text-foreground/60">{item.need}</td>
                       <td className="py-4 px-6">
                         <span className="inline-flex items-center gap-2 text-emerald-400 font-medium">
                           <Check className="h-4 w-4" />
@@ -587,7 +587,7 @@ function PricingContent() {
             transition={{ duration: 0.5 }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
               Frequently Asked Questions
             </h2>
           </motion.div>
@@ -606,12 +606,12 @@ function PricingContent() {
                   onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
                   className="w-full flex items-center justify-between p-6 text-left"
                 >
-                  <h3 className="text-lg font-medium text-white pr-4">{faq.q}</h3>
+                  <h3 className="text-lg font-medium text-foreground pr-4">{faq.q}</h3>
                   <motion.div
                     animate={{ rotate: openFaq === idx ? 180 : 0 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <ChevronDown className="h-5 w-5 text-white/40 flex-shrink-0" />
+                    <ChevronDown className="h-5 w-5 text-foreground/40 flex-shrink-0" />
                   </motion.div>
                 </button>
                 <AnimatePresence>
@@ -624,7 +624,7 @@ function PricingContent() {
                       className="overflow-hidden"
                     >
                       <div className="px-6 pb-6 -mt-2">
-                        <p className="text-white/60">{faq.a}</p>
+                        <p className="text-foreground/60">{faq.a}</p>
                       </div>
                     </motion.div>
                   )}
@@ -651,10 +651,10 @@ function PricingContent() {
               <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl" />
 
               <div className="relative">
-                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
                   Start with open source. Grow into your Engineering OS.
                 </h2>
-                <p className="text-white/50 text-lg mb-10 max-w-2xl mx-auto">
+                <p className="text-foreground/50 text-lg mb-10 max-w-2xl mx-auto">
                   Join thousands of engineering teams building better software with Aexy.
                 </p>
 
@@ -672,7 +672,7 @@ function PricingContent() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.98 }}
                     href="https://github.com/aexy-io/aexy"
-                    className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
+                    className="group bg-white/5 hover:bg-white/10 text-foreground px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
                   >
                     <Github className="h-5 w-5" />
                     View on GitHub

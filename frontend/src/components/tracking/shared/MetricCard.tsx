@@ -24,7 +24,7 @@ export function MetricCard({
   subtitle,
   icon: Icon,
   iconColor = "text-blue-400",
-  iconBgColor = "bg-blue-900/30",
+  iconBgColor = "bg-blue-100 dark:bg-blue-900/30",
   trend,
   loading = false,
   onClick,
@@ -49,21 +49,21 @@ export function MetricCard({
 
   if (loading) {
     return (
-      <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 animate-pulse">
+      <div className="bg-muted rounded-xl p-6 border border-border animate-pulse">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-9 h-9 bg-slate-700 rounded-lg" />
-          <div className="h-4 bg-slate-700 rounded w-24" />
+          <div className="w-9 h-9 bg-accent rounded-lg" />
+          <div className="h-4 bg-accent rounded w-24" />
         </div>
-        <div className="h-8 bg-slate-700 rounded w-16 mb-2" />
-        <div className="h-3 bg-slate-700 rounded w-20" />
+        <div className="h-8 bg-accent rounded w-16 mb-2" />
+        <div className="h-3 bg-accent rounded w-20" />
       </div>
     );
   }
 
   return (
     <div
-      className={`bg-slate-800 rounded-xl p-6 border border-slate-700 transition-colors ${
-        onClick ? "cursor-pointer hover:border-slate-600 hover:bg-slate-800/80" : ""
+      className={`bg-muted rounded-xl p-6 border border-border transition-colors ${
+        onClick ? "cursor-pointer hover:border-border hover:bg-muted/80" : ""
       }`}
       onClick={onClick}
     >
@@ -72,7 +72,7 @@ export function MetricCard({
           <div className={`p-2 ${iconBgColor} rounded-lg`}>
             <Icon className={`h-5 w-5 ${iconColor}`} />
           </div>
-          <span className="text-slate-400 text-sm">{title}</span>
+          <span className="text-muted-foreground text-sm">{title}</span>
         </div>
         {trend && TrendIcon && (
           <div className={`flex items-center gap-1 text-xs ${getTrendColor()}`}>
@@ -80,14 +80,14 @@ export function MetricCard({
             <span>
               {trend.value > 0 ? "+" : ""}
               {trend.value}%
-              {trend.label && <span className="text-slate-500 ml-1">{trend.label}</span>}
+              {trend.label && <span className="text-muted-foreground ml-1">{trend.label}</span>}
             </span>
           </div>
         )}
       </div>
-      <p className="text-3xl font-semibold text-white">{value}</p>
+      <p className="text-3xl font-semibold text-foreground">{value}</p>
       {subtitle && (
-        <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
+        <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
       )}
     </div>
   );
@@ -97,22 +97,22 @@ export function MetricCard({
 export const metricPresets = {
   standup: {
     iconColor: "text-blue-400",
-    iconBgColor: "bg-blue-900/30",
+    iconBgColor: "bg-blue-100 dark:bg-blue-900/30",
   },
   time: {
     iconColor: "text-green-400",
-    iconBgColor: "bg-green-900/30",
+    iconBgColor: "bg-green-100 dark:bg-green-900/30",
   },
   blocker: {
     iconColor: "text-red-400",
-    iconBgColor: "bg-red-900/30",
+    iconBgColor: "bg-red-100 dark:bg-red-900/30",
   },
   score: {
     iconColor: "text-purple-400",
-    iconBgColor: "bg-purple-900/30",
+    iconBgColor: "bg-purple-100 dark:bg-purple-900/30",
   },
   activity: {
     iconColor: "text-amber-400",
-    iconBgColor: "bg-amber-900/30",
+    iconBgColor: "bg-amber-100 dark:bg-amber-900/30",
   },
 };

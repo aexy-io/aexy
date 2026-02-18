@@ -23,22 +23,22 @@ export function ThankYouLayoutSettings({ layout = {}, onChange }: ThankYouLayout
 
   return (
     <div className="space-y-4">
-      <label className="block text-sm font-medium text-slate-300">
+      <label className="block text-sm font-medium text-foreground">
         Layout & Animation
       </label>
 
       <div className="grid grid-cols-2 gap-4">
         {/* Alignment */}
         <div>
-          <label className="block text-xs text-slate-400 mb-1.5">Alignment</label>
+          <label className="block text-xs text-muted-foreground mb-1.5">Alignment</label>
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => updateLayout("alignment", "center")}
               className={`flex-1 px-3 py-2 text-sm rounded-lg border ${
                 (layout.alignment || "center") === "center"
-                  ? "border-purple-500 bg-purple-500/10 text-white"
-                  : "border-slate-700 text-slate-400 hover:border-slate-600"
+                  ? "border-purple-500 bg-purple-500/10 text-foreground"
+                  : "border-border text-muted-foreground hover:border-border"
               }`}
             >
               Center
@@ -48,8 +48,8 @@ export function ThankYouLayoutSettings({ layout = {}, onChange }: ThankYouLayout
               onClick={() => updateLayout("alignment", "left")}
               className={`flex-1 px-3 py-2 text-sm rounded-lg border ${
                 layout.alignment === "left"
-                  ? "border-purple-500 bg-purple-500/10 text-white"
-                  : "border-slate-700 text-slate-400 hover:border-slate-600"
+                  ? "border-purple-500 bg-purple-500/10 text-foreground"
+                  : "border-border text-muted-foreground hover:border-border"
               }`}
             >
               Left
@@ -59,11 +59,11 @@ export function ThankYouLayoutSettings({ layout = {}, onChange }: ThankYouLayout
 
         {/* Max Width */}
         <div>
-          <label className="block text-xs text-slate-400 mb-1.5">Max Width</label>
+          <label className="block text-xs text-muted-foreground mb-1.5">Max Width</label>
           <select
             value={layout.max_width || "480px"}
             onChange={(e) => updateLayout("max_width", e.target.value)}
-            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
           >
             <option value="320px">Small (320px)</option>
             <option value="480px">Medium (480px)</option>
@@ -75,7 +75,7 @@ export function ThankYouLayoutSettings({ layout = {}, onChange }: ThankYouLayout
 
       {/* Animation */}
       <div>
-        <label className="block text-xs text-slate-400 mb-1.5">Animation</label>
+        <label className="block text-xs text-muted-foreground mb-1.5">Animation</label>
         <div className="grid grid-cols-3 gap-2">
           {ANIMATION_OPTIONS.map((opt) => (
             <button
@@ -84,8 +84,8 @@ export function ThankYouLayoutSettings({ layout = {}, onChange }: ThankYouLayout
               onClick={() => updateLayout("animation", opt.value)}
               className={`px-3 py-2 text-sm rounded-lg border text-center ${
                 (layout.animation || "fade") === opt.value
-                  ? "border-purple-500 bg-purple-500/10 text-white"
-                  : "border-slate-700 text-slate-400 hover:border-slate-600"
+                  ? "border-purple-500 bg-purple-500/10 text-foreground"
+                  : "border-border text-muted-foreground hover:border-border"
               }`}
             >
               {opt.label}
@@ -96,13 +96,13 @@ export function ThankYouLayoutSettings({ layout = {}, onChange }: ThankYouLayout
 
       {/* Padding */}
       <div>
-        <label className="block text-xs text-slate-400 mb-1.5">Padding</label>
+        <label className="block text-xs text-muted-foreground mb-1.5">Padding</label>
         <input
           type="text"
           value={layout.padding || ""}
           onChange={(e) => updateLayout("padding", e.target.value || undefined)}
           placeholder="48px 24px"
-          className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
         />
       </div>
     </div>

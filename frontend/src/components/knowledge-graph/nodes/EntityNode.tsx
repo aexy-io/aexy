@@ -128,18 +128,18 @@ export const EntityNode = memo(({ data, selected }: NodeProps<EntityNodeType>) =
           mt-2 px-2 py-1 rounded-md text-center max-w-[120px]
           transition-all duration-200
           ${isSelected
-            ? "bg-slate-700/90"
-            : "bg-slate-800/70"
+            ? "bg-accent/90"
+            : "bg-muted/70"
           }
         `}
       >
         <p
-          className="text-xs font-medium text-white truncate"
+          className="text-xs font-medium text-foreground truncate"
           title={data.label}
         >
           {data.label}
         </p>
-        <p className="text-[10px] text-slate-400 capitalize">
+        <p className="text-[10px] text-muted-foreground capitalize">
           {data.nodeType}
         </p>
       </div>

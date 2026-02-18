@@ -30,36 +30,36 @@ import { Project, ProjectMember, CustomRole, WorkspaceMember } from "@/lib/api";
 import { PremiumGate, ProBadge, UpgradeModal } from "@/components/PremiumGate";
 
 function getRoleBadgeColor(roleName: string | null) {
-  if (!roleName) return "bg-slate-700 text-slate-400";
+  if (!roleName) return "bg-muted text-muted-foreground";
 
   const name = roleName.toLowerCase();
   if (name.includes("admin") || name.includes("owner")) {
-    return "bg-amber-900/30 text-amber-400";
+    return "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400";
   }
   if (name.includes("manager") || name.includes("lead")) {
-    return "bg-purple-900/30 text-purple-400";
+    return "bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400";
   }
   if (name.includes("developer") || name.includes("dev")) {
-    return "bg-blue-900/30 text-blue-400";
+    return "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400";
   }
   if (name.includes("viewer") || name.includes("read")) {
-    return "bg-slate-700 text-slate-300";
+    return "bg-muted text-foreground";
   }
-  return "bg-green-900/30 text-green-400";
+  return "bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400";
 }
 
 function getStatusBadgeColor(status: Project["status"]) {
   switch (status) {
     case "active":
-      return "bg-green-900/30 text-green-400";
+      return "bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400";
     case "on_hold":
-      return "bg-amber-900/30 text-amber-400";
+      return "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400";
     case "completed":
-      return "bg-blue-900/30 text-blue-400";
+      return "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400";
     case "archived":
-      return "bg-slate-700 text-slate-400";
+      return "bg-muted text-muted-foreground";
     default:
-      return "bg-slate-700 text-slate-400";
+      return "bg-muted text-muted-foreground";
   }
 }
 
@@ -150,7 +150,7 @@ function ProjectCard({
   );
 
   return (
-    <div className="bg-slate-800 rounded-xl">
+    <div className="bg-card rounded-xl">
       <div className="p-4">
         <div className="flex items-start gap-3">
           <button
@@ -159,9 +159,9 @@ function ProjectCard({
           >
             <div className="pt-1">
               {expanded ? (
-                <ChevronDown className="h-5 w-5 text-slate-400" />
+                <ChevronDown className="h-5 w-5 text-muted-foreground" />
               ) : (
-                <ChevronRight className="h-5 w-5 text-slate-400" />
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
               )}
             </div>
             <div
@@ -172,7 +172,7 @@ function ProjectCard({
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-white font-medium">{project.name}</span>
+                <span className="text-foreground font-medium">{project.name}</span>
                 <span
                   className={`px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${getStatusBadgeColor(
                     project.status
@@ -181,17 +181,17 @@ function ProjectCard({
                   {project.status.replace("_", " ")}
                 </span>
                 <span
-                  className={`px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap bg-yellow-900/30 text-yellow-400`}
+                  className={`px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap bg-yellow-50 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400`}
                 >
                   {project.is_public? 'Public':'Private'}
                 </span>
               </div>
-              <div className="text-sm text-slate-400 mt-1">
+              <div className="text-sm text-muted-foreground mt-1">
                 {project.member_count} members
                 {project.team_count > 0 && ` · ${project.team_count} teams`}
               </div>
               {project.description && (
-                <p className="text-sm text-slate-500 mt-1 line-clamp-1">{project.description}</p>
+                <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{project.description}</p>
               )}
             </div>
           </button>
@@ -202,17 +202,17 @@ function ProjectCard({
                   e.stopPropagation();
                   setShowMenu(!showMenu);
                 }}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
               >
                 <MoreVertical className="h-4 w-4" />
               </button>
               {showMenu && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-                  <div className="absolute right-0 top-full mt-1 w-48 bg-slate-700 rounded-lg shadow-xl z-20 py-1">
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-muted rounded-lg shadow-xl z-20 py-1">
                     <Link
                       href={`/settings/projects/${project.id}`}
-                      className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-600 flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                       onClick={() => setShowMenu(false)}
                     >
                       <Settings className="h-4 w-4" />
@@ -220,7 +220,7 @@ function ProjectCard({
                     </Link>
                     <Link
                       href={`/settings/projects/${project.id}/permissions`}
-                      className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-600 flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                       onClick={() => setShowMenu(false)}
                     >
                       <Shield className="h-4 w-4" />
@@ -231,7 +231,7 @@ function ProjectCard({
                         onDelete(project.id);
                         setShowMenu(false);
                       }}
-                      className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-600 flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-accent flex items-center gap-2"
                     >
                       <Trash2 className="h-4 w-4" />
                       Delete Project
@@ -245,17 +245,17 @@ function ProjectCard({
       </div>
 
       {expanded && (
-        <div className="border-t border-slate-700">
+        <div className="border-t border-border">
           {membersLoading ? (
-            <div className="p-4 text-center text-slate-400">Loading members...</div>
+            <div className="p-4 text-center text-muted-foreground">Loading members...</div>
           ) : (
             <>
               {/* Project Members */}
-              <div className="divide-y divide-slate-700/50">
+              <div className="divide-y divide-border/50">
                 {members.map((member) => (
                   <div
                     key={member.id}
-                    className="p-3 px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-700/30"
+                    className="p-3 px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent/30"
                   >
                     <div className="flex items-center gap-3">
                       {member.developer_avatar_url ? (
@@ -267,12 +267,12 @@ function ProjectCard({
                           className="rounded-full"
                         />
                       ) : (
-                        <div className="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center">
-                          <Users className="h-4 w-4 text-slate-400" />
+                        <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
+                          <Users className="h-4 w-4 text-muted-foreground" />
                         </div>
                       )}
                       <div>
-                        <span className="text-white text-sm">
+                        <span className="text-foreground text-sm">
                           {member.developer_name || member.developer_email || "Unknown"}
                         </span>
                         {member.status === "pending" && (
@@ -287,7 +287,7 @@ function ProjectCard({
                             <select
                               value={editingRoleId || ""}
                               onChange={(e) => setEditingRoleId(e.target.value || null)}
-                              className="px-2 py-1 text-xs rounded bg-slate-700 text-white border border-slate-600 focus:outline-none focus:border-primary-500"
+                              className="px-2 py-1 text-xs rounded bg-muted text-foreground border border-border focus:outline-none focus:border-primary-500"
                             >
                               <option value="">Use org role</option>
                               {roles.map((role) => (
@@ -301,7 +301,7 @@ function ProjectCard({
                                 handleRoleChange(member.developer_id, editingRoleId)
                               }
                               disabled={isUpdating}
-                              className="p-1 text-green-400 hover:bg-slate-600 rounded transition"
+                              className="p-1 text-green-400 hover:bg-accent rounded transition"
                               title="Save"
                             >
                               <Check className="h-4 w-4" />
@@ -311,7 +311,7 @@ function ProjectCard({
                                 setEditingMemberId(null);
                                 setEditingRoleId(null);
                               }}
-                              className="p-1 text-slate-400 hover:bg-slate-600 rounded transition"
+                              className="p-1 text-muted-foreground hover:bg-accent rounded transition"
                               title="Cancel"
                             >
                               <X className="h-4 w-4" />
@@ -351,7 +351,7 @@ function ProjectCard({
                       {isAdmin && (
                         <button
                           onClick={() => handleRemoveMember(member.developer_id)}
-                          className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded transition"
+                          className="p-1.5 text-muted-foreground hover:text-red-400 hover:bg-accent rounded transition"
                           title="Remove from project"
                         >
                           <UserMinus className="h-4 w-4" />
@@ -361,7 +361,7 @@ function ProjectCard({
                   </div>
                 ))}
                 {members.length === 0 && (
-                  <div className="p-4 text-center text-slate-400 text-sm">
+                  <div className="p-4 text-center text-muted-foreground text-sm">
                     No members in this project yet
                   </div>
                 )}
@@ -369,14 +369,14 @@ function ProjectCard({
 
               {/* Add Member */}
               {isAdmin && (
-                <div className="p-3 border-t border-slate-700">
+                <div className="p-3 border-t border-border">
                   {showAddMember ? (
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
                         <select
                           value={selectedDeveloperId}
                           onChange={(e) => setSelectedDeveloperId(e.target.value)}
-                          className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-primary-500"
+                          className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-primary-500"
                         >
                           <option value="">Select a member...</option>
                           {availableMembers.map((wm) => (
@@ -390,7 +390,7 @@ function ProjectCard({
                         <select
                           value={selectedRoleId}
                           onChange={(e) => setSelectedRoleId(e.target.value)}
-                          className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-primary-500"
+                          className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-primary-500"
                         >
                           <option value="">Use organization role</option>
                           {roles.map((role) => (
@@ -429,7 +429,7 @@ function ProjectCard({
                             setSelectedDeveloperId("");
                             setSelectedRoleId("");
                           }}
-                          className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition"
+                          className="px-3 py-2 bg-muted hover:bg-accent text-foreground rounded-lg text-sm transition"
                         >
                           Cancel
                         </button>
@@ -444,7 +444,7 @@ function ProjectCard({
                         setShowAddMember(true);
                       }}
                       disabled={availableMembers.length === 0}
-                      className="w-full px-3 py-2 border border-dashed border-slate-600 hover:border-slate-500 text-slate-400 hover:text-white rounded-lg text-sm transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full px-3 py-2 border border-dashed border-border hover:border-border text-muted-foreground hover:text-foreground rounded-lg text-sm transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Plus className="h-4 w-4" />
                       {availableMembers.length === 0
@@ -515,32 +515,32 @@ function CreateProjectModal({ onClose, onCreate, isCreating }: CreateProjectModa
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-slate-800 rounded-xl w-full max-w-md p-6">
-        <h3 className="text-xl font-semibold text-white mb-4">Create Project</h3>
+      <div className="bg-card rounded-xl w-full max-w-md p-6">
+        <h3 className="text-xl font-semibold text-foreground mb-4">Create Project</h3>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Project Name</label>
+              <label className="block text-sm text-muted-foreground mb-1">Project Name</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., Frontend Redesign"
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500"
+                className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Description (optional)</label>
+              <label className="block text-sm text-muted-foreground mb-1">Description (optional)</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="What is this project about?"
                 rows={2}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500"
+                className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-2">Color</label>
+              <label className="block text-sm text-muted-foreground mb-2">Color</label>
               <div className="flex gap-2 flex-wrap">
                 {colors.map((c) => (
                   <button
@@ -548,7 +548,7 @@ function CreateProjectModal({ onClose, onCreate, isCreating }: CreateProjectModa
                     type="button"
                     onClick={() => setColor(c)}
                     className={`w-8 h-8 rounded-lg transition ${
-                      color === c ? "ring-2 ring-white ring-offset-2 ring-offset-slate-800" : ""
+                      color === c ? "ring-2 ring-white ring-offset-2 ring-offset-card" : ""
                     }`}
                     style={{ backgroundColor: c }}
                   />
@@ -562,7 +562,7 @@ function CreateProjectModal({ onClose, onCreate, isCreating }: CreateProjectModa
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+              className="flex-1 px-4 py-2 bg-muted hover:bg-accent text-foreground rounded-lg transition"
             >
               Cancel
             </button>
@@ -633,7 +633,7 @@ export default function ProjectsSettingsPage() {
       <div className="py-20 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-white">Loading projects...</p>
+          <p className="text-foreground">Loading projects...</p>
         </div>
       </div>
     );
@@ -648,10 +648,10 @@ export default function ProjectsSettingsPage() {
 
       <div>
         {!hasWorkspaces ? (
-          <div className="bg-slate-800 rounded-xl p-12 text-center">
-            <FolderKanban className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-white mb-2">No Workspace</h3>
-            <p className="text-slate-400 mb-6">
+          <div className="bg-card rounded-xl p-12 text-center">
+            <FolderKanban className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-medium text-foreground mb-2">No Workspace</h3>
+            <p className="text-muted-foreground mb-6">
               Create a workspace first to start managing projects.
             </p>
             <Link
@@ -666,11 +666,11 @@ export default function ProjectsSettingsPage() {
             {/* Header with Actions */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div>
-                <h2 className="text-lg font-medium text-white flex items-center gap-2">
-                  <FolderKanban className="h-5 w-5 text-slate-400" />
+                <h2 className="text-lg font-medium text-foreground flex items-center gap-2">
+                  <FolderKanban className="h-5 w-5 text-muted-foreground" />
                   Projects in {currentWorkspace?.name}
                 </h2>
-                <p className="text-slate-400 text-sm">{projects.length} projects</p>
+                <p className="text-muted-foreground text-sm">{projects.length} projects</p>
               </div>
               {isAdmin && (
                 <button
@@ -699,10 +699,10 @@ export default function ProjectsSettingsPage() {
                 ))}
               </div>
             ) : (
-              <div className="bg-slate-800 rounded-xl p-12 text-center">
-                <FolderKanban className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-                <h3 className="text-xl font-medium text-white mb-2">No Projects Yet</h3>
-                <p className="text-slate-400 mb-6">
+              <div className="bg-card rounded-xl p-12 text-center">
+                <FolderKanban className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-medium text-foreground mb-2">No Projects Yet</h3>
+                <p className="text-muted-foreground mb-6">
                   Create your first project to organize your work and manage team access.
                 </p>
                 {isAdmin && (

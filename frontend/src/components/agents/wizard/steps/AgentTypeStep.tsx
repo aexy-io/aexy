@@ -33,10 +33,10 @@ export function AgentTypeStep({ selectedType, onSelect }: AgentTypeStepProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-white mb-2">
+        <h2 className="text-xl font-semibold text-foreground mb-2">
           What type of agent do you want to create?
         </h2>
-        <p className="text-slate-400">
+        <p className="text-muted-foreground">
           Choose a template to start with pre-configured tools and prompts, or
           create a custom agent from scratch.
         </p>
@@ -56,14 +56,14 @@ export function AgentTypeStep({ selectedType, onSelect }: AgentTypeStepProps) {
                   "relative flex items-start gap-4 p-4 rounded-xl border-2 text-left transition-all",
                   isSelected
                     ? "border-purple-500 bg-purple-500/10"
-                    : "border-slate-700 hover:border-slate-600 bg-slate-800/50"
+                    : "border-border hover:border-border bg-muted/50"
                 )}
               >
                 {/* Selected indicator */}
                 {isSelected && (
                   <div className="absolute top-3 right-3">
                     <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
-                      <Check className="h-4 w-4 text-white" />
+                      <Check className="h-4 w-4 text-foreground" />
                     </div>
                   </div>
                 )}
@@ -78,8 +78,8 @@ export function AgentTypeStep({ selectedType, onSelect }: AgentTypeStepProps) {
 
                 {/* Content */}
                 <div className="flex-1 min-w-0 pr-8">
-                  <h3 className="text-white font-medium mb-1">{config.label}</h3>
-                  <p className="text-sm text-slate-400 mb-2">{config.description}</p>
+                  <h3 className="text-foreground font-medium mb-1">{config.label}</h3>
+                  <p className="text-sm text-muted-foreground mb-2">{config.description}</p>
 
                   {/* Default tools preview */}
                   {config.defaultTools.length > 0 && (
@@ -87,13 +87,13 @@ export function AgentTypeStep({ selectedType, onSelect }: AgentTypeStepProps) {
                       {config.defaultTools.slice(0, 3).map((tool) => (
                         <span
                           key={tool}
-                          className="text-xs px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded"
+                          className="text-xs px-1.5 py-0.5 bg-accent text-muted-foreground rounded"
                         >
                           {tool}
                         </span>
                       ))}
                       {config.defaultTools.length > 3 && (
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-muted-foreground">
                           +{config.defaultTools.length - 3} more
                         </span>
                       )}

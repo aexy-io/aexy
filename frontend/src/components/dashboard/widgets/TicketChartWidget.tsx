@@ -29,9 +29,9 @@ export function TicketChartWidget() {
 
   if (isLoading) {
     return (
-      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 animate-pulse">
-        <div className="h-6 w-36 bg-slate-800 rounded mb-4" />
-        <div className="h-48 bg-slate-800 rounded-lg" />
+      <div className="bg-background/50 border border-border rounded-xl p-6 animate-pulse">
+        <div className="h-6 w-36 bg-muted rounded mb-4" />
+        <div className="h-48 bg-muted rounded-lg" />
       </div>
     );
   }
@@ -48,13 +48,13 @@ export function TicketChartWidget() {
   const slaCompliance = stats?.sla_compliance_rate ?? stats?.sla_compliance;
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+    <div className="bg-background/50 border border-border rounded-xl overflow-hidden">
+      <div className="px-6 py-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-pink-500/10 rounded-lg">
             <Ticket className="h-5 w-5 text-pink-400" />
           </div>
-          <h3 className="text-lg font-semibold text-white">Tickets</h3>
+          <h3 className="text-lg font-semibold text-foreground">Tickets</h3>
           {slaCompliance != null && (
             <span
               className={`px-2 py-0.5 text-xs font-medium rounded-full ${
@@ -79,19 +79,19 @@ export function TicketChartWidget() {
       <div className="p-6">
         {!currentWorkspace ? (
           <div className="text-center py-6">
-            <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Ticket className="w-8 h-8 text-slate-600" />
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <Ticket className="w-8 h-8 text-muted-foreground" />
             </div>
-            <p className="text-slate-400 text-sm">
+            <p className="text-muted-foreground text-sm">
               Select a workspace to view tickets.
             </p>
           </div>
         ) : !hasData ? (
           <div className="text-center py-6">
-            <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-              <BarChart3 className="w-8 h-8 text-slate-600" />
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <BarChart3 className="w-8 h-8 text-muted-foreground" />
             </div>
-            <p className="text-slate-400 text-sm">
+            <p className="text-muted-foreground text-sm">
               No ticket data available yet.
             </p>
           </div>

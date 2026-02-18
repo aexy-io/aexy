@@ -97,7 +97,7 @@ export const TaskDescriptionEditor = forwardRef<
         class: cn(
           "prose prose-invert prose-slate max-w-none focus:outline-none",
           "prose-p:my-1 prose-headings:my-2",
-          "[&_.is-editor-empty:first-child::before]:text-slate-500",
+          "[&_.is-editor-empty:first-child::before]:text-muted-foreground",
           "[&_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]",
           "[&_.is-editor-empty:first-child::before]:float-left",
           "[&_.is-editor-empty:first-child::before]:h-0",
@@ -243,29 +243,29 @@ export const TaskDescriptionEditor = forwardRef<
   }));
 
   return (
-    <div className={cn("relative rounded-lg border border-slate-700 bg-slate-800/50", className)}>
+    <div className={cn("relative rounded-lg border border-border bg-muted/50", className)}>
       <EditorContent
         editor={editor}
         className={cn(
           "px-3 py-2",
-          "[&_.ProseMirror]:text-slate-200 [&_.ProseMirror]:text-sm",
+          "[&_.ProseMirror]:text-foreground [&_.ProseMirror]:text-sm",
           "[&_.ProseMirror]:leading-relaxed"
         )}
       />
 
       {/* User mention suggestions */}
       {showUserSuggestions && filteredUsers.length > 0 && (
-        <div className="absolute left-0 right-0 top-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden">
-          <div className="px-3 py-1.5 border-b border-slate-700 text-xs text-slate-400 flex items-center gap-1.5">
+        <div className="absolute left-0 right-0 top-full mt-1 bg-muted border border-border rounded-lg shadow-xl z-50 overflow-hidden">
+          <div className="px-3 py-1.5 border-b border-border text-xs text-muted-foreground flex items-center gap-1.5">
             <AtSign className="w-3 h-3" />
             <span>Mention a team member</span>
-            {suggestionQuery && <span className="text-slate-500">({suggestionQuery})</span>}
+            {suggestionQuery && <span className="text-muted-foreground">({suggestionQuery})</span>}
           </div>
           {filteredUsers.map((user) => (
             <button
               key={user.id}
               onClick={() => insertMention("user", user.id, user.name)}
-              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left text-slate-300 hover:bg-slate-700 transition-colors"
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left text-foreground hover:bg-accent transition-colors"
             >
               {user.avatar_url ? (
                 <img
@@ -274,7 +274,7 @@ export const TaskDescriptionEditor = forwardRef<
                   className="w-5 h-5 rounded-full"
                 />
               ) : (
-                <div className="w-5 h-5 rounded-full bg-slate-600 flex items-center justify-center">
+                <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center">
                   <User className="w-3 h-3" />
                 </div>
               )}
@@ -286,17 +286,17 @@ export const TaskDescriptionEditor = forwardRef<
 
       {/* File mention suggestions */}
       {showFileSuggestions && filteredFiles.length > 0 && (
-        <div className="absolute left-0 right-0 top-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden max-h-64 overflow-y-auto">
-          <div className="px-3 py-1.5 border-b border-slate-700 text-xs text-slate-400 flex items-center gap-1.5">
+        <div className="absolute left-0 right-0 top-full mt-1 bg-muted border border-border rounded-lg shadow-xl z-50 overflow-hidden max-h-64 overflow-y-auto">
+          <div className="px-3 py-1.5 border-b border-border text-xs text-muted-foreground flex items-center gap-1.5">
             <Hash className="w-3 h-3" />
             <span>Reference a file</span>
-            {suggestionQuery && <span className="text-slate-500">({suggestionQuery})</span>}
+            {suggestionQuery && <span className="text-muted-foreground">({suggestionQuery})</span>}
           </div>
           {filteredFiles.map((file) => (
             <button
               key={file.path}
               onClick={() => insertMention("file", file.path, file.name)}
-              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left text-slate-300 hover:bg-slate-700 transition-colors"
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left text-foreground hover:bg-accent transition-colors"
             >
               <File className="w-4 h-4 flex-shrink-0" />
               <span className="truncate">{file.name}</span>
@@ -307,7 +307,7 @@ export const TaskDescriptionEditor = forwardRef<
 
       {/* Mentioned items display */}
       {(mentionedUserIds.size > 0 || mentionedFilePaths.size > 0) && (
-        <div className="border-t border-slate-700 px-3 py-2 flex flex-wrap gap-1.5">
+        <div className="border-t border-border px-3 py-2 flex flex-wrap gap-1.5">
           {Array.from(mentionedUserIds).map((userId) => {
             const user = users.find((u) => u.id === userId);
             return (

@@ -30,25 +30,25 @@ const syncTypeConfig = {
     icon: Zap,
     label: "Real-time Sync",
     description: "Documentation updates automatically when code changes",
-    color: "text-green-400",
-    bgColor: "bg-green-900/20",
+    color: "text-green-600 dark:text-green-400",
+    bgColor: "bg-green-50 dark:bg-green-900/20",
     borderColor: "border-green-800/50",
   },
   daily_batch: {
     icon: Calendar,
     label: "Daily Sync",
     description: "Documentation syncs once per day with code changes",
-    color: "text-blue-400",
-    bgColor: "bg-blue-900/20",
+    color: "text-blue-600 dark:text-blue-400",
+    bgColor: "bg-blue-50 dark:bg-blue-900/20",
     borderColor: "border-blue-800/50",
   },
   manual: {
     icon: Hand,
     label: "Manual Sync",
     description: "Click to sync documentation with code changes",
-    color: "text-slate-400",
-    bgColor: "bg-slate-800/50",
-    borderColor: "border-slate-700",
+    color: "text-muted-foreground",
+    bgColor: "bg-muted/50",
+    borderColor: "border-border",
   },
 };
 
@@ -102,13 +102,13 @@ export function SyncStatusPanel({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Icon className={cn("h-4 w-4", config.color)} />
-          <span className="text-sm font-medium text-white">{config.label}</span>
+          <span className="text-sm font-medium text-foreground">{config.label}</span>
         </div>
         {syncType !== "real_time" && onManualSync && (
           <button
             onClick={handleSync}
             disabled={isSyncing || isProcessing}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-500 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-foreground bg-primary-600 hover:bg-primary-500 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSyncing || isProcessing ? (
               <>
@@ -126,14 +126,14 @@ export function SyncStatusPanel({
       </div>
 
       {/* Description */}
-      <p className="text-xs text-slate-500 mb-3">{config.description}</p>
+      <p className="text-xs text-muted-foreground mb-3">{config.description}</p>
 
       {/* Status */}
       <div className="flex items-center gap-4 text-xs">
         {/* Last Synced */}
         <div className="flex items-center gap-1.5">
-          <Clock className="h-3.5 w-3.5 text-slate-500" />
-          <span className="text-slate-400">
+          <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-muted-foreground">
             {lastSyncedAt ? (
               <>Last synced {formatLastSync(lastSyncedAt)}</>
             ) : (
@@ -163,9 +163,9 @@ export function SyncStatusPanel({
 
       {/* Upgrade Hint for Manual Sync */}
       {syncType === "manual" && pendingChanges > 0 && (
-        <div className="mt-3 flex items-start gap-2 p-2 bg-slate-800/50 rounded-lg">
-          <Info className="h-4 w-4 text-slate-500 shrink-0 mt-0.5" />
-          <p className="text-xs text-slate-500">
+        <div className="mt-3 flex items-start gap-2 p-2 bg-muted/50 rounded-lg">
+          <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+          <p className="text-xs text-muted-foreground">
             Upgrade to Pro for daily automatic syncing, or Premium for
             real-time sync when code changes.
           </p>
@@ -190,7 +190,7 @@ export function SyncStatusBadge({
 
   if (isProcessing) {
     return (
-      <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-900/30 text-blue-400 rounded-lg text-xs">
+      <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-lg text-xs">
         <Loader2 className="h-3 w-3 animate-spin" />
         Syncing
       </div>
@@ -199,7 +199,7 @@ export function SyncStatusBadge({
 
   if (pendingChanges > 0) {
     return (
-      <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-900/30 text-amber-400 rounded-lg text-xs">
+      <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 rounded-lg text-xs">
         <AlertCircle className="h-3 w-3" />
         {pendingChanges} pending
       </div>

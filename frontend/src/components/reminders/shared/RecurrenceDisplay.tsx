@@ -54,19 +54,19 @@ export function RecurrenceDisplay({
 
   return (
     <div className={cn("flex flex-col gap-1", className)}>
-      <div className={cn("flex items-center gap-1.5 text-slate-300", sizeClasses[size])}>
-        {showIcon && <RefreshCw className={cn(iconSizes[size], "text-slate-500")} />}
+      <div className={cn("flex items-center gap-1.5 text-foreground", sizeClasses[size])}>
+        {showIcon && <RefreshCw className={cn(iconSizes[size], "text-muted-foreground")} />}
         <span>{frequencyLabel}</span>
         {isCustom && (
-          <span className="text-slate-500 font-mono">({cronExpression})</span>
+          <span className="text-muted-foreground font-mono">({cronExpression})</span>
         )}
         {timezone && (
-          <span className="text-slate-500">({timezone})</span>
+          <span className="text-muted-foreground">({timezone})</span>
         )}
       </div>
       {showNextOccurrence && nextOccurrence && (
-        <div className={cn("flex items-center gap-1.5 text-slate-400", sizeClasses[size])}>
-          <Calendar className={cn(iconSizes[size], "text-slate-500")} />
+        <div className={cn("flex items-center gap-1.5 text-muted-foreground", sizeClasses[size])}>
+          <Calendar className={cn(iconSizes[size], "text-muted-foreground")} />
           <span>Next: {format(parseISO(nextOccurrence), "MMM d, yyyy 'at' h:mm a")}</span>
         </div>
       )}
@@ -93,7 +93,7 @@ export function FrequencyBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md font-medium bg-slate-700/50 text-slate-300 border border-slate-600/50",
+        "inline-flex items-center gap-1.5 rounded-md font-medium bg-accent/50 text-foreground border border-border/50",
         sizeClasses[size],
         className
       )}

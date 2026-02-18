@@ -32,8 +32,8 @@ export function BlockerBoard({
       id: "active",
       title: "Active",
       icon: AlertTriangle,
-      color: "text-red-400",
-      bgColor: "bg-red-900/20",
+      color: "text-red-600 dark:text-red-400",
+      bgColor: "bg-red-50 dark:bg-red-900/20",
       borderColor: "border-red-700/50",
       blockers: activeBlockers,
     },
@@ -41,8 +41,8 @@ export function BlockerBoard({
       id: "escalated",
       title: "Escalated",
       icon: ArrowUp,
-      color: "text-purple-400",
-      bgColor: "bg-purple-900/20",
+      color: "text-purple-600 dark:text-purple-400",
+      bgColor: "bg-purple-50 dark:bg-purple-900/20",
       borderColor: "border-purple-700/50",
       blockers: escalatedBlockers,
     },
@@ -50,8 +50,8 @@ export function BlockerBoard({
       id: "resolved",
       title: "Resolved",
       icon: CheckCircle2,
-      color: "text-green-400",
-      bgColor: "bg-green-900/20",
+      color: "text-green-600 dark:text-green-400",
+      bgColor: "bg-green-50 dark:bg-green-900/20",
       borderColor: "border-green-700/50",
       blockers: resolvedBlockers,
     },
@@ -61,13 +61,13 @@ export function BlockerBoard({
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {columns.map((column) => (
-          <div key={column.id} className="bg-slate-800 rounded-xl border border-slate-700 p-4">
-            <div className="h-6 bg-slate-700 rounded w-1/3 mb-4 animate-pulse" />
+          <div key={column.id} className="bg-muted rounded-xl border border-border p-4">
+            <div className="h-6 bg-accent rounded w-1/3 mb-4 animate-pulse" />
             <div className="space-y-3">
               {[1, 2].map((i) => (
-                <div key={i} className="bg-slate-700 rounded-lg p-4 animate-pulse">
-                  <div className="h-4 bg-slate-600 rounded w-3/4 mb-2" />
-                  <div className="h-3 bg-slate-600 rounded w-1/2" />
+                <div key={i} className="bg-accent rounded-lg p-4 animate-pulse">
+                  <div className="h-4 bg-muted rounded w-3/4 mb-2" />
+                  <div className="h-3 bg-muted rounded w-1/2" />
                 </div>
               ))}
             </div>
@@ -82,7 +82,7 @@ export function BlockerBoard({
       {columns.map((column) => {
         const Icon = column.icon;
         return (
-          <div key={column.id} className="bg-slate-800/50 rounded-xl border border-slate-700">
+          <div key={column.id} className="bg-muted/50 rounded-xl border border-border">
             {/* Column Header */}
             <div className={`px-4 py-3 border-b ${column.borderColor} ${column.bgColor} rounded-t-xl`}>
               <div className="flex items-center justify-between">
@@ -99,7 +99,7 @@ export function BlockerBoard({
             {/* Column Content */}
             <div className="p-3 space-y-3 max-h-[600px] overflow-y-auto">
               {column.blockers.length === 0 ? (
-                <div className="text-center py-8 text-slate-500">
+                <div className="text-center py-8 text-muted-foreground">
                   <Icon className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No {column.title.toLowerCase()} blockers</p>
                 </div>

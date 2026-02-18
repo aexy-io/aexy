@@ -36,29 +36,29 @@ export function CollaborationAwareness({
     connecting: {
       icon: RefreshCw,
       label: "Connecting...",
-      color: "text-amber-400",
-      bgColor: "bg-amber-900/30",
+      color: "text-amber-600 dark:text-amber-400",
+      bgColor: "bg-amber-100 dark:bg-amber-900/30",
       animate: true,
     },
     connected: {
       icon: Wifi,
       label: "Connected",
-      color: "text-green-400",
-      bgColor: "bg-green-900/30",
+      color: "text-green-600 dark:text-green-400",
+      bgColor: "bg-green-100 dark:bg-green-900/30",
       animate: false,
     },
     disconnected: {
       icon: WifiOff,
       label: "Disconnected",
-      color: "text-slate-400",
-      bgColor: "bg-slate-800",
+      color: "text-muted-foreground",
+      bgColor: "bg-muted",
       animate: false,
     },
     error: {
       icon: AlertCircle,
       label: "Connection error",
-      color: "text-red-400",
-      bgColor: "bg-red-900/30",
+      color: "text-red-600 dark:text-red-400",
+      bgColor: "bg-red-100 dark:bg-red-900/30",
       animate: false,
     },
   };
@@ -95,7 +95,7 @@ export function CollaborationAwareness({
               <UserAvatar key={user.id} user={user} size="sm" />
             ))}
             {otherUsers.length > 3 && (
-              <div className="flex items-center justify-center h-7 w-7 rounded-full bg-slate-700 border-2 border-slate-900 text-xs text-slate-300">
+              <div className="flex items-center justify-center h-7 w-7 rounded-full bg-accent border-2 border-background text-xs text-foreground">
                 +{otherUsers.length - 3}
               </div>
             )}
@@ -103,7 +103,7 @@ export function CollaborationAwareness({
         )}
 
         {/* User Count */}
-        <div className="flex items-center gap-1 text-xs text-slate-400">
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <Users className="h-3.5 w-3.5" />
           <span>{users.length}</span>
         </div>
@@ -111,11 +111,11 @@ export function CollaborationAwareness({
 
       {/* Expanded View - User List */}
       {isExpanded && (
-        <div className="absolute top-full right-0 mt-2 w-64 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-50 overflow-hidden">
+        <div className="absolute top-full right-0 mt-2 w-64 bg-muted border border-border rounded-xl shadow-xl z-50 overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-3 py-2 border-b border-slate-700">
-            <span className="text-sm font-medium text-white">Collaborators</span>
-            <span className="text-xs text-slate-400">{users.length} active</span>
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+            <span className="text-sm font-medium text-foreground">Collaborators</span>
+            <span className="text-xs text-muted-foreground">{users.length} active</span>
           </div>
 
           {/* User List */}
@@ -124,20 +124,20 @@ export function CollaborationAwareness({
               <div
                 key={user.id}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 hover:bg-slate-700/50",
-                  user.id === currentUserId && "bg-slate-700/30"
+                  "flex items-center gap-3 px-3 py-2 hover:bg-accent/50",
+                  user.id === currentUserId && "bg-accent/30"
                 )}
               >
                 <UserAvatar user={user} size="md" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">
+                  <p className="text-sm font-medium text-foreground truncate">
                     {user.name}
                     {user.id === currentUserId && (
-                      <span className="ml-1 text-xs text-slate-400">(you)</span>
+                      <span className="ml-1 text-xs text-muted-foreground">(you)</span>
                     )}
                   </p>
                   {user.email && (
-                    <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                   )}
                 </div>
                 <ActiveIndicator isActive={!!user.cursor || user.id === currentUserId} />
@@ -146,7 +146,7 @@ export function CollaborationAwareness({
           </div>
 
           {/* Connection Status Footer */}
-          <div className="px-3 py-2 border-t border-slate-700 bg-slate-850">
+          <div className="px-3 py-2 border-t border-border bg-muted">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <StatusIcon
@@ -205,7 +205,7 @@ function UserAvatar({
   return (
     <div
       className={cn(
-        "flex items-center justify-center rounded-full font-medium text-white border-2 border-slate-900",
+        "flex items-center justify-center rounded-full font-medium text-foreground border-2 border-background",
         sizeClasses[size]
       )}
       style={{ backgroundColor: user.color }}
@@ -222,7 +222,7 @@ function ActiveIndicator({ isActive }: { isActive: boolean }) {
     <div
       className={cn(
         "h-2 w-2 rounded-full",
-        isActive ? "bg-green-400 animate-pulse" : "bg-slate-600"
+        isActive ? "bg-green-400 animate-pulse" : "bg-muted"
       )}
     />
   );
@@ -254,7 +254,7 @@ export function CollaborationBadge({
       <div
         className={cn(
           "flex items-center gap-1 px-2 py-1 rounded-lg text-xs",
-          connectionStatus === "error" ? "bg-red-900/30 text-red-400" : "bg-slate-700 text-slate-400",
+          connectionStatus === "error" ? "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400" : "bg-accent text-muted-foreground",
           className
         )}
       >
@@ -274,7 +274,7 @@ export function CollaborationBadge({
         {otherUsers.slice(0, 3).map((user) => (
           <div
             key={user.id}
-            className="h-6 w-6 rounded-full border border-slate-800 flex items-center justify-center text-[10px] font-medium text-white"
+            className="h-6 w-6 rounded-full border border-border flex items-center justify-center text-[10px] font-medium text-foreground"
             style={{ backgroundColor: user.color }}
             title={user.name || "Unknown"}
           >
@@ -283,7 +283,7 @@ export function CollaborationBadge({
         ))}
       </div>
       {otherUsers.length > 3 && (
-        <span className="text-xs text-slate-400">+{otherUsers.length - 3}</span>
+        <span className="text-xs text-muted-foreground">+{otherUsers.length - 3}</span>
       )}
     </div>
   );

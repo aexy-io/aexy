@@ -141,24 +141,24 @@ export default function TimeTrackingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => router.push("/tracking")}
-            className="flex items-center gap-2 text-slate-400 hover:text-white mb-4 transition"
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 transition"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Tracking
           </button>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+              <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
                 <Clock className="h-8 w-8 text-green-400" />
                 Time Tracking
               </h1>
-              <p className="text-slate-400 mt-2">
+              <p className="text-muted-foreground mt-2">
                 Log and view your time entries
               </p>
             </div>
@@ -198,7 +198,7 @@ export default function TimeTrackingPage() {
             subtitle={`${stats.weekEntries} entries`}
             icon={TrendingUp}
             iconColor="text-blue-400"
-            iconBgColor="bg-blue-900/30"
+            iconBgColor="bg-blue-100 dark:bg-blue-900/30"
             loading={isLoading}
           />
           <MetricCard
@@ -207,7 +207,7 @@ export default function TimeTrackingPage() {
             subtitle={`${stats.uniqueDays} days logged`}
             icon={Clock}
             iconColor="text-purple-400"
-            iconBgColor="bg-purple-900/30"
+            iconBgColor="bg-purple-100 dark:bg-purple-900/30"
             loading={isLoading}
           />
           <UtilizationGauge
@@ -221,13 +221,13 @@ export default function TimeTrackingPage() {
         {/* View Controls */}
         <div className="flex flex-col lg:flex-row gap-4 mb-6">
           {/* View Toggle */}
-          <div className="flex items-center gap-2 bg-slate-800 rounded-lg p-1">
+          <div className="flex items-center gap-2 bg-muted rounded-lg p-1">
             <button
               onClick={() => setViewMode("list")}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition ${
                 viewMode === "list"
                   ? "bg-green-600 text-white"
-                  : "text-slate-400 hover:text-white"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <List className="h-4 w-4" />
@@ -238,7 +238,7 @@ export default function TimeTrackingPage() {
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition ${
                 viewMode === "timesheet"
                   ? "bg-green-600 text-white"
-                  : "text-slate-400 hover:text-white"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Grid3X3 className="h-4 w-4" />
@@ -249,7 +249,7 @@ export default function TimeTrackingPage() {
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition ${
                 viewMode === "charts"
                   ? "bg-green-600 text-white"
-                  : "text-slate-400 hover:text-white"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <PieChart className="h-4 w-4" />
@@ -260,11 +260,11 @@ export default function TimeTrackingPage() {
           {/* List grouping (only for list view) */}
           {viewMode === "list" && (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-400">Group by:</span>
+              <span className="text-sm text-muted-foreground">Group by:</span>
               <select
                 value={groupBy}
                 onChange={(e) => setGroupBy(e.target.value as GroupBy)}
-                className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-green-500"
+                className="px-3 py-1.5 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-green-500"
               >
                 <option value="date">Date</option>
                 <option value="project">Project</option>
@@ -276,11 +276,11 @@ export default function TimeTrackingPage() {
           {/* Chart type (only for charts view) */}
           {viewMode === "charts" && (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-400">Show:</span>
+              <span className="text-sm text-muted-foreground">Show:</span>
               <select
                 value={chartType}
                 onChange={(e) => setChartType(e.target.value as ChartType)}
-                className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-green-500"
+                className="px-3 py-1.5 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-green-500"
               >
                 <option value="project">By Project</option>
                 <option value="daily">By Day</option>
@@ -360,26 +360,26 @@ export default function TimeTrackingPage() {
 
             {/* Summary stats below charts */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-                <h4 className="text-sm text-slate-400 mb-2">Average Per Day</h4>
-                <p className="text-2xl font-bold text-white">{formatDuration(stats.avgPerDay)}</p>
-                <p className="text-xs text-slate-500 mt-1">across {stats.uniqueDays} working days</p>
+              <div className="bg-muted rounded-xl border border-border p-6">
+                <h4 className="text-sm text-muted-foreground mb-2">Average Per Day</h4>
+                <p className="text-2xl font-bold text-foreground">{formatDuration(stats.avgPerDay)}</p>
+                <p className="text-xs text-muted-foreground mt-1">across {stats.uniqueDays} working days</p>
               </div>
-              <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-                <h4 className="text-sm text-slate-400 mb-2">Most Time On</h4>
+              <div className="bg-muted rounded-xl border border-border p-6">
+                <h4 className="text-sm text-muted-foreground mb-2">Most Time On</h4>
                 {chartData.byProject[0] ? (
                   <>
-                    <p className="text-2xl font-bold text-white truncate">{chartData.byProject[0].name}</p>
-                    <p className="text-xs text-slate-500 mt-1">{formatDuration(chartData.byProject[0].value)}</p>
+                    <p className="text-2xl font-bold text-foreground truncate">{chartData.byProject[0].name}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{formatDuration(chartData.byProject[0].value)}</p>
                   </>
                 ) : (
-                  <p className="text-slate-500">No data</p>
+                  <p className="text-muted-foreground">No data</p>
                 )}
               </div>
-              <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-                <h4 className="text-sm text-slate-400 mb-2">Projects Worked On</h4>
-                <p className="text-2xl font-bold text-white">{chartData.byProject.length}</p>
-                <p className="text-xs text-slate-500 mt-1">in selected period</p>
+              <div className="bg-muted rounded-xl border border-border p-6">
+                <h4 className="text-sm text-muted-foreground mb-2">Projects Worked On</h4>
+                <p className="text-2xl font-bold text-foreground">{chartData.byProject.length}</p>
+                <p className="text-xs text-muted-foreground mt-1">in selected period</p>
               </div>
             </div>
           </div>

@@ -405,10 +405,10 @@ export default function DocsPage() {
           <div className="w-16 h-16 bg-gradient-to-br from-primary-500/20 to-purple-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <FileText className="h-8 w-8 text-primary-400" />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">
+          <h1 className="text-2xl font-bold text-foreground mb-2">
             Documentation
           </h1>
-          <p className="text-slate-400">
+          <p className="text-muted-foreground">
             Create, organize, and auto-generate documentation from your code.
           </p>
         </div>
@@ -420,15 +420,15 @@ export default function DocsPage() {
               key={action.label}
               onClick={action.onClick}
               disabled={isCreating}
-              className="group flex flex-col items-start p-4 bg-slate-900/50 border border-slate-800 rounded-xl hover:bg-slate-800/50 hover:border-slate-700 transition text-left disabled:opacity-50"
+              className="group flex flex-col items-start p-4 bg-background/50 border border-border rounded-xl hover:bg-muted/50 hover:border-border transition text-left disabled:opacity-50"
             >
               <div className={`p-2.5 bg-gradient-to-br ${action.color} rounded-lg mb-3`}>
-                <action.icon className="h-5 w-5 text-white" />
+                <action.icon className="h-5 w-5 text-foreground" />
               </div>
-              <span className="text-white font-medium text-sm mb-1">
+              <span className="text-foreground font-medium text-sm mb-1">
                 {action.label}
               </span>
-              <span className="text-slate-500 text-xs">
+              <span className="text-muted-foreground text-xs">
                 {action.description}
               </span>
             </button>
@@ -438,7 +438,7 @@ export default function DocsPage() {
         {/* Templates Section */}
         {!templatesLoading && templates && templates.length > 0 && (
           <div className="text-left">
-            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
               Templates
             </h2>
             <div className="space-y-2">
@@ -447,20 +447,20 @@ export default function DocsPage() {
                   key={template.id}
                   onClick={() => handleCreateFromTemplate(template.id)}
                   disabled={isCreating}
-                  className="w-full flex items-center gap-3 p-3 bg-slate-900/30 border border-slate-800/50 rounded-lg hover:bg-slate-800/30 hover:border-slate-700 transition disabled:opacity-50"
+                  className="w-full flex items-center gap-3 p-3 bg-background/30 border border-border/50 rounded-lg hover:bg-muted/30 hover:border-border transition disabled:opacity-50"
                 >
                   <span className="text-xl">{template.icon || "📄"}</span>
                   <div className="flex-1 text-left">
-                    <span className="text-white text-sm font-medium">
+                    <span className="text-foreground text-sm font-medium">
                       {template.name}
                     </span>
                     {template.description && (
-                      <p className="text-slate-500 text-xs truncate">
+                      <p className="text-muted-foreground text-xs truncate">
                         {template.description}
                       </p>
                     )}
                   </div>
-                  <span className="text-xs text-slate-600 bg-slate-800 px-2 py-0.5 rounded">
+                  <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
                     {template.category}
                   </span>
                 </button>
@@ -470,8 +470,8 @@ export default function DocsPage() {
         )}
 
         {/* Help Text */}
-        <div className="mt-8 pt-6 border-t border-slate-800">
-          <p className="text-slate-500 text-sm">
+        <div className="mt-8 pt-6 border-t border-border">
+          <p className="text-muted-foreground text-sm">
             Select a document from the sidebar or create a new one to get started.
           </p>
         </div>
@@ -480,25 +480,25 @@ export default function DocsPage() {
       {/* Generate from Code Modal */}
       {showGenerateModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="bg-background border border-border rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-border">
               <div className="flex items-center gap-3">
                 {sourceMode === "repo" && repoStep === "browse" ? (
                   <button
                     onClick={handleBackToRepos}
-                    className="p-2 hover:bg-slate-800 rounded-lg transition"
+                    className="p-2 hover:bg-muted rounded-lg transition"
                   >
-                    <ArrowLeft className="h-5 w-5 text-slate-400" />
+                    <ArrowLeft className="h-5 w-5 text-muted-foreground" />
                   </button>
                 ) : (
                   <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg">
-                    <Sparkles className="h-5 w-5 text-white" />
+                    <Sparkles className="h-5 w-5 text-foreground" />
                   </div>
                 )}
                 <div>
-                  <h2 className="text-lg font-semibold text-white">Generate Documentation</h2>
-                  <p className="text-sm text-slate-400">
+                  <h2 className="text-lg font-semibold text-foreground">Generate Documentation</h2>
+                  <p className="text-sm text-muted-foreground">
                     {sourceMode === "paste"
                       ? "Paste code or select from repository"
                       : repoStep === "select"
@@ -509,14 +509,14 @@ export default function DocsPage() {
               </div>
               <button
                 onClick={resetModal}
-                className="p-2 hover:bg-slate-800 rounded-lg transition"
+                className="p-2 hover:bg-muted rounded-lg transition"
               >
-                <X className="h-5 w-5 text-slate-400" />
+                <X className="h-5 w-5 text-muted-foreground" />
               </button>
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-slate-800">
+            <div className="flex border-b border-border">
               <button
                 onClick={() => {
                   setSourceMode("paste");
@@ -526,8 +526,8 @@ export default function DocsPage() {
                 }}
                 className={`flex-1 px-4 py-3 text-sm font-medium transition ${
                   sourceMode === "paste"
-                    ? "text-primary-400 border-b-2 border-primary-500 bg-slate-800/50"
-                    : "text-slate-400 hover:text-white"
+                    ? "text-primary-400 border-b-2 border-primary-500 bg-muted/50"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Code2 className="h-4 w-4 inline-block mr-2" />
@@ -537,8 +537,8 @@ export default function DocsPage() {
                 onClick={() => setSourceMode("repo")}
                 className={`flex-1 px-4 py-3 text-sm font-medium transition ${
                   sourceMode === "repo"
-                    ? "text-primary-400 border-b-2 border-primary-500 bg-slate-800/50"
-                    : "text-slate-400 hover:text-white"
+                    ? "text-primary-400 border-b-2 border-primary-500 bg-muted/50"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <FolderGit2 className="h-4 w-4 inline-block mr-2" />
@@ -554,13 +554,13 @@ export default function DocsPage() {
                   {/* Options Row */}
                   <div className="flex gap-4">
                     <div className="flex-1">
-                      <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                      <label className="block text-sm font-medium text-foreground mb-1.5">
                         Documentation Type
                       </label>
                       <select
                         value={docType}
                         onChange={(e) => setDocType(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-500"
+                        className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-primary-500"
                       >
                         <option value="function_docs">Function Documentation</option>
                         <option value="api_docs">API Documentation</option>
@@ -569,13 +569,13 @@ export default function DocsPage() {
                       </select>
                     </div>
                     <div className="flex-1">
-                      <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                      <label className="block text-sm font-medium text-foreground mb-1.5">
                         Language
                       </label>
                       <select
                         value={codeLanguage}
                         onChange={(e) => setCodeLanguage(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-500"
+                        className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-primary-500"
                       >
                         <option value="typescript">TypeScript</option>
                         <option value="javascript">JavaScript</option>
@@ -591,14 +591,14 @@ export default function DocsPage() {
 
                   {/* Code Input */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                    <label className="block text-sm font-medium text-foreground mb-1.5">
                       Source Code
                     </label>
                     <textarea
                       value={codeInput}
                       onChange={(e) => setCodeInput(e.target.value)}
                       placeholder="Paste your code here..."
-                      className="w-full h-64 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm font-mono focus:outline-none focus:border-primary-500 resize-none"
+                      className="w-full h-64 px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm font-mono focus:outline-none focus:border-primary-500 resize-none"
                     />
                   </div>
                 </div>
@@ -611,9 +611,9 @@ export default function DocsPage() {
                     </div>
                   ) : !repositories || repositories.length === 0 ? (
                     <div className="text-center py-12">
-                      <FolderGit2 className="h-12 w-12 text-slate-600 mx-auto mb-3" />
-                      <p className="text-slate-400">No repositories connected</p>
-                      <p className="text-slate-500 text-sm mt-1">
+                      <FolderGit2 className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                      <p className="text-muted-foreground">No repositories connected</p>
+                      <p className="text-muted-foreground text-sm mt-1">
                         Connect repositories in Settings to use this feature
                       </p>
                     </div>
@@ -623,23 +623,23 @@ export default function DocsPage() {
                         <button
                           key={repo.id}
                           onClick={() => handleSelectRepo(repo)}
-                          className="w-full flex items-center gap-3 p-3 bg-slate-800/50 border border-slate-700/50 rounded-lg hover:bg-slate-800 hover:border-slate-600 transition text-left"
+                          className="w-full flex items-center gap-3 p-3 bg-muted/50 border border-border/50 rounded-lg hover:bg-muted hover:border-border transition text-left"
                         >
-                          <FolderGit2 className="h-5 w-5 text-slate-400 shrink-0" />
+                          <FolderGit2 className="h-5 w-5 text-muted-foreground shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <div className="text-white font-medium truncate">
+                            <div className="text-foreground font-medium truncate">
                               {repo.full_name}
                             </div>
-                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
                               {repo.is_private && <span>Private</span>}
                               {repo.language && (
-                                <span className="px-1.5 py-0.5 bg-slate-700 rounded">
+                                <span className="px-1.5 py-0.5 bg-accent rounded">
                                   {repo.language}
                                 </span>
                               )}
                             </div>
                           </div>
-                          <ChevronRight className="h-4 w-4 text-slate-500" />
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
                         </button>
                       ))}
                     </div>
@@ -649,22 +649,22 @@ export default function DocsPage() {
                 /* Directory Browser */
                 <div className="flex flex-col h-[400px]">
                   {/* Breadcrumb & Branch Selector */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-4 py-2 border-b border-slate-800 bg-slate-800/30">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-4 py-2 border-b border-border bg-muted/30">
                     <div className="flex items-center gap-1 text-sm overflow-x-auto">
                       <button
                         onClick={() => setCurrentPath("")}
-                        className="text-slate-300 hover:text-white shrink-0"
+                        className="text-foreground hover:text-foreground shrink-0"
                       >
                         {selectedRepo?.name}
                       </button>
                       {pathParts.map((part, i) => (
                         <span key={i} className="flex items-center gap-1 shrink-0">
-                          <span className="text-slate-600">/</span>
+                          <span className="text-muted-foreground">/</span>
                           <button
                             onClick={() =>
                               setCurrentPath(pathParts.slice(0, i + 1).join("/"))
                             }
-                            className="text-slate-300 hover:text-white"
+                            className="text-foreground hover:text-foreground"
                           >
                             {part}
                           </button>
@@ -672,11 +672,11 @@ export default function DocsPage() {
                       ))}
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-4">
-                      <GitBranch className="h-4 w-4 text-slate-500" />
+                      <GitBranch className="h-4 w-4 text-muted-foreground" />
                       <select
                         value={selectedBranch}
                         onChange={(e) => setSelectedBranch(e.target.value)}
-                        className="px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white text-xs focus:outline-none"
+                        className="px-2 py-1 bg-accent border border-border rounded text-foreground text-xs focus:outline-none"
                       >
                         {branches?.map((branch) => (
                           <option key={branch.name} value={branch.name}>
@@ -688,11 +688,11 @@ export default function DocsPage() {
                   </div>
 
                   {/* Doc Type Selector */}
-                  <div className="px-4 py-2 border-b border-slate-800 space-y-3">
+                  <div className="px-4 py-2 border-b border-border space-y-3">
                     <select
                       value={docType}
                       onChange={(e) => setDocType(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-500"
+                      className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-primary-500"
                     >
                       <option value="module_docs">Module Documentation</option>
                       <option value="api_docs">API Documentation</option>
@@ -700,14 +700,14 @@ export default function DocsPage() {
                       <option value="function_docs">Function Documentation</option>
                     </select>
                     <div>
-                      <label className="block text-xs font-medium text-slate-400 mb-1">
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">
                         Custom Instructions (optional)
                       </label>
                       <textarea
                         value={customPrompt}
                         onChange={(e) => setCustomPrompt(e.target.value)}
                         placeholder="E.g., Focus on API usage examples, include error handling patterns, write for beginners..."
-                        className="w-full h-16 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-500 resize-none"
+                        className="w-full h-16 px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-primary-500 resize-none"
                       />
                     </div>
                   </div>
@@ -719,7 +719,7 @@ export default function DocsPage() {
                         <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
                       </div>
                     ) : sortedContents.length === 0 ? (
-                      <div className="text-center py-12 text-slate-500">
+                      <div className="text-center py-12 text-muted-foreground">
                         This directory is empty
                       </div>
                     ) : (
@@ -730,19 +730,19 @@ export default function DocsPage() {
                             onClick={() => handleNavigateDir(item)}
                             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition text-left ${
                               item.type === "dir"
-                                ? "text-slate-300 hover:bg-slate-800"
-                                : "text-slate-500 cursor-default"
+                                ? "text-foreground hover:bg-muted"
+                                : "text-muted-foreground cursor-default"
                             }`}
                             disabled={item.type !== "dir"}
                           >
                             {item.type === "dir" ? (
                               <Folder className="h-4 w-4 text-blue-400" />
                             ) : (
-                              <File className="h-4 w-4 text-slate-500" />
+                              <File className="h-4 w-4 text-muted-foreground" />
                             )}
                             <span className="flex-1 truncate">{item.name}</span>
                             {item.type === "dir" && (
-                              <ChevronRight className="h-4 w-4 text-slate-600" />
+                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
                             )}
                           </button>
                         ))}
@@ -754,16 +754,16 @@ export default function DocsPage() {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-t border-slate-800">
-              <div className="text-sm text-slate-500">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-t border-border">
+              <div className="text-sm text-muted-foreground">
                 {sourceMode === "repo" && repoStep === "browse" && (
-                  <>Generating docs for: <span className="text-slate-300">{currentPath || "root"}</span></>
+                  <>Generating docs for: <span className="text-foreground">{currentPath || "root"}</span></>
                 )}
               </div>
               <div className="flex items-center gap-3">
                 <button
                   onClick={resetModal}
-                  className="px-4 py-2 text-slate-300 hover:text-white transition"
+                  className="px-4 py-2 text-foreground hover:text-foreground transition"
                 >
                   Cancel
                 </button>

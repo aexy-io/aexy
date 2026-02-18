@@ -51,9 +51,9 @@ const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<
   if (active && payload && payload.length) {
     const item = payload[0];
     return (
-      <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 shadow-lg">
-        <p className="text-sm font-medium text-white">{item.name}</p>
-        <p className="text-sm text-slate-400">{formatDuration(item.value)}</p>
+      <div className="bg-muted border border-border rounded-lg p-3 shadow-lg">
+        <p className="text-sm font-medium text-foreground">{item.name}</p>
+        <p className="text-sm text-muted-foreground">{formatDuration(item.value)}</p>
       </div>
     );
   }
@@ -79,9 +79,9 @@ export function TimeBreakdownChart({
 
   if (data.length === 0) {
     return (
-      <div className={`bg-slate-800 rounded-xl border border-slate-700 p-6 ${className}`}>
-        {title && <h3 className="text-lg font-semibold text-white mb-4">{title}</h3>}
-        <div className="flex items-center justify-center h-48 text-slate-500">
+      <div className={`bg-muted rounded-xl border border-border p-6 ${className}`}>
+        {title && <h3 className="text-lg font-semibold text-foreground mb-4">{title}</h3>}
+        <div className="flex items-center justify-center h-48 text-muted-foreground">
           No time data available
         </div>
       </div>
@@ -89,11 +89,11 @@ export function TimeBreakdownChart({
   }
 
   return (
-    <div className={`bg-slate-800 rounded-xl border border-slate-700 p-6 ${className}`}>
+    <div className={`bg-muted rounded-xl border border-border p-6 ${className}`}>
       {title && (
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-white">{title}</h3>
-          <span className="text-sm text-slate-400">Total: {formatDuration(total)}</span>
+          <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+          <span className="text-sm text-muted-foreground">Total: {formatDuration(total)}</span>
         </div>
       )}
 
@@ -120,7 +120,7 @@ export function TimeBreakdownChart({
             {showLegend && (
               <Legend
                 verticalAlign="bottom"
-                formatter={(value) => <span className="text-slate-300 text-sm">{value}</span>}
+                formatter={(value) => <span className="text-foreground text-sm">{value}</span>}
               />
             )}
           </PieChart>

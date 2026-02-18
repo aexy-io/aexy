@@ -13,10 +13,10 @@ interface PremiumCardProps extends HTMLMotionProps<"div"> {
 const PremiumCard = React.forwardRef<HTMLDivElement, PremiumCardProps>(
   ({ className, variant = "default", glow = false, glowColor = "primary", children, ...props }, ref) => {
     const variants = {
-      default: "bg-slate-800/80 border-slate-700/50",
-      glass: "bg-slate-800/40 backdrop-blur-xl border-slate-600/30",
-      elevated: "bg-slate-800 border-slate-700 shadow-xl shadow-black/20",
-      interactive: "bg-slate-800/80 border-slate-700/50 hover:border-slate-600 hover:bg-slate-800/90 cursor-pointer",
+      default: "bg-muted/80 border-border/50",
+      glass: "bg-muted/40 backdrop-blur-xl border-border/30",
+      elevated: "bg-muted border-border shadow-xl shadow-black/20",
+      interactive: "bg-muted/80 border-border/50 hover:border-border hover:bg-muted/90 cursor-pointer",
     };
 
     const glowColors: Record<string, string> = {
@@ -63,7 +63,7 @@ const PremiumCardHeader = React.forwardRef<HTMLDivElement, CardHeaderProps>(
       className={cn(
         "flex flex-col space-y-1.5 p-4",
         gradient && "border-b border-gradient-to-r from-slate-700 via-slate-600 to-slate-700",
-        !gradient && "border-b border-slate-700/50",
+        !gradient && "border-b border-border/50",
         className
       )}
       {...props}
@@ -79,7 +79,7 @@ const PremiumCardTitle = React.forwardRef<
   <h3
     ref={ref}
     className={cn(
-      "text-lg font-semibold leading-none tracking-tight text-white",
+      "text-lg font-semibold leading-none tracking-tight text-foreground",
       className
     )}
     {...props}
@@ -93,7 +93,7 @@ const PremiumCardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn("text-sm text-slate-400", className)}
+    className={cn("text-sm text-muted-foreground", className)}
     {...props}
   />
 ));
@@ -160,7 +160,7 @@ const Skeleton = React.forwardRef<HTMLDivElement, SkeletonProps>(
       <div
         ref={ref}
         className={cn(
-          "relative overflow-hidden bg-slate-700/50",
+          "relative overflow-hidden bg-accent/50",
           variants[variant],
           className
         )}
@@ -184,12 +184,12 @@ interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
   ({ className, variant = "default", size = "sm", pulse = false, children, ...props }, ref) => {
     const variants = {
-      default: "bg-slate-700 text-slate-300",
-      success: "bg-green-900/50 text-green-400 border-green-800/50",
-      warning: "bg-amber-900/50 text-amber-400 border-amber-800/50",
-      error: "bg-red-900/50 text-red-400 border-red-800/50",
-      info: "bg-blue-900/50 text-blue-400 border-blue-800/50",
-      outline: "bg-transparent border-slate-600 text-slate-400",
+      default: "bg-accent text-foreground",
+      success: "bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-400 border-green-200 dark:border-green-800/50",
+      warning: "bg-amber-50 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400 border-amber-200 dark:border-amber-800/50",
+      error: "bg-red-50 text-red-600 dark:bg-red-900/50 dark:text-red-400 border-red-200 dark:border-red-800/50",
+      info: "bg-blue-50 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400 border-blue-200 dark:border-blue-800/50",
+      outline: "bg-transparent border-border text-muted-foreground",
     };
 
     const sizes = {
@@ -225,9 +225,9 @@ interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> 
 const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
   ({ className, variant = "default", size = "md", ...props }, ref) => {
     const variants = {
-      default: "bg-slate-700 hover:bg-slate-600 text-white",
-      ghost: "hover:bg-slate-700/50 text-slate-400 hover:text-white",
-      outline: "border border-slate-600 hover:bg-slate-700/50 text-slate-400 hover:text-white",
+      default: "bg-accent hover:bg-muted text-foreground",
+      ghost: "hover:bg-accent/50 text-muted-foreground hover:text-foreground",
+      outline: "border border-border hover:bg-accent/50 text-muted-foreground hover:text-foreground",
     };
 
     const sizes = {

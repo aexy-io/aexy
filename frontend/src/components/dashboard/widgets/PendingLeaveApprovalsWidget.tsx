@@ -16,11 +16,11 @@ export function PendingLeaveApprovalsWidget() {
 
   if (isLoading) {
     return (
-      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 animate-pulse">
-        <div className="h-6 w-52 bg-slate-800 rounded mb-4" />
+      <div className="bg-background/50 border border-border rounded-xl p-6 animate-pulse">
+        <div className="h-6 w-52 bg-muted rounded mb-4" />
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 bg-slate-800 rounded-lg" />
+            <div key={i} className="h-16 bg-muted rounded-lg" />
           ))}
         </div>
       </div>
@@ -30,14 +30,14 @@ export function PendingLeaveApprovalsWidget() {
   const items = approvals?.slice(0, 5) || [];
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+    <div className="bg-background/50 border border-border rounded-xl overflow-hidden">
+      <div className="px-6 py-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-amber-500/10 rounded-lg">
             <CheckSquare className="h-5 w-5 text-amber-400" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white">
+            <h3 className="text-lg font-semibold text-foreground">
               Leave Approvals
             </h3>
             {approvals && approvals.length > 0 && (
@@ -57,7 +57,7 @@ export function PendingLeaveApprovalsWidget() {
 
       <div className="p-4 space-y-3">
         {items.length === 0 ? (
-          <p className="text-slate-500 text-sm text-center py-4">
+          <p className="text-muted-foreground text-sm text-center py-4">
             No pending approvals
           </p>
         ) : (
@@ -68,7 +68,7 @@ export function PendingLeaveApprovalsWidget() {
             return (
               <div
                 key={request.id}
-                className="p-3 bg-slate-800/50 rounded-lg border border-slate-700/50"
+                className="p-3 bg-muted/50 rounded-lg border border-border/50"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
@@ -80,15 +80,15 @@ export function PendingLeaveApprovalsWidget() {
                           className="w-6 h-6 rounded-full"
                         />
                       ) : (
-                        <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-xs text-slate-400">
+                        <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center text-xs text-muted-foreground">
                           {request.developer?.name?.[0] || "?"}
                         </div>
                       )}
-                      <span className="text-sm font-medium text-white truncate">
+                      <span className="text-sm font-medium text-foreground truncate">
                         {request.developer?.name || "Unknown"}
                       </span>
                     </div>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
+                    <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                       <div
                         className="w-2 h-2 rounded-full flex-shrink-0"
                         style={{
@@ -97,7 +97,7 @@ export function PendingLeaveApprovalsWidget() {
                         }}
                       />
                       <span>{request.leave_type?.name || "Leave"}</span>
-                      <span className="text-slate-600">|</span>
+                      <span className="text-muted-foreground">|</span>
                       <span>
                         {new Date(request.start_date).toLocaleDateString(
                           "en-US",
@@ -109,7 +109,7 @@ export function PendingLeaveApprovalsWidget() {
                             { month: "short", day: "numeric" }
                           )}`}
                       </span>
-                      <span className="text-slate-600">|</span>
+                      <span className="text-muted-foreground">|</span>
                       <span>{request.total_days}d</span>
                     </div>
                   </div>
@@ -119,7 +119,7 @@ export function PendingLeaveApprovalsWidget() {
                     <button
                       onClick={() => approve.mutate(request.id)}
                       disabled={isApproving || isRejecting}
-                      className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition disabled:opacity-50"
+                      className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 hover:bg-emerald-500/20 transition disabled:opacity-50"
                       title="Approve"
                     >
                       {isApproving ? (
@@ -133,7 +133,7 @@ export function PendingLeaveApprovalsWidget() {
                         reject.mutate({ requestId: request.id })
                       }
                       disabled={isApproving || isRejecting}
-                      className="p-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition disabled:opacity-50"
+                      className="p-1.5 rounded-lg bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 hover:bg-red-500/20 transition disabled:opacity-50"
                       title="Reject"
                     >
                       {isRejecting ? (

@@ -94,13 +94,13 @@ export default function DocsLayoutClient({
 
   if (!mounted || isLoading || currentWorkspaceLoading || workspacesLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
             <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
           </div>
-          <p className="text-slate-400 text-sm">Loading...</p>
+          <p className="text-muted-foreground text-sm">Loading...</p>
         </div>
       </div>
     );
@@ -113,16 +113,16 @@ export default function DocsLayoutClient({
   // Show workspace creation prompt if no workspaces exist
   if (workspaces.length === 0) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col">
+      <div className="min-h-screen bg-background flex flex-col">
 <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-md mx-auto px-4">
             <div className="w-16 h-16 bg-gradient-to-br from-primary-500/20 to-purple-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
               <Building2 className="h-8 w-8 text-primary-400" />
             </div>
-            <h2 className="text-2xl font-bold text-white mb-3">
+            <h2 className="text-2xl font-bold text-foreground mb-3">
               Create a Workspace
             </h2>
-            <p className="text-slate-400 mb-6">
+            <p className="text-muted-foreground mb-6">
               You need a workspace to start creating documentation. Workspaces help you organize documents and collaborate with your team.
             </p>
             <button
@@ -149,7 +149,7 @@ export default function DocsLayoutClient({
   }
 
   return (
-    <div className="h-screen bg-slate-950 flex flex-col overflow-hidden">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Scroll-aware Header */}
       <div
         className={`flex-shrink-0 z-30 transition-all duration-300 ${

@@ -110,15 +110,15 @@ export function SearchModal({ workspaceId, isOpen, onClose }: SearchModalProps) 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] pointer-events-none">
         <div
-          className="w-full max-w-xl bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden pointer-events-auto"
+          className="w-full max-w-xl bg-background border border-border rounded-xl shadow-2xl overflow-hidden pointer-events-auto"
           onKeyDown={handleKeyDown}
         >
           {/* Search Input */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-800">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
             {isSearching ? (
-              <Loader2 className="h-5 w-5 text-slate-500 animate-spin" />
+              <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
             ) : (
-              <Search className="h-5 w-5 text-slate-500" />
+              <Search className="h-5 w-5 text-muted-foreground" />
             )}
             <input
               ref={inputRef}
@@ -126,9 +126,9 @@ export function SearchModal({ workspaceId, isOpen, onClose }: SearchModalProps) 
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search documents..."
-              className="flex-1 bg-transparent text-white text-lg placeholder-slate-500 outline-none"
+              className="flex-1 bg-transparent text-foreground text-lg placeholder-muted-foreground outline-none"
             />
-            <kbd className="px-2 py-1 text-xs font-mono text-slate-500 bg-slate-800 rounded border border-slate-700">
+            <kbd className="px-2 py-1 text-xs font-mono text-muted-foreground bg-muted rounded border border-border">
               ESC
             </kbd>
           </div>
@@ -137,14 +137,14 @@ export function SearchModal({ workspaceId, isOpen, onClose }: SearchModalProps) 
           <div className="max-h-80 overflow-y-auto">
             {query.trim() === "" ? (
               <div className="px-4 py-8 text-center">
-                <Search className="h-10 w-10 text-slate-700 mx-auto mb-3" />
-                <p className="text-slate-400 text-sm">
+                <Search className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm">
                   Start typing to search documents
                 </p>
               </div>
             ) : results.length === 0 && !isSearching ? (
               <div className="px-4 py-8 text-center">
-                <p className="text-slate-400 text-sm">
+                <p className="text-muted-foreground text-sm">
                   No documents found for "{query}"
                 </p>
               </div>
@@ -159,27 +159,27 @@ export function SearchModal({ workspaceId, isOpen, onClose }: SearchModalProps) 
                     }}
                     className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
                       index === selectedIndex
-                        ? "bg-primary-500/20 text-white"
-                        : "text-slate-300 hover:bg-slate-800"
+                        ? "bg-primary-500/20 text-foreground"
+                        : "text-foreground hover:bg-muted"
                     }`}
                   >
-                    <div className="flex-shrink-0 w-8 h-8 rounded bg-slate-800 flex items-center justify-center">
+                    <div className="flex-shrink-0 w-8 h-8 rounded bg-muted flex items-center justify-center">
                       {doc.icon ? (
                         <span className="text-base">{doc.icon}</span>
                       ) : (
-                        <File className="h-4 w-4 text-slate-500" />
+                        <File className="h-4 w-4 text-muted-foreground" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">
                         {doc.title || "Untitled"}
                       </p>
-                      <p className="text-xs text-slate-500 truncate">
+                      <p className="text-xs text-muted-foreground truncate">
                         {new Date(doc.updated_at).toLocaleDateString()}
                       </p>
                     </div>
                     {index === selectedIndex && (
-                      <ArrowRight className="h-4 w-4 text-slate-500" />
+                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
                     )}
                   </button>
                 ))}
@@ -188,17 +188,17 @@ export function SearchModal({ workspaceId, isOpen, onClose }: SearchModalProps) 
           </div>
 
           {/* Footer */}
-          <div className="px-4 py-2 border-t border-slate-800 flex items-center gap-4 text-xs text-slate-500">
+          <div className="px-4 py-2 border-t border-border flex items-center gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 bg-slate-800 rounded text-[10px]">↑↓</kbd>
+              <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">↑↓</kbd>
               Navigate
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 bg-slate-800 rounded text-[10px]">↵</kbd>
+              <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">↵</kbd>
               Open
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 bg-slate-800 rounded text-[10px]">ESC</kbd>
+              <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">ESC</kbd>
               Close
             </span>
           </div>

@@ -61,18 +61,18 @@ export function TeamTrackingDashboard({
         {/* Stats skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-slate-800 rounded-xl p-6 border border-slate-700 animate-pulse">
-              <div className="h-4 bg-slate-700 rounded w-1/2 mb-3" />
-              <div className="h-8 bg-slate-700 rounded w-1/3" />
+            <div key={i} className="bg-muted rounded-xl p-6 border border-border animate-pulse">
+              <div className="h-4 bg-accent rounded w-1/2 mb-3" />
+              <div className="h-8 bg-accent rounded w-1/3" />
             </div>
           ))}
         </div>
         {/* Content skeleton */}
-        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 animate-pulse">
-          <div className="h-6 bg-slate-700 rounded w-1/4 mb-4" />
+        <div className="bg-muted rounded-xl p-6 border border-border animate-pulse">
+          <div className="h-6 bg-accent rounded w-1/4 mb-4" />
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-20 bg-slate-700 rounded" />
+              <div key={i} className="h-20 bg-accent rounded" />
             ))}
           </div>
         </div>
@@ -90,17 +90,17 @@ export function TeamTrackingDashboard({
     <div className="space-y-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+        <div className="bg-muted rounded-xl p-6 border border-border">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-blue-900/30 rounded-lg">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
               <MessageSquare className="h-5 w-5 text-blue-400" />
             </div>
-            <span className="text-slate-400">Standups Today</span>
+            <span className="text-muted-foreground">Standups Today</span>
           </div>
-          <p className="text-3xl font-semibold text-white">
+          <p className="text-3xl font-semibold text-foreground">
             {membersWithStandups}/{totalMembers}
           </p>
-          <div className="mt-2 h-2 bg-slate-700 rounded-full overflow-hidden">
+          <div className="mt-2 h-2 bg-accent rounded-full overflow-hidden">
             <div
               className="h-full bg-blue-500 rounded-full transition-all"
               style={{ width: `${standupRate}%` }}
@@ -108,67 +108,67 @@ export function TeamTrackingDashboard({
           </div>
         </div>
 
-        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+        <div className="bg-muted rounded-xl p-6 border border-border">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-green-900/30 rounded-lg">
+            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
               <Clock className="h-5 w-5 text-green-400" />
             </div>
-            <span className="text-slate-400">Team Time This Week</span>
+            <span className="text-muted-foreground">Team Time This Week</span>
           </div>
-          <p className="text-3xl font-semibold text-white">
+          <p className="text-3xl font-semibold text-foreground">
             {formatDuration(dashboard?.total_time_logged || 0)}
           </p>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Avg: {formatDuration(Math.round((dashboard?.total_time_logged || 0) / (totalMembers || 1)))} per member
           </p>
         </div>
 
-        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+        <div className="bg-muted rounded-xl p-6 border border-border">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-red-900/30 rounded-lg">
+            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
               <AlertTriangle className="h-5 w-5 text-red-400" />
             </div>
-            <span className="text-slate-400">Active Blockers</span>
+            <span className="text-muted-foreground">Active Blockers</span>
           </div>
-          <p className="text-3xl font-semibold text-white">
+          <p className="text-3xl font-semibold text-foreground">
             {dashboard?.active_blockers?.length || 0}
           </p>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             {dashboard?.escalated_blockers?.length || 0} escalated
           </p>
         </div>
 
-        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+        <div className="bg-muted rounded-xl p-6 border border-border">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-purple-900/30 rounded-lg">
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
               <TrendingUp className="h-5 w-5 text-purple-400" />
             </div>
-            <span className="text-slate-400">Sprint Progress</span>
+            <span className="text-muted-foreground">Sprint Progress</span>
           </div>
-          <p className="text-3xl font-semibold text-white">
+          <p className="text-3xl font-semibold text-foreground">
             {dashboard?.sprint_completion_rate || 0}%
           </p>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             {dashboard?.completed_tasks || 0}/{dashboard?.total_tasks || 0} tasks
           </p>
         </div>
       </div>
 
       {/* Today's Standups */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+      <div className="bg-muted rounded-xl border border-border overflow-hidden">
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <Calendar className="h-5 w-5 text-blue-400" />
             Today's Standups
           </h3>
-          <div className="text-sm text-slate-400">
+          <div className="text-sm text-muted-foreground">
             {membersWithStandups} of {totalMembers} submitted
           </div>
         </div>
 
-        <div className="divide-y divide-slate-700">
+        <div className="divide-y divide-border">
           {dashboard?.member_summaries?.map((member) => (
-            <div key={member.developer_id} className="hover:bg-slate-800/50 transition">
+            <div key={member.developer_id} className="hover:bg-muted/50 transition">
               <button
                 onClick={() => member.todays_standup && toggleMember(member.developer_id)}
                 className="w-full px-6 py-4 flex items-center justify-between"
@@ -182,13 +182,13 @@ export function TeamTrackingDashboard({
                       className="w-10 h-10 rounded-full"
                     />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center">
-                      <User className="h-5 w-5 text-slate-400" />
+                    <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
+                      <User className="h-5 w-5 text-muted-foreground" />
                     </div>
                   )}
                   <div className="text-left">
-                    <p className="font-medium text-white">{member.name || member.email}</p>
-                    <div className="flex items-center gap-3 text-xs text-slate-400">
+                    <p className="font-medium text-foreground">{member.name || member.email}</p>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <span>Time: {formatDuration(member.time_logged_this_week || 0)}</span>
                       {(member.active_blockers_count || 0) > 0 && (
                         <span className="text-red-400">
@@ -205,13 +205,13 @@ export function TeamTrackingDashboard({
                       Submitted
                     </span>
                   ) : (
-                    <span className="text-sm text-slate-500">No standup</span>
+                    <span className="text-sm text-muted-foreground">No standup</span>
                   )}
                   {member.todays_standup && (
                     expandedMembers.has(member.developer_id) ? (
-                      <ChevronUp className="h-5 w-5 text-slate-400" />
+                      <ChevronUp className="h-5 w-5 text-muted-foreground" />
                     ) : (
-                      <ChevronDown className="h-5 w-5 text-slate-400" />
+                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
                     )
                   )}
                 </div>
@@ -231,7 +231,7 @@ export function TeamTrackingDashboard({
       {/* Blockers Board */}
       {(dashboard?.active_blockers?.length || 0) + (dashboard?.escalated_blockers?.length || 0) + (dashboard?.resolved_blockers?.length || 0) > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-red-400" />
             Team Blockers
           </h3>

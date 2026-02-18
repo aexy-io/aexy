@@ -21,12 +21,12 @@ import { useReviewCycles } from "@/hooks/useReviews";
 import { ReviewCycle } from "@/lib/api";
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
-  draft: { label: "Draft", color: "text-slate-400", bg: "bg-slate-500/10" },
-  active: { label: "Active", color: "text-green-400", bg: "bg-green-500/10" },
-  self_review: { label: "Self Review", color: "text-blue-400", bg: "bg-blue-500/10" },
-  peer_review: { label: "Peer Review", color: "text-purple-400", bg: "bg-purple-500/10" },
-  manager_review: { label: "Manager Review", color: "text-amber-400", bg: "bg-amber-500/10" },
-  completed: { label: "Completed", color: "text-emerald-400", bg: "bg-emerald-500/10" },
+  draft: { label: "Draft", color: "text-muted-foreground", bg: "bg-muted-foreground/10" },
+  active: { label: "Active", color: "text-green-600 dark:text-green-400", bg: "bg-green-500/10" },
+  self_review: { label: "Self Review", color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10" },
+  peer_review: { label: "Peer Review", color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10" },
+  manager_review: { label: "Manager Review", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10" },
+  completed: { label: "Completed", color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10" },
 };
 
 const cycleTypeLabels: Record<string, string> = {
@@ -41,7 +41,7 @@ function CycleRow({ cycle }: { cycle: ReviewCycle }) {
   const [showMenu, setShowMenu] = useState(false);
 
   return (
-    <tr className="border-b border-slate-800/50 hover:bg-slate-800/30 transition">
+    <tr className="border-b border-border/50 hover:bg-muted/30 transition">
       <td className="px-6 py-4">
         <Link href={`/reviews/cycles/${cycle.id}`} className="group">
           <div className="flex items-center gap-3">
@@ -49,10 +49,10 @@ function CycleRow({ cycle }: { cycle: ReviewCycle }) {
               <Calendar className="h-4 w-4 text-purple-400" />
             </div>
             <div>
-              <p className="text-white font-medium group-hover:text-purple-400 transition">
+              <p className="text-foreground font-medium group-hover:text-purple-400 transition">
                 {cycle.name}
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 {cycleTypeLabels[cycle.cycle_type] || cycle.cycle_type}
               </p>
             </div>
@@ -67,7 +67,7 @@ function CycleRow({ cycle }: { cycle: ReviewCycle }) {
           {status.label}
         </span>
       </td>
-      <td className="px-6 py-4 text-sm text-slate-400">
+      <td className="px-6 py-4 text-sm text-muted-foreground">
         {new Date(cycle.period_start).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
@@ -83,7 +83,7 @@ function CycleRow({ cycle }: { cycle: ReviewCycle }) {
       <td className="px-6 py-4">
         <div className="flex items-center gap-2">
           {cycle.self_review_deadline && (
-            <span className="text-xs text-slate-500" title="Self Review Deadline">
+            <span className="text-xs text-muted-foreground" title="Self Review Deadline">
               <Clock className="h-3 w-3 inline mr-1" />
               {new Date(cycle.self_review_deadline).toLocaleDateString("en-US", {
                 month: "short",
@@ -104,25 +104,25 @@ function CycleRow({ cycle }: { cycle: ReviewCycle }) {
           <div className="relative">
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
             >
               <MoreVertical className="h-4 w-4" />
             </button>
             {showMenu && (
-              <div className="absolute right-0 mt-1 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-10">
+              <div className="absolute right-0 mt-1 w-40 bg-muted border border-border rounded-lg shadow-xl z-10">
                 <Link
                   href={`/reviews/cycles/${cycle.id}`}
-                  className="block px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-700 transition"
+                  className="block px-4 py-2 text-sm text-foreground hover:text-foreground hover:bg-accent transition"
                 >
                   View Details
                 </Link>
                 {cycle.status === "draft" && (
-                  <button className="w-full text-left px-4 py-2 text-sm text-green-400 hover:bg-slate-700 transition">
+                  <button className="w-full text-left px-4 py-2 text-sm text-green-400 hover:bg-accent transition">
                     Activate Cycle
                   </button>
                 )}
                 {(cycle.status === "self_review" || cycle.status === "peer_review") && (
-                  <button className="w-full text-left px-4 py-2 text-sm text-amber-400 hover:bg-slate-700 transition">
+                  <button className="w-full text-left px-4 py-2 text-sm text-amber-400 hover:bg-accent transition">
                     Advance Phase
                   </button>
                 )}
@@ -144,13 +144,13 @@ export default function ReviewCyclesPage() {
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
             <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
           </div>
-          <p className="text-slate-400 text-sm">Loading review cycles...</p>
+          <p className="text-muted-foreground text-sm">Loading review cycles...</p>
         </div>
       </div>
     );
@@ -162,14 +162,14 @@ export default function ReviewCyclesPage() {
 
   if (!hasWorkspaces) {
     return (
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen bg-background">
 <main className="max-w-7xl mx-auto px-4 py-8">
           <div className="text-center py-16">
-            <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Calendar className="w-10 h-10 text-slate-500" />
+            <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <Calendar className="w-10 h-10 text-muted-foreground" />
             </div>
-            <h2 className="text-xl font-semibold text-white mb-2">No Workspace Selected</h2>
-            <p className="text-slate-400 mb-6">
+            <h2 className="text-xl font-semibold text-foreground mb-2">No Workspace Selected</h2>
+            <p className="text-muted-foreground mb-6">
               Review cycles are workspace-specific. Please create or select a workspace first.
             </p>
             <Link
@@ -196,12 +196,12 @@ export default function ReviewCyclesPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
 <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Back Link */}
         <Link
           href="/reviews"
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white mb-6 transition"
+          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Reviews
@@ -214,8 +214,8 @@ export default function ReviewCyclesPage() {
               <Calendar className="h-7 w-7 text-purple-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">Review Cycles</h1>
-              <p className="text-slate-400 text-sm">
+              <h1 className="text-2xl font-bold text-foreground">Review Cycles</h1>
+              <p className="text-muted-foreground text-sm">
                 Manage performance review cycles for your workspace
               </p>
             </div>
@@ -234,7 +234,7 @@ export default function ReviewCyclesPage() {
           <select
             value={statusFilter || ""}
             onChange={(e) => setStatusFilter(e.target.value || undefined)}
-            className="bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="bg-muted border border-border text-foreground rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
             {statusOptions.map((option) => (
               <option key={option.label} value={option.value || ""}>
@@ -242,13 +242,13 @@ export default function ReviewCyclesPage() {
               </option>
             ))}
           </select>
-          <span className="text-slate-500 text-sm">
+          <span className="text-muted-foreground text-sm">
             {cycles.length} cycle{cycles.length !== 1 ? "s" : ""}
           </span>
         </div>
 
         {/* Cycles Table */}
-        <div className="bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden">
+        <div className="bg-background/50 rounded-xl border border-border overflow-hidden">
           {isLoading ? (
             <div className="flex justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500"></div>
@@ -265,11 +265,11 @@ export default function ReviewCyclesPage() {
             </div>
           ) : cycles.length === 0 ? (
             <div className="text-center py-16">
-              <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Calendar className="w-10 h-10 text-slate-500" />
+              <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-10 h-10 text-muted-foreground" />
               </div>
-              <h3 className="text-xl font-medium text-white mb-2">No review cycles yet</h3>
-              <p className="text-slate-400 text-sm mb-6 max-w-md mx-auto">
+              <h3 className="text-xl font-medium text-foreground mb-2">No review cycles yet</h3>
+              <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
                 Create your first review cycle to start collecting 360° feedback from your team.
               </p>
               <Link
@@ -282,21 +282,21 @@ export default function ReviewCyclesPage() {
             </div>
           ) : (
             <table className="w-full">
-              <thead className="bg-slate-800/50">
+              <thead className="bg-muted/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Cycle
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Period
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Deadlines
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -312,30 +312,30 @@ export default function ReviewCyclesPage() {
 
         {/* Help Section */}
         <div className="mt-8 grid md:grid-cols-3 gap-4">
-          <div className="bg-slate-900/30 rounded-xl p-5 border border-slate-800/50">
+          <div className="bg-background/30 rounded-xl p-5 border border-border/50">
             <div className="p-2 bg-blue-500/10 rounded-lg w-fit mb-3">
               <Users className="h-5 w-5 text-blue-400" />
             </div>
-            <h4 className="text-white font-medium mb-2">Self Review Phase</h4>
-            <p className="text-slate-400 text-sm">
+            <h4 className="text-foreground font-medium mb-2">Self Review Phase</h4>
+            <p className="text-muted-foreground text-sm">
               Team members reflect on their achievements and areas for growth using structured prompts.
             </p>
           </div>
-          <div className="bg-slate-900/30 rounded-xl p-5 border border-slate-800/50">
+          <div className="bg-background/30 rounded-xl p-5 border border-border/50">
             <div className="p-2 bg-purple-500/10 rounded-lg w-fit mb-3">
               <Users className="h-5 w-5 text-purple-400" />
             </div>
-            <h4 className="text-white font-medium mb-2">Peer Review Phase</h4>
-            <p className="text-slate-400 text-sm">
+            <h4 className="text-foreground font-medium mb-2">Peer Review Phase</h4>
+            <p className="text-muted-foreground text-sm">
               Collect anonymous 360° feedback from colleagues using the COIN framework.
             </p>
           </div>
-          <div className="bg-slate-900/30 rounded-xl p-5 border border-slate-800/50">
+          <div className="bg-background/30 rounded-xl p-5 border border-border/50">
             <div className="p-2 bg-amber-500/10 rounded-lg w-fit mb-3">
               <CheckCircle className="h-5 w-5 text-amber-400" />
             </div>
-            <h4 className="text-white font-medium mb-2">Manager Review Phase</h4>
-            <p className="text-slate-400 text-sm">
+            <h4 className="text-foreground font-medium mb-2">Manager Review Phase</h4>
+            <p className="text-muted-foreground text-sm">
               Managers synthesize feedback and provide final ratings and development recommendations.
             </p>
           </div>

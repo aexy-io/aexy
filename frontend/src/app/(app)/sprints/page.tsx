@@ -59,7 +59,7 @@ function ProjectCard({
       className="group relative"
     >
       <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 to-purple-500/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-      <div className="relative bg-slate-900/80 backdrop-blur-sm rounded-2xl border border-slate-800/80 overflow-hidden hover:border-slate-700/80 transition-all duration-300">
+      <div className="relative bg-background/80 backdrop-blur-sm rounded-2xl border border-border/80 overflow-hidden hover:border-border/80 transition-all duration-300">
         {/* Header */}
         <div className="p-5 pb-4">
           <div className="flex items-start justify-between mb-4">
@@ -69,11 +69,11 @@ function ProjectCard({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-semibold text-white group-hover:text-primary-400 transition-colors">
+                  <h3 className="text-lg font-semibold text-foreground group-hover:text-primary-400 transition-colors">
                     {project.name}
                   </h3>
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1 px-2 py-0.5 bg-green-500/10 text-green-400 text-xs rounded-full border border-green-500/20 hover:bg-green-500/20 transition-colors">
+                    <div className="flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400 text-xs rounded-full border border-green-500/20 hover:bg-green-500/20 transition-colors">
                       <Globe className="h-3 w-3" />
                       {project.is_public ? "Public" : "Private"}
                     </div>
@@ -85,7 +85,7 @@ function ProjectCard({
                     )}
                   </div>
                 </div>
-                <p className="text-slate-500 text-sm">
+                <p className="text-muted-foreground text-sm">
                   {project.member_count} members
                 </p>
               </div>
@@ -111,7 +111,7 @@ function ProjectCard({
                         Active Sprint
                       </span>
                     </div>
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-muted-foreground">
                       {activeSprint.tasks_count > 0
                         ? Math.round(
                             (activeSprint.completed_count /
@@ -122,12 +122,12 @@ function ProjectCard({
                       % complete
                     </span>
                   </div>
-                  <h4 className="text-white font-medium mb-3">
+                  <h4 className="text-foreground font-medium mb-3">
                     {activeSprint.name}
                   </h4>
 
                   {/* Progress bar */}
-                  <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden mb-3">
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-3">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{
@@ -147,12 +147,12 @@ function ProjectCard({
                   </div>
 
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
-                    <span className="text-slate-400">
+                    <span className="text-muted-foreground">
                       <CheckCircle className="h-3 w-3 inline mr-1" />
                       {activeSprint.completed_count}/{activeSprint.tasks_count}{" "}
                       tasks
                     </span>
-                    <span className="text-slate-400">
+                    <span className="text-muted-foreground">
                       <Target className="h-3 w-3 inline mr-1" />
                       {activeSprint.total_points || 0} points
                     </span>
@@ -169,10 +169,10 @@ function ProjectCard({
                       Planning
                     </span>
                   </div>
-                  <h4 className="text-white font-medium mb-2">
+                  <h4 className="text-foreground font-medium mb-2">
                     {planningSprints[0].name}
                   </h4>
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Calendar className="h-3 w-3" />
                     <span>
                       {planningSprints[0].start_date
@@ -187,8 +187,8 @@ function ProjectCard({
                   </div>
                 </Link>
               ) : (
-                <div className="bg-slate-800/50 rounded-xl p-4 mb-4 text-center border border-dashed border-slate-700">
-                  <p className="text-slate-500 text-sm mb-2">
+                <div className="bg-muted/50 rounded-xl p-4 mb-4 text-center border border-dashed border-border">
+                  <p className="text-muted-foreground text-sm mb-2">
                     No active sprint
                   </p>
                   <Link
@@ -202,27 +202,27 @@ function ProjectCard({
 
               {/* Stats row */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="text-center p-2 bg-slate-800/30 rounded-lg">
-                  <div className="text-lg font-semibold text-white">
+                <div className="text-center p-2 bg-muted/30 rounded-lg">
+                  <div className="text-lg font-semibold text-foreground">
                     {sprints.length}
                   </div>
-                  <div className="text-[10px] text-slate-500 uppercase tracking-wider">
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
                     Sprints
                   </div>
                 </div>
-                <div className="text-center p-2 bg-slate-800/30 rounded-lg">
+                <div className="text-center p-2 bg-muted/30 rounded-lg">
                   <div className="text-lg font-semibold text-green-400">
                     {completedCount}
                   </div>
-                  <div className="text-[10px] text-slate-500 uppercase tracking-wider">
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
                     Completed
                   </div>
                 </div>
-                <div className="text-center p-2 bg-slate-800/30 rounded-lg">
+                <div className="text-center p-2 bg-muted/30 rounded-lg">
                   <div className="text-lg font-semibold text-amber-400">
                     {totalTasks - completedTasks}
                   </div>
-                  <div className="text-[10px] text-slate-500 uppercase tracking-wider">
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
                     Open Tasks
                   </div>
                 </div>
@@ -232,18 +232,18 @@ function ProjectCard({
         </div>
 
         {/* Quick Actions Footer */}
-        <div className="border-t border-slate-800/80 px-4 py-3 bg-slate-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="border-t border-border/80 px-4 py-3 bg-background/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Link
               href={`/sprints/${project.id}/board`}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-accent text-foreground hover:text-foreground rounded-lg text-xs transition-all"
             >
               <LayoutGrid className="h-3.5 w-3.5" />
               Board
             </Link>
             <Link
               href={`/sprints/${project.id}/backlog`}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-accent text-foreground hover:text-foreground rounded-lg text-xs transition-all"
             >
               <ListTodo className="h-3.5 w-3.5" />
               Backlog
@@ -251,7 +251,7 @@ function ProjectCard({
           </div>
           <Link
             href={`/sprints/${project.id}/board`}
-            className="flex items-center gap-1 text-slate-500 hover:text-white text-xs transition-colors"
+            className="flex items-center gap-1 text-muted-foreground hover:text-foreground text-xs transition-colors"
           >
             Open
             <ArrowRight className="h-3.5 w-3.5" />
@@ -279,15 +279,15 @@ function SprintsContent({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-slate-900/50 rounded-2xl p-12 text-center border border-slate-800"
+        className="bg-background/50 rounded-2xl p-12 text-center border border-border"
       >
         <div className="w-20 h-20 bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl flex items-center justify-center mx-auto mb-6">
-          <Users className="h-10 w-10 text-slate-500" />
+          <Users className="h-10 w-10 text-muted-foreground" />
         </div>
-        <h3 className="text-xl font-semibold text-white mb-2">
+        <h3 className="text-xl font-semibold text-foreground mb-2">
           No Workspace Yet
         </h3>
-        <p className="text-slate-400 mb-6 max-w-md mx-auto">
+        <p className="text-muted-foreground mb-6 max-w-md mx-auto">
           Create a workspace and add projects to start planning sprints.
         </p>
         <Link
@@ -317,15 +317,15 @@ function SprintsContent({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-slate-900/50 rounded-2xl p-12 text-center border border-slate-800"
+        className="bg-background/50 rounded-2xl p-12 text-center border border-border"
       >
         <div className="w-20 h-20 bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl flex items-center justify-center mx-auto mb-6">
-          <Layers className="h-10 w-10 text-slate-500" />
+          <Layers className="h-10 w-10 text-muted-foreground" />
         </div>
-        <h3 className="text-xl font-semibold text-white mb-2">
+        <h3 className="text-xl font-semibold text-foreground mb-2">
           No Projects Yet
         </h3>
-        <p className="text-slate-400 mb-6 max-w-md mx-auto">
+        <p className="text-muted-foreground mb-6 max-w-md mx-auto">
           Create projects in your workspace to start planning sprints.
         </p>
         <Link
@@ -380,13 +380,13 @@ function SprintsPageContent() {
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
             <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
           </div>
-          <p className="text-slate-400 text-sm">Loading...</p>
+          <p className="text-muted-foreground text-sm">Loading...</p>
         </div>
       </div>
     );
@@ -397,7 +397,7 @@ function SprintsPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <motion.div
@@ -410,8 +410,8 @@ function SprintsPageContent() {
               <Calendar className="h-7 w-7 text-primary-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">Planning</h1>
-              <p className="text-slate-500 text-sm">
+              <h1 className="text-2xl font-bold text-foreground">Planning</h1>
+              <p className="text-muted-foreground text-sm">
                 Manage sprints and track progress across your projects
               </p>
             </div>
@@ -428,7 +428,7 @@ function SprintsPageContent() {
                 </Link>
                 <Link
                   href="/settings/projects"
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl transition text-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-accent text-foreground hover:text-foreground border border-border rounded-xl transition text-sm"
                 >
                   <Settings className="h-4 w-4" />
                   Settings
@@ -443,7 +443,7 @@ function SprintsPageContent() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.1 }}
-          className="flex items-center gap-2 mb-8 p-1 bg-slate-900/50 rounded-xl border border-slate-800 w-fit"
+          className="flex items-center gap-2 mb-8 p-1 bg-background/50 rounded-xl border border-border w-fit"
         >
           <button
             onClick={() => setActiveTab("sprints")}
@@ -451,7 +451,7 @@ function SprintsPageContent() {
               "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
               activeTab === "sprints"
                 ? "bg-primary-500 text-white shadow-lg shadow-primary-500/25"
-                : "text-slate-400 hover:text-white hover:bg-slate-800",
+                : "text-muted-foreground hover:text-foreground hover:bg-muted",
             )}
           >
             <Calendar className="h-4 w-4" />
@@ -463,7 +463,7 @@ function SprintsPageContent() {
               "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
               activeTab === "epics"
                 ? "bg-primary-500 text-white shadow-lg shadow-primary-500/25"
-                : "text-slate-400 hover:text-white hover:bg-slate-800",
+                : "text-muted-foreground hover:text-foreground hover:bg-muted",
             )}
           >
             <Layers className="h-4 w-4" />
@@ -494,7 +494,7 @@ export default function SprintsPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="animate-spin h-8 w-8 border-2 border-primary-500 border-t-transparent rounded-full" />
         </div>
       }

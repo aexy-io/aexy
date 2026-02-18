@@ -34,7 +34,7 @@ const STATUS_OPTIONS = [
   { value: "active", label: "Active", color: "bg-green-500" },
   { value: "on_hold", label: "On Hold", color: "bg-amber-500" },
   { value: "completed", label: "Completed", color: "bg-blue-500" },
-  { value: "archived", label: "Archived", color: "bg-slate-500" },
+  { value: "archived", label: "Archived", color: "bg-muted-foreground" },
 ];
 
 const COLORS = [
@@ -192,7 +192,7 @@ export default function ProjectSettingsPage() {
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-white">Loading project...</p>
+          <p className="text-foreground">Loading project...</p>
         </div>
       </div>
     );
@@ -202,9 +202,9 @@ export default function ProjectSettingsPage() {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
-          <FolderKanban className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-          <h3 className="text-xl font-medium text-white mb-2">Project Not Found</h3>
-          <p className="text-slate-400 mb-6">
+          <FolderKanban className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-xl font-medium text-foreground mb-2">Project Not Found</h3>
+          <p className="text-muted-foreground mb-6">
             The project you're looking for doesn't exist.
           </p>
           <Link
@@ -239,8 +239,8 @@ export default function ProjectSettingsPage() {
           <FolderKanban className="h-5 w-5" style={{ color: project.color }} />
         </div>
         <div>
-          <h1 className="text-2xl font-semibold text-white">{project.name}</h1>
-          <p className="text-slate-400 text-sm">Project Settings</p>
+          <h1 className="text-2xl font-semibold text-foreground">{project.name}</h1>
+          <p className="text-muted-foreground text-sm">Project Settings</p>
         </div>
       </div>
 
@@ -255,7 +255,7 @@ export default function ProjectSettingsPage() {
           </Link>
           <Link
             href={`/settings/projects/${projectId}/permissions`}
-            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition flex items-center gap-2"
+            className="px-4 py-2 bg-muted hover:bg-accent text-foreground rounded-lg text-sm font-medium transition flex items-center gap-2"
           >
             <Shield className="h-4 w-4" />
             Permissions
@@ -263,10 +263,10 @@ export default function ProjectSettingsPage() {
         </div>
 
         {/* Settings Form */}
-        <div className="bg-slate-800 rounded-xl p-6 space-y-6">
+        <div className="bg-card rounded-xl p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h2 className="text-lg font-medium text-white flex items-center gap-2">
-              <FolderKanban className="h-5 w-5 text-slate-400" />
+            <h2 className="text-lg font-medium text-foreground flex items-center gap-2">
+              <FolderKanban className="h-5 w-5 text-muted-foreground" />
               General Settings
             </h2>
             {isAdmin && (
@@ -276,7 +276,7 @@ export default function ProjectSettingsPage() {
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
                   project.is_public
                     ? "bg-green-600/20 text-green-400 hover:bg-green-600/30"
-                    : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                    : "bg-muted text-foreground hover:bg-accent"
                 }`}
               >
                 {isTogglingVisibility ? (
@@ -293,30 +293,30 @@ export default function ProjectSettingsPage() {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Project Name</label>
+              <label className="block text-sm text-muted-foreground mb-1">Project Name</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => handleChange("name", e.target.value)}
                 disabled={!isAdmin}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500 disabled:opacity-50"
+                className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500 disabled:opacity-50"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Description</label>
+              <label className="block text-sm text-muted-foreground mb-1">Description</label>
               <textarea
                 value={description}
                 onChange={(e) => handleChange("description", e.target.value)}
                 disabled={!isAdmin}
                 rows={3}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500 disabled:opacity-50"
+                className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500 disabled:opacity-50"
                 placeholder="What is this project about?"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-slate-400 mb-2">Color</label>
+              <label className="block text-sm text-muted-foreground mb-2">Color</label>
               <div className="flex gap-2 flex-wrap">
                 {COLORS.map((c) => (
                   <button
@@ -325,7 +325,7 @@ export default function ProjectSettingsPage() {
                     onClick={() => isAdmin && handleChange("color", c)}
                     disabled={!isAdmin}
                     className={`w-8 h-8 rounded-lg transition disabled:opacity-50 ${
-                      color === c ? "ring-2 ring-white ring-offset-2 ring-offset-slate-800" : ""
+                      color === c ? "ring-2 ring-white ring-offset-2 ring-offset-card" : ""
                     }`}
                     style={{ backgroundColor: c }}
                   />
@@ -334,7 +334,7 @@ export default function ProjectSettingsPage() {
             </div>
 
             <div>
-              <label className="block text-sm text-slate-400 mb-2">Status</label>
+              <label className="block text-sm text-muted-foreground mb-2">Status</label>
               <div className="flex gap-2 flex-wrap">
                 {STATUS_OPTIONS.map((opt) => (
                   <button
@@ -344,8 +344,8 @@ export default function ProjectSettingsPage() {
                     disabled={!isAdmin}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 disabled:opacity-50 ${
                       status === opt.value
-                        ? "bg-slate-600 text-white ring-2 ring-primary-500"
-                        : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                        ? "bg-muted text-foreground ring-2 ring-primary-500"
+                        : "bg-muted text-foreground hover:bg-accent"
                     }`}
                   >
                     <span className={`w-2 h-2 rounded-full ${opt.color}`} />
@@ -365,7 +365,7 @@ export default function ProjectSettingsPage() {
           )}
 
           {isAdmin && (
-            <div className="flex justify-end pt-4 border-t border-slate-700">
+            <div className="flex justify-end pt-4 border-t border-border">
               <button
                 onClick={handleSave}
                 disabled={!hasChanges || isUpdating}
@@ -389,14 +389,14 @@ export default function ProjectSettingsPage() {
 
         {/* Public Page Configuration - Only shown when project is public */}
         {project.is_public && isAdmin && (
-          <div className="bg-slate-800 rounded-xl p-6 mt-6">
+          <div className="bg-card rounded-xl p-6 mt-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <div>
-                <h2 className="text-lg font-medium text-white flex items-center gap-2">
+                <h2 className="text-lg font-medium text-foreground flex items-center gap-2">
                   <Globe className="h-5 w-5 text-green-400" />
                   Public Page Configuration
                 </h2>
-                <p className="text-slate-400 text-sm mt-1">
+                <p className="text-muted-foreground text-sm mt-1">
                   Choose which tabs to show on your public project page
                 </p>
               </div>
@@ -404,7 +404,7 @@ export default function ProjectSettingsPage() {
                 <Link
                   href={`/p/${project.public_slug}`}
                   target="_blank"
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-sm transition"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-accent text-foreground rounded-lg text-sm transition"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
                   View Public Page
@@ -414,7 +414,7 @@ export default function ProjectSettingsPage() {
 
             {isLoadingTabs ? (
               <div className="flex items-center justify-center py-8">
-                <RefreshCw className="h-6 w-6 animate-spin text-slate-400" />
+                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : (
               <>
@@ -433,17 +433,17 @@ export default function ProjectSettingsPage() {
                         className={`flex items-start gap-3 p-3 rounded-lg border text-left transition ${
                           isEnabled
                             ? "bg-primary-600/10 border-primary-500/50"
-                            : "bg-slate-700/50 border-slate-600 hover:border-slate-500"
+                            : "bg-muted/50 border-border hover:border-border"
                         } ${isDisabled ? "cursor-not-allowed" : "cursor-pointer"}`}
                       >
                         <div
                           className={`p-2 rounded-lg ${
-                            isEnabled ? "bg-primary-600/20" : "bg-slate-600"
+                            isEnabled ? "bg-primary-600/20" : "bg-muted"
                           }`}
                         >
                           <Icon
                             className={`h-4 w-4 ${
-                              isEnabled ? "text-primary-400" : "text-slate-400"
+                              isEnabled ? "text-primary-400" : "text-muted-foreground"
                             }`}
                           />
                         </div>
@@ -451,7 +451,7 @@ export default function ProjectSettingsPage() {
                           <div className="flex items-center gap-2">
                             <span
                               className={`font-medium ${
-                                isEnabled ? "text-white" : "text-slate-300"
+                                isEnabled ? "text-foreground" : "text-foreground"
                               }`}
                             >
                               {tab.label}
@@ -460,10 +460,10 @@ export default function ProjectSettingsPage() {
                               <Check className="h-4 w-4 text-green-400" />
                             )}
                             {isDisabled && (
-                              <span className="text-xs text-slate-500">(Required)</span>
+                              <span className="text-xs text-muted-foreground">(Required)</span>
                             )}
                           </div>
-                          <p className="text-xs text-slate-400 mt-0.5">
+                          <p className="text-xs text-muted-foreground mt-0.5">
                             {tab.description}
                           </p>
                         </div>
@@ -476,7 +476,7 @@ export default function ProjectSettingsPage() {
                   <p className="text-green-400 text-sm mt-4">Public tabs updated successfully!</p>
                 )}
 
-                <div className="flex justify-end pt-4 mt-4 border-t border-slate-700">
+                <div className="flex justify-end pt-4 mt-4 border-t border-border">
                   <button
                     onClick={handleSaveTabs}
                     disabled={isSavingTabs}
@@ -501,41 +501,41 @@ export default function ProjectSettingsPage() {
         )}
 
         {/* Project Info */}
-        <div className="bg-slate-800 rounded-xl p-6 mt-6">
-          <h2 className="text-lg font-medium text-white mb-4">Project Info</h2>
+        <div className="bg-card rounded-xl p-6 mt-6">
+          <h2 className="text-lg font-medium text-foreground mb-4">Project Info</h2>
           <dl className="space-y-3 text-sm">
             <div className="flex justify-between">
-              <dt className="text-slate-400">Project ID</dt>
-              <dd className="text-white font-mono">{project.id}</dd>
+              <dt className="text-muted-foreground">Project ID</dt>
+              <dd className="text-foreground font-mono">{project.id}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-slate-400">Slug</dt>
-              <dd className="text-white">{project.slug}</dd>
+              <dt className="text-muted-foreground">Slug</dt>
+              <dd className="text-foreground">{project.slug}</dd>
             </div>
             {project.public_slug && (
               <div className="flex justify-between">
-                <dt className="text-slate-400">Public Slug</dt>
-                <dd className="text-white font-mono">{project.public_slug}</dd>
+                <dt className="text-muted-foreground">Public Slug</dt>
+                <dd className="text-foreground font-mono">{project.public_slug}</dd>
               </div>
             )}
             <div className="flex justify-between">
-              <dt className="text-slate-400">Visibility</dt>
-              <dd className={`flex items-center gap-1.5 ${project.is_public ? "text-green-400" : "text-slate-300"}`}>
+              <dt className="text-muted-foreground">Visibility</dt>
+              <dd className={`flex items-center gap-1.5 ${project.is_public ? "text-green-400" : "text-foreground"}`}>
                 {project.is_public ? <Globe className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
                 {project.is_public ? "Public" : "Private"}
               </dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-slate-400">Members</dt>
-              <dd className="text-white">{project.member_count}</dd>
+              <dt className="text-muted-foreground">Members</dt>
+              <dd className="text-foreground">{project.member_count}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-slate-400">Teams</dt>
-              <dd className="text-white">{project.team_count}</dd>
+              <dt className="text-muted-foreground">Teams</dt>
+              <dd className="text-foreground">{project.team_count}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-slate-400">Created</dt>
-              <dd className="text-white">
+              <dt className="text-muted-foreground">Created</dt>
+              <dd className="text-foreground">
                 {new Date(project.created_at).toLocaleDateString()}
               </dd>
             </div>

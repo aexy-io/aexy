@@ -40,38 +40,38 @@ export interface ActivityItem {
 const activityConfig: Record<ActivityType, { icon: LucideIcon; color: string; bgColor: string }> = {
   standup_submitted: {
     icon: MessageSquare,
-    color: "text-blue-400",
-    bgColor: "bg-blue-900/30",
+    color: "text-blue-600 dark:text-blue-400",
+    bgColor: "bg-blue-100 dark:bg-blue-900/30",
   },
   time_logged: {
     icon: Clock,
-    color: "text-green-400",
-    bgColor: "bg-green-900/30",
+    color: "text-green-600 dark:text-green-400",
+    bgColor: "bg-green-100 dark:bg-green-900/30",
   },
   blocker_reported: {
     icon: AlertTriangle,
-    color: "text-red-400",
-    bgColor: "bg-red-900/30",
+    color: "text-red-600 dark:text-red-400",
+    bgColor: "bg-red-100 dark:bg-red-900/30",
   },
   blocker_resolved: {
     icon: CheckCircle2,
-    color: "text-green-400",
-    bgColor: "bg-green-900/30",
+    color: "text-green-600 dark:text-green-400",
+    bgColor: "bg-green-100 dark:bg-green-900/30",
   },
   blocker_escalated: {
     icon: ArrowUpCircle,
-    color: "text-amber-400",
-    bgColor: "bg-amber-900/30",
+    color: "text-amber-600 dark:text-amber-400",
+    bgColor: "bg-amber-100 dark:bg-amber-900/30",
   },
   task_completed: {
     icon: CheckCircle2,
-    color: "text-purple-400",
-    bgColor: "bg-purple-900/30",
+    color: "text-purple-600 dark:text-purple-400",
+    bgColor: "bg-purple-100 dark:bg-purple-900/30",
   },
   task_started: {
     icon: Clock,
-    color: "text-blue-400",
-    bgColor: "bg-blue-900/30",
+    color: "text-blue-600 dark:text-blue-400",
+    bgColor: "bg-blue-100 dark:bg-blue-900/30",
   },
 };
 
@@ -117,7 +117,7 @@ export function ActivityFeed({
 
   if (displayActivities.length === 0) {
     return (
-      <div className={`text-center py-8 text-slate-500 ${className}`}>
+      <div className={`text-center py-8 text-muted-foreground ${className}`}>
         <p>{emptyMessage}</p>
       </div>
     );
@@ -133,14 +133,14 @@ export function ActivityFeed({
           return (
             <div
               key={activity.id}
-              className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-slate-800/50 transition-colors"
+              className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors"
             >
               <div className={`p-1.5 ${config.bgColor} rounded-lg shrink-0`}>
                 <Icon className={`h-3.5 w-3.5 ${config.color}`} />
               </div>
-              <p className="text-sm text-slate-300 flex-1 truncate">{activity.title}</p>
+              <p className="text-sm text-foreground flex-1 truncate">{activity.title}</p>
               {showTimestamp && (
-                <span className="text-xs text-slate-500 shrink-0">
+                <span className="text-xs text-muted-foreground shrink-0">
                   {formatTimestamp(activity.timestamp)}
                 </span>
               )}
@@ -156,7 +156,7 @@ export function ActivityFeed({
                 <Icon className={`h-4 w-4 ${config.color}`} />
               </div>
               {index < displayActivities.length - 1 && (
-                <div className="w-px flex-1 bg-slate-700 my-2" />
+                <div className="w-px flex-1 bg-accent my-2" />
               )}
             </div>
 
@@ -164,13 +164,13 @@ export function ActivityFeed({
             <div className="flex-1 min-w-0 pb-2">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-sm text-slate-200">{activity.title}</p>
+                  <p className="text-sm text-foreground">{activity.title}</p>
                   {activity.description && (
-                    <p className="text-xs text-slate-500 mt-0.5">{activity.description}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{activity.description}</p>
                   )}
                 </div>
                 {showTimestamp && (
-                  <span className="text-xs text-slate-500 shrink-0">
+                  <span className="text-xs text-muted-foreground shrink-0">
                     {formatTimestamp(activity.timestamp)}
                   </span>
                 )}
@@ -185,11 +185,11 @@ export function ActivityFeed({
                       className="w-5 h-5 rounded-full"
                     />
                   ) : (
-                    <div className="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-xs text-slate-400">
+                    <div className="w-5 h-5 rounded-full bg-accent flex items-center justify-center text-xs text-muted-foreground">
                       {activity.user.name.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <span className="text-xs text-slate-400">{activity.user.name}</span>
+                  <span className="text-xs text-muted-foreground">{activity.user.name}</span>
                 </div>
               )}
             </div>

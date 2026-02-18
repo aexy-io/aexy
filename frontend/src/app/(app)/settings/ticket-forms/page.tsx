@@ -33,9 +33,9 @@ const TEMPLATE_ICONS: Record<string, React.ReactNode> = {
 };
 
 const TEMPLATE_COLORS: Record<string, string> = {
-  bug_report: "bg-red-900/30 border-red-800/50",
-  feature_request: "bg-yellow-900/30 border-yellow-800/50",
-  support: "bg-blue-900/30 border-blue-800/50",
+  bug_report: "bg-red-100 dark:bg-red-900/30 border-red-800/50",
+  feature_request: "bg-yellow-100 dark:bg-yellow-900/30 border-yellow-800/50",
+  support: "bg-blue-100 dark:bg-blue-900/30 border-blue-800/50",
 };
 
 interface FormRowProps {
@@ -83,30 +83,30 @@ function FormRow({ form, onDuplicate, onDelete, isDuplicating, isDeleting }: For
 
   return (
     <>
-      <div className="flex items-center gap-4 p-4 bg-slate-800 rounded-xl border border-slate-700 hover:border-slate-600 transition group">
-        <div className={`p-3 rounded-lg ${form.template_type ? TEMPLATE_COLORS[form.template_type] : "bg-slate-700"}`}>
-          {form.template_type ? TEMPLATE_ICONS[form.template_type] : <FileText className="h-5 w-5 text-slate-400" />}
+      <div className="flex items-center gap-4 p-4 bg-card rounded-xl border border-border hover:border-border transition group">
+        <div className={`p-3 rounded-lg ${form.template_type ? TEMPLATE_COLORS[form.template_type] : "bg-muted"}`}>
+          {form.template_type ? TEMPLATE_ICONS[form.template_type] : <FileText className="h-5 w-5 text-muted-foreground" />}
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-white font-medium truncate">{form.name}</h3>
+            <h3 className="text-foreground font-medium truncate">{form.name}</h3>
             {form.is_active ? (
-              <span className="flex items-center gap-1 px-2 py-0.5 bg-green-900/30 text-green-400 rounded-full text-xs">
+              <span className="flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400 rounded-full text-xs">
                 <CheckCircle className="h-3 w-3" />
                 Active
               </span>
             ) : (
-              <span className="flex items-center gap-1 px-2 py-0.5 bg-slate-700 text-slate-400 rounded-full text-xs">
+              <span className="flex items-center gap-1 px-2 py-0.5 bg-muted text-muted-foreground rounded-full text-xs">
                 <XCircle className="h-3 w-3" />
                 Inactive
               </span>
             )}
           </div>
           {form.description && (
-            <p className="text-slate-400 text-sm truncate">{form.description}</p>
+            <p className="text-muted-foreground text-sm truncate">{form.description}</p>
           )}
-          <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
+          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
             <span>{form.submission_count} submissions</span>
             <span>Created {new Date(form.created_at).toLocaleDateString()}</span>
           </div>
@@ -117,14 +117,14 @@ function FormRow({ form, onDuplicate, onDelete, isDuplicating, isDeleting }: For
             href={publicUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
             title="Preview form"
           >
             <Eye className="h-4 w-4" />
           </a>
           <button
             onClick={() => router.push(`/settings/ticket-forms/${form.id}`)}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
             title="Edit form"
           >
             <Edit3 className="h-4 w-4" />
@@ -132,17 +132,17 @@ function FormRow({ form, onDuplicate, onDelete, isDuplicating, isDeleting }: For
           <div className="relative">
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
             >
               <MoreVertical className="h-4 w-4" />
             </button>
             {showMenu && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-                <div className="absolute right-0 top-full mt-1 w-48 bg-slate-700 rounded-lg shadow-xl z-20 py-1">
+                <div className="absolute right-0 top-full mt-1 w-48 bg-muted rounded-lg shadow-xl z-20 py-1">
                   <button
                     onClick={handleCopyUrl}
-                    className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-600 flex items-center gap-2"
+                    className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                   >
                     <Copy className="h-4 w-4" />
                     Copy Public URL
@@ -151,7 +151,7 @@ function FormRow({ form, onDuplicate, onDelete, isDuplicating, isDeleting }: For
                     href={publicUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-600 flex items-center gap-2"
+                    className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                   >
                     <ExternalLink className="h-4 w-4" />
                     Open Form
@@ -161,7 +161,7 @@ function FormRow({ form, onDuplicate, onDelete, isDuplicating, isDeleting }: For
                       setShowDuplicateModal(true);
                       setShowMenu(false);
                     }}
-                    className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-600 flex items-center gap-2"
+                    className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                   >
                     <Copy className="h-4 w-4" />
                     Duplicate
@@ -169,7 +169,7 @@ function FormRow({ form, onDuplicate, onDelete, isDuplicating, isDeleting }: For
                   <button
                     onClick={handleDelete}
                     disabled={isDeleting}
-                    className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-600 flex items-center gap-2"
+                    className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-accent flex items-center gap-2"
                   >
                     {isDeleting ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -188,22 +188,22 @@ function FormRow({ form, onDuplicate, onDelete, isDuplicating, isDeleting }: For
       {/* Duplicate Modal */}
       {showDuplicateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-slate-800 rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-white font-medium mb-4">Duplicate Form</h3>
+          <div className="bg-card rounded-xl p-6 w-full max-w-md">
+            <h3 className="text-foreground font-medium mb-4">Duplicate Form</h3>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">New Form Name</label>
+              <label className="block text-sm text-muted-foreground mb-1">New Form Name</label>
               <input
                 type="text"
                 value={duplicateName}
                 onChange={(e) => setDuplicateName(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
+                className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-purple-500"
                 autoFocus
               />
             </div>
             <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={() => setShowDuplicateModal(false)}
-                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition text-sm"
+                className="px-4 py-2 bg-muted hover:bg-accent text-foreground rounded-lg transition text-sm"
               >
                 Cancel
               </button>
@@ -282,7 +282,7 @@ export default function TicketFormsPage() {
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mx-auto mb-4"></div>
-          <p className="text-white">Loading forms...</p>
+          <p className="text-foreground">Loading forms...</p>
         </div>
       </div>
     );
@@ -310,10 +310,10 @@ export default function TicketFormsPage() {
       {/* Forms List */}
       <div>
         {forms.length === 0 ? (
-          <div className="bg-slate-800 rounded-xl p-12 text-center border border-slate-700">
-            <Ticket className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-white mb-2">No forms yet</h3>
-            <p className="text-slate-400 mb-6">
+          <div className="bg-card rounded-xl p-12 text-center border border-border">
+            <Ticket className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-medium text-foreground mb-2">No forms yet</h3>
+            <p className="text-muted-foreground mb-6">
               Create your first ticket form to start collecting submissions
             </p>
             <button
@@ -343,17 +343,17 @@ export default function TicketFormsPage() {
       {/* Create Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-slate-800 rounded-xl p-6 w-full max-w-lg">
-            <h3 className="text-lg font-medium text-white mb-4">Create Ticket Form</h3>
+          <div className="bg-card rounded-xl p-6 w-full max-w-lg">
+            <h3 className="text-lg font-medium text-foreground mb-4">Create Ticket Form</h3>
 
             {/* Mode Toggle */}
-            <div className="flex gap-1 bg-slate-700 p-1 rounded-lg mb-6">
+            <div className="flex gap-1 bg-muted p-1 rounded-lg mb-6">
               <button
                 onClick={() => setCreateMode("template")}
                 className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition ${
                   createMode === "template"
                     ? "bg-purple-600 text-white"
-                    : "text-slate-400 hover:text-white"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 From Template
@@ -363,7 +363,7 @@ export default function TicketFormsPage() {
                 className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition ${
                   createMode === "blank"
                     ? "bg-purple-600 text-white"
-                    : "text-slate-400 hover:text-white"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 Blank Form
@@ -373,7 +373,7 @@ export default function TicketFormsPage() {
             {createMode === "template" ? (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-slate-400 mb-2">Select Template</label>
+                  <label className="block text-sm text-muted-foreground mb-2">Select Template</label>
                   <div className="space-y-2">
                     {(["bug_report", "feature_request", "support"] as TicketFormTemplateType[]).map((type) => (
                       <button
@@ -381,18 +381,18 @@ export default function TicketFormsPage() {
                         onClick={() => setSelectedTemplate(type)}
                         className={`w-full p-4 rounded-lg border transition flex items-center gap-4 ${
                           selectedTemplate === type
-                            ? "border-purple-500 bg-purple-900/20"
-                            : "border-slate-700 bg-slate-700/50 hover:border-slate-600"
+                            ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20"
+                            : "border-border bg-muted/50 hover:border-border"
                         }`}
                       >
                         <div className={`p-2 rounded-lg ${TEMPLATE_COLORS[type]}`}>
                           {TEMPLATE_ICONS[type]}
                         </div>
                         <div className="text-left">
-                          <p className="text-white font-medium">
+                          <p className="text-foreground font-medium">
                             {templates[type]?.name || type.replace(/_/g, " ")}
                           </p>
-                          <p className="text-slate-400 text-sm">
+                          <p className="text-muted-foreground text-sm">
                             {templates[type]?.description || `Template for ${type.replace(/_/g, " ")}`}
                           </p>
                         </div>
@@ -401,39 +401,39 @@ export default function TicketFormsPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">
-                    Form Name <span className="text-slate-500">(optional)</span>
+                  <label className="block text-sm text-muted-foreground mb-1">
+                    Form Name <span className="text-muted-foreground">(optional)</span>
                   </label>
                   <input
                     type="text"
                     value={newFormName}
                     onChange={(e) => setNewFormName(e.target.value)}
                     placeholder={templates[selectedTemplate]?.name || "Leave blank to use template name"}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                    className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-purple-500"
                   />
                 </div>
               </div>
             ) : (
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Form Name</label>
+                <label className="block text-sm text-muted-foreground mb-1">Form Name</label>
                 <input
                   type="text"
                   value={newFormName}
                   onChange={(e) => setNewFormName(e.target.value)}
                   placeholder="Enter form name..."
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                  className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-purple-500"
                   autoFocus
                 />
               </div>
             )}
 
-            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-700">
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-border">
               <button
                 onClick={() => {
                   setShowCreateModal(false);
                   setNewFormName("");
                 }}
-                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition text-sm"
+                className="px-4 py-2 bg-muted hover:bg-accent text-foreground rounded-lg transition text-sm"
               >
                 Cancel
               </button>

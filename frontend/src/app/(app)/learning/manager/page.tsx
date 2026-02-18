@@ -99,20 +99,20 @@ export default function ManagerLearningPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-6">
+    <div className="min-h-screen bg-background text-foreground p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold">Manager Dashboard</h1>
-            <p className="text-slate-400 mt-1">
+            <p className="text-muted-foreground mt-1">
               Track your team&apos;s learning progress and manage goals
             </p>
           </div>
           <div className="flex gap-3">
             <Link
               href="/learning/manager/approvals"
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-muted hover:bg-accent rounded-lg text-sm transition-colors flex items-center gap-2"
             >
               <svg
                 className="w-4 h-4"
@@ -144,15 +144,15 @@ export default function ManagerLearningPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 bg-slate-900 p-1 rounded-lg w-fit">
+        <div className="flex gap-1 mb-6 bg-background p-1 rounded-lg w-fit">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as typeof activeTab)}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeTab === tab.id
-                  ? "bg-slate-700 text-white"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800"
+                  ? "bg-accent text-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
             >
               {tab.label}
@@ -164,7 +164,7 @@ export default function ManagerLearningPage() {
         {activeTab === "overview" && (
           <div className="space-y-6">
             {overviewLoading ? (
-              <div className="text-center py-12 text-slate-400">
+              <div className="text-center py-12 text-muted-foreground">
                 Loading dashboard...
               </div>
             ) : overview ? (
@@ -194,7 +194,7 @@ export default function ManagerLearningPage() {
                     title="Active Goals"
                     value={overview.total_active_goals}
                     subtitle={`${overview.goals_overdue} overdue`}
-                    subtitleColor={overview.goals_overdue > 0 ? "text-red-400" : "text-slate-400"}
+                    subtitleColor={overview.goals_overdue > 0 ? "text-red-400" : "text-muted-foreground"}
                     icon={
                       <svg
                         className="w-5 h-5"
@@ -254,30 +254,30 @@ export default function ManagerLearningPage() {
                 </div>
 
                 {/* Budget Overview */}
-                <div className="bg-slate-900 rounded-lg p-6">
+                <div className="bg-background rounded-lg p-6">
                   <h2 className="text-lg font-semibold mb-4">Budget Summary</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                     <div>
-                      <p className="text-slate-400 text-sm">Total Budget</p>
-                      <p className="text-2xl font-bold text-white">
+                      <p className="text-muted-foreground text-sm">Total Budget</p>
+                      <p className="text-2xl font-bold text-foreground">
                         {formatCurrency(overview.total_budget_cents)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-slate-400 text-sm">Spent</p>
+                      <p className="text-muted-foreground text-sm">Spent</p>
                       <p className="text-2xl font-bold text-blue-400">
                         {formatCurrency(overview.spent_budget_cents)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-slate-400 text-sm">Reserved</p>
+                      <p className="text-muted-foreground text-sm">Reserved</p>
                       <p className="text-2xl font-bold text-yellow-400">
                         {formatCurrency(overview.reserved_budget_cents)}
                       </p>
                     </div>
                   </div>
                   <div className="mt-4">
-                    <div className="h-3 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-3 bg-muted rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all"
                         style={{
@@ -313,7 +313,7 @@ export default function ManagerLearningPage() {
                         </div>
                         <div>
                           <p className="font-medium">Pending Approvals</p>
-                          <p className="text-sm text-slate-400">
+                          <p className="text-sm text-muted-foreground">
                             {overview.pending_approval_requests} requests waiting
                           </p>
                         </div>
@@ -343,7 +343,7 @@ export default function ManagerLearningPage() {
                         </div>
                         <div>
                           <p className="font-medium">Overdue Goals</p>
-                          <p className="text-sm text-slate-400">
+                          <p className="text-sm text-muted-foreground">
                             {overview.goals_overdue} goals need attention
                           </p>
                         </div>
@@ -373,7 +373,7 @@ export default function ManagerLearningPage() {
                         </div>
                         <div>
                           <p className="font-medium">Expiring Certifications</p>
-                          <p className="text-sm text-slate-400">
+                          <p className="text-sm text-muted-foreground">
                             {overview.certifications_expiring_soon} expiring soon
                           </p>
                         </div>
@@ -383,7 +383,7 @@ export default function ManagerLearningPage() {
                 </div>
               </>
             ) : (
-              <div className="text-center py-12 text-slate-400">
+              <div className="text-center py-12 text-muted-foreground">
                 No data available
               </div>
             )}
@@ -394,13 +394,13 @@ export default function ManagerLearningPage() {
         {activeTab === "goals" && (
           <div className="space-y-4">
             {goalsLoading ? (
-              <div className="text-center py-12 text-slate-400">Loading goals...</div>
+              <div className="text-center py-12 text-muted-foreground">Loading goals...</div>
             ) : goalsData?.items && goalsData.items.length > 0 ? (
               goalsData.items.map((goal) => (
                 <GoalCard key={goal.id} goal={goal} />
               ))
             ) : (
-              <div className="text-center py-12 text-slate-400">
+              <div className="text-center py-12 text-muted-foreground">
                 <p>No learning goals yet</p>
                 <button
                   onClick={() => setShowCreateGoalModal(true)}
@@ -417,7 +417,7 @@ export default function ManagerLearningPage() {
         {activeTab === "budgets" && (
           <div className="space-y-4">
             {budgetsLoading ? (
-              <div className="text-center py-12 text-slate-400">Loading budgets...</div>
+              <div className="text-center py-12 text-muted-foreground">Loading budgets...</div>
             ) : budgetsData?.items && budgetsData.items.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {budgetsData.items.map((budget) => (
@@ -425,7 +425,7 @@ export default function ManagerLearningPage() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 text-slate-400">
+              <div className="text-center py-12 text-muted-foreground">
                 <p>No learning budgets configured</p>
                 <p className="text-sm mt-2">Contact your administrator to set up budgets</p>
               </div>
@@ -435,7 +435,7 @@ export default function ManagerLearningPage() {
 
         {/* Team Tab */}
         {activeTab === "team" && (
-          <div className="text-center py-12 text-slate-400">
+          <div className="text-center py-12 text-muted-foreground">
             <p>Team progress view coming soon</p>
             <p className="text-sm mt-2">View individual developer progress and team metrics</p>
           </div>
@@ -454,7 +454,7 @@ function StatCard({
   title,
   value,
   subtitle,
-  subtitleColor = "text-slate-400",
+  subtitleColor = "text-muted-foreground",
   icon,
 }: {
   title: string;
@@ -464,10 +464,10 @@ function StatCard({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="bg-slate-900 rounded-lg p-5">
+    <div className="bg-background rounded-lg p-5">
       <div className="flex items-center gap-3 mb-3">
-        <div className="p-2 bg-slate-800 rounded-lg text-slate-400">{icon}</div>
-        <span className="text-slate-400 text-sm">{title}</span>
+        <div className="p-2 bg-muted rounded-lg text-muted-foreground">{icon}</div>
+        <span className="text-muted-foreground text-sm">{title}</span>
       </div>
       <p className="text-2xl font-bold">{value}</p>
       {subtitle && <p className={`text-sm mt-1 ${subtitleColor}`}>{subtitle}</p>}
@@ -477,11 +477,11 @@ function StatCard({
 
 function GoalCard({ goal }: { goal: LearningGoalWithDetails }) {
   return (
-    <div className="bg-slate-900 rounded-lg p-5">
+    <div className="bg-background rounded-lg p-5">
       <div className="flex justify-between items-start mb-3">
         <div>
           <h3 className="font-semibold">{goal.title}</h3>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted-foreground">
             {goal.developer_name} &middot; Set by {goal.set_by_name}
           </p>
         </div>
@@ -490,27 +490,27 @@ function GoalCard({ goal }: { goal: LearningGoalWithDetails }) {
         </span>
       </div>
       {goal.description && (
-        <p className="text-sm text-slate-400 mb-3">{goal.description}</p>
+        <p className="text-sm text-muted-foreground mb-3">{goal.description}</p>
       )}
       <div className="flex items-center gap-4 text-sm">
-        <span className="text-slate-400">
+        <span className="text-muted-foreground">
           {getGoalTypeLabel(goal.goal_type)}
         </span>
-        <span className="text-slate-400">
+        <span className="text-muted-foreground">
           Priority: {getPriorityLabel(goal.priority)}
         </span>
         {goal.due_date && (
-          <span className={goal.is_overdue ? "text-red-400" : "text-slate-400"}>
+          <span className={goal.is_overdue ? "text-red-400" : "text-muted-foreground"}>
             Due: {new Date(goal.due_date).toLocaleDateString()}
           </span>
         )}
       </div>
       <div className="mt-4">
         <div className="flex justify-between text-sm mb-1">
-          <span className="text-slate-400">Progress</span>
-          <span className="text-white">{goal.progress_percentage}%</span>
+          <span className="text-muted-foreground">Progress</span>
+          <span className="text-foreground">{goal.progress_percentage}%</span>
         </div>
-        <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+        <div className="h-2 bg-muted rounded-full overflow-hidden">
           <div
             className="h-full bg-blue-500 rounded-full transition-all"
             style={{ width: `${goal.progress_percentage}%` }}
@@ -523,11 +523,11 @@ function GoalCard({ goal }: { goal: LearningGoalWithDetails }) {
 
 function BudgetCard({ budget }: { budget: LearningBudgetWithDetails }) {
   return (
-    <div className="bg-slate-900 rounded-lg p-5">
+    <div className="bg-background rounded-lg p-5">
       <div className="flex justify-between items-start mb-3">
         <div>
           <h3 className="font-semibold">{budget.name}</h3>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted-foreground">
             {budget.developer_name || budget.team_name || "Workspace"} &middot; FY
             {budget.fiscal_year}
             {budget.fiscal_quarter && ` Q${budget.fiscal_quarter}`}
@@ -543,23 +543,23 @@ function BudgetCard({ budget }: { budget: LearningBudgetWithDetails }) {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 text-sm">
         <div>
-          <p className="text-slate-400">Total</p>
+          <p className="text-muted-foreground">Total</p>
           <p className="font-semibold">{formatCurrency(budget.budget_cents)}</p>
         </div>
         <div>
-          <p className="text-slate-400">Spent</p>
+          <p className="text-muted-foreground">Spent</p>
           <p className="font-semibold text-blue-400">
             {formatCurrency(budget.spent_cents)}
           </p>
         </div>
         <div>
-          <p className="text-slate-400">Remaining</p>
+          <p className="text-muted-foreground">Remaining</p>
           <p className="font-semibold text-green-400">
             {formatCurrency(budget.remaining_cents)}
           </p>
         </div>
       </div>
-      <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+      <div className="h-2 bg-muted rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all ${
             budget.utilization_percentage > 90
@@ -571,7 +571,7 @@ function BudgetCard({ budget }: { budget: LearningBudgetWithDetails }) {
           style={{ width: `${Math.min(budget.utilization_percentage, 100)}%` }}
         />
       </div>
-      <p className="text-xs text-slate-400 mt-2">
+      <p className="text-xs text-muted-foreground mt-2">
         {budget.utilization_percentage.toFixed(0)}% utilized
         {budget.pending_approvals_count > 0 && (
           <> &middot; {budget.pending_approvals_count} pending approvals</>
@@ -609,54 +609,54 @@ function CreateGoalModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-slate-900 rounded-lg p-6 w-full max-w-md">
+      <div className="bg-background rounded-lg p-6 w-full max-w-md">
         <h2 className="text-xl font-bold mb-4">Set Learning Goal</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Developer ID</label>
+            <label className="block text-sm text-muted-foreground mb-1">Developer ID</label>
             <input
               type="text"
               value={formData.developer_id}
               onChange={(e) =>
                 setFormData({ ...formData, developer_id: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-muted rounded-lg border border-border focus:border-blue-500 focus:outline-none"
               placeholder="Enter developer ID"
               required
             />
           </div>
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Title</label>
+            <label className="block text-sm text-muted-foreground mb-1">Title</label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-3 py-2 bg-slate-800 rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-muted rounded-lg border border-border focus:border-blue-500 focus:outline-none"
               placeholder="e.g., Complete AWS Certification"
               required
             />
           </div>
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Description</label>
+            <label className="block text-sm text-muted-foreground mb-1">Description</label>
             <textarea
               value={formData.description || ""}
               onChange={(e) =>
                 setFormData({ ...formData, description: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-muted rounded-lg border border-border focus:border-blue-500 focus:outline-none"
               rows={3}
               placeholder="Describe the goal..."
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Goal Type</label>
+              <label className="block text-sm text-muted-foreground mb-1">Goal Type</label>
               <select
                 value={formData.goal_type}
                 onChange={(e) =>
                   setFormData({ ...formData, goal_type: e.target.value as LearningGoalType })
                 }
-                className="w-full px-3 py-2 bg-slate-800 rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-muted rounded-lg border border-border focus:border-blue-500 focus:outline-none"
               >
                 <option value="custom">Custom</option>
                 <option value="course_completion">Course Completion</option>
@@ -667,13 +667,13 @@ function CreateGoalModal({ onClose }: { onClose: () => void }) {
               </select>
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Priority</label>
+              <label className="block text-sm text-muted-foreground mb-1">Priority</label>
               <select
                 value={formData.priority}
                 onChange={(e) =>
                   setFormData({ ...formData, priority: parseInt(e.target.value) })
                 }
-                className="w-full px-3 py-2 bg-slate-800 rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-muted rounded-lg border border-border focus:border-blue-500 focus:outline-none"
               >
                 <option value="0">None</option>
                 <option value="1">Low</option>
@@ -684,7 +684,7 @@ function CreateGoalModal({ onClose }: { onClose: () => void }) {
             </div>
           </div>
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Due Date</label>
+            <label className="block text-sm text-muted-foreground mb-1">Due Date</label>
             <input
               type="date"
               value={formData.due_date?.split("T")[0] || ""}
@@ -694,14 +694,14 @@ function CreateGoalModal({ onClose }: { onClose: () => void }) {
                   due_date: e.target.value ? new Date(e.target.value).toISOString() : undefined,
                 })
               }
-              className="w-full px-3 py-2 bg-slate-800 rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-muted rounded-lg border border-border focus:border-blue-500 focus:outline-none"
             />
           </div>
           <div className="flex justify-end gap-3 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+              className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
             >
               Cancel
             </button>

@@ -64,20 +64,20 @@ export function CodeLinksDisplay({
   if (isLoading) {
     return (
       <div className="p-4 flex items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-slate-500" />
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="border border-slate-800 rounded-xl overflow-hidden">
+    <div className="border border-border rounded-xl overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-slate-900/50 border-b border-slate-800">
+      <div className="flex items-center justify-between px-4 py-3 bg-background/50 border-b border-border">
         <div className="flex items-center gap-2">
-          <LinkIcon className="h-4 w-4 text-slate-500" />
-          <span className="text-sm font-medium text-slate-300">Linked Code</span>
+          <LinkIcon className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium text-foreground">Linked Code</span>
           {codeLinks.length > 0 && (
-            <span className="text-xs text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">
+            <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
               {codeLinks.length}
             </span>
           )}
@@ -94,8 +94,8 @@ export function CodeLinksDisplay({
       {/* Links List */}
       {codeLinks.length === 0 ? (
         <div className="p-6 text-center">
-          <LinkIcon className="h-8 w-8 text-slate-700 mx-auto mb-2" />
-          <p className="text-sm text-slate-500 mb-3">
+          <LinkIcon className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground mb-3">
             No code linked to this document
           </p>
           <button
@@ -106,43 +106,43 @@ export function CodeLinksDisplay({
           </button>
         </div>
       ) : (
-        <div className="divide-y divide-slate-800">
+        <div className="divide-y divide-border">
           {codeLinks.map((link) => (
             <div
               key={link.id}
-              className="px-4 py-3 hover:bg-slate-800/30 transition"
+              className="px-4 py-3 hover:bg-muted/30 transition"
             >
               <div className="flex items-start gap-3">
                 {/* Icon */}
-                <div className="p-2 bg-slate-800 rounded-lg shrink-0">
+                <div className="p-2 bg-muted rounded-lg shrink-0">
                   {link.link_type === "directory" ? (
                     <Folder className="h-4 w-4 text-blue-400" />
                   ) : (
-                    <File className="h-4 w-4 text-slate-400" />
+                    <File className="h-4 w-4 text-muted-foreground" />
                   )}
                 </div>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-white truncate">
+                    <span className="text-sm font-medium text-foreground truncate">
                       {link.path}
                     </span>
                     {link.has_pending_changes && (
-                      <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium text-amber-400 bg-amber-900/30 rounded">
+                      <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 rounded">
                         <AlertTriangle className="h-3 w-3" />
                         Changes
                       </span>
                     )}
                     {!link.has_pending_changes && link.last_synced_at && (
-                      <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs text-green-400 bg-green-900/20 rounded">
+                      <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded">
                         <CheckCircle className="h-3 w-3" />
                         Synced
                       </span>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-3 text-xs text-slate-500">
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     {link.repository_name && (
                       <span className="flex items-center gap-1">
                         <ExternalLink className="h-3 w-3" />
@@ -167,7 +167,7 @@ export function CodeLinksDisplay({
                     <button
                       onClick={() => handleRegenerate(link.id)}
                       disabled={regeneratingId === link.id}
-                      className="p-1.5 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-900/30 transition disabled:opacity-50"
+                      className="p-1.5 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition disabled:opacity-50"
                       title="Regenerate from updated code"
                     >
                       {regeneratingId === link.id ? (
@@ -180,7 +180,7 @@ export function CodeLinksDisplay({
                   <button
                     onClick={() => handleDelete(link.id)}
                     disabled={deletingId === link.id}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-900/20 transition disabled:opacity-50"
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition disabled:opacity-50"
                     title="Remove link"
                   >
                     {deletingId === link.id ? (

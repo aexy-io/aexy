@@ -163,10 +163,10 @@ export default function OnboardingComplete() {
   }, [status, router]);
 
   const features = [
-    { icon: Building2, label: "Objects & Records", color: "text-blue-400" },
-    { icon: Users, label: "Contact Management", color: "text-green-400" },
-    { icon: Target, label: "Deal Pipeline", color: "text-amber-400" },
-    { icon: Zap, label: "Automations", color: "text-purple-400" },
+    { icon: Building2, label: "Objects & Records", color: "text-blue-600 dark:text-blue-400" },
+    { icon: Users, label: "Contact Management", color: "text-green-600 dark:text-green-400" },
+    { icon: Target, label: "Deal Pipeline", color: "text-amber-600 dark:text-amber-400" },
+    { icon: Zap, label: "Automations", color: "text-purple-600 dark:text-purple-400" },
   ];
 
   if (status === "loading") {
@@ -177,20 +177,20 @@ export default function OnboardingComplete() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
         >
-          <div className="w-20 h-20 rounded-full bg-slate-800/50 flex items-center justify-center mx-auto mb-6">
+          <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-6">
             <Loader2 className="w-10 h-10 text-purple-400 animate-spin" />
           </div>
 
-          <h1 className="text-2xl font-bold text-white mb-3">
+          <h1 className="text-2xl font-bold text-foreground mb-3">
             Setting up your CRM...
           </h1>
 
-          <p className="text-slate-400">
+          <p className="text-muted-foreground">
             {syncProgress || "Creating your objects and attributes based on your template selection."}
           </p>
 
           <div className="mt-8 space-y-2">
-            <div className="h-1.5 w-48 mx-auto rounded-full bg-slate-800 overflow-hidden">
+            <div className="h-1.5 w-48 mx-auto rounded-full bg-muted overflow-hidden">
               <motion.div
                 className="h-full bg-gradient-to-r from-purple-500 to-purple-600"
                 initial={{ width: "0%" }}
@@ -216,18 +216,18 @@ export default function OnboardingComplete() {
             <AlertCircle className="w-10 h-10 text-red-400" />
           </div>
 
-          <h1 className="text-2xl font-bold text-white mb-3">
+          <h1 className="text-2xl font-bold text-foreground mb-3">
             Something went wrong
           </h1>
 
-          <p className="text-slate-400 mb-6">
+          <p className="text-muted-foreground mb-6">
             {error || "We couldn't set up your CRM. Please try again."}
           </p>
 
           <div className="flex items-center justify-center gap-3">
             <button
               onClick={() => router.push("/crm/onboarding")}
-              className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+              className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
             >
               Start over
             </button>
@@ -269,7 +269,7 @@ export default function OnboardingComplete() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="text-3xl font-bold text-white mb-3"
+          className="text-3xl font-bold text-foreground mb-3"
         >
           You&apos;re all set!
         </motion.h1>
@@ -278,7 +278,7 @@ export default function OnboardingComplete() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="text-lg text-slate-400 mb-8"
+          className="text-lg text-muted-foreground mb-8"
         >
           Your CRM is ready to use. Start managing your relationships.
         </motion.p>
@@ -289,9 +289,9 @@ export default function OnboardingComplete() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-6 mb-8"
+            className="bg-muted/30 border border-border/50 rounded-xl p-6 mb-8"
           >
-            <div className="flex items-center justify-center gap-2 text-sm text-slate-400 mb-4">
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4">
               <Sparkles className="w-4 h-4 text-purple-400" />
               Objects created
             </div>
@@ -302,7 +302,7 @@ export default function OnboardingComplete() {
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.6 + index * 0.1 }}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800/50 text-white text-sm"
+                  className="px-3 py-1.5 rounded-lg bg-muted/50 text-foreground text-sm"
                 >
                   {name}
                 </motion.span>
@@ -316,9 +316,9 @@ export default function OnboardingComplete() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
-          className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-6 mb-8"
+          className="bg-muted/30 border border-border/50 rounded-xl p-6 mb-8"
         >
-          <div className="flex items-center justify-center gap-2 text-sm text-slate-400 mb-4">
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4">
             <Sparkles className="w-4 h-4 text-purple-400" />
             Features unlocked
           </div>
@@ -329,10 +329,10 @@ export default function OnboardingComplete() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.8 + index * 0.1 }}
-                className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50"
+                className="flex items-center gap-3 p-3 rounded-lg bg-muted/50"
               >
                 <feature.icon className={`w-5 h-5 ${feature.color}`} />
-                <span className="text-sm text-white">{feature.label}</span>
+                <span className="text-sm text-foreground">{feature.label}</span>
               </motion.div>
             ))}
           </div>
@@ -352,7 +352,7 @@ export default function OnboardingComplete() {
             <ArrowRight className="w-5 h-5" />
           </button>
 
-          <p className="mt-4 text-sm text-slate-500">
+          <p className="mt-4 text-sm text-muted-foreground">
             Redirecting in {countdown} second{countdown !== 1 ? "s" : ""}...
           </p>
         </motion.div>

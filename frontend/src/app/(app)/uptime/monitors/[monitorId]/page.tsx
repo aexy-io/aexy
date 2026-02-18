@@ -31,14 +31,14 @@ const CHECK_TYPE_ICONS = {
 };
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  up: { bg: "bg-emerald-900/30", text: "text-emerald-400", label: "Up" },
-  down: { bg: "bg-red-900/30", text: "text-red-400", label: "Down" },
-  degraded: { bg: "bg-amber-900/30", text: "text-amber-400", label: "Degraded" },
-  paused: { bg: "bg-slate-700/50", text: "text-slate-400", label: "Paused" },
-  unknown: { bg: "bg-slate-700/50", text: "text-slate-400", label: "Unknown" },
+  up: { bg: "bg-emerald-50 dark:bg-emerald-900/30", text: "text-emerald-600 dark:text-emerald-400", label: "Up" },
+  down: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400", label: "Down" },
+  degraded: { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", label: "Degraded" },
+  paused: { bg: "bg-accent/50", text: "text-muted-foreground", label: "Paused" },
+  unknown: { bg: "bg-accent/50", text: "text-muted-foreground", label: "Unknown" },
 };
 
-const DEFAULT_STATUS_STYLE = { bg: "bg-slate-700/50", text: "text-slate-400", label: "Unknown" };
+const DEFAULT_STATUS_STYLE = { bg: "bg-accent/50", text: "text-muted-foreground", label: "Unknown" };
 
 export default function MonitorDetailPage() {
   const params = useParams();
@@ -153,9 +153,9 @@ export default function MonitorDetailPage() {
 
   if (!monitor) {
     return (
-      <div className="min-h-screen bg-slate-950 p-8 text-center">
+      <div className="min-h-screen bg-background p-8 text-center">
         <AlertTriangle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
-        <p className="text-white">Monitor not found.</p>
+        <p className="text-foreground">Monitor not found.</p>
         <Link href="/uptime/monitors" className="text-emerald-400 hover:underline mt-2 inline-block">
           Back to Monitors
         </Link>
@@ -167,13 +167,13 @@ export default function MonitorDetailPage() {
   const statusStyle = STATUS_COLORS[monitor.current_status] || DEFAULT_STATUS_STYLE;
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-6">
           <Link
             href="/uptime/monitors"
-            className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition mb-4"
+            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition mb-4"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Monitors
@@ -185,20 +185,20 @@ export default function MonitorDetailPage() {
                 <Icon className={`h-6 w-6 ${statusStyle.text}`} />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
                   {monitor.name}
                   <span className={`px-2 py-1 rounded text-sm font-medium ${statusStyle.bg} ${statusStyle.text}`}>
                     {statusStyle.label}
                   </span>
                 </h1>
-                <p className="text-slate-400 mt-1 flex items-center gap-2">
+                <p className="text-muted-foreground mt-1 flex items-center gap-2">
                   <span className="uppercase text-xs font-medium">{monitor.check_type}</span>
                   {monitor.url && (
                     <a
                       href={monitor.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="hover:text-white transition flex items-center gap-1"
+                      className="hover:text-foreground transition flex items-center gap-1"
                     >
                       {monitor.url}
                       <ExternalLink className="h-3 w-3" />
@@ -217,7 +217,7 @@ export default function MonitorDetailPage() {
               <button
                 onClick={handleTest}
                 disabled={testing}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-accent text-foreground rounded-lg hover:bg-muted transition disabled:opacity-50"
               >
                 {testing ? (
                   <RefreshCw className="h-4 w-4 animate-spin" />
@@ -259,7 +259,7 @@ export default function MonitorDetailPage() {
             className={`mb-6 p-4 rounded-xl border ${
               testResult.is_up
                 ? "bg-emerald-900/20 border-emerald-500/30"
-                : "bg-red-900/20 border-red-500/30"
+                : "bg-red-50 dark:bg-red-900/20 border-red-500/30"
             }`}
           >
             <div className="flex items-center gap-3">
@@ -285,40 +285,40 @@ export default function MonitorDetailPage() {
         {/* Stats */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
-            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-              <p className="text-sm text-slate-400">Uptime (24h)</p>
-              <p className="text-2xl font-bold text-white">{stats.uptime_percentage_24h.toFixed(2)}%</p>
+            <div className="bg-muted rounded-xl p-4 border border-border">
+              <p className="text-sm text-muted-foreground">Uptime (24h)</p>
+              <p className="text-2xl font-bold text-foreground">{stats.uptime_percentage_24h.toFixed(2)}%</p>
             </div>
-            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-              <p className="text-sm text-slate-400">Uptime (7d)</p>
-              <p className="text-2xl font-bold text-white">{stats.uptime_percentage_7d.toFixed(2)}%</p>
+            <div className="bg-muted rounded-xl p-4 border border-border">
+              <p className="text-sm text-muted-foreground">Uptime (7d)</p>
+              <p className="text-2xl font-bold text-foreground">{stats.uptime_percentage_7d.toFixed(2)}%</p>
             </div>
-            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-              <p className="text-sm text-slate-400">Uptime (30d)</p>
-              <p className="text-2xl font-bold text-white">{stats.uptime_percentage_30d.toFixed(2)}%</p>
+            <div className="bg-muted rounded-xl p-4 border border-border">
+              <p className="text-sm text-muted-foreground">Uptime (30d)</p>
+              <p className="text-2xl font-bold text-foreground">{stats.uptime_percentage_30d.toFixed(2)}%</p>
             </div>
-            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-              <p className="text-sm text-slate-400">Avg Response (24h)</p>
-              <p className="text-2xl font-bold text-white">
+            <div className="bg-muted rounded-xl p-4 border border-border">
+              <p className="text-sm text-muted-foreground">Avg Response (24h)</p>
+              <p className="text-2xl font-bold text-foreground">
                 {stats.avg_response_time_24h != null ? `${stats.avg_response_time_24h}ms` : "-"}
               </p>
             </div>
-            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-              <p className="text-sm text-slate-400">Incidents (24h)</p>
-              <p className="text-2xl font-bold text-white">{stats.incidents_24h}</p>
+            <div className="bg-muted rounded-xl p-4 border border-border">
+              <p className="text-sm text-muted-foreground">Incidents (24h)</p>
+              <p className="text-2xl font-bold text-foreground">{stats.incidents_24h}</p>
             </div>
-            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-              <p className="text-sm text-slate-400">Total Incidents</p>
-              <p className="text-2xl font-bold text-white">{stats.total_incidents}</p>
+            <div className="bg-muted rounded-xl p-4 border border-border">
+              <p className="text-sm text-muted-foreground">Total Incidents</p>
+              <p className="text-2xl font-bold text-foreground">{stats.total_incidents}</p>
             </div>
           </div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent Checks */}
-          <div className="bg-slate-800 rounded-xl border border-slate-700">
-            <div className="p-4 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <h2 className="text-lg font-semibold text-white">Recent Checks</h2>
+          <div className="bg-muted rounded-xl border border-border">
+            <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <h2 className="text-lg font-semibold text-foreground">Recent Checks</h2>
               <Link
                 href="/uptime/history"
                 className="text-sm text-emerald-400 hover:text-emerald-300"
@@ -328,9 +328,9 @@ export default function MonitorDetailPage() {
             </div>
             <div className="max-h-[400px] overflow-y-auto">
               {checks.length === 0 ? (
-                <div className="p-8 text-center text-slate-400">No checks recorded yet.</div>
+                <div className="p-8 text-center text-muted-foreground">No checks recorded yet.</div>
               ) : (
-                <div className="divide-y divide-slate-700">
+                <div className="divide-y divide-border">
                   {checks.slice(0, 15).map((check) => (
                     <div key={check.id} className="p-3 flex items-center gap-3">
                       {check.is_up ? (
@@ -339,21 +339,21 @@ export default function MonitorDetailPage() {
                         <XCircle className="h-4 w-4 text-red-400" />
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-slate-300">{formatDate(check.checked_at)}</p>
+                        <p className="text-sm text-foreground">{formatDate(check.checked_at)}</p>
                         {check.error_message && (
                           <p className="text-xs text-red-400 truncate">{check.error_message}</p>
                         )}
                       </div>
                       <div className="text-right">
                         {check.response_time_ms != null && (
-                          <span className="text-sm text-slate-400">{check.response_time_ms}ms</span>
+                          <span className="text-sm text-muted-foreground">{check.response_time_ms}ms</span>
                         )}
                         {check.status_code && (
                           <span
                             className={`ml-2 px-1.5 py-0.5 rounded text-xs ${
                               check.status_code >= 200 && check.status_code < 300
-                                ? "bg-emerald-900/30 text-emerald-400"
-                                : "bg-red-900/30 text-red-400"
+                                ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+                                : "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400"
                             }`}
                           >
                             {check.status_code}
@@ -368,9 +368,9 @@ export default function MonitorDetailPage() {
           </div>
 
           {/* Recent Incidents */}
-          <div className="bg-slate-800 rounded-xl border border-slate-700">
-            <div className="p-4 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <h2 className="text-lg font-semibold text-white">Recent Incidents</h2>
+          <div className="bg-muted rounded-xl border border-border">
+            <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <h2 className="text-lg font-semibold text-foreground">Recent Incidents</h2>
               <Link
                 href="/uptime/incidents"
                 className="text-sm text-emerald-400 hover:text-emerald-300"
@@ -380,30 +380,30 @@ export default function MonitorDetailPage() {
             </div>
             <div className="max-h-[400px] overflow-y-auto">
               {incidents.length === 0 ? (
-                <div className="p-8 text-center text-slate-400">No incidents recorded.</div>
+                <div className="p-8 text-center text-muted-foreground">No incidents recorded.</div>
               ) : (
-                <div className="divide-y divide-slate-700">
+                <div className="divide-y divide-border">
                   {incidents.map((incident) => (
                     <Link
                       key={incident.id}
                       href={`/uptime/incidents/${incident.id}`}
-                      className="p-4 block hover:bg-slate-700/50 transition"
+                      className="p-4 block hover:bg-accent/50 transition"
                     >
                       <div className="flex items-center gap-2 mb-1">
                         <span
                           className={`px-2 py-0.5 rounded text-xs font-medium ${
                             incident.status === "ongoing"
-                              ? "bg-red-900/30 text-red-400"
+                              ? "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400"
                               : incident.status === "acknowledged"
-                              ? "bg-amber-900/30 text-amber-400"
-                              : "bg-emerald-900/30 text-emerald-400"
+                              ? "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
+                              : "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
                           }`}
                         >
                           {incident.status}
                         </span>
-                        <span className="text-xs text-slate-500">{formatDate(incident.started_at)}</span>
+                        <span className="text-xs text-muted-foreground">{formatDate(incident.started_at)}</span>
                       </div>
-                      <p className="text-sm text-slate-400 truncate">
+                      <p className="text-sm text-muted-foreground truncate">
                         {incident.last_error_message || incident.first_error_message || "No details"}
                       </p>
                     </Link>
@@ -415,57 +415,57 @@ export default function MonitorDetailPage() {
         </div>
 
         {/* Configuration */}
-        <div className="mt-6 bg-slate-800 rounded-xl border border-slate-700 p-6">
-          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+        <div className="mt-6 bg-muted rounded-xl border border-border p-6">
+          <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
             <Settings className="h-5 w-5" />
             Configuration
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
-              <p className="text-slate-500">Check Interval</p>
-              <p className="text-white">{monitor.check_interval_seconds}s</p>
+              <p className="text-muted-foreground">Check Interval</p>
+              <p className="text-foreground">{monitor.check_interval_seconds}s</p>
             </div>
             <div>
-              <p className="text-slate-500">Timeout</p>
-              <p className="text-white">{monitor.timeout_seconds}s</p>
+              <p className="text-muted-foreground">Timeout</p>
+              <p className="text-foreground">{monitor.timeout_seconds}s</p>
             </div>
             <div>
-              <p className="text-slate-500">Failure Threshold</p>
-              <p className="text-white">{monitor.consecutive_failures_threshold} failures</p>
+              <p className="text-muted-foreground">Failure Threshold</p>
+              <p className="text-foreground">{monitor.consecutive_failures_threshold} failures</p>
             </div>
             <div>
-              <p className="text-slate-500">Consecutive Failures</p>
-              <p className={monitor.consecutive_failures > 0 ? "text-red-400" : "text-white"}>
+              <p className="text-muted-foreground">Consecutive Failures</p>
+              <p className={monitor.consecutive_failures > 0 ? "text-red-400" : "text-foreground"}>
                 {monitor.consecutive_failures}
               </p>
             </div>
             {monitor.check_type === "http" && (
               <>
                 <div>
-                  <p className="text-slate-500">HTTP Method</p>
-                  <p className="text-white">{monitor.http_method}</p>
+                  <p className="text-muted-foreground">HTTP Method</p>
+                  <p className="text-foreground">{monitor.http_method}</p>
                 </div>
                 <div>
-                  <p className="text-slate-500">Expected Status Codes</p>
-                  <p className="text-white">{monitor.expected_status_codes?.join(", ") || "200"}</p>
+                  <p className="text-muted-foreground">Expected Status Codes</p>
+                  <p className="text-foreground">{monitor.expected_status_codes?.join(", ") || "200"}</p>
                 </div>
                 <div>
-                  <p className="text-slate-500">Verify SSL</p>
-                  <p className="text-white">{monitor.verify_ssl ? "Yes" : "No"}</p>
+                  <p className="text-muted-foreground">Verify SSL</p>
+                  <p className="text-foreground">{monitor.verify_ssl ? "Yes" : "No"}</p>
                 </div>
                 <div>
-                  <p className="text-slate-500">Follow Redirects</p>
-                  <p className="text-white">{monitor.follow_redirects ? "Yes" : "No"}</p>
+                  <p className="text-muted-foreground">Follow Redirects</p>
+                  <p className="text-foreground">{monitor.follow_redirects ? "Yes" : "No"}</p>
                 </div>
               </>
             )}
             <div>
-              <p className="text-slate-500">Notify on Recovery</p>
-              <p className="text-white">{monitor.notify_on_recovery ? "Yes" : "No"}</p>
+              <p className="text-muted-foreground">Notify on Recovery</p>
+              <p className="text-foreground">{monitor.notify_on_recovery ? "Yes" : "No"}</p>
             </div>
             <div>
-              <p className="text-slate-500">Notification Channels</p>
-              <p className="text-white">
+              <p className="text-muted-foreground">Notification Channels</p>
+              <p className="text-foreground">
                 {monitor.notification_channels?.length > 0
                   ? monitor.notification_channels.join(", ")
                   : "None configured"}

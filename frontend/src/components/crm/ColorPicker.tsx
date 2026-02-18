@@ -114,7 +114,7 @@ export function ColorPickerDropdown({
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "rounded-md border border-slate-600 transition-all hover:border-slate-500",
+          "rounded-md border border-border transition-all hover:border-border",
           sizeClasses[size]
         )}
         style={{ backgroundColor: value }}
@@ -130,7 +130,7 @@ export function ColorPickerDropdown({
           />
           <div
             className={cn(
-              "absolute z-50 mt-2 p-3 bg-slate-800 border border-slate-700 rounded-lg shadow-xl",
+              "absolute z-50 mt-2 p-3 bg-muted border border-border rounded-lg shadow-xl",
               className
             )}
           >

@@ -97,7 +97,7 @@ export default function InviteTeam() {
             className={`h-1.5 rounded-full transition-all ${
               step <= 5
                 ? "w-8 bg-purple-500"
-                : "w-4 bg-slate-700"
+                : "w-4 bg-accent"
             }`}
           />
         ))}
@@ -110,10 +110,10 @@ export default function InviteTeam() {
       >
         {/* Header */}
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold text-white mb-3">
+          <h1 className="text-3xl font-bold text-foreground mb-3">
             Invite your team
           </h1>
-          <p className="text-slate-400 max-w-lg mx-auto">
+          <p className="text-muted-foreground max-w-lg mx-auto">
             CRM works better with your team. Invite colleagues to collaborate
             on contacts and deals.
           </p>
@@ -121,14 +121,14 @@ export default function InviteTeam() {
 
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Email invites */}
-          <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-6">
+          <div className="bg-muted/30 border border-border/50 rounded-xl p-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
                 <Mail className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-white">Invite by email</h3>
-                <p className="text-sm text-slate-400">Send email invitations</p>
+                <h3 className="font-semibold text-foreground">Invite by email</h3>
+                <p className="text-sm text-muted-foreground">Send email invitations</p>
               </div>
             </div>
 
@@ -140,12 +140,12 @@ export default function InviteTeam() {
                     placeholder="colleague@company.com"
                     value={member.email}
                     onChange={(e) => updateMember(index, "email", e.target.value)}
-                    className="flex-1 px-4 py-2.5 rounded-lg bg-slate-900/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20"
+                    className="flex-1 px-4 py-2.5 rounded-lg bg-background/50 border border-border text-foreground placeholder-muted-foreground focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20"
                   />
                   <select
                     value={member.role}
                     onChange={(e) => updateMember(index, "role", e.target.value as "admin" | "member")}
-                    className="px-3 py-2.5 rounded-lg bg-slate-900/50 border border-slate-700 text-white focus:outline-none focus:border-purple-500/50"
+                    className="px-3 py-2.5 rounded-lg bg-background/50 border border-border text-foreground focus:outline-none focus:border-purple-500/50"
                   >
                     <option value="member">Member</option>
                     <option value="admin">Admin</option>
@@ -153,7 +153,7 @@ export default function InviteTeam() {
                   {teamMembers.length > 1 && (
                     <button
                       onClick={() => removeMember(index)}
-                      className="p-2 text-slate-500 hover:text-red-400 transition-colors"
+                      className="p-2 text-muted-foreground hover:text-red-400 transition-colors"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -172,19 +172,19 @@ export default function InviteTeam() {
           </div>
 
           {/* Invite link */}
-          <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-6">
+          <div className="bg-muted/30 border border-border/50 rounded-xl p-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
                 <Link2 className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-white">Share invite link</h3>
-                <p className="text-sm text-slate-400">Anyone with link can join</p>
+                <h3 className="font-semibold text-foreground">Share invite link</h3>
+                <p className="text-sm text-muted-foreground">Anyone with link can join</p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 mb-4">
-              <div className="flex-1 px-4 py-2.5 rounded-lg bg-slate-900/50 border border-slate-700 text-slate-400 text-sm truncate">
+              <div className="flex-1 px-4 py-2.5 rounded-lg bg-background/50 border border-border text-muted-foreground text-sm truncate">
                 {inviteLink}
               </div>
               <button
@@ -192,7 +192,7 @@ export default function InviteTeam() {
                 className={`px-4 py-2.5 rounded-lg font-medium transition-all flex items-center gap-2 ${
                   copiedLink
                     ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                    : "bg-slate-700 text-white hover:bg-slate-600"
+                    : "bg-accent text-foreground hover:bg-accent"
                 }`}
               >
                 {copiedLink ? (
@@ -209,15 +209,15 @@ export default function InviteTeam() {
               </button>
             </div>
 
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               This link will expire in 7 days. You can manage team access in settings.
             </p>
           </div>
         </div>
 
         {/* Team preview */}
-        <div className="mt-8 p-4 rounded-xl bg-slate-800/20 border border-slate-700/30">
-          <div className="flex items-center gap-2 text-sm text-slate-400">
+        <div className="mt-8 p-4 rounded-xl bg-muted/20 border border-border/30">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Users className="w-4 h-4" />
             <span>
               {hasValidEmails
@@ -228,10 +228,10 @@ export default function InviteTeam() {
         </div>
 
         {/* Navigation */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 mt-8 border-t border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 mt-8 border-t border-muted">
           <button
             onClick={() => router.push("/crm/onboarding/connect")}
-            className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-white transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
@@ -240,7 +240,7 @@ export default function InviteTeam() {
           <div className="flex items-center gap-3">
             <button
               onClick={handleComplete}
-              className="text-slate-400 hover:text-white transition-colors"
+              className="text-muted-foreground hover:text-foreground transition-colors"
             >
               Skip for now
             </button>

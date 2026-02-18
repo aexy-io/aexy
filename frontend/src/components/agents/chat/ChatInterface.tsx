@@ -50,17 +50,17 @@ export function ChatInterface({
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-slate-900">
+      <div className="flex-1 flex items-center justify-center bg-background">
         <div className="text-center">
           <Loader2 className="h-8 w-8 text-purple-500 animate-spin mx-auto mb-4" />
-          <p className="text-slate-400">Loading conversation...</p>
+          <p className="text-muted-foreground">Loading conversation...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-slate-900">
+    <div className="flex flex-col h-full bg-background">
       {/* Messages area */}
       <div
         ref={messagesContainerRef}
@@ -74,10 +74,10 @@ export function ChatInterface({
               <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-purple-500/20 flex items-center justify-center">
                 <Bot className="h-8 w-8 text-purple-400" />
               </div>
-              <h2 className="text-xl font-semibold text-white mb-2">
+              <h2 className="text-xl font-semibold text-foreground mb-2">
                 Chat with {agent.name}
               </h2>
-              <p className="text-slate-400 max-w-md mx-auto">
+              <p className="text-muted-foreground max-w-md mx-auto">
                 {agent.description || "Start a conversation with this agent."}
               </p>
               {agent.tools.length > 0 && (
@@ -85,13 +85,13 @@ export function ChatInterface({
                   {agent.tools.slice(0, 6).map((tool) => (
                     <span
                       key={tool}
-                      className="px-2 py-1 bg-slate-800 text-slate-400 rounded text-xs"
+                      className="px-2 py-1 bg-muted text-muted-foreground rounded text-xs"
                     >
                       {tool.replace(/_/g, " ")}
                     </span>
                   ))}
                   {agent.tools.length > 6 && (
-                    <span className="px-2 py-1 bg-slate-800 text-slate-500 rounded text-xs">
+                    <span className="px-2 py-1 bg-muted text-muted-foreground rounded text-xs">
                       +{agent.tools.length - 6} more
                     </span>
                   )}

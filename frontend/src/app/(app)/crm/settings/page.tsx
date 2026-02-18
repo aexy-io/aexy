@@ -126,13 +126,13 @@ function ConfigurationTab({
   return (
     <div className="space-y-6">
       {/* Basic Info */}
-      <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+      <div className="bg-muted/50 border border-border rounded-xl p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-          <h3 className="text-lg font-semibold text-white">Basic Information</h3>
+          <h3 className="text-lg font-semibold text-foreground">Basic Information</h3>
           {!isEditing ? (
             <button
               onClick={() => setIsEditing(true)}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 text-sm bg-accent hover:bg-accent text-foreground rounded-lg transition-colors"
             >
               <Edit2 className="h-4 w-4" />
               Edit
@@ -141,7 +141,7 @@ function ConfigurationTab({
             <div className="flex items-center gap-2">
               <button
                 onClick={handleCancel}
-                className="flex items-center gap-1 px-3 py-1.5 text-sm border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors"
+                className="flex items-center gap-1 px-3 py-1.5 text-sm border border-border text-foreground rounded-lg hover:bg-accent transition-colors"
               >
                 <X className="h-4 w-4" />
                 Cancel
@@ -149,7 +149,7 @@ function ConfigurationTab({
               <button
                 onClick={handleSave}
                 disabled={isUpdating}
-                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white rounded-lg transition-colors"
+                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-foreground rounded-lg transition-colors"
               >
                 <Save className="h-4 w-4" />
                 {isUpdating ? "Saving..." : "Save"}
@@ -160,7 +160,7 @@ function ConfigurationTab({
 
         <div className="grid grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-2">
+            <label className="block text-sm font-medium text-muted-foreground mb-2">
               Name (singular)
             </label>
             {isEditing ? (
@@ -168,15 +168,15 @@ function ConfigurationTab({
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             ) : (
-              <p className="text-white">{object.name}</p>
+              <p className="text-foreground">{object.name}</p>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-2">
+            <label className="block text-sm font-medium text-muted-foreground mb-2">
               Name (plural)
             </label>
             {isEditing ? (
@@ -184,15 +184,15 @@ function ConfigurationTab({
                 type="text"
                 value={pluralName}
                 onChange={(e) => setPluralName(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             ) : (
-              <p className="text-white">{object.plural_name}</p>
+              <p className="text-foreground">{object.plural_name}</p>
             )}
           </div>
 
           <div className="col-span-2">
-            <label className="block text-sm font-medium text-slate-400 mb-2">
+            <label className="block text-sm font-medium text-muted-foreground mb-2">
               Description
             </label>
             {isEditing ? (
@@ -200,25 +200,25 @@ function ConfigurationTab({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={2}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
               />
             ) : (
-              <p className="text-slate-300">{object.description || "No description"}</p>
+              <p className="text-foreground">{object.description || "No description"}</p>
             )}
           </div>
         </div>
       </div>
 
       {/* Object Type */}
-      <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">Object Type</h3>
+      <div className="bg-muted/50 border border-border rounded-xl p-6">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Object Type</h3>
         <div className="flex items-center gap-3">
           <div className="p-3 bg-purple-500/20 rounded-lg text-purple-400">
             {objectTypeIcons[object.object_type as CRMObjectType] || objectTypeIcons.custom}
           </div>
           <div>
-            <p className="text-white font-medium capitalize">{object.object_type}</p>
-            <p className="text-sm text-slate-400">
+            <p className="text-foreground font-medium capitalize">{object.object_type}</p>
+            <p className="text-sm text-muted-foreground">
               {object.is_system ? "System object (cannot be changed)" : "Custom object"}
             </p>
           </div>
@@ -226,22 +226,22 @@ function ConfigurationTab({
       </div>
 
       {/* Statistics */}
-      <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">Statistics</h3>
+      <div className="bg-muted/50 border border-border rounded-xl p-6">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Statistics</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-4 bg-slate-700/30 rounded-lg">
-            <p className="text-2xl font-bold text-white">{object.record_count}</p>
-            <p className="text-sm text-slate-400">Records</p>
+          <div className="p-4 bg-accent/30 rounded-lg">
+            <p className="text-2xl font-bold text-foreground">{object.record_count}</p>
+            <p className="text-sm text-muted-foreground">Records</p>
           </div>
-          <div className="p-4 bg-slate-700/30 rounded-lg">
-            <p className="text-2xl font-bold text-white">{object.attributes?.length || 0}</p>
-            <p className="text-sm text-slate-400">Attributes</p>
+          <div className="p-4 bg-accent/30 rounded-lg">
+            <p className="text-2xl font-bold text-foreground">{object.attributes?.length || 0}</p>
+            <p className="text-sm text-muted-foreground">Attributes</p>
           </div>
-          <div className="p-4 bg-slate-700/30 rounded-lg">
-            <p className="text-2xl font-bold text-white">
+          <div className="p-4 bg-accent/30 rounded-lg">
+            <p className="text-2xl font-bold text-foreground">
               {new Date(object.created_at).toLocaleDateString()}
             </p>
-            <p className="text-sm text-slate-400">Created</p>
+            <p className="text-sm text-muted-foreground">Created</p>
           </div>
         </div>
       </div>
@@ -269,9 +269,9 @@ function AppearanceTab({
   return (
     <div className="space-y-6">
       {/* Color */}
-      <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">Object Color</h3>
-        <p className="text-sm text-slate-400 mb-4">
+      <div className="bg-muted/50 border border-border rounded-xl p-6">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Object Color</h3>
+        <p className="text-sm text-muted-foreground mb-4">
           Choose a color to identify this object throughout the CRM
         </p>
         <div className="flex items-center gap-4">
@@ -286,16 +286,16 @@ function AppearanceTab({
       </div>
 
       {/* Icon */}
-      <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">Object Icon</h3>
-        <p className="text-sm text-slate-400 mb-4">
+      <div className="bg-muted/50 border border-border rounded-xl p-6">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Object Icon</h3>
+        <p className="text-sm text-muted-foreground mb-4">
           Icon is determined by the object type and cannot be changed
         </p>
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-slate-700 rounded-lg text-slate-400">
+          <div className="p-3 bg-accent rounded-lg text-muted-foreground">
             {objectTypeIcons[object.object_type as CRMObjectType] || objectTypeIcons.custom}
           </div>
-          <span className="text-slate-300 capitalize">{object.object_type} icon</span>
+          <span className="text-foreground capitalize">{object.object_type} icon</span>
         </div>
       </div>
     </div>
@@ -607,8 +607,8 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
   if (isLoading) {
     return (
       <div className="animate-pulse space-y-6">
-        <div className="h-32 bg-slate-800 rounded-xl" />
-        <div className="h-64 bg-slate-800 rounded-xl" />
+        <div className="h-32 bg-muted rounded-xl" />
+        <div className="h-64 bg-muted rounded-xl" />
       </div>
     );
   }
@@ -619,18 +619,18 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-slate-800/30 border border-slate-700/50 rounded-xl overflow-hidden"
+        className="bg-muted/30 border border-border/50 rounded-xl overflow-hidden"
       >
         {/* Header */}
-        <div className="p-6 border-b border-slate-700/50">
+        <div className="p-6 border-b border-border/50">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-xl bg-white flex items-center justify-center shadow-lg">
                 <GoogleIcon className="w-8 h-8" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-white">Google Integration</h2>
-                <p className="text-slate-400">Gmail & Calendar sync for CRM</p>
+                <h2 className="text-xl font-semibold text-foreground">Google Integration</h2>
+                <p className="text-muted-foreground">Gmail & Calendar sync for CRM</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -640,7 +640,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                   Connected
                 </span>
               ) : (
-                <span className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-700/50 border border-slate-600 text-slate-400 text-sm">
+                <span className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/50 border border-border text-muted-foreground text-sm">
                   <XCircle className="w-4 h-4" />
                   Not connected
                 </span>
@@ -653,13 +653,13 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
         {status?.is_connected ? (
           <>
             {/* Connected email */}
-            <div className="p-6 border-b border-slate-700/50">
+            <div className="p-6 border-b border-border/50">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <Mail className="w-5 h-5 text-slate-400" />
+                  <Mail className="w-5 h-5 text-muted-foreground" />
                   <div>
-                    <p className="text-white font-medium">{status.google_email}</p>
-                    <p className="text-sm text-slate-500">Connected Google account</p>
+                    <p className="text-foreground font-medium">{status.google_email}</p>
+                    <p className="text-sm text-muted-foreground">Connected Google account</p>
                   </div>
                 </div>
                 <button
@@ -678,21 +678,21 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
               {/* Gmail Sync */}
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-lg bg-blue-500/10 text-blue-400">
+                  <div className="p-3 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
                     <Mail className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-white">Gmail Sync</h3>
-                    <p className="text-sm text-slate-400 mt-1">
+                    <h3 className="font-medium text-foreground">Gmail Sync</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
                       Sync emails to populate contacts and track communication
                     </p>
                     {status.gmail_last_sync_at && (
-                      <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
+                      <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         Last synced: {new Date(status.gmail_last_sync_at).toLocaleString()}
                       </p>
                     )}
-                    <p className="text-xs text-slate-500 flex items-center gap-1">
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
                       <Users className="w-3 h-3" />
                       {status.messages_synced} messages synced
                     </p>
@@ -702,7 +702,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                   <button
                     onClick={handleGmailSync}
                     disabled={isSyncing || !status.gmail_sync_enabled}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white rounded-lg transition-colors"
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm bg-accent hover:bg-accent disabled:opacity-50 text-foreground rounded-lg transition-colors"
                   >
                     <RefreshCw className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`} />
                     Sync Now
@@ -710,7 +710,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                   <button
                     onClick={() => handleUpdateSettings({ gmail_sync_enabled: !status.gmail_sync_enabled })}
                     className={`relative w-11 h-6 rounded-full transition-colors ${
-                      status.gmail_sync_enabled ? "bg-purple-500" : "bg-slate-700"
+                      status.gmail_sync_enabled ? "bg-purple-500" : "bg-accent"
                     }`}
                   >
                     <span
@@ -724,10 +724,10 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
 
               {/* Auto-Sync Interval */}
               {status.gmail_sync_enabled && (
-                <div className="ml-14 pl-4 border-l-2 border-slate-700 space-y-3">
+                <div className="ml-14 pl-4 border-l-2 border-border space-y-3">
                   <div>
-                    <h4 className="font-medium text-white text-sm">Auto-Sync Schedule</h4>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <h4 className="font-medium text-foreground text-sm">Auto-Sync Schedule</h4>
+                    <p className="text-xs text-muted-foreground mt-1">
                       Automatically sync emails at a regular interval (minimum 5 minutes)
                     </p>
                   </div>
@@ -752,7 +752,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                         className={`px-3 py-1 text-xs rounded-lg transition-colors ${
                           status.auto_sync_interval_minutes === preset.value
                             ? "bg-blue-500 text-white"
-                            : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                            : "bg-accent text-foreground hover:bg-accent"
                         }`}
                       >
                         {preset.label}
@@ -762,7 +762,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
 
                   {/* Custom input */}
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400">Or enter custom:</span>
+                    <span className="text-xs text-muted-foreground">Or enter custom:</span>
                     <input
                       type="number"
                       min="0"
@@ -770,9 +770,9 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                       onChange={(e) => {
                         setCustomIntervalInput(e.target.value);
                       }}
-                      className="w-20 px-2 py-1 text-sm bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-20 px-2 py-1 text-sm bg-accent border border-border text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <span className="text-xs text-slate-400">minutes</span>
+                    <span className="text-xs text-muted-foreground">minutes</span>
                   </div>
 
                   {status.auto_sync_interval_minutes > 0 && (
@@ -788,21 +788,21 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
               {/* Calendar Sync */}
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-lg bg-green-500/10 text-green-400">
+                  <div className="p-3 rounded-lg bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400">
                     <Calendar className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-white">Calendar Sync</h3>
-                    <p className="text-sm text-slate-400 mt-1">
+                    <h3 className="font-medium text-foreground">Calendar Sync</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
                       Sync events to track meetings with contacts
                     </p>
                     {status.calendar_last_sync_at && (
-                      <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
+                      <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         Last synced: {new Date(status.calendar_last_sync_at).toLocaleString()}
                       </p>
                     )}
-                    <p className="text-xs text-slate-500 flex items-center gap-1">
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
                       {status.events_synced} events synced
                     </p>
@@ -812,7 +812,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                   <button
                     onClick={handleCalendarSync}
                     disabled={isSyncing || !status.calendar_sync_enabled}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white rounded-lg transition-colors"
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm bg-accent hover:bg-accent disabled:opacity-50 text-foreground rounded-lg transition-colors"
                   >
                     <RefreshCw className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`} />
                     Sync Now
@@ -820,7 +820,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                   <button
                     onClick={() => handleUpdateSettings({ calendar_sync_enabled: !status.calendar_sync_enabled })}
                     className={`relative w-11 h-6 rounded-full transition-colors ${
-                      status.calendar_sync_enabled ? "bg-purple-500" : "bg-slate-700"
+                      status.calendar_sync_enabled ? "bg-purple-500" : "bg-accent"
                     }`}
                   >
                     <span
@@ -834,10 +834,10 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
 
               {/* Calendar Auto-Sync Interval */}
               {status.calendar_sync_enabled && (
-                <div className="ml-14 pl-4 border-l-2 border-slate-700 space-y-3">
+                <div className="ml-14 pl-4 border-l-2 border-border space-y-3">
                   <div>
-                    <h4 className="font-medium text-white text-sm">Auto-Sync Schedule</h4>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <h4 className="font-medium text-foreground text-sm">Auto-Sync Schedule</h4>
+                    <p className="text-xs text-muted-foreground mt-1">
                       Automatically sync calendar events at a regular interval (minimum 5 minutes)
                     </p>
                   </div>
@@ -862,7 +862,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                         className={`px-3 py-1 text-xs rounded-lg transition-colors ${
                           status.auto_sync_calendar_interval_minutes === preset.value
                             ? "bg-green-500 text-white"
-                            : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                            : "bg-accent text-foreground hover:bg-accent"
                         }`}
                       >
                         {preset.label}
@@ -872,7 +872,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
 
                   {/* Custom input */}
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400">Or enter custom:</span>
+                    <span className="text-xs text-muted-foreground">Or enter custom:</span>
                     <input
                       type="number"
                       min="0"
@@ -880,9 +880,9 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                       onChange={(e) => {
                         setCustomCalendarIntervalInput(e.target.value);
                       }}
-                      className="w-20 px-2 py-1 text-sm bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="w-20 px-2 py-1 text-sm bg-accent border border-border text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                     />
-                    <span className="text-xs text-slate-400">minutes</span>
+                    <span className="text-xs text-muted-foreground">minutes</span>
                   </div>
 
                   {status.auto_sync_calendar_interval_minutes > 0 && (
@@ -898,12 +898,12 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
               {/* AI Enrichment */}
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-lg bg-purple-500/10 text-purple-400">
+                  <div className="p-3 rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400">
                     <Sparkles className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-white">AI Contact Enrichment</h3>
-                    <p className="text-sm text-slate-400 mt-1">
+                    <h3 className="font-medium text-foreground">AI Contact Enrichment</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
                       Extract contact details from email signatures using AI
                     </p>
                   </div>
@@ -919,15 +919,15 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
               </div>
 
               {/* Deal Auto-Creation */}
-              <div className="border-t border-slate-700/50 pt-6">
+              <div className="border-t border-border/50 pt-6">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-lg bg-amber-500/10 text-amber-400">
+                    <div className="p-3 rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400">
                       <DollarSign className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="font-medium text-white">Auto-Create Deals from Emails</h3>
-                      <p className="text-sm text-slate-400 mt-1">
+                      <h3 className="font-medium text-foreground">Auto-Create Deals from Emails</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
                         Automatically create deals when new emails are synced
                       </p>
                       {dealSettings.auto_create_deals && (
@@ -943,7 +943,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setShowDealSettings(!showDealSettings)}
-                      className="flex items-center gap-2 px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm bg-accent hover:bg-accent text-foreground rounded-lg transition-colors"
                     >
                       <Settings className="w-4 h-4" />
                       Configure
@@ -951,7 +951,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                     <button
                       onClick={() => handleUpdateDealSettings({ auto_create_deals: !dealSettings.auto_create_deals })}
                       className={`relative w-11 h-6 rounded-full transition-colors ${
-                        dealSettings.auto_create_deals ? "bg-amber-500" : "bg-slate-700"
+                        dealSettings.auto_create_deals ? "bg-amber-500" : "bg-accent"
                       }`}
                     >
                       <span
@@ -969,11 +969,11 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="mt-4 ml-14 p-4 bg-slate-800/50 rounded-lg border border-slate-700/50 space-y-4"
+                    className="mt-4 ml-14 p-4 bg-muted/50 rounded-lg border border-border/50 space-y-4"
                   >
                     {/* Creation Mode */}
                     <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-2">
+                      <label className="block text-sm font-medium text-foreground mb-2">
                         Deal Creation Mode
                       </label>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -981,37 +981,37 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                           onClick={() => handleUpdateDealSettings({ deal_creation_mode: "auto" })}
                           className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-colors ${
                             dealSettings.deal_creation_mode === "auto"
-                              ? "border-amber-500 bg-amber-500/10 text-amber-400"
-                              : "border-slate-600 hover:border-slate-500 text-slate-400"
+                              ? "border-amber-500 bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"
+                              : "border-border hover:border-border text-muted-foreground"
                           }`}
                         >
                           <Zap className="w-5 h-5" />
                           <span className="text-xs font-medium">Auto</span>
-                          <span className="text-xs text-slate-500">All emails</span>
+                          <span className="text-xs text-muted-foreground">All emails</span>
                         </button>
                         <button
                           onClick={() => handleUpdateDealSettings({ deal_creation_mode: "ai" })}
                           className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-colors ${
                             dealSettings.deal_creation_mode === "ai"
-                              ? "border-purple-500 bg-purple-500/10 text-purple-400"
-                              : "border-slate-600 hover:border-slate-500 text-slate-400"
+                              ? "border-purple-500 bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400"
+                              : "border-border hover:border-border text-muted-foreground"
                           }`}
                         >
                           <Bot className="w-5 h-5" />
                           <span className="text-xs font-medium">AI</span>
-                          <span className="text-xs text-slate-500">Smart detection</span>
+                          <span className="text-xs text-muted-foreground">Smart detection</span>
                         </button>
                         <button
                           onClick={() => handleUpdateDealSettings({ deal_creation_mode: "criteria" })}
                           className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-colors ${
                             dealSettings.deal_creation_mode === "criteria"
-                              ? "border-blue-500 bg-blue-500/10 text-blue-400"
-                              : "border-slate-600 hover:border-slate-500 text-slate-400"
+                              ? "border-blue-500 bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
+                              : "border-border hover:border-border text-muted-foreground"
                           }`}
                         >
                           <Filter className="w-5 h-5" />
                           <span className="text-xs font-medium">Criteria</span>
-                          <span className="text-xs text-slate-500">Rules-based</span>
+                          <span className="text-xs text-muted-foreground">Rules-based</span>
                         </button>
                       </div>
                     </div>
@@ -1019,13 +1019,13 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                     {/* Skip Personal Domains */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
-                        <p className="text-sm font-medium text-slate-300">Skip personal email domains</p>
-                        <p className="text-xs text-slate-500">Gmail, Yahoo, Outlook, etc.</p>
+                        <p className="text-sm font-medium text-foreground">Skip personal email domains</p>
+                        <p className="text-xs text-muted-foreground">Gmail, Yahoo, Outlook, etc.</p>
                       </div>
                       <button
                         onClick={() => handleUpdateDealSettings({ skip_personal_domains: !dealSettings.skip_personal_domains })}
                         className={`relative w-10 h-5 rounded-full transition-colors ${
-                          dealSettings.skip_personal_domains ? "bg-amber-500" : "bg-slate-700"
+                          dealSettings.skip_personal_domains ? "bg-amber-500" : "bg-accent"
                         }`}
                       >
                         <span
@@ -1038,26 +1038,26 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
 
                     {/* Default Stage */}
                     <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-2">
+                      <label className="block text-sm font-medium text-foreground mb-2">
                         Default Deal Stage
                       </label>
                       <input
                         type="text"
                         value={dealSettings.default_deal_stage}
                         onChange={(e) => handleUpdateDealSettings({ default_deal_stage: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500"
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-amber-500"
                         placeholder="new"
                       />
                     </div>
 
                     {/* Criteria Settings */}
                     {dealSettings.deal_creation_mode === "criteria" && (
-                      <div className="space-y-4 pt-4 border-t border-slate-700">
-                        <p className="text-sm font-medium text-slate-300">Filter Criteria</p>
+                      <div className="space-y-4 pt-4 border-t border-border">
+                        <p className="text-sm font-medium text-foreground">Filter Criteria</p>
 
                         {/* Subject Keywords */}
                         <div>
-                          <label className="block text-xs text-slate-400 mb-2">
+                          <label className="block text-xs text-muted-foreground mb-2">
                             Subject Keywords (creates deal if subject contains any)
                           </label>
                           <div className="flex gap-2 mb-2">
@@ -1066,7 +1066,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                               value={newKeyword}
                               onChange={(e) => setNewKeyword(e.target.value)}
                               onKeyDown={(e) => e.key === "Enter" && addSubjectKeyword()}
-                              className="flex-1 px-3 py-1.5 bg-slate-900 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+                              className="flex-1 px-3 py-1.5 bg-background border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-blue-500"
                               placeholder="e.g., quote, proposal, pricing"
                             />
                             <button
@@ -1093,7 +1093,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
 
                         {/* From Domains */}
                         <div>
-                          <label className="block text-xs text-slate-400 mb-2">
+                          <label className="block text-xs text-muted-foreground mb-2">
                             From Domains (creates deal if sender is from domain)
                           </label>
                           <div className="flex gap-2 mb-2">
@@ -1102,7 +1102,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                               value={newDomain}
                               onChange={(e) => setNewDomain(e.target.value)}
                               onKeyDown={(e) => e.key === "Enter" && addDomain()}
-                              className="flex-1 px-3 py-1.5 bg-slate-900 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-green-500"
+                              className="flex-1 px-3 py-1.5 bg-background border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-green-500"
                               placeholder="e.g., enterprise.com"
                             />
                             <button
@@ -1130,8 +1130,8 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                     )}
 
                     {/* Mode descriptions */}
-                    <div className="pt-4 border-t border-slate-700">
-                      <p className="text-xs text-slate-500">
+                    <div className="pt-4 border-t border-border">
+                      <p className="text-xs text-muted-foreground">
                         {dealSettings.deal_creation_mode === "auto" && (
                           <>
                             <strong>Auto mode:</strong> Creates a deal for every new email from business domains.
@@ -1158,14 +1158,14 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
 
               {/* Sync result message */}
               {syncResult && (
-                <div className="mt-4 p-4 rounded-lg bg-slate-800/50 border border-slate-700">
+                <div className="mt-4 p-4 rounded-lg bg-muted/50 border border-border">
                   <div className="flex items-center gap-2">
                     {syncResult.gmail?.includes("Error") || syncResult.calendar?.includes("failed") ? (
                       <AlertCircle className="w-5 h-5 text-red-400" />
                     ) : (
                       <CheckCircle2 className="w-5 h-5 text-green-400" />
                     )}
-                    <span className="text-sm text-slate-300">
+                    <span className="text-sm text-foreground">
                       {syncResult.gmail || syncResult.calendar}
                     </span>
                   </div>
@@ -1191,11 +1191,11 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
         ) : (
           /* Not connected state */
           <div className="p-8 text-center">
-            <div className="w-20 h-20 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto mb-6">
+            <div className="w-20 h-20 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-6">
               <GoogleIcon className="w-10 h-10" />
             </div>
-            <h3 className="text-lg font-semibold text-white mb-2">Connect Google</h3>
-            <p className="text-slate-400 mb-6 max-w-md mx-auto">
+            <h3 className="text-lg font-semibold text-foreground mb-2">Connect Google</h3>
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
               Sync your Gmail and Calendar to automatically populate your CRM with contacts,
               emails, and meetings.
             </p>
@@ -1209,11 +1209,11 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
             </button>
 
             <div className="mt-8 text-left max-w-md mx-auto">
-              <p className="text-sm text-slate-400 flex items-center gap-2 mb-2">
+              <p className="text-sm text-muted-foreground flex items-center gap-2 mb-2">
                 <Shield className="w-4 h-4" />
                 Your data is secure
               </p>
-              <ul className="space-y-2 text-xs text-slate-500">
+              <ul className="space-y-2 text-xs text-muted-foreground">
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="w-3 h-3 text-green-400" />
                   We only read email metadata and signatures
@@ -1237,38 +1237,38 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
         <div className="grid sm:grid-cols-3 gap-4">
           <button
             onClick={() => router.push("/crm/inbox")}
-            className="flex items-center gap-4 p-4 bg-slate-800/30 border border-slate-700/50 rounded-xl hover:border-slate-600 transition-colors text-left"
+            className="flex items-center gap-4 p-4 bg-muted/30 border border-border/50 rounded-xl hover:border-border transition-colors text-left"
           >
-            <div className="p-3 rounded-lg bg-blue-500/10 text-blue-400">
+            <div className="p-3 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
               <Mail className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-medium text-white">View Inbox</h3>
-              <p className="text-sm text-slate-400">Browse synced emails</p>
+              <h3 className="font-medium text-foreground">View Inbox</h3>
+              <p className="text-sm text-muted-foreground">Browse synced emails</p>
             </div>
           </button>
           <button
             onClick={() => router.push("/crm/person")}
-            className="flex items-center gap-4 p-4 bg-slate-800/30 border border-slate-700/50 rounded-xl hover:border-slate-600 transition-colors text-left"
+            className="flex items-center gap-4 p-4 bg-muted/30 border border-border/50 rounded-xl hover:border-border transition-colors text-left"
           >
-            <div className="p-3 rounded-lg bg-purple-500/10 text-purple-400">
+            <div className="p-3 rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400">
               <Users className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-medium text-white">View People</h3>
-              <p className="text-sm text-slate-400">See auto-created contacts</p>
+              <h3 className="font-medium text-foreground">View People</h3>
+              <p className="text-sm text-muted-foreground">See auto-created contacts</p>
             </div>
           </button>
           <button
             onClick={() => router.push("/crm/deal")}
-            className="flex items-center gap-4 p-4 bg-slate-800/30 border border-slate-700/50 rounded-xl hover:border-slate-600 transition-colors text-left"
+            className="flex items-center gap-4 p-4 bg-muted/30 border border-border/50 rounded-xl hover:border-border transition-colors text-left"
           >
-            <div className="p-3 rounded-lg bg-amber-500/10 text-amber-400">
+            <div className="p-3 rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400">
               <DollarSign className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-medium text-white">View Deals</h3>
-              <p className="text-sm text-slate-400">See auto-created deals</p>
+              <h3 className="font-medium text-foreground">View Deals</h3>
+              <p className="text-sm text-muted-foreground">See auto-created deals</p>
             </div>
           </button>
         </div>
@@ -1334,19 +1334,19 @@ function CRMSettingsPageContent() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen bg-background">
 <div className="flex">
-          <div className="w-64 bg-slate-800/30 border-r border-slate-700 p-4">
+          <div className="w-64 bg-muted/30 border-r border-border p-4">
             <div className="animate-pulse space-y-3">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-14 bg-slate-800 rounded-lg" />
+                <div key={i} className="h-14 bg-muted rounded-lg" />
               ))}
             </div>
           </div>
           <div className="flex-1 p-8">
             <div className="animate-pulse space-y-4">
-              <div className="h-20 bg-slate-800 rounded-xl" />
-              <div className="h-64 bg-slate-800 rounded-xl" />
+              <div className="h-20 bg-muted rounded-xl" />
+              <div className="h-64 bg-muted rounded-xl" />
             </div>
           </div>
         </div>
@@ -1355,50 +1355,50 @@ function CRMSettingsPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
 <div className="flex">
         {/* Sidebar */}
-        <div className="w-64 flex flex-col bg-slate-800/30 border-r border-slate-700">
+        <div className="w-64 flex flex-col bg-muted/30 border-r border-border">
         {/* Header */}
-        <div className="p-4 border-b border-slate-700">
+        <div className="p-4 border-b border-border">
           <button
             onClick={() => router.push("/crm")}
-            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-3"
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-3"
           >
             <ChevronLeft className="h-4 w-4" />
             Back to CRM
           </button>
-          <h1 className="text-lg font-bold text-white">CRM Settings</h1>
+          <h1 className="text-lg font-bold text-foreground">CRM Settings</h1>
         </div>
 
         {/* Section Navigation */}
-        <div className="p-2 border-b border-slate-700">
+        <div className="p-2 border-b border-border">
           <button
             onClick={() => setSelectedSection("objects")}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
               selectedSection === "objects"
-                ? "bg-purple-500/20 text-white"
-                : "text-slate-300 hover:bg-slate-700/50"
+                ? "bg-purple-500/20 text-foreground"
+                : "text-foreground hover:bg-accent/50"
             }`}
           >
             <Database className="h-5 w-5 text-purple-400" />
             <div className="flex-1">
               <div className="font-medium">Objects</div>
-              <div className="text-xs text-slate-500">Configure CRM objects</div>
+              <div className="text-xs text-muted-foreground">Configure CRM objects</div>
             </div>
           </button>
           <button
             onClick={() => setSelectedSection("integrations")}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors mt-1 ${
               selectedSection === "integrations"
-                ? "bg-purple-500/20 text-white"
-                : "text-slate-300 hover:bg-slate-700/50"
+                ? "bg-purple-500/20 text-foreground"
+                : "text-foreground hover:bg-accent/50"
             }`}
           >
             <Link2 className="h-5 w-5 text-blue-400" />
             <div className="flex-1">
               <div className="font-medium">Integrations</div>
-              <div className="text-xs text-slate-500">Google, Slack, etc.</div>
+              <div className="text-xs text-muted-foreground">Google, Slack, etc.</div>
             </div>
           </button>
         </div>
@@ -1420,12 +1420,12 @@ function CRMSettingsPageContent() {
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
                     isSelected
-                      ? "bg-slate-700/50 text-white"
-                      : "text-slate-300 hover:bg-slate-700/30"
+                      ? "bg-accent/50 text-foreground"
+                      : "text-foreground hover:bg-accent/30"
                   }`}
                 >
                   <div
-                    className={`p-1.5 rounded-lg ${isSelected ? "text-purple-400" : "text-slate-400"}`}
+                    className={`p-1.5 rounded-lg ${isSelected ? "text-purple-400" : "text-muted-foreground"}`}
                     style={{
                       backgroundColor: object.color ? `${object.color}20` : undefined,
                     }}
@@ -1434,10 +1434,10 @@ function CRMSettingsPageContent() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium truncate">{object.name}</div>
-                    <div className="text-xs text-slate-500">{object.record_count} records</div>
+                    <div className="text-xs text-muted-foreground">{object.record_count} records</div>
                   </div>
                   {object.is_system && (
-                    <span className="px-1.5 py-0.5 bg-slate-700 rounded text-xs text-slate-500">
+                    <span className="px-1.5 py-0.5 bg-accent rounded text-xs text-muted-foreground">
                       System
                     </span>
                   )}
@@ -1453,8 +1453,8 @@ function CRMSettingsPageContent() {
         {selectedSection === "integrations" ? (
           <div className="flex-1 overflow-y-auto p-6">
             <div className="mb-6">
-              <h2 className="text-xl font-bold text-white">Integrations</h2>
-              <p className="text-slate-400 mt-1">Connect external services to enhance your CRM</p>
+              <h2 className="text-xl font-bold text-foreground">Integrations</h2>
+              <p className="text-muted-foreground mt-1">Connect external services to enhance your CRM</p>
             </div>
             {workspaceId && <IntegrationsTab workspaceId={workspaceId} />}
           </div>
@@ -1492,7 +1492,7 @@ function CRMSettingsPageContent() {
 
             {/* Delete object button */}
             {!selectedObject.is_system && (
-              <div className="p-6 border-t border-slate-700">
+              <div className="p-6 border-t border-border">
                 <button
                   onClick={handleDeleteObject}
                   disabled={isDeleting}
@@ -1507,8 +1507,8 @@ function CRMSettingsPageContent() {
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <Settings className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-              <p className="text-slate-400 text-lg">Select an object to configure</p>
+              <Settings className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground text-lg">Select an object to configure</p>
             </div>
           </div>
         )}
@@ -1520,7 +1520,7 @@ function CRMSettingsPageContent() {
 
 export default function CRMSettingsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="animate-spin h-8 w-8 border-2 border-purple-500 border-t-transparent rounded-full" /></div>}>
+    <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center"><div className="animate-spin h-8 w-8 border-2 border-purple-500 border-t-transparent rounded-full" /></div>}>
       <CRMSettingsPageContent />
     </Suspense>
   );

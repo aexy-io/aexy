@@ -96,23 +96,23 @@ function SortableItem({ id, isLoading }: SortableItemProps) {
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 p-3 bg-slate-800/30 rounded-lg border border-slate-700/50 ${
+      className={`flex items-center gap-3 p-3 bg-muted/30 rounded-lg border border-border/50 ${
         isDragging ? "shadow-lg" : ""
       } ${isLoading ? "opacity-50" : ""}`}
     >
       <button
-        className="p-1 cursor-grab active:cursor-grabbing text-slate-500 hover:text-slate-300 transition"
+        className="p-1 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition"
         {...attributes}
         {...listeners}
       >
         <GripVertical className="h-4 w-4" />
       </button>
-      <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center flex-shrink-0">
-        <Icon className="h-4 w-4 text-slate-400" />
+      <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+        <Icon className="h-4 w-4 text-muted-foreground" />
       </div>
-      <span className="text-sm text-white flex-1">{name}</span>
+      <span className="text-sm text-foreground flex-1">{name}</span>
       {widget?.defaultSize && (
-        <span className="text-[10px] px-1.5 py-0.5 bg-slate-800 text-slate-500 rounded">
+        <span className="text-[10px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded">
           {widget.defaultSize}
         </span>
       )}
@@ -154,7 +154,7 @@ export function WidgetReorderList({
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-slate-400">
+      <p className="text-sm text-muted-foreground">
         Drag and drop to reorder your dashboard widgets.
       </p>
       <DndContext

@@ -87,28 +87,28 @@ function ConversationItem({ conversation, isSelected, onSelect, onDelete }: Conv
         "w-full text-left px-3 py-2 rounded-lg transition group",
         isSelected
           ? "bg-purple-500/20 border border-purple-500/30"
-          : "hover:bg-slate-700/50 border border-transparent"
+          : "hover:bg-accent/50 border border-transparent"
       )}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-slate-400 flex-shrink-0" />
+            <MessageSquare className="h-4 w-4 text-muted-foreground flex-shrink-0" />
             <span
               className={cn(
                 "text-sm font-medium truncate",
-                isSelected ? "text-purple-300" : "text-slate-200"
+                isSelected ? "text-purple-300" : "text-foreground"
               )}
             >
               {conversation.title || "New conversation"}
             </span>
           </div>
           <div className="flex items-center gap-2 mt-1 pl-6">
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-muted-foreground">
               {conversation.message_count} messages
             </span>
-            <span className="text-xs text-slate-600">-</span>
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-muted-foreground">-</span>
+            <span className="text-xs text-muted-foreground">
               {formatDate(conversation.updated_at)}
             </span>
           </div>
@@ -121,9 +121,9 @@ function ConversationItem({ conversation, isSelected, onSelect, onDelete }: Conv
                 e.stopPropagation();
                 setShowMenu(!showMenu);
               }}
-              className="p-1 hover:bg-slate-600 rounded"
+              className="p-1 hover:bg-muted rounded"
             >
-              <MoreVertical className="h-4 w-4 text-slate-400" />
+              <MoreVertical className="h-4 w-4 text-muted-foreground" />
             </button>
             {showMenu && (
               <>
@@ -134,14 +134,14 @@ function ConversationItem({ conversation, isSelected, onSelect, onDelete }: Conv
                     setShowMenu(false);
                   }}
                 />
-                <div className="absolute right-0 top-full mt-1 w-36 bg-slate-700 rounded-lg shadow-xl z-20 py-1">
+                <div className="absolute right-0 top-full mt-1 w-36 bg-accent rounded-lg shadow-xl z-20 py-1">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onDelete();
                       setShowMenu(false);
                     }}
-                    className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-600 flex items-center gap-2"
+                    className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-muted flex items-center gap-2"
                   >
                     <Trash2 className="h-4 w-4" />
                     Delete
@@ -167,9 +167,9 @@ export function ConversationSidebar({
   const groups = groupConversationsByDate(conversations);
 
   return (
-    <div className="flex flex-col h-full bg-slate-800 border-r border-slate-700">
+    <div className="flex flex-col h-full bg-muted border-r border-border">
       {/* Header with New Chat button */}
-      <div className="p-3 border-b border-slate-700">
+      <div className="p-3 border-b border-border">
         <button
           onClick={onNew}
           className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition font-medium text-sm"
@@ -183,17 +183,17 @@ export function ConversationSidebar({
       <div className="flex-1 overflow-y-auto p-3 space-y-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Clock className="h-5 w-5 text-slate-500 animate-pulse" />
+            <Clock className="h-5 w-5 text-muted-foreground animate-pulse" />
           </div>
         ) : conversations.length === 0 ? (
           <div className="text-center py-8">
-            <MessageSquare className="h-8 w-8 text-slate-600 mx-auto mb-2" />
-            <p className="text-sm text-slate-400">No conversations yet</p>
+            <MessageSquare className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No conversations yet</p>
           </div>
         ) : (
           groups.map((group) => (
             <div key={group.label}>
-              <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2 px-1">
+              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-1">
                 {group.label}
               </div>
               <div className="space-y-1">

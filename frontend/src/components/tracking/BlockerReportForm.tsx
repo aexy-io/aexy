@@ -65,17 +65,17 @@ export function BlockerReportForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-      <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+    <form onSubmit={handleSubmit} className="bg-muted rounded-xl p-6 border border-border">
+      <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
         <AlertTriangle className="h-5 w-5 text-red-400" />
         Report Blocker
         {taskTitle && (
-          <span className="text-sm font-normal text-slate-400">for {taskTitle}</span>
+          <span className="text-sm font-normal text-muted-foreground">for {taskTitle}</span>
         )}
       </h3>
 
       {showSuccess && (
-        <div className="mb-4 p-3 bg-green-900/30 border border-green-700 rounded-lg flex items-center gap-2 text-green-400">
+        <div className="mb-4 p-3 bg-green-100 dark:bg-green-900/30 border border-green-700 rounded-lg flex items-center gap-2 text-green-600 dark:text-green-400">
           <CheckCircle2 className="h-5 w-5" />
           <span>Blocker reported successfully!</span>
         </div>
@@ -84,14 +84,14 @@ export function BlockerReportForm({
       <div className="space-y-4">
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">
+          <label className="block text-sm font-medium text-foreground mb-2">
             What's blocking you?
           </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Describe the blocker in detail..."
-            className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+            className="w-full px-4 py-3 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
             rows={3}
             required
           />
@@ -99,7 +99,7 @@ export function BlockerReportForm({
 
         {/* Severity */}
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">Severity</label>
+          <label className="block text-sm font-medium text-foreground mb-2">Severity</label>
           <div className="grid grid-cols-2 gap-2">
             {severityOptions.map((option) => (
               <button
@@ -108,12 +108,12 @@ export function BlockerReportForm({
                 onClick={() => setSeverity(option.value)}
                 className={`p-3 rounded-lg border text-left transition ${
                   severity === option.value
-                    ? "bg-slate-700 border-red-500"
-                    : "bg-slate-800 border-slate-600 hover:border-slate-500"
+                    ? "bg-accent border-red-500"
+                    : "bg-muted border-border hover:border-muted-foreground"
                 }`}
               >
-                <div className="font-medium text-white">{option.label}</div>
-                <div className="text-xs text-slate-400 mt-0.5">{option.description}</div>
+                <div className="font-medium text-foreground">{option.label}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{option.description}</div>
               </button>
             ))}
           </div>
@@ -121,7 +121,7 @@ export function BlockerReportForm({
 
         {/* Category */}
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">Category</label>
+          <label className="block text-sm font-medium text-foreground mb-2">Category</label>
           <div className="grid grid-cols-2 gap-2">
             {categoryOptions.map((option) => (
               <button
@@ -130,12 +130,12 @@ export function BlockerReportForm({
                 onClick={() => setCategory(option.value)}
                 className={`p-3 rounded-lg border text-left transition ${
                   category === option.value
-                    ? "bg-slate-700 border-blue-500"
-                    : "bg-slate-800 border-slate-600 hover:border-slate-500"
+                    ? "bg-accent border-blue-500"
+                    : "bg-muted border-border hover:border-muted-foreground"
                 }`}
               >
-                <div className="font-medium text-white">{option.label}</div>
-                <div className="text-xs text-slate-400 mt-0.5">{option.description}</div>
+                <div className="font-medium text-foreground">{option.label}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{option.description}</div>
               </button>
             ))}
           </div>

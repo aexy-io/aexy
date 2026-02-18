@@ -31,19 +31,19 @@ interface ActivityCardProps {
 }
 
 const activityTypeConfig: Record<ActivityType, { icon: typeof BookOpen; color: string; label: string }> = {
-  course: { icon: BookOpen, color: "text-blue-400", label: "Course" },
-  video: { icon: Video, color: "text-red-400", label: "Video" },
-  task: { icon: Code2, color: "text-green-400", label: "Task" },
-  project: { icon: Briefcase, color: "text-purple-400", label: "Project" },
-  pairing: { icon: Users, color: "text-orange-400", label: "Pairing" },
-  reading: { icon: FileText, color: "text-yellow-400", label: "Reading" },
+  course: { icon: BookOpen, color: "text-blue-600 dark:text-blue-400", label: "Course" },
+  video: { icon: Video, color: "text-red-600 dark:text-red-400", label: "Video" },
+  task: { icon: Code2, color: "text-green-600 dark:text-green-400", label: "Task" },
+  project: { icon: Briefcase, color: "text-purple-600 dark:text-purple-400", label: "Project" },
+  pairing: { icon: Users, color: "text-orange-600 dark:text-orange-400", label: "Pairing" },
+  reading: { icon: FileText, color: "text-yellow-600 dark:text-yellow-400", label: "Reading" },
 };
 
 const statusConfig: Record<ActivityStatus, { color: string; bgColor: string; label: string }> = {
-  not_started: { color: "text-slate-400", bgColor: "bg-slate-700", label: "Not Started" },
-  in_progress: { color: "text-blue-400", bgColor: "bg-blue-900/30", label: "In Progress" },
-  completed: { color: "text-green-400", bgColor: "bg-green-900/30", label: "Completed" },
-  skipped: { color: "text-slate-500", bgColor: "bg-slate-800", label: "Skipped" },
+  not_started: { color: "text-muted-foreground", bgColor: "bg-accent", label: "Not Started" },
+  in_progress: { color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-100 dark:bg-blue-900/30", label: "In Progress" },
+  completed: { color: "text-green-600 dark:text-green-400", bgColor: "bg-green-100 dark:bg-green-900/30", label: "Completed" },
+  skipped: { color: "text-muted-foreground", bgColor: "bg-muted", label: "Skipped" },
 };
 
 export function ActivityCard({
@@ -129,13 +129,13 @@ export function ActivityCard({
 
   if (compact) {
     return (
-      <div className={`flex items-center gap-3 p-3 rounded-lg ${status.bgColor} border border-slate-700`}>
-        <div className={`p-2 rounded-lg bg-slate-800 ${typeConfig.color}`}>
+      <div className={`flex items-center gap-3 p-3 rounded-lg ${status.bgColor} border border-border`}>
+        <div className={`p-2 rounded-lg bg-muted ${typeConfig.color}`}>
           <TypeIcon className="h-4 w-4" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-white truncate">{activity.title}</p>
-          <div className="flex items-center gap-2 text-xs text-slate-400">
+          <p className="text-sm font-medium text-foreground truncate">{activity.title}</p>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className={status.color}>{status.label}</span>
             {activity.actual_time_spent_minutes > 0 && (
               <>
@@ -154,7 +154,7 @@ export function ActivityCard({
 
   return (
     <>
-      <div className={`rounded-xl border border-slate-700 overflow-hidden ${status.bgColor}`}>
+      <div className={`rounded-xl border border-border overflow-hidden ${status.bgColor}`}>
         {/* Header */}
         <div className="p-4">
           <div className="flex items-start justify-between gap-3">
@@ -167,21 +167,21 @@ export function ActivityCard({
                   className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
                 />
               ) : (
-                <div className={`p-3 rounded-lg bg-slate-800 ${typeConfig.color} flex-shrink-0`}>
+                <div className={`p-3 rounded-lg bg-muted ${typeConfig.color} flex-shrink-0`}>
                   <TypeIcon className="h-6 w-6" />
                 </div>
               )}
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className={`text-xs px-2 py-0.5 rounded ${typeConfig.color} bg-slate-800`}>
+                  <span className={`text-xs px-2 py-0.5 rounded ${typeConfig.color} bg-muted`}>
                     {typeConfig.label}
                   </span>
                   <span className={`text-xs ${status.color}`}>{status.label}</span>
                 </div>
-                <h3 className="font-medium text-white line-clamp-2">{activity.title}</h3>
+                <h3 className="font-medium text-foreground line-clamp-2">{activity.title}</h3>
                 {activity.description && (
-                  <p className="text-sm text-slate-400 line-clamp-2 mt-1">{activity.description}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{activity.description}</p>
                 )}
               </div>
             </div>
@@ -190,18 +190,18 @@ export function ActivityCard({
             <div className="relative">
               <button
                 onClick={() => setShowMenu(!showMenu)}
-                className="p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition"
+                className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition"
               >
                 <MoreVertical className="h-4 w-4" />
               </button>
               {showMenu && (
-                <div className="absolute right-0 top-8 w-36 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-10">
+                <div className="absolute right-0 top-8 w-36 bg-muted border border-border rounded-lg shadow-xl z-10">
                   {activity.external_url && (
                     <a
                       href={activity.external_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white"
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent hover:text-foreground"
                     >
                       <ExternalLink className="h-4 w-4" />
                       Open Link
@@ -210,7 +210,7 @@ export function ActivityCard({
                   {onDelete && (
                     <button
                       onClick={handleDelete}
-                      className="flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-slate-700 w-full text-left"
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-accent w-full text-left"
                     >
                       <Trash2 className="h-4 w-4" />
                       Delete
@@ -224,11 +224,11 @@ export function ActivityCard({
           {/* Progress bar */}
           {activity.status === "in_progress" && (
             <div className="mt-3">
-              <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                 <span>Progress</span>
                 <span>{activity.progress_percentage}%</span>
               </div>
-              <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+              <div className="h-2 bg-accent rounded-full overflow-hidden">
                 <div
                   className="h-full bg-blue-500 rounded-full transition-all"
                   style={{ width: `${activity.progress_percentage}%` }}
@@ -238,7 +238,7 @@ export function ActivityCard({
           )}
 
           {/* Stats row */}
-          <div className="flex items-center gap-4 mt-3 text-xs text-slate-400">
+          <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
             {activity.estimated_duration_minutes && (
               <div className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
@@ -262,7 +262,7 @@ export function ActivityCard({
                 {[1, 2, 3, 4, 5].map((star) => (
                   <Star
                     key={star}
-                    className={`h-3 w-3 ${star <= activity.rating! ? "text-yellow-400 fill-yellow-400" : "text-slate-600"}`}
+                    className={`h-3 w-3 ${star <= activity.rating! ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground"}`}
                   />
                 ))}
               </div>
@@ -273,12 +273,12 @@ export function ActivityCard({
           {activity.skill_tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-3">
               {activity.skill_tags.slice(0, 3).map((tag) => (
-                <span key={tag} className="text-xs px-2 py-0.5 bg-slate-700 text-slate-300 rounded">
+                <span key={tag} className="text-xs px-2 py-0.5 bg-accent text-foreground rounded">
                   {tag}
                 </span>
               ))}
               {activity.skill_tags.length > 3 && (
-                <span className="text-xs text-slate-500">+{activity.skill_tags.length - 3} more</span>
+                <span className="text-xs text-muted-foreground">+{activity.skill_tags.length - 3} more</span>
               )}
             </div>
           )}
@@ -286,7 +286,7 @@ export function ActivityCard({
 
         {/* Actions */}
         {activity.status !== "completed" && activity.status !== "skipped" && (
-          <div className="border-t border-slate-700 p-3 flex items-center gap-2 bg-slate-800/50">
+          <div className="border-t border-border p-3 flex items-center gap-2 bg-muted/50">
             {activity.status === "not_started" && onStart && (
               <button
                 onClick={handleStart}
@@ -307,7 +307,7 @@ export function ActivityCard({
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 ${
                       isActiveSession
                         ? "bg-orange-600 hover:bg-orange-700 text-white"
-                        : "bg-slate-700 hover:bg-slate-600 text-white"
+                        : "bg-accent hover:bg-muted text-foreground"
                     }`}
                   >
                     {isActiveSession ? (
@@ -342,9 +342,9 @@ export function ActivityCard({
       {/* Rating Modal */}
       {showRatingModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-slate-800 rounded-xl p-6 max-w-sm w-full mx-4 border border-slate-700">
-            <h3 className="text-lg font-medium text-white mb-4">Rate this activity</h3>
-            <p className="text-sm text-slate-400 mb-4">How helpful was this activity for your learning?</p>
+          <div className="bg-muted rounded-xl p-6 max-w-sm w-full mx-4 border border-border">
+            <h3 className="text-lg font-medium text-foreground mb-4">Rate this activity</h3>
+            <p className="text-sm text-muted-foreground mb-4">How helpful was this activity for your learning?</p>
             <div className="flex items-center justify-center gap-2 mb-6">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
@@ -354,7 +354,7 @@ export function ActivityCard({
                 >
                   <Star
                     className={`h-8 w-8 ${
-                      star <= rating ? "text-yellow-400 fill-yellow-400" : "text-slate-600 hover:text-slate-400"
+                      star <= rating ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground hover:text-muted-foreground"
                     }`}
                   />
                 </button>
@@ -363,7 +363,7 @@ export function ActivityCard({
             <div className="flex gap-3">
               <button
                 onClick={() => setShowRatingModal(false)}
-                className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition"
+                className="flex-1 px-4 py-2 bg-accent hover:bg-muted text-foreground rounded-lg text-sm font-medium transition"
               >
                 Cancel
               </button>

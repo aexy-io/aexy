@@ -21,9 +21,9 @@ interface EventDetailModalProps {
 }
 
 const typeConfig = {
-  leave: { label: "Leave", icon: Palmtree, badgeClass: "bg-blue-500/10 text-blue-400" },
-  booking: { label: "Booking", icon: CalendarCheck, badgeClass: "bg-indigo-500/10 text-indigo-400" },
-  holiday: { label: "Holiday", icon: Calendar, badgeClass: "bg-red-500/10 text-red-400" },
+  leave: { label: "Leave", icon: Palmtree, badgeClass: "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400" },
+  booking: { label: "Booking", icon: CalendarCheck, badgeClass: "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400" },
+  holiday: { label: "Holiday", icon: Calendar, badgeClass: "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400" },
 };
 
 export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
@@ -57,7 +57,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-md mx-4 bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-md mx-4 bg-background border border-border/50 rounded-2xl shadow-2xl overflow-hidden">
         {/* Color bar */}
         <div className="h-1" style={{ backgroundColor: event.color }} />
 
@@ -71,7 +71,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
               <Icon className="h-5 w-5" style={{ color: event.color }} />
             </div>
             <div>
-              <h3 className="text-base font-semibold text-white">
+              <h3 className="text-base font-semibold text-foreground">
                 {event.title}
               </h3>
               <span
@@ -83,7 +83,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition"
           >
             <X className="h-4 w-4" />
           </button>
@@ -92,20 +92,20 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
         {/* Details */}
         <div className="px-5 pb-5 space-y-3">
           {/* Date/time */}
-          <div className="flex items-center gap-2 text-sm text-slate-300">
-            <Calendar className="h-4 w-4 text-slate-500" />
+          <div className="flex items-center gap-2 text-sm text-foreground">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
             <span>{formatDate(event.start)}</span>
             {event.start !== event.end && (
               <>
-                <span className="text-slate-600">-</span>
+                <span className="text-muted-foreground">-</span>
                 <span>{formatDate(event.end)}</span>
               </>
             )}
           </div>
 
           {!event.all_day && (formatTime(event.start) || formatTime(event.end)) && (
-            <div className="flex items-center gap-2 text-sm text-slate-300">
-              <Clock className="h-4 w-4 text-slate-500" />
+            <div className="flex items-center gap-2 text-sm text-foreground">
+              <Clock className="h-4 w-4 text-muted-foreground" />
               <span>
                 {formatTime(event.start)}
                 {formatTime(event.end) && ` - ${formatTime(event.end)}`}
@@ -115,7 +115,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
 
           {/* Developer */}
           {event.developer_name && (
-            <div className="flex items-center gap-2 text-sm text-slate-300">
+            <div className="flex items-center gap-2 text-sm text-foreground">
               {event.developer_avatar ? (
                 <img
                   src={event.developer_avatar}
@@ -123,7 +123,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                   className="w-5 h-5 rounded-full"
                 />
               ) : (
-                <User className="h-4 w-4 text-slate-500" />
+                <User className="h-4 w-4 text-muted-foreground" />
               )}
               <span>{event.developer_name}</span>
             </div>
@@ -131,21 +131,21 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
 
           {/* Metadata */}
           {event.metadata && Object.keys(event.metadata).length > 0 && (
-            <div className="pt-2 border-t border-slate-800 space-y-2">
+            <div className="pt-2 border-t border-border space-y-2">
               {event.type === "leave" && (
                 <>
                   {event.metadata.leave_type && (
                     <div className="flex justify-between text-xs">
-                      <span className="text-slate-500">Leave Type</span>
-                      <span className="text-slate-300">
+                      <span className="text-muted-foreground">Leave Type</span>
+                      <span className="text-foreground">
                         {String(event.metadata.leave_type)}
                       </span>
                     </div>
                   )}
                   {event.metadata.total_days && (
                     <div className="flex justify-between text-xs">
-                      <span className="text-slate-500">Duration</span>
-                      <span className="text-slate-300">
+                      <span className="text-muted-foreground">Duration</span>
+                      <span className="text-foreground">
                         {String(event.metadata.total_days)} day
                         {Number(event.metadata.total_days) !== 1 ? "s" : ""}
                         {event.metadata.is_half_day && ` (${event.metadata.half_day_period === "first_half" ? "AM" : "PM"})`}
@@ -154,8 +154,8 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                   )}
                   {event.metadata.reason && (
                     <div className="text-xs">
-                      <span className="text-slate-500">Reason</span>
-                      <p className="mt-1 text-slate-300 bg-slate-800/50 rounded-lg p-2">
+                      <span className="text-muted-foreground">Reason</span>
+                      <p className="mt-1 text-foreground bg-muted/50 rounded-lg p-2">
                         {String(event.metadata.reason)}
                       </p>
                     </div>
@@ -167,16 +167,16 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                 <>
                   {event.metadata.event_type && (
                     <div className="flex justify-between text-xs">
-                      <span className="text-slate-500">Event Type</span>
-                      <span className="text-slate-300">
+                      <span className="text-muted-foreground">Event Type</span>
+                      <span className="text-foreground">
                         {String(event.metadata.event_type)}
                       </span>
                     </div>
                   )}
                   {event.metadata.invitee_name && (
                     <div className="flex justify-between text-xs">
-                      <span className="text-slate-500">Invitee</span>
-                      <span className="text-slate-300">
+                      <span className="text-muted-foreground">Invitee</span>
+                      <span className="text-foreground">
                         {String(event.metadata.invitee_name)}
                       </span>
                     </div>
@@ -188,16 +188,16 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                 <>
                   {event.metadata.description && (
                     <div className="text-xs">
-                      <span className="text-slate-500">Description</span>
-                      <p className="mt-1 text-slate-300">
+                      <span className="text-muted-foreground">Description</span>
+                      <p className="mt-1 text-foreground">
                         {String(event.metadata.description)}
                       </p>
                     </div>
                   )}
                   {event.metadata.is_optional !== undefined && (
                     <div className="flex justify-between text-xs">
-                      <span className="text-slate-500">Type</span>
-                      <span className="text-slate-300">
+                      <span className="text-muted-foreground">Type</span>
+                      <span className="text-foreground">
                         {event.metadata.is_optional ? "Optional" : "Mandatory"}
                       </span>
                     </div>

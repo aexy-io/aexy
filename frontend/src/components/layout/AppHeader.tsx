@@ -112,7 +112,7 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
   const activeTasksCount = trackingData?.active_tasks?.length || 0;
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-border/80 bg-background/80 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-4">
@@ -123,7 +123,7 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
               <div className="relative w-10 h-10 bg-gradient-to-br from-primary-400 via-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/30 group-hover:shadow-primary-500/50 transition-all duration-300 group-hover:scale-105">
                 <svg
                   viewBox="0 0 24 24"
-                  className="w-6 h-6 text-white"
+                  className="w-6 h-6 text-foreground"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
@@ -144,7 +144,7 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
               <span className="text-xl font-bold bg-gradient-to-r from-white via-white to-slate-400 bg-clip-text text-transparent tracking-tight">
                 Aexy
               </span>
-              <span className="text-[10px] text-slate-500 font-medium tracking-widest uppercase -mt-0.5">
+              <span className="text-[10px] text-muted-foreground font-medium tracking-widest uppercase -mt-0.5">
                 Engineering OS
               </span>
             </div>
@@ -159,17 +159,17 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
               whileTap={{ scale: 0.92 }}
               transition={{ duration: 0.1 }}
               onClick={() => setShowAppSwitcher(!showAppSwitcher)}
-              className={`p-2.5 rounded-full hover:bg-slate-800/70 transition-all duration-200 ${
-                showAppSwitcher ? "bg-slate-800/70" : ""
+              className={`p-2.5 rounded-full hover:bg-muted/70 transition-all duration-200 ${
+                showAppSwitcher ? "bg-muted/70" : ""
               }`}
               aria-label="Apps"
             >
-              <Grid3X3 className="h-5 w-5 text-slate-400 hover:text-white transition-colors" />
+              <Grid3X3 className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
             </motion.button>
 
             {/* App Switcher Dropdown */}
             {showAppSwitcher && (
-              <div className="absolute right-0 mt-2 w-72 bg-slate-900/95 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl shadow-black/40 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="absolute right-0 mt-2 w-72 bg-background/95 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl shadow-black/40 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="p-2">
                   <div className="grid grid-cols-3 gap-1">
                     {appItems.map(({ href, label, icon: Icon, color }) => (
@@ -179,15 +179,15 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
                         onClick={() => setShowAppSwitcher(false)}
                         className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-all duration-200 group ${
                           isActive(href)
-                            ? "bg-slate-800"
-                            : "hover:bg-slate-800/60"
+                            ? "bg-muted"
+                            : "hover:bg-muted/60"
                         }`}
                       >
                         <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-200`}>
-                          <Icon className="h-5 w-5 text-white" />
+                          <Icon className="h-5 w-5 text-foreground" />
                         </div>
                         <span className={`text-xs font-medium ${
-                          isActive(href) ? "text-white" : "text-slate-400 group-hover:text-white"
+                          isActive(href) ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
                         } transition-colors`}>
                           {label}
                         </span>
@@ -195,11 +195,11 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
                     ))}
                   </div>
                 </div>
-                <div className="border-t border-slate-700/50 p-2">
+                <div className="border-t border-border/50 p-2">
                   <Link
                     href="/settings"
                     onClick={() => setShowAppSwitcher(false)}
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
                   >
                     <Settings className="h-4 w-4" />
                     <span className="text-sm">Settings</span>
@@ -217,15 +217,15 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
               onClick={() => setShowTrackingMenu(!showTrackingMenu)}
               className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200 ${
                 showTrackingMenu
-                  ? "bg-slate-800"
-                  : "hover:bg-slate-800/60"
+                  ? "bg-muted"
+                  : "hover:bg-muted/60"
               }`}
             >
               {/* Standup status indicator */}
               {standupSubmitted ? (
                 <CheckCircle className="h-4 w-4 text-green-400" />
               ) : (
-                <XCircle className="h-4 w-4 text-slate-500" />
+                <XCircle className="h-4 w-4 text-muted-foreground" />
               )}
 
               {/* Blockers count */}
@@ -237,7 +237,7 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
               )}
 
               {/* Time logged */}
-              <span className="flex items-center gap-1 text-xs text-slate-400">
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Clock className="h-3 w-3" />
                 {formatTime(timeLoggedToday)}
               </span>
@@ -245,10 +245,10 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
 
             {/* Tracking Dropdown */}
             {showTrackingMenu && (
-              <div className="absolute right-0 mt-2 w-64 bg-slate-900/95 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-2xl shadow-black/40 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                <div className="p-3 border-b border-slate-700/50">
+              <div className="absolute right-0 mt-2 w-64 bg-background/95 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl shadow-black/40 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="p-3 border-b border-border/50">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-white">Today&apos;s Status</span>
+                    <span className="text-sm font-medium text-foreground">Today&apos;s Status</span>
                     <Link
                       href="/tracking"
                       onClick={() => setShowTrackingMenu(false)}
@@ -266,12 +266,12 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
                       {standupSubmitted ? (
                         <CheckCircle className="h-4 w-4 text-green-400" />
                       ) : (
-                        <XCircle className="h-4 w-4 text-slate-500" />
+                        <XCircle className="h-4 w-4 text-muted-foreground" />
                       )}
-                      <span className="text-sm text-slate-300">Standup</span>
+                      <span className="text-sm text-foreground">Standup</span>
                     </div>
                     {standupSubmitted ? (
-                      <span className="text-xs text-green-400 bg-green-900/30 px-2 py-0.5 rounded">
+                      <span className="text-xs text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded">
                         Done
                       </span>
                     ) : (
@@ -289,9 +289,9 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Target className="h-4 w-4 text-blue-400" />
-                      <span className="text-sm text-slate-300">Active Tasks</span>
+                      <span className="text-sm text-foreground">Active Tasks</span>
                     </div>
-                    <span className="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
+                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
                       {activeTasksCount}
                     </span>
                   </div>
@@ -299,13 +299,13 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
                   {/* Blockers */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <AlertTriangle className={`h-4 w-4 ${activeBlockersCount > 0 ? "text-orange-400" : "text-slate-500"}`} />
-                      <span className="text-sm text-slate-300">Blockers</span>
+                      <AlertTriangle className={`h-4 w-4 ${activeBlockersCount > 0 ? "text-orange-400" : "text-muted-foreground"}`} />
+                      <span className="text-sm text-foreground">Blockers</span>
                     </div>
                     <span className={`text-xs px-2 py-0.5 rounded ${
                       activeBlockersCount > 0
-                        ? "text-orange-400 bg-orange-900/30"
-                        : "text-slate-400 bg-slate-800"
+                        ? "text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30"
+                        : "text-muted-foreground bg-muted"
                     }`}>
                       {activeBlockersCount}
                     </span>
@@ -314,10 +314,10 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
                   {/* Time Logged */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-slate-400" />
-                      <span className="text-sm text-slate-300">Time Today</span>
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-foreground">Time Today</span>
                     </div>
-                    <span className="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
+                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
                       {formatTime(timeLoggedToday)}
                     </span>
                   </div>
@@ -325,31 +325,31 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
                   {/* Ticket Stats */}
                   {ticketStats && (
                     <>
-                      <div className="pt-3 mt-3 border-t border-slate-700/50">
-                        <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Tickets</span>
+                      <div className="pt-3 mt-3 border-t border-border/50">
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tickets</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Ticket className="h-4 w-4 text-pink-400" />
-                          <span className="text-sm text-slate-300">My Tickets</span>
+                          <span className="text-sm text-foreground">My Tickets</span>
                         </div>
                         <span className={`text-xs px-2 py-0.5 rounded ${
                           (ticketStats.assigned_to_me || 0) > 0
-                            ? "text-pink-400 bg-pink-900/30"
-                            : "text-slate-400 bg-slate-800"
+                            ? "text-pink-600 dark:text-pink-400 bg-pink-100 dark:bg-pink-900/30"
+                            : "text-muted-foreground bg-muted"
                         }`}>
                           {ticketStats.assigned_to_me || 0}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <AlertTriangle className={`h-4 w-4 ${ticketStats.sla_breached > 0 ? "text-red-400" : "text-slate-500"}`} />
-                          <span className="text-sm text-slate-300">SLA Breached</span>
+                          <AlertTriangle className={`h-4 w-4 ${ticketStats.sla_breached > 0 ? "text-red-400" : "text-muted-foreground"}`} />
+                          <span className="text-sm text-foreground">SLA Breached</span>
                         </div>
                         <span className={`text-xs px-2 py-0.5 rounded ${
                           ticketStats.sla_breached > 0
-                            ? "text-red-400 bg-red-900/30"
-                            : "text-slate-400 bg-slate-800"
+                            ? "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30"
+                            : "text-muted-foreground bg-muted"
                         }`}>
                           {ticketStats.sla_breached}
                         </span>
@@ -358,11 +358,11 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
                   )}
                 </div>
 
-                <div className="border-t border-slate-700/50 p-2">
+                <div className="border-t border-border/50 p-2">
                   <Link
                     href="/tracking"
                     onClick={() => setShowTrackingMenu(false)}
-                    className="flex items-center justify-center gap-2 w-full px-3 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition"
+                    className="flex items-center justify-center gap-2 w-full px-3 py-2 text-sm font-medium text-foreground bg-primary-600 hover:bg-primary-700 rounded-lg transition"
                   >
                     <Target className="h-4 w-4" />
                     Open Tracking Dashboard
@@ -393,7 +393,7 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
               whileTap={{ scale: 0.95 }}
               transition={{ duration: 0.1 }}
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-slate-800/50 transition group"
+              className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-muted/50 transition group"
             >
               {user?.avatar_url ? (
                 <Image
@@ -401,7 +401,7 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
                   alt={user.name || "User"}
                   width={32}
                   height={32}
-                  className="rounded-lg ring-2 ring-slate-700 group-hover:ring-slate-600 transition"
+                  className="rounded-lg ring-2 ring-border group-hover:ring-border transition"
                 />
               ) : (
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-medium text-sm">
@@ -409,56 +409,56 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
                 </div>
               )}
               <div className="hidden sm:block text-left">
-                <p className="text-sm font-medium text-white leading-tight">
+                <p className="text-sm font-medium text-foreground leading-tight">
                   {user?.name?.split(" ")[0] || "User"}
                 </p>
-                <p className="text-xs text-slate-500 leading-tight">
+                <p className="text-xs text-muted-foreground leading-tight">
                   {user?.email?.split("@")[0]}
                 </p>
               </div>
-              <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${showUserMenu ? "rotate-180" : ""}`} />
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${showUserMenu ? "rotate-180" : ""}`} />
             </motion.button>
 
             {/* Dropdown Menu */}
             {showUserMenu && (
-              <div className="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-800 rounded-xl shadow-xl shadow-black/20 overflow-hidden">
-                <div className="p-3 border-b border-slate-800">
-                  <p className="text-sm font-medium text-white">{user?.name}</p>
-                  <p className="text-xs text-slate-400 truncate">{user?.email}</p>
+              <div className="absolute right-0 mt-2 w-56 bg-background border border-border rounded-xl shadow-xl shadow-black/20 overflow-hidden">
+                <div className="p-3 border-b border-border">
+                  <p className="text-sm font-medium text-foreground">{user?.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                 </div>
                 <div className="py-1">
                   <Link
                     href="/profile"
                     onClick={() => setShowUserMenu(false)}
-                    className="flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition"
+                    className="flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:text-foreground hover:bg-muted transition"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center">
-                      <Users className="h-4 w-4 text-slate-400" />
+                    <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                      <Users className="h-4 w-4 text-muted-foreground" />
                     </div>
                     My Profile
                   </Link>
                   <Link
                     href="/settings"
                     onClick={() => setShowUserMenu(false)}
-                    className="flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition"
+                    className="flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:text-foreground hover:bg-muted transition"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center">
-                      <Settings className="h-4 w-4 text-slate-400" />
+                    <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                      <Settings className="h-4 w-4 text-muted-foreground" />
                     </div>
                     Settings
                   </Link>
                   <Link
                     href="/settings/billing"
                     onClick={() => setShowUserMenu(false)}
-                    className="flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition"
+                    className="flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:text-foreground hover:bg-muted transition"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
                       <Sparkles className="h-4 w-4 text-amber-400" />
                     </div>
                     Billing & Plan
                   </Link>
                 </div>
-                <div className="border-t border-slate-800 py-1">
+                <div className="border-t border-border py-1">
                   <motion.button
                     whileTap={{ scale: 0.97 }}
                     transition={{ duration: 0.1 }}
@@ -466,9 +466,9 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
                       setShowUserMenu(false);
                       logout();
                     }}
-                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-900/20 transition"
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-red-900/30 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                       <LogOut className="h-4 w-4 text-red-400" />
                     </div>
                     Sign Out

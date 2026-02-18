@@ -201,7 +201,7 @@ export default function InsightsSettingsPage() {
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
               activeTab === "org"
                 ? "bg-indigo-600 text-white"
-                : "bg-slate-800 text-slate-400 hover:text-white border border-slate-700"
+                : "bg-card text-muted-foreground hover:text-foreground border border-border"
             }`}
           >
             <Building2 className="h-4 w-4" />
@@ -212,7 +212,7 @@ export default function InsightsSettingsPage() {
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
               activeTab === "team"
                 ? "bg-indigo-600 text-white"
-                : "bg-slate-800 text-slate-400 hover:text-white border border-slate-700"
+                : "bg-card text-muted-foreground hover:text-foreground border border-border"
             }`}
           >
             <Users className="h-4 w-4" />
@@ -222,14 +222,14 @@ export default function InsightsSettingsPage() {
 
         {/* Team Selector (when team tab active) */}
         {activeTab === "team" && (
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-            <label className="text-sm text-slate-400 block mb-2">
+          <div className="bg-card rounded-xl p-4 border border-border">
+            <label className="text-sm text-muted-foreground block mb-2">
               Select Team
             </label>
             <select
               value={selectedTeamId}
               onChange={(e) => setSelectedTeamId(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">Choose a team...</option>
               {(teams || []).map((team: any) => (
@@ -239,7 +239,7 @@ export default function InsightsSettingsPage() {
               ))}
             </select>
             {selectedTeamId && (
-              <p className="text-xs text-slate-500 mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 Team overrides take precedence over organization defaults
               </p>
             )}
@@ -247,15 +247,15 @@ export default function InsightsSettingsPage() {
         )}
 
         {/* Working Hours */}
-        <section className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-700 flex items-center gap-2">
+        <section className="bg-card rounded-xl border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-border flex items-center gap-2">
             <Clock className="h-5 w-5 text-amber-400" />
-            <h2 className="text-lg font-semibold text-white">Working Hours</h2>
+            <h2 className="text-lg font-semibold text-foreground">Working Hours</h2>
           </div>
           <div className="p-6 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm text-slate-400 block mb-1">
+                <label className="text-sm text-muted-foreground block mb-1">
                   <Sun className="h-3.5 w-3.5 inline mr-1" />
                   Start Hour
                 </label>
@@ -264,7 +264,7 @@ export default function InsightsSettingsPage() {
                   onChange={(e) =>
                     updateWorkingHours("start_hour", Number(e.target.value))
                   }
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   {Array.from({ length: 24 }, (_, i) => (
                     <option key={i} value={i}>
@@ -274,7 +274,7 @@ export default function InsightsSettingsPage() {
                 </select>
               </div>
               <div>
-                <label className="text-sm text-slate-400 block mb-1">
+                <label className="text-sm text-muted-foreground block mb-1">
                   <Moon className="h-3.5 w-3.5 inline mr-1" />
                   End Hour
                 </label>
@@ -283,7 +283,7 @@ export default function InsightsSettingsPage() {
                   onChange={(e) =>
                     updateWorkingHours("end_hour", Number(e.target.value))
                   }
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   {Array.from({ length: 24 }, (_, i) => (
                     <option key={i} value={i}>
@@ -294,7 +294,7 @@ export default function InsightsSettingsPage() {
               </div>
             </div>
             <div>
-              <label className="text-sm text-slate-400 block mb-1">
+              <label className="text-sm text-muted-foreground block mb-1">
                 Timezone
               </label>
               <select
@@ -302,7 +302,7 @@ export default function InsightsSettingsPage() {
                 onChange={(e) =>
                   updateWorkingHours("timezone", e.target.value)
                 }
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 {TIMEZONES.map((tz) => (
                   <option key={tz} value={tz}>
@@ -312,7 +312,7 @@ export default function InsightsSettingsPage() {
               </select>
             </div>
             <div>
-              <label className="text-sm text-slate-400 block mb-1">
+              <label className="text-sm text-muted-foreground block mb-1">
                 <Moon className="h-3.5 w-3.5 inline mr-1" />
                 Late Night Threshold
               </label>
@@ -326,7 +326,7 @@ export default function InsightsSettingsPage() {
                     }));
                     setSaved(false);
                   }}
-                  className="w-40 px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-40 px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   {Array.from({ length: 24 }, (_, i) => (
                     <option key={i} value={i}>
@@ -334,7 +334,7 @@ export default function InsightsSettingsPage() {
                     </option>
                   ))}
                 </select>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-muted-foreground">
                   Commits after this hour are flagged as late-night
                 </span>
               </div>
@@ -343,11 +343,11 @@ export default function InsightsSettingsPage() {
         </section>
 
         {/* Health Score Weights */}
-        <section className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <section className="bg-card rounded-xl border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Shield className="h-5 w-5 text-blue-400" />
-              <h2 className="text-lg font-semibold text-white">
+              <h2 className="text-lg font-semibold text-foreground">
                 Health Score Weights
               </h2>
             </div>
@@ -366,7 +366,7 @@ export default function InsightsSettingsPage() {
               ][]
             ).map(([key, value]) => (
               <div key={key} className="flex items-center gap-4">
-                <label className="text-sm text-slate-300 w-32 capitalize">
+                <label className="text-sm text-foreground w-32 capitalize">
                   {key}
                 </label>
                 <input
@@ -377,12 +377,12 @@ export default function InsightsSettingsPage() {
                   onChange={(e) => updateWeights(key, Number(e.target.value))}
                   className="flex-1 accent-indigo-500"
                 />
-                <span className="text-sm text-white w-12 text-right font-mono">
+                <span className="text-sm text-foreground w-12 text-right font-mono">
                   {value}%
                 </span>
               </div>
             ))}
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               These weights determine the composite health score for each
               developer. Adjust based on what matters most for your team.
             </p>
@@ -390,16 +390,16 @@ export default function InsightsSettingsPage() {
         </section>
 
         {/* Bottleneck Detection */}
-        <section className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-700 flex items-center gap-2">
+        <section className="bg-card rounded-xl border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-border flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-orange-400" />
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-foreground">
               Bottleneck Detection
             </h2>
           </div>
           <div className="p-6 space-y-4">
             <div>
-              <label className="text-sm text-slate-400 block mb-1">
+              <label className="text-sm text-muted-foreground block mb-1">
                 Bottleneck Multiplier
               </label>
               <div className="flex items-center gap-2">
@@ -416,9 +416,9 @@ export default function InsightsSettingsPage() {
                     }));
                     setSaved(false);
                   }}
-                  className="w-24 px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-24 px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-muted-foreground">
                   Developers with {settings.bottleneck_multiplier}x the average
                   workload are flagged as bottlenecks
                 </span>
@@ -428,18 +428,18 @@ export default function InsightsSettingsPage() {
         </section>
 
         {/* Snapshot Generation */}
-        <section className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-700 flex items-center gap-2">
+        <section className="bg-card rounded-xl border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-border flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-green-400" />
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-foreground">
               Snapshot Generation
             </h2>
           </div>
           <div className="p-6 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <p className="text-sm text-white">Auto-generate snapshots</p>
-                <p className="text-xs text-slate-500">
+                <p className="text-sm text-foreground">Auto-generate snapshots</p>
+                <p className="text-xs text-muted-foreground">
                   Automatically compute metrics on a schedule
                 </p>
               </div>
@@ -454,7 +454,7 @@ export default function InsightsSettingsPage() {
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
                   settings.snapshot_auto_generate
                     ? "bg-indigo-600"
-                    : "bg-slate-600"
+                    : "bg-muted"
                 }`}
               >
                 <span
@@ -468,7 +468,7 @@ export default function InsightsSettingsPage() {
             </div>
             {settings.snapshot_auto_generate && (
               <div>
-                <label className="text-sm text-slate-400 block mb-1">
+                <label className="text-sm text-muted-foreground block mb-1">
                   Frequency
                 </label>
                 <div className="flex gap-2">
@@ -485,7 +485,7 @@ export default function InsightsSettingsPage() {
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                         settings.snapshot_frequency === freq
                           ? "bg-indigo-600 text-white"
-                          : "bg-slate-700 text-slate-400 hover:text-white"
+                          : "bg-muted text-muted-foreground hover:text-foreground"
                       }`}
                     >
                       {freq.charAt(0).toUpperCase() + freq.slice(1)}
@@ -504,7 +504,7 @@ export default function InsightsSettingsPage() {
               setSettings(DEFAULT_SETTINGS);
               setSaved(false);
             }}
-            className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-white transition text-sm"
+            className="flex items-center gap-2 px-4 py-2 text-muted-foreground hover:text-foreground transition text-sm"
           >
             <RotateCcw className="h-4 w-4" />
             Reset to Defaults

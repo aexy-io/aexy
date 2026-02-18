@@ -31,10 +31,10 @@ type WebhookStatus = "none" | "pending" | "active" | "failed";
 
 function SyncStatusBadge({ status }: { status: SyncStatus }) {
   const config = {
-    pending: { icon: Clock, color: "text-slate-400", bg: "bg-slate-700", label: "Pending" },
-    syncing: { icon: Loader2, color: "text-blue-400", bg: "bg-blue-900/30", label: "Syncing" },
-    synced: { icon: Check, color: "text-green-400", bg: "bg-green-900/30", label: "Synced" },
-    failed: { icon: AlertCircle, color: "text-red-400", bg: "bg-red-900/30", label: "Failed" },
+    pending: { icon: Clock, color: "text-muted-foreground", bg: "bg-muted", label: "Pending" },
+    syncing: { icon: Loader2, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-900/30", label: "Syncing" },
+    synced: { icon: Check, color: "text-green-600 dark:text-green-400", bg: "bg-green-50 dark:bg-green-900/30", label: "Synced" },
+    failed: { icon: AlertCircle, color: "text-red-600 dark:text-red-400", bg: "bg-red-50 dark:bg-red-900/30", label: "Failed" },
   };
 
   const { icon: Icon, color, bg, label } = config[status];
@@ -49,10 +49,10 @@ function SyncStatusBadge({ status }: { status: SyncStatus }) {
 
 function WebhookStatusBadge({ status }: { status: WebhookStatus }) {
   const config = {
-    none: { color: "text-slate-500", label: "No webhook" },
-    pending: { color: "text-yellow-400", label: "Webhook pending" },
-    active: { color: "text-green-400", label: "Webhook active" },
-    failed: { color: "text-red-400", label: "Webhook failed" },
+    none: { color: "text-muted-foreground", label: "No webhook" },
+    pending: { color: "text-yellow-600 dark:text-yellow-400", label: "Webhook pending" },
+    active: { color: "text-green-600 dark:text-green-400", label: "Webhook active" },
+    failed: { color: "text-red-600 dark:text-red-400", label: "Webhook failed" },
   };
 
   const { color, label } = config[status];
@@ -69,33 +69,33 @@ interface RepoItemProps {
 
 function RepoItem({ repo, onRepoToggle, onStartSync, showOwner }: RepoItemProps) {
   return (
-    <div className="p-3 px-4 flex items-start justify-between hover:bg-slate-700/30 gap-4">
+    <div className="p-3 px-4 flex items-start justify-between hover:bg-accent/30 gap-4">
       <div className="flex items-start gap-3 flex-1 min-w-0">
         <input
           type="checkbox"
           checked={repo.is_enabled}
           onChange={(e) => onRepoToggle(repo.id, e.target.checked)}
-          className="w-4 h-4 mt-1 text-primary-600 bg-slate-700 border-slate-600 rounded focus:ring-primary-500 flex-shrink-0"
+          className="w-4 h-4 mt-1 text-primary-600 bg-muted border-border rounded focus:ring-primary-500 flex-shrink-0"
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             {showOwner && (
-              <span className="text-slate-400 text-sm">{repo.owner_login}/</span>
+              <span className="text-muted-foreground text-sm">{repo.owner_login}/</span>
             )}
-            <span className="text-white font-medium">{repo.name}</span>
+            <span className="text-foreground font-medium">{repo.name}</span>
             {repo.is_private ? (
-              <Lock className="h-3 w-3 text-slate-500 flex-shrink-0" />
+              <Lock className="h-3 w-3 text-muted-foreground flex-shrink-0" />
             ) : (
-              <Globe className="h-3 w-3 text-slate-500 flex-shrink-0" />
+              <Globe className="h-3 w-3 text-muted-foreground flex-shrink-0" />
             )}
             {repo.language && (
-              <span className="text-xs text-slate-400 bg-slate-700 px-2 py-0.5 rounded flex-shrink-0">
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded flex-shrink-0">
                 {repo.language}
               </span>
             )}
           </div>
           {repo.description && (
-            <p className="text-slate-400 text-xs mt-1 line-clamp-2">
+            <p className="text-muted-foreground text-xs mt-1 line-clamp-2">
               {repo.description}
             </p>
           )}
@@ -113,7 +113,7 @@ function RepoItem({ repo, onRepoToggle, onStartSync, showOwner }: RepoItemProps)
              
               <button
                 onClick={() => onStartSync(repo.id)}
-                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition"
+                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition"
                 title="Start sync"
               >
                 <RefreshCw className="h-4 w-4" />
@@ -148,16 +148,16 @@ function CollapsibleSection({
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
-    <div className="bg-slate-800 rounded-xl overflow-hidden">
-      <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-700">
+    <div className="bg-card rounded-xl overflow-hidden">
+      <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border">
         <button
           onClick={() => setExpanded(!expanded)}
           className="flex items-center gap-3 flex-1 text-left"
         >
           {expanded ? (
-            <ChevronDown className="h-5 w-5 text-slate-400 flex-shrink-0" />
+            <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
           ) : (
-            <ChevronRight className="h-5 w-5 text-slate-400 flex-shrink-0" />
+            <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
           )}
           {avatar ? (
             <Image
@@ -168,19 +168,19 @@ function CollapsibleSection({
               className="rounded-lg"
             />
           ) : (
-            <div className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
               {icon}
             </div>
           )}
           <div>
-            <h3 className="text-white font-medium">{title}</h3>
-            <p className="text-slate-400 text-sm">{count}</p>
+            <h3 className="text-foreground font-medium">{title}</h3>
+            <p className="text-muted-foreground text-sm">{count}</p>
           </div>
         </button>
         {headerRight}
       </div>
       {expanded && (
-        <div className="divide-y divide-slate-700/50">
+        <div className="divide-y divide-border/50">
           {children}
         </div>
       )}
@@ -369,7 +369,7 @@ export default function RepositorySettingsPage() {
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-white">Loading repositories...</p>
+          <p className="text-foreground">Loading repositories...</p>
         </div>
       </div>
     );
@@ -389,9 +389,9 @@ export default function RepositorySettingsPage() {
         {installationStatus?.has_installation && repositories.length > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-6">
-              <div className="text-slate-300">
-                <span className="text-2xl font-bold text-white">{enabledCount}</span>
-                <span className="text-slate-400"> / {totalCount}</span>
+              <div className="text-foreground">
+                <span className="text-2xl font-bold text-foreground">{enabledCount}</span>
+                <span className="text-muted-foreground"> / {totalCount}</span>
                 <span className="ml-1 text-sm">repositories enabled</span>
               </div>
             </div>
@@ -401,7 +401,7 @@ export default function RepositorySettingsPage() {
                   href={`https://github.com/settings/installations/${installationStatus.installations[0].installation_id}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+                  className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-accent text-foreground rounded-lg transition"
                 >
                   <ExternalLink className="h-4 w-4" />
                   Manage access
@@ -410,7 +410,7 @@ export default function RepositorySettingsPage() {
               <button
                 onClick={handleRefresh}
                 disabled={refreshing}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-accent text-foreground rounded-lg transition disabled:opacity-50"
               >
                 <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
                 Refresh from GitHub
@@ -446,7 +446,7 @@ export default function RepositorySettingsPage() {
           <div className="mb-6">
             <CollapsibleSection
               title="Personal Repositories"
-              icon={<User className="h-5 w-5 text-slate-400" />}
+              icon={<User className="h-5 w-5 text-muted-foreground" />}
               count={`${disabledPersonalRepos.length} repositories available`}
               defaultExpanded={enabledRepos.length === 0}
             >
@@ -465,8 +465,8 @@ export default function RepositorySettingsPage() {
         {/* Organization Sections */}
         {organizations.length > 0 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-medium text-white flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-slate-400" />
+            <h2 className="text-lg font-medium text-foreground flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-muted-foreground" />
               Organizations
             </h2>
             {organizations.map((org) => {
@@ -480,7 +480,7 @@ export default function RepositorySettingsPage() {
                 <CollapsibleSection
                   key={org.id}
                   title={org.name || org.login}
-                  icon={<Building2 className="h-5 w-5 text-slate-400" />}
+                  icon={<Building2 className="h-5 w-5 text-muted-foreground" />}
                   count={`${enabledOrgCount} of ${totalOrgCount} repositories enabled`}
                   defaultExpanded={enabledRepos.length === 0}
                   avatar={org.avatar_url}
@@ -492,7 +492,7 @@ export default function RepositorySettingsPage() {
                         onChange={(e) => handleOrgToggle(org.id, e.target.checked)}
                         className="sr-only peer"
                       />
-                      <div className="w-11 h-6 bg-slate-600 peer-focus:ring-2 peer-focus:ring-primary-500 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                      <div className="w-11 h-6 bg-muted peer-focus:ring-2 peer-focus:ring-primary-500 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                     </label>
                   }
                 >
@@ -512,10 +512,10 @@ export default function RepositorySettingsPage() {
 
         {/* No Installation State */}
         {!installationStatus?.has_installation && (
-          <div className="bg-slate-800 rounded-xl p-12 text-center">
-            <FolderGit2 className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-white mb-2">GitHub App Not Installed</h3>
-            <p className="text-slate-400 mb-6">
+          <div className="bg-card rounded-xl p-12 text-center">
+            <FolderGit2 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-medium text-foreground mb-2">GitHub App Not Installed</h3>
+            <p className="text-muted-foreground mb-6">
               Install the Aexy GitHub App to grant access to your repositories.
               This allows us to analyze your code contributions.
             </p>
@@ -527,7 +527,7 @@ export default function RepositorySettingsPage() {
                 Install GitHub App
               </a>
             ) : (
-              <p className="text-slate-500 text-sm">
+              <p className="text-muted-foreground text-sm">
                 GitHub App install URL not configured. Please contact support.
               </p>
             )}
@@ -536,10 +536,10 @@ export default function RepositorySettingsPage() {
 
         {/* Empty State - has installation but no repos */}
         {installationStatus?.has_installation && repositories.length === 0 && (
-          <div className="bg-slate-800 rounded-xl p-12 text-center">
-            <FolderGit2 className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-white mb-2">No repositories found</h3>
-            <p className="text-slate-400 mb-6">
+          <div className="bg-card rounded-xl p-12 text-center">
+            <FolderGit2 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-medium text-foreground mb-2">No repositories found</h3>
+            <p className="text-muted-foreground mb-6">
               We couldn&apos;t find any repositories. Try refreshing from GitHub or check your app installation permissions.
             </p>
             <div className="flex items-center justify-center gap-3">
@@ -556,7 +556,7 @@ export default function RepositorySettingsPage() {
                   href={`https://github.com/settings/installations/${installationStatus.installations[0].installation_id}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-muted hover:bg-accent text-foreground rounded-lg transition"
                 >
                   <ExternalLink className="h-4 w-4" />
                   Manage access on GitHub
@@ -566,18 +566,19 @@ export default function RepositorySettingsPage() {
           </div>
         )}
 
-        {/* Auto-sync Settings */}
+        {/* Sync Settings */}
         {installationStatus?.has_installation && enabledRepos.length > 0 && (
           <div className="mt-8">
-            <h2 className="text-lg font-medium text-white flex items-center gap-2 mb-4">
-              <Settings className="h-5 w-5 text-slate-400" />
+            <h2 className="text-lg font-medium text-foreground flex items-center gap-2 mb-4">
+              <Settings className="h-5 w-5 text-muted-foreground" />
               Sync Settings
             </h2>
-            <div className="bg-slate-800 rounded-xl divide-y divide-slate-700">
+            <div className="bg-card rounded-xl divide-y divide-border">
+              {/* Auto-sync toggle */}
               <div className="p-4 flex items-center justify-between">
                 <div>
-                  <h3 className="text-white font-medium">Auto-sync</h3>
-                  <p className="text-slate-400 text-sm mt-0.5">
+                  <h3 className="text-foreground font-medium">Auto-sync</h3>
+                  <p className="text-muted-foreground text-sm mt-0.5">
                     Automatically sync enabled repositories on a schedule
                   </p>
                 </div>
@@ -588,30 +589,67 @@ export default function RepositorySettingsPage() {
                     onChange={(e) => handleAutoSyncToggle(e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-slate-600 peer-focus:ring-2 peer-focus:ring-primary-500 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                  <div className="w-11 h-6 bg-muted peer-focus:ring-2 peer-focus:ring-primary-500 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                 </label>
               </div>
-              {autoSyncEnabled && (
-                <div className="p-4 flex items-center justify-between">
-                  <div>
-                    <h3 className="text-white font-medium">Sync frequency</h3>
-                    <p className="text-slate-400 text-sm mt-0.5">
-                      How often to sync commits, PRs, and reviews
-                    </p>
-                  </div>
-                  <select
-                    value={autoSyncFrequency}
-                    onChange={(e) => handleAutoSyncFrequencyChange(e.target.value)}
-                    className="bg-slate-700 text-white border border-slate-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  >
-                    <option value="30m">Every 30 minutes</option>
-                    <option value="1h">Every hour</option>
-                    <option value="6h">Every 6 hours</option>
-                    <option value="12h">Every 12 hours</option>
-                    <option value="24h">Once a day</option>
-                  </select>
+
+              {/* Frequency selector */}
+              <div className={`p-4 flex items-center justify-between transition-opacity ${autoSyncEnabled ? "opacity-100" : "opacity-50 pointer-events-none"}`}>
+                <div>
+                  <h3 className="text-foreground font-medium">Sync frequency</h3>
+                  <p className="text-muted-foreground text-sm mt-0.5">
+                    How often to sync commits, PRs, and reviews
+                  </p>
                 </div>
-              )}
+                <select
+                  value={autoSyncFrequency}
+                  onChange={(e) => handleAutoSyncFrequencyChange(e.target.value)}
+                  disabled={!autoSyncEnabled}
+                  className="bg-muted text-foreground border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
+                >
+                  <option value="30m">Every 30 minutes</option>
+                  <option value="1h">Every hour</option>
+                  <option value="6h">Every 6 hours</option>
+                  <option value="12h">Every 12 hours</option>
+                  <option value="24h">Once a day</option>
+                </select>
+              </div>
+
+              {/* Sync all button */}
+              <div className="p-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-foreground font-medium">Sync all repositories</h3>
+                  <p className="text-muted-foreground text-sm mt-0.5">
+                    Trigger a manual sync for all {enabledRepos.length} enabled {enabledRepos.length === 1 ? "repository" : "repositories"}
+                  </p>
+                </div>
+                <button
+                  onClick={async () => {
+                    for (const repo of enabledRepos) {
+                      await handleStartSync(repo.id);
+                    }
+                  }}
+                  disabled={enabledRepos.some(r => r.sync_status === "syncing")}
+                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-4 w-4 ${enabledRepos.some(r => r.sync_status === "syncing") ? "animate-spin" : ""}`} />
+                  Sync all
+                </button>
+              </div>
+
+              {/* Webhook info */}
+              <div className="p-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-foreground font-medium">Real-time webhooks</h3>
+                  <p className="text-muted-foreground text-sm mt-0.5">
+                    Push events, pull requests, and reviews are synced in real-time via GitHub webhooks
+                  </p>
+                </div>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                  Active
+                </span>
+              </div>
             </div>
           </div>
         )}

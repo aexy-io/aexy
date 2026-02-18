@@ -61,26 +61,26 @@ interface StatCardProps {
 
 function StatCard({ title, value, subtitle, icon, trend, trendValue, color = "default" }: StatCardProps) {
   const colorClasses = {
-    default: "text-white",
+    default: "text-foreground",
     success: "text-green-400",
     warning: "text-amber-400",
     danger: "text-red-400",
   };
 
   return (
-    <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
+    <div className="bg-muted rounded-xl p-5 border border-border">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
-        <span className="text-slate-400 text-sm">{title}</span>
-        <div className="p-2 bg-slate-700 rounded-lg">{icon}</div>
+        <span className="text-muted-foreground text-sm">{title}</span>
+        <div className="p-2 bg-accent rounded-lg">{icon}</div>
       </div>
       <div className={`text-3xl font-bold ${colorClasses[color]} mb-1`}>{value}</div>
       {(subtitle || trend) && (
         <div className="flex items-center gap-2 text-sm">
-          {subtitle && <span className="text-slate-400">{subtitle}</span>}
+          {subtitle && <span className="text-muted-foreground">{subtitle}</span>}
           {trend && trendValue && (
             <span
               className={`flex items-center gap-1 ${
-                trend === "up" ? "text-green-400" : trend === "down" ? "text-red-400" : "text-slate-400"
+                trend === "up" ? "text-green-400" : trend === "down" ? "text-red-400" : "text-muted-foreground"
               }`}
             >
               {trend === "up" ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
@@ -134,10 +134,10 @@ export default function SprintAnalyticsPage({
 
   if (authLoading || currentWorkspaceLoading || sprintLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-white">Loading analytics...</p>
+          <p className="text-foreground">Loading analytics...</p>
         </div>
       </div>
     );
@@ -156,24 +156,24 @@ export default function SprintAnalyticsPage({
     : 0;
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800/50">
+      <header className="border-b border-border bg-muted/50">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
             <Link
               href={`/sprints/${projectId}/${sprintId}`}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-slate-700 rounded-lg">
-                <BarChart3 className="h-5 w-5 text-slate-300" />
+              <div className="p-2 bg-accent rounded-lg">
+                <BarChart3 className="h-5 w-5 text-foreground" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-white">Sprint Analytics</h1>
-                <p className="text-slate-400 text-sm">{sprint?.name}</p>
+                <h1 className="text-xl font-semibold text-foreground">Sprint Analytics</h1>
+                <p className="text-muted-foreground text-sm">{sprint?.name}</p>
               </div>
             </div>
           </div>
@@ -215,9 +215,9 @@ export default function SprintAnalyticsPage({
 
         <div className="grid lg:grid-cols-2 gap-6 mb-8">
           {/* Burndown Chart */}
-          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <TrendingDown className="h-5 w-5 text-slate-400" />
+          <div className="bg-muted rounded-xl p-6 border border-border">
+            <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <TrendingDown className="h-5 w-5 text-muted-foreground" />
               Burndown Chart
             </h2>
             {burndownLoading ? (
@@ -259,16 +259,16 @@ export default function SprintAnalyticsPage({
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[300px] flex items-center justify-center text-slate-400">
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
                 No burndown data available yet
               </div>
             )}
           </div>
 
           {/* Velocity Trend */}
-          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-slate-400" />
+          <div className="bg-muted rounded-xl p-6 border border-border">
+            <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-muted-foreground" />
               Velocity Trend
             </h2>
             {velocityLoading ? (
@@ -296,7 +296,7 @@ export default function SprintAnalyticsPage({
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[300px] flex items-center justify-center text-slate-400">
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
                 No velocity data available yet
               </div>
             )}
@@ -305,9 +305,9 @@ export default function SprintAnalyticsPage({
 
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Capacity Analysis */}
-          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <Users className="h-5 w-5 text-slate-400" />
+          <div className="bg-muted rounded-xl p-6 border border-border">
+            <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Users className="h-5 w-5 text-muted-foreground" />
               Capacity Analysis
             </h2>
             {isLoadingCapacity ? (
@@ -317,19 +317,19 @@ export default function SprintAnalyticsPage({
             ) : capacity ? (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-slate-700/50 rounded-lg p-3 text-center">
-                    <div className="text-2xl font-bold text-white">
+                  <div className="bg-accent/50 rounded-lg p-3 text-center">
+                    <div className="text-2xl font-bold text-foreground">
                       {Math.round(capacity.total_capacity_hours)}h
                     </div>
-                    <div className="text-xs text-slate-400">Total Capacity</div>
+                    <div className="text-xs text-muted-foreground">Total Capacity</div>
                   </div>
-                  <div className="bg-slate-700/50 rounded-lg p-3 text-center">
+                  <div className="bg-accent/50 rounded-lg p-3 text-center">
                     <div className="text-2xl font-bold text-blue-400">
                       {Math.round(capacity.committed_hours)}h
                     </div>
-                    <div className="text-xs text-slate-400">Committed</div>
+                    <div className="text-xs text-muted-foreground">Committed</div>
                   </div>
-                  <div className="bg-slate-700/50 rounded-lg p-3 text-center">
+                  <div className="bg-accent/50 rounded-lg p-3 text-center">
                     <div
                       className={`text-2xl font-bold ${
                         capacity.overcommitted ? "text-red-400" : "text-green-400"
@@ -337,12 +337,12 @@ export default function SprintAnalyticsPage({
                     >
                       {Math.round(capacity.utilization_rate * 100)}%
                     </div>
-                    <div className="text-xs text-slate-400">Utilization</div>
+                    <div className="text-xs text-muted-foreground">Utilization</div>
                   </div>
                 </div>
 
                 {capacity.overcommitted && (
-                  <div className="flex items-center gap-2 p-3 bg-red-900/20 border border-red-900/50 rounded-lg">
+                  <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-900/50 rounded-lg">
                     <AlertTriangle className="h-5 w-5 text-red-400 flex-shrink-0" />
                     <div>
                       <p className="text-red-400 font-medium text-sm">Sprint is overcommitted</p>
@@ -354,11 +354,11 @@ export default function SprintAnalyticsPage({
                 )}
 
                 {capacity.recommendations && capacity.recommendations.length > 0 && (
-                  <div className="pt-3 border-t border-slate-700">
-                    <h4 className="text-sm font-medium text-slate-300 mb-2">Recommendations</h4>
+                  <div className="pt-3 border-t border-border">
+                    <h4 className="text-sm font-medium text-foreground mb-2">Recommendations</h4>
                     <ul className="space-y-1">
                       {capacity.recommendations.map((rec, i) => (
-                        <li key={i} className="text-sm text-slate-400 flex items-start gap-2">
+                        <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
                           <span className="text-primary-400">•</span>
                           {rec}
                         </li>
@@ -368,16 +368,16 @@ export default function SprintAnalyticsPage({
                 )}
               </div>
             ) : (
-              <div className="py-8 text-center text-slate-400">
+              <div className="py-8 text-center text-muted-foreground">
                 No capacity data available
               </div>
             )}
           </div>
 
           {/* Completion Prediction */}
-          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <Clock className="h-5 w-5 text-slate-400" />
+          <div className="bg-muted rounded-xl p-6 border border-border">
+            <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Clock className="h-5 w-5 text-muted-foreground" />
               Completion Prediction
             </h2>
             {isLoadingPrediction ? (
@@ -399,22 +399,22 @@ export default function SprintAnalyticsPage({
                     {Math.round(prediction.predicted_completion_rate * 100)}%
                   </div>
                   <div>
-                    <p className="text-slate-300 font-medium">Predicted Completion</p>
-                    <p className="text-slate-400 text-sm">
+                    <p className="text-foreground font-medium">Predicted Completion</p>
+                    <p className="text-muted-foreground text-sm">
                       Confidence: {Math.round(prediction.confidence * 100)}%
                     </p>
                   </div>
                 </div>
 
                 {prediction.risk_factors && prediction.risk_factors.length > 0 && (
-                  <div className="pt-3 border-t border-slate-700">
+                  <div className="pt-3 border-t border-border">
                     <h4 className="text-sm font-medium text-red-400 mb-2 flex items-center gap-1">
                       <AlertTriangle className="h-4 w-4" />
                       Risk Factors
                     </h4>
                     <ul className="space-y-1">
                       {prediction.risk_factors.map((risk, i) => (
-                        <li key={i} className="text-sm text-slate-400 flex items-start gap-2">
+                        <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
                           <span className="text-red-400">•</span>
                           {risk}
                         </li>
@@ -424,13 +424,13 @@ export default function SprintAnalyticsPage({
                 )}
 
                 {prediction.at_risk_tasks && prediction.at_risk_tasks.length > 0 && (
-                  <div className="pt-3 border-t border-slate-700">
+                  <div className="pt-3 border-t border-border">
                     <h4 className="text-sm font-medium text-amber-400 mb-2">At-Risk Tasks</h4>
                     <div className="space-y-2">
                       {prediction.at_risk_tasks.slice(0, 3).map((task, i) => (
-                        <div key={i} className="text-sm bg-slate-700/50 rounded p-2">
-                          <span className="text-white">{task.title}</span>
-                          <span className="text-slate-500 ml-2">({task.risk})</span>
+                        <div key={i} className="text-sm bg-accent/50 rounded p-2">
+                          <span className="text-foreground">{task.title}</span>
+                          <span className="text-muted-foreground ml-2">({task.risk})</span>
                         </div>
                       ))}
                     </div>
@@ -438,11 +438,11 @@ export default function SprintAnalyticsPage({
                 )}
 
                 {prediction.recommendations && prediction.recommendations.length > 0 && (
-                  <div className="pt-3 border-t border-slate-700">
-                    <h4 className="text-sm font-medium text-slate-300 mb-2">Recommendations</h4>
+                  <div className="pt-3 border-t border-border">
+                    <h4 className="text-sm font-medium text-foreground mb-2">Recommendations</h4>
                     <ul className="space-y-1">
                       {prediction.recommendations.map((rec, i) => (
-                        <li key={i} className="text-sm text-slate-400 flex items-start gap-2">
+                        <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
                           <span className="text-green-400">•</span>
                           {rec}
                         </li>
@@ -452,7 +452,7 @@ export default function SprintAnalyticsPage({
                 )}
               </div>
             ) : (
-              <div className="py-8 text-center text-slate-400">
+              <div className="py-8 text-center text-muted-foreground">
                 No prediction data available
               </div>
             )}

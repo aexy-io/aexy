@@ -64,21 +64,21 @@ interface ExecutionHistoryProps {
 }
 
 const statusConfig: Record<string, { icon: typeof CheckCircle; color: string; bg: string }> = {
-  completed: { icon: CheckCircle, color: "text-green-400", bg: "bg-green-500/10" },
-  failed: { icon: XCircle, color: "text-red-400", bg: "bg-red-500/10" },
-  running: { icon: Play, color: "text-blue-400", bg: "bg-blue-500/10" },
-  paused: { icon: Pause, color: "text-amber-400", bg: "bg-amber-500/10" },
-  pending: { icon: Clock, color: "text-slate-400", bg: "bg-slate-500/10" },
-  cancelled: { icon: AlertCircle, color: "text-slate-400", bg: "bg-slate-500/10" },
+  completed: { icon: CheckCircle, color: "text-green-600 dark:text-green-400", bg: "bg-green-500/10" },
+  failed: { icon: XCircle, color: "text-red-600 dark:text-red-400", bg: "bg-red-500/10" },
+  running: { icon: Play, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10" },
+  paused: { icon: Pause, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10" },
+  pending: { icon: Clock, color: "text-muted-foreground", bg: "bg-muted-foreground/10" },
+  cancelled: { icon: AlertCircle, color: "text-muted-foreground", bg: "bg-muted-foreground/10" },
 };
 
 const stepStatusConfig: Record<string, { color: string; bg: string }> = {
-  success: { color: "text-green-400", bg: "bg-green-500" },
-  failed: { color: "text-red-400", bg: "bg-red-500" },
-  running: { color: "text-blue-400", bg: "bg-blue-500" },
-  waiting: { color: "text-amber-400", bg: "bg-amber-500" },
-  skipped: { color: "text-slate-500", bg: "bg-slate-600" },
-  pending: { color: "text-slate-400", bg: "bg-slate-600" },
+  success: { color: "text-green-600 dark:text-green-400", bg: "bg-green-500" },
+  failed: { color: "text-red-600 dark:text-red-400", bg: "bg-red-500" },
+  running: { color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500" },
+  waiting: { color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500" },
+  skipped: { color: "text-muted-foreground", bg: "bg-muted" },
+  pending: { color: "text-muted-foreground", bg: "bg-muted" },
 };
 
 export function ExecutionHistory({
@@ -174,21 +174,21 @@ export function ExecutionHistory({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 w-96 bg-slate-800 border-l border-slate-700 shadow-xl z-[100] flex flex-col">
+    <div className="fixed inset-y-0 right-0 w-96 bg-muted border-l border-border shadow-xl z-[100] flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
-        <h2 className="text-lg font-semibold text-white">Execution History</h2>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <h2 className="text-lg font-semibold text-foreground">Execution History</h2>
         <div className="flex items-center gap-2">
           <button
             onClick={loadExecutions}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
             title="Refresh"
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
           </button>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -203,7 +203,7 @@ export function ExecutionHistory({
             {/* Back button */}
             <button
               onClick={() => setSelectedExecution(null)}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-700/50 w-full"
+              className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 w-full"
             >
               <ChevronRight className="h-4 w-4 rotate-180" />
               Back to list
@@ -216,14 +216,14 @@ export function ExecutionHistory({
             ) : (
               <div className="px-4 py-2">
                 {/* Execution Status Header */}
-                <div className={`rounded-lg p-3 mb-4 ${statusConfig[selectedExecution.status]?.bg || "bg-slate-700"}`}>
+                <div className={`rounded-lg p-3 mb-4 ${statusConfig[selectedExecution.status]?.bg || "bg-accent"}`}>
                   <div className="flex items-center gap-2">
                     {(() => {
                       const config = statusConfig[selectedExecution.status];
                       const Icon = config?.icon || Clock;
-                      return <Icon className={`h-5 w-5 ${config?.color || "text-slate-400"}`} />;
+                      return <Icon className={`h-5 w-5 ${config?.color || "text-muted-foreground"}`} />;
                     })()}
-                    <span className={`font-medium capitalize ${statusConfig[selectedExecution.status]?.color || "text-slate-400"}`}>
+                    <span className={`font-medium capitalize ${statusConfig[selectedExecution.status]?.color || "text-muted-foreground"}`}>
                       {selectedExecution.status}
                     </span>
                     {selectedExecution.is_dry_run && (
@@ -243,7 +243,7 @@ export function ExecutionHistory({
                 </div>
 
                 {/* Timestamps */}
-                <div className="text-sm text-slate-400 mb-4 space-y-1">
+                <div className="text-sm text-muted-foreground mb-4 space-y-1">
                   {selectedExecution.started_at && (
                     <div>Started: {formatDate(selectedExecution.started_at)}</div>
                   )}
@@ -256,7 +256,7 @@ export function ExecutionHistory({
                 {["running", "paused", "pending"].includes(selectedExecution.status) && (
                   <button
                     onClick={() => cancelExecution(selectedExecution.id)}
-                    className="w-full mb-4 px-3 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg text-sm font-medium transition-colors"
+                    className="w-full mb-4 px-3 py-2 bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 hover:bg-red-500/20 rounded-lg text-sm font-medium transition-colors"
                   >
                     Cancel Execution
                   </button>
@@ -264,29 +264,29 @@ export function ExecutionHistory({
 
                 {/* Steps */}
                 <div className="mb-4">
-                  <h3 className="text-sm font-medium text-slate-300 mb-2">
+                  <h3 className="text-sm font-medium text-foreground mb-2">
                     Steps ({selectedExecution.steps.length})
                   </h3>
                   <div className="space-y-2">
                     {selectedExecution.steps.map((step, index) => (
                       <div
                         key={step.id}
-                        className="bg-slate-700/50 rounded-lg p-3"
+                        className="bg-accent/50 rounded-lg p-3"
                       >
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-2">
                             <div
-                              className={`w-2 h-2 rounded-full ${stepStatusConfig[step.status]?.bg || "bg-slate-600"}`}
+                              className={`w-2 h-2 rounded-full ${stepStatusConfig[step.status]?.bg || "bg-muted"}`}
                             />
-                            <span className="text-sm font-medium text-white">
+                            <span className="text-sm font-medium text-foreground">
                               {step.node_label || step.node_type}
                             </span>
                           </div>
-                          <span className={`text-xs ${stepStatusConfig[step.status]?.color || "text-slate-500"}`}>
+                          <span className={`text-xs ${stepStatusConfig[step.status]?.color || "text-muted-foreground"}`}>
                             {step.status}
                           </span>
                         </div>
-                        <div className="text-xs text-slate-500">
+                        <div className="text-xs text-muted-foreground">
                           {step.node_type}
                           {step.duration_ms != null && (
                             <span className="ml-2">{formatDuration(step.duration_ms)}</span>
@@ -309,10 +309,10 @@ export function ExecutionHistory({
                         )}
                         {step.output_data && Object.keys(step.output_data).length > 0 && (
                           <details className="mt-2">
-                            <summary className="text-xs text-slate-400 cursor-pointer hover:text-slate-300">
+                            <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
                               View output
                             </summary>
-                            <pre className="text-xs text-slate-400 mt-1 overflow-x-auto bg-slate-800 rounded p-2">
+                            <pre className="text-xs text-muted-foreground mt-1 overflow-x-auto bg-muted rounded p-2">
                               {JSON.stringify(step.output_data, null, 2)}
                             </pre>
                           </details>
@@ -320,7 +320,7 @@ export function ExecutionHistory({
                       </div>
                     ))}
                     {selectedExecution.steps.length === 0 && (
-                      <div className="text-sm text-slate-500 text-center py-4">
+                      <div className="text-sm text-muted-foreground text-center py-4">
                         No steps executed yet
                       </div>
                     )}
@@ -339,11 +339,11 @@ export function ExecutionHistory({
             ) : error ? (
               <div className="text-center py-8 text-red-400">{error}</div>
             ) : executions.length === 0 ? (
-              <div className="text-center py-8 text-slate-500">
+              <div className="text-center py-8 text-muted-foreground">
                 No executions yet
               </div>
             ) : (
-              <div className="divide-y divide-slate-700">
+              <div className="divide-y divide-border">
                 {executions.map((execution) => {
                   const config = statusConfig[execution.status];
                   const Icon = config?.icon || Clock;
@@ -352,12 +352,12 @@ export function ExecutionHistory({
                     <button
                       key={execution.id}
                       onClick={() => loadExecutionDetail(execution.id)}
-                      className="w-full px-4 py-3 hover:bg-slate-700/50 transition-colors text-left"
+                      className="w-full px-4 py-3 hover:bg-accent/50 transition-colors text-left"
                     >
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
-                          <Icon className={`h-4 w-4 ${config?.color || "text-slate-400"}`} />
-                          <span className={`text-sm font-medium capitalize ${config?.color || "text-slate-400"}`}>
+                          <Icon className={`h-4 w-4 ${config?.color || "text-muted-foreground"}`} />
+                          <span className={`text-sm font-medium capitalize ${config?.color || "text-muted-foreground"}`}>
                             {execution.status}
                           </span>
                           {execution.is_dry_run && (
@@ -366,9 +366,9 @@ export function ExecutionHistory({
                             </span>
                           )}
                         </div>
-                        <ChevronRight className="h-4 w-4 text-slate-500" />
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </div>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xs text-muted-foreground">
                         {formatDate(execution.created_at)}
                       </div>
                       {execution.error && (

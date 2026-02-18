@@ -111,23 +111,23 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
               <History className="h-7 w-7 text-blue-400" />
               Check History
             </h1>
-            <p className="text-slate-400 mt-1">View individual check results for your monitors</p>
+            <p className="text-muted-foreground mt-1">View individual check results for your monitors</p>
           </div>
         </div>
 
         {monitors.length === 0 ? (
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-8 text-center">
-            <Activity className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-            <p className="text-slate-400">No monitors configured yet.</p>
+          <div className="bg-muted rounded-xl border border-border p-8 text-center">
+            <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">No monitors configured yet.</p>
             <Link
               href="/uptime/monitors?create=true"
               className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition"
@@ -138,14 +138,14 @@ export default function HistoryPage() {
         ) : (
           <>
             {/* Monitor Selector */}
-            <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 mb-6">
+            <div className="bg-muted rounded-xl border border-border p-4 mb-6">
               <div className="flex items-center gap-4">
-                <label className="text-sm font-medium text-slate-300">Select Monitor:</label>
+                <label className="text-sm font-medium text-foreground">Select Monitor:</label>
                 <div className="relative flex-1 max-w-md">
                   <select
                     value={selectedMonitorId || ""}
                     onChange={(e) => setSelectedMonitorId(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     {monitors.map((monitor) => {
                       const Icon = CHECK_TYPE_ICONS[monitor.check_type] || Globe;
@@ -156,7 +156,7 @@ export default function HistoryPage() {
                       );
                     })}
                   </select>
-                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 </div>
               </div>
             </div>
@@ -164,53 +164,53 @@ export default function HistoryPage() {
             {/* Stats for Selected Monitor */}
             {selectedMonitor && (
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                <div className="bg-muted rounded-xl p-4 border border-border">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-emerald-900/30">
+                    <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
                       <CheckCircle2 className="h-5 w-5 text-emerald-400" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-white">{successfulChecks}</p>
-                      <p className="text-sm text-slate-400">Successful</p>
+                      <p className="text-2xl font-bold text-foreground">{successfulChecks}</p>
+                      <p className="text-sm text-muted-foreground">Successful</p>
                     </div>
                   </div>
                 </div>
-                <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                <div className="bg-muted rounded-xl p-4 border border-border">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-red-900/30">
+                    <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
                       <XCircle className="h-5 w-5 text-red-400" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-white">{failedChecks}</p>
-                      <p className="text-sm text-slate-400">Failed</p>
+                      <p className="text-2xl font-bold text-foreground">{failedChecks}</p>
+                      <p className="text-sm text-muted-foreground">Failed</p>
                     </div>
                   </div>
                 </div>
-                <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                <div className="bg-muted rounded-xl p-4 border border-border">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-blue-900/30">
+                    <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
                       <Clock className="h-5 w-5 text-blue-400" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-white">
+                      <p className="text-2xl font-bold text-foreground">
                         {avgResponseTime != null ? `${avgResponseTime}ms` : "-"}
                       </p>
-                      <p className="text-sm text-slate-400">Avg Response</p>
+                      <p className="text-sm text-muted-foreground">Avg Response</p>
                     </div>
                   </div>
                 </div>
-                <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                <div className="bg-muted rounded-xl p-4 border border-border">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-purple-900/30">
+                    <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
                       <Activity className="h-5 w-5 text-purple-400" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-white">
+                      <p className="text-2xl font-bold text-foreground">
                         {checks.length > 0
                           ? `${((successfulChecks / checks.length) * 100).toFixed(1)}%`
                           : "-"}
                       </p>
-                      <p className="text-sm text-slate-400">Success Rate</p>
+                      <p className="text-sm text-muted-foreground">Success Rate</p>
                     </div>
                   </div>
                 </div>
@@ -218,9 +218,9 @@ export default function HistoryPage() {
             )}
 
             {/* Checks Table */}
-            <div className="bg-slate-800 rounded-xl border border-slate-700">
-              <div className="p-4 border-b border-slate-700">
-                <h2 className="text-lg font-semibold text-white">Recent Checks</h2>
+            <div className="bg-muted rounded-xl border border-border">
+              <div className="p-4 border-b border-border">
+                <h2 className="text-lg font-semibold text-foreground">Recent Checks</h2>
               </div>
 
               {loadingChecks ? (
@@ -229,37 +229,37 @@ export default function HistoryPage() {
                 </div>
               ) : checks.length === 0 ? (
                 <div className="p-8 text-center">
-                  <Clock className="h-10 w-10 text-slate-600 mx-auto mb-3" />
-                  <p className="text-slate-400">No checks recorded yet for this monitor.</p>
+                  <Clock className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">No checks recorded yet for this monitor.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[600px]">
                     <thead>
-                      <tr className="border-b border-slate-700">
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                      <tr className="border-b border-border">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                           Status
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                           Checked At
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                           Response Time
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                           Status Code
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                           SSL Expiry
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                           Error
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-700">
+                    <tbody className="divide-y divide-border">
                       {checks.map((check) => (
-                        <tr key={check.id} className="hover:bg-slate-700/50 transition">
+                        <tr key={check.id} className="hover:bg-accent/50 transition">
                           <td className="px-4 py-3">
                             {check.is_up ? (
                               <span className="flex items-center gap-2 text-emerald-400">
@@ -273,10 +273,10 @@ export default function HistoryPage() {
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-sm text-slate-300">
+                          <td className="px-4 py-3 text-sm text-foreground">
                             {formatDate(check.checked_at)}
                           </td>
-                          <td className="px-4 py-3 text-sm text-slate-300">
+                          <td className="px-4 py-3 text-sm text-foreground">
                             {check.response_time_ms != null ? `${check.response_time_ms}ms` : "-"}
                           </td>
                           <td className="px-4 py-3">
@@ -284,16 +284,16 @@ export default function HistoryPage() {
                               <span
                                 className={`px-2 py-0.5 rounded text-xs font-medium ${
                                   check.status_code >= 200 && check.status_code < 300
-                                    ? "bg-emerald-900/30 text-emerald-400"
+                                    ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
                                     : check.status_code >= 400
-                                    ? "bg-red-900/30 text-red-400"
-                                    : "bg-amber-900/30 text-amber-400"
+                                    ? "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+                                    : "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
                                 }`}
                               >
                                 {check.status_code}
                               </span>
                             ) : (
-                              <span className="text-slate-500">-</span>
+                              <span className="text-muted-foreground">-</span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-sm">
@@ -304,13 +304,13 @@ export default function HistoryPage() {
                                     ? "text-red-400"
                                     : check.ssl_expiry_days <= 30
                                     ? "text-amber-400"
-                                    : "text-slate-300"
+                                    : "text-foreground"
                                 }`}
                               >
                                 {check.ssl_expiry_days}d
                               </span>
                             ) : (
-                              <span className="text-slate-500">-</span>
+                              <span className="text-muted-foreground">-</span>
                             )}
                           </td>
                           <td className="px-4 py-3">
@@ -325,7 +325,7 @@ export default function HistoryPage() {
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-slate-500">-</span>
+                              <span className="text-muted-foreground">-</span>
                             )}
                           </td>
                         </tr>

@@ -36,32 +36,32 @@ import { redirect } from "next/navigation";
 const STATUS_CONFIG: Record<SprintStatus, { label: string; color: string; icon: React.ReactNode; bgColor: string }> = {
   planning: {
     label: "Planning",
-    color: "text-blue-400",
-    bgColor: "bg-blue-900/30",
+    color: "text-blue-600 dark:text-blue-400",
+    bgColor: "bg-blue-100 dark:bg-blue-900/30",
     icon: <Target className="h-4 w-4" />,
   },
   active: {
     label: "Active",
-    color: "text-green-400",
-    bgColor: "bg-green-900/30",
+    color: "text-green-600 dark:text-green-400",
+    bgColor: "bg-green-100 dark:bg-green-900/30",
     icon: <Play className="h-4 w-4" />,
   },
   review: {
     label: "In Review",
-    color: "text-amber-400",
-    bgColor: "bg-amber-900/30",
+    color: "text-amber-600 dark:text-amber-400",
+    bgColor: "bg-amber-100 dark:bg-amber-900/30",
     icon: <Pause className="h-4 w-4" />,
   },
   retrospective: {
     label: "Retrospective",
-    color: "text-purple-400",
-    bgColor: "bg-purple-900/30",
+    color: "text-purple-600 dark:text-purple-400",
+    bgColor: "bg-purple-100 dark:bg-purple-900/30",
     icon: <RotateCcw className="h-4 w-4" />,
   },
   completed: {
     label: "Completed",
-    color: "text-slate-400",
-    bgColor: "bg-slate-700",
+    color: "text-muted-foreground",
+    bgColor: "bg-accent",
     icon: <CheckCircle className="h-4 w-4" />,
   },
 };
@@ -99,13 +99,13 @@ function SprintCard({ sprint, projectId, onDelete, isActive }: SprintCardProps) 
     : 0;
 
   return (
-    <div className={`bg-slate-800 rounded-xl overflow-hidden border ${isActive ? 'border-primary-500' : 'border-slate-700'}`}>
+    <div className={`bg-muted rounded-xl overflow-hidden border ${isActive ? 'border-primary-500' : 'border-border'}`}>
       <div className="p-5">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               {isActive && (
-                <span className="px-2 py-0.5 text-xs font-medium bg-primary-900/30 text-primary-400 rounded">
+                <span className="px-2 py-0.5 text-xs font-medium bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400 rounded">
                   Current Sprint
                 </span>
               )}
@@ -116,12 +116,12 @@ function SprintCard({ sprint, projectId, onDelete, isActive }: SprintCardProps) 
             </div>
             <Link
               href={`/sprints/${projectId}/${sprint.id}`}
-              className="text-lg font-semibold text-white hover:text-primary-400 transition"
+              className="text-lg font-semibold text-foreground hover:text-primary-400 transition"
             >
               {sprint.name}
             </Link>
             {sprint.goal && (
-              <p className="text-slate-400 text-sm mt-1 line-clamp-2">{sprint.goal}</p>
+              <p className="text-muted-foreground text-sm mt-1 line-clamp-2">{sprint.goal}</p>
             )}
           </div>
           <div className="relative">
@@ -130,17 +130,17 @@ function SprintCard({ sprint, projectId, onDelete, isActive }: SprintCardProps) 
                 e.preventDefault();
                 setShowMenu(!showMenu);
               }}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
             >
               <MoreVertical className="h-4 w-4" />
             </button>
             {showMenu && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-                <div className="absolute right-0 top-full mt-1 w-40 bg-slate-700 rounded-lg shadow-xl z-20 py-1">
+                <div className="absolute right-0 top-full mt-1 w-40 bg-accent rounded-lg shadow-xl z-20 py-1">
                   <Link
                     href={`/sprints/${projectId}/${sprint.id}`}
-                    className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-600 flex items-center gap-2"
+                    className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-muted flex items-center gap-2"
                   >
                     <ChevronRight className="h-4 w-4" />
                     View Board
@@ -150,7 +150,7 @@ function SprintCard({ sprint, projectId, onDelete, isActive }: SprintCardProps) 
                       onDelete(sprint.id);
                       setShowMenu(false);
                     }}
-                    className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-600 flex items-center gap-2"
+                    className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-muted flex items-center gap-2"
                   >
                     <Trash2 className="h-4 w-4" />
                     Delete
@@ -162,13 +162,13 @@ function SprintCard({ sprint, projectId, onDelete, isActive }: SprintCardProps) 
         </div>
 
         {/* Date Range */}
-        <div className="flex items-center gap-4 text-sm text-slate-400 mb-4">
+        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
           <div className="flex items-center gap-1.5">
             <Calendar className="h-4 w-4" />
             <span>{formatDate(sprint.start_date)} - {formatDate(sprint.end_date)}</span>
           </div>
           {sprint.status === "active" && daysRemaining !== null && (
-            <div className={`flex items-center gap-1.5 ${daysRemaining < 3 ? 'text-amber-400' : 'text-slate-400'}`}>
+            <div className={`flex items-center gap-1.5 ${daysRemaining < 3 ? 'text-amber-400' : 'text-muted-foreground'}`}>
               <Clock className="h-4 w-4" />
               <span>
                 {daysRemaining > 0
@@ -184,10 +184,10 @@ function SprintCard({ sprint, projectId, onDelete, isActive }: SprintCardProps) 
         {/* Progress Bar */}
         <div className="mb-4">
           <div className="flex items-center justify-between text-sm mb-1">
-            <span className="text-slate-400">Progress</span>
-            <span className="text-white font-medium">{completionRate}%</span>
+            <span className="text-muted-foreground">Progress</span>
+            <span className="text-foreground font-medium">{completionRate}%</span>
           </div>
-          <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+          <div className="h-2 bg-accent rounded-full overflow-hidden">
             <div
               className="h-full bg-primary-500 rounded-full transition-all"
               style={{ width: `${completionRate}%` }}
@@ -197,17 +197,17 @@ function SprintCard({ sprint, projectId, onDelete, isActive }: SprintCardProps) 
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
-          <div className="bg-slate-700/50 rounded-lg p-2">
-            <div className="text-lg font-semibold text-white">{sprint.tasks_count}</div>
-            <div className="text-xs text-slate-400">Total Tasks</div>
+          <div className="bg-accent/50 rounded-lg p-2">
+            <div className="text-lg font-semibold text-foreground">{sprint.tasks_count}</div>
+            <div className="text-xs text-muted-foreground">Total Tasks</div>
           </div>
-          <div className="bg-slate-700/50 rounded-lg p-2">
+          <div className="bg-accent/50 rounded-lg p-2">
             <div className="text-lg font-semibold text-green-400">{sprint.completed_count}</div>
-            <div className="text-xs text-slate-400">Completed</div>
+            <div className="text-xs text-muted-foreground">Completed</div>
           </div>
-          <div className="bg-slate-700/50 rounded-lg p-2">
+          <div className="bg-accent/50 rounded-lg p-2">
             <div className="text-lg font-semibold text-blue-400">{sprint.total_points || 0}</div>
-            <div className="text-xs text-slate-400">Story Points</div>
+            <div className="text-xs text-muted-foreground">Story Points</div>
           </div>
         </div>
       </div>
@@ -262,47 +262,47 @@ function CreateSprintModal({ onClose, onCreate, isCreating }: CreateSprintModalP
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-slate-800 rounded-xl w-full max-w-md p-6">
-        <h3 className="text-xl font-semibold text-white mb-4">Create Sprint</h3>
+      <div className="bg-muted rounded-xl w-full max-w-md p-6">
+        <h3 className="text-xl font-semibold text-foreground mb-4">Create Sprint</h3>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Sprint Name</label>
+              <label className="block text-sm text-muted-foreground mb-1">Sprint Name</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Sprint 24"
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500"
+                className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Sprint Goal (optional)</label>
+              <label className="block text-sm text-muted-foreground mb-1">Sprint Goal (optional)</label>
               <textarea
                 value={goal}
                 onChange={(e) => setGoal(e.target.value)}
                 placeholder="What do you want to achieve in this sprint?"
                 rows={2}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500 resize-none"
+                className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500 resize-none"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Start Date</label>
+                <label className="block text-sm text-muted-foreground mb-1">Start Date</label>
                 <input
                   type="date"
                   value={startDate || today}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500"
                 />
               </div>
               <div>
-                <label className="block text-sm text-slate-400 mb-1">End Date</label>
+                <label className="block text-sm text-muted-foreground mb-1">End Date</label>
                 <input
                   type="date"
                   value={endDate || twoWeeksLater}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500"
                 />
               </div>
             </div>
@@ -314,7 +314,7 @@ function CreateSprintModal({ onClose, onCreate, isCreating }: CreateSprintModalP
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+              className="flex-1 px-4 py-2 bg-accent hover:bg-muted text-foreground rounded-lg transition"
             >
               Cancel
             </button>
@@ -378,10 +378,10 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-white">Loading...</p>
+          <p className="text-foreground">Loading...</p>
         </div>
       </div>
     );
@@ -398,25 +398,25 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
   const completedSprints = sprints.filter((s) => s.status === "completed");
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="flex-shrink-0 border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm sticky top-0 z-30">
+      <header className="flex-shrink-0 border-b border-border bg-muted/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="max-w-[1800px] mx-auto px-4 py-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href="/sprints"
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Link>
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-slate-700 rounded-lg">
-                  <Target className="h-5 w-5 text-slate-300" />
+                <div className="p-2 bg-accent rounded-lg">
+                  <Target className="h-5 w-5 text-foreground" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-semibold text-white">Sprint Planning</h1>
-                  <p className="text-slate-400 text-sm">
+                  <h1 className="text-xl font-semibold text-foreground">Sprint Planning</h1>
+                  <p className="text-muted-foreground text-sm">
                     Manage sprints and track progress
                   </p>
                 </div>
@@ -439,17 +439,17 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
           {/* Stories Widget */}
           <Link
             href={`/sprints/${projectId}/stories`}
-            className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-blue-500/50 transition group"
+            className="bg-muted rounded-xl p-4 border border-border hover:border-blue-500/50 transition group"
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
               <div className="p-2 bg-blue-500/20 rounded-lg">
                 <BookOpen className="h-5 w-5 text-blue-400" />
               </div>
-              <ArrowRight className="h-4 w-4 text-slate-500 group-hover:text-blue-400 transition" />
+              <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-blue-400 transition" />
             </div>
-            <div className="text-2xl font-bold text-white">{storiesTotal}</div>
-            <div className="text-sm text-slate-400">User Stories</div>
-            <div className="mt-2 text-xs text-slate-500">
+            <div className="text-2xl font-bold text-foreground">{storiesTotal}</div>
+            <div className="text-sm text-muted-foreground">User Stories</div>
+            <div className="mt-2 text-xs text-muted-foreground">
               {stories.filter(s => s.status === 'in_progress').length} in progress
             </div>
           </Link>
@@ -457,19 +457,19 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
           {/* Bugs Widget */}
           <Link
             href={`/sprints/${projectId}/bugs`}
-            className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-red-500/50 transition group"
+            className="bg-muted rounded-xl p-4 border border-border hover:border-red-500/50 transition group"
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
               <div className="p-2 bg-red-500/20 rounded-lg">
                 <Bug className="h-5 w-5 text-red-400" />
               </div>
-              <ArrowRight className="h-4 w-4 text-slate-500 group-hover:text-red-400 transition" />
+              <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-red-400 transition" />
             </div>
-            <div className="text-2xl font-bold text-white">{bugStats?.total || 0}</div>
-            <div className="text-sm text-slate-400">Open Bugs</div>
+            <div className="text-2xl font-bold text-foreground">{bugStats?.total || 0}</div>
+            <div className="text-sm text-muted-foreground">Open Bugs</div>
             <div className="mt-2 text-xs">
               <span className="text-red-400">{bugStats?.by_severity?.blocker || 0} blockers</span>
-              <span className="text-slate-500 mx-1">·</span>
+              <span className="text-muted-foreground mx-1">·</span>
               <span className="text-orange-400">{bugStats?.by_severity?.critical || 0} critical</span>
             </div>
           </Link>
@@ -477,17 +477,17 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
           {/* Releases Widget */}
           <Link
             href={`/sprints/${projectId}/releases`}
-            className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-green-500/50 transition group"
+            className="bg-muted rounded-xl p-4 border border-border hover:border-green-500/50 transition group"
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
               <div className="p-2 bg-green-500/20 rounded-lg">
                 <Package className="h-5 w-5 text-green-400" />
               </div>
-              <ArrowRight className="h-4 w-4 text-slate-500 group-hover:text-green-400 transition" />
+              <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-green-400 transition" />
             </div>
-            <div className="text-2xl font-bold text-white">{releasesTotal}</div>
-            <div className="text-sm text-slate-400">Releases</div>
-            <div className="mt-2 text-xs text-slate-500">
+            <div className="text-2xl font-bold text-foreground">{releasesTotal}</div>
+            <div className="text-sm text-muted-foreground">Releases</div>
+            <div className="mt-2 text-xs text-muted-foreground">
               {releases.filter(r => r.status === 'in_progress').length} in progress
             </div>
           </Link>
@@ -495,19 +495,19 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
           {/* Goals Widget */}
           <Link
             href={`/sprints/${projectId}/goals`}
-            className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-purple-500/50 transition group"
+            className="bg-muted rounded-xl p-4 border border-border hover:border-purple-500/50 transition group"
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
               <div className="p-2 bg-purple-500/20 rounded-lg">
                 <TrendingUp className="h-5 w-5 text-purple-400" />
               </div>
-              <ArrowRight className="h-4 w-4 text-slate-500 group-hover:text-purple-400 transition" />
+              <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-purple-400 transition" />
             </div>
-            <div className="text-2xl font-bold text-white">{okrSummary.total_objectives}</div>
-            <div className="text-sm text-slate-400">OKR Goals</div>
+            <div className="text-2xl font-bold text-foreground">{okrSummary.total_objectives}</div>
+            <div className="text-sm text-muted-foreground">OKR Goals</div>
             <div className="mt-2 text-xs">
               <span className="text-green-400">{okrSummary.on_track} on track</span>
-              <span className="text-slate-500 mx-1">·</span>
+              <span className="text-muted-foreground mx-1">·</span>
               <span className="text-amber-400">{okrSummary.at_risk} at risk</span>
             </div>
           </Link>
@@ -519,7 +519,7 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <div>
                 <div className="text-sm text-primary-400 mb-1">Current Sprint</div>
-                <h3 className="text-xl font-semibold text-white">{activeSprint.name}</h3>
+                <h3 className="text-xl font-semibold text-foreground">{activeSprint.name}</h3>
               </div>
               <Link
                 href={`/sprints/${projectId}/${activeSprint.id}`}
@@ -530,28 +530,28 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
               </Link>
             </div>
             {activeSprint.goal && (
-              <p className="text-slate-400 text-sm mb-4">{activeSprint.goal}</p>
+              <p className="text-muted-foreground text-sm mb-4">{activeSprint.goal}</p>
             )}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="bg-slate-800/50 rounded-lg p-3 text-center">
-                <div className="text-2xl font-bold text-white">{activeSprint.tasks_count}</div>
-                <div className="text-xs text-slate-400">Total Tasks</div>
+              <div className="bg-muted/50 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-foreground">{activeSprint.tasks_count}</div>
+                <div className="text-xs text-muted-foreground">Total Tasks</div>
               </div>
-              <div className="bg-slate-800/50 rounded-lg p-3 text-center">
+              <div className="bg-muted/50 rounded-lg p-3 text-center">
                 <div className="text-2xl font-bold text-green-400">{activeSprint.completed_count}</div>
-                <div className="text-xs text-slate-400">Completed</div>
+                <div className="text-xs text-muted-foreground">Completed</div>
               </div>
-              <div className="bg-slate-800/50 rounded-lg p-3 text-center">
+              <div className="bg-muted/50 rounded-lg p-3 text-center">
                 <div className="text-2xl font-bold text-blue-400">{activeSprint.total_points || 0}</div>
-                <div className="text-xs text-slate-400">Story Points</div>
+                <div className="text-xs text-muted-foreground">Story Points</div>
               </div>
-              <div className="bg-slate-800/50 rounded-lg p-3 text-center">
-                <div className="text-2xl font-bold text-white">
+              <div className="bg-muted/50 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-foreground">
                   {activeSprint.tasks_count > 0
                     ? Math.round((activeSprint.completed_count / activeSprint.tasks_count) * 100)
                     : 0}%
                 </div>
-                <div className="text-xs text-slate-400">Progress</div>
+                <div className="text-xs text-muted-foreground">Progress</div>
               </div>
             </div>
           </div>
@@ -562,10 +562,10 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>
           </div>
         ) : sprints.length === 0 ? (
-          <div className="bg-slate-800 rounded-xl p-12 text-center">
-            <Target className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-white mb-2">No Sprints Yet</h3>
-            <p className="text-slate-400 mb-6">
+          <div className="bg-muted rounded-xl p-12 text-center">
+            <Target className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-medium text-foreground mb-2">No Sprints Yet</h3>
+            <p className="text-muted-foreground mb-6">
               Create your first sprint to start planning and tracking work.
             </p>
             <button
@@ -581,7 +581,7 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
             {/* Active Sprint */}
             {activeSprints.length > 0 && (
               <section>
-                <h2 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+                <h2 className="text-lg font-medium text-foreground mb-4 flex items-center gap-2">
                   <Play className="h-5 w-5 text-green-400" />
                   Active Sprint
                 </h2>
@@ -602,7 +602,7 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
             {/* Planning */}
             {planningSprints.length > 0 && (
               <section>
-                <h2 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+                <h2 className="text-lg font-medium text-foreground mb-4 flex items-center gap-2">
                   <Target className="h-5 w-5 text-blue-400" />
                   Planning ({planningSprints.length})
                 </h2>
@@ -622,7 +622,7 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
             {/* In Review / Retrospective */}
             {reviewSprints.length > 0 && (
               <section>
-                <h2 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+                <h2 className="text-lg font-medium text-foreground mb-4 flex items-center gap-2">
                   <AlertCircle className="h-5 w-5 text-amber-400" />
                   In Review ({reviewSprints.length})
                 </h2>
@@ -642,8 +642,8 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
             {/* Completed */}
             {completedSprints.length > 0 && (
               <section>
-                <h2 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-slate-400" />
+                <h2 className="text-lg font-medium text-foreground mb-4 flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-muted-foreground" />
                   Completed ({completedSprints.length})
                 </h2>
                 <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">

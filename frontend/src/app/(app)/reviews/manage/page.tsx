@@ -69,12 +69,12 @@ interface Actionable {
 }
 
 const reviewStatusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
-  pending: { label: "Pending", color: "text-slate-400", bgColor: "bg-slate-500/20" },
-  self_review_submitted: { label: "Self Review Done", color: "text-blue-400", bgColor: "bg-blue-500/20" },
-  peer_review_in_progress: { label: "Peer Review", color: "text-purple-400", bgColor: "bg-purple-500/20" },
-  manager_review_in_progress: { label: "Manager Review", color: "text-amber-400", bgColor: "bg-amber-500/20" },
-  completed: { label: "Completed", color: "text-emerald-400", bgColor: "bg-emerald-500/20" },
-  acknowledged: { label: "Acknowledged", color: "text-cyan-400", bgColor: "bg-cyan-500/20" },
+  pending: { label: "Pending", color: "text-muted-foreground", bgColor: "bg-muted-foreground/20" },
+  self_review_submitted: { label: "Self Review Done", color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-500/20" },
+  peer_review_in_progress: { label: "Peer Review", color: "text-purple-600 dark:text-purple-400", bgColor: "bg-purple-500/20" },
+  manager_review_in_progress: { label: "Manager Review", color: "text-amber-600 dark:text-amber-400", bgColor: "bg-amber-500/20" },
+  completed: { label: "Completed", color: "text-emerald-600 dark:text-emerald-400", bgColor: "bg-emerald-500/20" },
+  acknowledged: { label: "Acknowledged", color: "text-cyan-600 dark:text-cyan-400", bgColor: "bg-cyan-500/20" },
 };
 
 export default function ReviewsManagePage() {
@@ -169,13 +169,13 @@ export default function ReviewsManagePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
             <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
           </div>
-          <p className="text-slate-400 text-sm">Loading management data...</p>
+          <p className="text-muted-foreground text-sm">Loading management data...</p>
         </div>
       </div>
     );
@@ -193,30 +193,30 @@ export default function ReviewsManagePage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
 <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm mb-6">
-          <Link href="/reviews" className="text-slate-400 hover:text-white transition flex items-center gap-1">
+          <Link href="/reviews" className="text-muted-foreground hover:text-foreground transition flex items-center gap-1">
             <ArrowLeft className="h-4 w-4" />
             Reviews
           </Link>
-          <ChevronRight className="h-4 w-4 text-slate-600" />
-          <span className="text-white">Management</span>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <span className="text-foreground">Management</span>
         </div>
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">Review Management</h1>
-            <p className="text-slate-400 mt-1">
+            <h1 className="text-3xl font-bold text-foreground">Review Management</h1>
+            <p className="text-muted-foreground mt-1">
               Monitor team reviews, track deliverables, and manage goals
             </p>
           </div>
           <div className="flex items-center gap-3">
             <Link
               href="/reviews/cycles"
-              className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition text-sm"
+              className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-muted text-foreground rounded-lg transition text-sm"
             >
               <Calendar className="h-4 w-4" />
               Review Cycles
@@ -230,59 +230,59 @@ export default function ReviewsManagePage() {
 
         {/* Summary Stats */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+          <div className="bg-muted rounded-xl p-4 border border-border">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-blue-500/10 rounded-lg">
                 <Users className="w-5 h-5 text-blue-400" />
               </div>
-              <span className="text-slate-400 text-sm">Team Members</span>
+              <span className="text-muted-foreground text-sm">Team Members</span>
             </div>
-            <p className="text-2xl font-bold text-white">{teamMembers.length}</p>
+            <p className="text-2xl font-bold text-foreground">{teamMembers.length}</p>
           </div>
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+          <div className="bg-muted rounded-xl p-4 border border-border">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-emerald-500/10 rounded-lg">
                 <CheckCircle className="w-5 h-5 text-emerald-400" />
               </div>
-              <span className="text-slate-400 text-sm">Completed</span>
+              <span className="text-muted-foreground text-sm">Completed</span>
             </div>
-            <p className="text-2xl font-bold text-white">
+            <p className="text-2xl font-bold text-foreground">
               {teamMembers.filter(m => m.reviewStatus === "completed").length}
             </p>
           </div>
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+          <div className="bg-muted rounded-xl p-4 border border-border">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-amber-500/10 rounded-lg">
                 <Clock className="w-5 h-5 text-amber-400" />
               </div>
-              <span className="text-slate-400 text-sm">In Progress</span>
+              <span className="text-muted-foreground text-sm">In Progress</span>
             </div>
-            <p className="text-2xl font-bold text-white">
+            <p className="text-2xl font-bold text-foreground">
               {teamMembers.filter(m => ["self_review_submitted", "peer_review_in_progress", "manager_review_in_progress"].includes(m.reviewStatus)).length}
             </p>
           </div>
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+          <div className="bg-muted rounded-xl p-4 border border-border">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-red-500/10 rounded-lg">
                 <AlertTriangle className="w-5 h-5 text-red-400" />
               </div>
-              <span className="text-slate-400 text-sm">Action Needed</span>
+              <span className="text-muted-foreground text-sm">Action Needed</span>
             </div>
-            <p className="text-2xl font-bold text-white">{actionables.length}</p>
+            <p className="text-2xl font-bold text-foreground">{actionables.length}</p>
           </div>
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+          <div className="bg-muted rounded-xl p-4 border border-border">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-purple-500/10 rounded-lg">
                 <Lightbulb className="w-5 h-5 text-purple-400" />
               </div>
-              <span className="text-slate-400 text-sm">Suggestions</span>
+              <span className="text-muted-foreground text-sm">Suggestions</span>
             </div>
-            <p className="text-2xl font-bold text-white">{activeSuggestions.length}</p>
+            <p className="text-2xl font-bold text-foreground">{activeSuggestions.length}</p>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 bg-slate-800 p-1 rounded-lg w-fit">
+        <div className="flex gap-2 mb-6 bg-muted p-1 rounded-lg w-fit">
           {[
             { key: "overview", label: "Team Overview", icon: Users },
             { key: "actionables", label: "Actionables", icon: AlertCircle, count: actionables.length },
@@ -293,15 +293,15 @@ export default function ReviewsManagePage() {
               onClick={() => setActiveTab(tab.key as typeof activeTab)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
                 activeTab === tab.key
-                  ? "bg-slate-700 text-white"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-accent text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <tab.icon className="h-4 w-4" />
               {tab.label}
               {tab.count !== undefined && (
                 <span className={`px-1.5 py-0.5 rounded-full text-xs ${
-                  activeTab === tab.key ? "bg-slate-600" : "bg-slate-700"
+                  activeTab === tab.key ? "bg-muted" : "bg-accent"
                 }`}>
                   {tab.count}
                 </span>
@@ -316,19 +316,19 @@ export default function ReviewsManagePage() {
             {/* Filters */}
             <div className="flex items-center gap-4">
               <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
                   type="text"
                   placeholder="Search team members..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 text-sm"
+                  className="w-full bg-muted border border-border rounded-lg pl-10 pr-4 py-2 text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500 text-sm"
                 />
               </div>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-500 text-sm"
+                className="bg-muted border border-border rounded-lg px-4 py-2 text-foreground focus:outline-none focus:border-primary-500 text-sm"
               >
                 <option value="all">All Status</option>
                 <option value="pending">Pending</option>
@@ -345,7 +345,7 @@ export default function ReviewsManagePage() {
                 return (
                   <div
                     key={member.id}
-                    className="bg-slate-800 rounded-xl border border-slate-700 p-5 hover:border-slate-600 transition"
+                    className="bg-muted rounded-xl border border-border p-5 hover:border-border transition"
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
@@ -353,8 +353,8 @@ export default function ReviewsManagePage() {
                           {member.name.split(" ").map(n => n[0]).join("")}
                         </div>
                         <div>
-                          <h3 className="text-white font-medium">{member.name}</h3>
-                          <p className="text-slate-400 text-sm">{member.role}</p>
+                          <h3 className="text-foreground font-medium">{member.name}</h3>
+                          <p className="text-muted-foreground text-sm">{member.role}</p>
                         </div>
                       </div>
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${status.bgColor} ${status.color}`}>
@@ -364,30 +364,30 @@ export default function ReviewsManagePage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                       <div className="text-center">
-                        <p className="text-white font-semibold">{member.goalsCount}</p>
-                        <p className="text-slate-500 text-xs">Goals</p>
+                        <p className="text-foreground font-semibold">{member.goalsCount}</p>
+                        <p className="text-muted-foreground text-xs">Goals</p>
                       </div>
                       <div className="text-center">
                         <p className="text-emerald-400 font-semibold">{member.completedGoals}</p>
-                        <p className="text-slate-500 text-xs">Completed</p>
+                        <p className="text-muted-foreground text-xs">Completed</p>
                       </div>
                       <div className="text-center">
-                        <p className={`font-semibold ${member.pendingFeedback > 0 ? "text-amber-400" : "text-slate-400"}`}>
+                        <p className={`font-semibold ${member.pendingFeedback > 0 ? "text-amber-400" : "text-muted-foreground"}`}>
                           {member.pendingFeedback}
                         </p>
-                        <p className="text-slate-500 text-xs">Pending</p>
+                        <p className="text-muted-foreground text-xs">Pending</p>
                       </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-slate-700">
-                      <span className="text-slate-500 text-xs">Active {member.lastActivity}</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-border">
+                      <span className="text-muted-foreground text-xs">Active {member.lastActivity}</span>
                       <div className="flex items-center gap-2">
-                        <button className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition">
+                        <button className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition">
                           <Eye className="h-4 w-4" />
                         </button>
                         <Link
                           href={`/reviews/manage/${member.id}`}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition"
+                          className="flex items-center gap-1 px-3 py-1.5 bg-accent hover:bg-muted text-foreground rounded-lg text-sm transition"
                         >
                           View Details
                           <ChevronRight className="h-4 w-4" />
@@ -420,8 +420,8 @@ export default function ReviewsManagePage() {
                 {actionables.map((action) => (
               <div
                 key={action.id}
-                className={`bg-slate-800 rounded-xl border p-5 ${
-                  action.priority === "high" ? "border-red-500/30" : "border-slate-700"
+                className={`bg-muted rounded-xl border p-5 ${
+                  action.priority === "high" ? "border-red-500/30" : "border-border"
                 }`}
               >
                 <div className="flex items-start justify-between">
@@ -439,14 +439,14 @@ export default function ReviewsManagePage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-white font-medium">{action.title}</h3>
+                        <h3 className="text-foreground font-medium">{action.title}</h3>
                         {action.priority === "high" && (
                           <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded-full">
                             High Priority
                           </span>
                         )}
                       </div>
-                      <p className="text-slate-400 text-sm">{action.description}</p>
+                      <p className="text-muted-foreground text-sm">{action.description}</p>
                       {action.dueDate && (
                         <p className="text-red-400 text-xs mt-1">Due: {action.dueDate}</p>
                       )}
@@ -456,7 +456,7 @@ export default function ReviewsManagePage() {
                     {action.memberId && (
                       <Link
                         href={`/reviews/manage/${action.memberId}`}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition"
+                        className="flex items-center gap-1 px-3 py-1.5 bg-accent hover:bg-muted text-foreground rounded-lg text-sm transition"
                       >
                         View
                         <ChevronRight className="h-4 w-4" />
@@ -473,12 +473,12 @@ export default function ReviewsManagePage() {
             ))}
               </>
             ) : (
-              <div className="bg-slate-800 rounded-xl border border-slate-700 p-12 text-center">
+              <div className="bg-muted rounded-xl border border-border p-12 text-center">
                 <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="w-8 h-8 text-emerald-400" />
                 </div>
-                <h3 className="text-lg font-medium text-white mb-2">All caught up!</h3>
-                <p className="text-slate-400 text-sm">
+                <h3 className="text-lg font-medium text-foreground mb-2">All caught up!</h3>
+                <p className="text-muted-foreground text-sm">
                   No pending actions at the moment. Check back later or view team overview.
                 </p>
               </div>
@@ -502,12 +502,12 @@ export default function ReviewsManagePage() {
             </div>
 
             {activeSuggestions.length === 0 && discardedSuggestions.length === 0 ? (
-              <div className="bg-slate-800 rounded-xl border border-slate-700 p-12 text-center">
+              <div className="bg-muted rounded-xl border border-border p-12 text-center">
                 <div className="w-16 h-16 bg-purple-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Lightbulb className="w-8 h-8 text-purple-400" />
                 </div>
-                <h3 className="text-lg font-medium text-white mb-2">No suggestions yet</h3>
-                <p className="text-slate-400 text-sm max-w-md mx-auto">
+                <h3 className="text-lg font-medium text-foreground mb-2">No suggestions yet</h3>
+                <p className="text-muted-foreground text-sm max-w-md mx-auto">
                   Goal suggestions will appear here as we analyze GitHub activity and project management data from your team.
                 </p>
               </div>
@@ -515,19 +515,19 @@ export default function ReviewsManagePage() {
               <>
                 {/* Active Suggestions */}
                 <div>
-                  <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+                  <h3 className="text-foreground font-semibold mb-4 flex items-center gap-2">
                     <Lightbulb className="h-5 w-5 text-amber-400" />
                     Active Suggestions ({activeSuggestions.length})
                   </h3>
 
                   {activeSuggestions.length === 0 ? (
-                    <p className="text-slate-400 text-sm">No active suggestions</p>
+                    <p className="text-muted-foreground text-sm">No active suggestions</p>
                   ) : (
                     <div className="space-y-4">
                       {activeSuggestions.map((suggestion) => (
                   <div
                     key={suggestion.id}
-                    className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden"
+                    className="bg-muted rounded-xl border border-border overflow-hidden"
                   >
                     <div
                       className="p-5 cursor-pointer"
@@ -542,8 +542,8 @@ export default function ReviewsManagePage() {
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <h3 className="text-white font-medium">{suggestion.title}</h3>
-                              <span className="px-2 py-0.5 bg-slate-700 text-slate-400 text-xs rounded-full">
+                              <h3 className="text-foreground font-medium">{suggestion.title}</h3>
+                              <span className="px-2 py-0.5 bg-accent text-muted-foreground text-xs rounded-full">
                                 {suggestion.source}
                               </span>
                               <span className={`px-2 py-0.5 rounded-full text-xs ${
@@ -554,23 +554,23 @@ export default function ReviewsManagePage() {
                                 {suggestion.confidence}% confidence
                               </span>
                             </div>
-                            <p className="text-slate-400 text-sm mb-2">{suggestion.memberName}</p>
-                            <p className="text-slate-300 text-sm">{suggestion.description}</p>
+                            <p className="text-muted-foreground text-sm mb-2">{suggestion.memberName}</p>
+                            <p className="text-foreground text-sm">{suggestion.description}</p>
 
                             {/* Activity Stats */}
                             <div className="flex items-center gap-4 mt-3">
-                              <span className="flex items-center gap-1 text-slate-500 text-xs">
+                              <span className="flex items-center gap-1 text-muted-foreground text-xs">
                                 <GitCommit className="h-3.5 w-3.5" />
                                 {suggestion.commits} commits
                               </span>
-                              <span className="flex items-center gap-1 text-slate-500 text-xs">
+                              <span className="flex items-center gap-1 text-muted-foreground text-xs">
                                 <GitPullRequest className="h-3.5 w-3.5" />
                                 {suggestion.prs} PRs
                               </span>
                             </div>
                           </div>
                         </div>
-                        <ChevronDown className={`h-5 w-5 text-slate-400 transition-transform ${
+                        <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${
                           expandedSuggestion === suggestion.id ? "rotate-180" : ""
                         }`} />
                       </div>
@@ -578,24 +578,24 @@ export default function ReviewsManagePage() {
 
                     {/* Expanded Content */}
                     {expandedSuggestion === suggestion.id && (
-                      <div className="px-5 pb-5 border-t border-slate-700 pt-4">
+                      <div className="px-5 pb-5 border-t border-border pt-4">
                         {/* Suggested Goal */}
-                        <div className="bg-slate-900 rounded-lg p-4 mb-4">
+                        <div className="bg-background rounded-lg p-4 mb-4">
                           <div className="flex items-center gap-2 mb-2">
                             <Target className="h-4 w-4 text-cyan-400" />
                             <span className="text-cyan-400 text-sm font-medium">Suggested Goal</span>
                           </div>
-                          <p className="text-white">{suggestion.suggestedGoal}</p>
+                          <p className="text-foreground">{suggestion.suggestedGoal}</p>
                         </div>
 
                         {/* Keywords */}
                         <div className="mb-4">
-                          <p className="text-slate-400 text-sm mb-2">Tracking Keywords:</p>
+                          <p className="text-muted-foreground text-sm mb-2">Tracking Keywords:</p>
                           <div className="flex flex-wrap gap-2">
                             {suggestion.keywords.map((keyword) => (
                               <span
                                 key={keyword}
-                                className="px-2 py-1 bg-slate-700 text-slate-300 text-xs rounded-lg"
+                                className="px-2 py-1 bg-accent text-foreground text-xs rounded-lg"
                               >
                                 {keyword}
                               </span>
@@ -614,7 +614,7 @@ export default function ReviewsManagePage() {
                           </Link>
                           <Link
                             href={`/reviews/manage/${suggestion.memberId}`}
-                            className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition"
+                            className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-muted text-foreground rounded-lg text-sm transition"
                           >
                             <Eye className="h-4 w-4" />
                             View Member
@@ -624,7 +624,7 @@ export default function ReviewsManagePage() {
                               e.stopPropagation();
                               handleDiscardSuggestion(suggestion.id);
                             }}
-                            className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg text-sm transition"
+                            className="flex items-center gap-2 px-4 py-2 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-lg text-sm transition"
                           >
                             <X className="h-4 w-4" />
                             Discard

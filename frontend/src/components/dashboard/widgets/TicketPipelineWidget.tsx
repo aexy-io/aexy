@@ -15,14 +15,14 @@ const PIPELINE_STAGES = [
   { key: "in_progress", label: "In Progress", color: "bg-amber-500", textColor: "text-amber-400" },
   { key: "pending", label: "Pending", color: "bg-purple-500", textColor: "text-purple-400" },
   { key: "resolved", label: "Resolved", color: "bg-green-500", textColor: "text-green-400" },
-  { key: "closed", label: "Closed", color: "bg-slate-500", textColor: "text-slate-400" },
+  { key: "closed", label: "Closed", color: "bg-muted-foreground", textColor: "text-muted-foreground" },
 ];
 
 const PRIORITY_COLORS: Record<string, string> = {
   critical: "bg-red-500/20 text-red-400",
   high: "bg-orange-500/20 text-orange-400",
   medium: "bg-amber-500/20 text-amber-400",
-  low: "bg-slate-600/50 text-slate-400",
+  low: "bg-muted/50 text-muted-foreground",
 };
 
 export function TicketPipelineWidget() {
@@ -31,11 +31,11 @@ export function TicketPipelineWidget() {
 
   if (isLoading) {
     return (
-      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 animate-pulse">
-        <div className="h-6 w-40 bg-slate-800 rounded mb-4" />
+      <div className="bg-background/50 border border-border rounded-xl p-6 animate-pulse">
+        <div className="h-6 w-40 bg-muted rounded mb-4" />
         <div className="space-y-3">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-10 bg-slate-800 rounded-lg" />
+            <div key={i} className="h-10 bg-muted rounded-lg" />
           ))}
         </div>
       </div>
@@ -48,15 +48,15 @@ export function TicketPipelineWidget() {
   const hasData = totalTickets > 0;
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+    <div className="bg-background/50 border border-border rounded-xl overflow-hidden">
+      <div className="px-6 py-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-orange-500/10 rounded-lg">
             <GitPullRequest className="h-5 w-5 text-orange-400" />
           </div>
-          <h3 className="text-lg font-semibold text-white">Ticket Pipeline</h3>
+          <h3 className="text-lg font-semibold text-foreground">Ticket Pipeline</h3>
           {hasData && (
-            <span className="text-slate-400 text-xs">{totalTickets} total</span>
+            <span className="text-muted-foreground text-xs">{totalTickets} total</span>
           )}
         </div>
         <Link
@@ -69,19 +69,19 @@ export function TicketPipelineWidget() {
       <div className="p-6">
         {!currentWorkspace ? (
           <div className="text-center py-6">
-            <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Ticket className="w-8 h-8 text-slate-600" />
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <Ticket className="w-8 h-8 text-muted-foreground" />
             </div>
-            <p className="text-slate-400 text-sm">
+            <p className="text-muted-foreground text-sm">
               Select a workspace to view tickets.
             </p>
           </div>
         ) : !hasData ? (
           <div className="text-center py-6">
-            <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Ticket className="w-8 h-8 text-slate-600" />
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <Ticket className="w-8 h-8 text-muted-foreground" />
             </div>
-            <p className="text-slate-400 text-sm">
+            <p className="text-muted-foreground text-sm">
               No tickets yet. Create your first ticket to get started.
             </p>
           </div>
@@ -105,13 +105,13 @@ export function TicketPipelineWidget() {
                     <span className={`text-xs w-20 text-right ${stage.textColor}`}>
                       {stage.label}
                     </span>
-                    <div className="flex-1 h-6 bg-slate-800/50 rounded-md overflow-hidden">
+                    <div className="flex-1 h-6 bg-muted/50 rounded-md overflow-hidden">
                       <div
                         className={`h-full ${stage.color} rounded-md flex items-center px-2 transition-all`}
                         style={{ width: `${width}%`, minWidth: count > 0 ? "28px" : "0" }}
                       >
                         {count > 0 && (
-                          <span className="text-white text-xs font-medium">
+                          <span className="text-foreground text-xs font-medium">
                             {count}
                           </span>
                         )}
@@ -124,8 +124,8 @@ export function TicketPipelineWidget() {
 
             {/* Priority breakdown */}
             {Object.keys(priorityBreakdown).length > 0 && (
-              <div className="pt-3 border-t border-slate-800">
-                <span className="text-slate-500 text-xs mb-2 block">
+              <div className="pt-3 border-t border-border">
+                <span className="text-muted-foreground text-xs mb-2 block">
                   By Priority
                 </span>
                 <div className="flex flex-wrap gap-2">

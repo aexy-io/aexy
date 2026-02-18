@@ -155,24 +155,24 @@ export default function TeamStandupsPage() {
   }, [teamDashboard?.standup_completion, standups]);
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => router.push("/tracking/standups")}
-            className="flex items-center gap-2 text-slate-400 hover:text-white mb-4 transition"
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 transition"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Standups
           </button>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+              <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
                 <Users className="h-8 w-8 text-purple-400" />
                 Team Standups
               </h1>
-              <p className="text-slate-400 mt-2">
+              <p className="text-muted-foreground mt-2">
                 View and manage team standup submissions
               </p>
             </div>
@@ -180,14 +180,14 @@ export default function TeamStandupsPage() {
               {/* Team Selector */}
               {teams.length > 0 && (
                 <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-slate-400" />
+                  <Users className="h-4 w-4 text-muted-foreground" />
                   <select
                     value={selectedTeamId || ""}
                     onChange={(e) => {
                       setSelectedTeamId(e.target.value);
                       setSelectedStandup(null);
                     }}
-                    className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
+                    className="px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-purple-500"
                   >
                     {teams.map((team) => (
                       <option key={team.id} value={team.id}>
@@ -210,15 +210,15 @@ export default function TeamStandupsPage() {
         <div className="mb-8 flex items-center justify-center gap-4">
           <button
             onClick={() => navigateDate("prev")}
-            className="p-2 bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 transition"
+            className="p-2 bg-muted border border-border rounded-lg hover:bg-accent transition"
           >
-            <ChevronLeft className="h-5 w-5 text-slate-400" />
+            <ChevronLeft className="h-5 w-5 text-muted-foreground" />
           </button>
-          <div className="flex items-center gap-3 px-6 py-3 bg-slate-800 border border-slate-700 rounded-lg">
+          <div className="flex items-center gap-3 px-6 py-3 bg-muted border border-border rounded-lg">
             <Calendar className="h-5 w-5 text-purple-400" />
-            <span className="text-white font-medium">{formatDate(selectedDate)}</span>
+            <span className="text-foreground font-medium">{formatDate(selectedDate)}</span>
             {isToday && (
-              <span className="px-2 py-0.5 text-xs bg-purple-900/30 text-purple-400 rounded">
+              <span className="px-2 py-0.5 text-xs bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 rounded">
                 Today
               </span>
             )}
@@ -226,9 +226,9 @@ export default function TeamStandupsPage() {
           <button
             onClick={() => navigateDate("next")}
             disabled={isToday}
-            className="p-2 bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-2 bg-muted border border-border rounded-lg hover:bg-accent transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <ChevronRight className="h-5 w-5 text-slate-400" />
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </button>
           {!isToday && (
             <button
@@ -236,7 +236,7 @@ export default function TeamStandupsPage() {
                 setSelectedDate(new Date());
                 setSelectedStandup(null);
               }}
-              className="px-3 py-2 text-sm text-purple-400 hover:text-purple-300 hover:bg-purple-900/20 rounded-lg transition"
+              className="px-3 py-2 text-sm text-purple-400 hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition"
             >
               Go to Today
             </button>
@@ -250,7 +250,7 @@ export default function TeamStandupsPage() {
             value={stats.teamMembers}
             icon={Users}
             iconColor="text-purple-400"
-            iconBgColor="bg-purple-900/30"
+            iconBgColor="bg-purple-100 dark:bg-purple-900/30"
             loading={teamsLoading}
           />
           <MetricCard
@@ -259,7 +259,7 @@ export default function TeamStandupsPage() {
             subtitle={`${Math.round(stats.participationRate)}% participation`}
             icon={CheckCircle2}
             iconColor="text-green-400"
-            iconBgColor="bg-green-900/30"
+            iconBgColor="bg-green-100 dark:bg-green-900/30"
             loading={isLoading}
           />
           <MetricCard
@@ -267,7 +267,7 @@ export default function TeamStandupsPage() {
             value={stats.notSubmitted}
             icon={XCircle}
             iconColor="text-red-400"
-            iconBgColor="bg-red-900/30"
+            iconBgColor="bg-red-100 dark:bg-red-900/30"
             loading={isLoading}
           />
           <MetricCard
@@ -275,11 +275,11 @@ export default function TeamStandupsPage() {
             value={stats.withBlockers}
             icon={AlertTriangle}
             iconColor="text-amber-400"
-            iconBgColor="bg-amber-900/30"
+            iconBgColor="bg-amber-100 dark:bg-amber-900/30"
             loading={isLoading}
           />
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-            <h4 className="text-sm text-slate-400 mb-3">Team Sentiment</h4>
+          <div className="bg-muted rounded-xl border border-border p-6">
+            <h4 className="text-sm text-muted-foreground mb-3">Team Sentiment</h4>
             {stats.avgSentiment !== null ? (
               <SentimentIndicator
                 score={stats.avgSentiment}
@@ -288,7 +288,7 @@ export default function TeamStandupsPage() {
                 size="lg"
               />
             ) : (
-              <p className="text-slate-500 text-sm">No data</p>
+              <p className="text-muted-foreground text-sm">No data</p>
             )}
           </div>
         </div>
@@ -297,7 +297,7 @@ export default function TeamStandupsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Standups List */}
           <div className="lg:col-span-2 space-y-4">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-blue-400" />
               Submitted Standups ({stats.submitted})
             </h2>
@@ -307,15 +307,15 @@ export default function TeamStandupsPage() {
                 {[1, 2, 3].map((i) => (
                   <div
                     key={i}
-                    className="bg-slate-800 rounded-xl p-6 border border-slate-700 animate-pulse"
+                    className="bg-muted rounded-xl p-6 border border-border animate-pulse"
                   >
                     <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 bg-slate-700 rounded-full" />
-                      <div className="h-4 bg-slate-700 rounded w-1/3" />
+                      <div className="w-10 h-10 bg-accent rounded-full" />
+                      <div className="h-4 bg-accent rounded w-1/3" />
                     </div>
                     <div className="space-y-2">
-                      <div className="h-3 bg-slate-700 rounded w-3/4" />
-                      <div className="h-3 bg-slate-700 rounded w-1/2" />
+                      <div className="h-3 bg-accent rounded w-3/4" />
+                      <div className="h-3 bg-accent rounded w-1/2" />
                     </div>
                   </div>
                 ))}
@@ -337,16 +337,16 @@ export default function TeamStandupsPage() {
                 ))}
               </div>
             ) : (
-              <div className="bg-slate-800 rounded-xl p-8 border border-slate-700 text-center">
-                <MessageSquare className="h-12 w-12 text-slate-600 mx-auto mb-3" />
-                <p className="text-slate-400">No standups submitted for this date</p>
+              <div className="bg-muted rounded-xl p-8 border border-border text-center">
+                <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground">No standups submitted for this date</p>
               </div>
             )}
 
             {/* Members without standups */}
             {membersWithoutStandup.length > 0 && (
               <div className="mt-6">
-                <h3 className="text-md font-semibold text-slate-400 mb-3 flex items-center gap-2">
+                <h3 className="text-md font-semibold text-muted-foreground mb-3 flex items-center gap-2">
                   <XCircle className="h-4 w-4 text-red-400" />
                   Not Submitted ({membersWithoutStandup.length})
                 </h3>
@@ -354,7 +354,7 @@ export default function TeamStandupsPage() {
                   {membersWithoutStandup.map((member) => (
                     <div
                       key={member.developer_id}
-                      className="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg"
+                      className="flex items-center gap-2 px-3 py-2 bg-muted border border-border rounded-lg"
                     >
                       {member.developer_avatar ? (
                         <img
@@ -363,11 +363,11 @@ export default function TeamStandupsPage() {
                           className="w-6 h-6 rounded-full"
                         />
                       ) : (
-                        <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center">
-                          <User className="h-3 w-3 text-slate-400" />
+                        <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center">
+                          <User className="h-3 w-3 text-muted-foreground" />
                         </div>
                       )}
-                      <span className="text-sm text-slate-300">
+                      <span className="text-sm text-foreground">
                         {member.developer_name || "Unknown"}
                       </span>
                     </div>
@@ -382,17 +382,17 @@ export default function TeamStandupsPage() {
             {selectedStandup ? (
               <div className="sticky top-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                  <h3 className="text-lg font-semibold text-white">Standup Details</h3>
+                  <h3 className="text-lg font-semibold text-foreground">Standup Details</h3>
                   <button
                     onClick={() => setSelectedStandup(null)}
-                    className="text-slate-400 hover:text-white text-sm"
+                    className="text-muted-foreground hover:text-foreground text-sm"
                   >
                     Close
                   </button>
                 </div>
-                <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 space-y-4">
+                <div className="bg-muted rounded-xl border border-border p-6 space-y-4">
                   {/* Author */}
-                  <div className="flex items-center gap-3 pb-4 border-b border-slate-700">
+                  <div className="flex items-center gap-3 pb-4 border-b border-border">
                     {selectedStandup.developer_avatar ? (
                       <img
                         src={selectedStandup.developer_avatar}
@@ -400,15 +400,15 @@ export default function TeamStandupsPage() {
                         className="w-10 h-10 rounded-full"
                       />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center">
-                        <User className="h-5 w-5 text-slate-400" />
+                      <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
+                        <User className="h-5 w-5 text-muted-foreground" />
                       </div>
                     )}
                     <div>
-                      <p className="font-medium text-white">
+                      <p className="font-medium text-foreground">
                         {selectedStandup.developer_name || "Unknown"}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-muted-foreground">
                         Submitted at{" "}
                         {new Date(selectedStandup.submitted_at).toLocaleTimeString()}
                       </p>
@@ -419,7 +419,7 @@ export default function TeamStandupsPage() {
                   {selectedStandup.sentiment_score !== null &&
                     selectedStandup.sentiment_score !== undefined && (
                       <div>
-                        <p className="text-xs text-slate-500 uppercase mb-2">Sentiment</p>
+                        <p className="text-xs text-muted-foreground uppercase mb-2">Sentiment</p>
                         <SentimentIndicator
                           score={selectedStandup.sentiment_score}
                           showLabel
@@ -430,16 +430,16 @@ export default function TeamStandupsPage() {
 
                   {/* Yesterday */}
                   <div>
-                    <p className="text-xs text-slate-500 uppercase mb-1">Yesterday</p>
-                    <p className="text-sm text-slate-300 whitespace-pre-wrap">
+                    <p className="text-xs text-muted-foreground uppercase mb-1">Yesterday</p>
+                    <p className="text-sm text-foreground whitespace-pre-wrap">
                       {selectedStandup.yesterday_summary || "—"}
                     </p>
                   </div>
 
                   {/* Today */}
                   <div>
-                    <p className="text-xs text-slate-500 uppercase mb-1">Today</p>
-                    <p className="text-sm text-slate-300 whitespace-pre-wrap">
+                    <p className="text-xs text-muted-foreground uppercase mb-1">Today</p>
+                    <p className="text-sm text-foreground whitespace-pre-wrap">
                       {selectedStandup.today_plan || "—"}
                     </p>
                   </div>
@@ -451,7 +451,7 @@ export default function TeamStandupsPage() {
                         <AlertTriangle className="h-3 w-3" />
                         Blockers
                       </p>
-                      <p className="text-sm text-slate-300 whitespace-pre-wrap">
+                      <p className="text-sm text-foreground whitespace-pre-wrap">
                         {selectedStandup.blockers_summary}
                       </p>
                     </div>
@@ -461,7 +461,7 @@ export default function TeamStandupsPage() {
                   {selectedStandup.parsed_tasks &&
                     selectedStandup.parsed_tasks.length > 0 && (
                       <div>
-                        <p className="text-xs text-slate-500 uppercase mb-2">
+                        <p className="text-xs text-muted-foreground uppercase mb-2">
                           Parsed Tasks
                         </p>
                         <div className="flex flex-wrap gap-1">
@@ -480,7 +480,7 @@ export default function TeamStandupsPage() {
                             return (
                               <span
                                 key={i}
-                                className="px-2 py-0.5 text-xs bg-blue-900/30 text-blue-400 rounded"
+                                className="px-2 py-0.5 text-xs bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded"
                               >
                                 {taskText}
                               </span>
@@ -491,17 +491,17 @@ export default function TeamStandupsPage() {
                     )}
 
                   {/* Source */}
-                  <div className="pt-4 border-t border-slate-700">
-                    <p className="text-xs text-slate-500">
-                      Source: <span className="text-slate-400">{selectedStandup.source}</span>
+                  <div className="pt-4 border-t border-border">
+                    <p className="text-xs text-muted-foreground">
+                      Source: <span className="text-muted-foreground">{selectedStandup.source}</span>
                     </p>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 text-center">
-                <MessageSquare className="h-8 w-8 text-slate-600 mx-auto mb-3" />
-                <p className="text-slate-500 text-sm">
+              <div className="bg-muted rounded-xl border border-border p-6 text-center">
+                <MessageSquare className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm">
                   Click on a standup to view details
                 </p>
               </div>

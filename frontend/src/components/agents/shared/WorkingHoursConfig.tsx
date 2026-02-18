@@ -68,30 +68,30 @@ export function WorkingHoursConfigPanel({
   return (
     <div className={cn("space-y-4", className)}>
       {/* Enable toggle */}
-      <label className="flex items-center gap-3 p-3 rounded-lg border border-slate-700 cursor-pointer hover:bg-slate-700/30">
+      <label className="flex items-center gap-3 p-3 rounded-lg border border-border cursor-pointer hover:bg-accent/30">
         <input
           type="checkbox"
           checked={config.enabled}
           onChange={(e) => updateConfig({ enabled: e.target.checked })}
           disabled={disabled}
-          className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-purple-500 focus:ring-purple-500"
+          className="w-4 h-4 rounded border-border bg-accent text-purple-500 focus:ring-purple-500"
         />
         <div className="flex-1">
-          <div className="font-medium text-white flex items-center gap-2">
-            <Clock className="h-4 w-4 text-slate-400" />
+          <div className="font-medium text-foreground flex items-center gap-2">
+            <Clock className="h-4 w-4 text-muted-foreground" />
             Enable Working Hours
           </div>
-          <div className="text-sm text-slate-400">
+          <div className="text-sm text-muted-foreground">
             Agent will only respond during specified hours
           </div>
         </div>
       </label>
 
       {config.enabled && (
-        <div className="space-y-4 pl-4 border-l-2 border-slate-700">
+        <div className="space-y-4 pl-4 border-l-2 border-border">
           {/* Timezone */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
+            <label className="block text-sm font-medium text-foreground mb-2 flex items-center gap-2">
               <Globe className="h-4 w-4" />
               Timezone
             </label>
@@ -99,7 +99,7 @@ export function WorkingHoursConfigPanel({
               value={config.timezone}
               onChange={(e) => updateConfig({ timezone: e.target.value })}
               disabled={disabled}
-              className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+              className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
             >
               {TIMEZONES.map((tz) => (
                 <option key={tz.value} value={tz.value}>
@@ -112,7 +112,7 @@ export function WorkingHoursConfigPanel({
           {/* Time range */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Start Time
               </label>
               <input
@@ -120,11 +120,11 @@ export function WorkingHoursConfigPanel({
                 value={config.start}
                 onChange={(e) => updateConfig({ start: e.target.value })}
                 disabled={disabled}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 End Time
               </label>
               <input
@@ -132,14 +132,14 @@ export function WorkingHoursConfigPanel({
                 value={config.end}
                 onChange={(e) => updateConfig({ end: e.target.value })}
                 disabled={disabled}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
               />
             </div>
           </div>
 
           {/* Days */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               Active Days
             </label>
             <div className="flex gap-2">
@@ -155,7 +155,7 @@ export function WorkingHoursConfigPanel({
                       "w-10 h-10 rounded-lg text-sm font-medium transition",
                       isActive
                         ? "bg-purple-500 text-white"
-                        : "bg-slate-700 text-slate-400 hover:bg-slate-600",
+                        : "bg-accent text-muted-foreground hover:bg-muted",
                       disabled && "opacity-50 cursor-not-allowed"
                     )}
                   >
@@ -180,7 +180,7 @@ interface WorkingHoursDisplayProps {
 export function WorkingHoursDisplay({ config, className }: WorkingHoursDisplayProps) {
   if (!config || !config.enabled) {
     return (
-      <span className={cn("text-sm text-slate-400", className)}>
+      <span className={cn("text-sm text-muted-foreground", className)}>
         24/7 (Always active)
       </span>
     );
@@ -195,10 +195,10 @@ export function WorkingHoursDisplay({ config, className }: WorkingHoursDisplayPr
 
   return (
     <div className={cn("text-sm", className)}>
-      <div className="text-white">
+      <div className="text-foreground">
         {config.start} - {config.end}
       </div>
-      <div className="text-slate-400">
+      <div className="text-muted-foreground">
         {activeDays} ({timezone})
       </div>
     </div>

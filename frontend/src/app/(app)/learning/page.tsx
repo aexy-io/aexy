@@ -208,13 +208,13 @@ export default function LearningPage() {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "critical":
-        return "bg-red-900/50 text-red-400 border-red-700";
+        return "bg-red-50 text-red-600 dark:bg-red-900/50 dark:text-red-400 border-red-200 dark:border-red-700";
       case "high":
-        return "bg-orange-900/50 text-orange-400 border-orange-700";
+        return "bg-orange-50 text-orange-600 dark:bg-orange-900/50 dark:text-orange-400 border-orange-200 dark:border-orange-700";
       case "medium":
-        return "bg-yellow-900/50 text-yellow-400 border-yellow-700";
+        return "bg-yellow-50 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-400 border-yellow-200 dark:border-yellow-700";
       default:
-        return "bg-slate-700 text-slate-300 border-slate-600";
+        return "bg-accent text-foreground border-border";
     }
   };
 
@@ -291,13 +291,13 @@ export default function LearningPage() {
 
   if (isLoading || loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
             <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
           </div>
-          <p className="text-slate-400 text-sm">Loading learning paths...</p>
+          <p className="text-muted-foreground text-sm">Loading learning paths...</p>
         </div>
       </div>
     );
@@ -318,7 +318,7 @@ export default function LearningPage() {
       case "at_risk":
         return "text-red-400";
       default:
-        return "text-slate-400";
+        return "text-muted-foreground";
     }
   };
 
@@ -331,12 +331,12 @@ export default function LearningPage() {
       case "behind":
         return <AlertCircle className="h-5 w-5 text-red-400" />;
       default:
-        return <div className="h-5 w-5 rounded-full border-2 border-slate-600" />;
+        return <div className="h-5 w-5 rounded-full border-2 border-border" />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
 <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
@@ -344,23 +344,23 @@ export default function LearningPage() {
               <GraduationCap className="h-7 w-7 text-green-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">
+              <h1 className="text-2xl font-bold text-foreground">
                 {viewMode === "my_learning" ? "My Learning Path" : `Project Learning`}
               </h1>
-              <p className="text-slate-400 text-sm">
+              <p className="text-muted-foreground text-sm">
                 {viewMode === "my_learning" ? "Track your growth and skill development" : teamOverview?.team_name || "Loading..."}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-4">
             {/* View Mode Selector */}
-            <div className="flex items-center gap-2 bg-slate-900/50 rounded-xl p-1 border border-slate-800">
+            <div className="flex items-center gap-2 bg-background/50 rounded-xl p-1 border border-border">
               <button
                 onClick={() => handleSelectTeam(null)}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
                   viewMode === "my_learning"
                     ? "bg-primary-600 text-white"
-                    : "text-slate-400 hover:text-white"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 My Learning
@@ -372,12 +372,12 @@ export default function LearningPage() {
                   className={`px-3 py-1.5 rounded-md text-sm font-medium bg-transparent border-0 focus:outline-none cursor-pointer ${
                     viewMode === "team"
                       ? "bg-primary-600 text-white"
-                      : "text-slate-400 hover:text-white"
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  <option value="" className="bg-slate-800 text-slate-400">Select Project</option>
+                  <option value="" className="bg-muted text-muted-foreground">Select Project</option>
                   {teams.map((team) => (
-                    <option key={team.id} value={team.id} className="bg-slate-800 text-white">
+                    <option key={team.id} value={team.id} className="bg-muted text-foreground">
                       {team.name}
                     </option>
                   ))}
@@ -406,21 +406,21 @@ export default function LearningPage() {
               <div className="space-y-8">
                 {/* Team Stats Overview */}
                 <div className="grid md:grid-cols-4 gap-4">
-                  <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-                    <div className="text-slate-400 text-sm mb-1">Total Members</div>
-                    <div className="text-2xl font-bold text-white">{teamOverview.total_members}</div>
+                  <div className="bg-muted rounded-xl p-4 border border-border">
+                    <div className="text-muted-foreground text-sm mb-1">Total Members</div>
+                    <div className="text-2xl font-bold text-foreground">{teamOverview.total_members}</div>
                   </div>
-                  <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-                    <div className="text-slate-400 text-sm mb-1">With Learning Paths</div>
-                    <div className="text-2xl font-bold text-white">{teamOverview.members_with_paths}</div>
+                  <div className="bg-muted rounded-xl p-4 border border-border">
+                    <div className="text-muted-foreground text-sm mb-1">With Learning Paths</div>
+                    <div className="text-2xl font-bold text-foreground">{teamOverview.members_with_paths}</div>
                   </div>
-                  <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-                    <div className="text-slate-400 text-sm mb-1">Average Progress</div>
-                    <div className="text-2xl font-bold text-white">{teamOverview.average_progress}%</div>
+                  <div className="bg-muted rounded-xl p-4 border border-border">
+                    <div className="text-muted-foreground text-sm mb-1">Average Progress</div>
+                    <div className="text-2xl font-bold text-foreground">{teamOverview.average_progress}%</div>
                   </div>
-                  <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-                    <div className="text-slate-400 text-sm mb-1">Learning Rate</div>
-                    <div className="text-2xl font-bold text-white">
+                  <div className="bg-muted rounded-xl p-4 border border-border">
+                    <div className="text-muted-foreground text-sm mb-1">Learning Rate</div>
+                    <div className="text-2xl font-bold text-foreground">
                       {teamOverview.total_members > 0
                         ? Math.round((teamOverview.members_with_paths / teamOverview.total_members) * 100)
                         : 0}%
@@ -430,19 +430,19 @@ export default function LearningPage() {
 
                 <div className="grid lg:grid-cols-2 gap-8">
                   {/* Team Members Learning Status */}
-                  <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-                    <div className="p-4 border-b border-slate-700">
-                      <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <div className="bg-muted rounded-xl border border-border overflow-hidden">
+                    <div className="p-4 border-b border-border">
+                      <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                         <Users className="h-5 w-5 text-primary-400" />
                         Team Members Progress
                       </h2>
                     </div>
-                    <div className="divide-y divide-slate-700 max-h-[500px] overflow-y-auto">
+                    <div className="divide-y divide-border max-h-[500px] overflow-y-auto">
                       {teamOverview.members.length === 0 ? (
-                        <div className="p-4 text-slate-400 text-center">No team members found</div>
+                        <div className="p-4 text-muted-foreground text-center">No team members found</div>
                       ) : (
                         teamOverview.members.map((member) => (
-                          <div key={member.developer_id} className="p-4 hover:bg-slate-700/50 transition">
+                          <div key={member.developer_id} className="p-4 hover:bg-accent/50 transition">
                             <div className="flex items-center gap-3 mb-2">
                               {member.developer_avatar_url ? (
                                 <Image
@@ -453,32 +453,32 @@ export default function LearningPage() {
                                   className="rounded-full"
                                 />
                               ) : (
-                                <div className="w-9 h-9 rounded-full bg-slate-600 flex items-center justify-center">
-                                  <Users className="h-4 w-4 text-slate-400" />
+                                <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
+                                  <Users className="h-4 w-4 text-muted-foreground" />
                                 </div>
                               )}
                               <div className="flex-1 min-w-0">
-                                <div className="text-white font-medium truncate">
+                                <div className="text-foreground font-medium truncate">
                                   {member.developer_name || "Unknown"}
                                 </div>
                                 {member.has_active_path ? (
-                                  <div className="text-sm text-slate-400 truncate">
+                                  <div className="text-sm text-muted-foreground truncate">
                                     {member.active_path_target_role || "Learning in progress"}
                                   </div>
                                 ) : (
-                                  <div className="text-sm text-slate-500">No active learning path</div>
+                                  <div className="text-sm text-muted-foreground">No active learning path</div>
                                 )}
                               </div>
                               {member.has_active_path && (
                                 <span
                                   className={`text-xs px-2 py-1 rounded ${
                                     member.trajectory_status === "ahead"
-                                      ? "bg-green-900/50 text-green-400"
+                                      ? "bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-400"
                                       : member.trajectory_status === "on_track"
-                                      ? "bg-blue-900/50 text-blue-400"
+                                      ? "bg-blue-50 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400"
                                       : member.trajectory_status === "behind"
-                                      ? "bg-yellow-900/50 text-yellow-400"
-                                      : "bg-slate-600 text-slate-300"
+                                      ? "bg-yellow-50 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-400"
+                                      : "bg-muted text-foreground"
                                   }`}
                                 >
                                   {member.trajectory_status?.replace("_", " ") || "N/A"}
@@ -488,26 +488,26 @@ export default function LearningPage() {
                             {member.has_active_path && (
                               <>
                                 <div className="flex items-center gap-2 text-sm mb-2">
-                                  <div className="flex-1 h-2 bg-slate-600 rounded-full overflow-hidden">
+                                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                                     <div
                                       className="h-full bg-primary-500 rounded-full transition-all"
                                       style={{ width: `${member.progress_percentage}%` }}
                                     />
                                   </div>
-                                  <span className="text-slate-400">{member.progress_percentage}%</span>
+                                  <span className="text-muted-foreground">{member.progress_percentage}%</span>
                                 </div>
                                 {member.skills_in_progress.length > 0 && (
                                   <div className="flex flex-wrap gap-1">
                                     {member.skills_in_progress.slice(0, 3).map((skill) => (
                                       <span
                                         key={skill}
-                                        className="text-xs px-2 py-0.5 bg-slate-700 text-slate-300 rounded"
+                                        className="text-xs px-2 py-0.5 bg-accent text-foreground rounded"
                                       >
                                         {skill}
                                       </span>
                                     ))}
                                     {member.skills_in_progress.length > 3 && (
-                                      <span className="text-xs text-slate-500">
+                                      <span className="text-xs text-muted-foreground">
                                         +{member.skills_in_progress.length - 3} more
                                       </span>
                                     )}
@@ -522,26 +522,26 @@ export default function LearningPage() {
                   </div>
 
                   {/* Skill Recommendations */}
-                  <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-                    <div className="p-4 border-b border-slate-700">
-                      <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <div className="bg-muted rounded-xl border border-border overflow-hidden">
+                    <div className="p-4 border-b border-border">
+                      <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                         <Target className="h-5 w-5 text-primary-400" />
                         Recommended Skills to Develop
                       </h2>
-                      <p className="text-sm text-slate-400 mt-1">
+                      <p className="text-sm text-muted-foreground mt-1">
                         Based on team&apos;s current skill gaps
                       </p>
                     </div>
-                    <div className="divide-y divide-slate-700 max-h-[500px] overflow-y-auto">
+                    <div className="divide-y divide-border max-h-[500px] overflow-y-auto">
                       {!teamRecommendations || teamRecommendations.recommended_skills.length === 0 ? (
-                        <div className="p-4 text-slate-400 text-center">
+                        <div className="p-4 text-muted-foreground text-center">
                           No skill recommendations available
                         </div>
                       ) : (
                         teamRecommendations.recommended_skills.map((rec) => (
-                          <div key={rec.skill} className="p-4 hover:bg-slate-700/50 transition">
+                          <div key={rec.skill} className="p-4 hover:bg-accent/50 transition">
                             <div className="flex items-center justify-between mb-2">
-                              <span className="text-white font-medium">{rec.skill}</span>
+                              <span className="text-foreground font-medium">{rec.skill}</span>
                               <span
                                 className={`text-xs px-2 py-1 rounded border ${getPriorityColor(rec.priority)}`}
                               >
@@ -549,15 +549,15 @@ export default function LearningPage() {
                               </span>
                             </div>
                             <div className="grid grid-cols-2 gap-2 text-sm mb-2">
-                              <div className="text-slate-400">
-                                Coverage: <span className="text-white">{rec.coverage_percentage}%</span>
+                              <div className="text-muted-foreground">
+                                Coverage: <span className="text-foreground">{rec.coverage_percentage}%</span>
                               </div>
-                              <div className="text-slate-400">
-                                Proficiency: <span className="text-white">{rec.average_proficiency}%</span>
+                              <div className="text-muted-foreground">
+                                Proficiency: <span className="text-foreground">{rec.average_proficiency}%</span>
                               </div>
                             </div>
-                            <p className="text-xs text-slate-500">{rec.reason}</p>
-                            <div className="mt-2 text-xs text-slate-400">
+                            <p className="text-xs text-muted-foreground">{rec.reason}</p>
+                            <div className="mt-2 text-xs text-muted-foreground">
                               {rec.members_lacking} member{rec.members_lacking !== 1 ? "s" : ""} could benefit
                             </div>
                           </div>
@@ -568,10 +568,10 @@ export default function LearningPage() {
                 </div>
               </div>
             ) : (
-              <div className="bg-slate-800 rounded-xl p-12 border border-slate-700 text-center">
-                <Users className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">No Project Data</h3>
-                <p className="text-slate-400">
+              <div className="bg-muted rounded-xl p-12 border border-border text-center">
+                <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-foreground mb-2">No Project Data</h3>
+                <p className="text-muted-foreground">
                   Unable to load project learning data. Please try again.
                 </p>
               </div>
@@ -591,7 +591,7 @@ export default function LearningPage() {
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <div className="text-purple-300 text-xs font-medium">Level {profile.level}</div>
-                    <div className="text-white text-lg font-bold">{levelProgress.current_level_name}</div>
+                    <div className="text-foreground text-lg font-bold">{levelProgress.current_level_name}</div>
                   </div>
                   <ProgressRing
                     progress={levelProgress.progress_percentage}
@@ -599,7 +599,7 @@ export default function LearningPage() {
                     strokeWidth={5}
                     color="purple"
                     showLabel={false}
-                    className="bg-purple-900/50 rounded-full"
+                    className="bg-purple-100 dark:bg-purple-900/50 rounded-full"
                   />
                 </div>
                 <div className="space-y-1">
@@ -619,38 +619,38 @@ export default function LearningPage() {
 
             {/* Stats Cards */}
             <div className="lg:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="bg-slate-800 rounded-xl p-3 border border-slate-700">
+              <div className="bg-muted rounded-xl p-3 border border-border">
                 <div className="flex items-center gap-2 mb-1">
                   <Zap className="h-4 w-4 text-amber-400" />
-                  <span className="text-xs text-slate-400">Points</span>
+                  <span className="text-xs text-muted-foreground">Points</span>
                 </div>
-                <div className="text-xl font-bold text-white">{formatPoints(profile.total_points)}</div>
+                <div className="text-xl font-bold text-foreground">{formatPoints(profile.total_points)}</div>
               </div>
-              <div className="bg-slate-800 rounded-xl p-3 border border-slate-700">
+              <div className="bg-muted rounded-xl p-3 border border-border">
                 <div className="flex items-center gap-2 mb-1">
                   <Flame className="h-4 w-4 text-orange-400" />
-                  <span className="text-xs text-slate-400">Streak</span>
+                  <span className="text-xs text-muted-foreground">Streak</span>
                 </div>
-                <div className="text-xl font-bold text-white flex items-center gap-2">
+                <div className="text-xl font-bold text-foreground flex items-center gap-2">
                   {streak.current_streak}
                   {streak.streak_at_risk && (
                     <span className="text-xs text-amber-400 font-normal">At Risk!</span>
                   )}
                 </div>
               </div>
-              <div className="bg-slate-800 rounded-xl p-3 border border-slate-700">
+              <div className="bg-muted rounded-xl p-3 border border-border">
                 <div className="flex items-center gap-2 mb-1">
                   <BookOpen className="h-4 w-4 text-blue-400" />
-                  <span className="text-xs text-slate-400">Activities</span>
+                  <span className="text-xs text-muted-foreground">Activities</span>
                 </div>
-                <div className="text-xl font-bold text-white">{profile.activities_completed}</div>
+                <div className="text-xl font-bold text-foreground">{profile.activities_completed}</div>
               </div>
-              <div className="bg-slate-800 rounded-xl p-3 border border-slate-700">
+              <div className="bg-muted rounded-xl p-3 border border-border">
                 <div className="flex items-center gap-2 mb-1">
                   <Timer className="h-4 w-4 text-purple-400" />
-                  <span className="text-xs text-slate-400">Time</span>
+                  <span className="text-xs text-muted-foreground">Time</span>
                 </div>
-                <div className="text-xl font-bold text-white">
+                <div className="text-xl font-bold text-foreground">
                   {Math.floor(profile.total_learning_minutes / 60)}h
                 </div>
               </div>
@@ -658,18 +658,18 @@ export default function LearningPage() {
 
             {/* Weekly Streak Calendar */}
             <div className="lg:col-span-1">
-              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 h-full">
-                <div className="text-sm font-medium text-white mb-3">This Week</div>
+              <div className="bg-muted rounded-xl p-4 border border-border h-full">
+                <div className="text-sm font-medium text-foreground mb-3">This Week</div>
                 {dailySummaries && dailySummaries.length > 0 ? (
                   <StreakCalendar data={dailySummaries} />
                 ) : (
                   <div className="flex gap-1">
                     {[...Array(7)].map((_, i) => (
-                      <div key={i} className="w-6 h-6 rounded-full bg-slate-700" />
+                      <div key={i} className="w-6 h-6 rounded-full bg-accent" />
                     ))}
                   </div>
                 )}
-                <div className="mt-3 text-xs text-slate-400">
+                <div className="mt-3 text-xs text-muted-foreground">
                   {streak.is_active_today ? (
                     <span className="text-green-400">Active today!</span>
                   ) : streak.streak_at_risk ? (
@@ -685,13 +685,13 @@ export default function LearningPage() {
 
         {/* Badges Section */}
         {profile && allBadges && profile.earned_badges.length > 0 && (
-          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 mb-8">
+          <div className="bg-muted rounded-xl p-6 border border-border mb-8">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                 <Award className="h-5 w-5 text-amber-400" />
                 Your Badges
               </h3>
-              <span className="text-sm text-slate-400">
+              <span className="text-sm text-muted-foreground">
                 {profile.earned_badges.length} / {allBadges.length} earned
               </span>
             </div>
@@ -706,8 +706,8 @@ export default function LearningPage() {
 
         {/* Learning Activity Calendar */}
         {dailySummaries && dailySummaries.length > 0 && (
-          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 mb-8">
-            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <div className="bg-muted rounded-xl p-6 border border-border mb-8">
+            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
               <Calendar className="h-5 w-5 text-green-400" />
               Learning Activity
             </h3>
@@ -717,13 +717,13 @@ export default function LearningPage() {
 
         {/* New Path Form */}
         {showNewPathForm && (
-          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 mb-8">
-            <h2 className="text-lg font-semibold text-white mb-4">Create Learning Path</h2>
+          <div className="bg-muted rounded-xl p-6 border border-border mb-8">
+            <h2 className="text-lg font-semibold text-foreground mb-4">Create Learning Path</h2>
             <div className="flex flex-col md:flex-row gap-4">
               <select
                 value={selectedRoleId}
                 onChange={(e) => setSelectedRoleId(e.target.value)}
-                className="flex-1 bg-slate-700 text-white rounded-lg px-4 py-2 border border-slate-600 focus:border-primary-500 focus:outline-none"
+                className="flex-1 bg-accent text-foreground rounded-lg px-4 py-2 border border-border focus:border-primary-500 focus:outline-none"
               >
                 <option value="">Select Target Role</option>
                 {roles.map((role) => (
@@ -735,7 +735,7 @@ export default function LearningPage() {
               <button
                 onClick={handleGeneratePath}
                 disabled={!selectedRoleId || generating}
-                className="bg-primary-600 hover:bg-primary-700 disabled:bg-slate-600 text-white px-6 py-2 rounded-lg font-medium transition flex items-center gap-2"
+                className="bg-primary-600 hover:bg-primary-700 disabled:bg-muted text-white px-6 py-2 rounded-lg font-medium transition flex items-center gap-2"
               >
                 {generating ? (
                   <>
@@ -756,13 +756,13 @@ export default function LearningPage() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Paths List */}
           <div className="lg:col-span-1">
-            <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-              <div className="p-4 border-b border-slate-700">
-                <h2 className="text-lg font-semibold text-white">Your Paths</h2>
+            <div className="bg-muted rounded-xl border border-border overflow-hidden">
+              <div className="p-4 border-b border-border">
+                <h2 className="text-lg font-semibold text-foreground">Your Paths</h2>
               </div>
-              <div className="divide-y divide-slate-700">
+              <div className="divide-y divide-border">
                 {paths.length === 0 ? (
-                  <div className="p-4 text-slate-400 text-center">
+                  <div className="p-4 text-muted-foreground text-center">
                     No learning paths yet. Create one to get started!
                   </div>
                 ) : (
@@ -770,28 +770,28 @@ export default function LearningPage() {
                     <button
                       key={path.id}
                       onClick={() => handleSelectPath(path)}
-                      className={`w-full p-4 text-left hover:bg-slate-700 transition ${
-                        selectedPath?.id === path.id ? "bg-slate-700" : ""
+                      className={`w-full p-4 text-left hover:bg-accent transition ${
+                        selectedPath?.id === path.id ? "bg-accent" : ""
                       }`}
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-white font-medium">
+                        <span className="text-foreground font-medium">
                           {path.target_role_name || "Career Path"}
                         </span>
                         <span
                           className={`text-xs px-2 py-1 rounded ${
                             path.status === "active"
-                              ? "bg-green-900/50 text-green-400"
+                              ? "bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-400"
                               : path.status === "paused"
-                              ? "bg-yellow-900/50 text-yellow-400"
-                              : "bg-slate-600 text-slate-300"
+                              ? "bg-yellow-50 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-400"
+                              : "bg-muted text-foreground"
                           }`}
                         >
                           {path.status}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-slate-400">
-                        <div className="flex-1 h-2 bg-slate-600 rounded-full overflow-hidden">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                           <div
                             className="h-full bg-primary-500 rounded-full transition-all"
                             style={{ width: `${path.progress_percentage}%` }}
@@ -811,10 +811,10 @@ export default function LearningPage() {
             {selectedPath ? (
               <>
                 {/* Path Overview */}
-                <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                <div className="bg-muted rounded-xl p-6 border border-border">
                   <div className="flex items-center justify-between mb-6">
                     <div>
-                      <h2 className="text-xl font-semibold text-white">
+                      <h2 className="text-xl font-semibold text-foreground">
                         {selectedPath.target_role_name || "Career Development"}
                       </h2>
                       <p className={`text-sm ${getTrajectoryColor(selectedPath.trajectory_status)}`}>
@@ -825,7 +825,7 @@ export default function LearningPage() {
                       {selectedPath.status === "active" ? (
                         <button
                           onClick={handlePausePath}
-                          className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                          className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
                           title="Pause Path"
                         >
                           <Pause className="h-5 w-5" />
@@ -833,7 +833,7 @@ export default function LearningPage() {
                       ) : selectedPath.status === "paused" ? (
                         <button
                           onClick={handleResumePath}
-                          className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                          className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
                           title="Resume Path"
                         >
                           <Play className="h-5 w-5" />
@@ -842,7 +842,7 @@ export default function LearningPage() {
                       <button
                         onClick={handleRegeneratePath}
                         disabled={generating}
-                        className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
                         title="Regenerate Path"
                       >
                         <RefreshCw className={`h-5 w-5 ${generating ? "animate-spin" : ""}`} />
@@ -852,11 +852,11 @@ export default function LearningPage() {
 
                   {/* Progress Bar */}
                   <div className="mb-6">
-                    <div className="flex justify-between text-sm text-slate-400 mb-2">
+                    <div className="flex justify-between text-sm text-muted-foreground mb-2">
                       <span>Progress</span>
                       <span>{selectedPath.progress_percentage}%</span>
                     </div>
-                    <div className="h-3 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-3 bg-accent rounded-full overflow-hidden">
                       <div
                         className="h-full bg-primary-500 rounded-full transition-all"
                         style={{ width: `${selectedPath.progress_percentage}%` }}
@@ -867,50 +867,50 @@ export default function LearningPage() {
                   {/* Stats */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-white">
+                      <div className="text-2xl font-bold text-foreground">
                         {Math.round((selectedPath.estimated_success_probability || 0.7) * 100)}%
                       </div>
-                      <div className="text-xs text-slate-400">Success Probability</div>
+                      <div className="text-xs text-muted-foreground">Success Probability</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-white">
+                      <div className="text-2xl font-bold text-foreground">
                         {Object.keys(selectedPath.skill_gaps).length}
                       </div>
-                      <div className="text-xs text-slate-400">Skills to Develop</div>
+                      <div className="text-xs text-muted-foreground">Skills to Develop</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-white">
+                      <div className="text-2xl font-bold text-foreground">
                         {selectedPath.phases?.length || 0}
                       </div>
-                      <div className="text-xs text-slate-400">Phases</div>
+                      <div className="text-xs text-muted-foreground">Phases</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Milestones */}
-                <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <div className="bg-muted rounded-xl p-6 border border-border">
+                  <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                     <Target className="h-5 w-5 text-primary-400" />
                     Milestones
                   </h3>
                   <div className="space-y-4">
                     {milestones.length === 0 ? (
-                      <p className="text-slate-400 text-center py-4">No milestones defined</p>
+                      <p className="text-muted-foreground text-center py-4">No milestones defined</p>
                     ) : (
                       milestones.map((milestone) => (
                         <div
                           key={milestone.id}
-                          className="flex items-center gap-4 p-4 bg-slate-700/50 rounded-lg"
+                          className="flex items-center gap-4 p-4 bg-accent/50 rounded-lg"
                         >
                           {getMilestoneStatusIcon(milestone.status)}
                           <div className="flex-1">
                             <div className="flex justify-between items-center mb-1">
-                              <span className="text-white font-medium">{milestone.skill_name}</span>
-                              <span className="text-sm text-slate-400">
+                              <span className="text-foreground font-medium">{milestone.skill_name}</span>
+                              <span className="text-sm text-muted-foreground">
                                 {milestone.current_score}/{milestone.target_score}
                               </span>
                             </div>
-                            <div className="h-2 bg-slate-600 rounded-full overflow-hidden">
+                            <div className="h-2 bg-muted rounded-full overflow-hidden">
                               <div
                                 className="h-full bg-primary-500 rounded-full transition-all"
                                 style={{
@@ -919,7 +919,7 @@ export default function LearningPage() {
                               />
                             </div>
                           </div>
-                          <ChevronRight className="h-5 w-5 text-slate-500" />
+                          <ChevronRight className="h-5 w-5 text-muted-foreground" />
                         </div>
                       ))
                     )}
@@ -927,31 +927,31 @@ export default function LearningPage() {
                 </div>
 
                 {/* Recommended Activities */}
-                <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <div className="bg-muted rounded-xl p-6 border border-border">
+                  <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                     <BookOpen className="h-5 w-5 text-primary-400" />
                     Recommended Activities
                   </h3>
                   <div className="space-y-3">
                     {activities.length === 0 ? (
-                      <p className="text-slate-400 text-center py-4">
+                      <p className="text-muted-foreground text-center py-4">
                         No activities recommended yet
                       </p>
                     ) : (
                       activities.map((activity, idx) => (
                         <div
                           key={idx}
-                          className="flex items-start gap-3 p-3 bg-slate-700/50 rounded-lg"
+                          className="flex items-start gap-3 p-3 bg-accent/50 rounded-lg"
                         >
                           <div
                             className={`p-2 rounded-lg ${
                               activity.type === "task"
-                                ? "bg-blue-900/50"
+                                ? "bg-blue-100 dark:bg-blue-900/50"
                                 : activity.type === "pairing"
-                                ? "bg-purple-900/50"
+                                ? "bg-purple-100 dark:bg-purple-900/50"
                                 : activity.type === "course"
-                                ? "bg-green-900/50"
-                                : "bg-slate-600"
+                                ? "bg-green-100 dark:bg-green-900/50"
+                                : "bg-muted"
                             }`}
                           >
                             {activity.type === "task" ? (
@@ -961,12 +961,12 @@ export default function LearningPage() {
                             ) : activity.type === "course" ? (
                               <BookOpen className="h-4 w-4 text-green-400" />
                             ) : (
-                              <TrendingUp className="h-4 w-4 text-slate-400" />
+                              <TrendingUp className="h-4 w-4 text-muted-foreground" />
                             )}
                           </div>
                           <div className="flex-1">
-                            <p className="text-white">{activity.description}</p>
-                            <div className="flex items-center gap-3 mt-1 text-xs text-slate-400">
+                            <p className="text-foreground">{activity.description}</p>
+                            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                               <span className="capitalize">{activity.source}</span>
                               {activity.estimated_hours && (
                                 <span>{activity.estimated_hours} hours</span>
@@ -991,14 +991,14 @@ export default function LearningPage() {
 
                 {/* Risk Factors */}
                 {selectedPath.risk_factors && selectedPath.risk_factors.length > 0 && (
-                  <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <div className="bg-muted rounded-xl p-6 border border-border">
+                    <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                       <AlertCircle className="h-5 w-5 text-yellow-400" />
                       Risk Factors
                     </h3>
                     <ul className="space-y-2">
                       {selectedPath.risk_factors.map((risk, idx) => (
-                        <li key={idx} className="flex items-start gap-2 text-slate-300">
+                        <li key={idx} className="flex items-start gap-2 text-foreground">
                           <span className="text-yellow-400 mt-1">-</span>
                           {risk}
                         </li>
@@ -1008,12 +1008,12 @@ export default function LearningPage() {
                 )}
 
                 {/* Course Search Section */}
-                <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <div className="bg-muted rounded-xl p-6 border border-border">
+                  <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                     <SearchIcon className="h-5 w-5 text-primary-400" />
                     Find Courses
                   </h3>
-                  <p className="text-slate-400 text-sm mb-4">
+                  <p className="text-muted-foreground text-sm mb-4">
                     Search for tutorials and courses from YouTube and other platforms to add to your learning activities.
                   </p>
                   <CourseSearch
@@ -1024,12 +1024,12 @@ export default function LearningPage() {
                 </div>
 
                 {/* Activity Tracking Section */}
-                <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <div className="bg-muted rounded-xl p-6 border border-border">
+                  <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                     <Target className="h-5 w-5 text-primary-400" />
                     Track Your Progress
                   </h3>
-                  <p className="text-slate-400 text-sm mb-4">
+                  <p className="text-muted-foreground text-sm mb-4">
                     Log your learning activities to track progress, earn points, and stay motivated!
                   </p>
                   <ActivityList
@@ -1047,10 +1047,10 @@ export default function LearningPage() {
                 </div>
               </>
             ) : (
-              <div className="bg-slate-800 rounded-xl p-12 border border-slate-700 text-center">
-                <GraduationCap className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">No Path Selected</h3>
-                <p className="text-slate-400">
+              <div className="bg-muted rounded-xl p-12 border border-border text-center">
+                <GraduationCap className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-foreground mb-2">No Path Selected</h3>
+                <p className="text-muted-foreground">
                   Select a learning path from the list or create a new one to get started.
                 </p>
               </div>

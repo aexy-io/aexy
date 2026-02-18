@@ -68,13 +68,13 @@ const PRESET_COLORS = [
 function getCategoryBadgeColor(category: StatusCategory) {
   switch (category) {
     case "todo":
-      return "bg-blue-900/30 text-blue-400";
+      return "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400";
     case "in_progress":
-      return "bg-yellow-900/30 text-yellow-400";
+      return "bg-yellow-50 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400";
     case "done":
-      return "bg-green-900/30 text-green-400";
+      return "bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400";
     default:
-      return "bg-slate-700 text-slate-400";
+      return "bg-muted text-muted-foreground";
   }
 }
 
@@ -112,13 +112,13 @@ function SortableStatusItem({ status, isAdmin, onEdit, onDelete }: SortableStatu
     <div
       ref={setNodeRef}
       style={style}
-      className="bg-slate-800 rounded-lg p-3 flex items-center gap-3"
+      className="bg-card rounded-lg p-3 flex items-center gap-3"
     >
       {isAdmin && (
         <button
           {...attributes}
           {...listeners}
-          className="p-1 text-slate-500 hover:text-slate-300 cursor-grab active:cursor-grabbing"
+          className="p-1 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing"
         >
           <GripVertical className="h-4 w-4" />
         </button>
@@ -129,36 +129,36 @@ function SortableStatusItem({ status, isAdmin, onEdit, onDelete }: SortableStatu
       />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-white font-medium">{status.name}</span>
+          <span className="text-foreground font-medium">{status.name}</span>
           <span className={`px-2 py-0.5 rounded text-xs ${getCategoryBadgeColor(status.category)}`}>
             {status.category.replace("_", " ")}
           </span>
           {status.is_default && (
-            <span className="px-2 py-0.5 rounded text-xs bg-primary-900/30 text-primary-400">
+            <span className="px-2 py-0.5 rounded text-xs bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400">
               Default
             </span>
           )}
         </div>
-        <p className="text-slate-500 text-xs">slug: {status.slug}</p>
+        <p className="text-muted-foreground text-xs">slug: {status.slug}</p>
       </div>
       {isAdmin && (
         <div className="relative">
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
           >
             <MoreVertical className="h-4 w-4" />
           </button>
           {showMenu && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-              <div className="absolute right-0 top-full mt-1 w-36 bg-slate-700 rounded-lg shadow-xl z-20 py-1">
+              <div className="absolute right-0 top-full mt-1 w-36 bg-muted rounded-lg shadow-xl z-20 py-1">
                 <button
                   onClick={() => {
                     onEdit(status);
                     setShowMenu(false);
                   }}
-                  className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-600 flex items-center gap-2"
+                  className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                 >
                   <Edit2 className="h-4 w-4" />
                   Edit
@@ -168,7 +168,7 @@ function SortableStatusItem({ status, isAdmin, onEdit, onDelete }: SortableStatu
                     onDelete(status.id);
                     setShowMenu(false);
                   }}
-                  className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-600 flex items-center gap-2"
+                  className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-accent flex items-center gap-2"
                 >
                   <Trash2 className="h-4 w-4" />
                   Delete
@@ -211,52 +211,52 @@ function SortableFieldItem({ field, isAdmin, onEdit, onDelete }: SortableFieldIt
     <div
       ref={setNodeRef}
       style={style}
-      className="bg-slate-800 rounded-lg p-3 flex items-center gap-3"
+      className="bg-card rounded-lg p-3 flex items-center gap-3"
     >
       {isAdmin && (
         <button
           {...attributes}
           {...listeners}
-          className="p-1 text-slate-500 hover:text-slate-300 cursor-grab active:cursor-grabbing"
+          className="p-1 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing"
         >
           <GripVertical className="h-4 w-4" />
         </button>
       )}
-      <div className="w-8 h-8 bg-slate-700 rounded-lg flex items-center justify-center text-slate-400">
+      <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center text-muted-foreground">
         {getFieldTypeIcon(field.field_type)}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-white font-medium">{field.name}</span>
-          <span className="px-2 py-0.5 rounded text-xs bg-slate-700 text-slate-400">
+          <span className="text-foreground font-medium">{field.name}</span>
+          <span className="px-2 py-0.5 rounded text-xs bg-muted text-muted-foreground">
             {field.field_type}
           </span>
           {field.is_required && (
-            <span className="px-2 py-0.5 rounded text-xs bg-red-900/30 text-red-400">
+            <span className="px-2 py-0.5 rounded text-xs bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400">
               Required
             </span>
           )}
         </div>
-        <p className="text-slate-500 text-xs">slug: {field.slug}</p>
+        <p className="text-muted-foreground text-xs">slug: {field.slug}</p>
       </div>
       {isAdmin && (
         <div className="relative">
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
           >
             <MoreVertical className="h-4 w-4" />
           </button>
           {showMenu && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-              <div className="absolute right-0 top-full mt-1 w-36 bg-slate-700 rounded-lg shadow-xl z-20 py-1">
+              <div className="absolute right-0 top-full mt-1 w-36 bg-muted rounded-lg shadow-xl z-20 py-1">
                 <button
                   onClick={() => {
                     onEdit(field);
                     setShowMenu(false);
                   }}
-                  className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-600 flex items-center gap-2"
+                  className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                 >
                   <Edit2 className="h-4 w-4" />
                   Edit
@@ -266,7 +266,7 @@ function SortableFieldItem({ field, isAdmin, onEdit, onDelete }: SortableFieldIt
                     onDelete(field.id);
                     setShowMenu(false);
                   }}
-                  className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-600 flex items-center gap-2"
+                  className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-accent flex items-center gap-2"
                 >
                   <Trash2 className="h-4 w-4" />
                   Delete
@@ -320,25 +320,25 @@ function StatusModal({ status, onClose, onSave, isSaving }: StatusModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-slate-800 rounded-xl w-full max-w-md p-6">
-        <h3 className="text-xl font-semibold text-white mb-4">
+      <div className="bg-card rounded-xl w-full max-w-md p-6">
+        <h3 className="text-xl font-semibold text-foreground mb-4">
           {status ? "Edit Status" : "Create Status"}
         </h3>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Name</label>
+              <label className="block text-sm text-muted-foreground mb-1">Name</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="In Review"
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500"
+                className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Category</label>
+              <label className="block text-sm text-muted-foreground mb-1">Category</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {STATUS_CATEGORIES.map((cat) => (
                   <button
@@ -348,21 +348,21 @@ function StatusModal({ status, onClose, onSave, isSaving }: StatusModalProps) {
                     className={`p-2 rounded-lg border text-center transition ${
                       category === cat.value
                         ? "border-primary-500 bg-primary-900/20"
-                        : "border-slate-600 hover:border-slate-500"
+                        : "border-border hover:border-border"
                     }`}
                   >
                     <div className={`w-3 h-3 ${cat.color} rounded-full mx-auto mb-1`} />
-                    <span className="text-white text-sm">{cat.label}</span>
+                    <span className="text-foreground text-sm">{cat.label}</span>
                   </button>
                 ))}
               </div>
-              <p className="text-slate-500 text-xs mt-1">
+              <p className="text-muted-foreground text-xs mt-1">
                 Category affects burndown chart calculations
               </p>
             </div>
 
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Color</label>
+              <label className="block text-sm text-muted-foreground mb-1">Color</label>
               <div className="flex flex-wrap gap-2">
                 {PRESET_COLORS.map((c) => (
                   <button
@@ -389,9 +389,9 @@ function StatusModal({ status, onClose, onSave, isSaving }: StatusModalProps) {
                 type="checkbox"
                 checked={isDefault}
                 onChange={(e) => setIsDefault(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-primary-500 focus:ring-primary-500"
+                className="w-4 h-4 rounded border-border bg-muted text-primary-500 focus:ring-primary-500"
               />
-              <span className="text-white text-sm">Set as default status for new tasks</span>
+              <span className="text-foreground text-sm">Set as default status for new tasks</span>
             </label>
 
             {error && (
@@ -406,7 +406,7 @@ function StatusModal({ status, onClose, onSave, isSaving }: StatusModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+              className="flex-1 px-4 py-2 bg-muted hover:bg-accent text-foreground rounded-lg transition"
             >
               Cancel
             </button>
@@ -500,26 +500,26 @@ function FieldModal({ field, onClose, onSave, isSaving }: FieldModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-slate-800 rounded-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-        <h3 className="text-xl font-semibold text-white mb-4">
+      <div className="bg-card rounded-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+        <h3 className="text-xl font-semibold text-foreground mb-4">
           {field ? "Edit Field" : "Create Field"}
         </h3>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Name</label>
+              <label className="block text-sm text-muted-foreground mb-1">Name</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Sprint Goal"
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500"
+                className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500"
               />
             </div>
 
             {!field && (
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Field Type</label>
+                <label className="block text-sm text-muted-foreground mb-1">Field Type</label>
                 <div className="grid grid-cols-2 gap-2">
                   {FIELD_TYPES.map((ft) => (
                     <button
@@ -529,14 +529,14 @@ function FieldModal({ field, onClose, onSave, isSaving }: FieldModalProps) {
                       className={`p-2 rounded-lg border text-left transition ${
                         fieldType === ft.value
                           ? "border-primary-500 bg-primary-900/20"
-                          : "border-slate-600 hover:border-slate-500"
+                          : "border-border hover:border-border"
                       }`}
                     >
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-slate-400">{ft.icon}</span>
-                        <span className="text-white text-sm font-medium">{ft.label}</span>
+                        <span className="text-muted-foreground">{ft.icon}</span>
+                        <span className="text-foreground text-sm font-medium">{ft.label}</span>
                       </div>
-                      <span className="text-slate-500 text-xs">{ft.description}</span>
+                      <span className="text-muted-foreground text-xs">{ft.description}</span>
                     </button>
                   ))}
                 </div>
@@ -545,7 +545,7 @@ function FieldModal({ field, onClose, onSave, isSaving }: FieldModalProps) {
 
             {needsOptions && (
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Options</label>
+                <label className="block text-sm text-muted-foreground mb-1">Options</label>
                 <div className="space-y-2">
                   {options.map((opt, index) => (
                     <div key={index} className="flex items-center gap-2">
@@ -557,12 +557,12 @@ function FieldModal({ field, onClose, onSave, isSaving }: FieldModalProps) {
                           newOptions[index] = { ...opt, label: e.target.value };
                           setOptions(newOptions);
                         }}
-                        className="flex-1 px-3 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-primary-500"
+                        className="flex-1 px-3 py-1.5 bg-muted border border-border rounded text-foreground text-sm focus:outline-none focus:border-primary-500"
                       />
                       <button
                         type="button"
                         onClick={() => handleRemoveOption(index)}
-                        className="p-1.5 text-slate-400 hover:text-red-400 transition"
+                        className="p-1.5 text-muted-foreground hover:text-red-400 transition"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -580,12 +580,12 @@ function FieldModal({ field, onClose, onSave, isSaving }: FieldModalProps) {
                           handleAddOption();
                         }
                       }}
-                      className="flex-1 px-3 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm placeholder-slate-400 focus:outline-none focus:border-primary-500"
+                      className="flex-1 px-3 py-1.5 bg-muted border border-border rounded text-foreground text-sm placeholder-muted-foreground focus:outline-none focus:border-primary-500"
                     />
                     <button
                       type="button"
                       onClick={handleAddOption}
-                      className="p-1.5 text-slate-400 hover:text-primary-400 transition"
+                      className="p-1.5 text-muted-foreground hover:text-primary-400 transition"
                     >
                       <Plus className="h-4 w-4" />
                     </button>
@@ -596,13 +596,13 @@ function FieldModal({ field, onClose, onSave, isSaving }: FieldModalProps) {
 
             {!needsOptions && (
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Default Value (optional)</label>
+                <label className="block text-sm text-muted-foreground mb-1">Default Value (optional)</label>
                 <input
                   type={fieldType === "number" ? "number" : fieldType === "date" ? "date" : "text"}
                   value={defaultValue}
                   onChange={(e) => setDefaultValue(e.target.value)}
                   placeholder="Enter default value..."
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500"
+                  className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500"
                 />
               </div>
             )}
@@ -612,9 +612,9 @@ function FieldModal({ field, onClose, onSave, isSaving }: FieldModalProps) {
                 type="checkbox"
                 checked={isRequired}
                 onChange={(e) => setIsRequired(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-primary-500 focus:ring-primary-500"
+                className="w-4 h-4 rounded border-border bg-muted text-primary-500 focus:ring-primary-500"
               />
-              <span className="text-white text-sm">Required field</span>
+              <span className="text-foreground text-sm">Required field</span>
             </label>
 
             {error && (
@@ -629,7 +629,7 @@ function FieldModal({ field, onClose, onSave, isSaving }: FieldModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+              className="flex-1 px-4 py-2 bg-muted hover:bg-accent text-foreground rounded-lg transition"
             >
               Cancel
             </button>
@@ -790,7 +790,7 @@ export default function TaskConfigPage() {
       <div className="py-20 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-white">Loading task configuration...</p>
+          <p className="text-foreground">Loading task configuration...</p>
         </div>
       </div>
     );
@@ -805,10 +805,10 @@ export default function TaskConfigPage() {
 
       <div>
         {!hasWorkspaces ? (
-          <div className="bg-slate-800 rounded-xl p-12 text-center">
-            <List className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-white mb-2">No Workspace</h3>
-            <p className="text-slate-400 mb-6">
+          <div className="bg-card rounded-xl p-12 text-center">
+            <List className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-medium text-foreground mb-2">No Workspace</h3>
+            <p className="text-muted-foreground mb-6">
               Create a workspace first to configure task settings.
             </p>
             <Link
@@ -821,13 +821,13 @@ export default function TaskConfigPage() {
         ) : (
           <>
             {/* Tabs */}
-            <div className="flex gap-1 bg-slate-800 p-1 rounded-lg w-fit mb-6">
+            <div className="flex gap-1 bg-card p-1 rounded-lg w-fit mb-6">
               <button
                 onClick={() => setActiveTab("statuses")}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                   activeTab === "statuses"
                     ? "bg-primary-600 text-white"
-                    : "text-slate-400 hover:text-white"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <span className="flex items-center gap-2">
@@ -840,7 +840,7 @@ export default function TaskConfigPage() {
                 className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                   activeTab === "fields"
                     ? "bg-primary-600 text-white"
-                    : "text-slate-400 hover:text-white"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <span className="flex items-center gap-2">
@@ -855,8 +855,8 @@ export default function TaskConfigPage() {
               <div>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                   <div>
-                    <h2 className="text-lg font-medium text-white">Task Statuses</h2>
-                    <p className="text-slate-400 text-sm">
+                    <h2 className="text-lg font-medium text-foreground">Task Statuses</h2>
+                    <p className="text-muted-foreground text-sm">
                       Define the workflow statuses for tasks. Drag to reorder.
                     </p>
                   </div>
@@ -901,10 +901,10 @@ export default function TaskConfigPage() {
                     </SortableContext>
                   </DndContext>
                 ) : (
-                  <div className="bg-slate-800 rounded-xl p-12 text-center">
-                    <Clock className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-white mb-2">No Statuses</h3>
-                    <p className="text-slate-400 mb-4">
+                  <div className="bg-card rounded-xl p-12 text-center">
+                    <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-foreground mb-2">No Statuses</h3>
+                    <p className="text-muted-foreground mb-4">
                       Create your first status to define your task workflow.
                     </p>
                     {isAdmin && (
@@ -923,15 +923,15 @@ export default function TaskConfigPage() {
                 )}
 
                 {/* Category Legend */}
-                <div className="mt-6 p-4 bg-slate-800/50 rounded-lg">
-                  <h4 className="text-sm font-medium text-slate-300 mb-2">Status Categories</h4>
+                <div className="mt-6 p-4 bg-card/50 rounded-lg">
+                  <h4 className="text-sm font-medium text-foreground mb-2">Status Categories</h4>
                   <div className="flex flex-wrap gap-4 text-sm">
                     {STATUS_CATEGORIES.map((cat) => (
                       <div key={cat.value} className="flex items-center gap-2">
                         <div className={`w-3 h-3 ${cat.color} rounded-full`} />
-                        <span className="text-slate-400">{cat.label}</span>
-                        <span className="text-slate-500">-</span>
-                        <span className="text-slate-500">
+                        <span className="text-muted-foreground">{cat.label}</span>
+                        <span className="text-muted-foreground">-</span>
+                        <span className="text-muted-foreground">
                           {cat.value === "todo" && "Not started tasks"}
                           {cat.value === "in_progress" && "Active work in progress"}
                           {cat.value === "done" && "Completed tasks"}
@@ -948,8 +948,8 @@ export default function TaskConfigPage() {
               <div>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                   <div>
-                    <h2 className="text-lg font-medium text-white">Custom Fields</h2>
-                    <p className="text-slate-400 text-sm">
+                    <h2 className="text-lg font-medium text-foreground">Custom Fields</h2>
+                    <p className="text-muted-foreground text-sm">
                       Add custom metadata fields to your tasks. Drag to reorder.
                     </p>
                   </div>
@@ -994,10 +994,10 @@ export default function TaskConfigPage() {
                     </SortableContext>
                   </DndContext>
                 ) : (
-                  <div className="bg-slate-800 rounded-xl p-12 text-center">
-                    <List className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-white mb-2">No Custom Fields</h3>
-                    <p className="text-slate-400 mb-4">
+                  <div className="bg-card rounded-xl p-12 text-center">
+                    <List className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-foreground mb-2">No Custom Fields</h3>
+                    <p className="text-muted-foreground mb-4">
                       Create custom fields to add extra metadata to your tasks.
                     </p>
                     {isAdmin && (
@@ -1016,14 +1016,14 @@ export default function TaskConfigPage() {
                 )}
 
                 {/* Field Types Legend */}
-                <div className="mt-6 p-4 bg-slate-800/50 rounded-lg">
-                  <h4 className="text-sm font-medium text-slate-300 mb-2">Available Field Types</h4>
+                <div className="mt-6 p-4 bg-card/50 rounded-lg">
+                  <h4 className="text-sm font-medium text-foreground mb-2">Available Field Types</h4>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                     {FIELD_TYPES.map((ft) => (
                       <div key={ft.value} className="flex items-center gap-2">
-                        <span className="text-slate-400">{ft.icon}</span>
-                        <span className="text-slate-300">{ft.label}</span>
-                        <span className="text-slate-500">- {ft.description}</span>
+                        <span className="text-muted-foreground">{ft.icon}</span>
+                        <span className="text-foreground">{ft.label}</span>
+                        <span className="text-muted-foreground">- {ft.description}</span>
                       </div>
                     ))}
                   </div>

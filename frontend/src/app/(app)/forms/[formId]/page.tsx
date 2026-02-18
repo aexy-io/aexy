@@ -105,72 +105,72 @@ function FieldEditor({
   };
 
   return (
-    <div className="bg-slate-800/50 border border-slate-700 rounded-lg overflow-hidden">
+    <div className="bg-muted/50 border border-border rounded-lg overflow-hidden">
       <div
-        className="flex items-center gap-3 p-4 cursor-pointer hover:bg-slate-700/50 transition"
+        className="flex items-center gap-3 p-4 cursor-pointer hover:bg-accent/50 transition"
         onClick={onToggleExpand}
       >
-        <GripVertical className="h-4 w-4 text-slate-500 cursor-move" />
+        <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-white">{localField.name}</span>
-            <span className="text-xs text-slate-400 bg-slate-700 px-2 py-0.5 rounded">
+            <span className="font-medium text-foreground">{localField.name}</span>
+            <span className="text-xs text-muted-foreground bg-accent px-2 py-0.5 rounded">
               {localField.field_type}
             </span>
             {localField.is_required && (
               <span className="text-xs text-red-400">Required</span>
             )}
           </div>
-          <span className="text-sm text-slate-400">{localField.field_key}</span>
+          <span className="text-sm text-muted-foreground">{localField.field_key}</span>
         </div>
         <button
           onClick={(e) => {
             e.stopPropagation();
             onDelete();
           }}
-          className="p-2 text-slate-400 hover:text-red-400 transition"
+          className="p-2 text-muted-foreground hover:text-red-400 transition"
         >
           <Trash2 className="h-4 w-4" />
         </button>
         {isExpanded ? (
-          <ChevronUp className="h-4 w-4 text-slate-400" />
+          <ChevronUp className="h-4 w-4 text-muted-foreground" />
         ) : (
-          <ChevronDown className="h-4 w-4 text-slate-400" />
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
         )}
       </div>
 
       {isExpanded && (
-        <div className="p-4 border-t border-slate-700 space-y-4">
+        <div className="p-4 border-t border-border space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Field Name</label>
+              <label className="block text-sm font-medium text-foreground mb-1">Field Name</label>
               <input
                 type="text"
                 value={localField.name}
                 onChange={(e) => setLocalField({ ...localField, name: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Field Key</label>
+              <label className="block text-sm font-medium text-foreground mb-1">Field Key</label>
               <input
                 type="text"
                 value={localField.field_key}
                 onChange={(e) => setLocalField({ ...localField, field_key: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Field Type</label>
+              <label className="block text-sm font-medium text-foreground mb-1">Field Type</label>
               <select
                 value={localField.field_type}
                 onChange={(e) =>
                   setLocalField({ ...localField, field_type: e.target.value as FormFieldType })
                 }
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground"
               >
                 {FIELD_TYPES.map((type) => (
                   <option key={type.value} value={type.value}>
@@ -180,7 +180,7 @@ function FieldEditor({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Width</label>
+              <label className="block text-sm font-medium text-foreground mb-1">Width</label>
               <select
                 value={localField.width}
                 onChange={(e) =>
@@ -189,7 +189,7 @@ function FieldEditor({
                     width: e.target.value as "full" | "half" | "third" | "two-thirds",
                   })
                 }
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground"
               >
                 <option value="full">Full Width</option>
                 <option value="half">Half Width</option>
@@ -200,57 +200,57 @@ function FieldEditor({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Placeholder</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Placeholder</label>
             <input
               type="text"
               value={localField.placeholder || ""}
               onChange={(e) => setLocalField({ ...localField, placeholder: e.target.value })}
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Help Text</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Help Text</label>
             <input
               type="text"
               value={localField.help_text || ""}
               onChange={(e) => setLocalField({ ...localField, help_text: e.target.value })}
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground"
             />
           </div>
 
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 text-sm text-slate-300">
+            <label className="flex items-center gap-2 text-sm text-foreground">
               <input
                 type="checkbox"
                 checked={localField.is_required}
                 onChange={(e) => setLocalField({ ...localField, is_required: e.target.checked })}
-                className="rounded border-slate-600 bg-slate-800 text-purple-500 focus:ring-purple-500"
+                className="rounded border-border bg-muted text-purple-500 focus:ring-purple-500"
               />
               Required
             </label>
-            <label className="flex items-center gap-2 text-sm text-slate-300">
+            <label className="flex items-center gap-2 text-sm text-foreground">
               <input
                 type="checkbox"
                 checked={localField.is_visible}
                 onChange={(e) => setLocalField({ ...localField, is_visible: e.target.checked })}
-                className="rounded border-slate-600 bg-slate-800 text-purple-500 focus:ring-purple-500"
+                className="rounded border-border bg-muted text-purple-500 focus:ring-purple-500"
               />
               Visible
             </label>
           </div>
 
           {/* Validation Rules Section */}
-          <div className="border-t border-slate-700 pt-4">
+          <div className="border-t border-border pt-4">
             <div className="flex items-center gap-2 mb-3">
               <ShieldCheck className="h-4 w-4 text-purple-400" />
-              <span className="text-sm font-medium text-slate-300">Validation Rules</span>
+              <span className="text-sm font-medium text-foreground">Validation Rules</span>
             </div>
 
             <div className="space-y-4">
               {/* Validation Type Preset */}
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Validation Type</label>
+                <label className="block text-xs text-muted-foreground mb-1">Validation Type</label>
                 <select
                   value={localField.validation_rules?.validation_type || ""}
                   onChange={(e) => {
@@ -266,7 +266,7 @@ function FieldEditor({
                       },
                     });
                   }}
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
                 >
                   <option value="">None</option>
                   {Object.entries(VALIDATION_PRESETS).map(([key, preset]) => (
@@ -281,7 +281,7 @@ function FieldEditor({
               {localField.validation_rules?.validation_type === "custom" && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1">Regex Pattern</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Regex Pattern</label>
                     <input
                       type="text"
                       value={localField.validation_rules?.pattern || ""}
@@ -290,11 +290,11 @@ function FieldEditor({
                         validation_rules: { ...localField.validation_rules, pattern: e.target.value },
                       })}
                       placeholder="^[a-z]+$"
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm font-mono"
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm font-mono"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1">Error Message</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Error Message</label>
                     <input
                       type="text"
                       value={localField.validation_rules?.pattern_message || ""}
@@ -303,7 +303,7 @@ function FieldEditor({
                         validation_rules: { ...localField.validation_rules, pattern_message: e.target.value },
                       })}
                       placeholder="Invalid format"
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
                     />
                   </div>
                 </div>
@@ -313,7 +313,7 @@ function FieldEditor({
               {["text", "textarea", "email", "phone", "url"].includes(localField.field_type) && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1">Min Length</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Min Length</label>
                     <input
                       type="number"
                       value={localField.validation_rules?.min_length || ""}
@@ -325,11 +325,11 @@ function FieldEditor({
                         },
                       })}
                       min={0}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1">Max Length</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Max Length</label>
                     <input
                       type="number"
                       value={localField.validation_rules?.max_length || ""}
@@ -341,7 +341,7 @@ function FieldEditor({
                         },
                       })}
                       min={0}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
                     />
                   </div>
                 </div>
@@ -351,7 +351,7 @@ function FieldEditor({
               {localField.field_type === "number" && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1">Minimum Value</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Minimum Value</label>
                     <input
                       type="number"
                       value={localField.validation_rules?.min ?? ""}
@@ -362,11 +362,11 @@ function FieldEditor({
                           min: e.target.value ? parseFloat(e.target.value) : undefined,
                         },
                       })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1">Maximum Value</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Maximum Value</label>
                     <input
                       type="number"
                       value={localField.validation_rules?.max ?? ""}
@@ -377,7 +377,7 @@ function FieldEditor({
                           max: e.target.value ? parseFloat(e.target.value) : undefined,
                         },
                       })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
                     />
                   </div>
                 </div>
@@ -387,7 +387,7 @@ function FieldEditor({
               {["date", "datetime"].includes(localField.field_type) && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1">Min Date</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Min Date</label>
                     <input
                       type="date"
                       value={localField.validation_rules?.min_date || ""}
@@ -398,11 +398,11 @@ function FieldEditor({
                           min_date: e.target.value || undefined,
                         },
                       })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1">Max Date</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Max Date</label>
                     <input
                       type="date"
                       value={localField.validation_rules?.max_date || ""}
@@ -413,7 +413,7 @@ function FieldEditor({
                           max_date: e.target.value || undefined,
                         },
                       })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
                     />
                   </div>
                 </div>
@@ -423,7 +423,7 @@ function FieldEditor({
               {localField.field_type === "file" && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1">Allowed File Types</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Allowed File Types</label>
                     <input
                       type="text"
                       value={localField.validation_rules?.allowed_file_types?.join(", ") || ""}
@@ -435,11 +435,11 @@ function FieldEditor({
                         },
                       })}
                       placeholder=".pdf, .doc, .docx"
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1">Max File Size (MB)</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Max File Size (MB)</label>
                     <input
                       type="number"
                       value={localField.validation_rules?.max_file_size_mb || ""}
@@ -451,7 +451,7 @@ function FieldEditor({
                         },
                       })}
                       min={1}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
                     />
                   </div>
                 </div>
@@ -459,7 +459,7 @@ function FieldEditor({
 
               {/* Custom Error Message */}
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Custom Error Message (optional)</label>
+                <label className="block text-xs text-muted-foreground mb-1">Custom Error Message (optional)</label>
                 <input
                   type="text"
                   value={localField.validation_rules?.custom_message || ""}
@@ -471,7 +471,7 @@ function FieldEditor({
                     },
                   })}
                   placeholder="Please enter a valid value"
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
                 />
               </div>
             </div>
@@ -569,20 +569,20 @@ function TicketingTab({
   };
 
   if (isLoading) {
-    return <div className="text-slate-400">Loading ticket configuration...</div>;
+    return <div className="text-muted-foreground">Loading ticket configuration...</div>;
   }
 
   return (
     <div className="space-y-6">
-      <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+      <div className="bg-muted/50 border border-border rounded-xl p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-blue-500/20">
               <Ticket className="h-5 w-5 text-blue-400" />
             </div>
             <div>
-              <h3 className="text-white font-medium">Ticketing Integration</h3>
-              <p className="text-sm text-slate-400">Automatically create tickets from submissions</p>
+              <h3 className="text-foreground font-medium">Ticketing Integration</h3>
+              <p className="text-sm text-muted-foreground">Automatically create tickets from submissions</p>
             </div>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
@@ -594,18 +594,18 @@ function TicketingTab({
               }
               className="sr-only peer"
             />
-            <div className="w-11 h-6 bg-slate-700 peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+            <div className="w-11 h-6 bg-accent peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
           </label>
         </div>
 
         {localConfig.auto_create_ticket && (
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Default Team</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Default Team</label>
               <select
                 value={localConfig.default_team_id}
                 onChange={(e) => setLocalConfig({ ...localConfig, default_team_id: e.target.value })}
-                className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground"
               >
                 <option value="">Select a team</option>
                 {teams.map((team) => (
@@ -617,7 +617,7 @@ function TicketingTab({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Assignment Mode</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Assignment Mode</label>
               <div className="grid grid-cols-2 gap-3">
                 {ASSIGNMENT_MODES.map((mode) => (
                   <button
@@ -628,11 +628,11 @@ function TicketingTab({
                     className={`p-4 rounded-lg border text-left transition ${
                       localConfig.ticket_assignment_mode === mode.value
                         ? "border-blue-500 bg-blue-500/10"
-                        : "border-slate-700 bg-slate-800 hover:border-slate-600"
+                        : "border-border bg-muted hover:border-border"
                     }`}
                   >
-                    <div className="text-sm font-medium text-white">{mode.label}</div>
-                    <div className="text-xs text-slate-400">{mode.description}</div>
+                    <div className="text-sm font-medium text-foreground">{mode.label}</div>
+                    <div className="text-xs text-muted-foreground">{mode.description}</div>
                   </button>
                 ))}
               </div>
@@ -640,12 +640,12 @@ function TicketingTab({
 
             {/* Field Mappings */}
             {formFields.length > 0 && (
-              <div className="border-t border-slate-700 pt-6">
+              <div className="border-t border-border pt-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Link2 className="h-4 w-4 text-blue-400" />
-                  <h4 className="text-sm font-medium text-slate-300">Field Mappings</h4>
+                  <h4 className="text-sm font-medium text-foreground">Field Mappings</h4>
                 </div>
-                <p className="text-xs text-slate-400 mb-4">
+                <p className="text-xs text-muted-foreground mb-4">
                   Map form fields to ticket fields. Mapped fields will populate the ticket automatically.
                 </p>
 
@@ -653,13 +653,13 @@ function TicketingTab({
                   {formFields.filter(f => f.is_visible).map((field) => (
                     <div
                       key={field.id}
-                      className="flex items-center gap-3 p-3 bg-slate-900/50 rounded-lg"
+                      className="flex items-center gap-3 p-3 bg-background/50 rounded-lg"
                     >
                       <div className="flex-1">
-                        <div className="text-sm text-white">{field.name}</div>
-                        <div className="text-xs text-slate-500">{field.field_key}</div>
+                        <div className="text-sm text-foreground">{field.name}</div>
+                        <div className="text-xs text-muted-foreground">{field.field_key}</div>
                       </div>
-                      <div className="text-slate-500">→</div>
+                      <div className="text-muted-foreground">→</div>
                       <div className="flex-1">
                         <select
                           value={localConfig.ticket_field_mappings[field.field_key] || ""}
@@ -670,7 +670,7 @@ function TicketingTab({
                               removeFieldMapping(field.field_key);
                             }
                           }}
-                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
+                          className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm"
                         >
                           <option value="">Don't map</option>
                           {TICKET_FIELDS.map((ticketField) => (
@@ -684,13 +684,13 @@ function TicketingTab({
                   ))}
                 </div>
 
-                <div className="mt-4 text-xs text-slate-400">
+                <div className="mt-4 text-xs text-muted-foreground">
                   {Object.keys(localConfig.ticket_field_mappings).length} of {formFields.filter(f => f.is_visible).length} fields mapped
                 </div>
               </div>
             )}
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
+            <div className="flex justify-end gap-3 pt-4 border-t border-border">
               {config?.auto_create_ticket && (
                 <button
                   onClick={handleDisable}
@@ -785,20 +785,20 @@ function CRMTab({
   };
 
   if (isLoading) {
-    return <div className="text-slate-400">Loading CRM configuration...</div>;
+    return <div className="text-muted-foreground">Loading CRM configuration...</div>;
   }
 
   return (
     <div className="space-y-6">
-      <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+      <div className="bg-muted/50 border border-border rounded-xl p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-green-500/20">
               <Users className="h-5 w-5 text-green-400" />
             </div>
             <div>
-              <h3 className="text-white font-medium">CRM Integration</h3>
-              <p className="text-sm text-slate-400">Create CRM records from submissions</p>
+              <h3 className="text-foreground font-medium">CRM Integration</h3>
+              <p className="text-sm text-muted-foreground">Create CRM records from submissions</p>
             </div>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
@@ -810,14 +810,14 @@ function CRMTab({
               }
               className="sr-only peer"
             />
-            <div className="w-11 h-6 bg-slate-700 peer-focus:ring-2 peer-focus:ring-green-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+            <div className="w-11 h-6 bg-accent peer-focus:ring-2 peer-focus:ring-green-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
           </label>
         </div>
 
         {localMapping.auto_create_record && (
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">CRM Object</label>
+              <label className="block text-sm font-medium text-foreground mb-2">CRM Object</label>
               <select
                 value={localMapping.crm_object_id}
                 onChange={(e) =>
@@ -827,7 +827,7 @@ function CRMTab({
                     crm_field_mappings: {}, // Reset mappings when object changes
                   })
                 }
-                className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground"
               >
                 <option value="">Select a CRM object</option>
                 {objects.map((obj) => (
@@ -840,12 +840,12 @@ function CRMTab({
 
             {/* Field Mappings */}
             {localMapping.crm_object_id && formFields.length > 0 && (
-              <div className="border-t border-slate-700 pt-6">
+              <div className="border-t border-border pt-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Link2 className="h-4 w-4 text-green-400" />
-                  <h4 className="text-sm font-medium text-slate-300">Field Mappings</h4>
+                  <h4 className="text-sm font-medium text-foreground">Field Mappings</h4>
                 </div>
-                <p className="text-xs text-slate-400 mb-4">
+                <p className="text-xs text-muted-foreground mb-4">
                   Map form fields to CRM attributes. Unmapped fields will not be synced.
                 </p>
 
@@ -853,13 +853,13 @@ function CRMTab({
                   {formFields.filter(f => f.is_visible).map((field) => (
                     <div
                       key={field.id}
-                      className="flex items-center gap-3 p-3 bg-slate-900/50 rounded-lg"
+                      className="flex items-center gap-3 p-3 bg-background/50 rounded-lg"
                     >
                       <div className="flex-1">
-                        <div className="text-sm text-white">{field.name}</div>
-                        <div className="text-xs text-slate-500">{field.field_key}</div>
+                        <div className="text-sm text-foreground">{field.name}</div>
+                        <div className="text-xs text-muted-foreground">{field.field_key}</div>
                       </div>
-                      <div className="text-slate-500">→</div>
+                      <div className="text-muted-foreground">→</div>
                       <div className="flex-1">
                         <select
                           value={localMapping.crm_field_mappings[field.field_key] || ""}
@@ -870,7 +870,7 @@ function CRMTab({
                               removeFieldMapping(field.field_key);
                             }
                           }}
-                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
+                          className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm"
                         >
                           <option value="">Don't map</option>
                           {attributes.map((attr) => (
@@ -885,13 +885,13 @@ function CRMTab({
                 </div>
 
                 {/* Quick mapping stats */}
-                <div className="mt-4 text-xs text-slate-400">
+                <div className="mt-4 text-xs text-muted-foreground">
                   {Object.keys(localMapping.crm_field_mappings).length} of {formFields.filter(f => f.is_visible).length} fields mapped
                 </div>
               </div>
             )}
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
+            <div className="flex justify-end gap-3 pt-4 border-t border-border">
               {mapping?.auto_create_record && (
                 <button
                   onClick={handleRemove}
@@ -997,20 +997,20 @@ function DealsTab({
   };
 
   if (isLoading) {
-    return <div className="text-slate-400">Loading deal configuration...</div>;
+    return <div className="text-muted-foreground">Loading deal configuration...</div>;
   }
 
   return (
     <div className="space-y-6">
-      <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+      <div className="bg-muted/50 border border-border rounded-xl p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-orange-500/20">
               <DollarSign className="h-5 w-5 text-orange-400" />
             </div>
             <div>
-              <h3 className="text-white font-medium">Deal Integration</h3>
-              <p className="text-sm text-slate-400">Create deals from submissions</p>
+              <h3 className="text-foreground font-medium">Deal Integration</h3>
+              <p className="text-sm text-muted-foreground">Create deals from submissions</p>
             </div>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
@@ -1022,39 +1022,39 @@ function DealsTab({
               }
               className="sr-only peer"
             />
-            <div className="w-11 h-6 bg-slate-700 peer-focus:ring-2 peer-focus:ring-orange-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+            <div className="w-11 h-6 bg-accent peer-focus:ring-2 peer-focus:ring-orange-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
           </label>
         </div>
 
         {localConfig.auto_create_deal && (
           <div className="space-y-6">
-            <div className="p-4 bg-slate-900/50 rounded-lg border border-slate-700">
-              <p className="text-sm text-slate-400">
+            <div className="p-4 bg-background/50 rounded-lg border border-border">
+              <p className="text-sm text-muted-foreground">
                 Configure pipeline and stage selection in the CRM settings. Deals will be created
                 and linked to the CRM record if CRM integration is enabled.
               </p>
             </div>
 
-            <label className="flex items-center gap-2 text-sm text-slate-300">
+            <label className="flex items-center gap-2 text-sm text-foreground">
               <input
                 type="checkbox"
                 checked={localConfig.link_deal_to_record}
                 onChange={(e) =>
                   setLocalConfig({ ...localConfig, link_deal_to_record: e.target.checked })
                 }
-                className="rounded border-slate-600 bg-slate-800 text-orange-500 focus:ring-orange-500"
+                className="rounded border-border bg-muted text-orange-500 focus:ring-orange-500"
               />
               Link deal to CRM record
             </label>
 
             {/* Field Mappings */}
             {formFields.length > 0 && (
-              <div className="border-t border-slate-700 pt-6">
+              <div className="border-t border-border pt-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Link2 className="h-4 w-4 text-orange-400" />
-                  <h4 className="text-sm font-medium text-slate-300">Field Mappings</h4>
+                  <h4 className="text-sm font-medium text-foreground">Field Mappings</h4>
                 </div>
-                <p className="text-xs text-slate-400 mb-4">
+                <p className="text-xs text-muted-foreground mb-4">
                   Map form fields to deal attributes. Mapped fields will populate the deal automatically.
                 </p>
 
@@ -1062,13 +1062,13 @@ function DealsTab({
                   {formFields.filter(f => f.is_visible).map((field) => (
                     <div
                       key={field.id}
-                      className="flex items-center gap-3 p-3 bg-slate-900/50 rounded-lg"
+                      className="flex items-center gap-3 p-3 bg-background/50 rounded-lg"
                     >
                       <div className="flex-1">
-                        <div className="text-sm text-white">{field.name}</div>
-                        <div className="text-xs text-slate-500">{field.field_key}</div>
+                        <div className="text-sm text-foreground">{field.name}</div>
+                        <div className="text-xs text-muted-foreground">{field.field_key}</div>
                       </div>
-                      <div className="text-slate-500">→</div>
+                      <div className="text-muted-foreground">→</div>
                       <div className="flex-1">
                         <select
                           value={localConfig.deal_field_mappings[field.field_key] || ""}
@@ -1079,7 +1079,7 @@ function DealsTab({
                               removeFieldMapping(field.field_key);
                             }
                           }}
-                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
+                          className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm"
                         >
                           <option value="">Don't map</option>
                           {DEAL_FIELDS.map((dealField) => (
@@ -1093,13 +1093,13 @@ function DealsTab({
                   ))}
                 </div>
 
-                <div className="mt-4 text-xs text-slate-400">
+                <div className="mt-4 text-xs text-muted-foreground">
                   {Object.keys(localConfig.deal_field_mappings).length} of {formFields.filter(f => f.is_visible).length} fields mapped
                 </div>
               </div>
             )}
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
+            <div className="flex justify-end gap-3 pt-4 border-t border-border">
               {config?.auto_create_deal && (
                 <button
                   onClick={handleDisable}
@@ -1152,26 +1152,26 @@ function AutomationsTab({
   };
 
   if (isLoading) {
-    return <div className="text-slate-400">Loading automations...</div>;
+    return <div className="text-muted-foreground">Loading automations...</div>;
   }
 
   return (
     <div className="space-y-6">
-      <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+      <div className="bg-muted/50 border border-border rounded-xl p-6">
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2 rounded-lg bg-purple-500/20">
             <Zap className="h-5 w-5 text-purple-400" />
           </div>
           <div>
-            <h3 className="text-white font-medium">Linked Automations</h3>
-            <p className="text-sm text-slate-400">
+            <h3 className="text-foreground font-medium">Linked Automations</h3>
+            <p className="text-sm text-muted-foreground">
               Automations that trigger when this form is submitted
             </p>
           </div>
         </div>
 
         {linkedAutomations.length === 0 ? (
-          <div className="text-center py-8 text-slate-400">
+          <div className="text-center py-8 text-muted-foreground">
             No automations linked yet. Link an automation below.
           </div>
         ) : (
@@ -1179,24 +1179,24 @@ function AutomationsTab({
             {linkedAutomations.map((link) => (
               <div
                 key={link.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-900/50 rounded-lg border border-slate-700"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-background/50 rounded-lg border border-border"
               >
                 <div className="flex items-center gap-3">
                   <Link2 className="h-4 w-4 text-purple-400" />
-                  <span className="text-white">{link.automation_name || link.automation_id}</span>
+                  <span className="text-foreground">{link.automation_name || link.automation_id}</span>
                   {link.is_active ? (
-                    <span className="text-xs text-green-400 bg-green-900/30 px-2 py-0.5 rounded">
+                    <span className="text-xs text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded">
                       Active
                     </span>
                   ) : (
-                    <span className="text-xs text-slate-400 bg-slate-700 px-2 py-0.5 rounded">
+                    <span className="text-xs text-muted-foreground bg-accent px-2 py-0.5 rounded">
                       Inactive
                     </span>
                   )}
                 </div>
                 <button
                   onClick={() => handleUnlink(link.automation_id)}
-                  className="text-slate-400 hover:text-red-400 transition"
+                  className="text-muted-foreground hover:text-red-400 transition"
                 >
                   <Unlink className="h-4 w-4" />
                 </button>
@@ -1207,17 +1207,17 @@ function AutomationsTab({
       </div>
 
       {availableAutomations.length > 0 && (
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-          <h3 className="text-white font-medium mb-4">Available Automations</h3>
+        <div className="bg-muted/50 border border-border rounded-xl p-6">
+          <h3 className="text-foreground font-medium mb-4">Available Automations</h3>
           <div className="space-y-3">
             {availableAutomations.map((automation) => (
               <div
                 key={automation.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-900/50 rounded-lg border border-slate-700"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-background/50 rounded-lg border border-border"
               >
                 <div>
-                  <span className="text-white">{automation.name}</span>
-                  <p className="text-sm text-slate-400">{automation.trigger_type}</p>
+                  <span className="text-foreground">{automation.name}</span>
+                  <p className="text-sm text-muted-foreground">{automation.trigger_type}</p>
                 </div>
                 <button
                   onClick={() => handleLink(automation.id)}
@@ -1252,63 +1252,63 @@ function SubmissionsTab({
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
-        return "bg-green-900/30 text-green-400";
+        return "bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400";
       case "pending":
-        return "bg-yellow-900/30 text-yellow-400";
+        return "bg-yellow-50 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400";
       case "processing":
-        return "bg-blue-900/30 text-blue-400";
+        return "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400";
       case "failed":
-        return "bg-red-900/30 text-red-400";
+        return "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400";
       default:
-        return "bg-slate-700 text-slate-400";
+        return "bg-accent text-muted-foreground";
     }
   };
 
   if (isLoading) {
-    return <div className="text-slate-400">Loading submissions...</div>;
+    return <div className="text-muted-foreground">Loading submissions...</div>;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h3 className="text-white font-medium">Submissions ({submissions.length})</h3>
+        <h3 className="text-foreground font-medium">Submissions ({submissions.length})</h3>
         <button
           onClick={() => refetch()}
-          className="text-sm text-slate-400 hover:text-white transition"
+          className="text-sm text-muted-foreground hover:text-foreground transition"
         >
           Refresh
         </button>
       </div>
 
       {submissions.length === 0 ? (
-        <div className="text-center py-16 bg-slate-800/50 border border-slate-700 rounded-xl">
-          <FileText className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">No submissions yet</h3>
-          <p className="text-slate-400">Share your form to start collecting responses</p>
+        <div className="text-center py-16 bg-muted/50 border border-border rounded-xl">
+          <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-foreground mb-2">No submissions yet</h3>
+          <p className="text-muted-foreground">Share your form to start collecting responses</p>
         </div>
       ) : (
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden overflow-x-auto">
+        <div className="bg-muted/50 border border-border rounded-xl overflow-hidden overflow-x-auto">
           <table className="w-full min-w-[600px]">
-            <thead className="bg-slate-900/50">
+            <thead className="bg-background/50">
               <tr>
-                <th className="text-left px-4 py-3 text-sm font-medium text-slate-400">Email</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-slate-400">Name</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-slate-400">Status</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-slate-400">Created</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-slate-400">Actions</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Email</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Name</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Status</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Created</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-700">
+            <tbody className="divide-y divide-border">
               {submissions.map((submission) => (
-                <tr key={submission.id} className="hover:bg-slate-700/30 transition">
-                  <td className="px-4 py-3 text-white">{submission.email || "-"}</td>
-                  <td className="px-4 py-3 text-slate-300">{submission.name || "-"}</td>
+                <tr key={submission.id} className="hover:bg-accent/30 transition">
+                  <td className="px-4 py-3 text-foreground">{submission.email || "-"}</td>
+                  <td className="px-4 py-3 text-foreground">{submission.name || "-"}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(submission.status)}`}>
                       {submission.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-slate-400">
+                  <td className="px-4 py-3 text-sm text-muted-foreground">
                     {formatDate(submission.submitted_at)}
                   </td>
                   <td className="px-4 py-3">
@@ -1408,19 +1408,19 @@ export default function FormEditorPage() {
 
   if (!workspaceId) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <p className="text-slate-400">No workspace selected</p>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">No workspace selected</p>
       </div>
     );
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen bg-background">
 <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-slate-800 rounded w-1/4"></div>
-            <div className="h-64 bg-slate-800 rounded"></div>
+            <div className="h-8 bg-muted rounded w-1/4"></div>
+            <div className="h-64 bg-muted rounded"></div>
           </div>
         </div>
       </div>
@@ -1429,7 +1429,7 @@ export default function FormEditorPage() {
 
   if (error || !form) {
     return (
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen bg-background">
 <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="text-center py-16">
             <p className="text-red-400">Failed to load form</p>
@@ -1460,13 +1460,13 @@ export default function FormEditorPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
 <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
           <button
             onClick={() => router.push("/forms")}
-            className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition"
+            className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
@@ -1475,37 +1475,37 @@ export default function FormEditorPage() {
               type="text"
               value={localFormName}
               onChange={(e) => setLocalFormName(e.target.value)}
-              className="text-2xl font-bold text-white bg-transparent border-none focus:outline-none focus:ring-0 w-full"
+              className="text-2xl font-bold text-foreground bg-transparent border-none focus:outline-none focus:ring-0 w-full"
               placeholder="Form Name"
             />
             <input
               type="text"
               value={localFormDescription}
               onChange={(e) => setLocalFormDescription(e.target.value)}
-              className="text-sm text-slate-400 bg-transparent border-none focus:outline-none focus:ring-0 w-full mt-1"
+              className="text-sm text-muted-foreground bg-transparent border-none focus:outline-none focus:ring-0 w-full mt-1"
               placeholder="Add a description..."
             />
           </div>
           <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 text-sm text-slate-400">
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
               <input
                 type="checkbox"
                 checked={isActive}
                 onChange={(e) => setIsActive(e.target.checked)}
-                className="rounded border-slate-600 bg-slate-800 text-purple-500 focus:ring-purple-500"
+                className="rounded border-border bg-muted text-purple-500 focus:ring-purple-500"
               />
               Active
             </label>
             <button
               onClick={handleCopyLink}
-              className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition"
+              className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition"
               title="Copy public link"
             >
               <Copy className="h-5 w-5" />
             </button>
             <button
               onClick={() => window.open(publicUrl, "_blank")}
-              className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition"
+              className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition"
               title="Preview form"
             >
               <ExternalLink className="h-5 w-5" />
@@ -1524,19 +1524,19 @@ export default function FormEditorPage() {
         {/* Destination indicators */}
         <div className="flex items-center gap-2 mb-6">
           {form.auto_create_ticket && (
-            <div className="flex items-center gap-1 px-3 py-1 bg-blue-900/20 rounded-full text-sm text-blue-400">
+            <div className="flex items-center gap-1 px-3 py-1 bg-blue-50 dark:bg-blue-900/20 rounded-full text-sm text-blue-600 dark:text-blue-400">
               <Ticket className="h-3 w-3" />
               Creates Tickets
             </div>
           )}
           {form.auto_create_record && (
-            <div className="flex items-center gap-1 px-3 py-1 bg-green-900/20 rounded-full text-sm text-green-400">
+            <div className="flex items-center gap-1 px-3 py-1 bg-green-50 dark:bg-green-900/20 rounded-full text-sm text-green-600 dark:text-green-400">
               <Users className="h-3 w-3" />
               Creates {form.crm_object_name || "CRM Records"}
             </div>
           )}
           {form.auto_create_deal && (
-            <div className="flex items-center gap-1 px-3 py-1 bg-orange-900/20 rounded-full text-sm text-orange-400">
+            <div className="flex items-center gap-1 px-3 py-1 bg-orange-50 dark:bg-orange-900/20 rounded-full text-sm text-orange-600 dark:text-orange-400">
               <DollarSign className="h-3 w-3" />
               Creates Deals
             </div>
@@ -1544,15 +1544,15 @@ export default function FormEditorPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-1 p-1 bg-slate-800/50 border border-slate-700 rounded-xl mb-6 overflow-x-auto">
+        <div className="flex items-center gap-1 p-1 bg-muted/50 border border-border rounded-xl mb-6 overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap ${
                 activeTab === tab.id
-                  ? "bg-slate-700 text-white"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-accent text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {tab.icon}
@@ -1565,7 +1565,7 @@ export default function FormEditorPage() {
         {activeTab === "fields" && (
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <h3 className="text-white font-medium">Form Fields ({form.fields?.length || 0})</h3>
+              <h3 className="text-foreground font-medium">Form Fields ({form.fields?.length || 0})</h3>
               <button
                 onClick={handleAddField}
                 disabled={isFieldOperating}
@@ -1577,10 +1577,10 @@ export default function FormEditorPage() {
             </div>
 
             {!form.fields || form.fields.length === 0 ? (
-              <div className="text-center py-16 bg-slate-800/50 border border-slate-700 rounded-xl">
-                <FileText className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-white mb-2">No fields yet</h3>
-                <p className="text-slate-400 mb-4">Add fields to build your form</p>
+              <div className="text-center py-16 bg-muted/50 border border-border rounded-xl">
+                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">No fields yet</h3>
+                <p className="text-muted-foreground mb-4">Add fields to build your form</p>
                 <button
                   onClick={handleAddField}
                   className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition inline-flex items-center gap-2"
@@ -1650,11 +1650,11 @@ export default function FormEditorPage() {
         )}
 
         {activeTab === "settings" && (
-          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-            <h3 className="text-white font-medium mb-4">Form Settings</h3>
+          <div className="bg-muted/50 border border-border rounded-xl p-6">
+            <h3 className="text-foreground font-medium mb-4">Form Settings</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Public Form URL
                 </label>
                 <div className="flex items-center gap-2">
@@ -1662,11 +1662,11 @@ export default function FormEditorPage() {
                     type="text"
                     value={publicUrl}
                     readOnly
-                    className="flex-1 px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-400"
+                    className="flex-1 px-4 py-2 bg-background border border-border rounded-lg text-muted-foreground"
                   />
                   <button
                     onClick={handleCopyLink}
-                    className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition"
+                    className="px-4 py-2 bg-accent text-foreground rounded-lg hover:bg-muted transition"
                   >
                     Copy
                   </button>
@@ -1674,19 +1674,19 @@ export default function FormEditorPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Success Message
                 </label>
                 <textarea
                   value={form.success_message || ""}
                   onChange={(e) => updateForm({ success_message: e.target.value })}
                   placeholder="Thank you for your submission!"
-                  className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 h-24 resize-none"
+                  className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground h-24 resize-none"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Redirect URL (optional)
                 </label>
                 <input
@@ -1694,7 +1694,7 @@ export default function FormEditorPage() {
                   value={form.redirect_url || ""}
                   onChange={(e) => updateForm({ redirect_url: e.target.value })}
                   placeholder="https://example.com/thank-you"
-                  className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400"
+                  className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground"
                 />
               </div>
             </div>

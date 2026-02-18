@@ -128,18 +128,18 @@ export function DocumentSidebar({
   const filteredTree = documentTree ? filterDocuments(documentTree) : [];
 
   return (
-    <div className="flex flex-col h-full bg-slate-900/50 border-r border-slate-800/50">
+    <div className="flex flex-col h-full bg-background/50 border-r border-border/50">
       {/* Header */}
-      <div className="p-4 border-b border-slate-800/50">
+      <div className="p-4 border-b border-border/50">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-primary-500"></div>
-            <h2 className="text-sm font-semibold text-slate-200">Documents</h2>
+            <h2 className="text-sm font-semibold text-foreground">Documents</h2>
           </div>
           <button
             onClick={() => handleCreateDocument()}
             disabled={isCreating}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 transition-all disabled:opacity-50"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-foreground hover:text-foreground bg-muted/50 hover:bg-accent/50 border border-border/50 transition-all disabled:opacity-50"
             title="New Document"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -151,7 +151,7 @@ export function DocumentSidebar({
         <div className="relative">
           <Search className={cn(
             "absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors",
-            isSearchFocused ? "text-primary-400" : "text-slate-500"
+            isSearchFocused ? "text-primary-400" : "text-muted-foreground"
           )} />
           <input
             type="text"
@@ -161,16 +161,16 @@ export function DocumentSidebar({
             onFocus={() => setIsSearchFocused(true)}
             onBlur={() => setIsSearchFocused(false)}
             className={cn(
-              "w-full pl-9 pr-8 py-2.5 bg-slate-800/50 border rounded-xl text-sm text-white placeholder-slate-500 transition-all",
+              "w-full pl-9 pr-8 py-2.5 bg-muted/50 border rounded-xl text-sm text-foreground placeholder-muted-foreground transition-all",
               isSearchFocused
                 ? "border-primary-500/50 ring-2 ring-primary-500/20"
-                : "border-slate-700/50 hover:border-slate-600/50"
+                : "border-border/50 hover:border-border/50"
             )}
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
@@ -179,28 +179,28 @@ export function DocumentSidebar({
       </div>
 
       {/* Document Tree */}
-      <div className="flex-1 overflow-auto p-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+      <div className="flex-1 overflow-auto p-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
         {isLoadingTree ? (
           <div className="flex flex-col items-center justify-center py-12">
             <div className="relative mb-3">
               <div className="w-8 h-8 border-3 border-primary-500/20 rounded-full"></div>
               <div className="w-8 h-8 border-3 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
             </div>
-            <p className="text-xs text-slate-500">Loading documents...</p>
+            <p className="text-xs text-muted-foreground">Loading documents...</p>
           </div>
         ) : filteredTree.length === 0 ? (
           <div className="text-center py-12 px-4">
-            <div className="w-14 h-14 bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <div className="w-14 h-14 bg-gradient-to-br from-muted to-accent rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
               {searchQuery ? (
-                <Search className="h-6 w-6 text-slate-400" />
+                <Search className="h-6 w-6 text-muted-foreground" />
               ) : (
                 <Sparkles className="h-6 w-6 text-primary-400" />
               )}
             </div>
-            <p className="text-sm font-medium text-slate-300 mb-1">
+            <p className="text-sm font-medium text-foreground mb-1">
               {searchQuery ? "No results found" : "No documents yet"}
             </p>
-            <p className="text-xs text-slate-500 mb-4">
+            <p className="text-xs text-muted-foreground mb-4">
               {searchQuery
                 ? "Try a different search term"
                 : "Create your first document to get started"}
@@ -209,7 +209,7 @@ export function DocumentSidebar({
               <button
                 onClick={() => handleCreateDocument()}
                 disabled={isCreating}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-500 rounded-lg transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-foreground bg-primary-600 hover:bg-primary-500 rounded-lg transition-colors disabled:opacity-50"
               >
                 <Plus className="h-4 w-4" />
                 Create document
@@ -239,8 +239,8 @@ export function DocumentSidebar({
 
       {/* Footer with count */}
       {documentTree && documentTree.length > 0 && (
-        <div className="px-4 py-3 border-t border-slate-800/50">
-          <p className="text-xs text-slate-500">
+        <div className="px-4 py-3 border-t border-border/50">
+          <p className="text-xs text-muted-foreground">
             {documentTree.length} document{documentTree.length !== 1 ? "s" : ""}
           </p>
         </div>
@@ -287,7 +287,7 @@ function DocumentTreeNode({
     const parts = text.split(regex);
     return parts.map((part, i) =>
       regex.test(part) ? (
-        <span key={i} className="bg-primary-500/30 text-primary-300 rounded px-0.5">
+        <span key={i} className="bg-primary-500/20 text-primary-700 dark:text-primary-300 rounded px-0.5">
           {part}
         </span>
       ) : (
@@ -302,8 +302,8 @@ function DocumentTreeNode({
         className={cn(
           "group flex items-center gap-1.5 px-2 py-2 rounded-lg cursor-pointer transition-all duration-150",
           isSelected
-            ? "bg-primary-600/20 text-white border border-primary-500/30"
-            : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 border border-transparent"
+            ? "bg-primary-600/20 text-foreground border border-primary-500/30"
+            : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border border-transparent"
         )}
         style={{ paddingLeft: `${level * 16 + 8}px` }}
         onClick={() => onSelect(item.id)}
@@ -319,7 +319,7 @@ function DocumentTreeNode({
           className={cn(
             "p-0.5 rounded transition-all duration-150",
             hasChildren
-              ? "hover:bg-slate-700/50 text-slate-500 hover:text-slate-300"
+              ? "hover:bg-accent/50 text-muted-foreground hover:text-foreground"
               : "invisible"
           )}
         >
@@ -336,7 +336,7 @@ function DocumentTreeNode({
           {item.icon || (
             <FileText className={cn(
               "h-4 w-4",
-              isSelected ? "text-primary-400" : "text-slate-500"
+              isSelected ? "text-primary-400" : "text-muted-foreground"
             )} />
           )}
         </span>
@@ -344,7 +344,7 @@ function DocumentTreeNode({
         {/* Title */}
         <span className={cn(
           "flex-1 text-sm truncate font-medium",
-          isSelected && "text-white"
+          isSelected && "text-foreground"
         )}>
           {highlightMatch(item.title || "Untitled")}
         </span>
@@ -359,7 +359,7 @@ function DocumentTreeNode({
               e.stopPropagation();
               setShowMenu(!showMenu);
             }}
-            className="p-1 rounded-md hover:bg-slate-700/50 text-slate-500 hover:text-slate-300 transition-colors"
+            className="p-1 rounded-md hover:bg-accent/50 text-muted-foreground hover:text-foreground transition-colors"
           >
             <MoreHorizontal className="h-4 w-4" />
           </button>
@@ -370,16 +370,16 @@ function DocumentTreeNode({
                 className="fixed inset-0 z-40"
                 onClick={() => setShowMenu(false)}
               />
-              <div className="absolute right-0 top-full mt-1 w-44 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-50 py-1.5 overflow-hidden">
+              <div className="absolute right-0 top-full mt-1 w-44 bg-muted border border-border rounded-xl shadow-xl z-50 py-1.5 overflow-hidden">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onCreateChild(item.id);
                     setShowMenu(false);
                   }}
-                  className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-slate-300 hover:bg-slate-700/50 hover:text-white transition-colors"
+                  className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-foreground hover:bg-accent/50 hover:text-foreground transition-colors"
                 >
-                  <FolderPlus className="h-4 w-4 text-slate-400" />
+                  <FolderPlus className="h-4 w-4 text-muted-foreground" />
                   Add subpage
                 </button>
                 <button
@@ -388,12 +388,12 @@ function DocumentTreeNode({
                     onDuplicate(item.id);
                     setShowMenu(false);
                   }}
-                  className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-slate-300 hover:bg-slate-700/50 hover:text-white transition-colors"
+                  className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-foreground hover:bg-accent/50 hover:text-foreground transition-colors"
                 >
-                  <Copy className="h-4 w-4 text-slate-400" />
+                  <Copy className="h-4 w-4 text-muted-foreground" />
                   Duplicate
                 </button>
-                <div className="border-t border-slate-700 my-1.5" />
+                <div className="border-t border-border my-1.5" />
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -416,7 +416,7 @@ function DocumentTreeNode({
         <div className="relative">
           {/* Indent line */}
           <div
-            className="absolute left-0 top-0 bottom-0 w-px bg-slate-800"
+            className="absolute left-0 top-0 bottom-0 w-px bg-muted"
             style={{ left: `${level * 16 + 18}px` }}
           />
           {item.children.map((child) => (

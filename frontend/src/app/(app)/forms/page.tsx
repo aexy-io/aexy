@@ -32,13 +32,13 @@ import { useForms, useFormTemplates } from "@/hooks/useForms";
 import type { FormListItem, FormTemplateType } from "@/lib/formsApi";
 
 const TEMPLATE_LABELS: Record<FormTemplateType, { label: string; color: string; bg: string }> = {
-  bug_report: { label: "Bug Report", color: "text-red-400", bg: "bg-red-900/30" },
-  feature_request: { label: "Feature Request", color: "text-blue-400", bg: "bg-blue-900/30" },
-  support: { label: "Support", color: "text-purple-400", bg: "bg-purple-900/30" },
-  contact: { label: "Contact", color: "text-green-400", bg: "bg-green-900/30" },
-  lead_capture: { label: "Lead Capture", color: "text-orange-400", bg: "bg-orange-900/30" },
-  feedback: { label: "Feedback", color: "text-cyan-400", bg: "bg-cyan-900/30" },
-  custom: { label: "Custom", color: "text-slate-400", bg: "bg-slate-700" },
+  bug_report: { label: "Bug Report", color: "text-red-600 dark:text-red-400", bg: "bg-red-50 dark:bg-red-900/30" },
+  feature_request: { label: "Feature Request", color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-900/30" },
+  support: { label: "Support", color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-900/30" },
+  contact: { label: "Contact", color: "text-green-600 dark:text-green-400", bg: "bg-green-50 dark:bg-green-900/30" },
+  lead_capture: { label: "Lead Capture", color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-50 dark:bg-orange-900/30" },
+  feedback: { label: "Feedback", color: "text-cyan-600 dark:text-cyan-400", bg: "bg-cyan-50 dark:bg-cyan-900/30" },
+  custom: { label: "Custom", color: "text-muted-foreground", bg: "bg-accent" },
 };
 
 function FormCard({
@@ -71,15 +71,15 @@ function FormCard({
   return (
     <div
       onClick={onEdit}
-      className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 hover:border-purple-500/50 transition-colors cursor-pointer group"
+      className="bg-muted/50 border border-border rounded-xl p-5 hover:border-purple-500/50 transition-colors cursor-pointer group"
     >
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${form.is_active ? "bg-purple-500/20 text-purple-400" : "bg-slate-700 text-slate-400"}`}>
+          <div className={`p-2 rounded-lg ${form.is_active ? "bg-purple-500/20 text-purple-400" : "bg-accent text-muted-foreground"}`}>
             <FileText className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-white font-medium group-hover:text-purple-400 transition-colors">
+            <h3 className="text-foreground font-medium group-hover:text-purple-400 transition-colors">
               {form.name}
             </h3>
             <div className="flex items-center gap-2 mt-1">
@@ -91,7 +91,7 @@ function FormCard({
                   <CheckCircle className="h-3 w-3" /> Active
                 </span>
               ) : (
-                <span className="flex items-center gap-1 text-xs text-slate-400">
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <XCircle className="h-3 w-3" /> Inactive
                 </span>
               )}
@@ -101,21 +101,21 @@ function FormCard({
         <div className="relative" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className="p-2 rounded-lg bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white transition-colors"
+            className="p-2 rounded-lg bg-accent text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
             <MoreHorizontal className="h-4 w-4" />
           </button>
           {showMenu && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-              <div className="absolute right-0 top-10 z-20 w-52 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1">
+              <div className="absolute right-0 top-10 z-20 w-52 bg-muted border border-border rounded-lg shadow-xl py-1">
                 {/* View & Edit Section */}
                 <button
                   onClick={() => {
                     onEdit();
                     setShowMenu(false);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2"
+                  className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                 >
                   <Edit2 className="h-4 w-4" /> Edit Form
                 </button>
@@ -124,7 +124,7 @@ function FormCard({
                     onViewSubmissions();
                     setShowMenu(false);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2"
+                  className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                 >
                   <BarChart3 className="h-4 w-4" /> View Submissions
                   {form.submission_count > 0 && (
@@ -138,12 +138,12 @@ function FormCard({
                     window.open(publicUrl, "_blank");
                     setShowMenu(false);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2"
+                  className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                 >
                   <Eye className="h-4 w-4" /> Preview Form
                 </button>
 
-                <div className="border-t border-slate-700 my-1" />
+                <div className="border-t border-border my-1" />
 
                 {/* Share Section */}
                 <button
@@ -151,7 +151,7 @@ function FormCard({
                     onCopyLink();
                     setShowMenu(false);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2"
+                  className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                 >
                   <Copy className="h-4 w-4" /> Copy Link
                 </button>
@@ -160,7 +160,7 @@ function FormCard({
                     onCopyEmbed();
                     setShowMenu(false);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2"
+                  className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                 >
                   <Code className="h-4 w-4" /> Copy Embed Code
                 </button>
@@ -169,12 +169,12 @@ function FormCard({
                     window.open(publicUrl, "_blank");
                     setShowMenu(false);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2"
+                  className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                 >
                   <ExternalLink className="h-4 w-4" /> Open in New Tab
                 </button>
 
-                <div className="border-t border-slate-700 my-1" />
+                <div className="border-t border-border my-1" />
 
                 {/* Actions Section */}
                 <button
@@ -182,7 +182,7 @@ function FormCard({
                     onToggleActive();
                     setShowMenu(false);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2"
+                  className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                 >
                   <Power className="h-4 w-4" />
                   {form.is_active ? "Deactivate Form" : "Activate Form"}
@@ -192,12 +192,12 @@ function FormCard({
                     onDuplicate();
                     setShowMenu(false);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2"
+                  className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                 >
                   <Copy className="h-4 w-4" /> Duplicate Form
                 </button>
 
-                <div className="border-t border-slate-700 my-1" />
+                <div className="border-t border-border my-1" />
 
                 {/* Danger Zone */}
                 <button
@@ -205,7 +205,7 @@ function FormCard({
                     onDelete();
                     setShowMenu(false);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-900/20 flex items-center gap-2"
+                  className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
                 >
                   <Trash2 className="h-4 w-4" /> Delete Form
                 </button>
@@ -216,12 +216,12 @@ function FormCard({
       </div>
 
       {form.description && (
-        <p className="text-sm text-slate-400 mb-3 line-clamp-2">{form.description}</p>
+        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{form.description}</p>
       )}
 
       {/* Submission Count - Prominent Display */}
       <div className="flex items-center gap-3 mb-3">
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-900/20 rounded-lg">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
           <Send className="h-4 w-4 text-purple-400" />
           <span className="text-lg font-semibold text-purple-400">{form.submission_count}</span>
           <span className="text-xs text-purple-400/70">submissions</span>
@@ -231,19 +231,19 @@ function FormCard({
       {/* Destination indicators */}
       <div className="flex items-center gap-2 mb-3">
         {form.auto_create_ticket && (
-          <div className="flex items-center gap-1 px-2 py-1 bg-blue-900/20 rounded text-xs text-blue-400">
+          <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/20 rounded text-xs text-blue-600 dark:text-blue-400">
             <Ticket className="h-3 w-3" />
             Tickets
           </div>
         )}
         {form.auto_create_record && (
-          <div className="flex items-center gap-1 px-2 py-1 bg-green-900/20 rounded text-xs text-green-400">
+          <div className="flex items-center gap-1 px-2 py-1 bg-green-50 dark:bg-green-900/20 rounded text-xs text-green-600 dark:text-green-400">
             <Users className="h-3 w-3" />
             CRM
           </div>
         )}
         {form.auto_create_deal && (
-          <div className="flex items-center gap-1 px-2 py-1 bg-orange-900/20 rounded text-xs text-orange-400">
+          <div className="flex items-center gap-1 px-2 py-1 bg-orange-50 dark:bg-orange-900/20 rounded text-xs text-orange-600 dark:text-orange-400">
             <DollarSign className="h-3 w-3" />
             Deals
           </div>
@@ -251,7 +251,7 @@ function FormCard({
       </div>
 
       {/* Stats */}
-      <div className="flex items-center gap-4 text-xs text-slate-500 pt-3 border-t border-slate-700">
+      <div className="flex items-center gap-4 text-xs text-muted-foreground pt-3 border-t border-border">
         <span className="flex items-center gap-1">
           <Clock className="h-3 w-3" />
           Created {new Date(form.created_at).toLocaleDateString()}
@@ -297,38 +297,38 @@ function CreateFormModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
-        <div className="p-6 border-b border-slate-700">
-          <h2 className="text-xl font-bold text-white">Create New Form</h2>
-          <p className="text-sm text-slate-400 mt-1">Choose a template or start from scratch</p>
+      <div className="bg-background border border-border rounded-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
+        <div className="p-6 border-b border-border">
+          <h2 className="text-xl font-bold text-foreground">Create New Form</h2>
+          <p className="text-sm text-muted-foreground mt-1">Choose a template or start from scratch</p>
         </div>
 
         <div className="p-6 overflow-y-auto max-h-[50vh]">
           <div className="mb-4">
-            <label className="block text-sm font-medium text-slate-300 mb-2">Form Name (optional)</label>
+            <label className="block text-sm font-medium text-foreground mb-2">Form Name (optional)</label>
             <input
               type="text"
               value={formName}
               onChange={(e) => setFormName(e.target.value)}
               placeholder="My New Form"
-              className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium text-slate-300 mb-2">Template</label>
+            <label className="block text-sm font-medium text-foreground mb-2">Template</label>
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => setSelectedTemplate(null)}
                 className={`p-4 rounded-lg border text-left transition ${
                   selectedTemplate === null
                     ? "border-purple-500 bg-purple-500/10"
-                    : "border-slate-700 bg-slate-800 hover:border-slate-600"
+                    : "border-border bg-muted hover:border-border"
                 }`}
               >
-                <LayoutTemplate className="h-5 w-5 text-slate-400 mb-2" />
-                <div className="text-sm font-medium text-white">Blank Form</div>
-                <div className="text-xs text-slate-400">Start from scratch</div>
+                <LayoutTemplate className="h-5 w-5 text-muted-foreground mb-2" />
+                <div className="text-sm font-medium text-foreground">Blank Form</div>
+                <div className="text-xs text-muted-foreground">Start from scratch</div>
               </button>
               {Object.entries(templates).map(([key, template]) => {
                 const templateType = key as FormTemplateType;
@@ -340,14 +340,14 @@ function CreateFormModal({
                     className={`p-4 rounded-lg border text-left transition ${
                       selectedTemplate === templateType
                         ? "border-purple-500 bg-purple-500/10"
-                        : "border-slate-700 bg-slate-800 hover:border-slate-600"
+                        : "border-border bg-muted hover:border-border"
                     }`}
                   >
                     <div className={`h-5 w-5 rounded ${info.bg} ${info.color} flex items-center justify-center text-xs font-bold mb-2`}>
                       {template.name.charAt(0)}
                     </div>
-                    <div className="text-sm font-medium text-white">{template.name}</div>
-                    <div className="text-xs text-slate-400 line-clamp-1">{template.description}</div>
+                    <div className="text-sm font-medium text-foreground">{template.name}</div>
+                    <div className="text-xs text-muted-foreground line-clamp-1">{template.description}</div>
                   </button>
                 );
               })}
@@ -355,10 +355,10 @@ function CreateFormModal({
           </div>
         </div>
 
-        <div className="p-6 border-t border-slate-700 flex justify-end gap-3">
+        <div className="p-6 border-t border-border flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-slate-300 hover:text-white transition"
+            className="px-4 py-2 text-foreground hover:text-foreground transition"
           >
             Cancel
           </button>
@@ -464,17 +464,17 @@ export default function FormsPage() {
   const formsWithCRM = forms.filter(f => f.auto_create_record).length;
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
 <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+              <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
                 <FileText className="h-8 w-8 text-purple-400" />
                 Forms
               </h1>
-              <p className="text-slate-400 mt-2">
+              <p className="text-muted-foreground mt-2">
                 Create forms that connect to Tickets, CRM, and Deals
               </p>
             </div>
@@ -490,70 +490,70 @@ export default function FormsPage() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+          <div className="bg-muted rounded-xl p-4 border border-border">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-purple-900/30">
+              <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
                 <FileText className="h-5 w-5 text-purple-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">{activeFormsCount}</p>
-                <p className="text-sm text-slate-400">Active Forms</p>
+                <p className="text-2xl font-bold text-foreground">{activeFormsCount}</p>
+                <p className="text-sm text-muted-foreground">Active Forms</p>
               </div>
             </div>
           </div>
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+          <div className="bg-muted rounded-xl p-4 border border-border">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-900/30">
+              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
                 <Zap className="h-5 w-5 text-blue-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">{totalSubmissions}</p>
-                <p className="text-sm text-slate-400">Total Submissions</p>
+                <p className="text-2xl font-bold text-foreground">{totalSubmissions}</p>
+                <p className="text-sm text-muted-foreground">Total Submissions</p>
               </div>
             </div>
           </div>
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+          <div className="bg-muted rounded-xl p-4 border border-border">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-900/30">
+              <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
                 <Ticket className="h-5 w-5 text-green-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">{formsWithTickets}</p>
-                <p className="text-sm text-slate-400">Ticket Forms</p>
+                <p className="text-2xl font-bold text-foreground">{formsWithTickets}</p>
+                <p className="text-sm text-muted-foreground">Ticket Forms</p>
               </div>
             </div>
           </div>
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+          <div className="bg-muted rounded-xl p-4 border border-border">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-orange-900/30">
+              <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30">
                 <Users className="h-5 w-5 text-orange-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">{formsWithCRM}</p>
-                <p className="text-sm text-slate-400">CRM Forms</p>
+                <p className="text-2xl font-bold text-foreground">{formsWithCRM}</p>
+                <p className="text-sm text-muted-foreground">CRM Forms</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 mb-6">
+        <div className="bg-muted rounded-xl border border-border p-4 mb-6">
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex-1 min-w-[200px]">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
                   type="text"
                   placeholder="Search forms..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-slate-400" />
-              <span className="text-sm text-slate-400">Status:</span>
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Status:</span>
               <div className="flex gap-1">
                 {(["all", "active", "inactive"] as const).map((status) => (
                   <button
@@ -562,7 +562,7 @@ export default function FormsPage() {
                     className={`px-3 py-1 rounded text-xs font-medium transition ${
                       statusFilter === status
                         ? "bg-purple-500/30 text-purple-400"
-                        : "bg-slate-700 text-slate-400 hover:bg-slate-600"
+                        : "bg-accent text-muted-foreground hover:bg-muted"
                     }`}
                   >
                     {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -577,16 +577,16 @@ export default function FormsPage() {
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-48 bg-slate-800/50 rounded-xl animate-pulse" />
+              <div key={i} className="h-48 bg-muted/50 rounded-xl animate-pulse" />
             ))}
           </div>
         ) : filteredForms.length === 0 ? (
-          <div className="text-center py-16 bg-slate-800 rounded-xl border border-slate-700">
-            <FileText className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-white mb-2">
+          <div className="text-center py-16 bg-muted rounded-xl border border-border">
+            <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">
               {forms.length === 0 ? "No forms yet" : "No forms match your filters"}
             </h3>
-            <p className="text-slate-400 mb-4">
+            <p className="text-muted-foreground mb-4">
               {forms.length === 0
                 ? "Create your first form to start collecting submissions"
                 : "Try adjusting your search or filters"}

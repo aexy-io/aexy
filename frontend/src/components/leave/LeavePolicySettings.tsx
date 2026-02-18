@@ -123,7 +123,7 @@ export function LeavePolicySettings() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 text-slate-400 animate-spin" />
+        <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
       </div>
     );
   }
@@ -133,8 +133,8 @@ export function LeavePolicySettings() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold text-white">Leave Policies</h3>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <h3 className="text-base font-semibold text-foreground">Leave Policies</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
             Define quotas and accrual rules for each leave type
           </p>
         </div>
@@ -149,14 +149,14 @@ export function LeavePolicySettings() {
 
       {/* Form */}
       {showForm && (
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-5">
+        <div className="bg-muted/50 border border-border/50 rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h4 className="text-sm font-semibold text-white">
+            <h4 className="text-sm font-semibold text-foreground">
               {editingId ? "Edit Policy" : "New Policy"}
             </h4>
             <button
               onClick={closeForm}
-              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition"
+              className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition"
             >
               <X className="h-4 w-4" />
             </button>
@@ -164,7 +164,7 @@ export function LeavePolicySettings() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">
+                <label className="block text-xs font-medium text-muted-foreground mb-1">
                   Leave Type
                 </label>
                 <select
@@ -172,7 +172,7 @@ export function LeavePolicySettings() {
                   onChange={(e) =>
                     setFormData({ ...formData, leave_type_id: e.target.value })
                   }
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-blue-500/50"
                   required
                 >
                   <option value="" disabled>
@@ -186,7 +186,7 @@ export function LeavePolicySettings() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">
+                <label className="block text-xs font-medium text-muted-foreground mb-1">
                   Annual Quota (days)
                 </label>
                 <input
@@ -199,14 +199,14 @@ export function LeavePolicySettings() {
                       annual_quota: parseInt(e.target.value) || 0,
                     })
                   }
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-blue-500/50"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
                 Accrual Type
               </label>
               <select
@@ -214,7 +214,7 @@ export function LeavePolicySettings() {
                 onChange={(e) =>
                   setFormData({ ...formData, accrual_type: e.target.value })
                 }
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
+                className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-blue-500/50"
               >
                 {ACCRUAL_TYPES.map((type) => (
                   <option key={type.value} value={type.value}>
@@ -234,18 +234,18 @@ export function LeavePolicySettings() {
                     carry_forward_enabled: !formData.carry_forward_enabled,
                   })
                 }
-                className="flex items-center gap-2 text-sm text-slate-300"
+                className="flex items-center gap-2 text-sm text-foreground"
               >
                 {formData.carry_forward_enabled ? (
                   <ToggleRight className="h-5 w-5 text-blue-400" />
                 ) : (
-                  <ToggleLeft className="h-5 w-5 text-slate-500" />
+                  <ToggleLeft className="h-5 w-5 text-muted-foreground" />
                 )}
                 Allow Carry Forward
               </button>
               {formData.carry_forward_enabled && (
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">
                     Max Carry Forward Days
                   </label>
                   <input
@@ -258,7 +258,7 @@ export function LeavePolicySettings() {
                         max_carry_forward_days: parseInt(e.target.value) || 0,
                       })
                     }
-                    className="w-full max-w-[200px] px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
+                    className="w-full max-w-[200px] px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-blue-500/50"
                   />
                 </div>
               )}
@@ -269,7 +269,7 @@ export function LeavePolicySettings() {
               <button
                 type="button"
                 onClick={closeForm}
-                className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition"
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-border text-foreground hover:bg-muted transition"
               >
                 Cancel
               </button>
@@ -291,35 +291,35 @@ export function LeavePolicySettings() {
       )}
 
       {/* Table */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="bg-background border border-border rounded-xl overflow-hidden">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-slate-800">
-              <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wider px-4 py-3">
+            <tr className="border-b border-border">
+              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
                 Leave Type
               </th>
-              <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wider px-4 py-3">
+              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
                 Quota
               </th>
-              <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wider px-4 py-3">
+              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
                 Accrual
               </th>
-              <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wider px-4 py-3">
+              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
                 Carry Forward
               </th>
-              <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wider px-4 py-3">
+              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
                 Status
               </th>
-              <th className="text-right text-xs font-medium text-slate-400 uppercase tracking-wider px-4 py-3">
+              <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800">
+          <tbody className="divide-y divide-border">
             {policies?.map((policy) => (
               <tr
                 key={policy.id}
-                className="hover:bg-slate-800/50 transition"
+                className="hover:bg-muted/50 transition"
               >
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2.5">
@@ -329,18 +329,18 @@ export function LeavePolicySettings() {
                         backgroundColor: policy.leave_type?.color || getLeaveTypeColor(policy.leave_type_id),
                       }}
                     />
-                    <span className="text-sm font-medium text-white">
+                    <span className="text-sm font-medium text-foreground">
                       {policy.leave_type?.name || getLeaveTypeName(policy.leave_type_id)}
                     </span>
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="text-sm text-slate-300">
+                  <span className="text-sm text-foreground">
                     {policy.annual_quota} days/year
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="text-sm text-slate-300 capitalize">
+                  <span className="text-sm text-foreground capitalize">
                     {policy.accrual_type}
                   </span>
                 </td>
@@ -350,15 +350,15 @@ export function LeavePolicySettings() {
                       Up to {policy.max_carry_forward_days} days
                     </span>
                   ) : (
-                    <span className="text-sm text-slate-500">Disabled</span>
+                    <span className="text-sm text-muted-foreground">Disabled</span>
                   )}
                 </td>
                 <td className="px-4 py-3">
                   <span
                     className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                       policy.is_active
-                        ? "bg-emerald-500/10 text-emerald-400"
-                        : "bg-slate-500/10 text-slate-500"
+                        ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+                        : "bg-muted-foreground/10 text-muted-foreground"
                     }`}
                   >
                     {policy.is_active ? "Active" : "Inactive"}
@@ -368,7 +368,7 @@ export function LeavePolicySettings() {
                   <div className="flex items-center justify-end gap-1">
                     <button
                       onClick={() => openEditForm(policy)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition"
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition"
                       title="Edit"
                     >
                       <Pencil className="h-3.5 w-3.5" />
@@ -379,7 +379,7 @@ export function LeavePolicySettings() {
                       className={`p-1.5 rounded-lg transition ${
                         deletingId === policy.id
                           ? "text-red-400 bg-red-500/10"
-                          : "text-slate-400 hover:text-red-400 hover:bg-slate-700"
+                          : "text-muted-foreground hover:text-red-400 hover:bg-accent"
                       }`}
                       title={
                         deletingId === policy.id
@@ -397,7 +397,7 @@ export function LeavePolicySettings() {
               <tr>
                 <td
                   colSpan={6}
-                  className="px-4 py-8 text-center text-sm text-slate-500"
+                  className="px-4 py-8 text-center text-sm text-muted-foreground"
                 >
                   No leave policies configured yet.
                 </td>

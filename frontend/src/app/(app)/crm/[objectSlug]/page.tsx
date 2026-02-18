@@ -66,12 +66,12 @@ function CreateRecordModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-slate-800 rounded-xl p-6 w-full max-w-lg border border-slate-700 max-h-[80vh] overflow-y-auto">
-        <h3 className="text-xl font-semibold text-white mb-4">Create {object.name}</h3>
+      <div className="bg-muted rounded-xl p-6 w-full max-w-lg border border-border max-h-[80vh] overflow-y-auto">
+        <h3 className="text-xl font-semibold text-foreground mb-4">Create {object.name}</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           {editableAttributes.map((attr) => (
             <div key={attr.id}>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 {attr.name}
                 {attr.is_required && <span className="text-red-400 ml-1">*</span>}
               </label>
@@ -82,7 +82,7 @@ function CreateRecordModal({
                   onChange={(e) => setValues({ ...values, [attr.slug]: e.target.value })}
                   required={attr.is_required}
                   placeholder={attr.description || `Enter ${attr.name.toLowerCase()}`}
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               ) : attr.attribute_type === "number" || attr.attribute_type === "currency" ? (
                 <input
@@ -91,7 +91,7 @@ function CreateRecordModal({
                   onChange={(e) => setValues({ ...values, [attr.slug]: parseFloat(e.target.value) || 0 })}
                   required={attr.is_required}
                   placeholder={attr.description || `Enter ${attr.name.toLowerCase()}`}
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               ) : attr.attribute_type === "checkbox" ? (
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -99,16 +99,16 @@ function CreateRecordModal({
                     type="checkbox"
                     checked={!!values[attr.slug]}
                     onChange={(e) => setValues({ ...values, [attr.slug]: e.target.checked })}
-                    className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-purple-500 focus:ring-purple-500"
+                    className="w-4 h-4 rounded border-border bg-accent text-purple-500 focus:ring-purple-500"
                   />
-                  <span className="text-slate-300">{attr.description || "Enabled"}</span>
+                  <span className="text-foreground">{attr.description || "Enabled"}</span>
                 </label>
               ) : attr.attribute_type === "select" || attr.attribute_type === "status" ? (
                 <select
                   value={(values[attr.slug] as string) || ""}
                   onChange={(e) => setValues({ ...values, [attr.slug]: e.target.value })}
                   required={attr.is_required}
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="">Select {attr.name.toLowerCase()}</option>
                   {((attr.config as { options?: { value: string; label: string }[] })?.options || []).map((opt) => (
@@ -123,7 +123,7 @@ function CreateRecordModal({
                   value={(values[attr.slug] as string) || ""}
                   onChange={(e) => setValues({ ...values, [attr.slug]: e.target.value })}
                   required={attr.is_required}
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               ) : (
                 <input
@@ -132,7 +132,7 @@ function CreateRecordModal({
                   onChange={(e) => setValues({ ...values, [attr.slug]: e.target.value })}
                   required={attr.is_required}
                   placeholder={attr.description || `Enter ${attr.name.toLowerCase()}`}
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               )}
             </div>
@@ -141,7 +141,7 @@ function CreateRecordModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors"
+              className="flex-1 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-accent transition-colors"
             >
               Cancel
             </button>
@@ -309,12 +309,12 @@ export default function RecordsPage() {
 
   if (!currentObject && !isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen bg-background">
 <div className="p-8">
           <div className="max-w-7xl mx-auto">
             <div className="text-center py-16">
-              <h2 className="text-2xl font-bold text-white mb-2">Object not found</h2>
-              <p className="text-slate-400 mb-4">The object you&apos;re looking for doesn&apos;t exist.</p>
+              <h2 className="text-2xl font-bold text-foreground mb-2">Object not found</h2>
+              <p className="text-muted-foreground mb-4">The object you&apos;re looking for doesn&apos;t exist.</p>
               <button
                 onClick={() => router.push("/crm")}
                 className="text-purple-400 hover:text-purple-300"
@@ -332,22 +332,22 @@ export default function RecordsPage() {
   const availableViews: ViewMode[] = hasStatusAttribute ? ["table", "board"] : ["table"];
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
 <div className="p-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="flex items-center gap-4 mb-6">
             <button
               onClick={() => router.push("/crm")}
-              className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+              className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-3">
               {icon && <div className="text-purple-400">{icon}</div>}
               <div>
-                <h1 className="text-2xl font-bold text-white">{currentObject?.plural_name || "Records"}</h1>
-                <p className="text-sm text-slate-400">{total} records</p>
+                <h1 className="text-2xl font-bold text-foreground">{currentObject?.plural_name || "Records"}</h1>
+                <p className="text-sm text-muted-foreground">{total} records</p>
               </div>
             </div>
             <div className="flex-1" />
@@ -374,16 +374,16 @@ export default function RecordsPage() {
           {/* Toolbar */}
           <div className="flex items-center gap-4 mb-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={`Search ${currentObject?.plural_name?.toLowerCase() || "records"}...`}
-                className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg transition-colors">
+            <button className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors">
               <Filter className="h-4 w-4" />
               Filter
             </button>

@@ -50,13 +50,13 @@ export function PresetSelector({
     <div className="space-y-3">
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <input
           type="text"
           placeholder="Search presets..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+          className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
         />
       </div>
 
@@ -74,14 +74,14 @@ export function PresetSelector({
               className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all text-left group ${
                 isSelected
                   ? "bg-primary-500/20 border border-primary-500/50"
-                  : "bg-slate-800/50 border border-slate-700/50 hover:bg-slate-800 hover:border-slate-600"
+                  : "bg-muted/50 border border-border/50 hover:bg-muted hover:border-border"
               } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               {/* Icon */}
               <div
                 className={`w-10 h-10 rounded-lg bg-gradient-to-br ${preset.color} flex items-center justify-center flex-shrink-0`}
               >
-                <Icon className="h-5 w-5 text-white" />
+                <Icon className="h-5 w-5 text-foreground" />
               </div>
 
               {/* Content */}
@@ -89,7 +89,7 @@ export function PresetSelector({
                 <div className="flex items-center gap-2">
                   <span
                     className={`font-medium ${
-                      isSelected ? "text-white" : "text-slate-200"
+                      isSelected ? "text-foreground" : "text-foreground"
                     }`}
                   >
                     {preset.name}
@@ -100,7 +100,7 @@ export function PresetSelector({
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-400 truncate">
+                <p className="text-xs text-muted-foreground truncate">
                   {preset.description}
                 </p>
               </div>
@@ -108,7 +108,7 @@ export function PresetSelector({
               {/* Selected indicator */}
               {isSelected && (
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-500 flex items-center justify-center">
-                  <Check className="h-3 w-3 text-white" />
+                  <Check className="h-3 w-3 text-foreground" />
                 </div>
               )}
             </button>
@@ -117,7 +117,7 @@ export function PresetSelector({
       </div>
 
       {filteredPresets.length === 0 && (
-        <div className="text-center py-8 text-slate-500 text-sm">
+        <div className="text-center py-8 text-muted-foreground text-sm">
           No presets found matching &ldquo;{searchQuery}&rdquo;
         </div>
       )}

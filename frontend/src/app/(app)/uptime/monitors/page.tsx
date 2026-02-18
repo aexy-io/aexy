@@ -29,14 +29,14 @@ import {
 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-  up: { bg: "bg-emerald-900/30", text: "text-emerald-400", dot: "bg-emerald-500", label: "Up" },
-  down: { bg: "bg-red-900/30", text: "text-red-400", dot: "bg-red-500", label: "Down" },
-  degraded: { bg: "bg-amber-900/30", text: "text-amber-400", dot: "bg-amber-500", label: "Degraded" },
-  paused: { bg: "bg-slate-700/50", text: "text-slate-400", dot: "bg-slate-500", label: "Paused" },
-  unknown: { bg: "bg-slate-700/50", text: "text-slate-400", dot: "bg-slate-500", label: "Unknown" },
+  up: { bg: "bg-emerald-50 dark:bg-emerald-900/30", text: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500", label: "Up" },
+  down: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400", dot: "bg-red-500", label: "Down" },
+  degraded: { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500", label: "Degraded" },
+  paused: { bg: "bg-accent/50", text: "text-muted-foreground", dot: "bg-muted-foreground", label: "Paused" },
+  unknown: { bg: "bg-accent/50", text: "text-muted-foreground", dot: "bg-muted-foreground", label: "Unknown" },
 };
 
-const DEFAULT_STATUS_STYLE = { bg: "bg-slate-700/50", text: "text-slate-400", dot: "bg-slate-500", label: "Unknown" };
+const DEFAULT_STATUS_STYLE = { bg: "bg-accent/50", text: "text-muted-foreground", dot: "bg-muted-foreground", label: "Unknown" };
 
 const CHECK_TYPE_ICONS: Record<UptimeCheckType, typeof Globe> = {
   http: Globe,
@@ -211,16 +211,16 @@ export default function MonitorsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
               <MonitorCheck className="h-7 w-7 text-emerald-400" />
               Monitors
             </h1>
-            <p className="text-slate-400 mt-1">
+            <p className="text-muted-foreground mt-1">
               {monitors.length} monitor{monitors.length !== 1 ? "s" : ""} configured
             </p>
           </div>
@@ -234,30 +234,30 @@ export default function MonitorsPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 mb-6">
+        <div className="bg-muted rounded-xl border border-border p-4 mb-6">
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex-1 min-w-[200px]">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
                   type="text"
                   placeholder="Search monitors..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-slate-400" />
-              <span className="text-sm text-slate-400">Status:</span>
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Status:</span>
               <div className="flex gap-1">
                 <button
                   onClick={() => setStatusFilter("all")}
                   className={`px-2 py-1 rounded text-xs font-medium transition ${
                     statusFilter === "all"
                       ? "bg-emerald-600 text-white"
-                      : "bg-slate-700 text-slate-400 hover:bg-slate-600"
+                      : "bg-accent text-muted-foreground hover:bg-muted"
                   }`}
                 >
                   All
@@ -269,7 +269,7 @@ export default function MonitorsPage() {
                     className={`px-2 py-1 rounded text-xs font-medium transition ${
                       statusFilter === status
                         ? `${STATUS_COLORS[status].bg} ${STATUS_COLORS[status].text}`
-                        : "bg-slate-700 text-slate-400 hover:bg-slate-600"
+                        : "bg-accent text-muted-foreground hover:bg-muted"
                     }`}
                   >
                     {STATUS_COLORS[status].label}
@@ -281,18 +281,18 @@ export default function MonitorsPage() {
         </div>
 
         {/* Monitor List */}
-        <div className="bg-slate-800 rounded-xl border border-slate-700">
+        <div className="bg-muted rounded-xl border border-border">
           {filteredMonitors.length === 0 ? (
             <div className="p-8 text-center">
-              <MonitorCheck className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-              <p className="text-slate-400">
+              <MonitorCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">
                 {monitors.length === 0
                   ? "No monitors yet. Create your first monitor to start tracking uptime."
                   : "No monitors match your filters."}
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-slate-700">
+            <div className="divide-y divide-border">
               {filteredMonitors.map((monitor) => {
                 const Icon = CHECK_TYPE_ICONS[monitor.check_type] || Globe;
                 const statusStyle = STATUS_COLORS[monitor.current_status] || DEFAULT_STATUS_STYLE;
@@ -300,7 +300,7 @@ export default function MonitorsPage() {
                 return (
                   <div
                     key={monitor.id}
-                    className="p-4 flex items-center gap-4 hover:bg-slate-700/50 transition"
+                    className="p-4 flex items-center gap-4 hover:bg-accent/50 transition"
                   >
                     <div
                       className={`w-3 h-3 rounded-full ${statusStyle.dot} ${
@@ -311,8 +311,8 @@ export default function MonitorsPage() {
                       onClick={() => router.push(`/uptime/monitors/${monitor.id}`)}
                       className="flex-1 min-w-0 text-left"
                     >
-                      <div className="font-medium text-white truncate">{monitor.name}</div>
-                      <div className="flex items-center gap-2 text-sm text-slate-400 mt-0.5">
+                      <div className="font-medium text-foreground truncate">{monitor.name}</div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5">
                         <Icon className="h-3.5 w-3.5" />
                         <span className="uppercase text-xs">{monitor.check_type}</span>
                         {monitor.url && (
@@ -331,31 +331,31 @@ export default function MonitorsPage() {
                       </span>
                     </div>
                     <div className="text-right min-w-[100px]">
-                      <span className="text-sm font-medium text-white">
+                      <span className="text-sm font-medium text-foreground">
                         {monitor.uptime_percentage_24h != null
                           ? `${monitor.uptime_percentage_24h.toFixed(2)}%`
                           : "-"}
                       </span>
-                      <p className="text-xs text-slate-500">24h uptime</p>
+                      <p className="text-xs text-muted-foreground">24h uptime</p>
                     </div>
                     <div className="text-right min-w-[80px]">
-                      <span className="text-sm font-medium text-white">
+                      <span className="text-sm font-medium text-foreground">
                         {monitor.last_response_time_ms != null ? `${monitor.last_response_time_ms}ms` : "-"}
                       </span>
-                      <p className="text-xs text-slate-500">Response</p>
+                      <p className="text-xs text-muted-foreground">Response</p>
                     </div>
                     <div className="relative">
                       <button
                         onClick={() => setMenuOpen(menuOpen === monitor.id ? null : monitor.id)}
-                        className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-700 transition"
+                        className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent transition"
                       >
                         <MoreVertical className="h-4 w-4" />
                       </button>
                       {menuOpen === monitor.id && (
-                        <div className="absolute right-0 top-full mt-1 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-10">
+                        <div className="absolute right-0 top-full mt-1 w-48 bg-muted border border-border rounded-lg shadow-xl z-10">
                           <button
                             onClick={() => router.push(`/uptime/monitors/${monitor.id}`)}
-                            className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2"
+                            className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                           >
                             <Settings className="h-4 w-4" />
                             View Details
@@ -365,7 +365,7 @@ export default function MonitorsPage() {
                               href={monitor.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2"
+                              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                             >
                               <ExternalLink className="h-4 w-4" />
                               Open URL
@@ -374,7 +374,7 @@ export default function MonitorsPage() {
                           {monitor.is_active ? (
                             <button
                               onClick={() => handlePause(monitor.id)}
-                              className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2"
+                              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                             >
                               <Pause className="h-4 w-4" />
                               Pause Monitoring
@@ -382,7 +382,7 @@ export default function MonitorsPage() {
                           ) : (
                             <button
                               onClick={() => handleResume(monitor.id)}
-                              className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2"
+                              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
                             >
                               <Play className="h-4 w-4" />
                               Resume Monitoring
@@ -390,7 +390,7 @@ export default function MonitorsPage() {
                           )}
                           <button
                             onClick={() => handleDelete(monitor.id)}
-                            className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-slate-700 flex items-center gap-2"
+                            className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-accent flex items-center gap-2"
                           >
                             <Trash2 className="h-4 w-4" />
                             Delete
@@ -408,12 +408,12 @@ export default function MonitorsPage() {
         {/* Create Modal */}
         {showCreateModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-slate-800 rounded-xl border border-slate-700 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-              <div className="p-4 border-b border-slate-700 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-white">Create Monitor</h2>
+            <div className="bg-muted rounded-xl border border-border w-full max-w-lg max-h-[90vh] overflow-y-auto">
+              <div className="p-4 border-b border-border flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-foreground">Create Monitor</h2>
                 <button
                   onClick={() => setShowCreateModal(false)}
-                  className="p-1 text-slate-400 hover:text-white"
+                  className="p-1 text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -421,26 +421,26 @@ export default function MonitorsPage() {
 
               <form onSubmit={handleCreateMonitor} className="p-4 space-y-4">
                 {createError && (
-                  <div className="p-3 bg-red-900/30 border border-red-500/30 rounded-lg flex items-center gap-2 text-red-400 text-sm">
+                  <div className="p-3 bg-red-100 dark:bg-red-900/30 border border-red-500/30 rounded-lg flex items-center gap-2 text-red-600 dark:text-red-400 text-sm">
                     <AlertTriangle className="h-4 w-4" />
                     {createError}
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Name</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Name</label>
                   <input
                     type="text"
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="My API Monitor"
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Check Type</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Check Type</label>
                   <div className="flex gap-2">
                     {(["http", "tcp", "websocket"] as UptimeCheckType[]).map((type) => {
                       const Icon = CHECK_TYPE_ICONS[type];
@@ -451,8 +451,8 @@ export default function MonitorsPage() {
                           onClick={() => setFormData({ ...formData, check_type: type })}
                           className={`flex-1 p-3 rounded-lg border flex flex-col items-center gap-1 transition ${
                             formData.check_type === type
-                              ? "border-emerald-500 bg-emerald-500/10 text-emerald-400"
-                              : "border-slate-700 text-slate-400 hover:border-slate-600"
+                              ? "border-emerald-500 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+                              : "border-border text-muted-foreground hover:border-border"
                           }`}
                         >
                           <Icon className="h-5 w-5" />
@@ -465,7 +465,7 @@ export default function MonitorsPage() {
 
                 {(formData.check_type === "http" || formData.check_type === "websocket") && (
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">URL</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">URL</label>
                     <input
                       type="url"
                       required
@@ -476,7 +476,7 @@ export default function MonitorsPage() {
                           ? "wss://example.com/socket"
                           : "https://api.example.com/health"
                       }
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
                 )}
@@ -484,25 +484,25 @@ export default function MonitorsPage() {
                 {formData.check_type === "tcp" && (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="col-span-2">
-                      <label className="block text-sm font-medium text-slate-300 mb-1">Host</label>
+                      <label className="block text-sm font-medium text-foreground mb-1">Host</label>
                       <input
                         type="text"
                         required
                         value={formData.host}
                         onChange={(e) => setFormData({ ...formData, host: e.target.value })}
                         placeholder="db.example.com"
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-1">Port</label>
+                      <label className="block text-sm font-medium text-foreground mb-1">Port</label>
                       <input
                         type="number"
                         required
                         value={formData.port}
                         onChange={(e) => setFormData({ ...formData, port: parseInt(e.target.value) })}
                         placeholder="5432"
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
                   </div>
@@ -510,11 +510,11 @@ export default function MonitorsPage() {
 
                 {formData.check_type === "http" && (
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">HTTP Method</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">HTTP Method</label>
                     <select
                       value={formData.http_method}
                       onChange={(e) => setFormData({ ...formData, http_method: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     >
                       <option value="GET">GET</option>
                       <option value="POST">POST</option>
@@ -526,13 +526,13 @@ export default function MonitorsPage() {
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Check Interval</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Check Interval</label>
                   <select
                     value={formData.check_interval_seconds}
                     onChange={(e) =>
                       setFormData({ ...formData, check_interval_seconds: parseInt(e.target.value) })
                     }
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     {INTERVALS.map((interval) => (
                       <option key={interval.value} value={interval.value}>
@@ -543,7 +543,7 @@ export default function MonitorsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Failures before alert
                   </label>
                   <input
@@ -557,42 +557,42 @@ export default function MonitorsPage() {
                         consecutive_failures_threshold: parseInt(e.target.value),
                       })
                     }
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Number of consecutive failures before creating an incident
                   </p>
                 </div>
 
                 {formData.check_type === "http" && (
                   <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                    <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
                       <input
                         type="checkbox"
                         checked={formData.verify_ssl}
                         onChange={(e) => setFormData({ ...formData, verify_ssl: e.target.checked })}
-                        className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-emerald-500 focus:ring-emerald-500"
+                        className="w-4 h-4 rounded border-border bg-background text-emerald-500 focus:ring-emerald-500"
                       />
                       Verify SSL
                     </label>
-                    <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                    <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
                       <input
                         type="checkbox"
                         checked={formData.follow_redirects}
                         onChange={(e) => setFormData({ ...formData, follow_redirects: e.target.checked })}
-                        className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-emerald-500 focus:ring-emerald-500"
+                        className="w-4 h-4 rounded border-border bg-background text-emerald-500 focus:ring-emerald-500"
                       />
                       Follow Redirects
                     </label>
                   </div>
                 )}
 
-                <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
                   <input
                     type="checkbox"
                     checked={formData.notify_on_recovery}
                     onChange={(e) => setFormData({ ...formData, notify_on_recovery: e.target.checked })}
-                    className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-emerald-500 focus:ring-emerald-500"
+                    className="w-4 h-4 rounded border-border bg-background text-emerald-500 focus:ring-emerald-500"
                   />
                   Notify on recovery
                 </label>
@@ -601,7 +601,7 @@ export default function MonitorsPage() {
                   <button
                     type="button"
                     onClick={() => setShowCreateModal(false)}
-                    className="px-4 py-2 text-slate-300 hover:text-white transition"
+                    className="px-4 py-2 text-foreground hover:text-foreground transition"
                   >
                     Cancel
                   </button>

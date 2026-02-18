@@ -11,13 +11,13 @@ interface CRMBadgeProps {
 }
 
 const variantStyles: Record<string, string> = {
-  default: "bg-slate-700/50 text-slate-300 border-slate-600/50",
+  default: "bg-accent/50 text-foreground border-border/50",
   success: "bg-green-500/20 text-green-400 border-green-500/30",
   warning: "bg-amber-500/20 text-amber-400 border-amber-500/30",
   error: "bg-red-500/20 text-red-400 border-red-500/30",
   info: "bg-blue-500/20 text-blue-400 border-blue-500/30",
   purple: "bg-purple-500/20 text-purple-400 border-purple-500/30",
-  system: "bg-slate-600/50 text-slate-400 border-slate-500/50",
+  system: "bg-muted/50 text-muted-foreground border-border/50",
 };
 
 const sizeStyles: Record<string, string> = {

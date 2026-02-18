@@ -27,28 +27,28 @@ import { GoalType, GoalPriority } from "@/lib/api";
 
 // Goal type colors
 const goalTypeColors: Record<GoalType, { text: string; bg: string }> = {
-  performance: { text: "text-cyan-400", bg: "bg-cyan-500/10" },
-  skill_development: { text: "text-purple-400", bg: "bg-purple-500/10" },
-  project: { text: "text-emerald-400", bg: "bg-emerald-500/10" },
-  leadership: { text: "text-amber-400", bg: "bg-amber-500/10" },
-  team_contribution: { text: "text-blue-400", bg: "bg-blue-500/10" },
+  performance: { text: "text-cyan-600 dark:text-cyan-400", bg: "bg-cyan-500/10" },
+  skill_development: { text: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10" },
+  project: { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10" },
+  leadership: { text: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10" },
+  team_contribution: { text: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10" },
 };
 
 // Goal status colors
 const goalStatusColors: Record<string, { text: string; bg: string; icon: React.ReactNode }> = {
-  draft: { text: "text-slate-400", bg: "bg-slate-500/10", icon: <Clock className="h-4 w-4" /> },
-  active: { text: "text-blue-400", bg: "bg-blue-500/10", icon: <Clock className="h-4 w-4" /> },
-  completed: { text: "text-emerald-400", bg: "bg-emerald-500/10", icon: <CheckCircle className="h-4 w-4" /> },
-  cancelled: { text: "text-slate-400", bg: "bg-slate-500/10", icon: <AlertCircle className="h-4 w-4" /> },
-  deferred: { text: "text-yellow-400", bg: "bg-yellow-500/10", icon: <Clock className="h-4 w-4" /> },
+  draft: { text: "text-muted-foreground", bg: "bg-muted-foreground/10", icon: <Clock className="h-4 w-4" /> },
+  active: { text: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10", icon: <Clock className="h-4 w-4" /> },
+  completed: { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10", icon: <CheckCircle className="h-4 w-4" /> },
+  cancelled: { text: "text-muted-foreground", bg: "bg-muted-foreground/10", icon: <AlertCircle className="h-4 w-4" /> },
+  deferred: { text: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-500/10", icon: <Clock className="h-4 w-4" /> },
 };
 
 // Priority colors
 const priorityColors: Record<GoalPriority, { text: string; bg: string }> = {
-  critical: { text: "text-red-400", bg: "bg-red-500/10" },
-  high: { text: "text-orange-400", bg: "bg-orange-500/10" },
-  medium: { text: "text-yellow-400", bg: "bg-yellow-500/10" },
-  low: { text: "text-slate-400", bg: "bg-slate-500/10" },
+  critical: { text: "text-red-600 dark:text-red-400", bg: "bg-red-500/10" },
+  high: { text: "text-orange-600 dark:text-orange-400", bg: "bg-orange-500/10" },
+  medium: { text: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-500/10" },
+  low: { text: "text-muted-foreground", bg: "bg-muted-foreground/10" },
 };
 
 export default function GoalDetailPage() {
@@ -93,13 +93,13 @@ export default function GoalDetailPage() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
             <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
           </div>
-          <p className="text-slate-400 text-sm">Loading goal...</p>
+          <p className="text-muted-foreground text-sm">Loading goal...</p>
         </div>
       </div>
     );
@@ -107,11 +107,11 @@ export default function GoalDetailPage() {
 
   if (error || !goal) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <Target className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-          <h2 className="text-xl font-medium text-white mb-2">Goal not found</h2>
-          <p className="text-slate-400 mb-6">The goal you're looking for doesn't exist or you don't have access.</p>
+          <Target className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-xl font-medium text-foreground mb-2">Goal not found</h2>
+          <p className="text-muted-foreground mb-6">The goal you're looking for doesn't exist or you don't have access.</p>
           <Link href="/reviews/goals" className="text-cyan-400 hover:text-cyan-300 transition">
             Back to Goals
           </Link>
@@ -126,24 +126,24 @@ export default function GoalDetailPage() {
   const progressPercent = goal.progress_percentage || 0;
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
       <main className="max-w-5xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm mb-6">
-          <Link href="/reviews" className="text-slate-400 hover:text-white transition flex items-center gap-1">
+          <Link href="/reviews" className="text-muted-foreground hover:text-foreground transition flex items-center gap-1">
             <ArrowLeft className="h-4 w-4" />
             Reviews
           </Link>
-          <ChevronRight className="h-4 w-4 text-slate-600" />
-          <Link href="/reviews/goals" className="text-slate-400 hover:text-white transition">
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <Link href="/reviews/goals" className="text-muted-foreground hover:text-foreground transition">
             Goals
           </Link>
-          <ChevronRight className="h-4 w-4 text-slate-600" />
-          <span className="text-white truncate max-w-xs">{goal.title}</span>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <span className="text-foreground truncate max-w-xs">{goal.title}</span>
         </div>
 
         {/* Header */}
-        <div className="bg-slate-800/50 rounded-xl border border-slate-700 p-6 mb-6">
+        <div className="bg-muted/50 rounded-xl border border-border p-6 mb-6">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3 flex-wrap">
               <span className={`${typeColors.text} ${typeColors.bg} text-sm px-3 py-1 rounded-full capitalize`}>
@@ -157,7 +157,7 @@ export default function GoalDetailPage() {
                 {goal.priority}
               </span>
               {goal.is_private && (
-                <span className="text-slate-400 bg-slate-700/50 text-sm px-3 py-1 rounded-full">
+                <span className="text-muted-foreground bg-accent/50 text-sm px-3 py-1 rounded-full">
                   Private
                 </span>
               )}
@@ -175,18 +175,18 @@ export default function GoalDetailPage() {
             )}
           </div>
 
-          <h1 className="text-2xl font-bold text-white mb-2">{goal.title}</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-2">{goal.title}</h1>
           {goal.description && (
-            <p className="text-slate-400 mb-4">{goal.description}</p>
+            <p className="text-muted-foreground mb-4">{goal.description}</p>
           )}
 
           {/* Progress Bar */}
           <div className="mb-4">
             <div className="flex items-center justify-between text-sm mb-2">
-              <span className="text-slate-400">Progress</span>
-              <span className="text-white font-medium">{progressPercent}%</span>
+              <span className="text-muted-foreground">Progress</span>
+              <span className="text-foreground font-medium">{progressPercent}%</span>
             </div>
-            <div className="h-3 bg-slate-700 rounded-full overflow-hidden">
+            <div className="h-3 bg-accent rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all ${
                   progressPercent >= 100 ? "bg-emerald-500" :
@@ -204,7 +204,7 @@ export default function GoalDetailPage() {
               <button
                 onClick={() => handleUpdateProgress(Math.min(progressPercent + 10, 100))}
                 disabled={isUpdatingProgress}
-                className="px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition flex items-center gap-1.5 disabled:opacity-50"
+                className="px-3 py-1.5 text-sm bg-accent hover:bg-muted text-foreground rounded-lg transition flex items-center gap-1.5 disabled:opacity-50"
               >
                 <TrendingUp className="h-4 w-4" />
                 +10%
@@ -212,7 +212,7 @@ export default function GoalDetailPage() {
               <button
                 onClick={handleAutoLink}
                 disabled={isAutoLinking}
-                className="px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition flex items-center gap-1.5 disabled:opacity-50"
+                className="px-3 py-1.5 text-sm bg-accent hover:bg-muted text-foreground rounded-lg transition flex items-center gap-1.5 disabled:opacity-50"
               >
                 <Link2 className="h-4 w-4" />
                 {isAutoLinking ? "Linking..." : "Auto-Link GitHub"}
@@ -221,7 +221,7 @@ export default function GoalDetailPage() {
           )}
 
           {/* Meta Info */}
-          <div className="flex items-center gap-4 mt-4 text-sm text-slate-400">
+          <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
             {goal.time_bound && (
               <div className="flex items-center gap-1.5">
                 <Calendar className="h-4 w-4" />
@@ -247,8 +247,8 @@ export default function GoalDetailPage() {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* SMART Framework */}
-            <div className="bg-slate-800/50 rounded-xl border border-slate-700 p-6">
-              <h2 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+            <div className="bg-muted/50 rounded-xl border border-border p-6">
+              <h2 className="text-lg font-medium text-foreground mb-4 flex items-center gap-2">
                 <Target className="h-5 w-5 text-cyan-400" />
                 SMART Framework
               </h2>
@@ -256,50 +256,50 @@ export default function GoalDetailPage() {
                 {goal.specific && (
                   <div>
                     <h3 className="text-sm font-medium text-cyan-400 mb-1">Specific</h3>
-                    <p className="text-slate-300">{goal.specific}</p>
+                    <p className="text-foreground">{goal.specific}</p>
                   </div>
                 )}
                 {goal.measurable && (
                   <div>
                     <h3 className="text-sm font-medium text-purple-400 mb-1">Measurable</h3>
-                    <p className="text-slate-300">{goal.measurable}</p>
+                    <p className="text-foreground">{goal.measurable}</p>
                   </div>
                 )}
                 {goal.achievable && (
                   <div>
                     <h3 className="text-sm font-medium text-emerald-400 mb-1">Achievable</h3>
-                    <p className="text-slate-300">{goal.achievable}</p>
+                    <p className="text-foreground">{goal.achievable}</p>
                   </div>
                 )}
                 {goal.relevant && (
                   <div>
                     <h3 className="text-sm font-medium text-amber-400 mb-1">Relevant</h3>
-                    <p className="text-slate-300">{goal.relevant}</p>
+                    <p className="text-foreground">{goal.relevant}</p>
                   </div>
                 )}
                 {!goal.specific && !goal.measurable && !goal.achievable && !goal.relevant && (
-                  <p className="text-slate-500 text-sm">No SMART framework details added.</p>
+                  <p className="text-muted-foreground text-sm">No SMART framework details added.</p>
                 )}
               </div>
             </div>
 
             {/* Key Results */}
             {goal.key_results && goal.key_results.length > 0 && (
-              <div className="bg-slate-800/50 rounded-xl border border-slate-700 p-6">
-                <h2 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+              <div className="bg-muted/50 rounded-xl border border-border p-6">
+                <h2 className="text-lg font-medium text-foreground mb-4 flex items-center gap-2">
                   <BarChart3 className="h-5 w-5 text-purple-400" />
                   Key Results ({goal.key_results.length})
                 </h2>
                 <div className="space-y-4">
                   {goal.key_results.map((kr, index) => (
-                    <div key={kr.id || index} className="bg-slate-700/50 rounded-lg p-4">
+                    <div key={kr.id || index} className="bg-accent/50 rounded-lg p-4">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
-                        <span className="text-white">{kr.description}</span>
-                        <span className="text-sm text-slate-400">
+                        <span className="text-foreground">{kr.description}</span>
+                        <span className="text-sm text-muted-foreground">
                           {kr.current || 0} / {kr.target} {kr.unit}
                         </span>
                       </div>
-                      <div className="h-2 bg-slate-600 rounded-full overflow-hidden">
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
                         <div
                           className="h-full bg-purple-500 rounded-full transition-all"
                           style={{ width: `${Math.min((kr.current || 0) / kr.target * 100, 100)}%` }}
@@ -312,34 +312,34 @@ export default function GoalDetailPage() {
             )}
 
             {/* Linked Contributions */}
-            <div className="bg-slate-800/50 rounded-xl border border-slate-700 p-6">
-              <h2 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+            <div className="bg-muted/50 rounded-xl border border-border p-6">
+              <h2 className="text-lg font-medium text-foreground mb-4 flex items-center gap-2">
                 <GitCommit className="h-5 w-5 text-emerald-400" />
                 Linked Contributions
               </h2>
 
               {goal.linked_commits && goal.linked_commits.length > 0 ? (
                 <div className="space-y-3 mb-6">
-                  <h3 className="text-sm font-medium text-slate-400">Commits ({goal.linked_commits.length})</h3>
+                  <h3 className="text-sm font-medium text-muted-foreground">Commits ({goal.linked_commits.length})</h3>
                   {goal.linked_commits.slice(0, 5).map((commit, i) => (
                     <div key={commit.sha || i} className="flex items-center gap-3 text-sm">
-                      <GitCommit className="h-4 w-4 text-slate-500" />
-                      <span className="text-slate-300 truncate flex-1">{commit.title}</span>
+                      <GitCommit className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-foreground truncate flex-1">{commit.title}</span>
                       <span className="text-emerald-400">+{commit.additions}</span>
                       <span className="text-red-400">-{commit.deletions}</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-slate-500 text-sm mb-4">No commits linked yet.</p>
+                <p className="text-muted-foreground text-sm mb-4">No commits linked yet.</p>
               )}
 
               {goal.linked_pull_requests && goal.linked_pull_requests.length > 0 ? (
                 <div className="space-y-3">
-                  <h3 className="text-sm font-medium text-slate-400">Pull Requests ({goal.linked_pull_requests.length})</h3>
+                  <h3 className="text-sm font-medium text-muted-foreground">Pull Requests ({goal.linked_pull_requests.length})</h3>
                   {goal.linked_pull_requests.slice(0, 5).map((pr, i) => (
                     <div key={pr.id || i} className="flex items-center gap-3 text-sm">
-                      <GitPullRequest className="h-4 w-4 text-slate-500" />
+                      <GitPullRequest className="h-4 w-4 text-muted-foreground" />
                       <a
                         href={pr.url}
                         target="_blank"
@@ -354,7 +354,7 @@ export default function GoalDetailPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-slate-500 text-sm">No pull requests linked yet.</p>
+                <p className="text-muted-foreground text-sm">No pull requests linked yet.</p>
               )}
             </div>
           </div>
@@ -363,8 +363,8 @@ export default function GoalDetailPage() {
           <div className="space-y-6">
             {/* Tracking Keywords */}
             {goal.tracking_keywords && goal.tracking_keywords.length > 0 && (
-              <div className="bg-slate-800/50 rounded-xl border border-slate-700 p-6">
-                <h2 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+              <div className="bg-muted/50 rounded-xl border border-border p-6">
+                <h2 className="text-lg font-medium text-foreground mb-4 flex items-center gap-2">
                   <Tag className="h-5 w-5 text-amber-400" />
                   Tracking Keywords
                 </h2>
@@ -372,37 +372,37 @@ export default function GoalDetailPage() {
                   {goal.tracking_keywords.map((keyword, i) => (
                     <span
                       key={i}
-                      className="px-3 py-1 bg-slate-700 text-slate-300 rounded-full text-sm"
+                      className="px-3 py-1 bg-accent text-foreground rounded-full text-sm"
                     >
                       {keyword}
                     </span>
                   ))}
                 </div>
-                <p className="text-xs text-slate-500 mt-3">
+                <p className="text-xs text-muted-foreground mt-3">
                   Commits and PRs with these keywords will auto-link to this goal.
                 </p>
               </div>
             )}
 
             {/* Quick Stats */}
-            <div className="bg-slate-800/50 rounded-xl border border-slate-700 p-6">
-              <h2 className="text-lg font-medium text-white mb-4">Quick Stats</h2>
+            <div className="bg-muted/50 rounded-xl border border-border p-6">
+              <h2 className="text-lg font-medium text-foreground mb-4">Quick Stats</h2>
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Key Results</span>
-                  <span className="text-white">{goal.key_results?.length || 0}</span>
+                  <span className="text-muted-foreground">Key Results</span>
+                  <span className="text-foreground">{goal.key_results?.length || 0}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Linked Commits</span>
-                  <span className="text-white">{goal.linked_commits?.length || 0}</span>
+                  <span className="text-muted-foreground">Linked Commits</span>
+                  <span className="text-foreground">{goal.linked_commits?.length || 0}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Linked PRs</span>
-                  <span className="text-white">{goal.linked_pull_requests?.length || 0}</span>
+                  <span className="text-muted-foreground">Linked PRs</span>
+                  <span className="text-foreground">{goal.linked_pull_requests?.length || 0}</span>
                 </div>
                 {goal.completed_at && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Completed</span>
+                    <span className="text-muted-foreground">Completed</span>
                     <span className="text-emerald-400">
                       {new Date(goal.completed_at).toLocaleDateString()}
                     </span>

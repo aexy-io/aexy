@@ -19,25 +19,25 @@ const sentimentConfig = {
   positive: {
     emoji: Smile,
     label: "Positive",
-    color: "text-green-400",
+    color: "text-green-600 dark:text-green-400",
     bgColor: "bg-green-500",
-    bgLight: "bg-green-900/30",
+    bgLight: "bg-green-100 dark:bg-green-900/30",
     borderColor: "border-green-700/50",
   },
   neutral: {
     emoji: Meh,
     label: "Neutral",
-    color: "text-yellow-400",
+    color: "text-yellow-600 dark:text-yellow-400",
     bgColor: "bg-yellow-500",
-    bgLight: "bg-yellow-900/30",
+    bgLight: "bg-yellow-100 dark:bg-yellow-900/30",
     borderColor: "border-yellow-700/50",
   },
   negative: {
     emoji: Frown,
     label: "Negative",
-    color: "text-red-400",
+    color: "text-red-600 dark:text-red-400",
     bgColor: "bg-red-500",
-    bgLight: "bg-red-900/30",
+    bgLight: "bg-red-100 dark:bg-red-900/30",
     borderColor: "border-red-700/50",
   },
 };
@@ -104,7 +104,7 @@ export function SentimentIndicator({
         )}
 
         {showBar && (
-          <div className={`w-full ${sizes.bar} bg-slate-700 rounded-full overflow-hidden`}>
+          <div className={`w-full ${sizes.bar} bg-accent rounded-full overflow-hidden`}>
             <div
               className={`h-full rounded-full transition-all ${config.bgColor}`}
               style={{ width: `${Math.round(score * 100)}%` }}
@@ -114,7 +114,7 @@ export function SentimentIndicator({
       </div>
 
       {showPercentage && (
-        <span className={`${sizes.text} text-slate-400 tabular-nums`}>
+        <span className={`${sizes.text} text-muted-foreground tabular-nums`}>
           {Math.round(score * 100)}%
         </span>
       )}
@@ -122,7 +122,7 @@ export function SentimentIndicator({
       {TrendIcon && (
         <TrendIcon
           className={`${sizes.emoji} ${
-            trend && trend > 0 ? "text-green-400" : trend && trend < 0 ? "text-red-400" : "text-slate-400"
+            trend && trend > 0 ? "text-green-400" : trend && trend < 0 ? "text-red-400" : "text-muted-foreground"
           }`}
         />
       )}
@@ -164,7 +164,7 @@ export function TeamSentimentOverview({
 }) {
   if (scores.length === 0) {
     return (
-      <div className="text-sm text-slate-500">No sentiment data available</div>
+      <div className="text-sm text-muted-foreground">No sentiment data available</div>
     );
   }
 
@@ -189,7 +189,7 @@ export function TeamSentimentOverview({
             return (
               <div key={level} className={`p-2 ${config.bgLight} rounded-lg text-center`}>
                 <p className={`text-lg font-semibold ${config.color}`}>{count}</p>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-muted-foreground">
                   {config.label} ({percentage}%)
                 </p>
               </div>

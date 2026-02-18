@@ -23,67 +23,67 @@ export function ThankYouContentEditor({ content, onChange }: ThankYouContentEdit
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-slate-300">
+      <label className="block text-sm font-medium text-foreground">
         Thank You Message
       </label>
 
       {/* Toolbar */}
-      <div className="flex items-center gap-1 p-2 bg-slate-800 rounded-t-lg border border-slate-700 border-b-0">
+      <div className="flex items-center gap-1 p-2 bg-muted rounded-t-lg border border-border border-b-0">
         <button
           type="button"
-          className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded"
+          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded"
           title="Bold"
         >
           <Bold className="w-4 h-4" />
         </button>
         <button
           type="button"
-          className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded"
+          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded"
           title="Italic"
         >
           <Italic className="w-4 h-4" />
         </button>
         <button
           type="button"
-          className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded"
+          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded"
           title="Underline"
         >
           <Underline className="w-4 h-4" />
         </button>
-        <div className="w-px h-5 bg-slate-700 mx-1" />
+        <div className="w-px h-5 bg-accent mx-1" />
         <button
           type="button"
-          className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded"
+          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded"
           title="Heading 1"
         >
           <Heading1 className="w-4 h-4" />
         </button>
         <button
           type="button"
-          className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded"
+          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded"
           title="Heading 2"
         >
           <Heading2 className="w-4 h-4" />
         </button>
-        <div className="w-px h-5 bg-slate-700 mx-1" />
+        <div className="w-px h-5 bg-accent mx-1" />
         <button
           type="button"
-          className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded"
+          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded"
           title="Bullet List"
         >
           <List className="w-4 h-4" />
         </button>
         <button
           type="button"
-          className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded"
+          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded"
           title="Numbered List"
         >
           <ListOrdered className="w-4 h-4" />
         </button>
-        <div className="w-px h-5 bg-slate-700 mx-1" />
+        <div className="w-px h-5 bg-accent mx-1" />
         <button
           type="button"
-          className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded"
+          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded"
           title="Link"
         >
           <Link className="w-4 h-4" />
@@ -97,10 +97,10 @@ export function ThankYouContentEditor({ content, onChange }: ThankYouContentEdit
         placeholder="# Thank You!
 
 Your submission has been received. We'll get back to you soon."
-        className="w-full h-48 px-4 py-3 bg-slate-900 border border-slate-700 rounded-b-lg text-white placeholder-slate-500 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+        className="w-full h-48 px-4 py-3 bg-background border border-border rounded-b-lg text-foreground placeholder-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-purple-500/50"
       />
 
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-muted-foreground">
         Use Markdown: # for heading, **bold**, *italic*, [link](url)
       </p>
     </div>

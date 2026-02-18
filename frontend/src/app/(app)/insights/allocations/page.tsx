@@ -176,20 +176,20 @@ export default function AllocationsPage() {
           <div className="flex items-center gap-2 mb-1">
             <Link
               href="/insights"
-              className="text-slate-400 hover:text-white transition"
+              className="text-muted-foreground hover:text-foreground transition"
             >
               <ArrowLeft className="h-4 w-4" />
             </Link>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <FolderKanban className="h-6 w-6 text-indigo-400" />
               Project Allocations
             </h1>
           </div>
-          <p className="text-slate-400 text-sm">
+          <p className="text-muted-foreground text-sm">
             Developer allocation across projects with activity-based utilization
           </p>
         </div>
-        <div className="flex bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+        <div className="flex bg-muted rounded-lg border border-border overflow-hidden">
           {PERIOD_OPTIONS.map((opt) => (
             <button
               key={opt.value}
@@ -197,7 +197,7 @@ export default function AllocationsPage() {
               className={`px-3 py-1.5 text-sm font-medium transition ${
                 periodType === opt.value
                   ? "bg-indigo-600 text-white"
-                  : "text-slate-400 hover:text-white"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {opt.label}
@@ -208,37 +208,37 @@ export default function AllocationsPage() {
 
       {/* Overview Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+        <div className="bg-muted rounded-xl p-4 border border-border">
           <div className="flex items-center gap-2 mb-2">
             <FolderKanban className="h-4 w-4 text-indigo-400" />
-            <span className="text-xs text-slate-400">Active Projects</span>
+            <span className="text-xs text-muted-foreground">Active Projects</span>
           </div>
-          <div className="text-xl font-bold text-white">{projects.length}</div>
+          <div className="text-xl font-bold text-foreground">{projects.length}</div>
         </div>
-        <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+        <div className="bg-muted rounded-xl p-4 border border-border">
           <div className="flex items-center gap-2 mb-2">
             <Users className="h-4 w-4 text-blue-400" />
-            <span className="text-xs text-slate-400">Total Members</span>
+            <span className="text-xs text-muted-foreground">Total Members</span>
           </div>
-          <div className="text-xl font-bold text-white">
+          <div className="text-xl font-bold text-foreground">
             {projects.reduce((sum, p) => sum + p.member_count, 0)}
           </div>
         </div>
-        <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+        <div className="bg-muted rounded-xl p-4 border border-border">
           <div className="flex items-center gap-2 mb-2">
             <Users className="h-4 w-4 text-amber-400" />
-            <span className="text-xs text-slate-400">Multi-Project Devs</span>
+            <span className="text-xs text-muted-foreground">Multi-Project Devs</span>
           </div>
-          <div className="text-xl font-bold text-white">
+          <div className="text-xl font-bold text-foreground">
             {multiProjectDevs.length}
           </div>
         </div>
-        <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+        <div className="bg-muted rounded-xl p-4 border border-border">
           <div className="flex items-center gap-2 mb-2">
             <FolderKanban className="h-4 w-4 text-green-400" />
-            <span className="text-xs text-slate-400">Avg Members/Project</span>
+            <span className="text-xs text-muted-foreground">Avg Members/Project</span>
           </div>
-          <div className="text-xl font-bold text-white">
+          <div className="text-xl font-bold text-foreground">
             {projects.length
               ? (
                   projects.reduce((s, p) => s + p.member_count, 0) /
@@ -255,13 +255,13 @@ export default function AllocationsPage() {
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
-              className="bg-slate-800 rounded-xl p-4 border border-slate-700 animate-pulse h-16"
+              className="bg-muted rounded-xl p-4 border border-border animate-pulse h-16"
             />
           ))}
         </div>
       ) : projects.length === 0 ? (
-        <div className="bg-slate-800 rounded-xl p-8 border border-slate-700 text-center">
-          <p className="text-slate-400">No active projects found.</p>
+        <div className="bg-muted rounded-xl p-8 border border-border text-center">
+          <p className="text-muted-foreground">No active projects found.</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -280,33 +280,33 @@ export default function AllocationsPage() {
             return (
               <div
                 key={project.id}
-                className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden"
+                className="bg-muted rounded-xl border border-border overflow-hidden"
               >
                 {/* Project Header */}
                 <button
                   onClick={() => toggleProject(project.id)}
-                  className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-700/30 transition"
+                  className="w-full px-6 py-4 flex items-center justify-between hover:bg-accent/30 transition"
                 >
                   <div className="flex items-center gap-3">
                     {isExpanded ? (
-                      <ChevronDown className="h-4 w-4 text-slate-400" />
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
                     ) : (
-                      <ChevronRight className="h-4 w-4 text-slate-400" />
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     )}
                     <div
                       className="w-3 h-3 rounded-full"
                       style={{ backgroundColor: project.color || "#6366f1" }}
                     />
-                    <span className="text-white font-medium">
+                    <span className="text-foreground font-medium">
                       {project.name}
                     </span>
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-muted-foreground">
                       {project.member_count} member
                       {project.member_count !== 1 ? "s" : ""}
                     </span>
                   </div>
                   {insights && (
-                    <div className="flex items-center gap-4 text-xs text-slate-400">
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <GitCommit className="h-3 w-3" />
                         {insights.aggregate.total_commits}
@@ -325,20 +325,20 @@ export default function AllocationsPage() {
 
                 {/* Expanded Content */}
                 {isExpanded && (
-                  <div className="px-6 pb-4 border-t border-slate-700/50">
+                  <div className="px-6 pb-4 border-t border-border/50">
                     {loading ? (
                       <div className="py-4 space-y-2">
                         {Array.from({ length: 3 }).map((_, i) => (
                           <div
                             key={i}
-                            className="h-8 bg-slate-700 rounded animate-pulse"
+                            className="h-8 bg-accent rounded animate-pulse"
                           />
                         ))}
                       </div>
                     ) : members.length > 0 ? (
                       <table className="w-full min-w-[600px] mt-3">
                         <thead>
-                          <tr className="text-left text-xs text-slate-400 border-b border-slate-700/50">
+                          <tr className="text-left text-xs text-muted-foreground border-b border-border/50">
                             <th className="pb-2 font-medium">Developer</th>
                             <th className="pb-2 font-medium text-right">
                               Commits
@@ -384,38 +384,38 @@ export default function AllocationsPage() {
                               return (
                                 <tr
                                   key={m.developer_id}
-                                  className="border-b border-slate-700/30 hover:bg-slate-700/20 transition"
+                                  className="border-b border-border/30 hover:bg-accent/20 transition"
                                 >
                                   <td className="py-2">
                                     <div className="flex items-center gap-2">
                                       <Link
                                         href={`/insights/developers/${m.developer_id}`}
-                                        className="text-sm text-white hover:text-indigo-300"
+                                        className="text-sm text-foreground hover:text-indigo-300"
                                       >
                                         {m.developer_name || m.developer_id.slice(0, 8)}
                                       </Link>
                                       {isMultiProject && (
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400">
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400">
                                           multi-project
                                         </span>
                                       )}
                                     </div>
                                   </td>
-                                  <td className="py-2 text-right text-sm text-slate-300 font-mono">
+                                  <td className="py-2 text-right text-sm text-foreground font-mono">
                                     {m.commits_count}
                                   </td>
-                                  <td className="py-2 text-right text-sm text-slate-300 font-mono">
+                                  <td className="py-2 text-right text-sm text-foreground font-mono">
                                     {m.prs_merged}
                                   </td>
-                                  <td className="py-2 text-right text-sm text-slate-300 font-mono">
+                                  <td className="py-2 text-right text-sm text-foreground font-mono">
                                     {m.reviews_given}
                                   </td>
-                                  <td className="py-2 text-right text-sm text-slate-300 font-mono">
+                                  <td className="py-2 text-right text-sm text-foreground font-mono">
                                     {formatNumber(m.lines_changed)}
                                   </td>
                                   <td className="py-2 text-right">
                                     <div className="flex items-center justify-end gap-2">
-                                      <div className="w-16 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                                      <div className="w-16 h-1.5 bg-accent rounded-full overflow-hidden">
                                         <div
                                           className="h-full bg-indigo-500 rounded-full"
                                           style={{
@@ -423,7 +423,7 @@ export default function AllocationsPage() {
                                           }}
                                         />
                                       </div>
-                                      <span className="text-xs text-slate-400 w-10 text-right">
+                                      <span className="text-xs text-muted-foreground w-10 text-right">
                                         {share.toFixed(0)}%
                                       </span>
                                     </div>
@@ -434,7 +434,7 @@ export default function AllocationsPage() {
                         </tbody>
                       </table>
                     ) : (
-                      <p className="py-4 text-sm text-slate-500 text-center">
+                      <p className="py-4 text-sm text-muted-foreground text-center">
                         No activity data for this period
                       </p>
                     )}
@@ -448,19 +448,19 @@ export default function AllocationsPage() {
 
       {/* Multi-Project Developers */}
       {multiProjectDevs.length > 0 && (
-        <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-700">
-            <h2 className="text-lg font-semibold text-white">
+        <div className="bg-muted rounded-xl border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-border">
+            <h2 className="text-lg font-semibold text-foreground">
               Cross-Project Developers
             </h2>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Developers contributing to multiple projects in this period
             </p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[600px]">
               <thead>
-                <tr className="text-left text-xs text-slate-400 border-b border-slate-700">
+                <tr className="text-left text-xs text-muted-foreground border-b border-border">
                   <th className="px-6 py-3 font-medium">Developer</th>
                   <th className="px-6 py-3 font-medium">Projects</th>
                   <th className="px-6 py-3 font-medium text-right">
@@ -481,12 +481,12 @@ export default function AllocationsPage() {
                   .map(([devId, projs]) => (
                     <tr
                       key={devId}
-                      className="border-b border-slate-700/50 hover:bg-slate-700/30 transition"
+                      className="border-b border-border/50 hover:bg-accent/30 transition"
                     >
                       <td className="px-6 py-3">
                         <Link
                           href={`/insights/developers/${devId}`}
-                          className="text-sm text-white hover:text-indigo-300"
+                          className="text-sm text-foreground hover:text-indigo-300"
                         >
                           {projs[0]?.developerName || devId.slice(0, 8)}
                         </Link>
@@ -496,20 +496,20 @@ export default function AllocationsPage() {
                           {projs.map((p) => (
                             <span
                               key={p.projectId}
-                              className="text-[10px] px-2 py-0.5 rounded-full bg-slate-700 text-slate-300"
+                              className="text-[10px] px-2 py-0.5 rounded-full bg-accent text-foreground"
                             >
                               {p.projectName}
-                              <span className="ml-1 text-slate-500">
+                              <span className="ml-1 text-muted-foreground">
                                 ({p.commits}c)
                               </span>
                             </span>
                           ))}
                         </div>
                       </td>
-                      <td className="px-6 py-3 text-right text-sm text-slate-300 font-mono">
+                      <td className="px-6 py-3 text-right text-sm text-foreground font-mono">
                         {projs.reduce((s, p) => s + p.commits, 0)}
                       </td>
-                      <td className="px-6 py-3 text-right text-sm text-slate-300 font-mono">
+                      <td className="px-6 py-3 text-right text-sm text-foreground font-mono">
                         {projs.reduce((s, p) => s + p.prs, 0)}
                       </td>
                     </tr>

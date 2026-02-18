@@ -13,19 +13,19 @@ import { cn } from "@/lib/utils";
 const SEVERITY_CONFIG: Record<BugSeverity, { label: string; color: string; bgColor: string; icon: React.ReactNode }> = {
   blocker: {
     label: "Blocker",
-    color: "text-white",
+    color: "text-foreground",
     bgColor: "bg-red-600",
     icon: <AlertOctagon className="h-3 w-3" />,
   },
   critical: {
     label: "Critical",
-    color: "text-white",
+    color: "text-foreground",
     bgColor: "bg-red-500",
     icon: <AlertCircle className="h-3 w-3" />,
   },
   major: {
     label: "Major",
-    color: "text-white",
+    color: "text-foreground",
     bgColor: "bg-orange-500",
     icon: <AlertTriangle className="h-3 w-3" />,
   },
@@ -37,8 +37,8 @@ const SEVERITY_CONFIG: Record<BugSeverity, { label: string; color: string; bgCol
   },
   trivial: {
     label: "Trivial",
-    color: "text-white",
-    bgColor: "bg-slate-500",
+    color: "text-foreground",
+    bgColor: "bg-muted-foreground",
     icon: <Info className="h-3 w-3" />,
   },
 };

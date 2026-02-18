@@ -89,7 +89,7 @@ export default function RepositoryDetailPage() {
     return (
       <button
         onClick={() => handleSort(field)}
-        className="inline-flex items-center gap-1 hover:text-white transition"
+        className="inline-flex items-center gap-1 hover:text-foreground transition"
       >
         <Icon className="h-3 w-3" />
         {label}
@@ -107,29 +107,29 @@ export default function RepositoryDetailPage() {
         <div className="flex items-center gap-4">
           <Link
             href="/insights/repositories"
-            className="text-slate-400 hover:text-white transition"
+            className="text-muted-foreground hover:text-foreground transition"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <FolderGit2 className="h-6 w-6 text-indigo-400" />
               {repoName}
-              {agg?.is_private && <Lock className="h-4 w-4 text-slate-500" />}
+              {agg?.is_private && <Lock className="h-4 w-4 text-muted-foreground" />}
             </h1>
             <div className="flex items-center gap-2 mt-1">
               {agg?.language && (
-                <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">
+                <span className="text-xs px-1.5 py-0.5 rounded bg-accent text-foreground">
                   {agg.language}
                 </span>
               )}
-              <span className="text-slate-400 text-sm">
+              <span className="text-muted-foreground text-sm">
                 {agg?.unique_contributors || 0} contributors
               </span>
             </div>
           </div>
         </div>
-        <div className="flex bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+        <div className="flex bg-muted rounded-lg border border-border overflow-hidden">
           {PERIOD_OPTIONS.map((opt) => (
             <button
               key={opt.value}
@@ -137,7 +137,7 @@ export default function RepositoryDetailPage() {
               className={`px-3 py-1.5 text-sm font-medium transition ${
                 periodType === opt.value
                   ? "bg-indigo-600 text-white"
-                  : "text-slate-400 hover:text-white"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {opt.label}
@@ -152,41 +152,41 @@ export default function RepositoryDetailPage() {
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
-              className="h-24 bg-slate-800 rounded-xl animate-pulse border border-slate-700"
+              className="h-24 bg-muted rounded-xl animate-pulse border border-border"
             />
           ))}
         </div>
       ) : agg ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
-            <div className="flex items-center gap-2 text-slate-400 text-xs uppercase mb-2">
+          <div className="bg-muted rounded-xl border border-border p-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase mb-2">
               <GitCommit className="h-4 w-4" /> Commits
             </div>
-            <div className="text-2xl font-bold font-mono text-white">
+            <div className="text-2xl font-bold font-mono text-foreground">
               {formatNumber(agg.commits_count)}
             </div>
           </div>
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
-            <div className="flex items-center gap-2 text-slate-400 text-xs uppercase mb-2">
+          <div className="bg-muted rounded-xl border border-border p-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase mb-2">
               <GitPullRequest className="h-4 w-4" /> PRs Merged
             </div>
-            <div className="text-2xl font-bold font-mono text-white">
+            <div className="text-2xl font-bold font-mono text-foreground">
               {formatNumber(agg.prs_merged)}
             </div>
           </div>
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
-            <div className="flex items-center gap-2 text-slate-400 text-xs uppercase mb-2">
+          <div className="bg-muted rounded-xl border border-border p-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase mb-2">
               <MessageSquare className="h-4 w-4" /> Reviews
             </div>
-            <div className="text-2xl font-bold font-mono text-white">
+            <div className="text-2xl font-bold font-mono text-foreground">
               {formatNumber(agg.reviews_count)}
             </div>
           </div>
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
-            <div className="flex items-center gap-2 text-slate-400 text-xs uppercase mb-2">
+          <div className="bg-muted rounded-xl border border-border p-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase mb-2">
               <Code className="h-4 w-4" /> Lines Changed
             </div>
-            <div className="text-lg font-bold font-mono text-white">
+            <div className="text-lg font-bold font-mono text-foreground">
               <span className="text-green-400">+{formatNumber(agg.lines_added)}</span>
               {" / "}
               <span className="text-red-400">-{formatNumber(agg.lines_removed)}</span>
@@ -197,66 +197,66 @@ export default function RepositoryDetailPage() {
 
       {/* Developer Breakdown */}
       <div>
-        <h2 className="text-lg font-semibold text-white mb-3">Developer Breakdown</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-3">Developer Breakdown</h2>
         {isLoading ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={i}
-                className="h-14 bg-slate-800 rounded-xl animate-pulse border border-slate-700"
+                className="h-14 bg-muted rounded-xl animate-pulse border border-border"
               />
             ))}
           </div>
         ) : sorted.length > 0 ? (
-          <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden overflow-x-auto">
+          <div className="bg-muted rounded-xl border border-border overflow-hidden overflow-x-auto">
             <table className="w-full min-w-[600px]">
               <thead>
-                <tr className="border-b border-slate-700 text-left">
-                  <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
+                <tr className="border-b border-border text-left">
+                  <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Developer
                   </th>
-                  <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider text-right">
+                  <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">
                     <SortHeader field="commits_count" label="Commits" icon={GitCommit} />
                   </th>
-                  <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider text-right">
+                  <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">
                     <SortHeader field="prs_merged" label="PRs Merged" icon={GitPullRequest} />
                   </th>
-                  <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider text-right">
+                  <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">
                     <SortHeader field="reviews_given" label="Reviews" icon={MessageSquare} />
                   </th>
-                  <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider text-right">
+                  <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">
                     <SortHeader field="lines_changed" label="Lines" icon={Code} />
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-700/50">
+              <tbody className="divide-y divide-border/50">
                 {sorted.map((dev) => (
-                  <tr key={dev.developer_id} className="hover:bg-slate-700/30 transition">
+                  <tr key={dev.developer_id} className="hover:bg-accent/30 transition">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <Link
                           href={`/insights/developers/${dev.developer_id}`}
-                          className="text-sm font-medium text-white hover:text-indigo-300 transition"
+                          className="text-sm font-medium text-foreground hover:text-indigo-300 transition"
                         >
                           {dev.developer_name || dev.developer_id.slice(0, 12)}
                         </Link>
                         {!dev.is_workspace_member && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-medium">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 font-medium">
                             External
                           </span>
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right text-sm font-mono text-white">
+                    <td className="px-4 py-3 text-right text-sm font-mono text-foreground">
                       {dev.commits_count}
                     </td>
-                    <td className="px-4 py-3 text-right text-sm font-mono text-white">
+                    <td className="px-4 py-3 text-right text-sm font-mono text-foreground">
                       {dev.prs_merged}
                     </td>
-                    <td className="px-4 py-3 text-right text-sm font-mono text-white">
+                    <td className="px-4 py-3 text-right text-sm font-mono text-foreground">
                       {dev.reviews_given}
                     </td>
-                    <td className="px-4 py-3 text-right text-sm font-mono text-white">
+                    <td className="px-4 py-3 text-right text-sm font-mono text-foreground">
                       <span className="text-green-400">+{formatNumber(dev.lines_added)}</span>
                       {" / "}
                       <span className="text-red-400">-{formatNumber(dev.lines_removed)}</span>
@@ -267,8 +267,8 @@ export default function RepositoryDetailPage() {
             </table>
           </div>
         ) : (
-          <div className="bg-slate-800 rounded-xl p-8 border border-slate-700 text-center">
-            <p className="text-slate-400">
+          <div className="bg-muted rounded-xl p-8 border border-border text-center">
+            <p className="text-muted-foreground">
               No developer activity found for this repository.
             </p>
           </div>

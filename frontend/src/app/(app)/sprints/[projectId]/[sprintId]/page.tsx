@@ -48,18 +48,18 @@ import { SprintTask, TaskStatus, TaskPriority, AssignmentSuggestion, EpicListIte
 import { redirect } from "next/navigation";
 
 const COLUMN_CONFIG: Record<TaskStatus, { label: string; color: string; bgColor: string }> = {
-  backlog: { label: "Backlog", color: "text-slate-400", bgColor: "bg-slate-700/50" },
-  todo: { label: "To Do", color: "text-blue-400", bgColor: "bg-blue-900/20" },
-  in_progress: { label: "In Progress", color: "text-amber-400", bgColor: "bg-amber-900/20" },
-  review: { label: "Review", color: "text-purple-400", bgColor: "bg-purple-900/20" },
-  done: { label: "Done", color: "text-green-400", bgColor: "bg-green-900/20" },
+  backlog: { label: "Backlog", color: "text-muted-foreground", bgColor: "bg-accent/50" },
+  todo: { label: "To Do", color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-50 dark:bg-blue-900/20" },
+  in_progress: { label: "In Progress", color: "text-amber-600 dark:text-amber-400", bgColor: "bg-amber-50 dark:bg-amber-900/20" },
+  review: { label: "Review", color: "text-purple-600 dark:text-purple-400", bgColor: "bg-purple-50 dark:bg-purple-900/20" },
+  done: { label: "Done", color: "text-green-600 dark:text-green-400", bgColor: "bg-green-50 dark:bg-green-900/20" },
 };
 
 const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string }> = {
-  critical: { label: "Critical", color: "text-red-400 bg-red-900/30" },
-  high: { label: "High", color: "text-orange-400 bg-orange-900/30" },
-  medium: { label: "Medium", color: "text-yellow-400 bg-yellow-900/30" },
-  low: { label: "Low", color: "text-slate-400 bg-slate-700" },
+  critical: { label: "Critical", color: "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30" },
+  high: { label: "High", color: "text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30" },
+  medium: { label: "Medium", color: "text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30" },
+  low: { label: "Low", color: "text-muted-foreground bg-accent" },
 };
 
 const SOURCE_ICONS: Record<string, React.ReactNode> = {
@@ -112,7 +112,7 @@ function TaskCard({ task, isDragging, onDelete, onClick, suggestion }: TaskCardP
       {...attributes}
       {...listeners}
       onClick={handleClick}
-      className={`bg-slate-800 rounded-lg p-3 border border-slate-700 hover:border-slate-600 cursor-grab active:cursor-grabbing ${
+      className={`bg-muted rounded-lg p-3 border border-border hover:border-border cursor-grab active:cursor-grabbing ${
         suggestion ? "ring-2 ring-primary-500/50" : ""
       }`}
     >
@@ -123,7 +123,7 @@ function TaskCard({ task, isDragging, onDelete, onClick, suggestion }: TaskCardP
             {priorityConfig.label}
           </span>
           {task.story_points && (
-            <span className="text-xs px-1.5 py-0.5 bg-slate-700 text-slate-300 rounded">
+            <span className="text-xs px-1.5 py-0.5 bg-accent text-foreground rounded">
               {task.story_points} SP
             </span>
           )}
@@ -134,20 +134,20 @@ function TaskCard({ task, isDragging, onDelete, onClick, suggestion }: TaskCardP
               e.stopPropagation();
               setShowMenu(!showMenu);
             }}
-            className="p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition"
+            className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition"
           >
             <MoreVertical className="h-3 w-3" />
           </button>
           {showMenu && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-              <div className="absolute right-0 top-full mt-1 w-32 bg-slate-700 rounded-lg shadow-xl z-20 py-1">
+              <div className="absolute right-0 top-full mt-1 w-32 bg-accent rounded-lg shadow-xl z-20 py-1">
                 {task.source_url && (
                   <a
                     href={task.source_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full px-3 py-2 text-left text-xs text-white hover:bg-slate-600 flex items-center gap-2"
+                    className="w-full px-3 py-2 text-left text-xs text-foreground hover:bg-muted flex items-center gap-2"
                     onClick={() => setShowMenu(false)}
                   >
                     <ExternalLink className="h-3 w-3" />
@@ -159,7 +159,7 @@ function TaskCard({ task, isDragging, onDelete, onClick, suggestion }: TaskCardP
                     onDelete(task.id);
                     setShowMenu(false);
                   }}
-                  className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-slate-600 flex items-center gap-2"
+                  className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-muted flex items-center gap-2"
                 >
                   <Trash2 className="h-3 w-3" />
                   Remove
@@ -170,22 +170,22 @@ function TaskCard({ task, isDragging, onDelete, onClick, suggestion }: TaskCardP
         </div>
       </div>
 
-      <h4 className="text-sm font-medium text-white mb-2 line-clamp-2">{task.title}</h4>
+      <h4 className="text-sm font-medium text-foreground mb-2 line-clamp-2">{task.title}</h4>
 
       {task.description && (
-        <p className="text-xs text-slate-400 mb-2 line-clamp-2">{task.description}</p>
+        <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{task.description}</p>
       )}
 
       {/* Labels */}
       {task.labels && task.labels.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-2">
           {task.labels.slice(0, 3).map((label, i) => (
-            <span key={i} className="text-xs px-1.5 py-0.5 bg-slate-700/50 text-slate-300 rounded">
+            <span key={i} className="text-xs px-1.5 py-0.5 bg-accent/50 text-foreground rounded">
               {label}
             </span>
           ))}
           {task.labels.length > 3 && (
-            <span className="text-xs text-slate-500">+{task.labels.length - 3}</span>
+            <span className="text-xs text-muted-foreground">+{task.labels.length - 3}</span>
           )}
         </div>
       )}
@@ -203,14 +203,14 @@ function TaskCard({ task, isDragging, onDelete, onClick, suggestion }: TaskCardP
                 className="rounded-full"
               />
             ) : (
-              <div className="w-5 h-5 rounded-full bg-slate-600 flex items-center justify-center">
-                <User className="h-3 w-3 text-slate-400" />
+              <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center">
+                <User className="h-3 w-3 text-muted-foreground" />
               </div>
             )}
-            <span className="text-xs text-slate-300">{task.assignee_name || "Assigned"}</span>
+            <span className="text-xs text-foreground">{task.assignee_name || "Assigned"}</span>
           </div>
         ) : (
-          <div className="flex items-center gap-1 text-xs text-slate-500">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <User className="h-3 w-3" />
             Unassigned
           </div>
@@ -226,8 +226,8 @@ function TaskCard({ task, isDragging, onDelete, onClick, suggestion }: TaskCardP
 
       {/* Subtasks indicator */}
       {task.subtasks_count > 0 && (
-        <div className="mt-2 pt-2 border-t border-slate-700/50">
-          <div className="flex items-center gap-1 text-xs text-slate-400">
+        <div className="mt-2 pt-2 border-t border-border/50">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <CheckCircle className="h-3 w-3" />
             {task.subtasks_count} subtask{task.subtasks_count > 1 ? "s" : ""}
           </div>
@@ -236,14 +236,14 @@ function TaskCard({ task, isDragging, onDelete, onClick, suggestion }: TaskCardP
 
       {/* AI Suggestion info */}
       {suggestion && (
-        <div className="mt-2 pt-2 border-t border-slate-700/50">
-          <p className="text-xs text-slate-400">
+        <div className="mt-2 pt-2 border-t border-border/50">
+          <p className="text-xs text-muted-foreground">
             <span className="text-primary-400">Suggestion:</span> {suggestion.suggested_developer_name}
-            <span className="text-slate-500 ml-1">
+            <span className="text-muted-foreground ml-1">
               ({Math.round(suggestion.confidence * 100)}% match)
             </span>
           </p>
-          <p className="text-xs text-slate-500 mt-1 line-clamp-2">{suggestion.reasoning}</p>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{suggestion.reasoning}</p>
         </div>
       )}
     </div>
@@ -295,12 +295,12 @@ function KanbanColumn({ column, tasks, onDelete, onAssign, onTaskClick, suggesti
           >
             {column.label}
           </h3>
-          <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">
+          <span className="text-xs bg-accent text-foreground px-2 py-0.5 rounded-full">
             {tasks.length}
           </span>
         </div>
         {totalPoints > 0 && (
-          <span className="text-xs text-slate-400">{totalPoints} SP</span>
+          <span className="text-xs text-muted-foreground">{totalPoints} SP</span>
         )}
       </div>
 
@@ -317,7 +317,7 @@ function KanbanColumn({ column, tasks, onDelete, onAssign, onTaskClick, suggesti
             />
           ))}
           {tasks.length === 0 && (
-            <div className="text-center py-8 text-slate-500 text-sm">
+            <div className="text-center py-8 text-muted-foreground text-sm">
               No tasks
             </div>
           )}
@@ -377,33 +377,33 @@ function AddTaskModal({ onClose, onAdd, isAdding, epics }: AddTaskModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-slate-800 rounded-xl w-full max-w-md p-6">
-        <h3 className="text-xl font-semibold text-white mb-4">Add Task</h3>
+      <div className="bg-muted rounded-xl w-full max-w-md p-6">
+        <h3 className="text-xl font-semibold text-foreground mb-4">Add Task</h3>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Title</label>
+              <label className="block text-sm text-muted-foreground mb-1">Title</label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Task title"
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500"
+                className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Description</label>
+              <label className="block text-sm text-muted-foreground mb-1">Description</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Task description"
                 rows={3}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500 resize-none"
+                className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500 resize-none"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Story Points</label>
+                <label className="block text-sm text-muted-foreground mb-1">Story Points</label>
                 <input
                   type="number"
                   min="0"
@@ -411,15 +411,15 @@ function AddTaskModal({ onClose, onAdd, isAdding, epics }: AddTaskModalProps) {
                   value={storyPoints}
                   onChange={(e) => setStoryPoints(e.target.value)}
                   placeholder="0"
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500"
+                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500"
                 />
               </div>
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Priority</label>
+                <label className="block text-sm text-muted-foreground mb-1">Priority</label>
                 <select
                   value={priority}
                   onChange={(e) => setPriority(e.target.value as TaskPriority)}
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500"
                 >
                   {Object.entries(PRIORITY_CONFIG).map(([key, cfg]) => (
                     <option key={key} value={key}>{cfg.label}</option>
@@ -428,11 +428,11 @@ function AddTaskModal({ onClose, onAdd, isAdding, epics }: AddTaskModalProps) {
               </div>
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Status</label>
+              <label className="block text-sm text-muted-foreground mb-1">Status</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as TaskStatus)}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500"
               >
                 {Object.entries(COLUMN_CONFIG).map(([key, cfg]) => (
                   <option key={key} value={key}>{cfg.label}</option>
@@ -440,11 +440,11 @@ function AddTaskModal({ onClose, onAdd, isAdding, epics }: AddTaskModalProps) {
               </select>
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Epic (Optional)</label>
+              <label className="block text-sm text-muted-foreground mb-1">Epic (Optional)</label>
               <select
                 value={epicId}
                 onChange={(e) => setEpicId(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500"
               >
                 <option value="">No Epic</option>
                 {epics.map((epic) => (
@@ -460,7 +460,7 @@ function AddTaskModal({ onClose, onAdd, isAdding, epics }: AddTaskModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+              className="flex-1 px-4 py-2 bg-accent hover:bg-muted text-foreground rounded-lg transition"
             >
               Cancel
             </button>
@@ -494,7 +494,7 @@ function ActivityItem({ activity }: { activity: TaskActivity }) {
       case "created":
         return <Plus className="h-4 w-4 text-emerald-400" />;
       default:
-        return <Edit3 className="h-4 w-4 text-slate-400" />;
+        return <Edit3 className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
@@ -505,14 +505,14 @@ function ActivityItem({ activity }: { activity: TaskActivity }) {
       case "status_changed":
         return (
           <span>
-            changed status from <span className="text-slate-300">{activity.old_value}</span> to{" "}
-            <span className="text-slate-300">{activity.new_value}</span>
+            changed status from <span className="text-foreground">{activity.old_value}</span> to{" "}
+            <span className="text-foreground">{activity.new_value}</span>
           </span>
         );
       case "assigned":
         return (
           <span>
-            assigned to <span className="text-slate-300">{activity.new_value || "someone"}</span>
+            assigned to <span className="text-foreground">{activity.new_value || "someone"}</span>
           </span>
         );
       case "unassigned":
@@ -520,15 +520,15 @@ function ActivityItem({ activity }: { activity: TaskActivity }) {
       case "priority_changed":
         return (
           <span>
-            changed priority from <span className="text-slate-300">{activity.old_value}</span> to{" "}
-            <span className="text-slate-300">{activity.new_value}</span>
+            changed priority from <span className="text-foreground">{activity.old_value}</span> to{" "}
+            <span className="text-foreground">{activity.new_value}</span>
           </span>
         );
       case "points_changed":
         return (
           <span>
-            changed story points from <span className="text-slate-300">{activity.old_value || "none"}</span> to{" "}
-            <span className="text-slate-300">{activity.new_value}</span>
+            changed story points from <span className="text-foreground">{activity.old_value || "none"}</span> to{" "}
+            <span className="text-foreground">{activity.new_value}</span>
           </span>
         );
       case "epic_changed":
@@ -566,7 +566,7 @@ function ActivityItem({ activity }: { activity: TaskActivity }) {
   };
 
   return (
-    <div className="flex gap-3 p-3 bg-slate-700/30 rounded-lg">
+    <div className="flex gap-3 p-3 bg-accent/30 rounded-lg">
       <div className="flex-shrink-0 mt-1">
         {activity.actor_avatar_url ? (
           <Image
@@ -577,23 +577,23 @@ function ActivityItem({ activity }: { activity: TaskActivity }) {
             className="rounded-full"
           />
         ) : (
-          <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
             {getActivityIcon()}
           </div>
         )}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 text-sm">
-          <span className="font-medium text-white">
+          <span className="font-medium text-foreground">
             {activity.actor_name || "System"}
           </span>
-          <span className="text-slate-400">{getActivityText()}</span>
-          <span className="text-slate-500 text-xs ml-auto flex-shrink-0">
+          <span className="text-muted-foreground">{getActivityText()}</span>
+          <span className="text-muted-foreground text-xs ml-auto flex-shrink-0">
             {timeAgo(activity.created_at)}
           </span>
         </div>
         {activity.action === "comment" && activity.comment && (
-          <p className="mt-2 text-slate-300 text-sm whitespace-pre-wrap">
+          <p className="mt-2 text-foreground text-sm whitespace-pre-wrap">
             {activity.comment}
           </p>
         )}
@@ -689,9 +689,9 @@ function TaskDetailModal({ task, sprintId, onClose, onUpdate, onDelete, isUpdati
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-slate-800 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-muted rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-700">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-border">
           <div className="flex items-center gap-3">
             {task.source_type && SOURCE_ICONS[task.source_type]}
             <span className={`text-xs px-2 py-1 rounded ${statusConfig.bgColor} ${statusConfig.color}`}>
@@ -705,14 +705,14 @@ function TaskDetailModal({ task, sprintId, onClose, onUpdate, onDelete, isUpdati
             {!isEditing && (
               <button
                 onClick={() => setIsEditing(true)}
-                className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition"
+                className="px-3 py-1.5 bg-accent hover:bg-muted text-foreground rounded-lg text-sm transition"
               >
                 Edit
               </button>
             )}
             <button
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
             >
               ✕
             </button>
@@ -720,13 +720,13 @@ function TaskDetailModal({ task, sprintId, onClose, onUpdate, onDelete, isUpdati
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-slate-700">
+        <div className="flex border-b border-border">
           <button
             onClick={() => setActiveTab("details")}
             className={`px-4 py-3 text-sm font-medium transition ${
               activeTab === "details"
-                ? "text-white border-b-2 border-primary-500"
-                : "text-slate-400 hover:text-white"
+                ? "text-foreground border-b-2 border-primary-500"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Details
@@ -735,13 +735,13 @@ function TaskDetailModal({ task, sprintId, onClose, onUpdate, onDelete, isUpdati
             onClick={() => setActiveTab("activity")}
             className={`px-4 py-3 text-sm font-medium transition ${
               activeTab === "activity"
-                ? "text-white border-b-2 border-primary-500"
-                : "text-slate-400 hover:text-white"
+                ? "text-foreground border-b-2 border-primary-500"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Activity
             {activities.length > 0 && (
-              <span className="ml-2 text-xs bg-slate-700 px-1.5 py-0.5 rounded">
+              <span className="ml-2 text-xs bg-accent px-1.5 py-0.5 rounded">
                 {activities.length}
               </span>
             )}
@@ -758,7 +758,7 @@ function TaskDetailModal({ task, sprintId, onClose, onUpdate, onDelete, isUpdati
                   onChange={(e) => setNewComment(e.target.value)}
                   placeholder="Add a comment..."
                   rows={3}
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500 resize-none"
+                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500 resize-none"
                 />
                 <div className="flex justify-end mt-2">
                   <button
@@ -774,9 +774,9 @@ function TaskDetailModal({ task, sprintId, onClose, onUpdate, onDelete, isUpdati
               {/* Activity List */}
               <div className="space-y-3">
                 {activitiesLoading ? (
-                  <div className="text-center py-4 text-slate-400">Loading activity...</div>
+                  <div className="text-center py-4 text-muted-foreground">Loading activity...</div>
                 ) : activities.length === 0 ? (
-                  <div className="text-center py-4 text-slate-400">No activity yet</div>
+                  <div className="text-center py-4 text-muted-foreground">No activity yet</div>
                 ) : (
                   activities.map((activity) => (
                     <ActivityItem key={activity.id} activity={activity} />
@@ -787,41 +787,41 @@ function TaskDetailModal({ task, sprintId, onClose, onUpdate, onDelete, isUpdati
           ) : isEditing ? (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Title</label>
+                <label className="block text-sm text-muted-foreground mb-1">Title</label>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500"
                 />
               </div>
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Description</label>
+                <label className="block text-sm text-muted-foreground mb-1">Description</label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={4}
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500 resize-none"
+                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500 resize-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">Story Points</label>
+                  <label className="block text-sm text-muted-foreground mb-1">Story Points</label>
                   <input
                     type="number"
                     min="0"
                     max="21"
                     value={storyPoints}
                     onChange={(e) => setStoryPoints(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                    className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">Priority</label>
+                  <label className="block text-sm text-muted-foreground mb-1">Priority</label>
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value as TaskPriority)}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                    className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500"
                   >
                     {Object.entries(PRIORITY_CONFIG).map(([key, cfg]) => (
                       <option key={key} value={key}>{cfg.label}</option>
@@ -831,11 +831,11 @@ function TaskDetailModal({ task, sprintId, onClose, onUpdate, onDelete, isUpdati
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">Status</label>
+                  <label className="block text-sm text-muted-foreground mb-1">Status</label>
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value as TaskStatus)}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                    className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500"
                   >
                     {Object.entries(COLUMN_CONFIG).map(([key, cfg]) => (
                       <option key={key} value={key}>{cfg.label}</option>
@@ -843,11 +843,11 @@ function TaskDetailModal({ task, sprintId, onClose, onUpdate, onDelete, isUpdati
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">Epic</label>
+                  <label className="block text-sm text-muted-foreground mb-1">Epic</label>
                   <select
                     value={epicId}
                     onChange={(e) => setEpicId(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                    className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500"
                   >
                     <option value="">No Epic</option>
                     {epics.map((ep) => (
@@ -862,7 +862,7 @@ function TaskDetailModal({ task, sprintId, onClose, onUpdate, onDelete, isUpdati
               <div className="flex gap-3">
                 <button
                   onClick={() => setIsEditing(false)}
-                  className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+                  className="flex-1 px-4 py-2 bg-accent hover:bg-muted text-foreground rounded-lg transition"
                 >
                   Cancel
                 </button>
@@ -877,22 +877,22 @@ function TaskDetailModal({ task, sprintId, onClose, onUpdate, onDelete, isUpdati
             </div>
           ) : (
             <>
-              <h2 className="text-xl font-semibold text-white mb-4">{task.title}</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-4">{task.title}</h2>
 
               {task.description && (
                 <div className="mb-6">
-                  <h3 className="text-sm text-slate-400 mb-2">Description</h3>
-                  <p className="text-slate-300">{task.description}</p>
+                  <h3 className="text-sm text-muted-foreground mb-2">Description</h3>
+                  <p className="text-foreground">{task.description}</p>
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-6 mb-6">
                 <div>
-                  <h3 className="text-sm text-slate-400 mb-2">Story Points</h3>
-                  <p className="text-white">{task.story_points || "Not set"}</p>
+                  <h3 className="text-sm text-muted-foreground mb-2">Story Points</h3>
+                  <p className="text-foreground">{task.story_points || "Not set"}</p>
                 </div>
                 <div>
-                  <h3 className="text-sm text-slate-400 mb-2">Assignee</h3>
+                  <h3 className="text-sm text-muted-foreground mb-2">Assignee</h3>
                   <div className="flex items-center gap-2">
                     {task.assignee_avatar_url ? (
                       <Image
@@ -903,34 +903,34 @@ function TaskDetailModal({ task, sprintId, onClose, onUpdate, onDelete, isUpdati
                         className="rounded-full"
                       />
                     ) : (
-                      <div className="w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center">
-                        <User className="h-4 w-4 text-slate-400" />
+                      <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
+                        <User className="h-4 w-4 text-muted-foreground" />
                       </div>
                     )}
-                    <span className="text-white">{task.assignee_name || "Unassigned"}</span>
+                    <span className="text-foreground">{task.assignee_name || "Unassigned"}</span>
                   </div>
                 </div>
               </div>
 
               {epic && (
                 <div className="mb-6">
-                  <h3 className="text-sm text-slate-400 mb-2">Epic</h3>
+                  <h3 className="text-sm text-muted-foreground mb-2">Epic</h3>
                   <div className="flex items-center gap-2">
                     <div
                       className="w-3 h-3 rounded-full"
                       style={{ backgroundColor: epic.color }}
                     />
-                    <span className="text-white">{epic.key} - {epic.title}</span>
+                    <span className="text-foreground">{epic.key} - {epic.title}</span>
                   </div>
                 </div>
               )}
 
               {task.labels && task.labels.length > 0 && (
                 <div className="mb-6">
-                  <h3 className="text-sm text-slate-400 mb-2">Labels</h3>
+                  <h3 className="text-sm text-muted-foreground mb-2">Labels</h3>
                   <div className="flex flex-wrap gap-2">
                     {task.labels.map((label, i) => (
-                      <span key={i} className="text-xs px-2 py-1 bg-slate-700 text-slate-300 rounded">
+                      <span key={i} className="text-xs px-2 py-1 bg-accent text-foreground rounded">
                         {label}
                       </span>
                     ))}
@@ -940,7 +940,7 @@ function TaskDetailModal({ task, sprintId, onClose, onUpdate, onDelete, isUpdati
 
               {task.source_url && (
                 <div className="mb-6">
-                  <h3 className="text-sm text-slate-400 mb-2">Source</h3>
+                  <h3 className="text-sm text-muted-foreground mb-2">Source</h3>
                   <a
                     href={task.source_url}
                     target="_blank"
@@ -956,8 +956,8 @@ function TaskDetailModal({ task, sprintId, onClose, onUpdate, onDelete, isUpdati
               {/* Subtasks section */}
               {task.subtasks_count > 0 && (
                 <div className="mb-6">
-                  <h3 className="text-sm text-slate-400 mb-2">Subtasks</h3>
-                  <div className="bg-slate-700/50 rounded-lg px-3 py-2 text-sm text-slate-300">
+                  <h3 className="text-sm text-muted-foreground mb-2">Subtasks</h3>
+                  <div className="bg-accent/50 rounded-lg px-3 py-2 text-sm text-foreground">
                     {task.subtasks_count} subtask{task.subtasks_count > 1 ? "s" : ""}
                   </div>
                 </div>
@@ -966,14 +966,14 @@ function TaskDetailModal({ task, sprintId, onClose, onUpdate, onDelete, isUpdati
               {/* Parent task reference */}
               {task.parent_task_id && (
                 <div className="mb-6">
-                  <h3 className="text-sm text-slate-400 mb-2">Parent Task</h3>
+                  <h3 className="text-sm text-muted-foreground mb-2">Parent Task</h3>
                   <div className="text-sm text-primary-400">
                     This is a subtask
                   </div>
                 </div>
               )}
 
-              <div className="text-xs text-slate-500 mb-6">
+              <div className="text-xs text-muted-foreground mb-6">
                 Created: {new Date(task.created_at).toLocaleDateString()}
                 {task.updated_at && ` • Updated: ${new Date(task.updated_at).toLocaleDateString()}`}
               </div>
@@ -981,7 +981,7 @@ function TaskDetailModal({ task, sprintId, onClose, onUpdate, onDelete, isUpdati
               <div className="flex justify-end">
                 <button
                   onClick={handleDelete}
-                  className="flex items-center gap-2 px-4 py-2 text-red-400 hover:bg-red-900/20 rounded-lg transition"
+                  className="flex items-center gap-2 px-4 py-2 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
                 >
                   <Trash2 className="h-4 w-4" />
                   Remove from Sprint
@@ -1200,10 +1200,10 @@ export default function SprintBoardPage({
 
   if (authLoading || currentWorkspaceLoading || sprintLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-white">Loading sprint...</p>
+          <p className="text-foreground">Loading sprint...</p>
         </div>
       </div>
     );
@@ -1215,10 +1215,10 @@ export default function SprintBoardPage({
 
   if (!sprint) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <AlertCircle className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-          <h2 className="text-xl font-medium text-white mb-2">Sprint Not Found</h2>
+          <AlertCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-xl font-medium text-foreground mb-2">Sprint Not Found</h2>
           <Link href={`/sprints/${projectId}`} className="text-primary-400 hover:underline">
             Back to sprints
           </Link>
@@ -1232,22 +1232,22 @@ export default function SprintBoardPage({
     : 0;
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800/50">
+      <header className="border-b border-border bg-muted/50">
         <div className="max-w-[1600px] mx-auto px-4 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href={`/sprints/${projectId}`}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Link>
               <div>
-                <h1 className="text-xl font-semibold text-white">{sprint.name}</h1>
+                <h1 className="text-xl font-semibold text-foreground">{sprint.name}</h1>
                 {sprint.goal && (
-                  <p className="text-slate-400 text-sm">{sprint.goal}</p>
+                  <p className="text-muted-foreground text-sm">{sprint.goal}</p>
                 )}
               </div>
             </div>
@@ -1255,7 +1255,7 @@ export default function SprintBoardPage({
             <div className="flex items-center gap-3">
               {/* Sprint Info */}
               <div className="flex items-center gap-4 mr-4 text-sm">
-                <div className="flex items-center gap-2 text-slate-400">
+                <div className="flex items-center gap-2 text-muted-foreground">
                   <Calendar className="h-4 w-4" />
                   <span>
                     {sprint.start_date
@@ -1267,7 +1267,7 @@ export default function SprintBoardPage({
                       : "TBD"}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-slate-400">
+                <div className="flex items-center gap-2 text-muted-foreground">
                   <CheckCircle className="h-4 w-4 text-green-400" />
                   <span>{completionRate}% complete</span>
                 </div>
@@ -1276,7 +1276,7 @@ export default function SprintBoardPage({
               {/* Actions */}
               <button
                 onClick={() => setShowAddTask(true)}
-                className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition text-sm"
+                className="flex items-center gap-2 px-3 py-2 bg-accent hover:bg-muted text-foreground rounded-lg transition text-sm"
               >
                 <Plus className="h-4 w-4" />
                 Add Task
@@ -1285,7 +1285,7 @@ export default function SprintBoardPage({
               <button
                 onClick={handleSuggestAssignments}
                 disabled={isSuggesting}
-                className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition text-sm disabled:opacity-50"
+                className="flex items-center gap-2 px-3 py-2 bg-accent hover:bg-muted text-foreground rounded-lg transition text-sm disabled:opacity-50"
               >
                 {isSuggesting ? (
                   <RefreshCw className="h-4 w-4 animate-spin" />
@@ -1297,7 +1297,7 @@ export default function SprintBoardPage({
 
               <Link
                 href={`/sprints/${projectId}/${sprintId}/analytics`}
-                className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition text-sm"
+                className="flex items-center gap-2 px-3 py-2 bg-accent hover:bg-muted text-foreground rounded-lg transition text-sm"
               >
                 <BarChart3 className="h-4 w-4" />
                 Analytics
@@ -1308,7 +1308,7 @@ export default function SprintBoardPage({
                 <button
                   onClick={() => handleLifecycleAction("start")}
                   disabled={isStarting}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition text-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-foreground rounded-lg transition text-sm"
                 >
                   <Play className="h-4 w-4" />
                   Start Sprint
@@ -1318,7 +1318,7 @@ export default function SprintBoardPage({
                 <button
                   onClick={() => handleLifecycleAction("review")}
                   disabled={isStarting}
-                  className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition text-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-foreground rounded-lg transition text-sm"
                 >
                   Start Review
                 </button>
@@ -1348,33 +1348,33 @@ export default function SprintBoardPage({
 
       {/* Sprint Stats Bar */}
       {stats && (
-        <div className="border-b border-slate-700 bg-slate-800/30">
+        <div className="border-b border-border bg-muted/30">
           <div className="max-w-[1600px] mx-auto px-4 py-3">
             <div className="flex items-center gap-6 text-sm">
               <div className="flex items-center gap-2">
-                <span className="text-slate-400">Tasks:</span>
-                <span className="text-white font-medium">{stats.total_tasks}</span>
+                <span className="text-muted-foreground">Tasks:</span>
+                <span className="text-foreground font-medium">{stats.total_tasks}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-slate-400">Completed:</span>
+                <span className="text-muted-foreground">Completed:</span>
                 <span className="text-green-400 font-medium">{stats.completed_tasks}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-slate-400">In Progress:</span>
+                <span className="text-muted-foreground">In Progress:</span>
                 <span className="text-amber-400 font-medium">{stats.in_progress_tasks}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-slate-400">Total Points:</span>
-                <span className="text-white font-medium">{stats.total_points}</span>
+                <span className="text-muted-foreground">Total Points:</span>
+                <span className="text-foreground font-medium">{stats.total_points}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-slate-400">Completed Points:</span>
+                <span className="text-muted-foreground">Completed Points:</span>
                 <span className="text-green-400 font-medium">{stats.completed_points}</span>
               </div>
 
               {/* Progress bar */}
               <div className="flex-1 max-w-xs">
-                <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                <div className="h-2 bg-accent rounded-full overflow-hidden">
                   <div
                     className="h-full bg-primary-500 rounded-full transition-all"
                     style={{ width: `${completionRate}%` }}

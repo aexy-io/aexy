@@ -73,8 +73,8 @@ export function ReminderInstanceCard({
   return (
     <div
       className={cn(
-        "group relative bg-slate-800/50 border rounded-lg p-4 hover:bg-slate-800/70 transition-all",
-        isOverdue ? "border-red-500/50" : isUrgent ? "border-amber-500/50" : "border-slate-700/50",
+        "group relative bg-muted/50 border rounded-lg p-4 hover:bg-muted/70 transition-all",
+        isOverdue ? "border-red-500/50" : isUrgent ? "border-amber-500/50" : "border-border/50",
         onClick && "cursor-pointer",
         className
       )}
@@ -97,16 +97,16 @@ export function ReminderInstanceCard({
               e.stopPropagation();
               setShowMenu(!showMenu);
             }}
-            className="p-1 rounded hover:bg-slate-700/50 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="p-1 rounded hover:bg-accent/50 opacity-0 group-hover:opacity-100 transition-opacity"
           >
-            <MoreVertical className="h-4 w-4 text-slate-400" />
+            <MoreVertical className="h-4 w-4 text-muted-foreground" />
           </button>
         )}
       </div>
 
       {/* Title */}
       {showReminderInfo && instance.reminder && (
-        <h3 className="text-sm font-medium text-white mb-2 line-clamp-2">
+        <h3 className="text-sm font-medium text-foreground mb-2 line-clamp-2">
           {instance.reminder.title}
         </h3>
       )}
@@ -114,7 +114,7 @@ export function ReminderInstanceCard({
       {/* Due Date */}
       <div className={cn(
         "flex items-center gap-1.5 text-sm mb-3",
-        isOverdue ? "text-red-400" : isUrgent ? "text-amber-400" : "text-slate-300"
+        isOverdue ? "text-red-400" : isUrgent ? "text-amber-400" : "text-foreground"
       )}>
         {isOverdue ? (
           <AlertTriangle className="h-4 w-4" />
@@ -159,13 +159,13 @@ export function ReminderInstanceCard({
 
       {/* Completion/Skip info */}
       {instance.status === "completed" && instance.completed_at && (
-        <div className="text-xs text-slate-400 mb-3">
+        <div className="text-xs text-muted-foreground mb-3">
           Completed {format(parseISO(instance.completed_at), "MMM d 'at' h:mm a")}
           {instance.completed_by && ` by ${instance.completed_by.name}`}
         </div>
       )}
       {instance.status === "skipped" && instance.skipped_at && (
-        <div className="text-xs text-slate-400 mb-3">
+        <div className="text-xs text-muted-foreground mb-3">
           Skipped {format(parseISO(instance.skipped_at), "MMM d 'at' h:mm a")}
           {instance.skip_reason && `: ${instance.skip_reason}`}
         </div>
@@ -173,7 +173,7 @@ export function ReminderInstanceCard({
 
       {/* Footer */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs text-slate-500">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           {instance.notification_count > 0 && (
             <span>Notified {instance.notification_count}x</span>
           )}
@@ -186,20 +186,20 @@ export function ReminderInstanceCard({
         <div className="flex items-center gap-1">
           {instance.assigned_owner && (
             <div className="flex items-center gap-1" title={`Assigned to ${instance.assigned_owner.name}`}>
-              <div className="w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center">
-                <User className="h-3 w-3 text-slate-300" />
+              <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
+                <User className="h-3 w-3 text-foreground" />
               </div>
-              <span className="text-xs text-slate-400 max-w-[80px] truncate">
+              <span className="text-xs text-muted-foreground max-w-[80px] truncate">
                 {instance.assigned_owner.name}
               </span>
             </div>
           )}
           {!instance.assigned_owner && instance.assigned_team && (
             <div className="flex items-center gap-1" title={`Assigned to ${instance.assigned_team.name}`}>
-              <div className="w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center">
-                <Users className="h-3 w-3 text-slate-300" />
+              <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
+                <Users className="h-3 w-3 text-foreground" />
               </div>
-              <span className="text-xs text-slate-400 max-w-[80px] truncate">
+              <span className="text-xs text-muted-foreground max-w-[80px] truncate">
                 {instance.assigned_team.name}
               </span>
             </div>
@@ -211,12 +211,12 @@ export function ReminderInstanceCard({
       {showMenu && (
         <div
           ref={menuRef}
-          className="absolute right-2 top-10 z-10 bg-slate-800 border border-slate-700 rounded-lg shadow-lg py-1 min-w-[160px]"
+          className="absolute right-2 top-10 z-10 bg-muted border border-border rounded-lg shadow-lg py-1 min-w-[160px]"
           onClick={(e) => e.stopPropagation()}
         >
           {canAcknowledge && (
             <button
-              className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700/50 flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent/50 flex items-center gap-2"
               onClick={() => handleMenuAction(() => onAcknowledge!(instance.id))}
             >
               <Check className="h-4 w-4" />
@@ -225,7 +225,7 @@ export function ReminderInstanceCard({
           )}
           {canComplete && (
             <button
-              className="w-full px-3 py-2 text-left text-sm text-green-400 hover:bg-slate-700/50 flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm text-green-400 hover:bg-accent/50 flex items-center gap-2"
               onClick={() => handleMenuAction(() => onComplete!(instance.id))}
             >
               <CheckCircle2 className="h-4 w-4" />
@@ -234,7 +234,7 @@ export function ReminderInstanceCard({
           )}
           {canSkip && (
             <button
-              className="w-full px-3 py-2 text-left text-sm text-amber-400 hover:bg-slate-700/50 flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm text-amber-400 hover:bg-accent/50 flex items-center gap-2"
               onClick={() => handleMenuAction(() => onSkip!(instance.id))}
             >
               <SkipForward className="h-4 w-4" />
@@ -243,7 +243,7 @@ export function ReminderInstanceCard({
           )}
           {onReassign && (
             <button
-              className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700/50 flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent/50 flex items-center gap-2"
               onClick={() => handleMenuAction(() => onReassign(instance.id))}
             >
               <UserPlus className="h-4 w-4" />

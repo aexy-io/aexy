@@ -124,7 +124,7 @@ export function LLMProviderSelector({
     <div className={cn("space-y-4", className)}>
       {/* Provider Selector */}
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-2">
+        <label className="block text-sm font-medium text-foreground mb-2">
           LLM Provider
         </label>
         <div className="relative">
@@ -133,8 +133,8 @@ export function LLMProviderSelector({
             onClick={() => !disabled && setShowProviderDropdown(!showProviderDropdown)}
             disabled={disabled}
             className={cn(
-              "w-full flex items-center justify-between px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-left transition",
-              !disabled && "hover:border-slate-500",
+              "w-full flex items-center justify-between px-4 py-3 bg-accent border border-border rounded-lg text-left transition",
+              !disabled && "hover:border-muted-foreground",
               disabled && "opacity-50 cursor-not-allowed"
             )}
           >
@@ -148,9 +148,9 @@ export function LLMProviderSelector({
                   style={{ color: currentProvider.color }}
                 />
               </div>
-              <span className="text-white font-medium">{currentProvider.name}</span>
+              <span className="text-foreground font-medium">{currentProvider.name}</span>
             </div>
-            <ChevronDown className="h-5 w-5 text-slate-400" />
+            <ChevronDown className="h-5 w-5 text-muted-foreground" />
           </button>
 
           {showProviderDropdown && (
@@ -159,7 +159,7 @@ export function LLMProviderSelector({
                 className="fixed inset-0 z-10"
                 onClick={() => setShowProviderDropdown(false)}
               />
-              <div className="absolute left-0 right-0 top-full mt-2 bg-slate-700 border border-slate-600 rounded-lg shadow-xl z-20 overflow-hidden">
+              <div className="absolute left-0 right-0 top-full mt-2 bg-accent border border-border rounded-lg shadow-xl z-20 overflow-hidden">
                 {Object.entries(PROVIDERS).map(([key, prov]) => {
                   const ProvIcon = prov.icon;
                   const isSelected = key === provider;
@@ -169,7 +169,7 @@ export function LLMProviderSelector({
                       onClick={() => handleProviderChange(key as LLMProvider)}
                       className={cn(
                         "w-full flex items-center gap-3 px-4 py-3 text-left transition",
-                        isSelected ? "bg-purple-500/20" : "hover:bg-slate-600"
+                        isSelected ? "bg-purple-500/20" : "hover:bg-muted"
                       )}
                     >
                       <div
@@ -181,7 +181,7 @@ export function LLMProviderSelector({
                           style={{ color: prov.color }}
                         />
                       </div>
-                      <span className="text-white font-medium">{prov.name}</span>
+                      <span className="text-foreground font-medium">{prov.name}</span>
                       {isSelected && (
                         <Check className="h-4 w-4 text-purple-400 ml-auto" />
                       )}
@@ -196,7 +196,7 @@ export function LLMProviderSelector({
 
       {/* Model Selector */}
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-2">
+        <label className="block text-sm font-medium text-foreground mb-2">
           Model
         </label>
         <div className="relative">
@@ -205,20 +205,20 @@ export function LLMProviderSelector({
             onClick={() => !disabled && setShowModelDropdown(!showModelDropdown)}
             disabled={disabled}
             className={cn(
-              "w-full flex items-center justify-between px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-left transition",
-              !disabled && "hover:border-slate-500",
+              "w-full flex items-center justify-between px-4 py-3 bg-accent border border-border rounded-lg text-left transition",
+              !disabled && "hover:border-muted-foreground",
               disabled && "opacity-50 cursor-not-allowed"
             )}
           >
             <div>
-              <div className="text-white font-medium">
+              <div className="text-foreground font-medium">
                 {currentProvider.models.find((m) => m.id === model)?.name || model}
               </div>
-              <div className="text-sm text-slate-400">
+              <div className="text-sm text-muted-foreground">
                 {currentProvider.models.find((m) => m.id === model)?.description}
               </div>
             </div>
-            <ChevronDown className="h-5 w-5 text-slate-400" />
+            <ChevronDown className="h-5 w-5 text-muted-foreground" />
           </button>
 
           {showModelDropdown && (
@@ -227,7 +227,7 @@ export function LLMProviderSelector({
                 className="fixed inset-0 z-10"
                 onClick={() => setShowModelDropdown(false)}
               />
-              <div className="absolute left-0 right-0 top-full mt-2 bg-slate-700 border border-slate-600 rounded-lg shadow-xl z-20 overflow-hidden">
+              <div className="absolute left-0 right-0 top-full mt-2 bg-accent border border-border rounded-lg shadow-xl z-20 overflow-hidden">
                 {currentProvider.models.map((m) => {
                   const isSelected = m.id === model;
                   return (
@@ -236,13 +236,13 @@ export function LLMProviderSelector({
                       onClick={() => handleModelChange(m.id)}
                       className={cn(
                         "w-full px-4 py-3 text-left transition",
-                        isSelected ? "bg-purple-500/20" : "hover:bg-slate-600"
+                        isSelected ? "bg-purple-500/20" : "hover:bg-muted"
                       )}
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className="text-white font-medium">{m.name}</div>
-                          <div className="text-sm text-slate-400">{m.description}</div>
+                          <div className="text-foreground font-medium">{m.name}</div>
+                          <div className="text-sm text-muted-foreground">{m.description}</div>
                         </div>
                         {isSelected && (
                           <Check className="h-4 w-4 text-purple-400" />
@@ -275,7 +275,7 @@ export function LLMConfigDisplay({ provider, model, className }: LLMConfigDispla
   return (
     <div className={cn("flex items-center gap-2", className)}>
       <Icon className="h-4 w-4" style={{ color: providerConfig.color }} />
-      <span className="text-sm text-slate-300">
+      <span className="text-sm text-foreground">
         {providerConfig.name} / {modelConfig?.name || model}
       </span>
     </div>

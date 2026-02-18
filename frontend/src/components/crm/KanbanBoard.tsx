@@ -159,10 +159,10 @@ export function KanbanBoard({
   // No status attribute found
   if (!statusAttr) {
     return (
-      <div className={cn("flex items-center justify-center h-64 text-slate-400", className)}>
+      <div className={cn("flex items-center justify-center h-64 text-muted-foreground", className)}>
         <div className="text-center">
           <p className="mb-2">No status field found</p>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Add a status attribute to this object to use the board view
           </p>
         </div>
@@ -182,7 +182,7 @@ export function KanbanBoard({
       <div
         className={cn(
           "flex gap-4 overflow-x-auto pb-4",
-          "scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-800",
+          "scrollbar-thin scrollbar-thumb-border scrollbar-track-muted",
           className
         )}
       >
@@ -218,7 +218,7 @@ export function KanbanBoard({
         {/* Add stage button (placeholder) */}
         <div className="flex-shrink-0 w-[300px] flex items-start">
           <button
-            className="flex items-center gap-2 px-4 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
             onClick={() => {
               // Could open a modal to add new status options
               alert("Add stage configuration coming soon");

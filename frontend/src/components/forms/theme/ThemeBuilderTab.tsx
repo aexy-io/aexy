@@ -81,7 +81,7 @@ export function ThemeBuilderTab({ theme, formName, fields, onSave, isSaving }: T
         />
 
         {/* Global Settings */}
-        <div className="pt-4 border-t border-slate-700">
+        <div className="pt-4 border-t border-border">
           <GlobalThemeSettings
             settings={localTheme.global}
             onChange={handleGlobalChange}
@@ -89,7 +89,7 @@ export function ThemeBuilderTab({ theme, formName, fields, onSave, isSaving }: T
         </div>
 
         {/* Element-level Settings */}
-        <div className="pt-4 border-t border-slate-700">
+        <div className="pt-4 border-t border-border">
           <ElementStyleEditor
             settings={localTheme.elements}
             onChange={handleElementsChange}
@@ -97,11 +97,11 @@ export function ThemeBuilderTab({ theme, formName, fields, onSave, isSaving }: T
         </div>
 
         {/* Custom CSS */}
-        <div className="pt-4 border-t border-slate-700">
+        <div className="pt-4 border-t border-border">
           <button
             type="button"
             onClick={() => setShowCustomCSS(!showCustomCSS)}
-            className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
+            className="flex items-center gap-2 text-sm text-foreground hover:text-foreground"
           >
             <Code className="w-4 h-4" />
             Custom CSS
@@ -112,9 +112,9 @@ export function ThemeBuilderTab({ theme, formName, fields, onSave, isSaving }: T
                 value={localTheme.custom_css || ""}
                 onChange={(e) => handleCustomCSSChange(e.target.value)}
                 placeholder="/* Add custom CSS rules here */"
-                className="w-full h-40 px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white font-mono text-sm placeholder-slate-500 resize-none"
+                className="w-full h-40 px-4 py-3 bg-background border border-border rounded-lg text-foreground font-mono text-sm placeholder-muted-foreground resize-none"
               />
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Custom CSS will be injected into the form page. Use CSS variables like var(--form-primary) to reference theme colors.
               </p>
             </div>
@@ -124,15 +124,15 @@ export function ThemeBuilderTab({ theme, formName, fields, onSave, isSaving }: T
 
       {/* Preview Panel */}
       {showPreview && (
-        <div className="w-[400px] flex-shrink-0 border-l border-slate-700 pl-6">
+        <div className="w-[400px] flex-shrink-0 border-l border-border pl-6">
           <div className="sticky top-0">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-slate-300">Preview</h3>
+              <h3 className="text-sm font-medium text-foreground">Preview</h3>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setShowPreview(false)}
-                  className="p-1.5 text-slate-400 hover:text-white"
+                  className="p-1.5 text-muted-foreground hover:text-foreground"
                   title="Hide Preview"
                 >
                   <Eye className="w-4 h-4" />
@@ -149,12 +149,12 @@ export function ThemeBuilderTab({ theme, formName, fields, onSave, isSaving }: T
       )}
 
       {/* Fixed Bottom Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-700 px-6 py-4 flex items-center justify-between z-10">
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border px-6 py-4 flex items-center justify-between z-10">
         <div className="flex items-center gap-4">
           <button
             type="button"
             onClick={handleReset}
-            className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:text-white"
+            className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:text-foreground"
           >
             <RotateCcw className="w-4 h-4" />
             Reset to Default
@@ -163,7 +163,7 @@ export function ThemeBuilderTab({ theme, formName, fields, onSave, isSaving }: T
             <button
               type="button"
               onClick={() => setShowPreview(true)}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:text-white"
+              className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:text-foreground"
             >
               <Eye className="w-4 h-4" />
               Show Preview

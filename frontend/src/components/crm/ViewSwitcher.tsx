@@ -26,7 +26,7 @@ export function ViewSwitcher({
   className,
 }: ViewSwitcherProps) {
   return (
-    <div className={cn("flex bg-slate-800 border border-slate-700 rounded-lg p-1", className)}>
+    <div className={cn("flex bg-muted border border-border rounded-lg p-1", className)}>
       {availableViews.map((mode) => {
         const config = viewConfig[mode];
         const Icon = config.icon;
@@ -39,8 +39,8 @@ export function ViewSwitcher({
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors",
               isActive
-                ? "bg-slate-700 text-white"
-                : "text-slate-400 hover:text-white hover:bg-slate-700/50"
+                ? "bg-accent text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
             )}
             title={config.label}
           >
@@ -61,7 +61,7 @@ export function ViewSwitcherCompact({
   className,
 }: ViewSwitcherProps) {
   return (
-    <div className={cn("flex bg-slate-800 border border-slate-700 rounded-lg p-1", className)}>
+    <div className={cn("flex bg-muted border border-border rounded-lg p-1", className)}>
       {availableViews.map((mode) => {
         const config = viewConfig[mode];
         const Icon = config.icon;
@@ -74,8 +74,8 @@ export function ViewSwitcherCompact({
             className={cn(
               "p-2 rounded transition-colors",
               isActive
-                ? "bg-slate-700 text-white"
-                : "text-slate-400 hover:text-white"
+                ? "bg-accent text-foreground"
+                : "text-muted-foreground hover:text-foreground"
             )}
             title={config.label}
           >

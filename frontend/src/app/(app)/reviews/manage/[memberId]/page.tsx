@@ -42,18 +42,18 @@ import { reviewsApi, IndividualReviewDetail, WorkGoal, GoalSuggestion } from "@/
 import { useWorkspace } from "@/hooks/useWorkspace";
 
 const goalTypeColors: Record<string, { bg: string; text: string }> = {
-  performance: { bg: "bg-cyan-500/20", text: "text-cyan-400" },
-  skill_development: { bg: "bg-purple-500/20", text: "text-purple-400" },
-  project: { bg: "bg-emerald-500/20", text: "text-emerald-400" },
-  leadership: { bg: "bg-amber-500/20", text: "text-amber-400" },
-  team_contribution: { bg: "bg-blue-500/20", text: "text-blue-400" },
+  performance: { bg: "bg-cyan-500/20", text: "text-cyan-600 dark:text-cyan-400" },
+  skill_development: { bg: "bg-purple-500/20", text: "text-purple-600 dark:text-purple-400" },
+  project: { bg: "bg-emerald-500/20", text: "text-emerald-600 dark:text-emerald-400" },
+  leadership: { bg: "bg-amber-500/20", text: "text-amber-600 dark:text-amber-400" },
+  team_contribution: { bg: "bg-blue-500/20", text: "text-blue-600 dark:text-blue-400" },
 };
 
 const goalStatusColors: Record<string, { bg: string; text: string }> = {
-  in_progress: { bg: "bg-blue-500/20", text: "text-blue-400" },
-  completed: { bg: "bg-emerald-500/20", text: "text-emerald-400" },
-  at_risk: { bg: "bg-red-500/20", text: "text-red-400" },
-  pending: { bg: "bg-slate-500/20", text: "text-slate-400" },
+  in_progress: { bg: "bg-blue-500/20", text: "text-blue-600 dark:text-blue-400" },
+  completed: { bg: "bg-emerald-500/20", text: "text-emerald-600 dark:text-emerald-400" },
+  at_risk: { bg: "bg-red-500/20", text: "text-red-600 dark:text-red-400" },
+  pending: { bg: "bg-muted-foreground/20", text: "text-muted-foreground" },
 };
 
 // Transform API data to component format
@@ -206,7 +206,7 @@ export default function MemberDetailPage() {
 
   if (authLoading || reviewLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary-500" />
       </div>
     );
@@ -218,12 +218,12 @@ export default function MemberDetailPage() {
 
   if (reviewError || !member) {
     return (
-      <div className="min-h-screen bg-slate-900">
+      <div className="min-h-screen bg-background">
 <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="text-center py-16">
             <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-white mb-2">Review not found</h2>
-            <p className="text-slate-400 mb-4">The review you&apos;re looking for doesn&apos;t exist or you don&apos;t have access.</p>
+            <h2 className="text-xl font-semibold text-foreground mb-2">Review not found</h2>
+            <p className="text-muted-foreground mb-4">The review you&apos;re looking for doesn&apos;t exist or you don&apos;t have access.</p>
             <Link href="/reviews" className="text-primary-400 hover:text-primary-300">
               Back to Reviews
             </Link>
@@ -237,32 +237,32 @@ export default function MemberDetailPage() {
   const completedGoals = member.goals.filter(g => g.status === "completed");
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-background">
 <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm mb-6">
-          <Link href="/reviews" className="text-slate-400 hover:text-white transition">
+          <Link href="/reviews" className="text-muted-foreground hover:text-foreground transition">
             Reviews
           </Link>
-          <ChevronRight className="h-4 w-4 text-slate-600" />
-          <Link href="/reviews/manage" className="text-slate-400 hover:text-white transition">
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <Link href="/reviews/manage" className="text-muted-foreground hover:text-foreground transition">
             Management
           </Link>
-          <ChevronRight className="h-4 w-4 text-slate-600" />
-          <span className="text-white">{member.name}</span>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <span className="text-foreground">{member.name}</span>
         </div>
 
         {/* Member Header */}
-        <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 mb-6">
+        <div className="bg-muted rounded-xl border border-border p-6 mb-6">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xl font-bold">
                 {member.name.split(" ").map(n => n[0]).join("")}
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-white">{member.name}</h1>
-                <p className="text-slate-400">{member.role} • {member.team}</p>
-                <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
+                <h1 className="text-2xl font-bold text-foreground">{member.name}</h1>
+                <p className="text-muted-foreground">{member.role} • {member.team}</p>
+                <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                   <span>Manager: {member.manager}</span>
                   <span>•</span>
                   <span>Joined {member.joinedDate}</span>
@@ -270,7 +270,7 @@ export default function MemberDetailPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <button className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition text-sm">
+              <button className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-muted text-foreground rounded-lg transition text-sm">
                 <Send className="h-4 w-4" />
                 Send Feedback
               </button>
@@ -282,13 +282,13 @@ export default function MemberDetailPage() {
           </div>
 
           {/* Skills */}
-          <div className="mt-4 pt-4 border-t border-slate-700">
-            <p className="text-slate-400 text-sm mb-2">Skills</p>
+          <div className="mt-4 pt-4 border-t border-border">
+            <p className="text-muted-foreground text-sm mb-2">Skills</p>
             <div className="flex flex-wrap gap-2">
               {member.skills.map((skill) => (
                 <span
                   key={skill}
-                  className="px-3 py-1 bg-slate-700 text-slate-300 text-sm rounded-lg"
+                  className="px-3 py-1 bg-accent text-foreground text-sm rounded-lg"
                 >
                   {skill}
                 </span>
@@ -299,45 +299,45 @@ export default function MemberDetailPage() {
 
         {/* Quick Stats */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+          <div className="bg-muted rounded-xl p-4 border border-border">
             <div className="flex items-center gap-2 mb-2">
               <Target className="w-4 h-4 text-cyan-400" />
-              <span className="text-slate-400 text-sm">Active Goals</span>
+              <span className="text-muted-foreground text-sm">Active Goals</span>
             </div>
-            <p className="text-2xl font-bold text-white">{activeGoals.length}</p>
+            <p className="text-2xl font-bold text-foreground">{activeGoals.length}</p>
           </div>
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+          <div className="bg-muted rounded-xl p-4 border border-border">
             <div className="flex items-center gap-2 mb-2">
               <CheckCircle className="w-4 h-4 text-emerald-400" />
-              <span className="text-slate-400 text-sm">Completed</span>
+              <span className="text-muted-foreground text-sm">Completed</span>
             </div>
-            <p className="text-2xl font-bold text-white">{completedGoals.length}</p>
+            <p className="text-2xl font-bold text-foreground">{completedGoals.length}</p>
           </div>
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+          <div className="bg-muted rounded-xl p-4 border border-border">
             <div className="flex items-center gap-2 mb-2">
               <GitCommit className="w-4 h-4 text-purple-400" />
-              <span className="text-slate-400 text-sm">Commits</span>
+              <span className="text-muted-foreground text-sm">Commits</span>
             </div>
-            <p className="text-2xl font-bold text-white">{member.contributions.commits}</p>
+            <p className="text-2xl font-bold text-foreground">{member.contributions.commits}</p>
           </div>
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+          <div className="bg-muted rounded-xl p-4 border border-border">
             <div className="flex items-center gap-2 mb-2">
               <GitPullRequest className="w-4 h-4 text-blue-400" />
-              <span className="text-slate-400 text-sm">PRs</span>
+              <span className="text-muted-foreground text-sm">PRs</span>
             </div>
-            <p className="text-2xl font-bold text-white">{member.contributions.prs}</p>
+            <p className="text-2xl font-bold text-foreground">{member.contributions.prs}</p>
           </div>
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+          <div className="bg-muted rounded-xl p-4 border border-border">
             <div className="flex items-center gap-2 mb-2">
               <MessageSquare className="w-4 h-4 text-amber-400" />
-              <span className="text-slate-400 text-sm">Reviews</span>
+              <span className="text-muted-foreground text-sm">Reviews</span>
             </div>
-            <p className="text-2xl font-bold text-white">{member.contributions.reviews}</p>
+            <p className="text-2xl font-bold text-foreground">{member.contributions.reviews}</p>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 bg-slate-800 p-1 rounded-lg w-fit">
+        <div className="flex gap-2 mb-6 bg-muted p-1 rounded-lg w-fit">
           {[
             { key: "overview", label: "Overview", icon: BarChart3 },
             { key: "goals", label: "Goals", icon: Target },
@@ -349,8 +349,8 @@ export default function MemberDetailPage() {
               onClick={() => setActiveTab(tab.key as typeof activeTab)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
                 activeTab === tab.key
-                  ? "bg-slate-700 text-white"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-accent text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <tab.icon className="h-4 w-4" />
@@ -364,15 +364,15 @@ export default function MemberDetailPage() {
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Goals Summary */}
             <div className="lg:col-span-2 space-y-4">
-              <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <div className="bg-muted rounded-xl border border-border overflow-hidden">
+                <div className="px-6 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                     <Target className="h-5 w-5 text-cyan-400" />
                     Active Goals
                   </h3>
                   <Link
                     href={`/reviews/goals/new?member=${member.id}`}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition"
+                    className="flex items-center gap-1 px-3 py-1.5 bg-accent hover:bg-muted text-foreground rounded-lg text-sm transition"
                   >
                     <Plus className="h-4 w-4" />
                     Assign Goal
@@ -380,22 +380,22 @@ export default function MemberDetailPage() {
                 </div>
                 <div className="p-4 space-y-3">
                   {activeGoals.map((goal) => (
-                    <div key={goal.id} className="bg-slate-900 rounded-lg p-4">
+                    <div key={goal.id} className="bg-background rounded-lg p-4">
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <h4 className="text-white font-medium">{goal.title}</h4>
+                            <h4 className="text-foreground font-medium">{goal.title}</h4>
                             <span className={`px-2 py-0.5 rounded-full text-xs ${goalTypeColors[goal.type]?.bg} ${goalTypeColors[goal.type]?.text}`}>
                               {goal.type.replace("_", " ")}
                             </span>
                           </div>
-                          <p className="text-slate-500 text-sm">Due: {new Date(goal.dueDate).toLocaleDateString()}</p>
+                          <p className="text-muted-foreground text-sm">Due: {new Date(goal.dueDate).toLocaleDateString()}</p>
                         </div>
                         <span className={`px-2 py-0.5 rounded-full text-xs ${goalStatusColors[goal.status]?.bg} ${goalStatusColors[goal.status]?.text}`}>
                           {goal.progress}%
                         </span>
                       </div>
-                      <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                      <div className="h-2 bg-accent rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all ${
                             goal.progress >= 75 ? "bg-emerald-500" :
@@ -410,8 +410,8 @@ export default function MemberDetailPage() {
                         <div className="mt-3 space-y-2">
                           {goal.keyResults.map((kr, idx) => (
                             <div key={idx} className="flex items-center justify-between text-sm">
-                              <span className="text-slate-400">{kr.description}</span>
-                              <span className="text-slate-300">
+                              <span className="text-muted-foreground">{kr.description}</span>
+                              <span className="text-foreground">
                                 {kr.current}/{kr.target} {kr.unit}
                               </span>
                             </div>
@@ -421,7 +421,7 @@ export default function MemberDetailPage() {
                     </div>
                   ))}
                   {activeGoals.length === 0 && (
-                    <div className="text-center py-8 text-slate-400">
+                    <div className="text-center py-8 text-muted-foreground">
                       No active goals
                     </div>
                   )}
@@ -430,9 +430,9 @@ export default function MemberDetailPage() {
 
               {/* GitHub Suggestions */}
               {member.suggestions.length > 0 && (
-                <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-                  <div className="px-6 py-4 border-b border-slate-700">
-                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <div className="bg-muted rounded-xl border border-border overflow-hidden">
+                  <div className="px-6 py-4 border-b border-border">
+                    <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                       <Lightbulb className="h-5 w-5 text-amber-400" />
                       Goal Suggestions from GitHub
                     </h3>
@@ -442,27 +442,27 @@ export default function MemberDetailPage() {
                       <div key={suggestion.id} className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
                         <div className="flex items-start justify-between mb-2">
                           <div>
-                            <h4 className="text-white font-medium">{suggestion.title}</h4>
-                            <p className="text-slate-400 text-sm mt-1">{suggestion.description}</p>
+                            <h4 className="text-foreground font-medium">{suggestion.title}</h4>
+                            <p className="text-muted-foreground text-sm mt-1">{suggestion.description}</p>
                           </div>
                           <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs rounded-full">
                             {suggestion.confidence}% match
                           </span>
                         </div>
-                        <div className="bg-slate-900 rounded-lg p-3 mb-3">
-                          <p className="text-slate-400 text-xs mb-1">Suggested Goal:</p>
-                          <p className="text-white text-sm">{suggestion.suggestedGoal}</p>
+                        <div className="bg-background rounded-lg p-3 mb-3">
+                          <p className="text-muted-foreground text-xs mb-1">Suggested Goal:</p>
+                          <p className="text-foreground text-sm">{suggestion.suggestedGoal}</p>
                         </div>
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                           <div className="flex flex-wrap gap-1">
                             {suggestion.keywords.map((kw) => (
-                              <span key={kw} className="px-2 py-0.5 bg-slate-700 text-slate-400 text-xs rounded">
+                              <span key={kw} className="px-2 py-0.5 bg-accent text-muted-foreground text-xs rounded">
                                 {kw}
                               </span>
                             ))}
                           </div>
                           <div className="flex items-center gap-2">
-                            <button className="text-slate-400 hover:text-red-400 text-sm transition">
+                            <button className="text-muted-foreground hover:text-red-400 text-sm transition">
                               Discard
                             </button>
                             <Link
@@ -484,13 +484,13 @@ export default function MemberDetailPage() {
             {/* Sidebar */}
             <div className="space-y-4">
               {/* Feedback Summary */}
-              <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-700">
-                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <div className="bg-muted rounded-xl border border-border overflow-hidden">
+                <div className="px-6 py-4 border-b border-border">
+                  <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                     <MessageSquare className="h-5 w-5 text-purple-400" />
                     Feedback Summary
                   </h3>
-                  <p className="text-slate-500 text-sm mt-1">
+                  <p className="text-muted-foreground text-sm mt-1">
                     Based on {member.feedbackSummary.peerCount} peer reviews
                   </p>
                 </div>
@@ -502,7 +502,7 @@ export default function MemberDetailPage() {
                     </p>
                     <ul className="space-y-2">
                       {member.feedbackSummary.strengths.map((strength, idx) => (
-                        <li key={idx} className="text-slate-300 text-sm pl-4 border-l-2 border-emerald-500/30">
+                        <li key={idx} className="text-foreground text-sm pl-4 border-l-2 border-emerald-500/30">
                           {strength}
                         </li>
                       ))}
@@ -515,7 +515,7 @@ export default function MemberDetailPage() {
                     </p>
                     <ul className="space-y-2">
                       {member.feedbackSummary.growthAreas.map((area, idx) => (
-                        <li key={idx} className="text-slate-300 text-sm pl-4 border-l-2 border-amber-500/30">
+                        <li key={idx} className="text-foreground text-sm pl-4 border-l-2 border-amber-500/30">
                           {area}
                         </li>
                       ))}
@@ -525,24 +525,24 @@ export default function MemberDetailPage() {
               </div>
 
               {/* Contribution Stats */}
-              <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-700">
-                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <div className="bg-muted rounded-xl border border-border overflow-hidden">
+                <div className="px-6 py-4 border-b border-border">
+                  <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                     <Code className="h-5 w-5 text-blue-400" />
                     Code Impact
                   </h3>
                 </div>
                 <div className="p-4 space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-400 text-sm">Lines Added</span>
+                    <span className="text-muted-foreground text-sm">Lines Added</span>
                     <span className="text-emerald-400 font-medium">+{member.contributions.linesAdded.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-400 text-sm">Lines Removed</span>
+                    <span className="text-muted-foreground text-sm">Lines Removed</span>
                     <span className="text-red-400 font-medium">-{member.contributions.linesRemoved.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between items-center pt-2 border-t border-slate-700">
-                    <span className="text-slate-400 text-sm">Net Change</span>
+                  <div className="flex justify-between items-center pt-2 border-t border-border">
+                    <span className="text-muted-foreground text-sm">Net Change</span>
                     <span className={`font-medium ${
                       member.contributions.linesAdded - member.contributions.linesRemoved >= 0
                         ? "text-emerald-400"
@@ -556,18 +556,18 @@ export default function MemberDetailPage() {
               </div>
 
               {/* Quick Actions */}
-              <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
-                <h3 className="text-white font-medium mb-3">Quick Actions</h3>
+              <div className="bg-muted rounded-xl border border-border p-4">
+                <h3 className="text-foreground font-medium mb-3">Quick Actions</h3>
                 <div className="space-y-2">
-                  <button className="w-full flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition">
+                  <button className="w-full flex items-center gap-2 px-3 py-2 bg-accent hover:bg-muted text-foreground rounded-lg text-sm transition">
                     <UserCheck className="h-4 w-4" />
                     Request Peer Review
                   </button>
-                  <button className="w-full flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition">
+                  <button className="w-full flex items-center gap-2 px-3 py-2 bg-accent hover:bg-muted text-foreground rounded-lg text-sm transition">
                     <Calendar className="h-4 w-4" />
                     Schedule 1:1
                   </button>
-                  <button className="w-full flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition">
+                  <button className="w-full flex items-center gap-2 px-3 py-2 bg-accent hover:bg-muted text-foreground rounded-lg text-sm transition">
                     <FileText className="h-4 w-4" />
                     Export Report
                   </button>
@@ -580,7 +580,7 @@ export default function MemberDetailPage() {
         {activeTab === "goals" && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <h2 className="text-xl font-semibold text-white">All Goals</h2>
+              <h2 className="text-xl font-semibold text-foreground">All Goals</h2>
               <Link
                 href={`/reviews/goals/new?member=${member.id}`}
                 className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition text-sm font-medium"
@@ -592,11 +592,11 @@ export default function MemberDetailPage() {
 
             <div className="space-y-4">
               {member.goals.map((goal) => (
-                <div key={goal.id} className="bg-slate-800 rounded-xl border border-slate-700 p-5">
+                <div key={goal.id} className="bg-muted rounded-xl border border-border p-5">
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-white font-semibold">{goal.title}</h3>
+                        <h3 className="text-foreground font-semibold">{goal.title}</h3>
                         <span className={`px-2 py-0.5 rounded-full text-xs ${goalTypeColors[goal.type]?.bg} ${goalTypeColors[goal.type]?.text}`}>
                           {goal.type.replace("_", " ")}
                         </span>
@@ -604,15 +604,15 @@ export default function MemberDetailPage() {
                           {goal.status.replace("_", " ")}
                         </span>
                       </div>
-                      <p className="text-slate-500 text-sm">Due: {new Date(goal.dueDate).toLocaleDateString()}</p>
+                      <p className="text-muted-foreground text-sm">Due: {new Date(goal.dueDate).toLocaleDateString()}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-bold text-white">{goal.progress}%</p>
-                      <p className="text-slate-500 text-sm">Progress</p>
+                      <p className="text-2xl font-bold text-foreground">{goal.progress}%</p>
+                      <p className="text-muted-foreground text-sm">Progress</p>
                     </div>
                   </div>
 
-                  <div className="h-2 bg-slate-700 rounded-full overflow-hidden mb-4">
+                  <div className="h-2 bg-accent rounded-full overflow-hidden mb-4">
                     <div
                       className={`h-full rounded-full transition-all ${
                         goal.status === "completed" ? "bg-emerald-500" :
@@ -627,16 +627,16 @@ export default function MemberDetailPage() {
 
                   {goal.keyResults.length > 0 && (
                     <div className="space-y-3">
-                      <p className="text-slate-400 text-sm font-medium">Key Results</p>
+                      <p className="text-muted-foreground text-sm font-medium">Key Results</p>
                       {goal.keyResults.map((kr, idx) => (
-                        <div key={idx} className="bg-slate-900 rounded-lg p-3">
+                        <div key={idx} className="bg-background rounded-lg p-3">
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
-                            <span className="text-white text-sm">{kr.description}</span>
-                            <span className="text-slate-400 text-sm">
+                            <span className="text-foreground text-sm">{kr.description}</span>
+                            <span className="text-muted-foreground text-sm">
                               {kr.current}/{kr.target} {kr.unit}
                             </span>
                           </div>
-                          <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                          <div className="h-1.5 bg-accent rounded-full overflow-hidden">
                             <div
                               className="h-full bg-primary-500 rounded-full"
                               style={{ width: `${Math.min((kr.current / kr.target) * 100, 100)}%` }}
@@ -653,11 +653,11 @@ export default function MemberDetailPage() {
         )}
 
         {activeTab === "contributions" && (
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+          <div className="bg-muted rounded-xl border border-border p-6">
             <div className="text-center py-12">
-              <GitPullRequest className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-              <h3 className="text-xl font-medium text-white mb-2">Contribution History</h3>
-              <p className="text-slate-400 text-sm mb-6">
+              <GitPullRequest className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-xl font-medium text-foreground mb-2">Contribution History</h3>
+              <p className="text-muted-foreground text-sm mb-6">
                 Detailed contribution history will be loaded from GitHub
               </p>
               <button className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition text-sm font-medium mx-auto">
@@ -670,22 +670,22 @@ export default function MemberDetailPage() {
 
         {activeTab === "feedback" && (
           <div className="grid lg:grid-cols-2 gap-6">
-            <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-700">
-                <h3 className="text-lg font-semibold text-white">Self Review</h3>
+            <div className="bg-muted rounded-xl border border-border overflow-hidden">
+              <div className="px-6 py-4 border-b border-border">
+                <h3 className="text-lg font-semibold text-foreground">Self Review</h3>
               </div>
               <div className="p-6 text-center py-12">
-                <ClipboardCheck className="h-12 w-12 text-slate-600 mx-auto mb-3" />
-                <p className="text-slate-400 text-sm">Self review submitted</p>
+                <ClipboardCheck className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm">Self review submitted</p>
                 <button className="mt-4 text-primary-400 hover:text-primary-300 text-sm transition">
                   View submission
                 </button>
               </div>
             </div>
 
-            <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h3 className="text-lg font-semibold text-white">Peer Reviews</h3>
+            <div className="bg-muted rounded-xl border border-border overflow-hidden">
+              <div className="px-6 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <h3 className="text-lg font-semibold text-foreground">Peer Reviews</h3>
                 <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs rounded-full">
                   {member.feedbackSummary.peerCount} received
                 </span>
@@ -693,14 +693,14 @@ export default function MemberDetailPage() {
               <div className="p-6">
                 <div className="space-y-4">
                   {member.feedbackSummary.strengths.slice(0, 2).map((item, idx) => (
-                    <div key={idx} className="bg-slate-900 rounded-lg p-4">
+                    <div key={idx} className="bg-background rounded-lg p-4">
                       <div className="flex items-center gap-2 mb-2">
-                        <div className="w-6 h-6 bg-slate-700 rounded-full flex items-center justify-center text-slate-400 text-xs">
+                        <div className="w-6 h-6 bg-accent rounded-full flex items-center justify-center text-muted-foreground text-xs">
                           A
                         </div>
-                        <span className="text-slate-500 text-sm">Anonymous peer</span>
+                        <span className="text-muted-foreground text-sm">Anonymous peer</span>
                       </div>
-                      <p className="text-slate-300 text-sm">&ldquo;{item}&rdquo;</p>
+                      <p className="text-foreground text-sm">&ldquo;{item}&rdquo;</p>
                     </div>
                   ))}
                 </div>

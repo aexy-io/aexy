@@ -1913,6 +1913,16 @@ export interface AcceptInviteResponse {
   message: string;
 }
 
+export interface MyInvitation {
+  token: string;
+  workspace_name: string;
+  workspace_slug: string;
+  invited_by_name: string | null;
+  role: string;
+  expires_at: string | null;
+  created_at: string;
+}
+
 export interface WorkspaceAppSettings {
   hiring: boolean;
   tracking: boolean;
@@ -2491,6 +2501,12 @@ export const workspaceApi = {
 
   resendMemberInvite: async (workspaceId: string, developerId: string): Promise<WorkspaceMember> => {
     const response = await api.post(`/workspaces/${workspaceId}/members/${developerId}/resend-invite`);
+    return response.data;
+  },
+
+  // My Invitations (for onboarding - get all pending invites for current user)
+  getMyInvitations: async (): Promise<MyInvitation[]> => {
+    const response = await api.get("/invites/my-invitations");
     return response.data;
   },
 

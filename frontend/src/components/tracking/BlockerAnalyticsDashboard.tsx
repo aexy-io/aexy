@@ -80,9 +80,9 @@ export function BlockerAnalyticsDashboard({
       <div className={`space-y-6 ${className}`}>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-slate-800 rounded-xl p-6 border border-slate-700 animate-pulse">
-              <div className="h-4 bg-slate-700 rounded w-1/2 mb-3" />
-              <div className="h-8 bg-slate-700 rounded w-1/3" />
+            <div key={i} className="bg-muted rounded-xl p-6 border border-border animate-pulse">
+              <div className="h-4 bg-accent rounded w-1/2 mb-3" />
+              <div className="h-8 bg-accent rounded w-1/3" />
             </div>
           ))}
         </div>
@@ -116,7 +116,7 @@ export function BlockerAnalyticsDashboard({
           subtitle={`of ${summary.total_reported} total`}
           icon={CheckCircle2}
           iconColor="text-green-400"
-          iconBgColor="bg-green-900/30"
+          iconBgColor="bg-green-100 dark:bg-green-900/30"
         />
         <MetricCard
           title="Escalated"
@@ -124,7 +124,7 @@ export function BlockerAnalyticsDashboard({
           subtitle="Waiting for help"
           icon={ArrowUpCircle}
           iconColor="text-purple-400"
-          iconBgColor="bg-purple-900/30"
+          iconBgColor="bg-purple-100 dark:bg-purple-900/30"
         />
         <MetricCard
           title="Avg Resolution"
@@ -132,15 +132,15 @@ export function BlockerAnalyticsDashboard({
           subtitle="Time to resolve"
           icon={Clock}
           iconColor="text-blue-400"
-          iconBgColor="bg-blue-900/30"
+          iconBgColor="bg-blue-100 dark:bg-blue-900/30"
         />
       </div>
 
       {/* SLA & Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* SLA Summary */}
-        <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+        <div className="bg-muted rounded-xl border border-border p-6">
+          <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
             <Clock className="h-5 w-5 text-blue-400" />
             SLA Status
           </h3>
@@ -154,13 +154,13 @@ export function BlockerAnalyticsDashboard({
               targetHours={24}
             />
           ) : (
-            <p className="text-slate-500 text-sm">No blockers to analyze</p>
+            <p className="text-muted-foreground text-sm">No blockers to analyze</p>
           )}
         </div>
 
         {/* By Severity */}
-        <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">By Severity</h3>
+        <div className="bg-muted rounded-xl border border-border p-6">
+          <h3 className="text-lg font-semibold text-foreground mb-4">By Severity</h3>
           <div className="space-y-3">
             {["critical", "high", "medium", "low"].map((severity) => {
               const count = by_severity[severity] || 0;
@@ -177,10 +177,10 @@ export function BlockerAnalyticsDashboard({
               return (
                 <div key={severity}>
                   <div className="flex items-center justify-between text-sm mb-1">
-                    <span className="text-slate-400 capitalize">{severity}</span>
-                    <span className="text-white">{count} ({percentage}%)</span>
+                    <span className="text-muted-foreground capitalize">{severity}</span>
+                    <span className="text-foreground">{count} ({percentage}%)</span>
                   </div>
-                  <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                  <div className="h-2 bg-accent rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full ${colors[severity as keyof typeof colors]}`}
                       style={{ width: `${percentage}%` }}
@@ -193,8 +193,8 @@ export function BlockerAnalyticsDashboard({
         </div>
 
         {/* By Category */}
-        <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">By Category</h3>
+        <div className="bg-muted rounded-xl border border-border p-6">
+          <h3 className="text-lg font-semibold text-foreground mb-4">By Category</h3>
           <div className="space-y-3">
             {Object.entries(by_category)
               .sort(([, a], [, b]) => b - a)
@@ -206,10 +206,10 @@ export function BlockerAnalyticsDashboard({
                 return (
                   <div key={category}>
                     <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="text-slate-400 capitalize">{category.replace("_", " ")}</span>
-                      <span className="text-white">{count} ({percentage}%)</span>
+                      <span className="text-muted-foreground capitalize">{category.replace("_", " ")}</span>
+                      <span className="text-foreground">{count} ({percentage}%)</span>
                     </div>
-                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-2 bg-accent rounded-full overflow-hidden">
                       <div
                         className="h-full rounded-full bg-purple-500"
                         style={{ width: `${percentage}%` }}
@@ -219,7 +219,7 @@ export function BlockerAnalyticsDashboard({
                 );
               })}
             {Object.keys(by_category).length === 0 && (
-              <p className="text-slate-500 text-sm">No category data</p>
+              <p className="text-muted-foreground text-sm">No category data</p>
             )}
           </div>
         </div>
@@ -240,21 +240,21 @@ export function BlockerAnalyticsDashboard({
 
       {/* Resolution Rate */}
       {summary.total_reported > 0 && (
-        <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+        <div className="bg-muted rounded-xl border border-border p-6">
+          <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-green-400" />
             Resolution Rate
           </h3>
           <div className="flex items-center gap-8">
             <div className="flex-1">
-              <div className="text-4xl font-bold text-white">
+              <div className="text-4xl font-bold text-foreground">
                 {Math.round((summary.total_resolved / summary.total_reported) * 100)}%
               </div>
-              <p className="text-sm text-slate-400 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 {summary.total_resolved} of {summary.total_reported} blockers resolved
               </p>
             </div>
-            <div className="flex-1 h-4 bg-slate-700 rounded-full overflow-hidden">
+            <div className="flex-1 h-4 bg-accent rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-green-600 to-green-400 rounded-full"
                 style={{ width: `${(summary.total_resolved / summary.total_reported) * 100}%` }}

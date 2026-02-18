@@ -86,21 +86,21 @@ function RunAgentDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-lg mx-4">
+      <div className="relative bg-muted border border-border rounded-2xl shadow-2xl w-full max-w-lg mx-4">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 border-b border-slate-700">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-purple-500/20 rounded-lg">
               <Zap className="h-5 w-5 text-purple-400" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-white">Run {agentName}</h2>
-              <p className="text-sm text-slate-400">Provide context for the agent</p>
+              <h2 className="text-lg font-semibold text-foreground">Run {agentName}</h2>
+              <p className="text-sm text-muted-foreground">Provide context for the agent</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors"
+            className="p-2 hover:bg-accent rounded-lg text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -110,18 +110,18 @@ function RunAgentDialog({
         <form onSubmit={handleSubmit} className="p-5 space-y-5">
           {/* Task Input */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               Task Description
             </label>
             <textarea
               value={task}
               onChange={(e) => setTask(e.target.value)}
               placeholder="e.g., Search for contacts in the tech industry and draft a personalized email..."
-              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 resize-none"
+              className="w-full px-4 py-3 bg-accent border border-border rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 resize-none"
               rows={4}
               autoFocus
             />
-            <p className="mt-2 text-xs text-slate-500">
+            <p className="mt-2 text-xs text-muted-foreground">
               Be specific about what you want the agent to do. The agent will use its available tools to complete the task.
             </p>
           </div>
@@ -129,7 +129,7 @@ function RunAgentDialog({
           {/* Available Tools */}
           {tools.length > 0 && (
             <div>
-              <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                 <Wrench className="h-4 w-4" />
                 <span>Available Tools</span>
               </div>
@@ -137,7 +137,7 @@ function RunAgentDialog({
                 {tools.map((tool) => (
                   <span
                     key={tool}
-                    className="px-2 py-1 bg-slate-700 text-slate-400 rounded text-xs"
+                    className="px-2 py-1 bg-accent text-muted-foreground rounded text-xs"
                   >
                     {tool.replace(/_/g, " ")}
                   </span>
@@ -151,7 +151,7 @@ function RunAgentDialog({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+              className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
             >
               Cancel
             </button>
@@ -193,20 +193,20 @@ function ExecutionItem({ execution, isSelected, onClick }: ExecutionItemProps) {
         "w-full text-left p-3 rounded-lg transition border",
         isSelected
           ? "bg-purple-500/10 border-purple-500/30"
-          : "bg-slate-700/30 border-transparent hover:border-slate-600"
+          : "bg-accent/30 border-transparent hover:border-border"
       )}
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
         <ExecutionStatusBadge status={execution.status} size="sm" />
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-muted-foreground">
           {formatDate(execution.started_at || execution.created_at)}
         </span>
       </div>
       <div className="flex items-center justify-between text-sm">
-        <span className="text-slate-400">
+        <span className="text-muted-foreground">
           {execution.steps?.length || 0} steps
         </span>
-        <span className="text-slate-400">
+        <span className="text-muted-foreground">
           {formatDuration(execution.duration_ms)}
         </span>
       </div>
@@ -223,30 +223,30 @@ function ExecutionDetail({ execution }: ExecutionDetailProps) {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <ExecutionStatusBadge status={execution.status} />
-        <span className="text-sm text-slate-400">
+        <span className="text-sm text-muted-foreground">
           {formatDate(execution.started_at || execution.created_at)}
         </span>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-slate-700/50 rounded-lg p-3">
-          <div className="text-xl font-semibold text-white">
+        <div className="bg-accent/50 rounded-lg p-3">
+          <div className="text-xl font-semibold text-foreground">
             {execution.steps?.length || 0}
           </div>
-          <div className="text-xs text-slate-400">Steps</div>
+          <div className="text-xs text-muted-foreground">Steps</div>
         </div>
-        <div className="bg-slate-700/50 rounded-lg p-3">
-          <div className="text-xl font-semibold text-white">
+        <div className="bg-accent/50 rounded-lg p-3">
+          <div className="text-xl font-semibold text-foreground">
             {formatDuration(execution.duration_ms)}
           </div>
-          <div className="text-xs text-slate-400">Duration</div>
+          <div className="text-xs text-muted-foreground">Duration</div>
         </div>
-        <div className="bg-slate-700/50 rounded-lg p-3">
-          <div className="text-xl font-semibold text-white">
+        <div className="bg-accent/50 rounded-lg p-3">
+          <div className="text-xl font-semibold text-foreground">
             {(execution.input_tokens || 0) + (execution.output_tokens || 0)}
           </div>
-          <div className="text-xs text-slate-400">Tokens</div>
+          <div className="text-xs text-muted-foreground">Tokens</div>
         </div>
       </div>
 
@@ -264,31 +264,31 @@ function ExecutionDetail({ execution }: ExecutionDetailProps) {
       {/* Steps */}
       {execution.steps && execution.steps.length > 0 && (
         <div>
-          <h4 className="text-sm font-medium text-slate-300 mb-3">Execution Steps</h4>
+          <h4 className="text-sm font-medium text-foreground mb-3">Execution Steps</h4>
           <div className="space-y-2">
             {execution.steps.map((step, index) => (
               <div
                 key={index}
-                className="bg-slate-700/50 rounded-lg p-3 text-sm"
+                className="bg-accent/50 rounded-lg p-3 text-sm"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
-                  <span className="text-slate-300 font-medium">
+                  <span className="text-foreground font-medium">
                     Step {step.step_number}
                     {step.tool_name && (
                       <span className="ml-2 text-purple-400">{step.tool_name}</span>
                     )}
                   </span>
                   {step.timestamp && (
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-muted-foreground">
                       {new Date(step.timestamp).toLocaleTimeString()}
                     </span>
                   )}
                 </div>
                 {step.thought && (
-                  <p className="text-slate-400 italic mb-2">"{step.thought}"</p>
+                  <p className="text-muted-foreground italic mb-2">"{step.thought}"</p>
                 )}
                 {step.tool_output && (
-                  <pre className="text-xs text-slate-400 bg-slate-800 rounded p-2 overflow-x-auto">
+                  <pre className="text-xs text-muted-foreground bg-muted rounded p-2 overflow-x-auto">
                     {typeof step.tool_output === "string"
                       ? step.tool_output.slice(0, 500)
                       : JSON.stringify(step.tool_output, null, 2).slice(0, 500)}
@@ -303,8 +303,8 @@ function ExecutionDetail({ execution }: ExecutionDetailProps) {
       {/* Output */}
       {execution.output_result && (
         <div>
-          <h4 className="text-sm font-medium text-slate-300 mb-2">Output</h4>
-          <pre className="text-xs text-slate-400 bg-slate-700/50 rounded-lg p-3 overflow-x-auto">
+          <h4 className="text-sm font-medium text-foreground mb-2">Output</h4>
+          <pre className="text-xs text-muted-foreground bg-accent/50 rounded-lg p-3 overflow-x-auto">
             {JSON.stringify(execution.output_result, null, 2)}
           </pre>
         </div>
@@ -378,10 +378,10 @@ export default function AgentDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mx-auto mb-4"></div>
-          <p className="text-white">Loading agent...</p>
+          <p className="text-foreground">Loading agent...</p>
         </div>
       </div>
     );
@@ -389,11 +389,11 @@ export default function AgentDetailPage() {
 
   if (!agent) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <Bot className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-          <h2 className="text-xl font-medium text-white mb-2">Agent Not Found</h2>
-          <p className="text-slate-400 mb-4">
+          <Bot className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-xl font-medium text-foreground mb-2">Agent Not Found</h2>
+          <p className="text-muted-foreground mb-4">
             The agent you're looking for doesn't exist or has been deleted.
           </p>
           <Link
@@ -413,15 +413,15 @@ export default function AgentDetailPage() {
       : 0;
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800/50">
+      <header className="border-b border-border bg-muted/50">
         <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4 space-y-3 sm:space-y-0">
           {/* Desktop: single row / Mobile: two rows */}
           <div className="flex items-center gap-2 sm:gap-4">
             <Link
               href="/agents"
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition flex-shrink-0"
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition flex-shrink-0"
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>
@@ -441,10 +441,10 @@ export default function AgentDetailPage() {
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 sm:gap-3">
-                  <h1 className="text-base sm:text-xl font-semibold text-white truncate">{agent.name}</h1>
+                  <h1 className="text-base sm:text-xl font-semibold text-foreground truncate">{agent.name}</h1>
                   <AgentStatusBadge isActive={agent.is_active} size="sm" />
                 </div>
-                <div className="hidden sm:flex items-center gap-2 text-sm text-slate-400">
+                <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
                   <AgentTypeBadge type={agent.agent_type} size="sm" showLabel={false} />
                   <span>{getAgentTypeConfig(agent.agent_type).label}</span>
                   {agent.mention_handle && (
@@ -469,7 +469,7 @@ export default function AgentDetailPage() {
               <button
                 onClick={() => setShowRunDialog(true)}
                 disabled={isExecuting || !agent.is_active}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-foreground rounded-lg transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isExecuting ? (
                   <>
@@ -504,7 +504,7 @@ export default function AgentDetailPage() {
               </button>
               <Link
                 href={`/agents/${agent.id}/edit`}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition text-sm font-medium"
+                className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-muted text-foreground rounded-lg transition text-sm font-medium"
               >
                 <Settings className="h-4 w-4" />
                 Edit
@@ -512,21 +512,21 @@ export default function AgentDetailPage() {
               <div className="relative">
                 <button
                   onClick={() => setShowMenu(!showMenu)}
-                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
                 >
                   <MoreVertical className="h-5 w-5" />
                 </button>
                 {showMenu && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-                    <div className="absolute right-0 top-full mt-1 w-48 bg-slate-700 rounded-lg shadow-xl z-20 py-1">
+                    <div className="absolute right-0 top-full mt-1 w-48 bg-accent rounded-lg shadow-xl z-20 py-1">
                       <button
                         onClick={() => {
                           handleDelete();
                           setShowMenu(false);
                         }}
                         disabled={isDeleting}
-                        className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-600 flex items-center gap-2"
+                        className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-muted flex items-center gap-2"
                       >
                         <Trash2 className="h-4 w-4" />
                         Delete Agent
@@ -550,7 +550,7 @@ export default function AgentDetailPage() {
             <button
               onClick={() => setShowRunDialog(true)}
               disabled={isExecuting || !agent.is_active}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-foreground rounded-lg transition text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isExecuting ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -580,7 +580,7 @@ export default function AgentDetailPage() {
             </button>
             <Link
               href={`/agents/${agent.id}/edit`}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition text-xs font-medium"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-muted text-foreground rounded-lg transition text-xs font-medium"
             >
               <Settings className="h-3.5 w-3.5" />
               Edit
@@ -588,21 +588,21 @@ export default function AgentDetailPage() {
             <div className="relative ml-auto">
               <button
                 onClick={() => setShowMenu(!showMenu)}
-                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
               >
                 <MoreVertical className="h-4 w-4" />
               </button>
               {showMenu && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-                  <div className="absolute right-0 top-full mt-1 w-48 bg-slate-700 rounded-lg shadow-xl z-20 py-1">
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-accent rounded-lg shadow-xl z-20 py-1">
                     <button
                       onClick={() => {
                         handleDelete();
                         setShowMenu(false);
                       }}
                       disabled={isDeleting}
-                      className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-600 flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-muted flex items-center gap-2"
                     >
                       <Trash2 className="h-4 w-4" />
                       Delete Agent
@@ -630,22 +630,22 @@ export default function AgentDetailPage() {
           {/* Left: Stats & Config */}
           <div className="col-span-12 lg:col-span-3 space-y-6">
             {/* Stats */}
-            <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 space-y-4">
-              <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider">
+            <div className="bg-muted rounded-xl border border-border p-4 space-y-4">
+              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
                 Statistics
               </h3>
               <div className="space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-2 text-slate-400">
+                  <div className="flex items-center gap-2 text-muted-foreground">
                     <Activity className="h-4 w-4" />
                     <span className="text-sm">Total Runs</span>
                   </div>
-                  <span className="text-white font-medium">
+                  <span className="text-foreground font-medium">
                     {agent.total_executions}
                   </span>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-2 text-slate-400">
+                  <div className="flex items-center gap-2 text-muted-foreground">
                     <TrendingUp className="h-4 w-4" />
                     <span className="text-sm">Success Rate</span>
                   </div>
@@ -663,11 +663,11 @@ export default function AgentDetailPage() {
                   </span>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-2 text-slate-400">
+                  <div className="flex items-center gap-2 text-muted-foreground">
                     <Clock className="h-4 w-4" />
                     <span className="text-sm">Avg Duration</span>
                   </div>
-                  <span className="text-white font-medium">
+                  <span className="text-foreground font-medium">
                     {formatDuration(agent.avg_duration_ms || 0)}
                   </span>
                 </div>
@@ -680,13 +680,13 @@ export default function AgentDetailPage() {
             </div>
 
             {/* Configuration Summary */}
-            <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 space-y-4">
-              <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider">
+            <div className="bg-muted rounded-xl border border-border p-4 space-y-4">
+              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
                 Configuration
               </h3>
               <div className="space-y-3 text-sm">
                 <div>
-                  <span className="text-slate-400">LLM</span>
+                  <span className="text-muted-foreground">LLM</span>
                   <div className="mt-1">
                     <LLMConfigDisplay
                       provider={agent.llm_provider || "gemini"}
@@ -695,17 +695,17 @@ export default function AgentDetailPage() {
                   </div>
                 </div>
                 <div>
-                  <span className="text-slate-400">Temperature</span>
-                  <div className="mt-1 text-white">{agent.temperature}</div>
+                  <span className="text-muted-foreground">Temperature</span>
+                  <div className="mt-1 text-foreground">{agent.temperature}</div>
                 </div>
                 <div>
-                  <span className="text-slate-400">Working Hours</span>
+                  <span className="text-muted-foreground">Working Hours</span>
                   <div className="mt-1">
                     <WorkingHoursDisplay config={agent.working_hours} />
                   </div>
                 </div>
                 <div>
-                  <span className="text-slate-400">Tools</span>
+                  <span className="text-muted-foreground">Tools</span>
                   <div className="mt-2">
                     <ToolBadges tools={agent.tools} max={5} />
                   </div>
@@ -716,12 +716,12 @@ export default function AgentDetailPage() {
 
           {/* Center: Executions List */}
           <div className="col-span-12 lg:col-span-4">
-            <div className="bg-slate-800 rounded-xl border border-slate-700 h-full">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-4 py-3 border-b border-slate-700">
-                <h3 className="font-medium text-white">Execution History</h3>
+            <div className="bg-muted rounded-xl border border-border h-full">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-4 py-3 border-b border-border">
+                <h3 className="font-medium text-foreground">Execution History</h3>
                 <button
                   onClick={() => refetchExecutions()}
-                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition"
+                  className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition"
                 >
                   <RefreshCw className="h-4 w-4" />
                 </button>
@@ -729,13 +729,13 @@ export default function AgentDetailPage() {
               <div className="p-4 space-y-2 max-h-[600px] overflow-y-auto">
                 {executionsLoading ? (
                   <div className="text-center py-8">
-                    <RefreshCw className="h-6 w-6 text-slate-400 animate-spin mx-auto mb-2" />
-                    <p className="text-slate-400 text-sm">Loading executions...</p>
+                    <RefreshCw className="h-6 w-6 text-muted-foreground animate-spin mx-auto mb-2" />
+                    <p className="text-muted-foreground text-sm">Loading executions...</p>
                   </div>
                 ) : executions.length === 0 ? (
                   <div className="text-center py-8">
-                    <Activity className="h-8 w-8 text-slate-600 mx-auto mb-2" />
-                    <p className="text-slate-400 text-sm">No executions yet</p>
+                    <Activity className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-muted-foreground text-sm">No executions yet</p>
                   </div>
                 ) : (
                   executions.map((execution) => (
@@ -753,17 +753,17 @@ export default function AgentDetailPage() {
 
           {/* Right: Execution Detail */}
           <div className="col-span-12 lg:col-span-5">
-            <div className="bg-slate-800 rounded-xl border border-slate-700 h-full">
-              <div className="px-4 py-3 border-b border-slate-700">
-                <h3 className="font-medium text-white">Execution Details</h3>
+            <div className="bg-muted rounded-xl border border-border h-full">
+              <div className="px-4 py-3 border-b border-border">
+                <h3 className="font-medium text-foreground">Execution Details</h3>
               </div>
               <div className="p-4">
                 {selectedExecution ? (
                   <ExecutionDetail execution={selectedExecution} />
                 ) : (
                   <div className="text-center py-12">
-                    <BarChart3 className="h-12 w-12 text-slate-600 mx-auto mb-3" />
-                    <p className="text-slate-400">
+                    <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground">
                       Select an execution to view details
                     </p>
                   </div>

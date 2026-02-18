@@ -27,7 +27,7 @@ export const ConditionNode = memo(({ data, selected }: NodeProps<ConditionNodeTy
     if (isRunning) return "border-blue-400 shadow-blue-500/30 animate-pulse";
     if (isSuccess) return "border-amber-400 shadow-amber-500/30";
     if (isFailed) return "border-red-500 shadow-red-500/30";
-    if (isSkipped) return "border-slate-500 shadow-slate-500/20 opacity-60";
+    if (isSkipped) return "border-muted-foreground shadow-muted-foreground/20 opacity-60";
     if (data.hasError) return "border-red-500 shadow-red-500/20";
     if (selected) return "border-amber-400 shadow-amber-500/20";
     return "border-amber-500/50";
@@ -40,7 +40,7 @@ export const ConditionNode = memo(({ data, selected }: NodeProps<ConditionNodeTy
         bg-gradient-to-br from-amber-500/20 to-amber-600/10
         border-2 transition-all
         ${getStyles()}
-        ${isHighlighted ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-slate-900" : ""}
+        ${isHighlighted ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-background" : ""}
       `}
     >
       {StatusIndicator}
@@ -60,7 +60,7 @@ export const ConditionNode = memo(({ data, selected }: NodeProps<ConditionNodeTy
           <div className={`text-[10px] uppercase tracking-wider font-medium ${data.hasError ? "text-red-400/70" : "text-amber-400/70"}`}>
             Condition
           </div>
-          <div className="text-white font-medium text-sm">
+          <div className="text-foreground font-medium text-sm">
             {data.label as string || "If/Else"}
           </div>
         </div>
@@ -84,7 +84,7 @@ export const ConditionNode = memo(({ data, selected }: NodeProps<ConditionNodeTy
       )}
 
       {!data.hasError && !isSuccess && conditions.length > 0 && (
-        <div className="mt-2 text-xs text-amber-300/70 bg-amber-900/30 rounded px-2 py-1">
+        <div className="mt-2 text-xs text-amber-300/70 bg-amber-100 dark:bg-amber-900/30 rounded px-2 py-1">
           {conditions.length} condition{conditions.length > 1 ? "s" : ""}
         </div>
       )}

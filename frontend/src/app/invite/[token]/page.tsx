@@ -109,7 +109,7 @@ export default function AcceptInvitePage() {
       <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 text-primary-500 animate-spin mx-auto mb-4" />
-          <p className="text-slate-400">Loading invite...</p>
+          <p className="text-muted-foreground">Loading invite...</p>
         </div>
       </div>
     );
@@ -118,15 +118,15 @@ export default function AcceptInvitePage() {
   if (error && !inviteInfo) {
     return (
       <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-8 text-center">
+        <div className="max-w-md w-full bg-background/50 border border-border rounded-2xl p-8 text-center">
           <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-6">
             <XCircle className="w-8 h-8 text-red-500" />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-3">Invalid Invite</h1>
-          <p className="text-slate-400 mb-6">{error}</p>
+          <h1 className="text-2xl font-bold text-foreground mb-3">Invalid Invite</h1>
+          <p className="text-muted-foreground mb-6">{error}</p>
           <button
             onClick={() => router.push("/")}
-            className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
+            className="px-6 py-3 bg-muted hover:bg-accent text-foreground rounded-lg transition-colors"
           >
             Go to Homepage
           </button>
@@ -138,14 +138,14 @@ export default function AcceptInvitePage() {
   if (success && acceptedWorkspace) {
     return (
       <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-8 text-center">
+        <div className="max-w-md w-full bg-background/50 border border-border rounded-2xl p-8 text-center">
           <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-6">
             <CheckCircle2 className="w-8 h-8 text-green-500" />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-3">
+          <h1 className="text-2xl font-bold text-foreground mb-3">
             Welcome to {acceptedWorkspace.name}!
           </h1>
-          <p className="text-slate-400 mb-6">
+          <p className="text-muted-foreground mb-6">
             You&apos;ve successfully joined the workspace. You can now collaborate with your team.
           </p>
           <button
@@ -168,13 +168,13 @@ export default function AcceptInvitePage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-8">
+      <div className="max-w-md w-full bg-background/50 border border-border rounded-2xl p-8">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center mx-auto mb-6">
-            <Users className="w-8 h-8 text-white" />
+            <Users className="w-8 h-8 text-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">
+          <h1 className="text-2xl font-bold text-foreground mb-2">
             You&apos;re invited to join
           </h1>
           <p className="text-3xl font-bold bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent">
@@ -185,32 +185,32 @@ export default function AcceptInvitePage() {
         {/* Invite Details */}
         <div className="space-y-4 mb-8">
           {inviteInfo.invited_by_name && (
-            <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg">
-              <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center">
-                <span className="text-sm font-medium text-white">
+            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+              <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
+                <span className="text-sm font-medium text-foreground">
                   {inviteInfo.invited_by_name.charAt(0).toUpperCase()}
                 </span>
               </div>
               <div>
-                <p className="text-sm text-slate-400">Invited by</p>
-                <p className="text-white font-medium">{inviteInfo.invited_by_name}</p>
+                <p className="text-sm text-muted-foreground">Invited by</p>
+                <p className="text-foreground font-medium">{inviteInfo.invited_by_name}</p>
               </div>
             </div>
           )}
 
-          <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg">
-            <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center">
-              <Mail className="w-5 h-5 text-slate-400" />
+          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+            <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
+              <Mail className="w-5 h-5 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-sm text-slate-400">Invite sent to</p>
-              <p className="text-white font-medium">{inviteInfo.email}</p>
+              <p className="text-sm text-muted-foreground">Invite sent to</p>
+              <p className="text-foreground font-medium">{inviteInfo.email}</p>
             </div>
           </div>
 
-          <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
-            <span className="text-slate-400">Role</span>
-            <span className="px-3 py-1 bg-primary-500/10 text-primary-400 rounded-full text-sm font-medium capitalize">
+          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+            <span className="text-muted-foreground">Role</span>
+            <span className="px-3 py-1 bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-400 rounded-full text-sm font-medium capitalize">
               {inviteInfo.role}
             </span>
           </div>
@@ -281,7 +281,7 @@ export default function AcceptInvitePage() {
                   Sign in to Accept
                   <ArrowRight className="w-4 h-4" />
                 </button>
-                <p className="text-center text-sm text-slate-500">
+                <p className="text-center text-sm text-muted-foreground">
                   Sign in with {inviteInfo.email} to accept this invite
                 </p>
               </>

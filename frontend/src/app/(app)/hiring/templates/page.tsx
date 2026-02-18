@@ -37,9 +37,9 @@ interface Template {
 }
 
 const TYPE_CONFIG: Record<TemplateType, { label: string; icon: any; color: string; bgColor: string }> = {
-  jd: { label: "Job Description", icon: FileText, color: "text-blue-400", bgColor: "bg-blue-500/20" },
-  rubric: { label: "Interview Rubric", icon: ClipboardCheck, color: "text-purple-400", bgColor: "bg-purple-500/20" },
-  email: { label: "Email Template", icon: Mail, color: "text-green-400", bgColor: "bg-green-500/20" },
+  jd: { label: "Job Description", icon: FileText, color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-500/20" },
+  rubric: { label: "Interview Rubric", icon: ClipboardCheck, color: "text-purple-600 dark:text-purple-400", bgColor: "bg-purple-500/20" },
+  email: { label: "Email Template", icon: Mail, color: "text-green-600 dark:text-green-400", bgColor: "bg-green-500/20" },
 };
 
 // Mock templates
@@ -63,7 +63,7 @@ function TemplateCard({ template, onEdit, onClone, onDelete }: { template: Templ
       layout
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="group relative bg-slate-900/50 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition"
+      className="group relative bg-background/50 border border-border rounded-xl p-5 hover:border-border transition"
     >
       {/* Type Badge */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
@@ -73,18 +73,18 @@ function TemplateCard({ template, onEdit, onClone, onDelete }: { template: Templ
         </div>
         <button
           onClick={() => setShowMenu(!showMenu)}
-          className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition opacity-0 group-hover:opacity-100"
+          className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition opacity-0 group-hover:opacity-100"
         >
           <MoreVertical className="h-4 w-4" />
         </button>
       </div>
 
       {/* Content */}
-      <h3 className="text-lg font-semibold text-white mb-2">{template.name}</h3>
-      <p className="text-sm text-slate-400 mb-4 line-clamp-2">{template.description}</p>
+      <h3 className="text-lg font-semibold text-foreground mb-2">{template.name}</h3>
+      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{template.description}</p>
 
       {/* Footer */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-slate-500">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-muted-foreground">
         <div className="flex items-center gap-1">
           <User className="h-3 w-3" />
           {template.createdBy}
@@ -100,14 +100,14 @@ function TemplateCard({ template, onEdit, onClone, onDelete }: { template: Templ
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="absolute top-12 right-4 z-10 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1"
+          className="absolute top-12 right-4 z-10 w-40 bg-muted border border-border rounded-lg shadow-xl py-1"
         >
           <button
             onClick={() => {
               setShowMenu(false);
               onEdit();
             }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 transition"
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition"
           >
             <Edit className="h-4 w-4" />
             Edit
@@ -117,18 +117,18 @@ function TemplateCard({ template, onEdit, onClone, onDelete }: { template: Templ
               setShowMenu(false);
               onClone();
             }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 transition"
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition"
           >
             <Copy className="h-4 w-4" />
             Duplicate
           </button>
-          <hr className="my-1 border-slate-700" />
+          <hr className="my-1 border-border" />
           <button
             onClick={() => {
               setShowMenu(false);
               onDelete();
             }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-slate-700 transition"
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-accent transition"
           >
             <Trash2 className="h-4 w-4" />
             Delete
@@ -167,13 +167,13 @@ export default function TemplatesPage() {
 
   if (isLoading || workspacesLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
             <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
           </div>
-          <p className="text-slate-400 text-sm">Loading templates...</p>
+          <p className="text-muted-foreground text-sm">Loading templates...</p>
         </div>
       </div>
     );
@@ -185,13 +185,13 @@ export default function TemplatesPage() {
 
   if (!hasWorkspaces) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center max-w-md">
-          <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <Building2 className="h-10 w-10 text-slate-600" />
+          <div className="w-20 h-20 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Building2 className="h-10 w-10 text-muted-foreground" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Workspace Required</h2>
-          <p className="text-slate-400 mb-6">
+          <h2 className="text-2xl font-bold text-foreground mb-2">Workspace Required</h2>
+          <p className="text-muted-foreground mb-6">
             Create a workspace first to manage templates.
           </p>
           <Link
@@ -215,8 +215,8 @@ export default function TemplatesPage() {
               <Briefcase className="h-7 w-7 text-orange-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">Hiring Templates</h1>
-              <p className="text-slate-400 text-sm">
+              <h1 className="text-2xl font-bold text-foreground">Hiring Templates</h1>
+              <p className="text-muted-foreground text-sm">
                 {templates.length} templates available
               </p>
             </div>
@@ -233,13 +233,13 @@ export default function TemplatesPage() {
         {/* Filters */}
         <div className="flex items-center gap-4 mb-8">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search templates..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-800 text-white rounded-lg pl-10 pr-4 py-2 border border-slate-700 focus:border-primary-500 focus:outline-none text-sm"
+              className="w-full bg-muted text-foreground rounded-lg pl-10 pr-4 py-2 border border-border focus:border-primary-500 focus:outline-none text-sm"
             />
           </div>
 
@@ -250,7 +250,7 @@ export default function TemplatesPage() {
                 "px-3 py-1.5 rounded-lg text-sm font-medium transition",
                 filterType === "all"
                   ? "bg-primary-500 text-white"
-                  : "bg-slate-800 text-slate-400 hover:text-white"
+                  : "bg-muted text-muted-foreground hover:text-foreground"
               )}
             >
               All
@@ -266,7 +266,7 @@ export default function TemplatesPage() {
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition",
                     filterType === type
                       ? cn(config.bgColor, config.color)
-                      : "bg-slate-800 text-slate-400 hover:text-white"
+                      : "bg-muted text-muted-foreground hover:text-foreground"
                   )}
                 >
                   <Icon className="h-4 w-4" />
@@ -291,8 +291,8 @@ export default function TemplatesPage() {
                 <div key={type}>
                   <div className="flex items-center gap-2 mb-4">
                     <Icon className={cn("h-5 w-5", config.color)} />
-                    <h2 className="text-lg font-semibold text-white">{config.label}s</h2>
-                    <span className="text-xs text-slate-500 bg-slate-800 px-2 py-0.5 rounded">
+                    <h2 className="text-lg font-semibold text-foreground">{config.label}s</h2>
+                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
                       {typeTemplates.length}
                     </span>
                   </div>
@@ -327,9 +327,9 @@ export default function TemplatesPage() {
 
         {filteredTemplates.length === 0 && (
           <div className="py-16 text-center">
-            <FileText className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">No templates found</h3>
-            <p className="text-slate-400 mb-6">
+            <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-foreground mb-2">No templates found</h3>
+            <p className="text-muted-foreground mb-6">
               {searchQuery ? "Try adjusting your search" : "Create your first template to get started"}
             </p>
             <button
@@ -356,14 +356,14 @@ export default function TemplatesPage() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-6"
+                className="bg-background border border-border rounded-xl w-full max-w-md p-6"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                  <h2 className="text-xl font-bold text-white">Create Template</h2>
+                  <h2 className="text-xl font-bold text-foreground">Create Template</h2>
                   <button
                     onClick={() => setShowCreateModal(false)}
-                    className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition"
+                    className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -372,7 +372,7 @@ export default function TemplatesPage() {
                 <div className="space-y-4">
                   {/* Template Type */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">Template Type</label>
+                    <label className="block text-sm font-medium text-foreground mb-2">Template Type</label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       {(Object.keys(TYPE_CONFIG) as TemplateType[]).map((type) => {
                         const config = TYPE_CONFIG[type];
@@ -385,7 +385,7 @@ export default function TemplatesPage() {
                               "flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition",
                               newTemplateType === type
                                 ? cn(config.bgColor, config.color, "border-current")
-                                : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600"
+                                : "bg-muted border-border text-muted-foreground hover:border-border"
                             )}
                           >
                             <Icon className="h-6 w-6" />
@@ -398,21 +398,21 @@ export default function TemplatesPage() {
 
                   {/* Name */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Template Name</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">Template Name</label>
                     <input
                       type="text"
                       placeholder="e.g., Senior Engineer JD"
-                      className="w-full bg-slate-800 text-white rounded-lg px-4 py-2 border border-slate-700 focus:border-primary-500 focus:outline-none"
+                      className="w-full bg-muted text-foreground rounded-lg px-4 py-2 border border-border focus:border-primary-500 focus:outline-none"
                     />
                   </div>
 
                   {/* Description */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Description</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">Description</label>
                     <textarea
                       placeholder="Brief description of this template..."
                       rows={3}
-                      className="w-full bg-slate-800 text-white rounded-lg px-4 py-2 border border-slate-700 focus:border-primary-500 focus:outline-none resize-none"
+                      className="w-full bg-muted text-foreground rounded-lg px-4 py-2 border border-border focus:border-primary-500 focus:outline-none resize-none"
                     />
                   </div>
                 </div>
@@ -420,7 +420,7 @@ export default function TemplatesPage() {
                 <div className="flex gap-3 mt-6">
                   <button
                     onClick={() => setShowCreateModal(false)}
-                    className="flex-1 px-4 py-2 bg-slate-800 text-slate-300 rounded-lg font-medium hover:bg-slate-700 transition"
+                    className="flex-1 px-4 py-2 bg-muted text-foreground rounded-lg font-medium hover:bg-accent transition"
                   >
                     Cancel
                   </button>

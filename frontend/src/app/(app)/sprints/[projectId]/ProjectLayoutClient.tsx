@@ -119,9 +119,9 @@ export default function ProjectLayoutClient({
   const deliveryItems = navItems.filter(item => item.group === "delivery");
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-background">
       {/* Sub-navigation for planning views */}
-      <div className="border-b border-slate-800 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-20">
+      <div className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-20">
         <div className="max-w-[1800px] mx-auto px-4">
           <nav className="flex items-center gap-1 py-1 overflow-x-auto">
             {/* Planning group */}
@@ -135,8 +135,8 @@ export default function ProjectLayoutClient({
                     className={cn(
                       "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
                       isActive
-                        ? "bg-slate-800 text-white"
-                        : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                        ? "bg-muted text-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     )}
                   >
                     {item.icon}
@@ -147,7 +147,7 @@ export default function ProjectLayoutClient({
             </div>
 
             {/* Divider */}
-            <div className="w-px h-6 bg-slate-700 mx-2" />
+            <div className="w-px h-6 bg-accent mx-2" />
 
             {/* Tracking group */}
             <div className="flex items-center gap-1">
@@ -160,8 +160,8 @@ export default function ProjectLayoutClient({
                     className={cn(
                       "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
                       isActive
-                        ? "bg-slate-800 text-white"
-                        : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                        ? "bg-muted text-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     )}
                   >
                     {item.icon}
@@ -172,7 +172,7 @@ export default function ProjectLayoutClient({
             </div>
 
             {/* Divider */}
-            <div className="w-px h-6 bg-slate-700 mx-2" />
+            <div className="w-px h-6 bg-accent mx-2" />
 
             {/* Delivery group */}
             <div className="flex items-center gap-1">
@@ -185,8 +185,8 @@ export default function ProjectLayoutClient({
                     className={cn(
                       "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
                       isActive
-                        ? "bg-slate-800 text-white"
-                        : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                        ? "bg-muted text-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     )}
                   >
                     {item.icon}

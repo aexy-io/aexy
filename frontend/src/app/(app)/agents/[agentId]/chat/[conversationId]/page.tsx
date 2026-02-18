@@ -105,10 +105,10 @@ export default function ConversationPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 text-purple-500 animate-spin mx-auto mb-4" />
-          <p className="text-white">Loading...</p>
+          <p className="text-foreground">Loading...</p>
         </div>
       </div>
     );
@@ -116,10 +116,10 @@ export default function ConversationPage() {
 
   if (!agent) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <Bot className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-          <h2 className="text-xl font-medium text-white mb-2">Agent Not Found</h2>
+          <Bot className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-xl font-medium text-foreground mb-2">Agent Not Found</h2>
           <Link href="/agents" className="text-purple-400 hover:text-purple-300">
             Back to Agents
           </Link>
@@ -129,14 +129,14 @@ export default function ConversationPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-slate-900">
+    <div className="h-screen flex flex-col bg-background">
       {/* Header */}
-      <header className="flex-shrink-0 border-b border-slate-700 bg-slate-800/50">
+      <header className="flex-shrink-0 border-b border-border bg-muted/50">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-4">
             <Link
               href={`/agents/${agentId}`}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>
@@ -156,7 +156,7 @@ export default function ConversationPage() {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-lg font-semibold text-white">{agent.name}</h1>
+                  <h1 className="text-lg font-semibold text-foreground">{agent.name}</h1>
                   <AgentStatusBadge isActive={agent.is_active} size="sm" />
                 </div>
                 {/* Editable conversation title */}
@@ -170,18 +170,18 @@ export default function ConversationPage() {
                         if (e.key === "Enter") handleSaveTitle();
                         if (e.key === "Escape") handleCancelEdit();
                       }}
-                      className="text-sm bg-slate-700 text-white px-2 py-0.5 rounded border border-slate-600 focus:outline-none focus:border-purple-500"
+                      className="text-sm bg-accent text-foreground px-2 py-0.5 rounded border border-border focus:outline-none focus:border-purple-500"
                       autoFocus
                     />
                     <button
                       onClick={handleSaveTitle}
-                      className="p-1 text-green-400 hover:bg-slate-700 rounded"
+                      className="p-1 text-green-400 hover:bg-accent rounded"
                     >
                       <Check className="h-4 w-4" />
                     </button>
                     <button
                       onClick={handleCancelEdit}
-                      className="p-1 text-slate-400 hover:bg-slate-700 rounded"
+                      className="p-1 text-muted-foreground hover:bg-accent rounded"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -189,7 +189,7 @@ export default function ConversationPage() {
                 ) : (
                   <button
                     onClick={handleStartEditTitle}
-                    className="flex items-center gap-1 text-sm text-slate-400 hover:text-slate-300 group"
+                    className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground group"
                   >
                     <span className="truncate max-w-xs">
                       {conversation?.title || "New conversation"}
@@ -204,7 +204,7 @@ export default function ConversationPage() {
           <div className="flex items-center gap-2">
             <Link
               href={`/agents/${agentId}/edit`}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
             >
               <Settings className="h-5 w-5" />
             </Link>

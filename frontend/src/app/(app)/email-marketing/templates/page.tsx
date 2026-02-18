@@ -68,14 +68,14 @@ function TemplateCard({
       case "mjml":
         return { text: "MJML", color: "bg-amber-500/20 text-amber-400 border-amber-500/30" };
       default:
-        return { text: type, color: "bg-slate-500/20 text-slate-400 border-slate-500/30" };
+        return { text: type, color: "bg-muted text-muted-foreground border-border" };
     }
   };
 
   const typeInfo = getTypeLabel(template.template_type);
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition group">
+    <div className="bg-background/50 border border-border rounded-xl p-5 hover:border-border transition group">
       <div className="flex items-start justify-between mb-4">
         <Link
           href={`/email-marketing/templates/${template.id}`}
@@ -85,11 +85,11 @@ function TemplateCard({
             {getTypeIcon(template.template_type)}
           </div>
           <div>
-            <h3 className="text-white font-medium group-hover:text-sky-400 transition">
+            <h3 className="text-foreground font-medium group-hover:text-sky-400 transition">
               {template.name}
             </h3>
             {template.description && (
-              <p className="text-sm text-slate-500 line-clamp-1">{template.description}</p>
+              <p className="text-sm text-muted-foreground line-clamp-1">{template.description}</p>
             )}
           </div>
         </Link>
@@ -100,38 +100,38 @@ function TemplateCard({
           <div className="relative">
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition"
             >
               <MoreHorizontal className="h-4 w-4" />
             </button>
             {showMenu && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-                <div className="absolute right-0 top-full mt-1 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-20 py-1">
+                <div className="absolute right-0 top-full mt-1 w-48 bg-muted border border-border rounded-lg shadow-xl z-20 py-1">
                   <Link
                     href={`/email-marketing/templates/${template.id}`}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white"
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-accent hover:text-foreground"
                   >
                     <Palette className="h-4 w-4" />
                     Edit Template
                   </Link>
                   <button
                     onClick={() => { onPreview(); setShowMenu(false); }}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white w-full"
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-accent hover:text-foreground w-full"
                   >
                     <Eye className="h-4 w-4" />
                     Preview
                   </button>
                   <button
                     onClick={() => { onDuplicate(); setShowMenu(false); }}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white w-full"
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-accent hover:text-foreground w-full"
                   >
                     <Copy className="h-4 w-4" />
                     Duplicate
                   </button>
                   <button
                     onClick={() => { onDelete(); setShowMenu(false); }}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-slate-700 w-full"
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-accent w-full"
                   >
                     <Trash2 className="h-4 w-4" />
                     Delete
@@ -144,26 +144,26 @@ function TemplateCard({
       </div>
 
       {template.subject_template && (
-        <div className="mb-4 p-3 bg-slate-800/50 rounded-lg">
-          <p className="text-xs text-slate-500 mb-1">Subject Line</p>
-          <p className="text-sm text-slate-300 truncate">{template.subject_template}</p>
+        <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+          <p className="text-xs text-muted-foreground mb-1">Subject Line</p>
+          <p className="text-sm text-foreground truncate">{template.subject_template}</p>
         </div>
       )}
 
       {template.variables && template.variables.length > 0 && (
         <div className="mb-4">
-          <p className="text-xs text-slate-500 mb-2">Variables</p>
+          <p className="text-xs text-muted-foreground mb-2">Variables</p>
           <div className="flex flex-wrap gap-1">
             {template.variables.slice(0, 5).map((variable) => (
               <span
                 key={variable.name}
-                className="px-2 py-0.5 bg-slate-800 rounded text-xs text-slate-400"
+                className="px-2 py-0.5 bg-muted rounded text-xs text-muted-foreground"
               >
                 {`{{${variable.name}}}`}
               </span>
             ))}
             {template.variables.length > 5 && (
-              <span className="px-2 py-0.5 text-xs text-slate-500">
+              <span className="px-2 py-0.5 text-xs text-muted-foreground">
                 +{template.variables.length - 5} more
               </span>
             )}
@@ -171,7 +171,7 @@ function TemplateCard({
         </div>
       )}
 
-      <div className="flex items-center gap-4 text-xs text-slate-500">
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
           <Clock className="h-3 w-3" />
           Updated: {new Date(template.updated_at).toLocaleDateString()}
@@ -233,12 +233,12 @@ export default function TemplatesPage() {
 
   if (!currentWorkspace) {
     return (
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen bg-background">
 <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <div className="text-center">
-            <AlertCircle className="h-12 w-12 text-slate-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-white mb-2">No Workspace Selected</h2>
-            <p className="text-slate-400">Please select a workspace to view templates.</p>
+            <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-foreground mb-2">No Workspace Selected</h2>
+            <p className="text-muted-foreground">Please select a workspace to view templates.</p>
           </div>
         </div>
       </div>
@@ -246,20 +246,20 @@ export default function TemplatesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
 <div className="p-8">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="flex items-center gap-4 mb-6">
             <button
               onClick={() => router.push("/email-marketing")}
-              className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition"
+              className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
             <div className="flex-1">
-              <h1 className="text-2xl font-bold text-white">Email Templates</h1>
-              <p className="text-sm text-slate-400">Create and manage reusable email templates</p>
+              <h1 className="text-2xl font-bold text-foreground">Email Templates</h1>
+              <p className="text-sm text-muted-foreground">Create and manage reusable email templates</p>
             </div>
             <Link
               href="/email-marketing/templates/new"
@@ -273,13 +273,13 @@ export default function TemplatesPage() {
           {/* Search and Filters */}
           <div className="flex items-center gap-4 mb-6">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search templates..."
-                className="w-full pl-10 pr-4 py-2 bg-slate-900/50 border border-slate-800 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
               />
             </div>
             <button
@@ -287,7 +287,7 @@ export default function TemplatesPage() {
               className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition ${
                 showFilters || typeFilter !== "all"
                   ? "bg-sky-500/20 border-sky-500/30 text-sky-400"
-                  : "bg-slate-900/50 border-slate-800 text-slate-400 hover:text-white"
+                  : "bg-background/50 border-border text-muted-foreground hover:text-foreground"
               }`}
             >
               <Filter className="h-4 w-4" />
@@ -297,14 +297,14 @@ export default function TemplatesPage() {
 
           {/* Filter Panel */}
           {showFilters && (
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 mb-6">
+            <div className="bg-background/50 border border-border rounded-xl p-4 mb-6">
               <div className="flex flex-wrap items-center gap-4">
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1.5">Type</label>
+                  <label className="block text-xs text-muted-foreground mb-1.5">Type</label>
                   <select
                     value={typeFilter}
                     onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
-                    className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    className="px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
                   >
                     <option value="all">All Types</option>
                     <option value="code">Code</option>
@@ -313,11 +313,11 @@ export default function TemplatesPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1.5">Sort By</label>
+                  <label className="block text-xs text-muted-foreground mb-1.5">Sort By</label>
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as SortOption)}
-                    className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    className="px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
                   >
                     <option value="newest">Newest First</option>
                     <option value="oldest">Oldest First</option>
@@ -327,7 +327,7 @@ export default function TemplatesPage() {
                 {typeFilter !== "all" && (
                   <button
                     onClick={() => setTypeFilter("all")}
-                    className="mt-5 px-3 py-2 text-sm text-slate-400 hover:text-white transition"
+                    className="mt-5 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition"
                   >
                     Clear Filters
                   </button>
@@ -340,7 +340,7 @@ export default function TemplatesPage() {
           {error ? (
             <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-8 text-center">
               <AlertCircle className="h-10 w-10 text-red-400 mx-auto mb-3" />
-              <h3 className="text-lg font-medium text-white mb-2">Failed to load templates</h3>
+              <h3 className="text-lg font-medium text-foreground mb-2">Failed to load templates</h3>
               <p className="text-red-400 mb-4">{error.message}</p>
               <button
                 onClick={() => refetch()}
@@ -352,16 +352,16 @@ export default function TemplatesPage() {
           ) : isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-52 bg-slate-900/50 border border-slate-800 rounded-xl animate-pulse" />
+                <div key={i} className="h-52 bg-background/50 border border-border rounded-xl animate-pulse" />
               ))}
             </div>
           ) : filteredTemplates.length === 0 ? (
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-16 text-center">
-              <Palette className="h-14 w-14 text-slate-600 mx-auto mb-4" />
-              <h3 className="text-xl font-medium text-white mb-2">
+            <div className="bg-background/50 border border-border rounded-xl p-16 text-center">
+              <Palette className="h-14 w-14 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-xl font-medium text-foreground mb-2">
                 {searchQuery || typeFilter !== "all" ? "No templates found" : "No templates yet"}
               </h3>
-              <p className="text-slate-400 mb-6 max-w-md mx-auto">
+              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                 {searchQuery || typeFilter !== "all"
                   ? "Try adjusting your search or filters"
                   : "Create reusable email templates to streamline your campaigns."}
@@ -378,7 +378,7 @@ export default function TemplatesPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-muted-foreground">
                 {filteredTemplates.length} template{filteredTemplates.length !== 1 ? "s" : ""}
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -400,12 +400,12 @@ export default function TemplatesPage() {
       {/* Preview Modal */}
       {previewHtml && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-800">
-              <h3 className="text-lg font-medium text-white">Template Preview</h3>
+          <div className="bg-background border border-border rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-border">
+              <h3 className="text-lg font-medium text-foreground">Template Preview</h3>
               <button
                 onClick={() => setPreviewHtml(null)}
-                className="p-2 text-slate-400 hover:text-white transition"
+                className="p-2 text-muted-foreground hover:text-foreground transition"
               >
                 <span className="sr-only">Close</span>
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

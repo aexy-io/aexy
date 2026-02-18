@@ -54,26 +54,26 @@ export default function SprintCapacityPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/insights"
-            className="p-2 rounded-lg hover:bg-zinc-800 transition-colors"
+            className="p-2 rounded-lg hover:bg-muted transition-colors"
           >
-            <ArrowLeft className="w-5 h-5 text-zinc-400" />
+            <ArrowLeft className="w-5 h-5 text-muted-foreground" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <Gauge className="h-6 w-6 text-emerald-400" />
               Sprint Capacity
             </h1>
-            <p className="text-sm text-zinc-400 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Forecast next sprint based on historical velocity
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-zinc-400">Sprint length:</span>
+          <span className="text-xs text-muted-foreground">Sprint length:</span>
           <select
             value={sprintDays}
             onChange={(e) => setSprintDays(Number(e.target.value))}
-            className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm"
+            className="px-3 py-1.5 bg-muted border border-border rounded-lg text-foreground text-sm"
           >
             <option value={7}>1 week</option>
             <option value={14}>2 weeks</option>
@@ -91,16 +91,16 @@ export default function SprintCapacityPage() {
       {capacity && (
         <>
           {/* Team Forecast */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <div className="bg-background border border-border rounded-xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                 <Target className="h-5 w-5 text-emerald-400" />
                 Team Forecast
               </h2>
               <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-zinc-400" />
-                <span className="text-sm text-zinc-400">{capacity.member_count} members</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">{capacity.member_count} members</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-foreground">
                   {sprintDays}-day sprint
                 </span>
               </div>
@@ -129,11 +129,11 @@ export default function SprintCapacityPage() {
               />
             </div>
             <div className="mt-4 flex items-center gap-2">
-              <span className="text-xs text-zinc-400">Team Confidence:</span>
+              <span className="text-xs text-muted-foreground">Team Confidence:</span>
               <span className={`text-sm font-medium ${confidenceColor(capacity.team_confidence)}`}>
                 {(capacity.team_confidence * 100).toFixed(0)}%
               </span>
-              <div className="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden max-w-xs">
+              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden max-w-xs">
                 <div
                   className={`h-full rounded-full ${
                     capacity.team_confidence >= 0.7
@@ -149,14 +149,14 @@ export default function SprintCapacityPage() {
           </div>
 
           {/* Per-Developer Breakdown */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-            <h3 className="text-sm font-semibold text-white mb-4">
+          <div className="bg-background border border-border rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-foreground mb-4">
               Per-Developer Breakdown
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[600px] text-sm">
                 <thead>
-                  <tr className="text-zinc-400 text-xs border-b border-zinc-800">
+                  <tr className="text-muted-foreground text-xs border-b border-border">
                     <th className="text-left py-2 font-medium">Developer</th>
                     <th className="text-right py-2 font-medium">Commits</th>
                     <th className="text-right py-2 font-medium">PRs</th>
@@ -169,7 +169,7 @@ export default function SprintCapacityPage() {
                   {capacity.per_developer
                     .sort((a, b) => b.forecast.commits - a.forecast.commits)
                     .map((dev) => (
-                      <tr key={dev.developer_id} className="border-b border-zinc-800/50">
+                      <tr key={dev.developer_id} className="border-b border-border/50">
                         <td className="py-2">
                           <Link
                             href={`/insights/developers/${dev.developer_id}`}
@@ -178,18 +178,18 @@ export default function SprintCapacityPage() {
                             {dev.developer_name || dev.developer_id.slice(0, 12)}
                           </Link>
                         </td>
-                        <td className="py-2 text-right text-white font-medium">
+                        <td className="py-2 text-right text-foreground font-medium">
                           ~{dev.forecast.commits.toFixed(0)}
                         </td>
-                        <td className="py-2 text-right text-zinc-300">
+                        <td className="py-2 text-right text-foreground">
                           ~{dev.forecast.prs_merged.toFixed(0)}
                         </td>
-                        <td className="py-2 text-right text-zinc-300">
+                        <td className="py-2 text-right text-foreground">
                           ~{dev.forecast.lines_added > 1000
                             ? `${(dev.forecast.lines_added / 1000).toFixed(1)}K`
                             : dev.forecast.lines_added.toFixed(0)}
                         </td>
-                        <td className="py-2 text-right text-zinc-300">
+                        <td className="py-2 text-right text-foreground">
                           ~{dev.forecast.story_points.toFixed(0)}
                         </td>
                         <td className="py-2 text-right">
@@ -222,12 +222,12 @@ function ForecastCard({
 }) {
   const display = formatK && value > 1000 ? `~${(value / 1000).toFixed(1)}K` : `~${value.toFixed(0)}`;
   return (
-    <div className="bg-zinc-800 rounded-lg p-4">
+    <div className="bg-muted rounded-lg p-4">
       <div className="flex items-center gap-2 mb-1">
-        <Icon className="h-4 w-4 text-zinc-400" />
-        <span className="text-xs text-zinc-400">{label}</span>
+        <Icon className="h-4 w-4 text-muted-foreground" />
+        <span className="text-xs text-muted-foreground">{label}</span>
       </div>
-      <p className="text-xl font-bold text-white">{display}</p>
+      <p className="text-xl font-bold text-foreground">{display}</p>
     </div>
   );
 }

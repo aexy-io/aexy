@@ -69,16 +69,16 @@ export function StandupForm({
   // If in view mode (has data and not editing), show the view with edit button
   if (isUpdate && !isEditing && editMode) {
     return (
-      <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+      <div className="bg-muted rounded-xl p-6 border border-border">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-green-400" />
             Today's Standup
           </h3>
           <button
             type="button"
             onClick={() => setIsEditing(true)}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-400 hover:text-blue-300 hover:bg-blue-900/20 rounded-lg transition"
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-400 hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition"
           >
             <Edit3 className="h-4 w-4" />
             Edit
@@ -87,12 +87,12 @@ export function StandupForm({
 
         <div className="space-y-4">
           <div>
-            <p className="text-xs text-slate-500 uppercase mb-1">Yesterday</p>
-            <p className="text-slate-300 text-sm whitespace-pre-wrap">{yesterday || "—"}</p>
+            <p className="text-xs text-muted-foreground uppercase mb-1">Yesterday</p>
+            <p className="text-foreground text-sm whitespace-pre-wrap">{yesterday || "—"}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-500 uppercase mb-1">Today</p>
-            <p className="text-slate-300 text-sm whitespace-pre-wrap">{today || "—"}</p>
+            <p className="text-xs text-muted-foreground uppercase mb-1">Today</p>
+            <p className="text-foreground text-sm whitespace-pre-wrap">{today || "—"}</p>
           </div>
           {blockers && (
             <div>
@@ -100,7 +100,7 @@ export function StandupForm({
                 <AlertTriangle className="h-3 w-3" />
                 Blockers
               </p>
-              <p className="text-slate-300 text-sm whitespace-pre-wrap">{blockers}</p>
+              <p className="text-foreground text-sm whitespace-pre-wrap">{blockers}</p>
             </div>
           )}
         </div>
@@ -110,9 +110,9 @@ export function StandupForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+      <div className="bg-muted rounded-xl p-6 border border-border">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-blue-400" />
             {isUpdate ? "Edit Today's Standup" : "Daily Standup"}
           </h3>
@@ -126,7 +126,7 @@ export function StandupForm({
                 setBlockers(initialData?.blockers_summary || "");
                 setIsEditing(false);
               }}
-              className="text-sm text-slate-400 hover:text-slate-300"
+              className="text-sm text-muted-foreground hover:text-foreground"
             >
               Cancel
             </button>
@@ -134,7 +134,7 @@ export function StandupForm({
         </div>
 
         {showSuccess && (
-          <div className="mb-4 p-3 bg-green-900/30 border border-green-700 rounded-lg flex items-center gap-2 text-green-400">
+          <div className="mb-4 p-3 bg-green-100 dark:bg-green-900/30 border border-green-700 rounded-lg flex items-center gap-2 text-green-600 dark:text-green-400">
             <CheckCircle2 className="h-5 w-5" />
             <span>{isUpdate ? "Standup updated successfully!" : "Standup submitted successfully!"}</span>
           </div>
@@ -143,35 +143,35 @@ export function StandupForm({
         <div className="space-y-4">
           {/* Yesterday */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               What did you accomplish yesterday?
             </label>
             <textarea
               value={yesterday}
               onChange={(e) => setYesterday(e.target.value)}
               placeholder="Describe what you completed yesterday..."
-              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-4 py-3 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               rows={3}
             />
           </div>
 
           {/* Today */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               What will you work on today?
             </label>
             <textarea
               value={today}
               onChange={(e) => setToday(e.target.value)}
               placeholder="Describe your plans for today..."
-              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-4 py-3 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               rows={3}
             />
           </div>
 
           {/* Blockers */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
+            <label className="block text-sm font-medium text-foreground mb-2 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-amber-400" />
               Any blockers or impediments? (optional)
             </label>
@@ -179,7 +179,7 @@ export function StandupForm({
               value={blockers}
               onChange={(e) => setBlockers(e.target.value)}
               placeholder="Describe any blockers holding you back..."
-              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+              className="w-full px-4 py-3 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
               rows={2}
             />
           </div>
@@ -195,7 +195,7 @@ export function StandupForm({
                 setBlockers(initialData?.blockers_summary || "");
                 setIsEditing(false);
               }}
-              className="px-4 py-2 text-slate-400 hover:text-white transition"
+              className="px-4 py-2 text-muted-foreground hover:text-foreground transition"
             >
               Cancel
             </button>

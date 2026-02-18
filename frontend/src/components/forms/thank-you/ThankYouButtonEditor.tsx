@@ -46,7 +46,7 @@ export function ThankYouButtonEditor({ buttons, onChange }: ThankYouButtonEditor
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <label className="block text-sm font-medium text-slate-300">
+        <label className="block text-sm font-medium text-foreground">
           Call-to-Action Buttons
         </label>
         <button
@@ -60,7 +60,7 @@ export function ThankYouButtonEditor({ buttons, onChange }: ThankYouButtonEditor
       </div>
 
       {buttons.length === 0 ? (
-        <div className="text-center py-8 text-slate-500 text-sm border border-dashed border-slate-700 rounded-lg">
+        <div className="text-center py-8 text-muted-foreground text-sm border border-dashed border-border rounded-lg">
           No buttons added. Add a button to give users an action after submission.
         </div>
       ) : (
@@ -68,23 +68,23 @@ export function ThankYouButtonEditor({ buttons, onChange }: ThankYouButtonEditor
           {buttons.map((button, index) => (
             <div
               key={button.id || index}
-              className="p-4 bg-slate-800/50 border border-slate-700 rounded-lg space-y-3"
+              className="p-4 bg-muted/50 border border-border rounded-lg space-y-3"
             >
               <div className="flex items-center gap-3">
-                <GripVertical className="w-4 h-4 text-slate-500 cursor-grab" />
+                <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
                 <div className="flex-1">
                   <input
                     type="text"
                     value={button.text}
                     onChange={(e) => updateButton(index, { text: e.target.value })}
                     placeholder="Button Text"
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
                   />
                 </div>
                 <button
                   type="button"
                   onClick={() => removeButton(index)}
-                  className="p-2 text-slate-400 hover:text-red-400"
+                  className="p-2 text-muted-foreground hover:text-red-400"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -92,11 +92,11 @@ export function ThankYouButtonEditor({ buttons, onChange }: ThankYouButtonEditor
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">Action</label>
+                  <label className="block text-xs text-muted-foreground mb-1">Action</label>
                   <select
                     value={button.action}
                     onChange={(e) => updateButton(index, { action: e.target.value as ButtonAction })}
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
                   >
                     {ACTION_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -106,11 +106,11 @@ export function ThankYouButtonEditor({ buttons, onChange }: ThankYouButtonEditor
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">Style</label>
+                  <label className="block text-xs text-muted-foreground mb-1">Style</label>
                   <select
                     value={button.style || "primary"}
                     onChange={(e) => updateButton(index, { style: e.target.value as ButtonStyle })}
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
                   >
                     {STYLE_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -123,13 +123,13 @@ export function ThankYouButtonEditor({ buttons, onChange }: ThankYouButtonEditor
 
               {button.action === "redirect" && (
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">Redirect URL</label>
+                  <label className="block text-xs text-muted-foreground mb-1">Redirect URL</label>
                   <input
                     type="url"
                     value={button.url || ""}
                     onChange={(e) => updateButton(index, { url: e.target.value })}
                     placeholder="https://example.com/thank-you"
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm"
                   />
                 </div>
               )}

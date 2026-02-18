@@ -24,7 +24,7 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string; color: string }[] 
   { value: "critical", label: "Critical", color: "bg-red-500" },
   { value: "high", label: "High", color: "bg-orange-500" },
   { value: "medium", label: "Medium", color: "bg-yellow-500" },
-  { value: "low", label: "Low", color: "bg-slate-500" },
+  { value: "low", label: "Low", color: "bg-muted-foreground" },
 ];
 
 interface FilterBarProps {
@@ -74,7 +74,7 @@ function FilterDropdown({ trigger, children, isOpen, onOpenChange }: FilterDropd
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -5, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 mt-1 z-50 min-w-[200px] bg-slate-800/95 backdrop-blur-xl border border-slate-700 rounded-lg shadow-xl overflow-hidden"
+            className="absolute top-full left-0 mt-1 z-50 min-w-[200px] bg-muted/95 backdrop-blur-xl border border-border rounded-lg shadow-xl overflow-hidden"
           >
             {children}
           </motion.div>
@@ -113,7 +113,7 @@ function MultiSelectFilter({ label, icon, options, selected, onChange }: MultiSe
             "flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm transition-colors",
             selected.length > 0
               ? "bg-primary-500/20 border-primary-500/50 text-primary-300"
-              : "bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600"
+              : "bg-muted border-border text-foreground hover:border-border"
           )}
         >
           {icon}
@@ -129,24 +129,24 @@ function MultiSelectFilter({ label, icon, options, selected, onChange }: MultiSe
     >
       <div className="max-h-64 overflow-y-auto py-1">
         {options.length === 0 ? (
-          <div className="px-3 py-2 text-sm text-slate-500">No options available</div>
+          <div className="px-3 py-2 text-sm text-muted-foreground">No options available</div>
         ) : (
           options.map((option) => (
             <button
               key={option.id}
               onClick={() => toggleOption(option.id)}
-              className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-700/50 transition-colors"
+              className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent/50 transition-colors"
             >
               <div
                 className={cn(
                   "w-4 h-4 rounded border flex items-center justify-center transition-colors",
                   selected.includes(option.id)
                     ? "bg-primary-500 border-primary-500"
-                    : "border-slate-600"
+                    : "border-border"
                 )}
               >
                 {selected.includes(option.id) && (
-                  <Check className="h-3 w-3 text-white" />
+                  <Check className="h-3 w-3 text-foreground" />
                 )}
               </div>
               {option.avatar ? (
@@ -158,11 +158,11 @@ function MultiSelectFilter({ label, icon, options, selected, onChange }: MultiSe
                   className="rounded-full"
                 />
               ) : (
-                <div className="w-5 h-5 rounded-full bg-slate-600 flex items-center justify-center">
-                  <User className="h-3 w-3 text-slate-400" />
+                <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center">
+                  <User className="h-3 w-3 text-muted-foreground" />
                 </div>
               )}
-              <span className="text-white truncate">{option.name}</span>
+              <span className="text-foreground truncate">{option.name}</span>
             </button>
           ))
         )}
@@ -198,7 +198,7 @@ function PriorityFilter({
             "flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm transition-colors",
             selected.length > 0
               ? "bg-primary-500/20 border-primary-500/50 text-primary-300"
-              : "bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600"
+              : "bg-muted border-border text-foreground hover:border-border"
           )}
         >
           <AlertCircle className="h-4 w-4" />
@@ -217,22 +217,22 @@ function PriorityFilter({
           <button
             key={option.value}
             onClick={() => toggleOption(option.value)}
-            className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-700/50 transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent/50 transition-colors"
           >
             <div
               className={cn(
                 "w-4 h-4 rounded border flex items-center justify-center transition-colors",
                 selected.includes(option.value)
                   ? "bg-primary-500 border-primary-500"
-                  : "border-slate-600"
+                  : "border-border"
               )}
             >
               {selected.includes(option.value) && (
-                <Check className="h-3 w-3 text-white" />
+                <Check className="h-3 w-3 text-foreground" />
               )}
             </div>
             <div className={cn("w-2 h-2 rounded-full", option.color)} />
-            <span className="text-white">{option.label}</span>
+            <span className="text-foreground">{option.label}</span>
           </button>
         ))}
       </div>
@@ -313,18 +313,18 @@ export function FilterBar({
       <div className="flex items-center gap-3 flex-wrap">
         {/* Search */}
         <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search tasks..."
             value={filters.search}
             onChange={(e) => onFilterChange({ search: e.target.value })}
-            className="w-full pl-9 pr-4 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 transition-colors"
+            className="w-full pl-9 pr-4 py-1.5 bg-muted border border-border rounded-lg text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500 transition-colors"
           />
           {filters.search && (
             <button
               onClick={() => onFilterChange({ search: "" })}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
             >
               <X className="h-3 w-3" />
             </button>
@@ -334,7 +334,7 @@ export function FilterBar({
         {/* Filter toggle (mobile) */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="lg:hidden flex items-center gap-2 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-300"
+          className="lg:hidden flex items-center gap-2 px-3 py-1.5 bg-muted border border-border rounded-lg text-sm text-foreground"
         >
           <Filter className="h-4 w-4" />
           Filters
@@ -389,7 +389,7 @@ export function FilterBar({
           {hasActiveFilters && (
             <button
               onClick={onClearFilters}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <X className="h-3.5 w-3.5" />
               Clear all
@@ -414,13 +414,13 @@ export function FilterBar({
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.8, opacity: 0 }}
                 transition={{ delay: i * 0.03 }}
-                className="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-700/50 border border-slate-600 rounded-full text-xs text-slate-300"
+                className="inline-flex items-center gap-1.5 px-2 py-1 bg-accent/50 border border-border rounded-full text-xs text-foreground"
               >
-                <span className="text-slate-500">{filter.label}:</span>
+                <span className="text-muted-foreground">{filter.label}:</span>
                 <span>{filter.value}</span>
                 <button
                   onClick={() => removeFilter(filter.key, filter.value)}
-                  className="p-0.5 hover:bg-slate-600 rounded transition-colors"
+                  className="p-0.5 hover:bg-muted rounded transition-colors"
                 >
                   <X className="h-3 w-3" />
                 </button>

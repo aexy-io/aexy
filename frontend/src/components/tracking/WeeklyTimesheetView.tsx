@@ -111,29 +111,29 @@ export function WeeklyTimesheetView({
   };
 
   return (
-    <div className={`bg-slate-800 rounded-xl border border-slate-700 overflow-hidden ${className}`}>
+    <div className={`bg-muted rounded-xl border border-border overflow-hidden ${className}`}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-slate-700">
-        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+      <div className="flex items-center justify-between p-4 border-b border-border">
+        <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
           <Clock className="h-5 w-5 text-green-400" />
           Weekly Timesheet
         </h3>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setWeekOffset(weekOffset - 1)}
-            className="p-2 hover:bg-slate-700 rounded-lg transition"
+            className="p-2 hover:bg-accent rounded-lg transition"
           >
-            <ChevronLeft className="h-4 w-4 text-slate-400" />
+            <ChevronLeft className="h-4 w-4 text-muted-foreground" />
           </button>
-          <span className="text-sm text-white min-w-[180px] text-center">
+          <span className="text-sm text-foreground min-w-[180px] text-center">
             {getWeekRangeLabel()}
           </span>
           <button
             onClick={() => setWeekOffset(weekOffset + 1)}
             disabled={weekOffset >= 0}
-            className="p-2 hover:bg-slate-700 rounded-lg transition disabled:opacity-50"
+            className="p-2 hover:bg-accent rounded-lg transition disabled:opacity-50"
           >
-            <ChevronRight className="h-4 w-4 text-slate-400" />
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </button>
           {weekOffset !== 0 && (
             <button
@@ -150,8 +150,8 @@ export function WeeklyTimesheetView({
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="bg-slate-900/50">
-              <th className="text-left text-xs font-medium text-slate-400 p-3 w-[200px] sticky left-0 bg-slate-900/50">
+            <tr className="bg-background/50">
+              <th className="text-left text-xs font-medium text-muted-foreground p-3 w-[200px] sticky left-0 bg-background/50">
                 Task
               </th>
               {weekDates.map((date, i) => {
@@ -162,10 +162,10 @@ export function WeeklyTimesheetView({
                     key={i}
                     className={`text-center text-xs font-medium p-3 min-w-[80px] ${
                       isToday
-                        ? "text-blue-400 bg-blue-900/20"
+                        ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
                         : isWeekend
-                        ? "text-slate-500"
-                        : "text-slate-400"
+                        ? "text-muted-foreground"
+                        : "text-muted-foreground"
                     }`}
                   >
                     <div>{date.toLocaleDateString("en-US", { weekday: "short" })}</div>
@@ -175,7 +175,7 @@ export function WeeklyTimesheetView({
                   </th>
                 );
               })}
-              <th className="text-center text-xs font-medium text-slate-400 p-3 min-w-[80px] bg-slate-700/50">
+              <th className="text-center text-xs font-medium text-muted-foreground p-3 min-w-[80px] bg-accent/50">
                 Total
               </th>
             </tr>
@@ -183,7 +183,7 @@ export function WeeklyTimesheetView({
           <tbody>
             {tasks.length === 0 ? (
               <tr>
-                <td colSpan={9} className="text-center py-8 text-slate-500">
+                <td colSpan={9} className="text-center py-8 text-muted-foreground">
                   No time entries this week
                 </td>
               </tr>
@@ -191,8 +191,8 @@ export function WeeklyTimesheetView({
               tasks.map((task) => {
                 let taskTotal = 0;
                 return (
-                  <tr key={task.id} className="border-t border-slate-700 hover:bg-slate-700/30">
-                    <td className="text-sm text-white p-3 sticky left-0 bg-slate-800 truncate max-w-[200px]">
+                  <tr key={task.id} className="border-t border-border hover:bg-accent/30">
+                    <td className="text-sm text-foreground p-3 sticky left-0 bg-muted truncate max-w-[200px]">
                       {task.title}
                     </td>
                     {weekDates.map((date, i) => {
@@ -207,15 +207,15 @@ export function WeeklyTimesheetView({
                         <td
                           key={i}
                           onClick={() => onCellClick?.(dateKey, task.id)}
-                          className={`text-center text-sm p-3 cursor-pointer hover:bg-slate-600/50 transition ${
+                          className={`text-center text-sm p-3 cursor-pointer hover:bg-muted/50 transition ${
                             isToday ? "bg-blue-900/10" : ""
-                          } ${minutes > 0 ? "text-green-400" : "text-slate-600"}`}
+                          } ${minutes > 0 ? "text-green-400" : "text-muted-foreground"}`}
                         >
                           {formatShortDuration(minutes)}
                         </td>
                       );
                     })}
-                    <td className="text-center text-sm text-white p-3 bg-slate-700/30 font-medium">
+                    <td className="text-center text-sm text-foreground p-3 bg-accent/30 font-medium">
                       {formatDuration(taskTotal)}
                     </td>
                   </tr>
@@ -223,8 +223,8 @@ export function WeeklyTimesheetView({
               })
             )}
             {/* Daily totals row */}
-            <tr className="border-t-2 border-slate-600 bg-slate-700/50">
-              <td className="text-sm font-medium text-white p-3 sticky left-0 bg-slate-700/50">
+            <tr className="border-t-2 border-border bg-accent/50">
+              <td className="text-sm font-medium text-foreground p-3 sticky left-0 bg-accent/50">
                 Daily Total
               </td>
               {weekDates.map((date, i) => {
@@ -239,7 +239,7 @@ export function WeeklyTimesheetView({
                   <td
                     key={i}
                     className={`text-center text-sm font-medium p-3 ${
-                      isToday ? "bg-blue-900/20" : ""
+                      isToday ? "bg-blue-50 dark:bg-blue-900/20" : ""
                     } ${
                       isOver
                         ? "text-amber-400"
@@ -247,14 +247,14 @@ export function WeeklyTimesheetView({
                         ? "text-red-400"
                         : total > 0
                         ? "text-green-400"
-                        : "text-slate-500"
+                        : "text-muted-foreground"
                     }`}
                   >
                     {formatDuration(total)}
                   </td>
                 );
               })}
-              <td className="text-center text-sm font-bold text-white p-3 bg-slate-600/50">
+              <td className="text-center text-sm font-bold text-foreground p-3 bg-muted/50">
                 {formatDuration(weeklyTotal)}
               </td>
             </tr>
@@ -263,8 +263,8 @@ export function WeeklyTimesheetView({
       </div>
 
       {/* Target indicator */}
-      <div className="p-3 border-t border-slate-700 bg-slate-900/30">
-        <div className="flex items-center justify-between text-xs text-slate-400">
+      <div className="p-3 border-t border-border bg-background/30">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>Target: {targetHoursPerDay}h/day ({targetHoursPerDay * 5}h/week)</span>
           <span>
             Progress:{" "}

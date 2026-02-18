@@ -139,7 +139,7 @@ export default function ReleasesPage() {
   if (!user) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-slate-400">Please log in to view releases.</p>
+        <p className="text-muted-foreground">Please log in to view releases.</p>
       </div>
     );
   }
@@ -147,22 +147,22 @@ export default function ReleasesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <header className="flex-shrink-0 border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm sticky top-0 z-30">
+      <header className="flex-shrink-0 border-b border-border bg-muted/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="max-w-[1800px] mx-auto px-4 py-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href={`/sprints/${projectId}`}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Link>
               <div>
-                <h1 className="text-lg font-semibold text-white flex items-center gap-2">
+                <h1 className="text-lg font-semibold text-foreground flex items-center gap-2">
                   <Package className="h-5 w-5 text-green-400" />
                   Releases
                 </h1>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   {total} {total === 1 ? "release" : "releases"} in this project
                 </p>
               </div>
@@ -182,13 +182,13 @@ export default function ReleasesPage() {
       <div className="flex flex-wrap items-center gap-4">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search releases..."
-            className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500/50"
+            className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-green-500/50"
           />
         </div>
 
@@ -196,7 +196,7 @@ export default function ReleasesPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as ReleaseStatus | "all")}
-          className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500/50"
+          className="px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-green-500/50"
         >
           {STATUS_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -209,7 +209,7 @@ export default function ReleasesPage() {
         <select
           value={riskFilter}
           onChange={(e) => setRiskFilter(e.target.value as ReleaseRiskLevel | "all")}
-          className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500/50"
+          className="px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-green-500/50"
         >
           {RISK_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -219,16 +219,16 @@ export default function ReleasesPage() {
         </select>
 
         {/* View Toggle */}
-        <div className="flex items-center bg-slate-800 border border-slate-700 rounded-lg p-1">
+        <div className="flex items-center bg-muted border border-border rounded-lg p-1">
           <button
             onClick={() => setViewMode("grid")}
-            className={`p-2 rounded ${viewMode === "grid" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"}`}
+            className={`p-2 rounded ${viewMode === "grid" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Grid3X3 className="h-4 w-4" />
           </button>
           <button
             onClick={() => setViewMode("list")}
-            className={`p-2 rounded ${viewMode === "list" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"}`}
+            className={`p-2 rounded ${viewMode === "list" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             <List className="h-4 w-4" />
           </button>
@@ -242,9 +242,9 @@ export default function ReleasesPage() {
         </div>
       ) : filteredReleases.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 text-center">
-          <Package className="h-12 w-12 text-slate-600 mb-4" />
-          <p className="text-slate-400 mb-2">No releases found</p>
-          <p className="text-slate-500 text-sm">
+          <Package className="h-12 w-12 text-muted-foreground mb-4" />
+          <p className="text-muted-foreground mb-2">No releases found</p>
+          <p className="text-muted-foreground text-sm">
             {searchQuery || statusFilter !== "all" || riskFilter !== "all"
               ? "Try adjusting your filters"
               : "Create your first release to get started"}
@@ -272,19 +272,19 @@ export default function ReleasesPage() {
       {/* Create Release Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto m-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-700">
-              <h2 className="text-lg font-semibold text-white">Create Release</h2>
+          <div className="bg-background border border-border rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto m-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-border">
+              <h2 className="text-lg font-semibold text-foreground">Create Release</h2>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="p-1 text-slate-400 hover:text-white transition-colors"
+                className="p-1 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
             <form onSubmit={handleCreateRelease} className="p-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Release Name *
                 </label>
                 <input
@@ -292,13 +292,13 @@ export default function ReleasesPage() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g., Q1 2024 Release"
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500/50"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-green-500/50"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Version
                 </label>
                 <input
@@ -306,12 +306,12 @@ export default function ReleasesPage() {
                   value={formData.version}
                   onChange={(e) => setFormData({ ...formData, version: e.target.value })}
                   placeholder="e.g., 2.0.0"
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500/50"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-green-500/50"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Description
                 </label>
                 <textarea
@@ -319,30 +319,30 @@ export default function ReleasesPage() {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Brief description of this release..."
                   rows={3}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 resize-none"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-green-500/50 resize-none"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Target Date
                 </label>
                 <input
                   type="date"
                   value={formData.target_date}
                   onChange={(e) => setFormData({ ...formData, target_date: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500/50"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-green-500/50"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Risk Level
                 </label>
                 <select
                   value={formData.risk_level}
                   onChange={(e) => setFormData({ ...formData, risk_level: e.target.value as ReleaseRiskLevel })}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500/50"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-green-500/50"
                 >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
@@ -355,7 +355,7 @@ export default function ReleasesPage() {
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+                  className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Cancel
                 </button>
@@ -431,20 +431,20 @@ function ReleaseDetailModal({ release, workspaceId, onClose }: ReleaseDetailModa
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto m-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-700">
+      <div className="bg-background border border-border rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto m-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-border">
           <div>
             <div className="flex items-center gap-2">
               <Package className="h-5 w-5 text-green-400" />
-              <h2 className="text-lg font-semibold text-white">{currentRelease.name}</h2>
+              <h2 className="text-lg font-semibold text-foreground">{currentRelease.name}</h2>
               {currentRelease.version && (
-                <span className="text-sm font-mono text-slate-400">v{currentRelease.version}</span>
+                <span className="text-sm font-mono text-muted-foreground">v{currentRelease.version}</span>
               )}
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-white transition-colors"
+            className="p-1 text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -454,7 +454,7 @@ function ReleaseDetailModal({ release, workspaceId, onClose }: ReleaseDetailModa
           {/* Status and Actions */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <span className="px-2 py-1 rounded text-sm font-medium bg-slate-700 text-white capitalize">
+              <span className="px-2 py-1 rounded text-sm font-medium bg-accent text-foreground capitalize">
                 {currentRelease.status.replace("_", " ")}
               </span>
               <span className={`text-sm ${currentRelease.risk_level === "critical" ? "text-red-400" :
@@ -493,26 +493,26 @@ function ReleaseDetailModal({ release, workspaceId, onClose }: ReleaseDetailModa
           {/* Description */}
           {currentRelease.description && (
             <div>
-              <h4 className="text-sm font-medium text-white mb-2">Description</h4>
-              <p className="text-slate-400 text-sm">{currentRelease.description}</p>
+              <h4 className="text-sm font-medium text-foreground mb-2">Description</h4>
+              <p className="text-muted-foreground text-sm">{currentRelease.description}</p>
             </div>
           )}
 
           {/* Dates */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-slate-800/50 rounded-lg p-3">
-              <div className="flex items-center gap-2 text-slate-400 mb-1">
+            <div className="bg-muted/50 rounded-lg p-3">
+              <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <Calendar className="h-4 w-4" />
                 <span className="text-xs uppercase">Target Date</span>
               </div>
-              <p className="text-white">{formatDate(currentRelease.target_date)}</p>
+              <p className="text-foreground">{formatDate(currentRelease.target_date)}</p>
             </div>
-            <div className="bg-slate-800/50 rounded-lg p-3">
-              <div className="flex items-center gap-2 text-slate-400 mb-1">
+            <div className="bg-muted/50 rounded-lg p-3">
+              <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <Rocket className="h-4 w-4" />
                 <span className="text-xs uppercase">Released Date</span>
               </div>
-              <p className="text-white">
+              <p className="text-foreground">
                 {currentRelease.actual_release_date
                   ? formatDate(currentRelease.actual_release_date)
                   : "Not released yet"}
@@ -522,20 +522,20 @@ function ReleaseDetailModal({ release, workspaceId, onClose }: ReleaseDetailModa
 
           {/* Readiness */}
           {readiness && (
-            <div className="bg-slate-800/50 rounded-lg p-4">
+            <div className="bg-muted/50 rounded-lg p-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
-                <h4 className="text-sm font-medium text-white">Release Readiness</h4>
+                <h4 className="text-sm font-medium text-foreground">Release Readiness</h4>
                 <span className={`text-sm font-medium ${readiness.is_ready ? "text-green-400" : "text-amber-400"}`}>
                   {readiness.story_readiness_percentage.toFixed(0)}% ready
                 </span>
               </div>
-              <div className="h-2 bg-slate-700 rounded-full overflow-hidden mb-2">
+              <div className="h-2 bg-accent rounded-full overflow-hidden mb-2">
                 <div
                   className={`h-full transition-all ${readiness.is_ready ? "bg-green-500" : "bg-amber-500"}`}
                   style={{ width: `${readiness.story_readiness_percentage}%` }}
                 />
               </div>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-slate-400">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-muted-foreground">
                 <span>Required: {readiness.required_completed}/{readiness.required_items}</span>
                 <span>Total: {readiness.completed_items}/{readiness.total_items}</span>
               </div>
@@ -544,7 +544,7 @@ function ReleaseDetailModal({ release, workspaceId, onClose }: ReleaseDetailModa
 
           {/* Checklist */}
           <div>
-            <h4 className="text-sm font-medium text-white mb-3">Readiness Checklist</h4>
+            <h4 className="text-sm font-medium text-foreground mb-3">Readiness Checklist</h4>
             <ReadinessChecklist
               items={currentRelease.readiness_checklist}
               onToggle={handleChecklistToggle}
@@ -555,22 +555,22 @@ function ReleaseDetailModal({ release, workspaceId, onClose }: ReleaseDetailModa
           {/* Release Notes */}
           {currentRelease.release_notes && (
             <div>
-              <h4 className="text-sm font-medium text-white mb-2">Release Notes</h4>
-              <div className="bg-slate-800/50 rounded-lg p-3">
-                <p className="text-slate-300 text-sm whitespace-pre-wrap">{currentRelease.release_notes}</p>
+              <h4 className="text-sm font-medium text-foreground mb-2">Release Notes</h4>
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-foreground text-sm whitespace-pre-wrap">{currentRelease.release_notes}</p>
               </div>
             </div>
           )}
 
           {/* Metadata */}
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-700">
+          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
             <div>
-              <span className="text-xs text-slate-500">Created</span>
-              <p className="text-sm text-white">{formatDate(currentRelease.created_at)}</p>
+              <span className="text-xs text-muted-foreground">Created</span>
+              <p className="text-sm text-foreground">{formatDate(currentRelease.created_at)}</p>
             </div>
             <div>
-              <span className="text-xs text-slate-500">Last Updated</span>
-              <p className="text-sm text-white">{formatDate(currentRelease.updated_at)}</p>
+              <span className="text-xs text-muted-foreground">Last Updated</span>
+              <p className="text-sm text-foreground">{formatDate(currentRelease.updated_at)}</p>
             </div>
           </div>
         </div>

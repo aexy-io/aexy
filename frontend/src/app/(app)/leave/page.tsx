@@ -55,16 +55,16 @@ export default function LeavePage() {
   }, [searchParams]);
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
               <CalendarDays className="h-7 w-7 text-blue-400" />
               Leave Management
             </h1>
-            <p className="text-slate-400 mt-1 ml-10">
+            <p className="text-muted-foreground mt-1 ml-10">
               Track and manage your leaves, approvals, and team availability
             </p>
           </div>
@@ -78,7 +78,7 @@ export default function LeavePage() {
         </div>
 
         {/* Tabs */}
-        <div role="tablist" aria-label="Leave management" className="flex items-center gap-1 border-b border-slate-800 mb-6">
+        <div role="tablist" aria-label="Leave management" className="flex items-center gap-1 border-b border-border mb-6">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -100,8 +100,8 @@ export default function LeavePage() {
                 }}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition relative ${
                   isActive
-                    ? "text-white"
-                    : "text-slate-400 hover:text-slate-200"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -142,7 +142,7 @@ function MyLeavesTab() {
     <div className="space-y-8">
       {/* Balances */}
       <section>
-        <h2 className="text-lg font-semibold text-white mb-4">Leave Balances</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">Leave Balances</h2>
         {balancesError ? (
           <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center">
             <AlertCircle className="h-6 w-6 text-red-400 mx-auto mb-2" />
@@ -153,11 +153,11 @@ function MyLeavesTab() {
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="bg-slate-900 border border-slate-800 rounded-xl p-5 animate-pulse"
+                className="bg-background border border-border rounded-xl p-5 animate-pulse"
               >
-                <div className="h-4 bg-slate-800 rounded w-1/2 mb-4" />
-                <div className="h-2.5 bg-slate-800 rounded w-full mb-3" />
-                <div className="h-3 bg-slate-800 rounded w-2/3" />
+                <div className="h-4 bg-muted rounded w-1/2 mb-4" />
+                <div className="h-2.5 bg-muted rounded w-full mb-3" />
+                <div className="h-3 bg-muted rounded w-2/3" />
               </div>
             ))}
           </div>
@@ -168,8 +168,8 @@ function MyLeavesTab() {
             ))}
           </div>
         ) : (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center">
-            <p className="text-sm text-slate-500">
+          <div className="bg-background border border-border rounded-xl p-8 text-center">
+            <p className="text-sm text-muted-foreground">
               No leave balances found. Contact your admin to set up leave policies.
             </p>
           </div>
@@ -178,7 +178,7 @@ function MyLeavesTab() {
 
       {/* My Requests */}
       <section>
-        <h2 className="text-lg font-semibold text-white mb-4">My Requests</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">My Requests</h2>
         {requestsError ? (
           <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center">
             <AlertCircle className="h-6 w-6 text-red-400 mx-auto mb-2" />
@@ -189,11 +189,11 @@ function MyLeavesTab() {
             {[1, 2].map((i) => (
               <div
                 key={i}
-                className="bg-slate-900 border border-slate-800 rounded-xl p-5 animate-pulse"
+                className="bg-background border border-border rounded-xl p-5 animate-pulse"
               >
-                <div className="h-4 bg-slate-800 rounded w-1/3 mb-3" />
-                <div className="h-3 bg-slate-800 rounded w-1/2 mb-2" />
-                <div className="h-3 bg-slate-800 rounded w-1/4" />
+                <div className="h-4 bg-muted rounded w-1/3 mb-3" />
+                <div className="h-3 bg-muted rounded w-1/2 mb-2" />
+                <div className="h-3 bg-muted rounded w-1/4" />
               </div>
             ))}
           </div>
@@ -204,9 +204,9 @@ function MyLeavesTab() {
             ))}
           </div>
         ) : (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center">
-            <CalendarDays className="h-8 w-8 text-slate-600 mx-auto mb-3" />
-            <p className="text-sm text-slate-500">
+          <div className="bg-background border border-border rounded-xl p-8 text-center">
+            <CalendarDays className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">
               No leave requests yet. Click &quot;Request Leave&quot; to get started.
             </p>
           </div>
@@ -221,7 +221,7 @@ function MyLeavesTab() {
 function TeamLeavesTab() {
   return (
     <div>
-      <h2 className="text-lg font-semibold text-white mb-4">Team Leave Requests</h2>
+      <h2 className="text-lg font-semibold text-foreground mb-4">Team Leave Requests</h2>
       <TeamLeaveTable />
     </div>
   );
@@ -243,10 +243,10 @@ function ApprovalsTab() {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-white mb-4">
+      <h2 className="text-lg font-semibold text-foreground mb-4">
         Pending Approvals
         {pendingRequests && pendingRequests.length > 0 && (
-          <span className="ml-2 text-sm font-normal text-slate-400">
+          <span className="ml-2 text-sm font-normal text-muted-foreground">
             ({pendingRequests.length} pending)
           </span>
         )}
@@ -259,7 +259,7 @@ function ApprovalsTab() {
         </div>
       ) : isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 text-slate-400 animate-spin" />
+          <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
         </div>
       ) : pendingRequests && pendingRequests.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -273,9 +273,9 @@ function ApprovalsTab() {
           ))}
         </div>
       ) : (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center">
-          <CheckSquare className="h-8 w-8 text-slate-600 mx-auto mb-3" />
-          <p className="text-sm text-slate-500">
+        <div className="bg-background border border-border rounded-xl p-8 text-center">
+          <CheckSquare className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">
             No pending approvals. All caught up!
           </p>
         </div>
@@ -307,8 +307,8 @@ function SettingsTab() {
             onClick={() => setSettingsSection(section.id)}
             className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
               settingsSection === section.id
-                ? "bg-slate-800 text-white"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
             }`}
           >
             {section.label}

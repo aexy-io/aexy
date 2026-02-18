@@ -156,6 +156,18 @@ class AcceptInviteResponse(BaseModel):
     message: str
 
 
+class MyInvitationResponse(BaseModel):
+    """Schema for a user's pending invitation across workspaces."""
+
+    token: str
+    workspace_name: str
+    workspace_slug: str
+    invited_by_name: str | None = None
+    role: str
+    expires_at: datetime | None = None
+    created_at: datetime
+
+
 # App Permissions Schemas
 class WorkspaceAppSettings(BaseModel):
     """Schema for workspace-level app settings."""

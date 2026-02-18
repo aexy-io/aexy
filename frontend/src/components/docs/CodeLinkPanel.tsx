@@ -176,16 +176,16 @@ export function CodeLinkPanel({
       />
 
       {/* Panel */}
-      <div className="relative w-full max-w-2xl max-h-[80vh] bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="relative w-full max-w-2xl max-h-[80vh] bg-background border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-600/20 rounded-xl">
               <LinkIcon className="h-5 w-5 text-blue-400" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-white">Link Source Code</h2>
-              <p className="text-sm text-slate-400">
+              <h2 className="text-lg font-semibold text-foreground">Link Source Code</h2>
+              <p className="text-sm text-muted-foreground">
                 {step === "repo"
                   ? "Select a repository"
                   : `Browsing ${selectedRepo?.full_name}`}
@@ -194,7 +194,7 @@ export function CodeLinkPanel({
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition"
           >
             <X className="h-5 w-5" />
           </button>
@@ -211,11 +211,11 @@ export function CodeLinkPanel({
                 </div>
               ) : !repositories || repositories.length === 0 ? (
                 <div className="text-center py-12">
-                  <Code2 className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-white mb-2">
+                  <Code2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-foreground mb-2">
                     No Repositories Found
                   </h3>
-                  <p className="text-slate-400 text-sm">
+                  <p className="text-muted-foreground text-sm">
                     Enable some repositories first to link code to your documentation.
                   </p>
                 </div>
@@ -225,25 +225,25 @@ export function CodeLinkPanel({
                     <button
                       key={repo.id}
                       onClick={() => handleSelectRepo(repo)}
-                      className="w-full flex items-center gap-3 p-3 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800 hover:border-slate-600 transition text-left"
+                      className="w-full flex items-center gap-3 p-3 bg-muted/50 border border-border rounded-lg hover:bg-muted hover:border-border transition text-left"
                     >
-                      <div className="p-2 bg-slate-700 rounded-lg">
-                        <Code2 className="h-5 w-5 text-slate-300" />
+                      <div className="p-2 bg-accent rounded-lg">
+                        <Code2 className="h-5 w-5 text-foreground" />
                       </div>
                       <div className="flex-1">
-                        <div className="text-white font-medium">{repo.full_name}</div>
+                        <div className="text-foreground font-medium">{repo.full_name}</div>
                         {repo.description && (
-                          <p className="text-slate-500 text-sm truncate">
+                          <p className="text-muted-foreground text-sm truncate">
                             {repo.description}
                           </p>
                         )}
                       </div>
                       {repo.language && (
-                        <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded">
+                        <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
                           {repo.language}
                         </span>
                       )}
-                      <ChevronRight className="h-5 w-5 text-slate-500" />
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
                     </button>
                   ))}
                 </div>
@@ -253,7 +253,7 @@ export function CodeLinkPanel({
             // File Browser
             <div className="flex-1 overflow-hidden flex flex-col">
               {/* Branch Selector & Breadcrumb */}
-              <div className="flex items-center gap-4 px-4 py-3 border-b border-slate-800 bg-slate-900/50">
+              <div className="flex items-center gap-4 px-4 py-3 border-b border-border bg-background/50">
                 {/* Back Button */}
                 <button
                   onClick={() => {
@@ -264,21 +264,21 @@ export function CodeLinkPanel({
                       setSelectedRepo(null);
                     }
                   }}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
 
                 {/* Branch Selector */}
                 <div className="flex items-center gap-2">
-                  <GitBranch className="h-4 w-4 text-slate-500" />
+                  <GitBranch className="h-4 w-4 text-muted-foreground" />
                   <select
                     value={selectedBranch}
                     onChange={(e) => {
                       setSelectedBranch(e.target.value);
                       setSelectedPath(null);
                     }}
-                    className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+                    className="bg-muted border border-border rounded-lg px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500/50"
                   >
                     {branches?.map((branch) => (
                       <option key={branch.name} value={branch.name}>
@@ -295,19 +295,19 @@ export function CodeLinkPanel({
                       setCurrentPath("");
                       setSelectedPath(null);
                     }}
-                    className="text-slate-400 hover:text-white shrink-0"
+                    className="text-muted-foreground hover:text-foreground shrink-0"
                   >
                     {selectedRepo?.name}
                   </button>
                   {pathParts.map((part, i) => (
                     <span key={i} className="flex items-center gap-1 shrink-0">
-                      <span className="text-slate-600">/</span>
+                      <span className="text-muted-foreground">/</span>
                       <button
                         onClick={() => {
                           setCurrentPath(pathParts.slice(0, i + 1).join("/"));
                           setSelectedPath(null);
                         }}
-                        className="text-slate-400 hover:text-white"
+                        className="text-muted-foreground hover:text-foreground"
                       >
                         {part}
                       </button>
@@ -323,7 +323,7 @@ export function CodeLinkPanel({
                       "shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg transition",
                       selectedPath === currentPath && selectedType === "dir"
                         ? "bg-primary-600 text-white"
-                        : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                        : "bg-muted text-foreground hover:bg-accent"
                     )}
                   >
                     Select Directory
@@ -338,7 +338,7 @@ export function CodeLinkPanel({
                     <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
                   </div>
                 ) : !contents || contents.length === 0 ? (
-                  <div className="text-center py-12 text-slate-500">
+                  <div className="text-center py-12 text-muted-foreground">
                     This directory is empty
                   </div>
                 ) : (
@@ -357,20 +357,20 @@ export function CodeLinkPanel({
                             "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition text-left",
                             selectedPath === item.path
                               ? "bg-primary-600/20 text-primary-300"
-                              : "text-slate-300 hover:bg-slate-800"
+                              : "text-foreground hover:bg-muted"
                           )}
                         >
                           {item.type === "dir" ? (
                             <Folder className="h-4 w-4 text-blue-400" />
                           ) : (
-                            <File className="h-4 w-4 text-slate-500" />
+                            <File className="h-4 w-4 text-muted-foreground" />
                           )}
                           <span className="flex-1 truncate">{item.name}</span>
                           {selectedPath === item.path && (
                             <Check className="h-4 w-4 text-primary-400" />
                           )}
                           {item.type === "dir" && (
-                            <ChevronRight className="h-4 w-4 text-slate-600" />
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
                           )}
                         </button>
                       ))}
@@ -382,7 +382,7 @@ export function CodeLinkPanel({
 
           {/* Error */}
           {error && (
-            <div className="mx-4 mb-4 flex items-center gap-3 p-3 bg-red-900/20 border border-red-800 rounded-lg">
+            <div className="mx-4 mb-4 flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-800 rounded-lg">
               <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
               <p className="text-sm text-red-300">{error}</p>
             </div>
@@ -391,17 +391,17 @@ export function CodeLinkPanel({
 
         {/* Footer */}
         {step === "browse" && selectedPath && (
-          <div className="px-6 py-4 border-t border-slate-800 bg-slate-900/50">
+          <div className="px-6 py-4 border-t border-border bg-background/50">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <div className="text-sm text-slate-400 mb-1">Selected:</div>
+                <div className="text-sm text-muted-foreground mb-1">Selected:</div>
                 <div className="flex items-center gap-2">
                   {selectedType === "dir" ? (
                     <Folder className="h-4 w-4 text-blue-400" />
                   ) : (
-                    <File className="h-4 w-4 text-slate-500" />
+                    <File className="h-4 w-4 text-muted-foreground" />
                   )}
-                  <span className="text-white font-mono text-sm truncate">
+                  <span className="text-foreground font-mono text-sm truncate">
                     {selectedPath}
                   </span>
                 </div>
@@ -409,7 +409,7 @@ export function CodeLinkPanel({
               <button
                 onClick={handleLink}
                 disabled={isLinking}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-500 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-foreground bg-primary-600 hover:bg-primary-500 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLinking ? (
                   <>

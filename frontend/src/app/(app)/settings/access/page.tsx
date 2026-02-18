@@ -120,15 +120,15 @@ export default function AccessControlPage() {
       <div>
         {/* Bulk Actions */}
         {selectedMembers.length > 0 && (
-          <div className="mb-4 p-4 bg-slate-800 border border-slate-700 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <span className="text-sm text-slate-300">
+          <div className="mb-4 p-4 bg-card border border-border rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <span className="text-sm text-foreground">
               {selectedMembers.length} member(s) selected
             </span>
             <div className="flex items-center gap-3">
               <select
                 value={selectedTemplateId}
                 onChange={(e) => setSelectedTemplateId(e.target.value)}
-                className="rounded-md border border-slate-600 bg-slate-700 px-3 py-1.5 text-sm text-white"
+                className="rounded-md border border-border bg-muted px-3 py-1.5 text-sm text-foreground"
               >
                 <option value="">Select template...</option>
                 {templates.map((t) => (
@@ -161,19 +161,19 @@ export default function AccessControlPage() {
         {/* Matrix Table */}
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : matrixError ? (
           <div className="text-center py-20 text-red-400">
             Failed to load access matrix. Please try again.
           </div>
         ) : (
-          <div className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
+          <div className="bg-card border border-border rounded-lg overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[600px]">
                 <thead>
-                  <tr className="border-b border-slate-700">
-                    <th className="sticky left-0 bg-slate-800 z-10 px-4 py-3 text-left">
+                  <tr className="border-b border-border">
+                    <th className="sticky left-0 bg-card z-10 px-4 py-3 text-left">
                       <div className="flex items-center gap-3">
                         <input
                           type="checkbox"
@@ -182,9 +182,9 @@ export default function AccessControlPage() {
                             members.length > 0
                           }
                           onChange={toggleAllMembers}
-                          className="h-4 w-4 rounded border-slate-600"
+                          className="h-4 w-4 rounded border-border"
                         />
-                        <span className="text-sm font-medium text-slate-300">
+                        <span className="text-sm font-medium text-foreground">
                           Member
                         </span>
                       </div>
@@ -197,8 +197,8 @@ export default function AccessControlPage() {
                           className="px-3 py-3 text-center min-w-[100px]"
                         >
                           <div className="flex flex-col items-center gap-1">
-                            <Icon className="h-4 w-4 text-slate-400" />
-                            <span className="text-xs font-medium text-slate-400">
+                            <Icon className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-xs font-medium text-muted-foreground">
                               {app.name}
                             </span>
                           </div>
@@ -206,7 +206,7 @@ export default function AccessControlPage() {
                       );
                     })}
                     <th className="px-4 py-3 text-center">
-                      <span className="text-xs font-medium text-slate-400">
+                      <span className="text-xs font-medium text-muted-foreground">
                         Actions
                       </span>
                     </th>
@@ -216,9 +216,9 @@ export default function AccessControlPage() {
                   {members.map((member) => (
                     <tr
                       key={member.developer_id}
-                      className="border-b border-slate-700/50 hover:bg-slate-700/30"
+                      className="border-b border-border/50 hover:bg-accent/30"
                     >
-                      <td className="sticky left-0 bg-slate-800 z-10 px-4 py-3">
+                      <td className="sticky left-0 bg-card z-10 px-4 py-3">
                         <div className="flex items-center gap-3">
                           <input
                             type="checkbox"
@@ -228,13 +228,13 @@ export default function AccessControlPage() {
                             onChange={() =>
                               toggleMemberSelection(member.developer_id)
                             }
-                            className="h-4 w-4 rounded border-slate-600"
+                            className="h-4 w-4 rounded border-border"
                           />
                           <div>
-                            <p className="text-sm font-medium text-white">
+                            <p className="text-sm font-medium text-foreground">
                               {member.developer_name || "Unknown"}
                             </p>
-                            <p className="text-xs text-slate-400">
+                            <p className="text-xs text-muted-foreground">
                               {member.role_name}
                               {member.is_admin && (
                                 <span className="ml-1 text-violet-400">
@@ -277,7 +277,7 @@ export default function AccessControlPage() {
             </div>
 
             {members.length === 0 && (
-              <div className="text-center py-12 text-slate-400">
+              <div className="text-center py-12 text-muted-foreground">
                 <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p>No members found in this workspace</p>
               </div>
@@ -286,7 +286,7 @@ export default function AccessControlPage() {
         )}
 
         {/* Legend */}
-        <div className="mt-4 flex items-center gap-6 text-xs text-slate-400">
+        <div className="mt-4 flex items-center gap-6 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
             <Check className="h-3 w-3 text-green-500" />
             Full Access
@@ -296,7 +296,7 @@ export default function AccessControlPage() {
             Partial Access
           </div>
           <div className="flex items-center gap-2">
-            <X className="h-3 w-3 text-slate-500" />
+            <X className="h-3 w-3 text-muted-foreground" />
             No Access
           </div>
         </div>

@@ -20,11 +20,11 @@ export function TeamStatsSummaryWidget() {
 
   if (isLoading) {
     return (
-      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 animate-pulse">
-        <div className="h-6 w-48 bg-slate-800 rounded mb-6" />
+      <div className="bg-background/50 border border-border rounded-xl p-6 animate-pulse">
+        <div className="h-6 w-48 bg-muted rounded mb-6" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-24 bg-slate-800 rounded-lg" />
+            <div key={i} className="h-24 bg-muted rounded-lg" />
           ))}
         </div>
       </div>
@@ -39,40 +39,40 @@ export function TeamStatsSummaryWidget() {
       label: "Commits",
       value: stats?.total_commits ?? 0,
       icon: GitCommit,
-      color: "text-blue-400",
+      color: "text-blue-600 dark:text-blue-400",
       bgColor: "bg-blue-500/10",
     },
     {
       label: "Pull Requests",
       value: stats?.total_prs ?? 0,
       icon: GitPullRequest,
-      color: "text-green-400",
+      color: "text-green-600 dark:text-green-400",
       bgColor: "bg-green-500/10",
     },
     {
       label: "Reviews",
       value: stats?.total_reviews ?? 0,
       icon: Eye,
-      color: "text-purple-400",
+      color: "text-purple-600 dark:text-purple-400",
       bgColor: "bg-purple-500/10",
     },
     {
       label: "Lines Changed",
       value: stats?.total_lines_changed ?? 0,
       icon: Code2,
-      color: "text-amber-400",
+      color: "text-amber-600 dark:text-amber-400",
       bgColor: "bg-amber-500/10",
     },
   ];
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+    <div className="bg-background/50 border border-border rounded-xl overflow-hidden">
+      <div className="px-6 py-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-blue-500/10 rounded-lg">
             <Users className="h-5 w-5 text-blue-400" />
           </div>
-          <h3 className="text-lg font-semibold text-white">Team Stats</h3>
+          <h3 className="text-lg font-semibold text-foreground">Team Stats</h3>
         </div>
         <Link
           href="/insights"
@@ -84,19 +84,19 @@ export function TeamStatsSummaryWidget() {
       <div className="p-6">
         {!currentWorkspace ? (
           <div className="text-center py-6">
-            <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Users className="w-8 h-8 text-slate-600" />
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <Users className="w-8 h-8 text-muted-foreground" />
             </div>
-            <p className="text-slate-400 text-sm">
+            <p className="text-muted-foreground text-sm">
               Select a workspace to view team stats.
             </p>
           </div>
         ) : !hasData ? (
           <div className="text-center py-6">
-            <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Users className="w-8 h-8 text-slate-600" />
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <Users className="w-8 h-8 text-muted-foreground" />
             </div>
-            <p className="text-slate-400 text-sm">
+            <p className="text-muted-foreground text-sm">
               No team data available yet. Team insights will appear once members start contributing.
             </p>
           </div>
@@ -105,15 +105,15 @@ export function TeamStatsSummaryWidget() {
             {metrics.map((metric) => (
               <div
                 key={metric.label}
-                className="p-4 bg-slate-800/50 rounded-lg hover:bg-slate-800/70 transition"
+                className="p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition"
               >
                 <div className="flex items-center gap-2 mb-2">
                   <div className={`p-1.5 ${metric.bgColor} rounded-md`}>
                     <metric.icon className={`h-4 w-4 ${metric.color}`} />
                   </div>
-                  <span className="text-slate-400 text-xs">{metric.label}</span>
+                  <span className="text-muted-foreground text-xs">{metric.label}</span>
                 </div>
-                <p className="text-2xl font-bold text-white tabular-nums">
+                <p className="text-2xl font-bold text-foreground tabular-nums">
                   {typeof metric.value === "number"
                     ? metric.value.toLocaleString()
                     : metric.value}

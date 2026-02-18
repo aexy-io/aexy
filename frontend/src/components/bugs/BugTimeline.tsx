@@ -37,43 +37,43 @@ const actionConfig: Record<
   created: {
     icon: Plus,
     label: "created this bug",
-    color: "text-blue-400",
+    color: "text-blue-600 dark:text-blue-400",
     bgColor: "bg-blue-500/10",
   },
   updated: {
     icon: Settings,
     label: "updated",
-    color: "text-slate-400",
-    bgColor: "bg-slate-500/10",
+    color: "text-muted-foreground",
+    bgColor: "bg-muted-foreground/10",
   },
   status_changed: {
     icon: ArrowRight,
     label: "changed status",
-    color: "text-purple-400",
+    color: "text-purple-600 dark:text-purple-400",
     bgColor: "bg-purple-500/10",
   },
   assigned: {
     icon: UserCheck,
     label: "assigned",
-    color: "text-cyan-400",
+    color: "text-cyan-600 dark:text-cyan-400",
     bgColor: "bg-cyan-500/10",
   },
   comment: {
     icon: MessageSquare,
     label: "commented",
-    color: "text-green-400",
+    color: "text-green-600 dark:text-green-400",
     bgColor: "bg-green-500/10",
   },
   verified: {
     icon: CheckCircle2,
     label: "verified the fix",
-    color: "text-emerald-400",
+    color: "text-emerald-600 dark:text-emerald-400",
     bgColor: "bg-emerald-500/10",
   },
   reopened: {
     icon: RefreshCw,
     label: "reopened this bug",
-    color: "text-orange-400",
+    color: "text-orange-600 dark:text-orange-400",
     bgColor: "bg-orange-500/10",
   },
 };
@@ -147,7 +147,7 @@ export function BugTimeline({ workspaceId, bugId }: BugTimelineProps) {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+      <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
         <MessageSquare className="h-4 w-4" />
         Activity
       </h3>
@@ -155,7 +155,7 @@ export function BugTimeline({ workspaceId, bugId }: BugTimelineProps) {
       {/* Timeline */}
       <div className="relative">
         {/* Timeline line */}
-        <div className="absolute left-4 top-0 bottom-0 w-px bg-slate-700/50" />
+        <div className="absolute left-4 top-0 bottom-0 w-px bg-accent/50" />
 
         <div className="space-y-4">
           {sortedActivities.map((activity) => {
@@ -167,7 +167,7 @@ export function BugTimeline({ workspaceId, bugId }: BugTimelineProps) {
                 {/* Icon */}
                 <div
                   className={cn(
-                    "relative z-10 flex h-8 w-8 items-center justify-center rounded-full border border-slate-700",
+                    "relative z-10 flex h-8 w-8 items-center justify-center rounded-full border border-border",
                     config.bgColor
                   )}
                 >
@@ -180,7 +180,7 @@ export function BugTimeline({ workspaceId, bugId }: BugTimelineProps) {
                     <div className="flex-1">
                       {/* Actor and action */}
                       <p className="text-sm">
-                        <span className="font-medium text-slate-200">
+                        <span className="font-medium text-foreground">
                           {activity.actor_name || "System"}
                         </span>{" "}
                         <span className="text-muted-foreground">
@@ -189,11 +189,11 @@ export function BugTimeline({ workspaceId, bugId }: BugTimelineProps) {
                           activity.new_value ? (
                             <>
                               changed status from{" "}
-                              <span className="text-slate-300">
+                              <span className="text-foreground">
                                 {getStatusLabel(activity.old_value)}
                               </span>{" "}
                               to{" "}
-                              <span className="text-slate-300">
+                              <span className="text-foreground">
                                 {getStatusLabel(activity.new_value)}
                               </span>
                             </>
@@ -205,11 +205,11 @@ export function BugTimeline({ workspaceId, bugId }: BugTimelineProps) {
                                 <>
                                   {" "}
                                   from{" "}
-                                  <span className="text-slate-300">
+                                  <span className="text-foreground">
                                     {activity.old_value}
                                   </span>{" "}
                                   to{" "}
-                                  <span className="text-slate-300">
+                                  <span className="text-foreground">
                                     {activity.new_value}
                                   </span>
                                 </>
@@ -223,8 +223,8 @@ export function BugTimeline({ workspaceId, bugId }: BugTimelineProps) {
 
                       {/* Comment content */}
                       {activity.comment && (
-                        <div className="mt-2 rounded-lg bg-slate-800/50 border border-slate-700/50 p-3">
-                          <p className="text-sm text-slate-300 whitespace-pre-wrap">
+                        <div className="mt-2 rounded-lg bg-muted/50 border border-border/50 p-3">
+                          <p className="text-sm text-foreground whitespace-pre-wrap">
                             {activity.comment}
                           </p>
                         </div>
@@ -252,10 +252,10 @@ export function BugTimeline({ workspaceId, bugId }: BugTimelineProps) {
       </div>
 
       {/* Add comment form */}
-      <form onSubmit={handleSubmitComment} className="pt-4 border-t border-slate-700/50">
+      <form onSubmit={handleSubmitComment} className="pt-4 border-t border-border/50">
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700/50 border border-slate-600">
-            <User className="h-4 w-4 text-slate-400" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent/50 border border-border">
+            <User className="h-4 w-4 text-muted-foreground" />
           </div>
           <div className="flex-1 space-y-2">
             <textarea
@@ -263,13 +263,13 @@ export function BugTimeline({ workspaceId, bugId }: BugTimelineProps) {
               onChange={(e) => setNewComment(e.target.value)}
               placeholder="Add a comment..."
               rows={2}
-              className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
+              className="w-full px-3 py-2 bg-muted/50 border border-border rounded-lg text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
             />
             <div className="flex justify-end">
               <button
                 type="submit"
                 disabled={!newComment.trim() || addCommentMutation.isPending}
-                className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors"
+                className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-accent disabled:text-muted-foreground text-foreground text-sm font-medium rounded-lg transition-colors"
               >
                 {addCommentMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

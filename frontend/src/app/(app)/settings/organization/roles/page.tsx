@@ -23,15 +23,15 @@ import { CustomRole, RoleTemplateInfo, PermissionInfo } from "@/lib/api";
 
 function getRoleBadgeColor(roleName: string) {
   const name = roleName.toLowerCase();
-  if (name.includes("owner")) return "bg-amber-900/30 text-amber-400 border-amber-700";
-  if (name.includes("admin")) return "bg-purple-900/30 text-purple-400 border-purple-700";
-  if (name.includes("manager")) return "bg-green-900/30 text-green-400 border-green-700";
-  if (name.includes("developer")) return "bg-blue-900/30 text-blue-400 border-blue-700";
-  if (name.includes("hr")) return "bg-rose-900/30 text-rose-400 border-rose-700";
-  if (name.includes("support")) return "bg-pink-900/30 text-pink-400 border-pink-700";
-  if (name.includes("sales")) return "bg-cyan-900/30 text-cyan-400 border-cyan-700";
-  if (name.includes("viewer")) return "bg-slate-700 text-slate-300 border-slate-600";
-  return "bg-slate-700 text-slate-300 border-slate-600";
+  if (name.includes("owner")) return "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-700";
+  if (name.includes("admin")) return "bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 border-purple-200 dark:border-purple-700";
+  if (name.includes("manager")) return "bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-700";
+  if (name.includes("developer")) return "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-700";
+  if (name.includes("hr")) return "bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400 border-rose-200 dark:border-rose-700";
+  if (name.includes("support")) return "bg-pink-50 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400 border-pink-200 dark:border-pink-700";
+  if (name.includes("sales")) return "bg-cyan-50 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400 border-cyan-200 dark:border-cyan-700";
+  if (name.includes("viewer")) return "bg-muted text-foreground border-border";
+  return "bg-muted text-foreground border-border";
 }
 
 interface RoleCardProps {
@@ -45,7 +45,7 @@ function RoleCard({ role, isAdmin, onEdit, onDelete }: RoleCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="bg-slate-800 rounded-xl border border-slate-700">
+    <div className="bg-card rounded-xl border border-border">
       <div className="p-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <button
@@ -60,33 +60,33 @@ function RoleCard({ role, isAdmin, onEdit, onDelete }: RoleCardProps) {
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <span className="text-white font-medium">{role.name}</span>
+                <span className="text-foreground font-medium">{role.name}</span>
                 {role.is_system && (
-                  <span className="px-2 py-0.5 bg-slate-700 text-slate-400 text-xs rounded">
+                  <span className="px-2 py-0.5 bg-muted text-muted-foreground text-xs rounded">
                     System
                   </span>
                 )}
               </div>
-              <p className="text-sm text-slate-400">{role.description}</p>
+              <p className="text-sm text-muted-foreground">{role.description}</p>
             </div>
             {expanded ? (
-              <ChevronDown className="h-5 w-5 text-slate-400" />
+              <ChevronDown className="h-5 w-5 text-muted-foreground" />
             ) : (
-              <ChevronRight className="h-5 w-5 text-slate-400" />
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
             )}
           </button>
           {isAdmin && !role.is_system && (
             <div className="flex items-center gap-1 ml-2">
               <button
                 onClick={onEdit}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
                 title="Edit role"
               >
                 <Edit2 className="h-4 w-4" />
               </button>
               <button
                 onClick={onDelete}
-                className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition"
+                className="p-2 text-muted-foreground hover:text-red-400 hover:bg-accent rounded-lg transition"
                 title="Delete role"
               >
                 <Trash2 className="h-4 w-4" />
@@ -97,21 +97,21 @@ function RoleCard({ role, isAdmin, onEdit, onDelete }: RoleCardProps) {
       </div>
 
       {expanded && (
-        <div className="border-t border-slate-700 p-4">
-          <h4 className="text-sm font-medium text-slate-300 mb-3">
+        <div className="border-t border-border p-4">
+          <h4 className="text-sm font-medium text-foreground mb-3">
             Permissions ({role.permissions.length})
           </h4>
           <div className="flex flex-wrap gap-2">
             {role.permissions.slice(0, 20).map((perm) => (
               <span
                 key={perm}
-                className="px-2 py-1 bg-slate-700 text-slate-300 text-xs rounded"
+                className="px-2 py-1 bg-muted text-foreground text-xs rounded"
               >
                 {perm.replace(/_/g, " ").replace("can ", "")}
               </span>
             ))}
             {role.permissions.length > 20 && (
-              <span className="px-2 py-1 bg-slate-600 text-slate-400 text-xs rounded">
+              <span className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded">
                 +{role.permissions.length - 20} more
               </span>
             )}
@@ -197,10 +197,10 @@ function CreateRoleModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="p-6 border-b border-slate-700">
-          <h3 className="text-xl font-semibold text-white">Create Custom Role</h3>
-          <p className="text-slate-400 text-sm mt-1">
+      <div className="bg-card rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="p-6 border-b border-border">
+          <h3 className="text-xl font-semibold text-foreground">Create Custom Role</h3>
+          <p className="text-muted-foreground text-sm mt-1">
             Define a new role with specific permissions
           </p>
         </div>
@@ -209,13 +209,13 @@ function CreateRoleModal({
           <div className="space-y-6">
             {/* Template Selector */}
             <div>
-              <label className="block text-sm text-slate-400 mb-2">
+              <label className="block text-sm text-muted-foreground mb-2">
                 Start from template (optional)
               </label>
               <select
                 value={selectedTemplate}
                 onChange={(e) => handleTemplateChange(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500"
               >
                 <option value="">Start from scratch</option>
                 {templates.map((t) => (
@@ -229,17 +229,17 @@ function CreateRoleModal({
             {/* Name & Description */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Role Name</label>
+                <label className="block text-sm text-muted-foreground mb-1">Role Name</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g., Lead Developer"
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500"
+                  className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500"
                 />
               </div>
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Color</label>
+                <label className="block text-sm text-muted-foreground mb-1">Color</label>
                 <div className="flex gap-2">
                   {colors.map((c) => (
                     <button
@@ -247,7 +247,7 @@ function CreateRoleModal({
                       type="button"
                       onClick={() => setColor(c)}
                       className={`w-8 h-8 rounded-lg transition ${
-                        color === c ? "ring-2 ring-white ring-offset-2 ring-offset-slate-800" : ""
+                        color === c ? "ring-2 ring-white ring-offset-2 ring-offset-card" : ""
                       }`}
                       style={{ backgroundColor: c }}
                     />
@@ -257,40 +257,40 @@ function CreateRoleModal({
             </div>
 
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Description</label>
+              <label className="block text-sm text-muted-foreground mb-1">Description</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="What is this role for?"
                 rows={2}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500"
+                className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500"
               />
             </div>
 
             {/* Permissions */}
             <div>
-              <label className="block text-sm text-slate-400 mb-2">
+              <label className="block text-sm text-muted-foreground mb-2">
                 Permissions ({permissions.length} selected)
               </label>
-              <div className="space-y-4 max-h-64 overflow-y-auto bg-slate-900/50 rounded-lg p-4">
+              <div className="space-y-4 max-h-64 overflow-y-auto bg-background/50 rounded-lg p-4">
                 {Object.entries(permissionCatalog).map(([category, perms]) => (
                   <div key={category}>
-                    <h5 className="text-xs font-medium text-slate-500 uppercase mb-2">
+                    <h5 className="text-xs font-medium text-muted-foreground uppercase mb-2">
                       {category}
                     </h5>
                     <div className="space-y-1">
                       {perms.map((perm) => (
                         <label
                           key={perm.id}
-                          className="flex items-center gap-2 p-2 hover:bg-slate-700/50 rounded cursor-pointer"
+                          className="flex items-center gap-2 p-2 hover:bg-accent/50 rounded cursor-pointer"
                         >
                           <input
                             type="checkbox"
                             checked={permissions.includes(perm.id)}
                             onChange={() => togglePermission(perm.id)}
-                            className="w-4 h-4 rounded border-slate-500 text-primary-600 focus:ring-primary-500 bg-slate-700"
+                            className="w-4 h-4 rounded border-border text-primary-600 focus:ring-primary-500 bg-muted"
                           />
-                          <span className="text-sm text-white">{perm.description}</span>
+                          <span className="text-sm text-foreground">{perm.description}</span>
                         </label>
                       ))}
                     </div>
@@ -303,11 +303,11 @@ function CreateRoleModal({
           </div>
         </form>
 
-        <div className="p-6 border-t border-slate-700 flex gap-3">
+        <div className="p-6 border-t border-border flex gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+            className="flex-1 px-4 py-2 bg-muted hover:bg-accent text-foreground rounded-lg transition"
           >
             Cancel
           </button>
@@ -364,7 +364,7 @@ export default function RolesSettingsPage() {
       <div className="py-20 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-white">Loading roles...</p>
+          <p className="text-foreground">Loading roles...</p>
         </div>
       </div>
     );
@@ -381,11 +381,11 @@ export default function RolesSettingsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h2 className="text-lg font-medium text-white flex items-center gap-2">
-              <Shield className="h-5 w-5 text-slate-400" />
+            <h2 className="text-lg font-medium text-foreground flex items-center gap-2">
+              <Shield className="h-5 w-5 text-muted-foreground" />
               Roles
             </h2>
-            <p className="text-slate-400 text-sm">{roles.length} roles defined</p>
+            <p className="text-muted-foreground text-sm">{roles.length} roles defined</p>
           </div>
           {isAdmin && (
             <button
@@ -400,7 +400,7 @@ export default function RolesSettingsPage() {
 
         {/* System Roles */}
         <div className="mb-8">
-          <h3 className="text-sm font-medium text-slate-400 mb-3 uppercase tracking-wider">
+          <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
             System Roles
           </h3>
           <div className="space-y-3">
@@ -420,7 +420,7 @@ export default function RolesSettingsPage() {
 
         {/* Custom Roles */}
         <div>
-          <h3 className="text-sm font-medium text-slate-400 mb-3 uppercase tracking-wider">
+          <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
             Custom Roles
           </h3>
           {roles.filter((r) => !r.is_system).length > 0 ? (
@@ -438,10 +438,10 @@ export default function RolesSettingsPage() {
                 ))}
             </div>
           ) : (
-            <div className="bg-slate-800 rounded-xl p-8 text-center border border-slate-700">
-              <Shield className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-white mb-2">No Custom Roles</h3>
-              <p className="text-slate-400 mb-4">
+            <div className="bg-card rounded-xl p-8 text-center border border-border">
+              <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">No Custom Roles</h3>
+              <p className="text-muted-foreground mb-4">
                 Create custom roles to define specific permission sets for your team.
               </p>
               {isAdmin && (
@@ -458,19 +458,19 @@ export default function RolesSettingsPage() {
         </div>
 
         {/* Info Card */}
-        <div className="bg-slate-800 rounded-xl p-6 mt-8 border border-slate-700">
-          <h3 className="text-white font-medium mb-3">About Roles & Permissions</h3>
-          <div className="space-y-2 text-sm text-slate-400">
+        <div className="bg-card rounded-xl p-6 mt-8 border border-border">
+          <h3 className="text-foreground font-medium mb-3">About Roles & Permissions</h3>
+          <div className="space-y-2 text-sm text-muted-foreground">
             <p>
-              <strong className="text-white">System roles</strong> are predefined and cannot be modified.
+              <strong className="text-foreground">System roles</strong> are predefined and cannot be modified.
               They serve as templates for common use cases.
             </p>
             <p>
-              <strong className="text-white">Custom roles</strong> can be created from scratch or based
+              <strong className="text-foreground">Custom roles</strong> can be created from scratch or based
               on a template. You can customize permissions to fit your needs.
             </p>
             <p>
-              <strong className="text-white">Project overrides</strong> allow you to assign different
+              <strong className="text-foreground">Project overrides</strong> allow you to assign different
               roles at the project level, overriding the organization role.
             </p>
           </div>

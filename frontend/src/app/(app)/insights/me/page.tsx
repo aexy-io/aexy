@@ -108,16 +108,16 @@ export default function MyInsightsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/insights"
-            className="p-2 rounded-lg hover:bg-zinc-800 transition-colors"
+            className="p-2 rounded-lg hover:bg-muted transition-colors"
           >
-            <ArrowLeft className="w-5 h-5 text-zinc-400" />
+            <ArrowLeft className="w-5 h-5 text-muted-foreground" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <User className="h-6 w-6 text-indigo-400" />
               My Insights
             </h1>
-            <p className="text-sm text-zinc-400 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Your personal engineering metrics — same data your manager sees
             </p>
           </div>
@@ -126,12 +126,12 @@ export default function MyInsightsPage() {
           <button
             onClick={handleExport}
             disabled={exporting}
-            className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 text-zinc-300 text-sm rounded-lg hover:bg-zinc-700 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 bg-muted text-foreground text-sm rounded-lg hover:bg-accent disabled:opacity-50 transition-colors"
           >
             <Download className="h-4 w-4" />
             {exporting ? "Exporting..." : "Export Data"}
           </button>
-          <div className="flex bg-zinc-800 rounded-lg border border-zinc-700 overflow-hidden">
+          <div className="flex bg-muted rounded-lg border border-border overflow-hidden">
             {PERIOD_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
@@ -139,7 +139,7 @@ export default function MyInsightsPage() {
                 className={`px-3 py-1.5 text-sm font-medium transition ${
                   periodType === opt.value
                     ? "bg-indigo-600 text-white"
-                    : "text-zinc-400 hover:text-white"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {opt.label}
@@ -152,7 +152,7 @@ export default function MyInsightsPage() {
       {isLoading && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="bg-zinc-900 rounded-xl p-4 border border-zinc-800 animate-pulse h-24" />
+            <div key={i} className="bg-background rounded-xl p-4 border border-border animate-pulse h-24" />
           ))}
         </div>
       )}
@@ -163,8 +163,8 @@ export default function MyInsightsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
             {/* Health Score */}
             {healthScore && (
-              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-                <h3 className="text-xs text-zinc-400 mb-2 flex items-center gap-1.5">
+              <div className="bg-background border border-border rounded-xl p-5">
+                <h3 className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
                   <Heart className="h-3.5 w-3.5 text-rose-400" />
                   Health Score
                 </h3>
@@ -182,8 +182,8 @@ export default function MyInsightsPage() {
                 <div className="mt-2 space-y-1">
                   {Object.entries(healthScore.breakdown).map(([key, val]) => (
                     <div key={key} className="flex items-center gap-1">
-                      <span className="text-[10px] text-zinc-500 w-16 capitalize">{key}</span>
-                      <div className="flex-1 h-1 bg-zinc-800 rounded-full">
+                      <span className="text-[10px] text-muted-foreground w-16 capitalize">{key}</span>
+                      <div className="flex-1 h-1 bg-muted rounded-full">
                         <div
                           className="h-full bg-indigo-500 rounded-full"
                           style={{ width: `${Math.min(100, val.score)}%` }}
@@ -204,8 +204,8 @@ export default function MyInsightsPage() {
           {/* Metric Sections */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Velocity + Efficiency */}
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
+            <div className="bg-background border border-border rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
                 <Zap className="h-4 w-4 text-green-400" />
                 Velocity & Efficiency
               </h3>
@@ -221,8 +221,8 @@ export default function MyInsightsPage() {
             </div>
 
             {/* Quality + Sustainability */}
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
+            <div className="bg-background border border-border rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
                 <Shield className="h-4 w-4 text-blue-400" />
                 Quality & Sustainability
               </h3>
@@ -240,18 +240,18 @@ export default function MyInsightsPage() {
 
           {/* Percentile Rankings */}
           {percentile && Object.keys(percentile.rankings).length > 0 && (
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
+            <div className="bg-background border border-border rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
                 <TrendingUp className="h-4 w-4 text-indigo-400" />
                 Your Percentile Rankings
-                <span className="text-xs text-zinc-500 font-normal">
+                <span className="text-xs text-muted-foreground font-normal">
                   (among {percentile.peer_count} peers)
                 </span>
               </h3>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {Object.entries(percentile.rankings).map(([metric, data]) => (
-                  <div key={metric} className="bg-zinc-800 rounded-lg p-3">
-                    <p className="text-[10px] text-zinc-400 capitalize mb-1">
+                  <div key={metric} className="bg-muted rounded-lg p-3">
+                    <p className="text-[10px] text-muted-foreground capitalize mb-1">
                       {metric.replace(/_/g, " ")}
                     </p>
                     <div className="flex items-end gap-1">
@@ -268,7 +268,7 @@ export default function MyInsightsPage() {
                       >
                         P{data.percentile.toFixed(0)}
                       </span>
-                      <span className="text-[10px] text-zinc-500 mb-0.5">
+                      <span className="text-[10px] text-muted-foreground mb-0.5">
                         #{data.rank}/{data.total}
                       </span>
                     </div>
@@ -295,12 +295,12 @@ function Stat({
   value: number;
 }) {
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+    <div className="bg-background border border-border rounded-xl p-5">
       <div className="flex items-center gap-2 mb-2">
         <Icon className={`h-4 w-4 ${color}`} />
-        <span className="text-xs text-zinc-400">{label}</span>
+        <span className="text-xs text-muted-foreground">{label}</span>
       </div>
-      <p className="text-3xl font-bold text-white">{value}</p>
+      <p className="text-3xl font-bold text-foreground">{value}</p>
     </div>
   );
 }
@@ -315,11 +315,11 @@ function MetricRow({
   warn?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between py-1.5 border-b border-zinc-800/50 last:border-0">
-      <span className="text-xs text-zinc-400">{label}</span>
+    <div className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
+      <span className="text-xs text-muted-foreground">{label}</span>
       <span
         className={`text-sm font-medium ${
-          warn ? "text-amber-400" : "text-white"
+          warn ? "text-amber-400" : "text-foreground"
         }`}
       >
         {value}

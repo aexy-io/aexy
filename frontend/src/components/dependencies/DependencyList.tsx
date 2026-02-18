@@ -14,12 +14,12 @@ import { StoryDependency, TaskDependency, DependencyType, DependencyStatus } fro
 import { cn } from "@/lib/utils";
 
 const DEPENDENCY_TYPE_CONFIG: Record<DependencyType, { label: string; icon: React.ReactNode; color: string }> = {
-  blocks: { label: "Blocks", icon: <ArrowRight className="h-4 w-4" />, color: "text-red-400" },
-  is_blocked_by: { label: "Blocked by", icon: <ArrowLeft className="h-4 w-4" />, color: "text-amber-400" },
-  relates_to: { label: "Relates to", icon: <Link className="h-4 w-4" />, color: "text-blue-400" },
-  duplicates: { label: "Duplicates", icon: <Copy className="h-4 w-4" />, color: "text-purple-400" },
-  is_child_of: { label: "Child of", icon: <ArrowLeft className="h-4 w-4" />, color: "text-slate-400" },
-  is_parent_of: { label: "Parent of", icon: <ArrowRight className="h-4 w-4" />, color: "text-slate-400" },
+  blocks: { label: "Blocks", icon: <ArrowRight className="h-4 w-4" />, color: "text-red-600 dark:text-red-400" },
+  is_blocked_by: { label: "Blocked by", icon: <ArrowLeft className="h-4 w-4" />, color: "text-amber-600 dark:text-amber-400" },
+  relates_to: { label: "Relates to", icon: <Link className="h-4 w-4" />, color: "text-blue-600 dark:text-blue-400" },
+  duplicates: { label: "Duplicates", icon: <Copy className="h-4 w-4" />, color: "text-purple-600 dark:text-purple-400" },
+  is_child_of: { label: "Child of", icon: <ArrowLeft className="h-4 w-4" />, color: "text-muted-foreground" },
+  is_parent_of: { label: "Parent of", icon: <ArrowRight className="h-4 w-4" />, color: "text-muted-foreground" },
 };
 
 interface DependencyListProps {
@@ -82,7 +82,7 @@ export function DependencyList({
         key={dep.id}
         className={cn(
           "group flex items-center justify-between p-3 rounded-lg transition-colors",
-          isResolved ? "bg-slate-800/30" : "bg-slate-800/50 hover:bg-slate-800/70",
+          isResolved ? "bg-muted/30" : "bg-muted/50 hover:bg-muted/70",
           isResolved && "opacity-60"
         )}
       >
@@ -92,7 +92,7 @@ export function DependencyList({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-white">{typeConfig.label}</span>
+              <span className="text-sm text-foreground">{typeConfig.label}</span>
               <button
                 onClick={() => onNavigate?.(linkedId, entityType)}
                 className="text-sm text-blue-400 hover:text-blue-300 font-mono"
@@ -101,7 +101,7 @@ export function DependencyList({
               </button>
             </div>
             {dep.description && (
-              <p className="text-xs text-slate-500 mt-0.5">{dep.description}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{dep.description}</p>
             )}
           </div>
         </div>
@@ -111,7 +111,7 @@ export function DependencyList({
             {onResolve && (
               <button
                 onClick={() => onResolve(dep.id)}
-                className="p-1.5 text-slate-400 hover:text-green-400 hover:bg-slate-700/50 rounded transition-colors"
+                className="p-1.5 text-muted-foreground hover:text-green-400 hover:bg-accent/50 rounded transition-colors"
                 title="Mark as resolved"
               >
                 <CheckCircle2 className="h-4 w-4" />
@@ -120,7 +120,7 @@ export function DependencyList({
             {onDelete && (
               <button
                 onClick={() => onDelete(dep.id)}
-                className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-700/50 rounded transition-colors"
+                className="p-1.5 text-muted-foreground hover:text-red-400 hover:bg-accent/50 rounded transition-colors"
                 title="Delete dependency"
               >
                 <Trash2 className="h-4 w-4" />
@@ -142,7 +142,7 @@ export function DependencyList({
     <div className={cn("space-y-4", className)}>
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium text-white">Dependencies</h4>
+        <h4 className="text-sm font-medium text-foreground">Dependencies</h4>
         {!readOnly && onAdd && (
           <button
             onClick={onAdd}
@@ -157,7 +157,7 @@ export function DependencyList({
       {/* Active dependencies */}
       {activeDeps.length > 0 && (
         <div className="space-y-2">
-          <span className="text-xs text-slate-500 uppercase tracking-wide">Active ({activeDeps.length})</span>
+          <span className="text-xs text-muted-foreground uppercase tracking-wide">Active ({activeDeps.length})</span>
           <div className="space-y-1">
             {activeDeps.map((dep) => renderDependency(dep, false))}
           </div>
@@ -167,7 +167,7 @@ export function DependencyList({
       {/* Resolved dependencies */}
       {resolvedDeps.length > 0 && (
         <div className="space-y-2">
-          <span className="text-xs text-slate-500 uppercase tracking-wide">Resolved ({resolvedDeps.length})</span>
+          <span className="text-xs text-muted-foreground uppercase tracking-wide">Resolved ({resolvedDeps.length})</span>
           <div className="space-y-1">
             {resolvedDeps.map((dep) => renderDependency(dep, true))}
           </div>
@@ -176,7 +176,7 @@ export function DependencyList({
 
       {/* Empty state */}
       {dependencies.length === 0 && (
-        <p className="text-sm text-slate-500 text-center py-4">
+        <p className="text-sm text-muted-foreground text-center py-4">
           No dependencies defined.
         </p>
       )}

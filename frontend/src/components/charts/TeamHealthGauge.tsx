@@ -24,14 +24,14 @@ export function TeamHealthGauge({ data, isLoading }: TeamHealthGaugeProps) {
   if (isLoading) {
     return (
       <div className="animate-pulse">
-        <div className="h-48 bg-slate-700 rounded-lg" />
+        <div className="h-48 bg-accent rounded-lg" />
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="flex items-center justify-center h-48 text-slate-400">
+      <div className="flex items-center justify-center h-48 text-muted-foreground">
         No health data available
       </div>
     );
@@ -52,7 +52,7 @@ export function TeamHealthGauge({ data, isLoading }: TeamHealthGaugeProps) {
       case "F":
         return "text-red-400";
       default:
-        return "text-slate-400";
+        return "text-muted-foreground";
     }
   };
 
@@ -113,19 +113,19 @@ export function TeamHealthGauge({ data, isLoading }: TeamHealthGaugeProps) {
         <span className={`text-4xl font-bold ${getGradeColor(data.health_grade)}`}>
           {data.health_grade}
         </span>
-        <span className="text-slate-400 ml-2">Grade</span>
+        <span className="text-muted-foreground ml-2">Grade</span>
       </div>
 
       {/* Quick stats */}
       <div className="grid grid-cols-2 gap-4 mt-6 text-sm">
-        <div className="bg-slate-700/50 rounded-lg p-3">
-          <div className="text-slate-400">Utilization</div>
-          <div className="text-white font-semibold">
+        <div className="bg-accent/50 rounded-lg p-3">
+          <div className="text-muted-foreground">Utilization</div>
+          <div className="text-foreground font-semibold">
             {(data.capacity_assessment.current_utilization * 100).toFixed(0)}%
           </div>
         </div>
-        <div className="bg-slate-700/50 rounded-lg p-3">
-          <div className="text-slate-400">Velocity</div>
+        <div className="bg-accent/50 rounded-lg p-3">
+          <div className="text-muted-foreground">Velocity</div>
           <div
             className={`font-semibold ${
               data.capacity_assessment.sustainable_velocity

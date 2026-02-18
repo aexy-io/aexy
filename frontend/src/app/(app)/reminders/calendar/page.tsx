@@ -84,9 +84,9 @@ function EventCard({
       onClick={onClick}
       className={`w-full text-left p-4 rounded-xl transition-all border ${
         isOverdue
-          ? "bg-red-900/20 hover:bg-red-900/30 border-red-800"
+          ? "bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 border-red-800"
           : isCompleted
-          ? "bg-green-900/20 hover:bg-green-900/30 border-green-800"
+          ? "bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 border-green-800"
           : "bg-gray-800/50 hover:bg-gray-800 border-gray-700 hover:border-gray-600"
       }`}
     >
@@ -195,7 +195,7 @@ function MonthView({
               return (
                 <div
                   key={`${weekIdx}-${dayIdx}`}
-                  className="min-h-[120px] border-b border-r border-gray-800/50 bg-gray-900/30"
+                  className="min-h-[120px] border-b border-r border-gray-800/50 bg-gray-100 dark:bg-gray-900/30"
                 />
               );
             }

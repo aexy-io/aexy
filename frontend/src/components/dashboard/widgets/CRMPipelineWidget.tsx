@@ -29,11 +29,11 @@ export function CRMPipelineWidget() {
 
   if (isLoading) {
     return (
-      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 animate-pulse">
-        <div className="h-6 w-36 bg-slate-800 rounded mb-4" />
+      <div className="bg-background/50 border border-border rounded-xl p-6 animate-pulse">
+        <div className="h-6 w-36 bg-muted rounded mb-4" />
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-12 bg-slate-800 rounded-lg" />
+            <div key={i} className="h-12 bg-muted rounded-lg" />
           ))}
         </div>
       </div>
@@ -67,13 +67,13 @@ export function CRMPipelineWidget() {
   };
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+    <div className="bg-background/50 border border-border rounded-xl overflow-hidden">
+      <div className="px-6 py-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-cyan-500/10 rounded-lg">
             <Building2 className="h-5 w-5 text-cyan-400" />
           </div>
-          <h3 className="text-lg font-semibold text-white">CRM Pipeline</h3>
+          <h3 className="text-lg font-semibold text-foreground">CRM Pipeline</h3>
         </div>
         <Link
           href="/crm"
@@ -85,10 +85,10 @@ export function CRMPipelineWidget() {
       <div className="p-6">
         {!currentWorkspace ? (
           <div className="text-center py-6">
-            <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Building2 className="w-8 h-8 text-slate-600" />
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <Building2 className="w-8 h-8 text-muted-foreground" />
             </div>
-            <p className="text-slate-400 text-sm">
+            <p className="text-muted-foreground text-sm">
               Select a workspace to view CRM data.
             </p>
           </div>
@@ -96,48 +96,48 @@ export function CRMPipelineWidget() {
           <div className="space-y-4">
             {/* Summary stats */}
             <div className="grid grid-cols-3 gap-3">
-              <div className="text-center p-3 bg-slate-800/50 rounded-lg">
+              <div className="text-center p-3 bg-muted/50 rounded-lg">
                 <div className="flex items-center justify-center gap-1 mb-1">
                   <Users className="h-3 w-3 text-cyan-400" />
-                  <span className="text-xs text-slate-400">Deals</span>
+                  <span className="text-xs text-muted-foreground">Deals</span>
                 </div>
-                <p className="text-lg font-bold text-white">{totalDeals}</p>
+                <p className="text-lg font-bold text-foreground">{totalDeals}</p>
               </div>
-              <div className="text-center p-3 bg-slate-800/50 rounded-lg">
+              <div className="text-center p-3 bg-muted/50 rounded-lg">
                 <div className="flex items-center justify-center gap-1 mb-1">
                   <DollarSign className="h-3 w-3 text-green-400" />
-                  <span className="text-xs text-slate-400">Value</span>
+                  <span className="text-xs text-muted-foreground">Value</span>
                 </div>
-                <p className="text-lg font-bold text-white">
+                <p className="text-lg font-bold text-foreground">
                   {formatCurrency(totalValue)}
                 </p>
               </div>
-              <div className="text-center p-3 bg-slate-800/50 rounded-lg">
+              <div className="text-center p-3 bg-muted/50 rounded-lg">
                 <div className="flex items-center justify-center gap-1 mb-1">
                   <TrendingUp className="h-3 w-3 text-emerald-400" />
-                  <span className="text-xs text-slate-400">Won</span>
+                  <span className="text-xs text-muted-foreground">Won</span>
                 </div>
-                <p className="text-lg font-bold text-white">{wonDeals}</p>
+                <p className="text-lg font-bold text-foreground">{wonDeals}</p>
               </div>
             </div>
 
             {/* Pipeline stages */}
             {stages.length > 0 ? (
               <div className="space-y-2">
-                <p className="text-xs text-slate-500 uppercase tracking-wider">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">
                   Pipeline Stages
                 </p>
                 {stages.slice(0, 4).map((stage, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between p-2 bg-slate-800/30 rounded-lg"
+                    className="flex items-center justify-between p-2 bg-muted/30 rounded-lg"
                   >
-                    <span className="text-sm text-slate-300">{stage.name}</span>
+                    <span className="text-sm text-foreground">{stage.name}</span>
                     <div className="flex items-center gap-3">
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-muted-foreground">
                         {stage.count} deals
                       </span>
-                      <span className="text-sm font-medium text-white">
+                      <span className="text-sm font-medium text-foreground">
                         {formatCurrency(stage.value)}
                       </span>
                     </div>
@@ -146,7 +146,7 @@ export function CRMPipelineWidget() {
               </div>
             ) : (
               <div className="text-center py-4">
-                <p className="text-slate-500 text-sm">No active deals yet.</p>
+                <p className="text-muted-foreground text-sm">No active deals yet.</p>
                 <Link
                   href="/crm/deals/new"
                   className="inline-flex items-center gap-1 mt-2 text-cyan-400 hover:text-cyan-300 text-sm transition"

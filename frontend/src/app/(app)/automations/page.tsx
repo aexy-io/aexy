@@ -60,7 +60,7 @@ const moduleColors: Record<AutomationModule, string> = {
 
 function ModuleBadge({ module }: { module: AutomationModule }) {
   const Icon = moduleIcons[module] || Zap;
-  const color = moduleColors[module] || "bg-slate-500/20 text-slate-400";
+  const color = moduleColors[module] || "bg-muted-foreground/20 text-muted-foreground";
   const label = moduleLabels[module] || module;
 
   return (
@@ -85,15 +85,15 @@ function AutomationCard({
   return (
     <div
       onClick={onEdit}
-      className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 hover:border-blue-500/50 transition-colors cursor-pointer group"
+      className="bg-muted/50 border border-border rounded-xl p-5 hover:border-blue-500/50 transition-colors cursor-pointer group"
     >
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${automation.is_active ? "bg-green-500/20 text-green-400" : "bg-slate-700 text-slate-400"}`}>
+          <div className={`p-2 rounded-lg ${automation.is_active ? "bg-green-500/20 text-green-400" : "bg-accent text-muted-foreground"}`}>
             <Zap className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-white font-medium group-hover:text-blue-400 transition-colors">{automation.name}</h3>
+            <h3 className="text-foreground font-medium group-hover:text-blue-400 transition-colors">{automation.name}</h3>
             <div className="flex items-center gap-2 mt-1">
               <ModuleBadge module={automation.module as AutomationModule} />
             </div>
@@ -102,7 +102,7 @@ function AutomationCard({
         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={onEdit}
-            className="p-2 rounded-lg bg-slate-700 text-slate-400 hover:bg-blue-500/20 hover:text-blue-400 transition-colors"
+            className="p-2 rounded-lg bg-accent text-muted-foreground hover:bg-blue-500/20 hover:text-blue-400 transition-colors"
             title="Edit automation"
           >
             <Edit2 className="h-4 w-4" />
@@ -112,7 +112,7 @@ function AutomationCard({
             className={`p-2 rounded-lg transition-colors ${
               automation.is_active
                 ? "bg-green-500/20 text-green-400 hover:bg-green-500/30"
-                : "bg-slate-700 text-slate-400 hover:bg-slate-600"
+                : "bg-accent text-muted-foreground hover:bg-muted"
             }`}
             title={automation.is_active ? "Pause automation" : "Activate automation"}
           >
@@ -120,7 +120,7 @@ function AutomationCard({
           </button>
           <button
             onClick={onDelete}
-            className="p-2 rounded-lg bg-slate-700 text-slate-400 hover:bg-red-500/20 hover:text-red-400 transition-colors"
+            className="p-2 rounded-lg bg-accent text-muted-foreground hover:bg-red-500/20 hover:text-red-400 transition-colors"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -128,23 +128,23 @@ function AutomationCard({
       </div>
 
       {automation.description && (
-        <p className="text-sm text-slate-400 mb-3 line-clamp-2">{automation.description}</p>
+        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{automation.description}</p>
       )}
 
       <div className="space-y-2 mb-4">
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-slate-500">Trigger:</span>
-          <span className="text-slate-300">{automation.trigger_type.replace(/[._]/g, " ")}</span>
+          <span className="text-muted-foreground">Trigger:</span>
+          <span className="text-foreground">{automation.trigger_type.replace(/[._]/g, " ")}</span>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-slate-500">Actions:</span>
-          <span className="text-slate-300">
+          <span className="text-muted-foreground">Actions:</span>
+          <span className="text-foreground">
             {automation.actions.length} action{automation.actions.length !== 1 ? "s" : ""}
           </span>
         </div>
       </div>
 
-      <div className="flex items-center gap-4 text-xs text-slate-500">
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
           <Play className="h-3 w-3" />
           {automation.total_runs} runs
@@ -210,21 +210,21 @@ export default function AutomationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
       <div className="p-8">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="flex items-center gap-4 mb-6">
             <button
               onClick={() => router.push("/dashboard")}
-              className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+              className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
             <div className="flex sm:flex-row flex-col sm:items-center sm:justify-between items-start">
               <div className="flex-1">
-              <h1 className="text-2xl font-bold text-white">Automations</h1>
-              <p className="text-sm text-slate-400">Automate workflows across all Aexy modules</p>
+              <h1 className="text-2xl font-bold text-foreground">Automations</h1>
+              <p className="text-sm text-muted-foreground">Automate workflows across all Aexy modules</p>
             </div>
             <button
               onClick={handleCreateNew}
@@ -237,11 +237,11 @@ export default function AutomationsPage() {
           </div>
 
           {/* Module Filter Tabs */}
-          <div className="flex items-center gap-1 p-1 bg-slate-800/50 border border-slate-700 rounded-xl mb-6 overflow-x-auto">
+          <div className="flex items-center gap-1 p-1 bg-muted/50 border border-border rounded-xl mb-6 overflow-x-auto">
             <button
               onClick={() => handleModuleChange(null)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                selectedModule === null ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"
+                selectedModule === null ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               All Modules
@@ -253,7 +253,7 @@ export default function AutomationsPage() {
                   key={module}
                   onClick={() => handleModuleChange(module)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                    selectedModule === module ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"
+                    selectedModule === module ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -266,13 +266,13 @@ export default function AutomationsPage() {
           {/* Search */}
           <div className="flex items-center gap-4 mb-6">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search automations..."
-                className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -281,16 +281,16 @@ export default function AutomationsPage() {
           {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-48 bg-slate-800/50 rounded-xl animate-pulse" />
+                <div key={i} className="h-48 bg-muted/50 rounded-xl animate-pulse" />
               ))}
             </div>
           ) : filteredAutomations.length === 0 ? (
             <div className="text-center py-16">
-              <Zap className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-white mb-2">
+              <Zap className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">
                 {selectedModule ? `No ${moduleLabels[selectedModule]} automations yet` : "No automations yet"}
               </h3>
-              <p className="text-slate-400 mb-4">
+              <p className="text-muted-foreground mb-4">
                 {selectedModule
                   ? `Create your first ${moduleLabels[selectedModule]} automation to streamline your workflows`
                   : "Create your first automation to streamline your workflows"}

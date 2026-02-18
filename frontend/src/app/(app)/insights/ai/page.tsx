@@ -58,52 +58,52 @@ function AIContentCard({
 }) {
   if (isLoading) {
     return (
-      <div className="bg-gray-800 rounded-xl p-8 flex flex-col items-center justify-center min-h-[300px]">
-        <Loader2 className="h-8 w-8 text-indigo-400 animate-spin mb-4" />
-        <p className="text-gray-400 text-sm">Generating AI insights...</p>
-        <p className="text-gray-500 text-xs mt-1">This may take a few seconds</p>
+      <div className="bg-muted rounded-xl p-8 flex flex-col items-center justify-center min-h-[300px]">
+        <Loader2 className="h-8 w-8 text-indigo-600 dark:text-indigo-400 animate-spin mb-4" />
+        <p className="text-muted-foreground text-sm">Generating AI insights...</p>
+        <p className="text-muted-foreground text-xs mt-1">This may take a few seconds</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-800 rounded-xl p-6">
+    <div className="bg-muted rounded-xl p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-indigo-400" />
-          <span className="text-xs text-indigo-400 font-medium">
+          <Sparkles className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+          <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">
             {generated ? "AI Generated" : "Unavailable"}
           </span>
         </div>
         {onRefresh && (
           <button
             onClick={onRefresh}
-            className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition"
+            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
             title="Regenerate"
           >
             <RefreshCw className="h-4 w-4" />
           </button>
         )}
       </div>
-      <div className="prose prose-invert prose-sm max-w-none">
+      <div className="prose dark:prose-invert prose-sm max-w-none">
         {content.split("\n").map((line, i) => {
           if (line.startsWith("**") && line.endsWith("**")) {
             return (
-              <h4 key={i} className="text-white font-semibold mt-4 mb-2">
+              <h4 key={i} className="text-foreground font-semibold mt-4 mb-2">
                 {line.replace(/\*\*/g, "")}
               </h4>
             );
           }
           if (/^\d+\./.test(line.trim())) {
             return (
-              <p key={i} className="text-gray-300 ml-4 mb-1">
+              <p key={i} className="text-foreground ml-4 mb-1">
                 {line}
               </p>
             );
           }
           if (line.startsWith("- ") || line.startsWith("* ")) {
             return (
-              <p key={i} className="text-gray-300 ml-4 mb-1">
+              <p key={i} className="text-foreground ml-4 mb-1">
                 {line}
               </p>
             );
@@ -112,7 +112,7 @@ function AIContentCard({
             return <br key={i} />;
           }
           return (
-            <p key={i} className="text-gray-300 mb-2 whitespace-pre-wrap">
+            <p key={i} className="text-foreground mb-2 whitespace-pre-wrap">
               {line}
             </p>
           );
@@ -268,16 +268,16 @@ export default function AIInsightsPage() {
         <div className="flex items-center gap-4">
           <Link
             href="/insights"
-            className="p-2 hover:bg-gray-800 rounded-lg transition"
+            className="p-2 hover:bg-muted rounded-lg transition"
           >
-            <ArrowLeft className="h-5 w-5 text-gray-400" />
+            <ArrowLeft className="h-5 w-5 text-muted-foreground" />
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <Brain className="h-6 w-6 text-indigo-400" />
-              <h1 className="text-2xl font-bold text-white">AI Insights</h1>
+              <Brain className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+              <h1 className="text-2xl font-bold text-foreground">AI Insights</h1>
             </div>
-            <p className="text-gray-400 text-sm mt-1">
+            <p className="text-muted-foreground text-sm mt-1">
               LLM-powered intelligence for your engineering team
             </p>
           </div>
@@ -286,7 +286,7 @@ export default function AIInsightsPage() {
         <select
           value={periodType}
           onChange={(e) => setPeriodType(e.target.value as InsightsPeriodType)}
-          className="bg-gray-800 border border-gray-700 text-white px-3 py-2 rounded-lg text-sm"
+          className="bg-muted border border-border text-foreground px-3 py-2 rounded-lg text-sm"
         >
           {PERIOD_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -307,11 +307,11 @@ export default function AIInsightsPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition ${
                 isActive
-                  ? "bg-indigo-900/50 border-indigo-500 text-white"
-                  : "bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-750 hover:text-gray-200"
+                  ? "bg-indigo-100 dark:bg-indigo-900/50 border-indigo-500 text-foreground"
+                  : "bg-muted border-border text-muted-foreground hover:bg-accent hover:text-foreground"
               }`}
             >
-              <Icon className={`h-5 w-5 ${isActive ? "text-indigo-400" : ""}`} />
+              <Icon className={`h-5 w-5 ${isActive ? "text-indigo-600 dark:text-indigo-400" : ""}`} />
               <span className="text-sm font-medium">{tab.label}</span>
             </button>
           );
@@ -319,7 +319,7 @@ export default function AIInsightsPage() {
       </div>
 
       {/* Active Tab Description */}
-      <div className="flex items-center gap-2 text-sm text-gray-500">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Sparkles className="h-4 w-4" />
         {TABS.find((t) => t.id === activeTab)?.description}
       </div>
@@ -336,9 +336,9 @@ export default function AIInsightsPage() {
       {activeTab === "retro" && retro?.metrics_summary && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {Object.entries(retro.metrics_summary).map(([key, value]) => (
-            <div key={key} className="bg-gray-800 rounded-lg p-4 text-center">
-              <p className="text-2xl font-bold text-white">{String(value)}</p>
-              <p className="text-xs text-gray-400 mt-1">{key.replace(/_/g, " ")}</p>
+            <div key={key} className="bg-muted rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-foreground">{String(value)}</p>
+              <p className="text-xs text-muted-foreground mt-1">{key.replace(/_/g, " ")}</p>
             </div>
           ))}
         </div>
@@ -347,9 +347,9 @@ export default function AIInsightsPage() {
       {activeTab === "trajectory" && trajectory?.trends && (
         <div className="grid grid-cols-2 gap-4">
           {Object.entries(trajectory.trends).map(([key, value]) => (
-            <div key={key} className="bg-gray-800 rounded-lg p-4 text-center">
-              <p className="text-2xl font-bold text-white">{String(value)}%</p>
-              <p className="text-xs text-gray-400 mt-1">{key.replace(/_/g, " ")}</p>
+            <div key={key} className="bg-muted rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-foreground">{String(value)}%</p>
+              <p className="text-xs text-muted-foreground mt-1">{key.replace(/_/g, " ")}</p>
             </div>
           ))}
         </div>
@@ -358,9 +358,9 @@ export default function AIInsightsPage() {
       {activeTab === "hiring" && hiring?.indicators && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {Object.entries(hiring.indicators).map(([key, value]) => (
-            <div key={key} className="bg-gray-800 rounded-lg p-4 text-center">
-              <p className="text-2xl font-bold text-white">{String(value)}</p>
-              <p className="text-xs text-gray-400 mt-1">{key.replace(/_/g, " ")}</p>
+            <div key={key} className="bg-muted rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-foreground">{String(value)}</p>
+              <p className="text-xs text-muted-foreground mt-1">{key.replace(/_/g, " ")}</p>
             </div>
           ))}
         </div>

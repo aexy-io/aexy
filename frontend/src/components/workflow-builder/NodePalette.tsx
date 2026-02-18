@@ -376,7 +376,7 @@ const FIXED_CATEGORIES: Omit<NodeCategory, "subtypes">[] = [
     type: "condition",
     label: "Conditions",
     icon: GitBranch,
-    color: "text-amber-400",
+    color: "text-amber-600 dark:text-amber-400",
     bgColor: "bg-amber-500/20",
   },
   {
@@ -390,21 +390,21 @@ const FIXED_CATEGORIES: Omit<NodeCategory, "subtypes">[] = [
     type: "agent",
     label: "AI Agents",
     icon: Bot,
-    color: "text-pink-400",
+    color: "text-pink-600 dark:text-pink-400",
     bgColor: "bg-pink-500/20",
   },
   {
     type: "branch",
     label: "Branch",
     icon: Merge,
-    color: "text-indigo-400",
+    color: "text-indigo-600 dark:text-indigo-400",
     bgColor: "bg-indigo-500/20",
   },
   {
     type: "join",
     label: "Join",
     icon: GitBranch,
-    color: "text-teal-400",
+    color: "text-teal-600 dark:text-teal-400",
     bgColor: "bg-teal-500/20",
   },
 ];
@@ -644,7 +644,7 @@ export function NodePalette({
         type: "trigger",
         label: "Triggers",
         icon: Zap,
-        color: "text-emerald-400",
+        color: "text-emerald-600 dark:text-emerald-400",
         bgColor: "bg-emerald-500/20",
         subtypes: triggerSubtypes,
       },
@@ -652,7 +652,7 @@ export function NodePalette({
         type: "action",
         label: "Actions",
         icon: Play,
-        color: "text-blue-400",
+        color: "text-blue-600 dark:text-blue-400",
         bgColor: "bg-blue-500/20",
         subtypes: actionSubtypes,
       },
@@ -706,20 +706,20 @@ export function NodePalette({
   // Collapsed mode for mobile - just show icons
   if (isCollapsed) {
     return (
-      <div className="w-14 bg-slate-800/50 border-r border-slate-700 flex flex-col">
+      <div className="w-14 bg-muted/50 border-r border-border flex flex-col">
         <button
           onClick={onToggleCollapse}
-          className="p-3 border-b border-slate-700 hover:bg-slate-700/50"
+          className="p-3 border-b border-border hover:bg-accent/50"
           title="Expand palette"
         >
-          <ChevronRight className="h-5 w-5 text-slate-400" />
+          <ChevronRight className="h-5 w-5 text-muted-foreground" />
         </button>
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {nodeCategories.map((category) => (
             <button
               key={category.type}
               onClick={() => onAddNode(category.type)}
-              className={`w-full p-2 rounded-lg hover:bg-slate-700/50 flex items-center justify-center ${category.bgColor}`}
+              className={`w-full p-2 rounded-lg hover:bg-accent/50 flex items-center justify-center ${category.bgColor}`}
               title={category.label}
             >
               <category.icon className={`h-5 w-5 ${category.color}`} />
@@ -731,18 +731,18 @@ export function NodePalette({
   }
 
   return (
-    <div className="w-64 bg-slate-800/50 border-r border-slate-700 overflow-y-auto hidden md:block">
-      <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+    <div className="w-64 bg-muted/50 border-r border-border overflow-y-auto hidden md:block">
+      <div className="p-4 border-b border-border flex items-center justify-between">
         <div>
-          <h3 className="text-white font-semibold">Node Palette</h3>
-          <p className="text-xs text-slate-400 mt-1">
+          <h3 className="text-foreground font-semibold">Node Palette</h3>
+          <p className="text-xs text-muted-foreground mt-1">
             Drag nodes to canvas or click to add
           </p>
         </div>
         {onToggleCollapse && (
           <button
             onClick={onToggleCollapse}
-            className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white lg:hidden"
+            className="p-1.5 hover:bg-accent rounded-lg text-muted-foreground hover:text-foreground lg:hidden"
             title="Collapse palette"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -751,7 +751,7 @@ export function NodePalette({
       </div>
 
       {isLoading && (
-        <div className="flex items-center justify-center py-4 text-slate-400">
+        <div className="flex items-center justify-center py-4 text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin mr-2" />
           <span className="text-sm">Loading...</span>
         </div>
@@ -780,18 +780,18 @@ export function NodePalette({
                 }}
                 className={`
                   w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
-                  hover:bg-slate-700/50 transition-colors group
+                  hover:bg-accent/50 transition-colors group
                   ${hasSubtypes ? "" : "cursor-grab active:cursor-grabbing"}
                 `}
               >
                 <div className={`p-1.5 rounded-lg ${category.bgColor}`}>
                   <category.icon className={`h-4 w-4 ${category.color}`} />
                 </div>
-                <span className="text-slate-200 font-medium text-sm flex-1 text-left">
+                <span className="text-foreground font-medium text-sm flex-1 text-left">
                   {category.label}
                 </span>
                 {hasSubtypes && (
-                  <span className="text-slate-400">
+                  <span className="text-muted-foreground">
                     {isExpanded ? (
                       <ChevronDown className="h-4 w-4" />
                     ) : (
@@ -811,12 +811,12 @@ export function NodePalette({
                       onDragStart={(e) => handleDragStart(e, category, subtype.value)}
                       className={`
                         w-full flex items-center gap-2 px-3 py-2 rounded-lg
-                        hover:bg-slate-700/50 transition-colors
+                        hover:bg-accent/50 transition-colors
                         cursor-grab active:cursor-grabbing
                       `}
                     >
                       <subtype.icon className={`h-3.5 w-3.5 ${category.color}`} />
-                      <span className="text-slate-300 text-sm">
+                      <span className="text-foreground text-sm">
                         {subtype.label}
                       </span>
                     </button>

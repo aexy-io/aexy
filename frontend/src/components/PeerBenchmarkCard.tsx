@@ -56,13 +56,13 @@ export function PeerBenchmarkCard({ developerId }: PeerBenchmarkCardProps) {
 
   if (isLoading) {
     return (
-      <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+      <div className="bg-muted rounded-xl p-6 border border-border">
         <div className="animate-pulse">
-          <div className="h-6 bg-slate-700 rounded w-40 mb-4"></div>
-          <div className="h-24 bg-slate-700 rounded mb-4"></div>
+          <div className="h-6 bg-accent rounded w-40 mb-4"></div>
+          <div className="h-24 bg-accent rounded mb-4"></div>
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-6 bg-slate-700 rounded w-3/4"></div>
+              <div key={i} className="h-6 bg-accent rounded w-3/4"></div>
             ))}
           </div>
         </div>
@@ -72,20 +72,20 @@ export function PeerBenchmarkCard({ developerId }: PeerBenchmarkCardProps) {
 
   if (error || !benchmark) {
     return (
-      <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+      <div className="bg-muted rounded-xl p-6 border border-border">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <BarChart2 className="h-5 w-5 text-primary-400" />
-            <h3 className="text-lg font-semibold text-white">Peer Benchmark</h3>
+            <h3 className="text-lg font-semibold text-foreground">Peer Benchmark</h3>
           </div>
           <button
             onClick={fetchBenchmark}
-            className="text-slate-400 hover:text-white transition"
+            className="text-muted-foreground hover:text-foreground transition"
           >
             <RefreshCw className="h-4 w-4" />
           </button>
         </div>
-        <p className="text-slate-400 text-sm">
+        <p className="text-muted-foreground text-sm">
           {error || "Benchmark data not available. More peers needed for comparison."}
         </p>
       </div>
@@ -102,37 +102,37 @@ export function PeerBenchmarkCard({ developerId }: PeerBenchmarkCardProps) {
   const topComparisons = allComparisons.slice(0, 5);
 
   return (
-    <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+    <div className="bg-muted rounded-xl p-6 border border-border">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <BarChart2 className="h-5 w-5 text-primary-400" />
-          <h3 className="text-lg font-semibold text-white">Peer Benchmark</h3>
+          <h3 className="text-lg font-semibold text-foreground">Peer Benchmark</h3>
         </div>
         <button
           onClick={fetchBenchmark}
-          className="text-slate-400 hover:text-white transition"
+          className="text-muted-foreground hover:text-foreground transition"
         >
           <RefreshCw className="h-4 w-4" />
         </button>
       </div>
 
       {/* Overall Percentile */}
-      <div className="bg-slate-700/50 rounded-lg p-4 mb-4">
+      <div className="bg-accent/50 rounded-lg p-4 mb-4">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-xs text-slate-400 mb-1">Overall Ranking</div>
+            <div className="text-xs text-muted-foreground mb-1">Overall Ranking</div>
             <div
               className={`text-3xl font-bold ${getPercentileColor(benchmark.percentile_overall)}`}
             >
               {Math.round(benchmark.percentile_overall)}
               <span className="text-lg">th</span>
             </div>
-            <div className="text-xs text-slate-500">percentile</div>
+            <div className="text-xs text-muted-foreground">percentile</div>
           </div>
           <div className="text-right">
-            <div className="text-xs text-slate-400 mb-1">Peer Group</div>
-            <div className="text-lg text-white">{benchmark.peer_group_size}</div>
-            <div className="text-xs text-slate-500">developers</div>
+            <div className="text-xs text-muted-foreground mb-1">Peer Group</div>
+            <div className="text-lg text-foreground">{benchmark.peer_group_size}</div>
+            <div className="text-xs text-muted-foreground">developers</div>
           </div>
         </div>
       </div>
@@ -140,14 +140,14 @@ export function PeerBenchmarkCard({ developerId }: PeerBenchmarkCardProps) {
       {/* Top Skills */}
       {topComparisons.length > 0 && (
         <div className="space-y-3 mb-4">
-          <div className="text-xs text-slate-400 font-medium">
+          <div className="text-xs text-muted-foreground font-medium">
             Skill Rankings
           </div>
           {topComparisons.map((comp, index) => (
             <div key={`${comp.skill}-${index}`}>
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-white">{comp.skill}</span>
+                  <span className="text-sm text-foreground">{comp.skill}</span>
                   {getDeltaIcon(comp.delta)}
                 </div>
                 <span
@@ -156,7 +156,7 @@ export function PeerBenchmarkCard({ developerId }: PeerBenchmarkCardProps) {
                   {Math.round(comp.percentile)}%
                 </span>
               </div>
-              <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-accent rounded-full overflow-hidden">
                 <div
                   className={`h-full ${getPercentileBgColor(comp.percentile)} rounded-full transition-all duration-500`}
                   style={{ width: `${comp.percentile}%` }}
@@ -168,7 +168,7 @@ export function PeerBenchmarkCard({ developerId }: PeerBenchmarkCardProps) {
       )}
 
       {/* Strengths & Growth */}
-      <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-700">
+      <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
         <div>
           <div className="text-xs text-green-400 font-medium mb-2">
             Strengths
@@ -177,13 +177,13 @@ export function PeerBenchmarkCard({ developerId }: PeerBenchmarkCardProps) {
             {benchmark.strengths.slice(0, 3).map((s, i) => (
               <div
                 key={`${s}-${i}`}
-                className="text-xs text-slate-300 bg-green-900/20 px-2 py-1 rounded"
+                className="text-xs text-foreground bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded"
               >
                 {s}
               </div>
             ))}
             {benchmark.strengths.length === 0 && (
-              <div className="text-xs text-slate-500">Building up...</div>
+              <div className="text-xs text-muted-foreground">Building up...</div>
             )}
           </div>
         </div>
@@ -195,13 +195,13 @@ export function PeerBenchmarkCard({ developerId }: PeerBenchmarkCardProps) {
             {benchmark.growth_opportunities.slice(0, 3).map((g, i) => (
               <div
                 key={`${g}-${i}`}
-                className="text-xs text-slate-300 bg-amber-900/20 px-2 py-1 rounded"
+                className="text-xs text-foreground bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded"
               >
                 {g}
               </div>
             ))}
             {benchmark.growth_opportunities.length === 0 && (
-              <div className="text-xs text-slate-500">All looking good!</div>
+              <div className="text-xs text-muted-foreground">All looking good!</div>
             )}
           </div>
         </div>
@@ -209,8 +209,8 @@ export function PeerBenchmarkCard({ developerId }: PeerBenchmarkCardProps) {
 
       {/* Recommendations */}
       {benchmark.recommendations.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-slate-700">
-          <div className="text-xs text-slate-500">
+        <div className="mt-4 pt-4 border-t border-border">
+          <div className="text-xs text-muted-foreground">
             {benchmark.recommendations[0]}
           </div>
         </div>
