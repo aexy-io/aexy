@@ -33,7 +33,7 @@ import {
 import { useSlackIntegration, useSlackSync, useSlackChannels, useSlackConfiguredChannels } from "@/hooks/useSlackIntegration";
 import { useTaskStatuses } from "@/hooks/useTaskConfig";
 import { useAuth } from "@/hooks/useAuth";
-import { StatusMapping, slackApi } from "@/lib/api";
+import { StatusMapping, slackApi, authApi } from "@/lib/api";
 
 type TabType = "github" | "jira" | "linear" | "slack";
 
@@ -684,6 +684,9 @@ function IntegrationsPageContent() {
               >
                 <GitBranch className="h-4 w-4" />
                 GitHub
+                {user?.github_connection?.auth_status === "error" && (
+                  <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                )}
               </button>
               <button
                 onClick={() => setActiveTab("jira")}
@@ -742,23 +745,48 @@ function IntegrationsPageContent() {
                   </div>
                 </div>
 
-                <div className="bg-muted/50 rounded-lg p-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <ConnectionStatusBadge connected />
-                      <span className="text-muted-foreground text-sm">
-                        Connected as {user?.name || user?.email}
-                      </span>
+                {user?.github_connection?.auth_status === "error" ? (
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center gap-3">
+                        <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
+                        <div>
+                          <p className="text-red-400 font-medium text-sm">
+                            GitHub connection needs re-authentication
+                          </p>
+                          <p className="text-muted-foreground text-xs mt-0.5">
+                            {user.github_connection.auth_error || "Your GitHub token has expired or been revoked."}
+                          </p>
+                        </div>
+                      </div>
+                      <a
+                        href={authApi.getGitHubLoginUrl(window.location.href)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition text-sm font-medium w-fit"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        Reconnect GitHub
+                      </a>
                     </div>
-                    <Link
-                      href="/settings/repositories"
-                      className="text-primary-400 hover:text-primary-300 text-sm flex items-center gap-1"
-                    >
-                      Manage Repositories
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
                   </div>
-                </div>
+                ) : (
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <ConnectionStatusBadge connected />
+                        <span className="text-muted-foreground text-sm">
+                          Connected as {user?.name || user?.email}
+                        </span>
+                      </div>
+                      <Link
+                        href="/settings/repositories"
+                        className="text-primary-400 hover:text-primary-300 text-sm flex items-center gap-1"
+                      >
+                        Manage Repositories
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

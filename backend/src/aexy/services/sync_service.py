@@ -15,7 +15,7 @@ from aexy.core.database import async_session_maker
 from aexy.models.activity import CodeReview, Commit, PullRequest
 from aexy.models.developer import Developer, GitHubConnection
 from aexy.models.repository import DeveloperRepository, Repository
-from aexy.services.github_service import GitHubAPIError, GitHubService
+from aexy.services.github_service import GitHubAPIError, GitHubAuthError, GitHubService
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -216,6 +216,16 @@ class SyncService:
                 "repository": repo.full_name,
             }
 
+        except GitHubAuthError as e:
+            logger.error(f"GitHub auth failed for repository {repository_id}: {e}")
+            dev_repo.sync_status = "failed"
+            dev_repo.sync_error = "GitHub authentication failed - please reconnect your GitHub account"
+            dev_repo.updated_at = datetime.now(timezone.utc)
+            # Mark the GitHub connection as broken
+            connection.auth_status = "error"
+            connection.auth_error = "GitHub token is invalid or has been revoked. Please reconnect your GitHub account."
+            await self.db.flush()
+            raise
         except Exception as e:
             logger.error(f"Sync failed for repository {repository_id}: {e}")
             dev_repo.sync_status = "failed"

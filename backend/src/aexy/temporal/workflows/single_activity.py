@@ -42,6 +42,14 @@ def _get_retry_policy(name: str) -> RetryPolicy:
             maximum_attempts=4,
             non_retryable_error_types=["GmailAuthError"],
         )
+    elif name == "github_sync":
+        return RetryPolicy(
+            initial_interval=timedelta(seconds=60),
+            backoff_coefficient=2.0,
+            maximum_interval=timedelta(minutes=10),
+            maximum_attempts=4,
+            non_retryable_error_types=["GitHubAuthError"],
+        )
     elif name == "webhook":
         return RetryPolicy(
             initial_interval=timedelta(minutes=1),
