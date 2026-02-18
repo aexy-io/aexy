@@ -168,13 +168,13 @@ async def analyze_developer(input: AnalyzeDeveloperInput) -> dict[str, Any]:
 
 @activity.defn
 async def reset_daily_limits(input: ResetDailyLimitsInput) -> dict[str, Any]:
-    """Reset daily LLM usage limits."""
-    logger.info("Resetting daily LLM limits")
+    """Reset daily LLM usage limits.
 
-    from aexy.services.llm_rate_limiter import get_llm_rate_limiter
-
-    rate_limiter = get_llm_rate_limiter()
-    await rate_limiter.reset_daily_limits()
+    Note: Redis sliding windows auto-expire, and developer daily counters
+    reset lazily via LimitsService._maybe_reset_llm_usage() on each request.
+    This activity is kept for schedule compatibility.
+    """
+    logger.info("Daily LLM limits reset (handled lazily per-request)")
     return {"status": "reset"}
 
 
