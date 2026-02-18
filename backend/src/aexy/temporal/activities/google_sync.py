@@ -44,14 +44,25 @@ async def sync_gmail(input: SyncGmailInput) -> dict[str, Any]:
     activity.heartbeat("Starting Gmail sync")
 
     from aexy.processing.google_sync_tasks import _sync_gmail
+    from aexy.services.gmail_sync_service import GmailAuthError
 
-    result = await _sync_gmail(
-        job_id=input.job_id,
-        workspace_id=input.workspace_id,
-        integration_id=input.integration_id,
-        max_messages=input.max_messages,
-    )
-    return result
+    try:
+        result = await _sync_gmail(
+            job_id=input.job_id,
+            workspace_id=input.workspace_id,
+            integration_id=input.integration_id,
+            max_messages=input.max_messages,
+        )
+        return result
+    except GmailAuthError:
+        # Auth errors are not transient — deactivate integration so auto-sync
+        # stops retrying until the user re-authenticates.
+        logger.warning(
+            f"Gmail auth failed for integration {input.integration_id}, "
+            "deactivating until re-auth"
+        )
+        await _deactivate_integration(input.integration_id, "Google token expired or revoked. Please reconnect your Google account.")
+        raise
 
 
 @activity.defn
@@ -61,16 +72,45 @@ async def sync_calendar(input: SyncCalendarInput) -> dict[str, Any]:
     activity.heartbeat("Starting Calendar sync")
 
     from aexy.processing.google_sync_tasks import _sync_calendar
+    from aexy.services.gmail_sync_service import GmailAuthError
 
-    result = await _sync_calendar(
-        job_id=input.job_id,
-        workspace_id=input.workspace_id,
-        integration_id=input.integration_id,
-        calendar_ids=input.calendar_ids,
-        days_back=input.days_back,
-        days_forward=input.days_forward,
-    )
-    return result
+    try:
+        result = await _sync_calendar(
+            job_id=input.job_id,
+            workspace_id=input.workspace_id,
+            integration_id=input.integration_id,
+            calendar_ids=input.calendar_ids,
+            days_back=input.days_back,
+            days_forward=input.days_forward,
+        )
+        return result
+    except GmailAuthError:
+        logger.warning(
+            f"Google auth failed for integration {input.integration_id}, "
+            "deactivating until re-auth"
+        )
+        await _deactivate_integration(input.integration_id, "Google token expired or revoked. Please reconnect your Google account.")
+        raise
+
+
+async def _deactivate_integration(integration_id: str, error_message: str) -> None:
+    """Mark a Google integration as inactive with an error message."""
+    try:
+        from sqlalchemy import select
+        from aexy.models.google_integration import GoogleIntegration
+
+        async with async_session_maker() as db:
+            result = await db.execute(
+                select(GoogleIntegration).where(GoogleIntegration.id == integration_id)
+            )
+            integration = result.scalar_one_or_none()
+            if integration:
+                integration.is_active = False
+                integration.last_error = error_message
+                await db.commit()
+                logger.info(f"Deactivated integration {integration_id} due to auth error")
+    except Exception as e:
+        logger.error(f"Failed to deactivate integration {integration_id}: {e}")
 
 
 @activity.defn
