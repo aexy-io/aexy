@@ -51,9 +51,8 @@ async def sync_repository(input: SyncRepositoryInput) -> dict[str, Any]:
     async with async_session_maker() as db:
         service = SyncService(db)
         result = await service.sync_repository(
-            repository_id=input.repository_id,
             developer_id=input.developer_id,
-            installation_id=input.installation_id,
+            repository_id=input.repository_id,
             heartbeat_fn=activity.heartbeat,
         )
         await db.commit()
