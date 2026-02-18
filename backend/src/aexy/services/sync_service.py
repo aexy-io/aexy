@@ -352,7 +352,7 @@ class SyncService:
 
             # Check if a ghost developer already exists for this login
             # (ghost = no email, name matches github login)
-            async with db.no_autoflush:
+            with db.no_autoflush:
                 stmt = select(Developer).where(
                     Developer.name == github_login,
                     Developer.email.is_(None),
@@ -412,7 +412,7 @@ class SyncService:
 
                 # Check if commit already exists (no_autoflush to prevent
                 # flushing pending inserts which can cause IntegrityError)
-                async with db.no_autoflush:
+                with db.no_autoflush:
                     stmt = select(Commit).where(Commit.sha == sha)
                     result = await db.execute(stmt)
                     existing = result.scalar_one_or_none()
@@ -509,7 +509,7 @@ class SyncService:
 
             for pr_data in prs:
                 # Check if PR already exists
-                async with db.no_autoflush:
+                with db.no_autoflush:
                     stmt = select(PullRequest).where(
                         PullRequest.github_id == pr_data["id"],
                     )
@@ -601,7 +601,7 @@ class SyncService:
 
                 for review_data in reviews:
                     # Check if review already exists
-                    async with db.no_autoflush:
+                    with db.no_autoflush:
                         stmt = select(CodeReview).where(
                             CodeReview.github_id == review_data["id"],
                         )
