@@ -365,7 +365,7 @@ async def get_repository_status(
 async def start_sync(
     repo_id: str,
     sync_type: str = Query("incremental", description="Sync type: 'full' or 'incremental'"),
-    use_background: bool = Query(False, description="Use Temporal workflow for background processing"),
+    use_background: bool = Query(True, description="Use Temporal workflow for background processing"),
     developer_id: str = Depends(get_current_developer_id),
     db: AsyncSession = Depends(get_db),
 ) -> SyncStartResponse:
