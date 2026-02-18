@@ -14,7 +14,7 @@ import {
   Mail,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { useSubscription, usePlans, useChangePlan } from "@/hooks/useSubscription";
+import { useSubscription, usePlans, useChangePlan, useCheckout } from "@/hooks/useSubscription";
 import { BillingToggle } from "@/components/billing/BillingToggle";
 import { ChangePlanModal } from "@/components/billing/ChangePlanModal";
 import { PlanComparison } from "@/components/billing/PlanComparison";
@@ -74,10 +74,11 @@ const planConfig = {
 
 export default function PlansPage() {
   const searchParams = useSearchParams();
-  const { currentWorkspaceId } = useWorkspace();
-  const { plan: currentPlan, tier: currentTier, isLoading: subscriptionLoading } = useSubscription(currentWorkspaceId);
+  const { currentWorkspaceId, isOwner } = useWorkspace();
+  const { plan: currentPlan, tier: currentTier, hasSubscription, isLoading: subscriptionLoading } = useSubscription(currentWorkspaceId);
   const { plans, isLoading: plansLoading } = usePlans();
   const changePlan = useChangePlan(currentWorkspaceId);
+  const checkout = useCheckout();
 
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "annual">(
     (searchParams.get("billing") as "monthly" | "annual") || "monthly"
@@ -99,7 +100,20 @@ export default function PlansPage() {
 
   const handleConfirmChange = async () => {
     if (!selectedPlan) return;
-    await changePlan.mutateAsync(selectedPlan.tier);
+
+    if (!hasSubscription) {
+      // Free users need to go through Stripe Checkout to create a subscription
+      const result = await checkout.mutateAsync({
+        planTier: selectedPlan.tier,
+        workspaceId: currentWorkspaceId || undefined,
+      });
+      if (result.checkout_url) {
+        window.location.href = result.checkout_url;
+      }
+    } else {
+      // Users with an existing subscription can change plans directly
+      await changePlan.mutateAsync(selectedPlan.tier);
+    }
   };
 
   const isUpgrade = (targetTier: string): boolean => {
@@ -221,37 +235,43 @@ export default function PlansPage() {
                   </div>
 
                   {/* CTA Button */}
-                  <button
-                    onClick={() => handleSelectPlan(plan)}
-                    disabled={isCurrentPlan || changePlan.isPending}
-                    className={`w-full py-2.5 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
-                      isCurrentPlan
-                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 cursor-default"
-                        : plan.tier === "pro"
-                        ? "bg-primary-600 hover:bg-primary-700 text-white"
-                        : plan.tier === "enterprise"
-                        ? "bg-gradient-to-r from-purple-500 to-violet-500 text-white hover:from-purple-600 hover:to-violet-600"
-                        : "bg-slate-700 hover:bg-slate-600 text-white"
-                    } disabled:opacity-50`}
-                  >
-                    {changePlan.isPending && selectedPlan?.tier === plan.tier ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : isCurrentPlan ? (
-                      <>
-                        <CheckCircle2 className="h-4 w-4" />
-                        Current Plan
-                      </>
-                    ) : plan.tier === "enterprise" ? (
-                      <>
-                        <Mail className="h-4 w-4" />
-                        Contact Sales
-                      </>
-                    ) : isUpgrade(plan.tier) ? (
-                      `Upgrade to ${plan.name}`
-                    ) : (
-                      `Switch to ${plan.name}`
-                    )}
-                  </button>
+                  {!isCurrentPlan && currentWorkspaceId && !isOwner ? (
+                    <div className="w-full py-2.5 px-4 rounded-lg text-sm text-center text-slate-500 bg-slate-800 border border-slate-700">
+                      Only the workspace owner can change plans
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleSelectPlan(plan)}
+                      disabled={isCurrentPlan || changePlan.isPending || checkout.isPending}
+                      className={`w-full py-2.5 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
+                        isCurrentPlan
+                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 cursor-default"
+                          : plan.tier === "pro"
+                          ? "bg-primary-600 hover:bg-primary-700 text-white"
+                          : plan.tier === "enterprise"
+                          ? "bg-gradient-to-r from-purple-500 to-violet-500 text-white hover:from-purple-600 hover:to-violet-600"
+                          : "bg-slate-700 hover:bg-slate-600 text-white"
+                      } disabled:opacity-50`}
+                    >
+                      {(changePlan.isPending || checkout.isPending) && selectedPlan?.tier === plan.tier ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : isCurrentPlan ? (
+                        <>
+                          <CheckCircle2 className="h-4 w-4" />
+                          Current Plan
+                        </>
+                      ) : plan.tier === "enterprise" ? (
+                        <>
+                          <Mail className="h-4 w-4" />
+                          Contact Sales
+                        </>
+                      ) : isUpgrade(plan.tier) ? (
+                        `Upgrade to ${plan.name}`
+                      ) : (
+                        `Switch to ${plan.name}`
+                      )}
+                    </button>
+                  )}
 
                   {/* Features */}
                   <div className="mt-6 space-y-2">

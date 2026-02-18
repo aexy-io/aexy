@@ -3,11 +3,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import { workspaceApi, WorkspaceListItem, Workspace, CustomTaskStatus, StatusCategory, WorkspacePendingInvite, WorkspaceAppSettings } from "@/lib/api";
+import { useAuth } from "./useAuth";
 
 const CURRENT_WORKSPACE_KEY = "current_workspace_id";
 
 export function useWorkspace() {
   const queryClient = useQueryClient();
+  const{user} = useAuth()
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -145,7 +147,7 @@ export function useWorkspace() {
     // Computed
     hasWorkspaces: (workspaces?.length || 0) > 0,
     isOwner: typeof window !== "undefined"
-      ? currentWorkspace?.owner_id === localStorage.getItem("developer_id")
+      ? currentWorkspace?.owner_id === user?.id
       : false,
   };
 }

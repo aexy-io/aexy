@@ -169,7 +169,9 @@ def create_stripe_products():
 
 
 async def update_database(stripe_data: dict):
-    """Update database plans with Stripe IDs."""
+    """Seed missing plans and update them with Stripe IDs."""
+    from aexy.models.plan import DEFAULT_PLANS
+
     db_url = os.getenv("DATABASE_URL", "")
     if db_url.startswith("postgresql://"):
         db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
@@ -177,24 +179,71 @@ async def update_database(stripe_data: dict):
     engine = create_async_engine(db_url, echo=False)
 
     async with engine.begin() as conn:
-        for tier, data in stripe_data.items():
-            print(f"\nUpdating {tier} plan in database...")
-
-            # Check if columns exist
-            result = await conn.execute(text("""
-                SELECT column_name FROM information_schema.columns
-                WHERE table_name = 'plans' AND column_name = 'stripe_product_id'
+        # Check if Stripe columns exist, add them if not
+        result = await conn.execute(text("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'plans' AND column_name = 'stripe_product_id'
+        """))
+        if not result.fetchone():
+            print("Adding Stripe columns to plans table...")
+            await conn.execute(text("""
+                ALTER TABLE plans
+                ADD COLUMN IF NOT EXISTS stripe_product_id VARCHAR(255),
+                ADD COLUMN IF NOT EXISTS stripe_price_id VARCHAR(255),
+                ADD COLUMN IF NOT EXISTS stripe_yearly_price_id VARCHAR(255)
             """))
-            if not result.fetchone():
-                print("Adding Stripe columns to plans table...")
-                await conn.execute(text("""
-                    ALTER TABLE plans
-                    ADD COLUMN IF NOT EXISTS stripe_product_id VARCHAR(255),
-                    ADD COLUMN IF NOT EXISTS stripe_price_id VARCHAR(255),
-                    ADD COLUMN IF NOT EXISTS stripe_yearly_price_id VARCHAR(255)
-                """))
 
-            # Update plan
+        # Seed missing plans from DEFAULT_PLANS
+        for plan_data in DEFAULT_PLANS:
+            tier = plan_data["tier"]
+            result = await conn.execute(
+                text("SELECT id FROM plans WHERE tier = :tier"),
+                {"tier": tier},
+            )
+            if not result.fetchone():
+                from uuid import uuid4
+                plan_id = str(uuid4())
+                print(f"Inserting missing '{tier}' plan...")
+                await conn.execute(
+                    text("""
+                        INSERT INTO plans (
+                            id, name, tier, description,
+                            max_repos, max_commits_per_repo, max_prs_per_repo, sync_history_days,
+                            llm_requests_per_day, llm_requests_per_minute, llm_tokens_per_minute,
+                            llm_provider_access,
+                            free_llm_tokens_per_month,
+                            llm_input_cost_per_1k_cents, llm_output_cost_per_1k_cents,
+                            enable_overage_billing,
+                            enable_real_time_sync, enable_advanced_analytics,
+                            enable_exports, enable_webhooks, enable_team_features,
+                            price_monthly_cents, price_yearly_cents,
+                            is_active
+                        ) VALUES (
+                            :id, :name, :tier, :description,
+                            :max_repos, :max_commits_per_repo, :max_prs_per_repo, :sync_history_days,
+                            :llm_requests_per_day, :llm_requests_per_minute, :llm_tokens_per_minute,
+                            :llm_provider_access,
+                            :free_llm_tokens_per_month,
+                            :llm_input_cost_per_1k_cents, :llm_output_cost_per_1k_cents,
+                            :enable_overage_billing,
+                            :enable_real_time_sync, :enable_advanced_analytics,
+                            :enable_exports, :enable_webhooks, :enable_team_features,
+                            :price_monthly_cents, :price_yearly_cents,
+                            true
+                        )
+                    """),
+                    {
+                        "id": plan_id,
+                        **plan_data,
+                    },
+                )
+                print(f"Inserted '{plan_data['name']}' plan (id: {plan_id})")
+            else:
+                print(f"Plan '{tier}' already exists, skipping insert")
+
+        # Update plans with Stripe IDs
+        for tier, data in stripe_data.items():
+            print(f"\nUpdating {tier} plan with Stripe IDs...")
             await conn.execute(
                 text("""
                     UPDATE plans SET
@@ -211,6 +260,15 @@ async def update_database(stripe_data: dict):
                 },
             )
             print(f"Updated {tier} plan with Stripe IDs")
+
+        # Verify all plans
+        result = await conn.execute(text(
+            "SELECT name, tier, stripe_product_id, price_monthly_cents FROM plans ORDER BY price_monthly_cents"
+        ))
+        rows = result.fetchall()
+        print(f"\nAll plans in database ({len(rows)}):")
+        for row in rows:
+            print(f"  - {row[0]} ({row[1]}): stripe={row[2] or 'N/A'}, price=${row[3]/100:.0f}/mo")
 
     await engine.dispose()
 
