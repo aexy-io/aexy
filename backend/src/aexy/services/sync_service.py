@@ -112,6 +112,118 @@ class SyncService:
 
             return job_id
 
+    async def sync_repository(
+        self,
+        developer_id: str,
+        repository_id: str,
+        heartbeat_fn: Any = None,
+    ) -> dict[str, Any]:
+        """Sync a repository's commits, PRs, and reviews.
+
+        This is the public entry point used by the Temporal activity.
+        Fetches the access token and runs the full sync within self.db session.
+        """
+        # Get developer repo
+        stmt = (
+            select(DeveloperRepository)
+            .where(
+                DeveloperRepository.developer_id == developer_id,
+                DeveloperRepository.repository_id == repository_id,
+            )
+            .options(selectinload(DeveloperRepository.repository))
+        )
+        result = await self.db.execute(stmt)
+        dev_repo = result.scalar_one_or_none()
+
+        if not dev_repo:
+            raise ValueError("Repository not found for this developer")
+
+        if not dev_repo.is_enabled:
+            raise ValueError("Repository is not enabled")
+
+        # Get access token
+        stmt = select(GitHubConnection).where(GitHubConnection.developer_id == developer_id)
+        result = await self.db.execute(stmt)
+        connection = result.scalar_one_or_none()
+
+        if not connection:
+            raise ValueError("GitHub connection not found")
+
+        repo = dev_repo.repository
+        owner, repo_name = repo.full_name.split("/")
+        repo_language = repo.language if hasattr(repo, 'language') else None
+
+        # Mark as syncing
+        dev_repo.sync_status = "syncing"
+        dev_repo.sync_error = None
+        await self.db.flush()
+
+        if heartbeat_fn:
+            heartbeat_fn("Fetching commits...")
+
+        # Initialize developer lookup caches
+        self._dev_cache_by_github_id: dict[int, str] = {}
+        self._dev_cache_by_email: dict[str, str] = {}
+
+        try:
+            async with GitHubService(access_token=connection.access_token) as gh:
+                commits_synced = await self._sync_commits_with_session(
+                    self.db, gh, owner, repo_name, developer_id, repository_id, repo_language
+                )
+
+                if heartbeat_fn:
+                    heartbeat_fn(f"Synced {commits_synced} commits, fetching PRs...")
+
+                prs_synced = await self._sync_pull_requests_with_session(
+                    self.db, gh, owner, repo_name, developer_id, repository_id
+                )
+
+                if heartbeat_fn:
+                    heartbeat_fn(f"Synced {prs_synced} PRs, fetching reviews...")
+
+                reviews_synced = await self._sync_reviews_with_session(
+                    self.db, gh, owner, repo_name, developer_id, repository_id
+                )
+
+            # Update status
+            dev_repo.sync_status = "synced"
+            dev_repo.last_sync_at = datetime.now(timezone.utc)
+            dev_repo.commits_synced = commits_synced
+            dev_repo.prs_synced = prs_synced
+            dev_repo.reviews_synced = reviews_synced
+            dev_repo.updated_at = datetime.now(timezone.utc)
+            await self.db.flush()
+
+            logger.info(
+                f"Sync complete for {repo.full_name}: "
+                f"{commits_synced} commits, {prs_synced} PRs, {reviews_synced} reviews"
+            )
+
+            # Trigger profile sync
+            try:
+                from aexy.services.profile_sync import ProfileSyncService
+                profile_sync = ProfileSyncService()
+                await profile_sync.sync_developer_profile(developer_id, self.db)
+                await self.db.flush()
+                logger.info(f"Profile sync complete for developer {developer_id}")
+            except Exception as profile_error:
+                logger.warning(f"Profile sync failed: {profile_error}")
+
+            return {
+                "commits_synced": commits_synced,
+                "prs_synced": prs_synced,
+                "reviews_synced": reviews_synced,
+                "repository": repo.full_name,
+            }
+
+        except Exception as e:
+            logger.error(f"Sync failed for repository {repository_id}: {e}")
+            dev_repo.sync_status = "failed"
+            dev_repo.sync_error = str(e)
+            dev_repo.updated_at = datetime.now(timezone.utc)
+            await self.db.flush()
+            raise
+
     async def _run_sync(
         self,
         developer_id: str,
@@ -120,103 +232,18 @@ class SyncService:
         job_id: str,
         sync_type: SyncType = "incremental",
     ) -> None:
-        """Run the actual sync operation with its own database session."""
-        # Create a fresh database session for this background task
+        """Run sync as a background asyncio task (legacy path)."""
         async with async_session_maker() as db:
+            service = SyncService(db)
             try:
-                # Re-fetch developer repo since we're in a new task
-                stmt = (
-                    select(DeveloperRepository)
-                    .where(
-                        DeveloperRepository.developer_id == developer_id,
-                        DeveloperRepository.repository_id == repository_id,
-                    )
-                    .options(selectinload(DeveloperRepository.repository))
+                await service.sync_repository(
+                    developer_id=developer_id,
+                    repository_id=repository_id,
                 )
-                result = await db.execute(stmt)
-                dev_repo = result.scalar_one_or_none()
-
-                if not dev_repo:
-                    return
-
-                repo = dev_repo.repository
-                owner, repo_name = repo.full_name.split("/")
-
-                # Get repo language for tagging commits
-                repo_language = repo.language if hasattr(repo, 'language') else None
-
-                # Initialize developer lookup caches to avoid N+1 queries
-                self._dev_cache_by_github_id: dict[int, str] = {}
-                self._dev_cache_by_email: dict[str, str] = {}
-
-                async with GitHubService(access_token=access_token) as gh:
-                    # Sync commits (all contributors)
-                    commits_synced = await self._sync_commits_with_session(
-                        db, gh, owner, repo_name, developer_id, repository_id, repo_language
-                    )
-
-                    # Sync PRs (all contributors)
-                    prs_synced = await self._sync_pull_requests_with_session(
-                        db, gh, owner, repo_name, developer_id, repository_id
-                    )
-
-                    # Sync reviews (all contributors)
-                    reviews_synced = await self._sync_reviews_with_session(
-                        db, gh, owner, repo_name, developer_id, repository_id
-                    )
-
-                # Refetch to update
-                result = await db.execute(
-                    select(DeveloperRepository).where(
-                        DeveloperRepository.developer_id == developer_id,
-                        DeveloperRepository.repository_id == repository_id,
-                    )
-                )
-                dev_repo = result.scalar_one_or_none()
-
-                if dev_repo:
-                    dev_repo.sync_status = "synced"
-                    dev_repo.last_sync_at = datetime.now(timezone.utc)
-                    dev_repo.commits_synced = commits_synced
-                    dev_repo.prs_synced = prs_synced
-                    dev_repo.reviews_synced = reviews_synced
-                    dev_repo.updated_at = datetime.now(timezone.utc)
-                    await db.commit()
-
-                logger.info(
-                    f"Sync complete for {repo.full_name}: "
-                    f"{commits_synced} commits, {prs_synced} PRs, {reviews_synced} reviews"
-                )
-
-                # Trigger profile sync to update skill fingerprint
-                try:
-                    from aexy.services.profile_sync import ProfileSyncService
-                    profile_sync = ProfileSyncService()
-                    await profile_sync.sync_developer_profile(developer_id, db)
-                    await db.commit()
-                    logger.info(f"Profile sync complete for developer {developer_id}")
-                except Exception as profile_error:
-                    logger.warning(f"Profile sync failed: {profile_error}")
-
+                await db.commit()
             except Exception as e:
-                logger.error(f"Sync failed for repository {repository_id}: {e}")
-
-                # Update status to failed with fresh query
-                try:
-                    stmt = select(DeveloperRepository).where(
-                        DeveloperRepository.developer_id == developer_id,
-                        DeveloperRepository.repository_id == repository_id,
-                    )
-                    result = await db.execute(stmt)
-                    dev_repo = result.scalar_one_or_none()
-
-                    if dev_repo:
-                        dev_repo.sync_status = "failed"
-                        dev_repo.sync_error = str(e)
-                        dev_repo.updated_at = datetime.now(timezone.utc)
-                        await db.commit()
-                except Exception as inner_e:
-                    logger.error(f"Failed to update sync status: {inner_e}")
+                logger.error(f"Background sync failed for repository {repository_id}: {e}")
+                await db.commit()  # Commit the failed status update from sync_repository
 
     async def _resolve_developer_for_commit(
         self,
