@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from aexy.core.database import get_db
 from aexy.api.developers import get_current_developer
@@ -36,12 +36,14 @@ async def check_workspace_permission(
 
 class BlockCreate(BaseModel):
     """Schema for creating a block."""
+    model_config = ConfigDict(populate_by_name=True)
+
     name: str = Field(..., min_length=1, max_length=100)
     slug: str | None = Field(default=None, max_length=50)
     description: str | None = None
     block_type: str = Field(..., max_length=30)
     category: str = Field(default="content", max_length=30)
-    schema: dict | None = None
+    block_schema: dict | None = Field(default=None, alias="schema")
     default_props: dict | None = None
     html_template: str = Field(..., min_length=1)
     icon: str | None = None
@@ -49,9 +51,11 @@ class BlockCreate(BaseModel):
 
 class BlockUpdate(BaseModel):
     """Schema for updating a block."""
+    model_config = ConfigDict(populate_by_name=True)
+
     name: str | None = Field(default=None, max_length=100)
     description: str | None = None
-    schema: dict | None = None
+    block_schema: dict | None = Field(default=None, alias="schema")
     default_props: dict | None = None
     html_template: str | None = None
     icon: str | None = None
@@ -60,6 +64,8 @@ class BlockUpdate(BaseModel):
 
 class BlockResponse(BaseModel):
     """Schema for block response."""
+    model_config = ConfigDict(populate_by_name=True, from_attributes=True)
+
     id: str
     workspace_id: str | None
     name: str
@@ -67,7 +73,7 @@ class BlockResponse(BaseModel):
     description: str | None
     block_type: str
     category: str
-    schema: dict
+    block_schema: dict = Field(alias="schema")
     default_props: dict
     html_template: str
     icon: str | None
@@ -150,7 +156,7 @@ async def create_block(
         description=data.description,
         block_type=data.block_type,
         category=data.category,
-        schema=data.schema,
+        schema=data.block_schema,
         default_props=data.default_props,
         html_template=data.html_template,
         icon=data.icon,
@@ -219,7 +225,7 @@ async def update_block(
     block = await service.update_block(
         block_id=block_id,
         workspace_id=workspace_id,
-        **data.model_dump(exclude_unset=True),
+        **data.model_dump(exclude_unset=True, by_alias=True),
     )
 
     if not block:

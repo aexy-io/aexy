@@ -61,11 +61,18 @@ async def sync_repository(input: SyncRepositoryInput) -> dict[str, Any]:
             return result
         except GitHubAuthError:
             # Commit the auth_status/auth_error changes made by SyncService
-            await db.commit()
+            try:
+                await db.commit()
+            except Exception:
+                await db.rollback()
             raise
         except Exception:
-            # Commit any status changes (e.g. sync_status=failed)
-            await db.commit()
+            # Commit any status changes (e.g. sync_status=failed).
+            # If the session is poisoned by an IntegrityError, rollback instead.
+            try:
+                await db.commit()
+            except Exception:
+                await db.rollback()
             raise
 
 
