@@ -64,8 +64,9 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
     "rebuild_workspace_graph": {"retry": LLM_RETRY, "timeout": timedelta(hours=2), "heartbeat": timedelta(minutes=5)},
 
     # Sync (external APIs)
-    "sync_repository": {"retry": STANDARD_RETRY, "timeout": timedelta(hours=2), "heartbeat": timedelta(minutes=5)},
-    "sync_commits": {"retry": STANDARD_RETRY, "timeout": timedelta(hours=1)},
+    "sync_repository": {"retry": "github_sync", "timeout": timedelta(hours=2), "heartbeat": timedelta(minutes=5)},
+    "sync_commits": {"retry": "github_sync", "timeout": timedelta(hours=1)},
+    "check_repo_auto_sync": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=10)},
     "sync_gmail": {"retry": "google_sync", "timeout": timedelta(minutes=30), "heartbeat": timedelta(minutes=5)},
     "sync_calendar": {"retry": "google_sync", "timeout": timedelta(minutes=30)},
 

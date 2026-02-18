@@ -35,6 +35,13 @@ class GitHubService:
         self.access_token = access_token
         self._client: httpx.AsyncClient | None = None
 
+    def _check_response(self, response: httpx.Response, action: str) -> None:
+        """Check response status and raise appropriate errors."""
+        if response.status_code == 401:
+            raise GitHubAuthError(f"GitHub authentication failed during {action}: {response.text}")
+        if response.status_code == 403 and "bad credentials" in response.text.lower():
+            raise GitHubAuthError(f"GitHub credentials revoked during {action}: {response.text}")
+
     async def __aenter__(self) -> "GitHubService":
         """Async context manager entry."""
         headers = {"Accept": "application/json"}
@@ -97,6 +104,7 @@ class GitHubService:
             raise GitHubServiceError("Service not initialized. Use async context manager.")
 
         response = await self._client.get("/user")
+        self._check_response(response, "get user info")
 
         if response.status_code != 200:
             raise GitHubAPIError(f"Failed to get user info: {response.text}")
@@ -116,6 +124,7 @@ class GitHubService:
             raise GitHubServiceError("Service not initialized. Use async context manager.")
 
         response = await self._client.get("/user/emails")
+        self._check_response(response, "get user emails")
 
         if response.status_code != 200:
             raise GitHubAPIError(f"Failed to get user emails: {response.text}")
@@ -136,6 +145,7 @@ class GitHubService:
                 "direction": "desc",
             },
         )
+        self._check_response(response, "get repos")
 
         if response.status_code != 200:
             raise GitHubAPIError(f"Failed to get repos: {response.text}")
@@ -159,6 +169,7 @@ class GitHubService:
             params["author"] = author
 
         response = await self._client.get(f"/repos/{owner}/{repo}/commits", params=params)
+        self._check_response(response, "get commits")
 
         if response.status_code != 200:
             raise GitHubAPIError(f"Failed to get commits: {response.text}")
@@ -171,6 +182,7 @@ class GitHubService:
             raise GitHubServiceError("Service not initialized. Use async context manager.")
 
         response = await self._client.get(f"/repos/{owner}/{repo}/commits/{sha}")
+        self._check_response(response, "get commit details")
 
         if response.status_code != 200:
             raise GitHubAPIError(f"Failed to get commit details: {response.text}")
@@ -193,6 +205,7 @@ class GitHubService:
             f"/repos/{owner}/{repo}/pulls",
             params={"state": state, "per_page": per_page, "page": page},
         )
+        self._check_response(response, "get pull requests")
 
         if response.status_code != 200:
             raise GitHubAPIError(f"Failed to get pull requests: {response.text}")
@@ -210,6 +223,7 @@ class GitHubService:
             raise GitHubServiceError("Service not initialized. Use async context manager.")
 
         response = await self._client.get(f"/repos/{owner}/{repo}/pulls/{pull_number}/reviews")
+        self._check_response(response, "get PR reviews")
 
         if response.status_code != 200:
             raise GitHubAPIError(f"Failed to get PR reviews: {response.text}")
@@ -227,6 +241,7 @@ class GitHubService:
             "/user/orgs",
             params={"per_page": per_page, "page": page},
         )
+        self._check_response(response, "get user orgs")
 
         if response.status_code != 200:
             raise GitHubAPIError(f"Failed to get user orgs: {response.text}")
@@ -239,6 +254,7 @@ class GitHubService:
             raise GitHubServiceError("Service not initialized. Use async context manager.")
 
         response = await self._client.get(f"/orgs/{org}")
+        self._check_response(response, "get org")
 
         if response.status_code != 200:
             raise GitHubAPIError(f"Failed to get org: {response.text}")
@@ -265,6 +281,7 @@ class GitHubService:
                 "sort": "updated",
             },
         )
+        self._check_response(response, "get org repos")
 
         if response.status_code != 200:
             raise GitHubAPIError(f"Failed to get org repos: {response.text}")
@@ -303,6 +320,8 @@ class GitHubService:
             },
         )
 
+        self._check_response(response, "create webhook")
+
         if response.status_code not in (200, 201):
             raise GitHubAPIError(f"Failed to create webhook: {response.text}")
 
@@ -314,6 +333,7 @@ class GitHubService:
             raise GitHubServiceError("Service not initialized. Use async context manager.")
 
         response = await self._client.delete(f"/repos/{owner}/{repo}/hooks/{hook_id}")
+        self._check_response(response, "delete webhook")
 
         if response.status_code != 204:
             raise GitHubAPIError(f"Failed to delete webhook: {response.text}")
@@ -324,6 +344,7 @@ class GitHubService:
             raise GitHubServiceError("Service not initialized. Use async context manager.")
 
         response = await self._client.get(f"/repos/{owner}/{repo}/hooks")
+        self._check_response(response, "get webhooks")
 
         if response.status_code != 200:
             raise GitHubAPIError(f"Failed to get webhooks: {response.text}")

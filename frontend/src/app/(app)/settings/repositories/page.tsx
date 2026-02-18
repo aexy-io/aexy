@@ -21,10 +21,12 @@ import {
 } from "lucide-react";
 import {
   repositoriesApi,
+  authApi,
   Organization,
   Repository,
   InstallationStatus,
 } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 
 type SyncStatus = "pending" | "syncing" | "synced" | "failed";
 type WebhookStatus = "none" | "pending" | "active" | "failed";
@@ -189,6 +191,7 @@ function CollapsibleSection({
 }
 
 export default function RepositorySettingsPage() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -383,6 +386,31 @@ export default function RepositorySettingsPage() {
           Manage which repositories are synced and analyzed
         </p>
       </div>
+
+      {user?.github_connection?.auth_status === "error" && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
+              <div>
+                <p className="text-red-400 font-medium text-sm">
+                  GitHub connection needs re-authentication
+                </p>
+                <p className="text-muted-foreground text-xs mt-0.5">
+                  {user.github_connection.auth_error || "Your GitHub token has expired or been revoked. Syncing is paused until you reconnect."}
+                </p>
+              </div>
+            </div>
+            <a
+              href={authApi.getGitHubLoginUrl(window.location.href)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition text-sm font-medium shrink-0"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Reconnect GitHub
+            </a>
+          </div>
+        </div>
+      )}
 
       <div>
         {/* Stats & Actions Bar */}

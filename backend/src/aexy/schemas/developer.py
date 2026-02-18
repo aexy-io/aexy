@@ -90,6 +90,8 @@ class GitHubConnectionResponse(BaseModel):
     github_name: str | None = None
     github_avatar_url: str | None = None
     connected_at: datetime | None = None
+    auth_status: str = "active"
+    auth_error: str | None = None
 
 
 class DeveloperResponse(DeveloperBase):

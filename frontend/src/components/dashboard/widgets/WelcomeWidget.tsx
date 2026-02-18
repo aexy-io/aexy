@@ -11,6 +11,8 @@ interface WelcomeWidgetProps {
     avatar_url?: string;
     github_connection?: {
       github_username: string;
+      auth_status?: "active" | "error";
+      auth_error?: string | null;
     };
   } | null;
   onCustomize: () => void;
@@ -39,10 +41,17 @@ export function WelcomeWidget({ user, onCustomize }: WelcomeWidgetProps) {
             </h1>
             <p className="text-muted-foreground text-sm truncate">
               {user?.github_connection ? (
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 bg-success rounded-full shrink-0"></span>
-                  <span className="truncate">@{user.github_connection.github_username}</span>
-                </span>
+                user.github_connection.auth_status === "error" ? (
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 bg-red-500 rounded-full shrink-0"></span>
+                    <span className="truncate text-red-400">GitHub needs reconnection</span>
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 bg-success rounded-full shrink-0"></span>
+                    <span className="truncate">@{user.github_connection.github_username}</span>
+                  </span>
+                )
               ) : (
                 "Connect your GitHub to get started"
               )}
