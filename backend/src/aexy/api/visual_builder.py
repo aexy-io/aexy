@@ -80,9 +80,6 @@ class BlockResponse(BaseModel):
     is_active: bool
     is_system: bool
 
-    class Config:
-        from_attributes = True
-
 
 class DesignCreate(BaseModel):
     """Schema for creating a design."""
@@ -101,6 +98,8 @@ class DesignUpdate(BaseModel):
 
 class DesignResponse(BaseModel):
     """Schema for design response."""
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     workspace_id: str
     template_id: str | None
@@ -113,9 +112,6 @@ class DesignResponse(BaseModel):
     version: int
     created_by_id: str | None
     last_edited_by_id: str | None
-
-    class Config:
-        from_attributes = True
 
 
 class RenderRequest(BaseModel):
