@@ -344,13 +344,29 @@ class SyncService:
                 self._dev_cache_by_github_id[github_id] = dev.id
                 return dev.id
 
-        # 2. Auto-create ghost developer if we have a login
+        # 2. Create or find ghost developer by github_login
         if github_login:
-            # Check if a developer with this login already exists (by email-like key)
             cache_key = f"gh:{github_login}"
             if cache_key in self._dev_cache_by_email:
                 return self._dev_cache_by_email[cache_key]
 
+            # Check if a ghost developer already exists for this login
+            # (ghost = no email, name matches github login)
+            async with db.no_autoflush:
+                stmt = select(Developer).where(
+                    Developer.name == github_login,
+                    Developer.email.is_(None),
+                )
+                result = await db.execute(stmt)
+                existing_ghost = result.scalar_one_or_none()
+
+            if existing_ghost:
+                self._dev_cache_by_email[cache_key] = existing_ghost.id
+                if github_id:
+                    self._dev_cache_by_github_id[github_id] = existing_ghost.id
+                return existing_ghost.id
+
+            # Create new ghost developer (email is nullable)
             new_dev = Developer(name=github_login)
             db.add(new_dev)
             await db.flush()
@@ -359,7 +375,7 @@ class SyncService:
                 self._dev_cache_by_github_id[github_id] = new_dev.id
             return new_dev.id
 
-        # 3. Fallback to connecting developer
+        # 3. Fallback to connecting developer (no login available)
         return fallback_developer_id
 
     async def _sync_commits_with_session(
@@ -375,6 +391,7 @@ class SyncService:
         """Sync commits from repository (all contributors)."""
         synced = 0
         page = 1
+        seen_shas: set[str] = set()
 
         while True:
             try:
@@ -388,10 +405,17 @@ class SyncService:
                 break
 
             for commit_data in commits:
-                # Check if commit already exists
-                stmt = select(Commit).where(Commit.sha == commit_data["sha"])
-                result = await db.execute(stmt)
-                existing = result.scalar_one_or_none()
+                sha = commit_data["sha"]
+                if sha in seen_shas:
+                    continue
+                seen_shas.add(sha)
+
+                # Check if commit already exists (no_autoflush to prevent
+                # flushing pending inserts which can cause IntegrityError)
+                async with db.no_autoflush:
+                    stmt = select(Commit).where(Commit.sha == sha)
+                    result = await db.execute(stmt)
+                    existing = result.scalar_one_or_none()
 
                 if not existing:
                     # Resolve which developer this commit belongs to
@@ -485,11 +509,12 @@ class SyncService:
 
             for pr_data in prs:
                 # Check if PR already exists
-                stmt = select(PullRequest).where(
-                    PullRequest.github_id == pr_data["id"],
-                )
-                result = await db.execute(stmt)
-                existing = result.scalar_one_or_none()
+                async with db.no_autoflush:
+                    stmt = select(PullRequest).where(
+                        PullRequest.github_id == pr_data["id"],
+                    )
+                    result = await db.execute(stmt)
+                    existing = result.scalar_one_or_none()
 
                 # GitHub API returns "closed" for merged PRs — normalize to "merged"
                 pr_state = "merged" if pr_data.get("merged_at") else pr_data["state"]
@@ -576,11 +601,12 @@ class SyncService:
 
                 for review_data in reviews:
                     # Check if review already exists
-                    stmt = select(CodeReview).where(
-                        CodeReview.github_id == review_data["id"],
-                    )
-                    result = await db.execute(stmt)
-                    existing = result.scalar_one_or_none()
+                    async with db.no_autoflush:
+                        stmt = select(CodeReview).where(
+                            CodeReview.github_id == review_data["id"],
+                        )
+                        result = await db.execute(stmt)
+                        existing = result.scalar_one_or_none()
 
                     if not existing:
                         # Resolve which developer this review belongs to
