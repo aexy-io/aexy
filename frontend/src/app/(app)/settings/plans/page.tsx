@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -74,8 +74,9 @@ const planConfig = {
 
 export default function PlansPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { currentWorkspaceId, isOwner } = useWorkspace();
-  const { plan: currentPlan, tier: currentTier, hasSubscription, isLoading: subscriptionLoading } = useSubscription(currentWorkspaceId);
+  const { plan: currentPlan, tier: currentTier, hasSubscription, isLoading: subscriptionLoading, refetch } = useSubscription(currentWorkspaceId);
   const { plans, isLoading: plansLoading } = usePlans();
   const changePlan = useChangePlan(currentWorkspaceId);
   const checkout = useCheckout();
@@ -85,6 +86,20 @@ export default function PlansPage() {
   );
   const [selectedPlan, setSelectedPlan] = useState<PlanFeatures | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [checkoutMessage, setCheckoutMessage] = useState<{ type: "success" | "cancelled"; text: string } | null>(null);
+
+  // Handle checkout redirect feedback
+  useEffect(() => {
+    const checkoutStatus = searchParams.get("checkout");
+    if (checkoutStatus === "success") {
+      setCheckoutMessage({ type: "success", text: "Your subscription has been activated! It may take a moment to update." });
+      refetch();
+      router.replace("/settings/plans", { scroll: false });
+    } else if (checkoutStatus === "cancelled") {
+      setCheckoutMessage({ type: "cancelled", text: "Checkout was cancelled. You can try again anytime." });
+      router.replace("/settings/plans", { scroll: false });
+    }
+  }, [searchParams, refetch, router]);
 
   const isLoading = subscriptionLoading || plansLoading;
 
@@ -140,6 +155,25 @@ export default function PlansPage() {
           Compare plans and upgrade or downgrade your subscription
         </p>
       </div>
+
+      {/* Checkout feedback banner */}
+      {checkoutMessage && (
+        <div
+          className={`flex items-center justify-between rounded-lg px-4 py-3 text-sm ${
+            checkoutMessage.type === "success"
+              ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400"
+              : "bg-amber-500/10 border border-amber-500/30 text-amber-400"
+          }`}
+        >
+          <span>{checkoutMessage.text}</span>
+          <button
+            onClick={() => setCheckoutMessage(null)}
+            className="ml-4 text-current opacity-70 hover:opacity-100"
+          >
+            &times;
+          </button>
+        </div>
+      )}
 
       <div>
         {/* Billing Toggle */}

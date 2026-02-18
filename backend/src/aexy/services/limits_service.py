@@ -92,6 +92,7 @@ class LimitsService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+        self._plan_cache: dict[str, Plan] = {}
 
     async def get_developer_with_plan(self, developer_id: str) -> Developer | None:
         """Get a developer with their plan loaded."""
@@ -141,7 +142,13 @@ class LimitsService:
 
         If the developer belongs to a workspace that has a higher-tier plan
         (e.g. the owner upgraded), all members benefit from that plan.
+
+        Results are cached per developer_id for the lifetime of this service
+        instance (typically one request).
         """
+        if developer_id in self._plan_cache:
+            return self._plan_cache[developer_id]
+
         from aexy.models.workspace import Workspace, WorkspaceMember
 
         dev_plan = await self.ensure_developer_has_plan(developer_id)
@@ -171,6 +178,7 @@ class LimitsService:
                 best_plan = ws_plan
                 dev_tier = ws_tier
 
+        self._plan_cache[developer_id] = best_plan
         return best_plan
 
     async def get_sync_limits(self, developer_id: str) -> SyncLimits:

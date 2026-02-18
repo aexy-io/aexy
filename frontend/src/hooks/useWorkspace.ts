@@ -9,7 +9,7 @@ const CURRENT_WORKSPACE_KEY = "current_workspace_id";
 
 export function useWorkspace() {
   const queryClient = useQueryClient();
-  const{user} = useAuth()
+  const { user } = useAuth();
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -147,7 +147,7 @@ export function useWorkspace() {
     // Computed
     hasWorkspaces: (workspaces?.length || 0) > 0,
     isOwner: typeof window !== "undefined"
-      ? currentWorkspace?.owner_id === user?.id
+      ? !!(user?.id && currentWorkspace?.owner_id === user.id)
       : false,
   };
 }

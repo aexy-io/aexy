@@ -44,6 +44,32 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/billing")
 
 
+async def verify_workspace_admin(
+    db: AsyncSession,
+    workspace_id: str,
+    developer_id: str,
+) -> None:
+    """Verify the developer is an owner or admin of the workspace.
+
+    Raises HTTPException 403 if not authorized.
+    """
+    from aexy.models.workspace import WorkspaceMember
+
+    stmt = select(WorkspaceMember).where(
+        WorkspaceMember.workspace_id == workspace_id,
+        WorkspaceMember.developer_id == developer_id,
+        WorkspaceMember.status == "active",
+    )
+    result = await db.execute(stmt)
+    member = result.scalar_one_or_none()
+
+    if not member or member.role not in ("owner", "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only workspace owners or admins can change the plan",
+        )
+
+
 async def get_developer(
     developer_id: str = Depends(get_current_developer_id),
     db: AsyncSession = Depends(get_db),
@@ -136,21 +162,7 @@ async def create_checkout_session(
 
     # If upgrading for a workspace, verify the user is an owner or admin
     if request.workspace_id:
-        from aexy.models.workspace import WorkspaceMember
-
-        stmt = select(WorkspaceMember).where(
-            WorkspaceMember.workspace_id == request.workspace_id,
-            WorkspaceMember.developer_id == developer_id,
-            WorkspaceMember.status == "active",
-        )
-        result = await db.execute(stmt)
-        member = result.scalar_one_or_none()
-
-        if not member or member.role not in ("owner", "admin"):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only workspace owners or admins can upgrade the plan",
-            )
+        await verify_workspace_admin(db, request.workspace_id, developer_id)
 
     stripe_service = StripeService(db)
 
@@ -247,21 +259,7 @@ async def change_plan(
 
     # If changing for a workspace, verify the user is an owner or admin
     if request.workspace_id:
-        from aexy.models.workspace import WorkspaceMember
-
-        stmt = select(WorkspaceMember).where(
-            WorkspaceMember.workspace_id == request.workspace_id,
-            WorkspaceMember.developer_id == developer_id,
-            WorkspaceMember.status == "active",
-        )
-        result = await db.execute(stmt)
-        member = result.scalar_one_or_none()
-
-        if not member or member.role not in ("owner", "admin"):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only workspace owners or admins can change the plan",
-            )
+        await verify_workspace_admin(db, request.workspace_id, developer_id)
 
     stripe_service = StripeService(db)
 
@@ -277,6 +275,7 @@ async def change_plan(
         updated_subscription = await stripe_service.change_plan(
             subscription_id=subscription.id,
             new_plan_tier=plan_tier,
+            workspace_id=request.workspace_id,
         )
         return SubscriptionResponse.model_validate(updated_subscription)
     except ValueError as e:
