@@ -106,31 +106,46 @@ class StripeWebhookHandler:
             logger.debug(f"Subscription {stripe_subscription_id} already exists")
             return {"action": "already_exists"}
 
-        # Get plan from metadata or price
-        plan_id = None
-        plan_tier = data.get("metadata", {}).get("plan_tier")
+        # Get subscription item ID, price ID, and product ID
+        subscription_item_id = None
+        stripe_price_id = ""
+        stripe_product_id = None
+        if data.get("items", {}).get("data"):
+            item = data["items"]["data"][0]
+            subscription_item_id = item["id"]
+            stripe_price_id = item["price"]["id"]
+            stripe_product_id = item["price"].get("product")
+
+        # Resolve plan: try metadata first, then fall back to matching stripe_price_id
+        plan = None
+        metadata = data.get("metadata", {})
+        plan_tier = metadata.get("plan_tier")
         if plan_tier:
             stmt = select(Plan).where(Plan.tier == plan_tier, Plan.is_active == True)
             result = await self.db.execute(stmt)
             plan = result.scalar_one_or_none()
-            if plan:
-                plan_id = plan.id
 
-        # Get subscription item ID
-        subscription_item_id = None
-        if data.get("items", {}).get("data"):
-            subscription_item_id = data["items"]["data"][0]["id"]
+        if not plan and stripe_price_id:
+            # Fallback: match plan by stripe_price_id or stripe_yearly_price_id
+            from sqlalchemy import or_
+            stmt = select(Plan).where(
+                or_(
+                    Plan.stripe_price_id == stripe_price_id,
+                    Plan.stripe_yearly_price_id == stripe_price_id,
+                ),
+                Plan.is_active == True,
+            )
+            result = await self.db.execute(stmt)
+            plan = result.scalar_one_or_none()
 
-        # Get price ID
-        stripe_price_id = ""
-        if data.get("items", {}).get("data"):
-            stripe_price_id = data["items"]["data"][0]["price"]["id"]
+        plan_id = plan.id if plan else None
 
         # Create subscription record
         subscription = Subscription(
             customer_id=customer_billing.id,
             stripe_subscription_id=stripe_subscription_id,
             stripe_price_id=stripe_price_id,
+            stripe_product_id=stripe_product_id or (plan.stripe_product_id if plan else None),
             stripe_subscription_item_id=subscription_item_id,
             status=data["status"],
             plan_id=plan_id,
@@ -154,6 +169,19 @@ class StripeWebhookHandler:
             developer = result.scalar_one_or_none()
             if developer:
                 developer.plan_id = plan_id
+
+        # Update workspace plan if workspace_id is in metadata (owner upgraded for the team)
+        workspace_id = metadata.get("workspace_id")
+        if plan_id and workspace_id:
+            from aexy.models.workspace import Workspace
+            stmt = select(Workspace).where(Workspace.id == workspace_id)
+            result = await self.db.execute(stmt)
+            workspace = result.scalar_one_or_none()
+            if workspace:
+                workspace.plan_id = plan_id
+                logger.info(
+                    f"Updated workspace {workspace_id} plan to {plan_tier or plan_id}"
+                )
 
         await self.db.commit()
 
@@ -198,28 +226,56 @@ class StripeWebhookHandler:
             subscription.stripe_subscription_item_id = data["items"]["data"][0]["id"]
             subscription.stripe_price_id = data["items"]["data"][0]["price"]["id"]
 
-        # Check for plan change
-        plan_tier = data.get("metadata", {}).get("plan_tier")
+        # Check for plan change via metadata or price ID
+        metadata = data.get("metadata", {})
+        plan_tier = metadata.get("plan_tier")
+        plan = None
+
         if plan_tier:
             stmt = select(Plan).where(Plan.tier == plan_tier, Plan.is_active == True)
             result = await self.db.execute(stmt)
             plan = result.scalar_one_or_none()
-            if plan and subscription.plan_id != plan.id:
-                subscription.plan_id = plan.id
-                # Update developer's plan
-                stmt = select(CustomerBilling).where(
-                    CustomerBilling.id == subscription.customer_id
+
+        if not plan and subscription.stripe_price_id:
+            from sqlalchemy import or_
+            stmt = select(Plan).where(
+                or_(
+                    Plan.stripe_price_id == subscription.stripe_price_id,
+                    Plan.stripe_yearly_price_id == subscription.stripe_price_id,
+                ),
+                Plan.is_active == True,
+            )
+            result = await self.db.execute(stmt)
+            plan = result.scalar_one_or_none()
+
+        if plan and subscription.plan_id != plan.id:
+            subscription.plan_id = plan.id
+            subscription.stripe_product_id = plan.stripe_product_id
+
+            # Update developer's plan
+            stmt = select(CustomerBilling).where(
+                CustomerBilling.id == subscription.customer_id
+            )
+            result = await self.db.execute(stmt)
+            customer_billing = result.scalar_one_or_none()
+            if customer_billing:
+                stmt = select(Developer).where(
+                    Developer.id == customer_billing.developer_id
                 )
                 result = await self.db.execute(stmt)
-                customer_billing = result.scalar_one_or_none()
-                if customer_billing:
-                    stmt = select(Developer).where(
-                        Developer.id == customer_billing.developer_id
-                    )
+                developer = result.scalar_one_or_none()
+                if developer:
+                    developer.plan_id = plan.id
+
+                # Update workspace plan if applicable
+                workspace_id = metadata.get("workspace_id")
+                if workspace_id:
+                    from aexy.models.workspace import Workspace
+                    stmt = select(Workspace).where(Workspace.id == workspace_id)
                     result = await self.db.execute(stmt)
-                    developer = result.scalar_one_or_none()
-                    if developer:
-                        developer.plan_id = plan.id
+                    workspace = result.scalar_one_or_none()
+                    if workspace:
+                        workspace.plan_id = plan.id
 
         await self.db.commit()
 

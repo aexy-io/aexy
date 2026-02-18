@@ -92,6 +92,7 @@ class LimitsService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+        self._plan_cache: dict[str, Plan] = {}
 
     async def get_developer_with_plan(self, developer_id: str) -> Developer | None:
         """Get a developer with their plan loaded."""
@@ -137,8 +138,48 @@ class LimitsService:
         return free_plan
 
     async def get_plan(self, developer_id: str) -> Plan:
-        """Get the plan for a developer."""
-        return await self.ensure_developer_has_plan(developer_id)
+        """Get the effective plan for a developer.
+
+        If the developer belongs to a workspace that has a higher-tier plan
+        (e.g. the owner upgraded), all members benefit from that plan.
+
+        Results are cached per developer_id for the lifetime of this service
+        instance (typically one request).
+        """
+        if developer_id in self._plan_cache:
+            return self._plan_cache[developer_id]
+
+        from aexy.models.workspace import Workspace, WorkspaceMember
+
+        dev_plan = await self.ensure_developer_has_plan(developer_id)
+
+        # Check if any workspace the developer belongs to has a better plan
+        tier_order = {"free": 0, "pro": 1, "enterprise": 2}
+        dev_tier = tier_order.get(dev_plan.tier, 0)
+
+        stmt = (
+            select(Plan)
+            .join(Workspace, Workspace.plan_id == Plan.id)
+            .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
+            .where(
+                WorkspaceMember.developer_id == developer_id,
+                WorkspaceMember.status == "active",
+                Workspace.is_active == True,
+                Plan.is_active == True,
+            )
+        )
+        result = await self.db.execute(stmt)
+        workspace_plans = result.scalars().all()
+
+        best_plan = dev_plan
+        for ws_plan in workspace_plans:
+            ws_tier = tier_order.get(ws_plan.tier, 0)
+            if ws_tier > dev_tier:
+                best_plan = ws_plan
+                dev_tier = ws_tier
+
+        self._plan_cache[developer_id] = best_plan
+        return best_plan
 
     async def get_sync_limits(self, developer_id: str) -> SyncLimits:
         """Get sync limits for a developer based on their plan."""
@@ -158,7 +199,7 @@ class LimitsService:
         if not developer:
             raise ValueError(f"Developer {developer_id} not found")
 
-        plan = developer.plan or await self.get_or_create_free_plan()
+        plan = await self.get_plan(developer_id)
 
         return LLMLimits(
             requests_per_day=plan.llm_requests_per_day,
@@ -176,7 +217,7 @@ class LimitsService:
         if not developer:
             return False, "Developer not found"
 
-        plan = developer.plan or await self.get_or_create_free_plan()
+        plan = await self.get_plan(developer_id)
 
         # Unlimited repos
         if plan.max_repos == -1:
@@ -207,7 +248,7 @@ class LimitsService:
         if not developer:
             return False, "Developer not found"
 
-        plan = developer.plan or await self.get_or_create_free_plan()
+        plan = await self.get_plan(developer_id)
 
         # Check provider access
         if provider and provider not in (plan.llm_provider_access or []):
@@ -244,7 +285,7 @@ class LimitsService:
                 message="Developer not found",
             )
 
-        plan = developer.plan or await self.get_or_create_free_plan()
+        plan = await self.get_plan(developer_id)
 
         # Check provider access
         if provider and provider not in (plan.llm_provider_access or []):
@@ -315,7 +356,7 @@ class LimitsService:
                 api_calls=0.0,
             )
 
-        plan = developer.plan or await self.get_or_create_free_plan()
+        plan = await self.get_plan(developer_id)
         await self._maybe_reset_llm_usage(developer)
 
         # LLM requests percentage
@@ -406,7 +447,7 @@ class LimitsService:
         if not developer:
             return {"error": "Developer not found"}
 
-        plan = developer.plan or await self.get_or_create_free_plan()
+        plan = await self.get_plan(developer_id)
         await self._maybe_reset_monthly_tokens(developer)
 
         total_tokens = input_tokens + output_tokens
@@ -484,7 +525,7 @@ class LimitsService:
         if not developer:
             return {"allowed": False, "reason": "Developer not found"}
 
-        plan = developer.plan or await self.get_or_create_free_plan()
+        plan = await self.get_plan(developer_id)
         await self._maybe_reset_monthly_tokens(developer)
 
         free_tokens = getattr(plan, "free_llm_tokens_per_month", 100000)
@@ -536,7 +577,7 @@ class LimitsService:
         if not developer:
             raise ValueError(f"Developer {developer_id} not found")
 
-        plan = developer.plan or await self.get_or_create_free_plan()
+        plan = await self.get_plan(developer_id)
         repos_count = await self.get_enabled_repos_count(developer_id)
 
         return {

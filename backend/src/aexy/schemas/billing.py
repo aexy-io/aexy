@@ -136,6 +136,7 @@ class CreateCheckoutSessionRequest(BaseModel):
     plan_tier: str = Field(..., description="Plan tier: free, pro, or enterprise")
     success_url: str = Field(..., description="URL to redirect to on success")
     cancel_url: str = Field(..., description="URL to redirect to on cancel")
+    workspace_id: str | None = Field(default=None, description="Workspace to upgrade (if applicable)")
 
 
 class CreateCheckoutSessionResponse(BaseModel):
@@ -166,6 +167,7 @@ class ChangePlanRequest(BaseModel):
     """Request to change subscription plan."""
 
     plan_tier: str = Field(..., description="New plan tier: free, pro, or enterprise")
+    workspace_id: str | None = Field(default=None, description="Workspace to change plan for (if applicable)")
 
 
 class SubscriptionStatusResponse(BaseModel):

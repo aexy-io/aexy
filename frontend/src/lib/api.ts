@@ -3955,6 +3955,7 @@ export const billingApi = {
     plan_tier: string;
     success_url: string;
     cancel_url: string;
+    workspace_id?: string;
   }): Promise<{ checkout_url: string }> => {
     const response = await api.post("/billing/checkout", data);
     return response.data;
@@ -3969,6 +3970,7 @@ export const billingApi = {
 
   changePlan: async (data: {
     plan_tier: string;
+    workspace_id?: string;
   }): Promise<{ success: boolean; message: string }> => {
     const response = await api.post("/billing/change-plan", data);
     return response.data;

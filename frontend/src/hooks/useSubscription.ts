@@ -19,6 +19,7 @@ export function useSubscription(workspaceId?: string | null) {
 
   const plan = subscriptionStatus?.plan;
   const tier = plan?.tier || "free";
+  const hasSubscription = subscriptionStatus?.subscription != null;
 
   // Feature access checks
   const canUseTeamFeatures = plan?.enable_team_features ?? false;
@@ -36,6 +37,7 @@ export function useSubscription(workspaceId?: string | null) {
     subscriptionStatus,
     plan,
     tier,
+    hasSubscription,
 
     // Loading state
     isLoading,
@@ -81,16 +83,33 @@ export function usePlans() {
   };
 }
 
-// Hook for changing subscription plan
+// Hook for changing subscription plan (only for users with an existing Stripe subscription)
 export function useChangePlan(workspaceId?: string | null) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (planTier: string) => billingApi.changePlan({ plan_tier: planTier }),
+    mutationFn: (planTier: string) =>
+      billingApi.changePlan({
+        plan_tier: planTier,
+        workspace_id: workspaceId || undefined,
+      }),
     onSuccess: () => {
       // Invalidate subscription status to refetch the new plan
       queryClient.invalidateQueries({ queryKey: ["subscriptionStatus", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["subscriptionStatus"] });
     },
+  });
+}
+
+// Hook for creating a Stripe Checkout session (for users without a subscription, e.g. Free -> Pro)
+export function useCheckout() {
+  return useMutation({
+    mutationFn: ({ planTier, workspaceId }: { planTier: string; workspaceId?: string }) =>
+      billingApi.createCheckoutSession({
+        plan_tier: planTier,
+        success_url: `${window.location.origin}/settings/plans?checkout=success`,
+        cancel_url: `${window.location.origin}/settings/plans?checkout=cancelled`,
+        workspace_id: workspaceId,
+      }),
   });
 }

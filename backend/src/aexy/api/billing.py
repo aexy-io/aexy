@@ -44,6 +44,32 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/billing")
 
 
+async def verify_workspace_admin(
+    db: AsyncSession,
+    workspace_id: str,
+    developer_id: str,
+) -> None:
+    """Verify the developer is an owner or admin of the workspace.
+
+    Raises HTTPException 403 if not authorized.
+    """
+    from aexy.models.workspace import WorkspaceMember
+
+    stmt = select(WorkspaceMember).where(
+        WorkspaceMember.workspace_id == workspace_id,
+        WorkspaceMember.developer_id == developer_id,
+        WorkspaceMember.status == "active",
+    )
+    result = await db.execute(stmt)
+    member = result.scalar_one_or_none()
+
+    if not member or member.role not in ("owner", "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only workspace owners or admins can change the plan",
+        )
+
+
 async def get_developer(
     developer_id: str = Depends(get_current_developer_id),
     db: AsyncSession = Depends(get_db),
@@ -80,13 +106,15 @@ async def get_subscription_status(
 ) -> SubscriptionStatusResponse:
     """Get current subscription status, usage summary, and estimates.
 
-    If workspace_id is provided, returns the workspace's plan.
-    Otherwise returns the developer's individual plan.
+    Returns the effective plan for the developer, including workspace plan
+    inheritance (all members benefit from the workspace's upgraded plan).
     """
-    from aexy.models.workspace import Workspace, WorkspaceMember
+
+    from aexy.services.limits_service import LimitsService
 
     stripe_service = StripeService(db)
     usage_service = UsageService(db)
+    limits_service = LimitsService(db)
 
     # Get developer
     stmt = select(Developer).where(Developer.id == developer_id)
@@ -97,32 +125,8 @@ async def get_subscription_status(
     subscription = await stripe_service.get_active_subscription(developer_id)
     customer = await stripe_service.get_customer_billing(developer_id)
 
-    # Get plan - prefer workspace plan if workspace_id provided
-    plan = None
-
-    if workspace_id:
-        # Check if developer is a member of this workspace
-        member_stmt = select(WorkspaceMember).where(
-            WorkspaceMember.workspace_id == workspace_id,
-            WorkspaceMember.developer_id == developer_id,
-            WorkspaceMember.status == "active",
-        )
-        member_result = await db.execute(member_stmt)
-        if member_result.scalar_one_or_none():
-            # Get workspace plan
-            ws_stmt = select(Workspace).where(Workspace.id == workspace_id)
-            ws_result = await db.execute(ws_stmt)
-            workspace = ws_result.scalar_one_or_none()
-            if workspace and workspace.plan_id:
-                plan_stmt = select(Plan).where(Plan.id == workspace.plan_id)
-                plan_result = await db.execute(plan_stmt)
-                plan = plan_result.scalar_one_or_none()
-
-    # Fallback to developer's individual plan
-    if not plan and developer and developer.plan_id:
-        stmt = select(Plan).where(Plan.id == developer.plan_id)
-        result = await db.execute(stmt)
-        plan = result.scalar_one_or_none()
+    # Get effective plan (workspace-aware: returns highest-tier plan from any workspace membership)
+    plan = await limits_service.get_plan(developer_id)
 
     # Get usage summary
     usage_summary = await usage_service.get_usage_summary(developer_id)
@@ -144,7 +148,10 @@ async def create_checkout_session(
     db: Annotated[AsyncSession, Depends(get_db)],
     developer_id: Annotated[str, Depends(get_current_developer_id)],
 ) -> CreateCheckoutSessionResponse:
-    """Create a Stripe Checkout session for subscription."""
+    """Create a Stripe Checkout session for subscription.
+
+    Only workspace owners or admins can upgrade a workspace plan.
+    """
     try:
         plan_tier = PlanTier(request.plan_tier)
     except ValueError:
@@ -152,6 +159,10 @@ async def create_checkout_session(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid plan tier: {request.plan_tier}",
         )
+
+    # If upgrading for a workspace, verify the user is an owner or admin
+    if request.workspace_id:
+        await verify_workspace_admin(db, request.workspace_id, developer_id)
 
     stripe_service = StripeService(db)
 
@@ -161,6 +172,7 @@ async def create_checkout_session(
             plan_tier=plan_tier,
             success_url=request.success_url,
             cancel_url=request.cancel_url,
+            workspace_id=request.workspace_id,
         )
         return CreateCheckoutSessionResponse(checkout_url=checkout_url)
     except Exception as e:
@@ -233,7 +245,10 @@ async def change_plan(
     db: Annotated[AsyncSession, Depends(get_db)],
     developer_id: Annotated[str, Depends(get_current_developer_id)],
 ) -> SubscriptionResponse:
-    """Change subscription to a different plan."""
+    """Change subscription to a different plan.
+
+    Only workspace owners or admins can change a workspace plan.
+    """
     try:
         plan_tier = PlanTier(request.plan_tier)
     except ValueError:
@@ -241,6 +256,10 @@ async def change_plan(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid plan tier: {request.plan_tier}",
         )
+
+    # If changing for a workspace, verify the user is an owner or admin
+    if request.workspace_id:
+        await verify_workspace_admin(db, request.workspace_id, developer_id)
 
     stripe_service = StripeService(db)
 
@@ -256,6 +275,7 @@ async def change_plan(
         updated_subscription = await stripe_service.change_plan(
             subscription_id=subscription.id,
             new_plan_tier=plan_tier,
+            workspace_id=request.workspace_id,
         )
         return SubscriptionResponse.model_validate(updated_subscription)
     except ValueError as e:
@@ -366,7 +386,7 @@ async def get_limits_usage(
             detail="Developer not found",
         )
 
-    plan = developer.plan or await limits_service.get_or_create_free_plan()
+    plan = await limits_service.get_plan(developer_id)
 
     # Get repos count
     repos_count = await limits_service.get_enabled_repos_count(developer_id)

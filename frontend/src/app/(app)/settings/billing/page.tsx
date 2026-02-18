@@ -179,6 +179,16 @@ function BillingContent() {
                   </p>
                 </div>
               </div>
+            ) : tier !== "free" ? (
+              <div className="py-4">
+                <div className="flex items-center gap-3">
+                  <span className="w-2 h-2 bg-green-400 rounded-full" />
+                  <p className="text-slate-300">
+                    Your workspace is on the <span className="text-white font-medium">{plan?.name}</span> plan.
+                    Billing is managed by the workspace owner.
+                  </p>
+                </div>
+              </div>
             ) : (
               <div className="py-4">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -342,7 +352,7 @@ function BillingContent() {
 
         {/* Actions */}
         <div className="flex flex-wrap gap-4">
-          {tier !== "free" && (
+          {subscriptionStatus?.subscription && (
             <>
               <button
                 onClick={handleManageBilling}

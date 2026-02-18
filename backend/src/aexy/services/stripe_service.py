@@ -212,6 +212,7 @@ class StripeService:
         self,
         subscription_id: str,
         new_plan_tier: PlanTier,
+        workspace_id: str | None = None,
     ) -> Subscription:
         """Change subscription to a different plan."""
         stmt = (
@@ -236,6 +237,12 @@ class StripeService:
             raise ValueError(f"Plan with tier {new_plan_tier.value} not found")
 
         # Update Stripe subscription
+        metadata = {
+            "plan_tier": new_plan_tier.value,
+        }
+        if workspace_id:
+            metadata["workspace_id"] = workspace_id
+
         stripe_sub = stripe.Subscription.modify(
             subscription.stripe_subscription_id,
             items=[
@@ -245,9 +252,7 @@ class StripeService:
                 }
             ],
             proration_behavior="create_prorations",
-            metadata={
-                "plan_tier": new_plan_tier.value,
-            },
+            metadata=metadata,
         )
 
         # Update subscription record
@@ -446,6 +451,7 @@ class StripeService:
         plan_tier: PlanTier,
         success_url: str,
         cancel_url: str,
+        workspace_id: str | None = None,
     ) -> str:
         """Create a Stripe Checkout session for subscription."""
         customer_billing = await self.get_or_create_customer(developer_id)
@@ -458,6 +464,13 @@ class StripeService:
         if not plan or not plan.stripe_price_id:
             raise ValueError(f"Plan with tier {plan_tier.value} not found or has no Stripe price")
 
+        metadata = {
+            "developer_id": developer_id,
+            "plan_tier": plan_tier.value,
+        }
+        if workspace_id:
+            metadata["workspace_id"] = workspace_id
+
         session = stripe.checkout.Session.create(
             customer=customer_billing.stripe_customer_id,
             mode="subscription",
@@ -469,9 +482,9 @@ class StripeService:
             ],
             success_url=success_url,
             cancel_url=cancel_url,
-            metadata={
-                "developer_id": developer_id,
-                "plan_tier": plan_tier.value,
+            metadata=metadata,
+            subscription_data={
+                "metadata": metadata,
             },
         )
 
