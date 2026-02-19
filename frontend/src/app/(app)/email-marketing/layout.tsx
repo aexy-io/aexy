@@ -10,5 +10,5 @@ export default function EmailMarketingLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <AppAccessGuard appId="email-marketing">{children}</AppAccessGuard>;
+  return <AppAccessGuard appId="email_marketing">{children}</AppAccessGuard>;
 }
