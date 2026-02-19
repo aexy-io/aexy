@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { X, Plus, Sparkles } from "lucide-react";
 import { Assessment, SkillConfig } from "@/lib/api";
 
@@ -49,8 +49,11 @@ interface Step1Props {
 
 export default function Step1AssessmentDetails({ assessment, onSave, onNext }: Step1Props) {
   const [title, setTitle] = useState(assessment.title || "");
-  const [jobDesignation, setJobDesignation] = useState(assessment.job_designation || "");
-  const [customDesignation, setCustomDesignation] = useState("");
+  const existingDesignation = assessment.job_designation || "";
+  const isExistingCustom = existingDesignation !== "" && !JOB_DESIGNATIONS.includes(existingDesignation);
+  const [jobDesignation, setJobDesignation] = useState(isExistingCustom ? "" : existingDesignation);
+  const [customDesignation, setCustomDesignation] = useState(isExistingCustom ? existingDesignation : "");
+  const [isCustomMode, setIsCustomMode] = useState(isExistingCustom);
   const [department, setDepartment] = useState(assessment.department || "");
   const [experienceMin, setExperienceMin] = useState(assessment.experience_min || 0);
   const [experienceMax, setExperienceMax] = useState(assessment.experience_max || 10);
@@ -62,7 +65,7 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
   const [showSkillDropdown, setShowSkillDropdown] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const isCustomDesignation = !JOB_DESIGNATIONS.includes(jobDesignation) && jobDesignation !== "";
+  const effectiveDesignation = isCustomMode ? customDesignation : jobDesignation;
 
   const handleAddSkill = (skillName: string, category: string) => {
     if (!skills.find((s) => s.name === skillName)) {
@@ -105,7 +108,7 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
     try {
       await onSave({
         title,
-        job_designation: isCustomDesignation ? customDesignation : jobDesignation,
+        job_designation: effectiveDesignation,
         department: department || undefined,
         experience_min: experienceMin,
         experience_max: experienceMax,
@@ -122,7 +125,7 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
     }
   };
 
-  const isValid = title.trim() && (jobDesignation || customDesignation) && skills.length > 0;
+  const isValid = title.trim() && effectiveDesignation.trim() && skills.length > 0;
 
   return (
     <div className="space-y-8">
@@ -158,11 +161,13 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
               Job Designation <span className="text-destructive">*</span>
             </label>
             <select
-              value={isCustomDesignation ? "custom" : jobDesignation}
+              value={isCustomMode ? "custom" : jobDesignation}
               onChange={(e) => {
                 if (e.target.value === "custom") {
+                  setIsCustomMode(true);
                   setJobDesignation("");
                 } else {
+                  setIsCustomMode(false);
                   setJobDesignation(e.target.value);
                   setCustomDesignation("");
                 }
@@ -175,7 +180,7 @@ export default function Step1AssessmentDetails({ assessment, onSave, onNext }: S
               ))}
               <option value="custom">Custom...</option>
             </select>
-            {(isCustomDesignation || jobDesignation === "") && (
+            {isCustomMode && (
               <input
                 type="text"
                 value={customDesignation}

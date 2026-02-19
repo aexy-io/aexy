@@ -19,6 +19,8 @@ import {
   Monitor,
   Camera,
   Eye,
+  Send,
+  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -80,12 +82,12 @@ interface CandidateDetails {
     webcam_recording_url: string | null;
     screen_recording_url: string | null;
   } | null;
-  assessment: {
+  assessment?: {
     id: string;
     title: string;
     total_questions: number;
     max_score: number;
-  };
+  } | null;
 }
 
 export default function CandidateDetailsPage() {
@@ -101,37 +103,100 @@ export default function CandidateDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "questions" | "proctoring">("overview");
+  const [resending, setResending] = useState(false);
+  const [resendStatus, setResendStatus] = useState<"idle" | "success" | "error">("idle");
+  const [reevaluating, setReevaluating] = useState(false);
+  const [reevalStatus, setReevalStatus] = useState<"idle" | "success" | "error">("idle");
+
+  const fetchDetails = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/assessments/${assessmentId}/candidates/${candidateId}/details?workspace_id=${currentWorkspaceId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch candidate details");
+      }
+
+      const data = await response.json();
+      setDetails(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (authLoading || workspacesLoading || !currentWorkspaceId) return;
-
-    async function fetchDetails() {
-      try {
-        const token = localStorage.getItem("token");
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/assessments/${assessmentId}/candidates/${candidateId}/details?workspace_id=${currentWorkspaceId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch candidate details");
-        }
-
-        const data = await response.json();
-        setDetails(data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchDetails();
   }, [assessmentId, candidateId, currentWorkspaceId, authLoading, workspacesLoading]);
+
+  const handleResendInvite = async () => {
+    if (resending || !details) return;
+    setResending(true);
+    setResendStatus("idle");
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/assessments/${assessmentId}/candidates/${candidateId}/resend-invite`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.detail || "Failed to resend invite");
+      }
+      setResendStatus("success");
+      setTimeout(() => setResendStatus("idle"), 3000);
+    } catch {
+      setResendStatus("error");
+      setTimeout(() => setResendStatus("idle"), 3000);
+    } finally {
+      setResending(false);
+    }
+  };
+
+  const handleReevaluate = async () => {
+    if (reevaluating || !details?.attempt) return;
+    setReevaluating(true);
+    setReevalStatus("idle");
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/assessments/${assessmentId}/candidates/${candidateId}/reevaluate?workspace_id=${currentWorkspaceId}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.detail || "Failed to re-evaluate");
+      }
+      setReevalStatus("success");
+      // Refresh details to show updated scores
+      await fetchDetails();
+      setTimeout(() => setReevalStatus("idle"), 3000);
+    } catch {
+      setReevalStatus("error");
+      setTimeout(() => setReevalStatus("idle"), 3000);
+    } finally {
+      setReevaluating(false);
+    }
+  };
 
   if (loading || authLoading || workspacesLoading) {
     return (
@@ -193,9 +258,75 @@ export default function CandidateDetailsPage() {
           >
             <ArrowLeft className="h-5 w-5 text-muted-foreground" />
           </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">{details.candidate.name}</h1>
-            <p className="text-muted-foreground">{details.assessment.title}</p>
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold text-foreground">{details?.candidate.name}</h1>
+            {
+              details?.assessment && (
+                <p className="text-muted-foreground">{details?.assessment?.title}</p>
+              )
+            }
+          </div>
+          <div className="flex items-center gap-2">
+            {details?.attempt && (
+              <button
+                onClick={handleReevaluate}
+                disabled={reevaluating}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  reevalStatus === "success"
+                    ? "bg-success/10 text-success"
+                    : reevalStatus === "error"
+                    ? "bg-destructive/10 text-destructive"
+                    : "bg-accent text-foreground hover:bg-accent/80 border border-border"
+                } disabled:opacity-50`}
+              >
+                {reevaluating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : reevalStatus === "success" ? (
+                  <CheckCircle className="h-4 w-4" />
+                ) : reevalStatus === "error" ? (
+                  <XCircle className="h-4 w-4" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                {reevaluating
+                  ? "Re-evaluating..."
+                  : reevalStatus === "success"
+                  ? "Scores Updated!"
+                  : reevalStatus === "error"
+                  ? "Failed"
+                  : "Re-evaluate"}
+              </button>
+            )}
+            {(details?.invitation?.status!=="completed") && (
+              <button
+                onClick={handleResendInvite}
+                disabled={resending}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  resendStatus === "success"
+                    ? "bg-success/10 text-success"
+                    : resendStatus === "error"
+                    ? "bg-destructive/10 text-destructive"
+                    : "bg-primary text-primary-foreground hover:bg-primary/90"
+                } disabled:opacity-50`}
+              >
+                {resending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : resendStatus === "success" ? (
+                  <CheckCircle className="h-4 w-4" />
+                ) : resendStatus === "error" ? (
+                  <XCircle className="h-4 w-4" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                {resending
+                  ? "Sending..."
+                  : resendStatus === "success"
+                  ? "Invite Sent!"
+                  : resendStatus === "error"
+                  ? "Failed to Send"
+                  : "Resend Invite"}
+              </button>
+            )}
           </div>
         </div>
 
@@ -206,8 +337,11 @@ export default function CandidateDetailsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Score</p>
                 <p className="text-3xl font-bold text-foreground">
-                  {details.attempt?.total_score?.toFixed(0) || "N/A"}
-                  {details.attempt?.total_score !== null && "%"}
+                  {details?.attempt?.percentage_score != null
+                    ? `${details.attempt.percentage_score.toFixed(0)}%`
+                    : details?.attempt?.total_score != null
+                    ? `${details.attempt.total_score.toFixed(0)}/${details.attempt.max_possible_score ?? "?"}`
+                    : "N/A"}
                 </p>
               </div>
               <TrendingUp className="h-8 w-8 text-primary opacity-50" />
@@ -218,12 +352,12 @@ export default function CandidateDetailsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Trust Score</p>
-                <p className={`text-3xl font-bold ${details.proctoring ? getTrustScoreColor(details.proctoring.trust_score) : "text-muted-foreground"}`}>
-                  {details.proctoring?.trust_score || "N/A"}
-                  {details.proctoring && "%"}
+                <p className={`text-3xl font-bold ${details?.proctoring ? getTrustScoreColor(details?.proctoring?.trust_score) : "text-muted-foreground"}`}>
+                  {details?.proctoring?.trust_score || "N/A"}
+                  {details?.proctoring && "%"}
                 </p>
               </div>
-              <Shield className={`h-8 w-8 opacity-50 ${details.proctoring ? getTrustScoreColor(details.proctoring.trust_score) : "text-muted-foreground"}`} />
+              <Shield className={`h-8 w-8 opacity-50 ${details?.proctoring ? getTrustScoreColor(details?.proctoring?.trust_score) : "text-muted-foreground"}`} />
             </div>
           </div>
 
@@ -232,8 +366,8 @@ export default function CandidateDetailsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Time Taken</p>
                 <p className="text-3xl font-bold text-foreground">
-                  {details.attempt?.time_taken_seconds
-                    ? `${Math.round(details.attempt.time_taken_seconds / 60)}m`
+                  {details?.attempt?.time_taken_seconds
+                    ? `${Math.round(details?.attempt.time_taken_seconds / 60)}m`
                     : "N/A"}
                 </p>
               </div>
@@ -246,7 +380,7 @@ export default function CandidateDetailsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Questions</p>
                 <p className="text-3xl font-bold text-foreground">
-                  {details.submissions.length}/{details.assessment.total_questions}
+                  {details?.submissions?.length}/{details?.assessment?.total_questions ?? "?"}
                 </p>
               </div>
               <CheckCircle className="h-8 w-8 text-success opacity-50" />
@@ -275,9 +409,9 @@ export default function CandidateDetailsPage() {
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              Questions ({details.submissions.length})
+              Questions ({details?.submissions?.length || 0})
             </button>
-            {details.proctoring && (
+            {details?.proctoring && (
               <button
                 onClick={() => setActiveTab("proctoring")}
                 className={`pb-4 px-2 border-b-2 transition-colors ${
@@ -303,14 +437,14 @@ export default function CandidateDetailsPage() {
                   <User className="h-5 w-5 text-muted-foreground" />
                   <div>
                     <p className="text-sm text-muted-foreground">Name</p>
-                    <p className="font-medium text-foreground">{details.candidate.name}</p>
+                    <p className="font-medium text-foreground">{details?.candidate?.name}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <Mail className="h-5 w-5 text-muted-foreground" />
                   <div>
                     <p className="text-sm text-muted-foreground">Email</p>
-                    <p className="font-medium text-foreground">{details.candidate.email}</p>
+                    <p className="font-medium text-foreground">{details?.candidate?.email}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -318,17 +452,17 @@ export default function CandidateDetailsPage() {
                   <div>
                     <p className="text-sm text-muted-foreground">Invited</p>
                     <p className="font-medium text-foreground">
-                      {formatTimestamp(details.invitation.invited_at)}
+                      {formatTimestamp(details?.invitation?.invited_at)}
                     </p>
                   </div>
                 </div>
-                {details.attempt?.completed_at && (
+                {details?.attempt?.completed_at && (
                   <div className="flex items-center gap-3">
                     <CheckCircle className="h-5 w-5 text-success" />
                     <div>
                       <p className="text-sm text-muted-foreground">Completed</p>
                       <p className="font-medium text-foreground">
-                        {formatTimestamp(details.attempt.completed_at)}
+                        {formatTimestamp(details?.attempt.completed_at)}
                       </p>
                     </div>
                   </div>
@@ -344,35 +478,35 @@ export default function CandidateDetailsPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                     <span className="text-sm text-muted-foreground">Overall Score</span>
                     <span className="font-semibold text-foreground">
-                      {details.attempt?.total_score?.toFixed(1) ?? "0"}%
+                      {details?.attempt?.percentage_score?.toFixed(1) ?? "0"}%
                     </span>
                   </div>
                   <div className="w-full bg-muted rounded-full h-2">
                     <div
                       className="bg-primary h-2 rounded-full transition-all"
-                      style={{ width: `${details.attempt?.total_score || 0}%` }}
+                      style={{ width: `${details?.attempt?.percentage_score || 0}%` }}
                     />
                   </div>
                 </div>
 
-                {details.proctoring && (
+                {details?.proctoring && (
                   <div>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                       <span className="text-sm text-muted-foreground">Trust Score</span>
-                      <span className={`font-semibold ${getTrustScoreColor(details.proctoring.trust_score)}`}>
-                        {details.proctoring.trust_score}%
+                      <span className={`font-semibold ${getTrustScoreColor(details?.proctoring?.trust_score)}`}>
+                        {details?.proctoring?.trust_score}%
                       </span>
                     </div>
                     <div className="w-full bg-muted rounded-full h-2">
                       <div
                         className={`h-2 rounded-full transition-all ${
-                          details.proctoring.trust_score >= 90
+                          details?.proctoring?.trust_score >= 90
                             ? "bg-success"
-                            : details.proctoring.trust_score >= 70
+                            : details?.proctoring?.trust_score >= 70
                             ? "bg-warning"
                             : "bg-destructive"
                         }`}
-                        style={{ width: `${details.proctoring.trust_score}%` }}
+                        style={{ width: `${details?.proctoring?.trust_score || 0}%` }}
                       />
                     </div>
                   </div>
@@ -382,20 +516,20 @@ export default function CandidateDetailsPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Questions Attempted</span>
                     <span className="text-foreground font-medium">
-                      {details.submissions.length} / {details.assessment.total_questions}
+                      {details?.submissions?.length} / {details?.assessment?.total_questions ?? "?"}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Total Time</span>
                     <span className="text-foreground font-medium">
-                      {formatDuration(details.attempt?.time_taken_seconds || null)}
+                      {formatDuration(details?.attempt?.time_taken_seconds || null)}
                     </span>
                   </div>
-                  {details.proctoring && (
+                  {details?.proctoring && (
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Violations</span>
                       <span className="text-foreground font-medium">
-                        {details.proctoring.total_events} ({details.proctoring.critical_events} critical)
+                        {details?.proctoring?.total_events} ({details?.proctoring?.critical_events} critical)
                       </span>
                     </div>
                   )}
@@ -431,7 +565,7 @@ export default function CandidateDetailsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {details.submissions.map((submission, idx) => (
+                {details?.submissions?.map((submission, idx) => (
                   <tr key={submission.question_id} className="hover:bg-accent">
                     <td className="px-4 py-3">
                       <div>
@@ -495,16 +629,16 @@ export default function CandidateDetailsPage() {
           </div>
         )}
 
-        {activeTab === "proctoring" && details.proctoring && (
+        {activeTab === "proctoring" && details?.proctoring && (
           <div className="space-y-6">
             {/* Trust Score Overview */}
             <div className="bg-card rounded-lg border border-border p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                 <h3 className="font-semibold text-foreground">Trust Score Overview</h3>
-                <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${getTrustScoreBg(details.proctoring.trust_score)}`}>
-                  <Shield className={`h-5 w-5 ${getTrustScoreColor(details.proctoring.trust_score)}`} />
-                  <span className={`font-bold ${getTrustScoreColor(details.proctoring.trust_score)}`}>
-                    {details.proctoring.trust_score}%
+                <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${getTrustScoreBg(details?.proctoring?.trust_score)}`}>
+                  <Shield className={`h-5 w-5 ${getTrustScoreColor(details?.proctoring?.trust_score)}`} />
+                  <span className={`font-bold ${getTrustScoreColor(details?.proctoring?.trust_score)}`}>
+                    {details?.proctoring?.trust_score}%
                   </span>
                 </div>
               </div>
@@ -513,30 +647,30 @@ export default function CandidateDetailsPage() {
                 <div className="p-4 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground mb-1">Trust Level</p>
                   <p className="text-lg font-semibold text-foreground capitalize">
-                    {details.proctoring.trust_level}
+                    {details?.proctoring?.trust_level}
                   </p>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground mb-1">Total Events</p>
                   <p className="text-lg font-semibold text-foreground">
-                    {details.proctoring.total_events}
+                    {details?.proctoring?.total_events}
                   </p>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground mb-1">Critical Events</p>
                   <p className="text-lg font-semibold text-destructive">
-                    {details.proctoring.critical_events}
+                    {details?.proctoring?.critical_events}
                   </p>
                 </div>
               </div>
             </div>
 
             {/* Event Summary */}
-            {Object.keys(details.proctoring.event_summary).length > 0 && (
+            {Object.keys(details?.proctoring?.event_summary).length > 0 && (
               <div className="bg-card rounded-lg border border-border p-6">
                 <h3 className="font-semibold text-foreground mb-4">Violation Summary</h3>
                 <div className="space-y-3">
-                  {Object.entries(details.proctoring.event_summary).map(([eventType, data]: [string, any]) => (
+                  {Object.entries(details?.proctoring?.event_summary).map(([eventType, data]: [string, any]) => (
                     <div key={eventType} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-muted rounded-lg">
                       <div className="flex items-center gap-3">
                         <AlertTriangle
@@ -557,9 +691,9 @@ export default function CandidateDetailsPage() {
                           </p>
                         </div>
                       </div>
-                      {details.proctoring!.deductions[eventType] && (
+                      {details?.proctoring!.deductions[eventType] && (
                         <span className="text-sm font-semibold text-destructive">
-                          -{details.proctoring!.deductions[eventType].actual_deduction} points
+                          -{details?.proctoring!.deductions[eventType].actual_deduction} points
                         </span>
                       )}
                     </div>
@@ -578,11 +712,11 @@ export default function CandidateDetailsPage() {
                     <Camera className="h-5 w-5 text-primary" />
                     <h4 className="font-medium text-foreground">Webcam Recording</h4>
                   </div>
-                  {details.proctoring.webcam_recording_url ? (
+                  {details?.proctoring?.webcam_recording_url ? (
                     <video
                       controls
                       className="w-full rounded-lg bg-black"
-                      src={details.proctoring.webcam_recording_url}
+                      src={details?.proctoring?.webcam_recording_url}
                     >
                       Your browser does not support the video tag.
                     </video>
@@ -600,11 +734,11 @@ export default function CandidateDetailsPage() {
                     <Monitor className="h-5 w-5 text-primary" />
                     <h4 className="font-medium text-foreground">Screen Recording</h4>
                   </div>
-                  {details.proctoring.screen_recording_url ? (
+                  {details?.proctoring?.screen_recording_url ? (
                     <video
                       controls
                       className="w-full rounded-lg bg-black"
-                      src={details.proctoring.screen_recording_url}
+                      src={details?.proctoring?.screen_recording_url}
                     >
                       Your browser does not support the video tag.
                     </video>
@@ -622,10 +756,10 @@ export default function CandidateDetailsPage() {
             <div className="bg-card rounded-lg border border-border p-6">
               <h3 className="font-semibold text-foreground mb-4">Event Timeline</h3>
               <div className="space-y-2 max-h-96 overflow-y-auto">
-                {details.proctoring.events.length === 0 ? (
+                {details?.proctoring?.events.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">No proctoring events recorded</p>
                 ) : (
-                  details.proctoring.events.map((event, idx) => (
+                  details?.proctoring?.events.map((event, idx) => (
                     <div key={idx} className="flex items-start gap-3 p-3 bg-muted rounded-lg">
                       <AlertTriangle
                         className={`h-4 w-4 mt-0.5 ${

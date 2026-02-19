@@ -344,56 +344,82 @@ class AssessmentService:
         data: Step2Data,
         organization_id: str,
     ) -> Assessment | None:
-        """Save Step 2: Topic Distribution."""
+        """Save Step 2: Topic Distribution.
+
+        Uses upsert logic instead of delete-recreate to preserve
+        question topic_id references (FK has ON DELETE SET NULL).
+        """
         assessment = await self.get_assessment(assessment_id, organization_id)
         if not assessment:
             return None
 
-        # Delete existing topics
-        existing_topics = await self.db.execute(
+        # Get existing topics keyed by ID
+        existing_result = await self.db.execute(
             select(AssessmentTopic).where(
                 AssessmentTopic.assessment_id == assessment_id
             )
         )
-        for topic in existing_topics.scalars():
-            await self.db.delete(topic)
+        existing_topics = {t.id: t for t in existing_result.scalars()}
 
-        # Create new topics
+        # Track which existing topic IDs are still present
+        incoming_ids: set[str] = set()
+
         total_duration = 0
         total_questions = 0
         total_score = 0
 
         for idx, topic_config in enumerate(data.topics):
             # Validate topic ID is a valid UUID, otherwise generate new one
-            topic_id = str(uuid4())
+            topic_id = None
             if topic_config.id:
                 try:
-                    # Try to parse as UUID to validate format
                     UUID(topic_config.id)
                     topic_id = topic_config.id
                 except ValueError:
-                    # Invalid UUID format, use generated one
                     pass
 
-            topic = AssessmentTopic(
-                id=topic_id,
-                assessment_id=assessment_id,
-                topic=topic_config.topic,
-                subtopics=topic_config.subtopics,
-                difficulty_level=topic_config.difficulty_level.value,
-                question_types=topic_config.question_types.model_dump(),
-                fullstack_config=topic_config.fullstack_config.model_dump() if topic_config.fullstack_config else None,
-                estimated_time_minutes=topic_config.estimated_time_minutes,
-                max_score=topic_config.max_score,
-                additional_requirements=topic_config.additional_requirements,
-                sequence_order=idx,
-            )
-            self.db.add(topic)
+            if topic_id and topic_id in existing_topics:
+                # Update existing topic in place (preserves question FK references)
+                topic = existing_topics[topic_id]
+                topic.topic = topic_config.topic
+                topic.subtopics = topic_config.subtopics
+                topic.difficulty_level = topic_config.difficulty_level.value
+                topic.question_types = topic_config.question_types.model_dump()
+                topic.fullstack_config = topic_config.fullstack_config.model_dump() if topic_config.fullstack_config else None
+                topic.estimated_time_minutes = topic_config.estimated_time_minutes
+                topic.max_score = topic_config.max_score
+                topic.additional_requirements = topic_config.additional_requirements
+                topic.sequence_order = idx
+                incoming_ids.add(topic_id)
+            else:
+                # Create new topic
+                if not topic_id:
+                    topic_id = str(uuid4())
+                topic = AssessmentTopic(
+                    id=topic_id,
+                    assessment_id=assessment_id,
+                    topic=topic_config.topic,
+                    subtopics=topic_config.subtopics,
+                    difficulty_level=topic_config.difficulty_level.value,
+                    question_types=topic_config.question_types.model_dump(),
+                    fullstack_config=topic_config.fullstack_config.model_dump() if topic_config.fullstack_config else None,
+                    estimated_time_minutes=topic_config.estimated_time_minutes,
+                    max_score=topic_config.max_score,
+                    additional_requirements=topic_config.additional_requirements,
+                    sequence_order=idx,
+                )
+                self.db.add(topic)
+                incoming_ids.add(topic_id)
 
             total_duration += topic_config.estimated_time_minutes
             total_score += topic_config.max_score
             qt = topic_config.question_types
             total_questions += qt.code + qt.mcq + qt.subjective + qt.pseudo_code
+
+        # Only delete topics that were removed by the user
+        for old_id, old_topic in existing_topics.items():
+            if old_id not in incoming_ids:
+                await self.db.delete(old_topic)
 
         # Update assessment totals
         assessment.total_duration_minutes = total_duration
@@ -1086,6 +1112,41 @@ The Hiring Team"""
         except Exception as e:
             logger.error(f"Failed to send invitation email: {e}")
             return False
+
+    async def resend_invitation(
+        self,
+        assessment_id: str,
+        invitation_id: str,
+    ) -> bool:
+        """Resend invitation email for a specific candidate."""
+        invitation_result = await self.db.execute(
+            select(AssessmentInvitation).where(
+                AssessmentInvitation.id == invitation_id,
+                AssessmentInvitation.assessment_id == assessment_id,
+            )
+        )
+        invitation = invitation_result.scalar_one_or_none()
+        if not invitation:
+            return False
+
+        assessment_result = await self.db.execute(
+            select(Assessment).where(Assessment.id == assessment_id)
+        )
+        assessment = assessment_result.scalar_one_or_none()
+        if not assessment:
+            return False
+
+        email_sent = await self._send_invitation_email(
+            invitation=invitation,
+            assessment=assessment,
+        )
+        if email_sent:
+            invitation.email_sent_at = datetime.utcnow()
+            if invitation.status in (InvitationStatus.EXPIRED.value, "expired"):
+                invitation.status = InvitationStatus.SENT.value
+            await self.db.flush()
+
+        return email_sent
 
     # =========================================================================
     # METRICS

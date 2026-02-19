@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Trash2, Sparkles, ChevronDown, ChevronUp, Loader2, GripVertical, Wand2, Eye, Check, X, AlertCircle, Zap } from "lucide-react";
-import { Assessment, TopicConfig, DifficultyLevel, QuestionType, AssessmentQuestion } from "@/lib/api";
+import { Assessment, TopicConfig, DifficultyLevel, QuestionType, QuestionTypeConfig, AssessmentQuestion } from "@/lib/api";
 import { useAssessmentTopics, useAssessmentQuestions } from "@/hooks/useAssessments";
 
 const QUESTION_TYPES: { value: QuestionType; label: string; description: string }[] = [
@@ -164,6 +164,18 @@ export default function Step2TopicDistribution({
     );
   };
 
+  const buildQuestionTypesObj = (t: TopicRowState): QuestionTypeConfig => {
+    const obj: QuestionTypeConfig = { code: 0, mcq: 0, subjective: 0, pseudo_code: 0 };
+    const numTypes = t.question_types.length;
+    if (numTypes === 0) return obj;
+    const base = Math.floor(t.question_count / numTypes);
+    const rem = t.question_count % numTypes;
+    for (let i = 0; i < numTypes; i++) {
+      obj[t.question_types[i] as keyof QuestionTypeConfig] = base + (i < rem ? 1 : 0);
+    }
+    return obj;
+  };
+
   const handleSuggestTopics = async () => {
     if (!assessment.skills || assessment.skills.length === 0) return;
 
@@ -211,15 +223,21 @@ export default function Step2TopicDistribution({
     try {
       const allQuestions: GeneratedQuestion[] = [];
 
-      // Generate questions for each selected question type
-      for (const qType of topic.question_types) {
-        const countPerType = Math.ceil(topic.question_count / topic.question_types.length);
+      // Generate questions for each selected question type, distributing evenly
+      const numTypes = topic.question_types.length;
+      const baseCount = Math.floor(topic.question_count / numTypes);
+      const remainder = topic.question_count % numTypes;
+
+      for (let i = 0; i < topic.question_types.length; i++) {
+        const qType = topic.question_types[i];
+        const countForType = baseCount + (i < remainder ? 1 : 0);
+        if (countForType === 0) continue;
 
         const result = await generateQuestions({
           topic_id: topic.id,
           question_type: qType as QuestionType,
           difficulty: topic.difficulty_level,
-          count: countPerType,
+          count: countForType,
         });
 
         if (result?.questions) {
@@ -281,24 +299,15 @@ export default function Step2TopicDistribution({
 
     try {
       // First, save all topics to the database to get proper database IDs
-      const topicConfigs: TopicConfig[] = topics.map((t) => {
-        const questionTypesObj = {
-          code: t.question_types.includes("code") ? Math.ceil(t.question_count / t.question_types.length) : 0,
-          mcq: t.question_types.includes("mcq") ? Math.ceil(t.question_count / t.question_types.length) : 0,
-          subjective: t.question_types.includes("subjective") ? Math.ceil(t.question_count / t.question_types.length) : 0,
-          pseudo_code: t.question_types.includes("pseudo_code") ? Math.ceil(t.question_count / t.question_types.length) : 0,
-        };
-
-        return {
-          id: t.id,
-          topic: t.topic,
-          subtopics: t.subtopics,
-          difficulty_level: t.difficulty_level,
-          question_types: questionTypesObj,
-          estimated_time_minutes: t.duration_minutes,
-          max_score: t.question_count * 10,
-        };
-      });
+      const topicConfigs: TopicConfig[] = topics.map((t) => ({
+        id: t.id,
+        topic: t.topic,
+        subtopics: t.subtopics,
+        difficulty_level: t.difficulty_level,
+        question_types: buildQuestionTypesObj(t),
+        estimated_time_minutes: t.duration_minutes,
+        max_score: t.question_count * 10,
+      }));
 
       // Save topics and get the updated assessment with database IDs
       const updatedAssessment = await onSave({
@@ -390,25 +399,15 @@ export default function Step2TopicDistribution({
     setIsSaving(true);
     try {
       // Convert TopicRowState to TopicConfig
-      const topicConfigs: TopicConfig[] = topics.map((t) => {
-        // Build question_types object from array
-        const questionTypesObj = {
-          code: t.question_types.includes("code") ? Math.ceil(t.question_count / t.question_types.length) : 0,
-          mcq: t.question_types.includes("mcq") ? Math.ceil(t.question_count / t.question_types.length) : 0,
-          subjective: t.question_types.includes("subjective") ? Math.ceil(t.question_count / t.question_types.length) : 0,
-          pseudo_code: t.question_types.includes("pseudo_code") ? Math.ceil(t.question_count / t.question_types.length) : 0,
-        };
-
-        return {
-          id: t.id,
-          topic: t.topic,
-          subtopics: t.subtopics,
-          difficulty_level: t.difficulty_level,
-          question_types: questionTypesObj,
-          estimated_time_minutes: t.duration_minutes,
-          max_score: t.question_count * 10, // 10 points per question
-        };
-      });
+      const topicConfigs: TopicConfig[] = topics.map((t) => ({
+        id: t.id,
+        topic: t.topic,
+        subtopics: t.subtopics,
+        difficulty_level: t.difficulty_level,
+        question_types: buildQuestionTypesObj(t),
+        estimated_time_minutes: t.duration_minutes,
+        max_score: t.question_count * 10,
+      }));
 
       await onSave({
         topics: topicConfigs,
@@ -672,10 +671,19 @@ export default function Step2TopicDistribution({
                         type="number"
                         min={1}
                         max={50}
-                        value={topic.question_count || 5}
-                        onChange={(e) =>
-                          handleTopicChange(topic.id, "question_count", parseInt(e.target.value))
-                        }
+                        value={topic.question_count}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          const parsed = raw === "" ? 0 : parseInt(raw, 10);
+                          if (!isNaN(parsed)) {
+                            handleTopicChange(topic.id, "question_count", Math.min(50, Math.max(0, parsed)));
+                          }
+                        }}
+                        onBlur={() => {
+                          if (!topic.question_count || topic.question_count < 1) {
+                            handleTopicChange(topic.id, "question_count", 1);
+                          }
+                        }}
                         className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground"
                       />
                     </div>
@@ -687,10 +695,19 @@ export default function Step2TopicDistribution({
                         type="number"
                         min={1}
                         max={180}
-                        value={topic.duration_minutes || 10}
-                        onChange={(e) =>
-                          handleTopicChange(topic.id, "duration_minutes", parseInt(e.target.value))
-                        }
+                        value={topic.duration_minutes}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          const parsed = raw === "" ? 0 : parseInt(raw, 10);
+                          if (!isNaN(parsed)) {
+                            handleTopicChange(topic.id, "duration_minutes", Math.min(180, Math.max(0, parsed)));
+                          }
+                        }}
+                        onBlur={() => {
+                          if (!topic.duration_minutes || topic.duration_minutes < 1) {
+                            handleTopicChange(topic.id, "duration_minutes", 1);
+                          }
+                        }}
                         className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground"
                       />
                     </div>

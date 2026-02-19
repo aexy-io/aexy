@@ -911,6 +911,27 @@ async def remove_candidate(
         )
 
 
+@router.post(
+    "/{assessment_id}/candidates/{invitation_id}/resend-invite",
+    status_code=status.HTTP_200_OK,
+)
+async def resend_candidate_invite(
+    assessment_id: str,
+    invitation_id: str,
+    developer_id: str = Depends(get_current_developer_id),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Resend invitation email to a candidate."""
+    service = AssessmentService(db)
+    sent = await service.resend_invitation(assessment_id, invitation_id)
+    if not sent:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to send invitation email. Check that the candidate has a valid email address.",
+        )
+    return {"success": True, "message": "Invitation email resent successfully"}
+
+
 # =============================================================================
 # EMAIL TEMPLATE
 # =============================================================================
@@ -1181,6 +1202,114 @@ async def register_for_public_assessment(
         )
 
 
+@router.post(
+    "/{assessment_id}/candidates/{invitation_id}/reevaluate",
+    response_model=dict[str, Any],
+    tags=["assessments"],
+)
+async def reevaluate_candidate(
+    assessment_id: str,
+    invitation_id: str,
+    workspace_id: str | None = Query(None),
+    developer_id: str = Depends(get_current_developer_id),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Re-evaluate all submissions for a candidate's latest attempt."""
+    from aexy.models.assessment import (
+        AssessmentInvitation,
+        AssessmentAttempt,
+        QuestionSubmission,
+        SubmissionEvaluation,
+        Question,
+    )
+    from aexy.services.assessment_evaluation_service import AssessmentEvaluationService
+
+    service = AssessmentService(db)
+    assessment = await service.get_assessment(assessment_id, workspace_id)
+    if not assessment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assessment not found",
+        )
+
+    invitation_query = select(AssessmentInvitation).where(
+        AssessmentInvitation.id == invitation_id,
+        AssessmentInvitation.assessment_id == assessment_id,
+    )
+    invitation_result = await db.execute(invitation_query)
+    invitation = invitation_result.scalar_one_or_none()
+    if not invitation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invitation not found",
+        )
+
+    attempt_query = (
+        select(AssessmentAttempt)
+        .where(AssessmentAttempt.invitation_id == invitation_id)
+        .order_by(AssessmentAttempt.created_at.desc())
+        .limit(1)
+    )
+    attempt_result = await db.execute(attempt_query)
+    attempt = attempt_result.scalar_one_or_none()
+    if not attempt:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No attempt found for this candidate",
+        )
+
+    submissions_query = select(QuestionSubmission).where(
+        QuestionSubmission.attempt_id == attempt.id
+    )
+    submissions_result = await db.execute(submissions_query)
+    submissions = submissions_result.scalars().all()
+
+    if not submissions:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No submissions found for this attempt",
+        )
+
+    # Delete existing evaluations
+    for submission in submissions:
+        eval_query = select(SubmissionEvaluation).where(
+            SubmissionEvaluation.submission_id == submission.id
+        )
+        eval_result = await db.execute(eval_query)
+        for ev in eval_result.scalars().all():
+            await db.delete(ev)
+    await db.commit()
+
+    # Re-evaluate each submission
+    eval_service = AssessmentEvaluationService(db)
+    evaluated_count = 0
+    errors = []
+
+    for submission in submissions:
+        question_query = select(Question).where(Question.id == submission.question_id)
+        q_result = await db.execute(question_query)
+        question = q_result.scalar_one_or_none()
+
+        if question:
+            try:
+                await eval_service.evaluate_submission(submission, question)
+                evaluated_count += 1
+            except Exception as e:
+                logger.exception(f"Failed to evaluate submission {submission.id}: {e}")
+                errors.append(str(submission.id))
+
+    # Recalculate attempt score
+    score_result = await eval_service.calculate_attempt_score(str(attempt.id))
+
+    return {
+        "message": "Re-evaluation completed",
+        "evaluated_count": evaluated_count,
+        "total_submissions": len(submissions),
+        "errors": errors,
+        "score": score_result,
+    }
+
+
 @router.get(
     "/{assessment_id}/candidates/{invitation_id}/details",
     response_model=dict[str, Any],
@@ -1247,9 +1376,22 @@ async def get_candidate_details(
                 "name": invitation.candidate.name if invitation.candidate else None,
                 "email": invitation.candidate.email if invitation.candidate else None,
             },
-            "status": invitation.status.value if hasattr(invitation.status, 'value') else invitation.status,
-            "invited_at": invitation.invited_at.isoformat() if invitation.invited_at else None,
+            "invitation": {
+                "id": str(invitation.id),
+                "status": invitation.status.value if hasattr(invitation.status, 'value') else invitation.status,
+                "invited_at": invitation.invited_at.isoformat() if invitation.invited_at else None,
+                "started_at": invitation.started_at.isoformat() if invitation.started_at else None,
+                "completed_at": invitation.completed_at.isoformat() if invitation.completed_at else None,
+            },
             "attempt": None,
+            "submissions": [],
+            "proctoring": None,
+            "assessment": {
+                "id": str(assessment.id),
+                "title": assessment.title,
+                "total_questions": assessment.total_questions,
+                "max_score": assessment.max_score,
+            },
         }
 
     # Get all submissions for this attempt

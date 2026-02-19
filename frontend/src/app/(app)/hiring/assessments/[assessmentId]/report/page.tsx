@@ -121,10 +121,14 @@ function CandidateRow({
   candidate,
   onView,
   onResend,
+  resending,
+  resendStatus,
 }: {
   candidate: CandidateResult;
   onView: () => void;
   onResend: () => void;
+  resending?: boolean;
+  resendStatus?: "success" | "error" | null;
 }) {
   const [showMenu, setShowMenu] = useState(false);
 
@@ -214,16 +218,37 @@ function CandidateRow({
                 <Eye className="h-4 w-4" />
                 View Details
               </button>
-              {candidate.status === "invited" && (
+              {(candidate.status === "invited" || candidate.status === "expired") && (
                 <button
                   onClick={() => {
                     setShowMenu(false);
                     onResend();
                   }}
-                  className="flex items-center gap-2 w-full px-4 py-2 text-sm text-popover-foreground hover:bg-accent"
+                  disabled={resending}
+                  className={`flex items-center gap-2 w-full px-4 py-2 text-sm hover:bg-accent disabled:opacity-50 ${
+                    resendStatus === "success"
+                      ? "text-success"
+                      : resendStatus === "error"
+                      ? "text-destructive"
+                      : "text-popover-foreground"
+                  }`}
                 >
-                  <Mail className="h-4 w-4" />
-                  Resend Invite
+                  {resending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : resendStatus === "success" ? (
+                    <CheckCircle className="h-4 w-4" />
+                  ) : resendStatus === "error" ? (
+                    <AlertCircle className="h-4 w-4" />
+                  ) : (
+                    <Mail className="h-4 w-4" />
+                  )}
+                  {resending
+                    ? "Sending..."
+                    : resendStatus === "success"
+                    ? "Sent!"
+                    : resendStatus === "error"
+                    ? "Failed"
+                    : "Resend Invite"}
                 </button>
               )}
             </div>
@@ -255,6 +280,33 @@ export default function AssessmentReportPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sortBy, setSortBy] = useState<"score" | "date" | "name">("date");
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [resendResult, setResendResult] = useState<{ id: string; status: "success" | "error" } | null>(null);
+
+  const handleResendInvite = async (candidateId: string) => {
+    if (resendingId) return;
+    setResendingId(candidateId);
+    setResendResult(null);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/assessments/${assessmentId}/candidates/${candidateId}/resend-invite`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to resend invite");
+      }
+      setResendResult({ id: candidateId, status: "success" });
+    } catch {
+      setResendResult({ id: candidateId, status: "error" });
+    } finally {
+      setResendingId(null);
+      setTimeout(() => setResendResult(null), 3000);
+    }
+  };
 
   // Transform invitation data to CandidateResult format
   const candidates: CandidateResult[] = (rawCandidates || []).map((invitation) => {
@@ -534,10 +586,9 @@ export default function AssessmentReportPage() {
                         `/hiring/assessments/${assessmentId}/candidates/${candidate.id}`
                       )
                     }
-                    onResend={() => {
-                      // TODO: Implement resend
-                      console.log("Resend invite to", candidate.candidate_email);
-                    }}
+                    onResend={() => handleResendInvite(candidate.id)}
+                    resending={resendingId === candidate.id}
+                    resendStatus={resendResult?.id === candidate.id ? resendResult.status : null}
                   />
                 ))}
               </tbody>
