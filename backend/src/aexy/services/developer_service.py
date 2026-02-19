@@ -193,9 +193,11 @@ class DeveloperService:
         # Try to find by GitHub ID first
         developer = await self.get_by_github_id(github_id)
         if developer:
-            # Update access token
+            # Update access token and reset auth status
             if developer.github_connection:
                 developer.github_connection.access_token = access_token
+                developer.github_connection.auth_status = "active"
+                developer.github_connection.auth_error = None
                 if scopes:
                     developer.github_connection.scopes = scopes
                 await self.db.flush()

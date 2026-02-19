@@ -145,7 +145,7 @@ async def sync_all_calendars(input: SyncAllCalendarsInput) -> dict[str, Any]:
                 try:
                     from aexy.services.booking.calendar_sync_service import CalendarSyncService
                     calendar_service = CalendarSyncService(db)
-                    await calendar_service.sync_calendar_events(str(connection.id))
+                    await calendar_service.sync_calendar(str(connection.id))
                     synced_count += 1
                 except Exception as e:
                     logger.error(f"Failed to sync calendar connection {connection.id}: {e}")

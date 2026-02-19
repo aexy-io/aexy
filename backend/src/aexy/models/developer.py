@@ -33,7 +33,7 @@ class Developer(Base):
         primary_key=True,
         default=lambda: str(uuid4()),
     )
-    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
     name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
@@ -227,6 +227,10 @@ class GitHubConnection(Base):
 
     # Scopes granted by user
     scopes: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+
+    # Connection health: "active" or "error"
+    auth_status: Mapped[str] = mapped_column(String(50), default="active", server_default="active")
+    auth_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

@@ -46,18 +46,34 @@ async def sync_repository(input: SyncRepositoryInput) -> dict[str, Any]:
     logger.info(f"Syncing repository {input.repository_id}")
     activity.heartbeat("Starting repository sync")
 
+    from aexy.services.github_service import GitHubAuthError
     from aexy.services.sync_service import SyncService
 
     async with async_session_maker() as db:
         service = SyncService(db)
-        result = await service.sync_repository(
-            repository_id=input.repository_id,
-            developer_id=input.developer_id,
-            installation_id=input.installation_id,
-            heartbeat_fn=activity.heartbeat,
-        )
-        await db.commit()
-        return result
+        try:
+            result = await service.sync_repository(
+                developer_id=input.developer_id,
+                repository_id=input.repository_id,
+                heartbeat_fn=activity.heartbeat,
+            )
+            await db.commit()
+            return result
+        except GitHubAuthError:
+            # Commit the auth_status/auth_error changes made by SyncService
+            try:
+                await db.commit()
+            except Exception:
+                await db.rollback()
+            raise
+        except Exception:
+            # Commit any status changes (e.g. sync_status=failed).
+            # If the session is poisoned by an IntegrityError, rollback instead.
+            try:
+                await db.commit()
+            except Exception:
+                await db.rollback()
+            raise
 
 
 @activity.defn

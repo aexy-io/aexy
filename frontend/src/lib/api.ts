@@ -141,6 +141,8 @@ export interface GitHubConnection {
   github_name: string | null;
   github_avatar_url: string | null;
   connected_at: string | null;
+  auth_status: "active" | "error";
+  auth_error: string | null;
 }
 
 export interface Developer {
