@@ -25,6 +25,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAssessment, useAssessmentMetrics, useAssessmentCandidates } from "@/hooks/useAssessments";
+import { formatDuration } from "@/lib/utils";
 
 interface CandidateResult {
   id: string;
@@ -35,7 +36,10 @@ interface CandidateResult {
   trust_score: number | null;
   started_at: string | null;
   completed_at: string | null;
-  time_taken_minutes: number | null;
+  time_taken_seconds: number | null;
+  percentage_score: number | null;
+  attempt_completed_at: string | null;
+  attempt_started_at: string | null;
 }
 
 function MetricCard({
@@ -175,24 +179,22 @@ function CandidateRow({
       </td>
       <td className="px-4 py-3">{getStatusBadge(candidate.status)}</td>
       <td className="px-4 py-3">
-        {candidate.score !== null ? (
-          <span className="font-semibold text-foreground">{candidate.score}%</span>
+        {candidate.percentage_score !== null ? (
+          <span className="font-semibold text-foreground">{candidate.percentage_score}%</span>
         ) : (
           <span className="text-muted-foreground">-</span>
         )}
       </td>
       <td className="px-4 py-3">{getTrustScoreBadge(candidate.trust_score)}</td>
       <td className="px-4 py-3">
-        {candidate.time_taken_minutes !== null ? (
-          <span className="text-foreground">{candidate.time_taken_minutes} min</span>
-        ) : (
-          <span className="text-muted-foreground">-</span>
-        )}
+        <span className={candidate.time_taken_seconds ? "text-foreground" : "text-muted-foreground"}>
+          {formatDuration(candidate.time_taken_seconds)}
+        </span>
       </td>
       <td className="px-4 py-3">
-        {candidate.completed_at ? (
+        {candidate.attempt_completed_at ? (
           <span className="text-sm text-muted-foreground">
-            {new Date(candidate.completed_at).toLocaleDateString()}
+            {new Date(candidate.attempt_completed_at).toLocaleDateString()}
           </span>
         ) : (
           <span className="text-muted-foreground">-</span>
@@ -310,12 +312,12 @@ export default function AssessmentReportPage() {
 
   // Transform invitation data to CandidateResult format
   const candidates: CandidateResult[] = (rawCandidates || []).map((invitation) => {
-    // Calculate time taken if completed
-    let timeTakenMinutes: number | null = null;
-    if (invitation.started_at && invitation.completed_at) {
+    // Calculate time taken from backend field, or compute from timestamps
+    let timeTakenSeconds: number | null = invitation.time_taken_seconds ?? null;
+    if (!timeTakenSeconds && invitation.started_at && invitation.completed_at) {
       const startTime = new Date(invitation.started_at).getTime();
       const endTime = new Date(invitation.completed_at).getTime();
-      timeTakenMinutes = Math.round((endTime - startTime) / 60000);
+      timeTakenSeconds = Math.round((endTime - startTime) / 1000);
     }
 
     // Map status
@@ -337,7 +339,10 @@ export default function AssessmentReportPage() {
       trust_score: invitation.latest_trust_score ?? null,
       started_at: invitation.started_at,
       completed_at: invitation.completed_at,
-      time_taken_minutes: timeTakenMinutes,
+      time_taken_seconds: timeTakenSeconds,
+      percentage_score: invitation.percentage_score ?? null,
+      attempt_completed_at: invitation.attempt_completed_at ?? null,
+      attempt_started_at: invitation.attempt_started_at ?? null,
     };
   });
 
@@ -375,11 +380,11 @@ export default function AssessmentReportPage() {
   const averageScore =
     completedCandidates.length > 0
       ? Math.round(
-          completedCandidates.reduce((sum, c) => sum + (c.score || 0), 0) /
+          completedCandidates.reduce((sum, c) => sum + (c.percentage_score || 0), 0) /
             completedCandidates.length
         )
       : 0;
-  const scores = completedCandidates.map((c) => c.score || 0);
+  const scores = completedCandidates.map((c) => c.percentage_score || 0);
 
   if (authLoading || workspacesLoading || assessmentLoading) {
     return (
@@ -447,14 +452,16 @@ export default function AssessmentReportPage() {
           />
           <MetricCard
             title="Avg Time"
-            value={`${
+            value={
               completedCandidates.length > 0
-                ? Math.round(
-                    completedCandidates.reduce((sum, c) => sum + (c.time_taken_minutes || 0), 0) /
-                      completedCandidates.length
+                ? formatDuration(
+                    Math.round(
+                      completedCandidates.reduce((sum, c) => sum + (c.time_taken_seconds || 0), 0) /
+                        completedCandidates.length
+                    )
                   )
-                : 0
-            } min`}
+                : "-"
+            }
             icon={Clock}
             color="yellow"
           />

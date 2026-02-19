@@ -7379,6 +7379,10 @@ export interface AssessmentInvitation {
   attempt_count?: number;
   latest_score?: number | null;
   latest_trust_score?: number | null;
+  percentage_score?:number | null;
+  time_taken_seconds?: number | null;
+  attempt_started_at?: string | null;
+  attempt_completed_at?: string | null;
   // Alternative flat properties
   candidate_email?: string;
   candidate_name?: string;

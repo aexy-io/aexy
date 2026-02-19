@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import uuid4, UUID
 
-from sqlalchemy import func, select, and_, or_
+from sqlalchemy import case, func, select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -200,36 +200,98 @@ class AssessmentService:
         search: str | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> tuple[list[Assessment], int]:
-        """List assessments with filters and pagination."""
-        query = select(Assessment).where(
-            Assessment.organization_id == organization_id
-        )
-        count_query = select(func.count(Assessment.id)).where(
-            Assessment.organization_id == organization_id
-        )
+    ) -> tuple[list[dict[str, Any]], int]:
+        """List assessments with filters, pagination, and candidate stats."""
+        base_filter = Assessment.organization_id == organization_id
+        count_query = select(func.count(Assessment.id)).where(base_filter)
 
         if status:
-            query = query.where(Assessment.status == status.value)
             count_query = count_query.where(Assessment.status == status.value)
-
         if search:
             search_filter = or_(
                 Assessment.title.ilike(f"%{search}%"),
                 Assessment.job_designation.ilike(f"%{search}%"),
             )
-            query = query.where(search_filter)
             count_query = count_query.where(search_filter)
 
-        # Get total count
         count_result = await self.db.execute(count_query)
         total = count_result.scalar() or 0
 
-        # Get paginated results
-        query = query.order_by(Assessment.created_at.desc())
-        query = query.offset(offset).limit(limit)
-        result = await self.db.execute(query)
-        assessments = list(result.scalars().all())
+        # Main query: get paginated assessments first (fast)
+        assessment_query = select(Assessment).where(base_filter)
+        if status:
+            assessment_query = assessment_query.where(Assessment.status == status.value)
+        if search:
+            assessment_query = assessment_query.where(or_(
+                Assessment.title.ilike(f"%{search}%"),
+                Assessment.job_designation.ilike(f"%{search}%"),
+            ))
+        assessment_query = assessment_query.order_by(Assessment.created_at.desc())
+        assessment_query = assessment_query.offset(offset).limit(limit)
+        result = await self.db.execute(assessment_query)
+        assessment_list = list(result.scalars().all())
+
+        if not assessment_list:
+            return [], total
+
+        # Batch compute stats for the fetched assessment IDs
+        assessment_ids = [a.id for a in assessment_list]
+
+        # Invitation counts in one query using CASE for conditional count
+        inv_stats_query = (
+            select(
+                AssessmentInvitation.assessment_id,
+                func.count(AssessmentInvitation.id).label("total"),
+                func.sum(
+                    case(
+                        (AssessmentInvitation.status == InvitationStatus.COMPLETED.value, 1),
+                        else_=0,
+                    )
+                ).label("completed"),
+            )
+            .where(AssessmentInvitation.assessment_id.in_(assessment_ids))
+            .group_by(AssessmentInvitation.assessment_id)
+        )
+        inv_result = await self.db.execute(inv_stats_query)
+        inv_stats = {str(row[0]): {"total": row[1], "completed": int(row[2] or 0)} for row in inv_result.all()}
+
+        # Average scores in one query
+        avg_score_query = (
+            select(
+                AssessmentInvitation.assessment_id,
+                func.avg(AssessmentAttempt.percentage_score).label("avg_score"),
+            )
+            .join(
+                AssessmentAttempt,
+                AssessmentAttempt.invitation_id == AssessmentInvitation.id,
+            )
+            .where(
+                AssessmentInvitation.assessment_id.in_(assessment_ids),
+                AssessmentAttempt.percentage_score.isnot(None),
+            )
+            .group_by(AssessmentInvitation.assessment_id)
+        )
+        avg_result = await self.db.execute(avg_score_query)
+        avg_scores = {str(row[0]): float(row[1]) for row in avg_result.all()}
+
+        assessments = []
+        for assessment in assessment_list:
+            aid = str(assessment.id)
+            stats = inv_stats.get(aid, {"total": 0, "completed": 0})
+            avg = avg_scores.get(aid)
+            assessments.append({
+                "id": aid,
+                "title": assessment.title,
+                "job_designation": assessment.job_designation,
+                "status": assessment.status,
+                "total_questions": assessment.total_questions,
+                "total_duration_minutes": assessment.total_duration_minutes,
+                "total_candidates": stats["total"],
+                "completed_candidates": stats["completed"],
+                "average_score": round(avg, 2) if avg is not None else None,
+                "created_at": assessment.created_at,
+                "published_at": assessment.published_at,
+            })
 
         return assessments, total
 

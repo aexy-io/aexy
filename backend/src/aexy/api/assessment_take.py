@@ -411,6 +411,7 @@ async def start_assessment(
                 candidate_id=candidate.id,
                 invitation_token=secrets.token_urlsafe(32),
                 status=InvitationStatus.PENDING,
+                started_at = datetime.now(timezone.utc)
             )
             db.add(invitation)
             await db.flush()
@@ -470,6 +471,8 @@ async def start_assessment(
 
     # Update invitation status
     invitation.status = InvitationStatus.STARTED
+    if not invitation.started_at:
+        invitation.started_at = datetime.now(timezone.utc)
 
     db.add(attempt)
     await db.commit()
@@ -693,6 +696,7 @@ async def complete_assessment(
 
     # Update invitation status
     invitation.status = InvitationStatus.COMPLETED
+    invitation.completed_at = datetime.now(timezone.utc)
     proctoring_service = ProctoringService(db)
     breakdown = await proctoring_service.get_trust_score_breakdown(str(attempt.id))
 

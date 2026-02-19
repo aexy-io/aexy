@@ -169,8 +169,8 @@ export default function HiringDashboardPage() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <Link
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          {/* <Link
             href="/hiring/candidates"
             className="group bg-gradient-to-br from-info/10 to-info/5 rounded-xl border border-info/30 p-5 hover:border-info/50 transition"
           >
@@ -182,7 +182,7 @@ export default function HiringDashboardPage() {
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-1">Add Candidate</h3>
             <p className="text-sm text-muted-foreground">Add a new candidate to your pipeline</p>
-          </Link>
+          </Link> */}
 
           <Link
             href="/hiring/assessments/new"
@@ -213,7 +213,7 @@ export default function HiringDashboardPage() {
           </Link>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
+        <div className="grid lg:grid-cols-2 gap-4">
           {/* Recent Assessments */}
           <div className="bg-card rounded-xl border border-border overflow-hidden">
             <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">

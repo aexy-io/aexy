@@ -199,7 +199,7 @@ async def list_assessments(
         offset=offset,
     )
     return {
-        "items": [AssessmentSummary.model_validate(a) for a in assessments],
+        "items": assessments,
         "total": total,
         "limit": limit,
         "offset": offset,
@@ -840,7 +840,14 @@ async def list_candidates(
         if hasattr(inv, "attempts") and inv.attempts:
             latest = sorted(inv.attempts, key=lambda a: a.created_at, reverse=True)[0]
             inv_dict["latest_score"] = float(latest.total_score) if latest.total_score else None
+            inv_dict["percentage_score"] = float(latest.percentage_score) if latest.percentage_score else None
             inv_dict["latest_trust_score"] = float(latest.trust_score) if latest.trust_score else None
+            inv_dict["attempt_started_at"] = latest.started_at
+            inv_dict["attempt_completed_at"] = latest.completed_at
+            if latest.started_at and latest.completed_at:
+                inv_dict["time_taken_seconds"] = int((latest.completed_at - latest.started_at).total_seconds())
+            elif latest.time_taken_seconds:
+                inv_dict["time_taken_seconds"] = latest.time_taken_seconds
 
         result.append(InvitationWithAttempt(**inv_dict))
 

@@ -686,6 +686,10 @@ class InvitationWithAttempt(InvitationResponse):
     attempt_count: int = 0
     latest_score: float | None = None
     latest_trust_score: float | None = None
+    percentage_score: float | None = None
+    attempt_started_at: datetime | None = None
+    attempt_completed_at: datetime | None = None
+    time_taken_seconds: int | None = None
 
 
 # ============================================================================

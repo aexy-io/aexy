@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { formatDuration } from "@/lib/utils";
 
 interface CandidateDetails {
   candidate: {
@@ -236,13 +237,6 @@ export default function CandidateDetailsPage() {
     return "bg-destructive/10";
   };
 
-  const formatDuration = (seconds: number | null) => {
-    if (!seconds) return "N/A";
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}m ${secs}s`;
-  };
-
   const formatTimestamp = (timestamp: string) => {
     return new Date(timestamp).toLocaleString();
   };
@@ -366,9 +360,7 @@ export default function CandidateDetailsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Time Taken</p>
                 <p className="text-3xl font-bold text-foreground">
-                  {details?.attempt?.time_taken_seconds
-                    ? `${Math.round(details?.attempt.time_taken_seconds / 60)}m`
-                    : "N/A"}
+                  {formatDuration(details?.attempt?.time_taken_seconds ?? null)}
                 </p>
               </div>
               <Clock className="h-8 w-8 text-blue-500 opacity-50" />
