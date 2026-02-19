@@ -1142,6 +1142,8 @@ The Hiring Team"""
         )
         if email_sent:
             invitation.email_sent_at = datetime.utcnow()
+            if invitation.status in (InvitationStatus.EXPIRED.value, "expired"):
+                invitation.status = InvitationStatus.SENT.value
             await self.db.flush()
 
         return email_sent

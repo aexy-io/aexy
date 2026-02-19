@@ -352,12 +352,12 @@ export default function CandidateDetailsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Trust Score</p>
-                <p className={`text-3xl font-bold ${details?.proctoring ? getTrustScoreColor(details?.proctoring.trust_score) : "text-muted-foreground"}`}>
+                <p className={`text-3xl font-bold ${details?.proctoring ? getTrustScoreColor(details?.proctoring?.trust_score) : "text-muted-foreground"}`}>
                   {details?.proctoring?.trust_score || "N/A"}
                   {details?.proctoring && "%"}
                 </p>
               </div>
-              <Shield className={`h-8 w-8 opacity-50 ${details?.proctoring ? getTrustScoreColor(details?.proctoring.trust_score) : "text-muted-foreground"}`} />
+              <Shield className={`h-8 w-8 opacity-50 ${details?.proctoring ? getTrustScoreColor(details?.proctoring?.trust_score) : "text-muted-foreground"}`} />
             </div>
           </div>
 
@@ -493,20 +493,20 @@ export default function CandidateDetailsPage() {
                   <div>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                       <span className="text-sm text-muted-foreground">Trust Score</span>
-                      <span className={`font-semibold ${getTrustScoreColor(details?.proctoring.trust_score)}`}>
-                        {details?.proctoring.trust_score}%
+                      <span className={`font-semibold ${getTrustScoreColor(details?.proctoring?.trust_score)}`}>
+                        {details?.proctoring?.trust_score}%
                       </span>
                     </div>
                     <div className="w-full bg-muted rounded-full h-2">
                       <div
                         className={`h-2 rounded-full transition-all ${
-                          details?.proctoring.trust_score >= 90
+                          details?.proctoring?.trust_score >= 90
                             ? "bg-success"
-                            : details?.proctoring.trust_score >= 70
+                            : details?.proctoring?.trust_score >= 70
                             ? "bg-warning"
                             : "bg-destructive"
                         }`}
-                        style={{ width: `${details?.proctoring.trust_score || 0}%` }}
+                        style={{ width: `${details?.proctoring?.trust_score || 0}%` }}
                       />
                     </div>
                   </div>
@@ -529,7 +529,7 @@ export default function CandidateDetailsPage() {
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Violations</span>
                       <span className="text-foreground font-medium">
-                        {details?.proctoring.total_events} ({details?.proctoring.critical_events} critical)
+                        {details?.proctoring?.total_events} ({details?.proctoring?.critical_events} critical)
                       </span>
                     </div>
                   )}
@@ -565,7 +565,7 @@ export default function CandidateDetailsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {details?.submissions.map((submission, idx) => (
+                {details?.submissions?.map((submission, idx) => (
                   <tr key={submission.question_id} className="hover:bg-accent">
                     <td className="px-4 py-3">
                       <div>
@@ -635,10 +635,10 @@ export default function CandidateDetailsPage() {
             <div className="bg-card rounded-lg border border-border p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                 <h3 className="font-semibold text-foreground">Trust Score Overview</h3>
-                <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${getTrustScoreBg(details?.proctoring.trust_score)}`}>
-                  <Shield className={`h-5 w-5 ${getTrustScoreColor(details?.proctoring.trust_score)}`} />
-                  <span className={`font-bold ${getTrustScoreColor(details?.proctoring.trust_score)}`}>
-                    {details?.proctoring.trust_score}%
+                <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${getTrustScoreBg(details?.proctoring?.trust_score)}`}>
+                  <Shield className={`h-5 w-5 ${getTrustScoreColor(details?.proctoring?.trust_score)}`} />
+                  <span className={`font-bold ${getTrustScoreColor(details?.proctoring?.trust_score)}`}>
+                    {details?.proctoring?.trust_score}%
                   </span>
                 </div>
               </div>
@@ -647,30 +647,30 @@ export default function CandidateDetailsPage() {
                 <div className="p-4 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground mb-1">Trust Level</p>
                   <p className="text-lg font-semibold text-foreground capitalize">
-                    {details?.proctoring.trust_level}
+                    {details?.proctoring?.trust_level}
                   </p>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground mb-1">Total Events</p>
                   <p className="text-lg font-semibold text-foreground">
-                    {details?.proctoring.total_events}
+                    {details?.proctoring?.total_events}
                   </p>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground mb-1">Critical Events</p>
                   <p className="text-lg font-semibold text-destructive">
-                    {details?.proctoring.critical_events}
+                    {details?.proctoring?.critical_events}
                   </p>
                 </div>
               </div>
             </div>
 
             {/* Event Summary */}
-            {Object.keys(details?.proctoring.event_summary).length > 0 && (
+            {Object.keys(details?.proctoring?.event_summary).length > 0 && (
               <div className="bg-card rounded-lg border border-border p-6">
                 <h3 className="font-semibold text-foreground mb-4">Violation Summary</h3>
                 <div className="space-y-3">
-                  {Object.entries(details?.proctoring.event_summary).map(([eventType, data]: [string, any]) => (
+                  {Object.entries(details?.proctoring?.event_summary).map(([eventType, data]: [string, any]) => (
                     <div key={eventType} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-muted rounded-lg">
                       <div className="flex items-center gap-3">
                         <AlertTriangle
@@ -712,11 +712,11 @@ export default function CandidateDetailsPage() {
                     <Camera className="h-5 w-5 text-primary" />
                     <h4 className="font-medium text-foreground">Webcam Recording</h4>
                   </div>
-                  {details?.proctoring.webcam_recording_url ? (
+                  {details?.proctoring?.webcam_recording_url ? (
                     <video
                       controls
                       className="w-full rounded-lg bg-black"
-                      src={details?.proctoring.webcam_recording_url}
+                      src={details?.proctoring?.webcam_recording_url}
                     >
                       Your browser does not support the video tag.
                     </video>
@@ -734,11 +734,11 @@ export default function CandidateDetailsPage() {
                     <Monitor className="h-5 w-5 text-primary" />
                     <h4 className="font-medium text-foreground">Screen Recording</h4>
                   </div>
-                  {details?.proctoring.screen_recording_url ? (
+                  {details?.proctoring?.screen_recording_url ? (
                     <video
                       controls
                       className="w-full rounded-lg bg-black"
-                      src={details?.proctoring.screen_recording_url}
+                      src={details?.proctoring?.screen_recording_url}
                     >
                       Your browser does not support the video tag.
                     </video>
@@ -756,10 +756,10 @@ export default function CandidateDetailsPage() {
             <div className="bg-card rounded-lg border border-border p-6">
               <h3 className="font-semibold text-foreground mb-4">Event Timeline</h3>
               <div className="space-y-2 max-h-96 overflow-y-auto">
-                {details?.proctoring.events.length === 0 ? (
+                {details?.proctoring?.events.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">No proctoring events recorded</p>
                 ) : (
-                  details?.proctoring.events.map((event, idx) => (
+                  details?.proctoring?.events.map((event, idx) => (
                     <div key={idx} className="flex items-start gap-3 p-3 bg-muted rounded-lg">
                       <AlertTriangle
                         className={`h-4 w-4 mt-0.5 ${

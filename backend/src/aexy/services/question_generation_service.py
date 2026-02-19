@@ -540,7 +540,7 @@ class QuestionGenerationService:
         elif question_type == QuestionType.SUBJECTIVE:
             question.problem_statement = generated_data.get("question_text", "")
             question.evaluation_rubric = generated_data.get("evaluation_rubric", {})
-            question.expected_keywords = generated_data.get("key_points", [])
+            question.key_points = generated_data.get("key_points", [])
             question.max_marks = generated_data.get("total_points", 100)
             question.time_limit_seconds = generated_data.get("time_estimate_minutes", 10) * 60
             question.metadata = {
