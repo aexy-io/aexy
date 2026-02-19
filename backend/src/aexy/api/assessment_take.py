@@ -5,7 +5,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.core.database import get_db
@@ -322,14 +322,16 @@ async def get_assessment_info(
     topics_result = await db.execute(topics_query)
     topics = topics_result.scalars().all()
 
-    topics_data = [
-        {
+    topics_data = []
+    computed_total_questions = 0
+    for t in topics:
+        q_count = sum((t.question_types or {}).values()) if t.question_types else 0
+        computed_total_questions += q_count
+        topics_data.append({
             "name": t.topic,
             "duration_minutes": t.estimated_time_minutes,
-            "question_count": sum((t.question_types or {}).values()) if t.question_types else 0,
-        }
-        for t in topics
-    ]
+            "question_count": q_count,
+        })
 
     # Proctoring settings
     proctoring = assessment.proctoring_settings or {}
@@ -342,7 +344,7 @@ async def get_assessment_info(
         title=assessment.title,
         job_designation=assessment.job_designation,
         description=assessment.description,
-        total_questions=assessment.total_questions or 0,
+        total_questions=computed_total_questions or assessment.total_questions or 0,
         total_duration_minutes=assessment.total_duration_minutes or 0,
         topics=topics_data,
         instructions=instructions,
@@ -421,6 +423,12 @@ async def start_assessment(
             detail=info.message or "Cannot start this assessment",
         )
 
+    # Count actual questions from DB
+    actual_q_count_result = await db.execute(
+        select(func.count(Question.id)).where(Question.assessment_id == assessment.id)
+    )
+    actual_question_count = actual_q_count_result.scalar() or assessment.total_questions or 0
+
     # Check for existing active attempt
     existing_attempt = await get_active_attempt(invitation, db)
     if existing_attempt:
@@ -434,7 +442,7 @@ async def start_assessment(
             attempt_id=str(existing_attempt.id),
             started_at=existing_attempt.started_at or datetime.now(timezone.utc),
             time_remaining_seconds=time_remaining,
-            total_questions=assessment.total_questions or 0,
+            total_questions=actual_question_count,
             token=invitation.invitation_token,
         )
 
@@ -471,7 +479,7 @@ async def start_assessment(
         attempt_id=str(attempt.id),
         started_at=attempt.started_at,
         time_remaining_seconds=(assessment.total_duration_minutes or 60) * 60,
-        total_questions=assessment.total_questions or 0,
+        total_questions=actual_question_count,
         token=invitation.invitation_token,
     )
 
@@ -648,7 +656,11 @@ async def submit_answer(
     submitted_result = await db.execute(submitted_query)
     submitted_count = len(submitted_result.scalars().all())
 
-    total_questions = assessment.total_questions or 0
+    # Get actual question count from DB
+    actual_q_result = await db.execute(
+        select(func.count(Question.id)).where(Question.assessment_id == assessment.id)
+    )
+    total_questions = actual_q_result.scalar() or assessment.total_questions or 0
     questions_remaining = max(0, total_questions - submitted_count)
 
     return SubmitAnswerResponse(
@@ -721,7 +733,7 @@ async def complete_assessment(
     except Exception as e:
         # Log but don't fail - evaluation can be retried
         import logging
-        logging.error(f"Evaluation error: {e}")
+        logging.exception(f"Evaluation error for attempt {attempt.id}: {e}")
 
     # Dispatch automation event for assessment completion
     # Get candidate info for trigger data
@@ -830,7 +842,7 @@ async def get_attempt_status(
             return {
                 "status": "completed",
                 "attempt_id": str(completed_attempt.id),
-                "score": completed_attempt.total_score,
+                "score": round((completed_attempt.total_score / completed_attempt.max_possible_score * 100), 2) if completed_attempt.max_possible_score and completed_attempt.total_score else None,
                 "completed_at": completed_attempt.completed_at.isoformat() if completed_attempt.completed_at else None,
             }
 
@@ -852,13 +864,19 @@ async def get_attempt_status(
     submissions_result = await db.execute(submissions_query)
     submitted_count = len(submissions_result.scalars().all())
 
+    # Get actual question count from DB
+    actual_q_result = await db.execute(
+        select(func.count(Question.id)).where(Question.assessment_id == assessment.id)
+    )
+    actual_total = actual_q_result.scalar() or assessment.total_questions or 0
+
     return {
         "status": "in_progress",
         "attempt_id": str(attempt.id),
         "started_at": attempt.started_at.isoformat() if attempt.started_at else None,
         "time_remaining_seconds": time_remaining,
         "questions_submitted": submitted_count,
-        "total_questions": assessment.total_questions or 0,
+        "total_questions": actual_total,
     }
 
 

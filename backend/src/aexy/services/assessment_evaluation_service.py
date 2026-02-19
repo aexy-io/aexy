@@ -102,10 +102,12 @@ class AssessmentEvaluationService:
                 feedback = option.get("explanation", "")
                 break
 
+        pct = round((marks / question.max_marks * 100), 2) if question.max_marks else 0
         evaluation = SubmissionEvaluation(
             submission_id=submission.id,
             marks_obtained=marks,
             max_marks=question.max_marks,
+            percentage=pct,
             feedback=feedback,
             test_case_results=None,
             ai_analysis=None,
@@ -191,10 +193,12 @@ class AssessmentEvaluationService:
                 passed_count = sum(1 for r in test_results if r.get("passed"))
                 feedback_parts.append(f"Passed {passed_count}/{len(test_results)} test cases.")
 
+        code_pct = round((marks / question.max_marks * 100), 2) if question.max_marks else 0
         evaluation = SubmissionEvaluation(
             submission_id=submission.id,
             marks_obtained=marks,
             max_marks=question.max_marks,
+            percentage=code_pct,
             feedback="\n".join(feedback_parts) or "Evaluation complete.",
             test_case_results=test_case_results,
             ai_analysis=ai_analysis,
@@ -220,7 +224,7 @@ class AssessmentEvaluationService:
             prompt = SUBJECTIVE_EVALUATION_PROMPT.format(
                 question=question.problem_statement,
                 rubric=json.dumps(question.evaluation_rubric or {}, indent=2),
-                key_points=", ".join(question.expected_keywords or []),
+                key_points=", ".join(question.key_points or []),
                 response=response_text,
             )
             ai_analysis = await self._call_llm(SUBJECTIVE_EVALUATION_SYSTEM_PROMPT, prompt)
@@ -242,22 +246,24 @@ class AssessmentEvaluationService:
         else:
             # Fallback: basic keyword matching
             keywords_found = 0
-            for keyword in question.expected_keywords or []:
+            for keyword in question.key_points or []:
                 if keyword.lower() in response_text.lower():
                     keywords_found += 1
 
-            if question.expected_keywords:
-                score_percentage = (keywords_found / len(question.expected_keywords)) * 100
+            if question.key_points:
+                score_percentage = (keywords_found / len(question.key_points)) * 100
             else:
                 score_percentage = 50  # Default score when no keywords defined
 
             marks = int((score_percentage / 100) * question.max_marks)
-            feedback = f"Found {keywords_found} of {len(question.expected_keywords or [])} expected key concepts."
+            feedback = f"Found {keywords_found} of {len(question.key_points or [])} expected key concepts."
 
+        subj_pct = round((marks / question.max_marks * 100), 2) if question.max_marks else 0
         evaluation = SubmissionEvaluation(
             submission_id=submission.id,
             marks_obtained=marks,
             max_marks=question.max_marks,
+            percentage=subj_pct,
             feedback=feedback,
             test_case_results=None,
             ai_analysis=ai_analysis,
@@ -291,8 +297,26 @@ class AssessmentEvaluationService:
             return await self.evaluate_code_submission(submission, question, test_results)
         elif question.question_type == QuestionType.SUBJECTIVE:
             return await self.evaluate_subjective_submission(submission, question)
+        elif question.question_type == QuestionType.PSEUDO_CODE:
+            # Treat pseudo-code like subjective for evaluation
+            return await self.evaluate_subjective_submission(submission, question)
         else:
-            raise ValueError(f"Unsupported question type: {question.question_type}")
+            # For audio and other types, create a basic evaluation with 0 marks
+            # so the attempt score calculation still works
+            logger.warning(f"No evaluator for question type: {question.question_type}, creating placeholder evaluation")
+            evaluation = SubmissionEvaluation(
+                submission_id=submission.id,
+                marks_obtained=0,
+                max_marks=question.max_marks,
+                percentage=0,
+                feedback=f"Automatic evaluation not supported for {question.question_type} questions. Manual review required.",
+                test_case_results=None,
+                ai_analysis=None,
+            )
+            self.db.add(evaluation)
+            await self.db.commit()
+            await self.db.refresh(evaluation)
+            return evaluation
 
     async def calculate_attempt_score(
         self,
@@ -356,7 +380,9 @@ class AssessmentEvaluationService:
         attempt = attempt_result.scalar_one_or_none()
 
         if attempt:
-            attempt.total_score = percentage
+            attempt.total_score = total_marks
+            attempt.max_possible_score = max_marks
+            attempt.percentage_score = round(percentage, 2)
             await self.db.commit()
 
         return {

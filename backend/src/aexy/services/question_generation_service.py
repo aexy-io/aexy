@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -76,36 +77,59 @@ class QuestionGenerationService:
             )
             response_text = result[0] if isinstance(result, tuple) else result
 
-            # Parse JSON response - try to extract JSON from the response
-            try:
-                # Try direct parse first
-                return json.loads(response_text)
-            except json.JSONDecodeError:
-                # Try to find JSON in the response (strip markdown code blocks)
-                text = response_text.strip()
-                if text.startswith("```json"):
-                    text = text[7:]
-                elif text.startswith("```"):
-                    text = text[3:]
-                if text.endswith("```"):
-                    text = text[:-3]
-                text = text.strip()
+            return self._parse_json_response(response_text)
 
-                try:
-                    return json.loads(text)
-                except json.JSONDecodeError:
-                    # Try to find JSON object in the text
-                    start = text.find('{')
-                    end = text.rfind('}') + 1
-                    if start >= 0 and end > start:
-                        return json.loads(text[start:end])
-
-                logger.error(f"Failed to parse JSON from response: {response_text[:200]}")
-                return None
-
+        except json.JSONDecodeError as e:
+            logger.error(f"LLM call failed: {e}")
+            return None
         except Exception as e:
             logger.error(f"LLM call failed: {e}")
             raise  # Re-raise to allow rate limit errors to propagate
+
+    @staticmethod
+    def _fix_json_escapes(text: str) -> str:
+        """Fix invalid escape sequences in JSON from LLM output.
+
+        LLMs often produce JSON with unescaped backslashes in code snippets
+        (e.g. regex \\d+, paths C:\\Users). This fixes them for json.loads().
+        """
+        # Replace backslash followed by a char that's not a valid JSON escape
+        # Valid JSON escapes: " \\ / b f n r t u
+        return re.sub(r'\\(?!["\\/bfnrtu])', r'\\\\', text)
+
+    @staticmethod
+    def _parse_json_response(response_text: str) -> dict | None:
+        """Parse JSON from LLM response, handling common issues."""
+        # Strip markdown code blocks
+        text = response_text.strip()
+        if text.startswith("```json"):
+            text = text[7:]
+        elif text.startswith("```"):
+            text = text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+        text = text.strip()
+
+        # Extract JSON object/array if surrounded by other text
+        if not text.startswith(("{", "[")):
+            start = text.find("{")
+            end = text.rfind("}") + 1
+            if start >= 0 and end > start:
+                text = text[start:end]
+
+        # Try parsing as-is first
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+
+        # Fix invalid escape sequences and retry
+        fixed = QuestionGenerationService._fix_json_escapes(text)
+        try:
+            return json.loads(fixed)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON from LLM response: {e}\nResponse preview: {response_text[:300]}")
+            raise
 
     async def suggest_topics(
         self,

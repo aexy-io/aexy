@@ -104,8 +104,8 @@ export default function Step4AddCandidates({
       setCandidates(
         existingCandidates.map((c) => ({
           id: c.id,
-          email: c.candidate_email || "",
-          name: c.candidate_name || "",
+          email: c.candidate?.email || c.candidate_email || "",
+          name: c.candidate?.name || c.candidate_name || "",
           phone: "",
           source: c.source || "manual",
           isValid: true,
