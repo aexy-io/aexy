@@ -454,6 +454,13 @@ export default function ComplianceTrainingPage() {
                             Complete
                           </button>
                         </>
+                      ) : assignment.status === "pending" && assignment.acknowledged_at ? (
+                        <button
+                          onClick={() => handleStart(assignment.id)}
+                          className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
+                        >
+                          Start
+                        </button>
                       ) : assignment.status === "pending" ? (
                         <button
                           onClick={() => handleAcknowledge(assignment.id)}

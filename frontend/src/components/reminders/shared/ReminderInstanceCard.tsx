@@ -11,6 +11,7 @@ import {
   UserPlus,
   Clock,
   AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { ReminderInstance } from "@/lib/api";
 import { InstanceStatusBadge } from "./InstanceStatusBadge";
@@ -23,7 +24,7 @@ interface ReminderInstanceCardProps {
   instance: ReminderInstance;
   onClick?: (instance: ReminderInstance) => void;
   onAcknowledge?: (instanceId: string) => void;
-  onComplete?: (instanceId: string) => void;
+  onComplete?: (instanceId: string) => Promise<void> | void;
   onSkip?: (instanceId: string) => void;
   onReassign?: (instanceId: string) => void;
   showReminderInfo?: boolean;
@@ -43,6 +44,7 @@ export function ReminderInstanceCard({
   className,
 }: ReminderInstanceCardProps) {
   const [showMenu, setShowMenu] = React.useState(false);
+  const [isCompleting, setIsCompleting] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -61,7 +63,7 @@ export function ReminderInstanceCard({
   const hoursUntilDue = differenceInHours(dueDate, new Date());
   const isUrgent = hoursUntilDue >= 0 && hoursUntilDue <= 24;
 
-  const handleMenuAction = (action: () => void) => {
+  const handleMenuAction = (action: () => void | Promise<void>) => {
     action();
     setShowMenu(false);
   };
@@ -144,14 +146,25 @@ export function ReminderInstanceCard({
           )}
           {canComplete && (
             <button
-              onClick={(e) => {
+              disabled={isCompleting}
+              onClick={async (e) => {
                 e.stopPropagation();
-                onComplete!(instance.id);
+                setIsCompleting(true);
+                try {
+                  await onComplete!(instance.id);
+                } finally {
+                  setIsCompleting(false);
+                }
               }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              title="Mark this reminder as complete"
             >
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Complete
+              {isCompleting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-3.5 w-3.5" />
+              )}
+              {isCompleting ? "Completing…" : "Mark Complete"}
             </button>
           )}
         </div>
@@ -225,11 +238,25 @@ export function ReminderInstanceCard({
           )}
           {canComplete && (
             <button
-              className="w-full px-3 py-2 text-left text-sm text-green-400 hover:bg-accent/50 flex items-center gap-2"
-              onClick={() => handleMenuAction(() => onComplete!(instance.id))}
+              disabled={isCompleting}
+              className="w-full px-3 py-2 text-left text-sm text-green-400 hover:bg-accent/50 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              onClick={() =>
+                handleMenuAction(async () => {
+                  setIsCompleting(true);
+                  try {
+                    await onComplete!(instance.id);
+                  } finally {
+                    setIsCompleting(false);
+                  }
+                })
+              }
             >
-              <CheckCircle2 className="h-4 w-4" />
-              Complete
+              {isCompleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4" />
+              )}
+              {isCompleting ? "Completing…" : "Mark Complete"}
             </button>
           )}
           {canSkip && (

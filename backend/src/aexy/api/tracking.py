@@ -811,6 +811,52 @@ async def get_my_tracking_dashboard(
         blockers_resolved=blockers_resolved,
     )
 
+    # Recent standups (last 7 days)
+    recent_standups_result = await db.execute(
+        select(DeveloperStandup).where(
+            DeveloperStandup.developer_id == current_developer.id,
+            DeveloperStandup.standup_date >= week_start,
+        ).order_by(DeveloperStandup.standup_date.desc()).limit(7)
+    )
+    recent_standups = [standup_to_response(s) for s in recent_standups_result.scalars().all()]
+
+    # Time entries this week
+    time_entries_result = await db.execute(
+        select(TimeEntry).where(
+            TimeEntry.developer_id == current_developer.id,
+            TimeEntry.entry_date >= week_start,
+        ).order_by(TimeEntry.created_at.desc()).limit(10)
+    )
+    time_entries = [time_entry_to_response(e) for e in time_entries_result.scalars().all()]
+
+    # Work logs this week
+    work_logs_result = await db.execute(
+        select(WorkLog).where(
+            WorkLog.developer_id == current_developer.id,
+            func.date(WorkLog.logged_at) >= week_start,
+        ).order_by(WorkLog.logged_at.desc()).limit(10)
+    )
+    work_logs = [work_log_to_response(w) for w in work_logs_result.scalars().all()]
+
+    # Standup streak: count consecutive days with standups going backwards from today
+    standup_streak = 0
+    check_date = today
+    while True:
+        streak_result = await db.execute(
+            select(func.count(DeveloperStandup.id)).where(
+                DeveloperStandup.developer_id == current_developer.id,
+                DeveloperStandup.standup_date == check_date,
+            )
+        )
+        if streak_result.scalar() or 0:
+            standup_streak += 1
+            check_date -= timedelta(days=1)
+            # Skip weekends
+            while check_date.weekday() >= 5:
+                check_date -= timedelta(days=1)
+        else:
+            break
+
     return IndividualDashboard(
         developer_id=str(current_developer.id),
         developer_name=current_developer.name,
@@ -820,6 +866,12 @@ async def get_my_tracking_dashboard(
         time_logged_today=time_logged_today,
         weekly_summary=weekly_summary,
         activity_pattern=None,
+        standup_streak=standup_streak,
+        has_standup_today=today_standup is not None,
+        time_entries=time_entries,
+        resolved_blockers_count=blockers_resolved,
+        recent_standups=recent_standups,
+        work_logs=work_logs,
     )
 
 
