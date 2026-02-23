@@ -109,6 +109,7 @@ class CRMAutomationTriggerType(str, Enum):
     LIST_ENTRY_ADDED = "list_entry.added"
     LIST_ENTRY_REMOVED = "list_entry.removed"
     STATUS_CHANGED = "status.changed"
+    STAGE_CHANGED = "stage.changed"
     # Time events
     SCHEDULE_DAILY = "schedule.daily"
     SCHEDULE_WEEKLY = "schedule.weekly"
