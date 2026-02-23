@@ -36,6 +36,7 @@ class ReminderFrequencyEnum(str, Enum):
     QUARTERLY = "quarterly"
     YEARLY = "yearly"
     CUSTOM = "custom"
+    SEMI_ANNUAL = "semi_annual"
 
 
 class InstanceStatusEnum(str, Enum):

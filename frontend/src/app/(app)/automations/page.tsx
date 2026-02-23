@@ -221,7 +221,7 @@ export default function AutomationsPage() {
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
-            <div className="flex sm:flex-row flex-col sm:items-center sm:justify-between items-start">
+            <div className="flex w-full sm:flex-row flex-col sm:items-center sm:justify-between items-start">
               <div className="flex-1">
               <h1 className="text-2xl font-bold text-foreground">Automations</h1>
               <p className="text-sm text-muted-foreground">Automate workflows across all Aexy modules</p>
