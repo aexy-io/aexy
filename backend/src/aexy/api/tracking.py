@@ -838,24 +838,21 @@ async def get_my_tracking_dashboard(
     )
     work_logs = [work_log_to_response(w) for w in work_logs_result.scalars().all()]
 
-    # Standup streak: count consecutive days with standups going backwards from today
+    # Standup streak: count consecutive weekdays with standups going backwards from today
+    standup_dates_result = await db.execute(
+        select(DeveloperStandup.standup_date).where(
+            DeveloperStandup.developer_id == current_developer.id,
+        ).order_by(DeveloperStandup.standup_date.desc())
+    )
+    standup_dates = {row[0] for row in standup_dates_result.all()}
     standup_streak = 0
     check_date = today
-    while True:
-        streak_result = await db.execute(
-            select(func.count(DeveloperStandup.id)).where(
-                DeveloperStandup.developer_id == current_developer.id,
-                DeveloperStandup.standup_date == check_date,
-            )
-        )
-        if streak_result.scalar() or 0:
-            standup_streak += 1
+    while check_date in standup_dates:
+        standup_streak += 1
+        check_date -= timedelta(days=1)
+        # Skip weekends
+        while check_date.weekday() >= 5:
             check_date -= timedelta(days=1)
-            # Skip weekends
-            while check_date.weekday() >= 5:
-                check_date -= timedelta(days=1)
-        else:
-            break
 
     return IndividualDashboard(
         developer_id=str(current_developer.id),
