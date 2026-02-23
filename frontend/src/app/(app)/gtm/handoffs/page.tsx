@@ -26,7 +26,7 @@ function StatusBadge({ status }: { status: string }) {
   return (
     <span
       className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
-        STATUS_STYLES[status] ?? "bg-zinc-500/20 text-zinc-400 border-zinc-500/30"
+        STATUS_STYLES[status] ?? "bg-zinc-500/20 text-muted-foreground border-zinc-500/30"
       }`}
     >
       {STATUS_LABELS[status] ?? status}
@@ -44,12 +44,12 @@ function KpiCard({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-      <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
+    <div className="bg-muted/50 border border-border rounded-xl p-6">
+      <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2">
         {icon}
         {label}
       </div>
-      <p className="text-3xl font-bold text-white">{value}</p>
+      <p className="text-3xl font-bold text-foreground">{value}</p>
     </div>
   );
 }
@@ -73,25 +73,25 @@ export default function HandoffsPage() {
   const totalPages = Math.ceil(total / PER_PAGE);
 
   const converted = analytics?.converted_count ?? 0;
-  const totalCount = analytics?.total_count ?? 0;
+  const totalCount = analytics?.total_handoffs ?? 0;
   const conversionRate =
     totalCount > 0 ? ((converted / totalCount) * 100).toFixed(1) : "0.0";
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
               <ArrowRightLeft className="w-7 h-7 text-indigo-400" />
               Handoffs
             </h1>
-            <p className="text-zinc-400 mt-1">CS-to-Sales handoff tracking and conversion</p>
+            <p className="text-muted-foreground mt-1">CS-to-Sales handoff tracking and conversion</p>
           </div>
           <button
             onClick={() => window.location.reload()}
-            className="inline-flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 rounded-lg text-sm transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-2 bg-muted/50 hover:bg-muted border border-border text-foreground rounded-lg text-sm transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             Refresh
@@ -107,7 +107,7 @@ export default function HandoffsPage() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <KpiCard
               label="Total"
-              value={(analytics?.total_count ?? 0).toLocaleString()}
+              value={(analytics?.total_handoffs ?? 0).toLocaleString()}
               icon={<ArrowRightLeft className="w-4 h-4" />}
             />
             <KpiCard
@@ -140,7 +140,7 @@ export default function HandoffsPage() {
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 (s === "all" && !statusFilter) || statusFilter === s
                   ? "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30"
-                  : "bg-white/5 text-zinc-400 border border-white/10 hover:bg-white/10"
+                  : "bg-muted/50 text-muted-foreground border border-border hover:bg-muted"
               }`}
             >
               {s === "all" ? "All" : STATUS_LABELS[s] ?? s}
@@ -154,16 +154,16 @@ export default function HandoffsPage() {
             <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
           </div>
         ) : (
-          <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+          <div className="bg-muted/50 border border-border rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-border/50">
                     {["Title", "Type", "Status", "Est. Value", "Assigned To", "Created"].map(
                       (h) => (
                         <th
                           key={h}
-                          className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-6 py-3"
+                          className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3"
                         >
                           {h}
                         </th>
@@ -171,27 +171,27 @@ export default function HandoffsPage() {
                     )}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-border/50">
                   {handoffs.map((h: any) => (
-                    <tr key={h.id} className="hover:bg-white/5 transition-colors">
-                      <td className="px-6 py-4 text-sm text-white font-medium">{h.title}</td>
+                    <tr key={h.id} className="hover:bg-muted/50 transition-colors">
+                      <td className="px-6 py-4 text-sm text-foreground font-medium">{h.title}</td>
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border bg-violet-500/20 text-violet-400 border-violet-500/30">
-                          {h.type ?? "—"}
+                          {h.handoff_type ?? "—"}
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         <StatusBadge status={h.status} />
                       </td>
-                      <td className="px-6 py-4 text-sm text-zinc-300">
+                      <td className="px-6 py-4 text-sm text-foreground">
                         {h.estimated_value != null
                           ? `$${Number(h.estimated_value).toLocaleString()}`
                           : "—"}
                       </td>
-                      <td className="px-6 py-4 text-sm text-zinc-400 font-mono">
+                      <td className="px-6 py-4 text-sm text-muted-foreground font-mono">
                         {h.assigned_to ? h.assigned_to.slice(0, 8) : "—"}
                       </td>
-                      <td className="px-6 py-4 text-sm text-zinc-500">
+                      <td className="px-6 py-4 text-sm text-muted-foreground">
                         {h.created_at ? new Date(h.created_at).toLocaleDateString() : "—"}
                       </td>
                     </tr>
@@ -203,32 +203,32 @@ export default function HandoffsPage() {
             {handoffs.length === 0 && (
               <div className="px-6 py-12 text-center">
                 <ArrowRightLeft className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
-                <p className="text-zinc-400 font-medium">No handoffs found</p>
-                <p className="text-zinc-500 text-sm mt-1">
+                <p className="text-muted-foreground font-medium">No handoffs found</p>
+                <p className="text-muted-foreground text-sm mt-1">
                   Handoffs are created when CS marks accounts ready for sales.
                 </p>
               </div>
             )}
 
             {totalPages > 1 && (
-              <div className="px-6 py-3 border-t border-white/5 flex items-center justify-between">
-                <span className="text-sm text-zinc-500">
+              <div className="px-6 py-3 border-t border-border/50 flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
                   Page {page} of {totalPages} &mdash; {total} total
                 </span>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page <= 1}
-                    className="p-1.5 rounded bg-white/5 hover:bg-white/10 disabled:opacity-30 transition-colors"
+                    className="p-1.5 rounded bg-muted/50 hover:bg-muted disabled:opacity-30 transition-colors"
                   >
-                    <ChevronLeft className="w-4 h-4 text-zinc-400" />
+                    <ChevronLeft className="w-4 h-4 text-muted-foreground" />
                   </button>
                   <button
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page >= totalPages}
-                    className="p-1.5 rounded bg-white/5 hover:bg-white/10 disabled:opacity-30 transition-colors"
+                    className="p-1.5 rounded bg-muted/50 hover:bg-muted disabled:opacity-30 transition-colors"
                   >
-                    <ChevronRight className="w-4 h-4 text-zinc-400" />
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   </button>
                 </div>
               </div>

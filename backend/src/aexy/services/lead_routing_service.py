@@ -83,7 +83,7 @@ class LeadRoutingService:
         """Evaluate rules by priority and assign lead to a rep."""
         rules = await self.db.execute(
             select(GTMRoutingRule).where(
-                and_(GTMRoutingRule.workspace_id == workspace_id, GTMRoutingRule.is_active == True)
+                and_(GTMRoutingRule.workspace_id == workspace_id, GTMRoutingRule.is_active.is_(True))
             ).order_by(GTMRoutingRule.priority.desc())
         )
         for rule in rules.scalars().all():
@@ -243,7 +243,7 @@ class LeadRoutingService:
                 and_(
                     GTMLeadAssignment.workspace_id == workspace_id,
                     GTMLeadAssignment.status == "pending",
-                    GTMLeadAssignment.sla_breached == False,
+                    GTMLeadAssignment.sla_breached.is_(False),
                     GTMLeadAssignment.sla_first_response_minutes.isnot(None),
                 )
             )
@@ -297,7 +297,7 @@ class LeadRoutingService:
         )).scalar() or 0
 
         breached = (await self.db.execute(
-            select(func.count(GTMLeadAssignment.id)).where(and_(base, GTMLeadAssignment.sla_breached == True))
+            select(func.count(GTMLeadAssignment.id)).where(and_(base, GTMLeadAssignment.sla_breached.is_(True)))
         )).scalar() or 0
 
         # Avg response time (only for responded assignments)

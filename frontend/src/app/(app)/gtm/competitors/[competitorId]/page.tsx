@@ -29,7 +29,7 @@ function ListSection({
   title,
   items,
   icon,
-  color = "text-zinc-300",
+  color = "text-foreground",
 }: {
   title: string;
   items: string[];
@@ -38,10 +38,10 @@ function ListSection({
 }) {
   if (!items?.length) return null;
   return (
-    <div className="bg-white/5 border border-white/10 rounded-xl p-5">
+    <div className="bg-muted/50 border border-border rounded-xl p-5">
       <div className="flex items-center gap-2 mb-3">
         {icon}
-        <h3 className="text-sm font-semibold text-white">{title}</h3>
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
       </div>
       <ul className="space-y-2">
         {items.map((item, i) => (
@@ -75,7 +75,7 @@ export default function CompetitorDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
       </div>
     );
@@ -83,10 +83,10 @@ export default function CompetitorDetailPage() {
 
   if (!competitor) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Swords className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-          <p className="text-zinc-400 font-medium">Competitor not found</p>
+          <p className="text-muted-foreground font-medium">Competitor not found</p>
           <Link
             href="/gtm/competitors"
             className="text-indigo-400 text-sm mt-2 inline-block hover:underline"
@@ -99,12 +99,12 @@ export default function CompetitorDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="min-h-screen bg-background">
       <div className="max-w-5xl mx-auto px-6 py-8">
         {/* Back + Header */}
         <Link
           href="/gtm/competitors"
-          className="inline-flex items-center gap-1.5 text-zinc-400 hover:text-white text-sm mb-6 transition-colors"
+          className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm mb-6 transition-colors"
         >
           <ChevronLeft className="w-4 h-4" />
           Competitors
@@ -112,7 +112,7 @@ export default function CompetitorDetailPage() {
 
         <div className="flex items-start justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
               <Swords className="w-7 h-7 text-indigo-400" />
               {competitor.name}
             </h1>
@@ -121,7 +121,7 @@ export default function CompetitorDetailPage() {
                 href={`https://${competitor.domain}`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-zinc-400 hover:text-indigo-400 text-sm mt-1 transition-colors"
+                className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-indigo-400 text-sm mt-1 transition-colors"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 {competitor.domain}
@@ -133,14 +133,14 @@ export default function CompetitorDetailPage() {
               className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium border ${
                 competitor.is_active
                   ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                  : "bg-zinc-500/20 text-zinc-400 border-zinc-500/30"
+                  : "bg-zinc-500/20 text-muted-foreground border-zinc-500/30"
               }`}
             >
               {competitor.is_active ? "Active" : "Inactive"}
             </span>
             <button
               onClick={() => window.location.reload()}
-              className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+              className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
             </button>
@@ -148,7 +148,7 @@ export default function CompetitorDetailPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-8 bg-white/5 border border-white/10 rounded-xl p-1 w-fit">
+        <div className="flex gap-1 mb-8 bg-muted/50 border border-border rounded-xl p-1 w-fit">
           {TABS.map((tab) => (
             <button
               key={tab.id}
@@ -156,7 +156,7 @@ export default function CompetitorDetailPage() {
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? "bg-indigo-600 text-white"
-                  : "text-zinc-400 hover:text-white hover:bg-white/5"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               }`}
             >
               {tab.label}
@@ -169,15 +169,15 @@ export default function CompetitorDetailPage() {
           <div className="space-y-6">
             {/* Meta */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-                <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Tracked Pages</p>
-                <p className="text-2xl font-bold text-white">
+              <div className="bg-muted/50 border border-border rounded-xl p-5">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Tracked Pages</p>
+                <p className="text-2xl font-bold text-foreground">
                   {(competitor.tracked_pages ?? []).length}
                 </p>
               </div>
-              <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-                <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Added</p>
-                <p className="text-lg font-semibold text-white">
+              <div className="bg-muted/50 border border-border rounded-xl p-5">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Added</p>
+                <p className="text-lg font-semibold text-foreground">
                   {competitor.created_at
                     ? new Date(competitor.created_at).toLocaleDateString()
                     : "—"}
@@ -187,8 +187,8 @@ export default function CompetitorDetailPage() {
 
             {/* Tracked pages list */}
             {(competitor.tracked_pages ?? []).length > 0 && (
-              <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-                <h3 className="text-sm font-semibold text-white mb-3">Tracked Pages</h3>
+              <div className="bg-muted/50 border border-border rounded-xl p-5">
+                <h3 className="text-sm font-semibold text-foreground mb-3">Tracked Pages</h3>
                 <ul className="space-y-2">
                   {competitor.tracked_pages.map((url: string, i: number) => (
                     <li key={i}>
@@ -209,9 +209,9 @@ export default function CompetitorDetailPage() {
 
             {/* Latest snapshot */}
             {competitor.current_snapshot && (
-              <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-                <h3 className="text-sm font-semibold text-white mb-3">Latest Snapshot</h3>
-                <pre className="text-xs text-zinc-400 overflow-auto max-h-64 bg-black/20 rounded-lg p-3">
+              <div className="bg-muted/50 border border-border rounded-xl p-5">
+                <h3 className="text-sm font-semibold text-foreground mb-3">Latest Snapshot</h3>
+                <pre className="text-xs text-muted-foreground overflow-auto max-h-64 bg-black/20 rounded-lg p-3">
                   {JSON.stringify(competitor.current_snapshot, null, 2)}
                 </pre>
               </div>
@@ -220,10 +220,10 @@ export default function CompetitorDetailPage() {
         )}
 
         {activeTab === "changes" && (
-          <div className="bg-white/5 border border-white/10 rounded-xl p-8 text-center">
+          <div className="bg-muted/50 border border-border rounded-xl p-8 text-center">
             <Swords className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
-            <p className="text-zinc-400 font-medium">Changes view</p>
-            <p className="text-zinc-500 text-sm mt-1">
+            <p className="text-muted-foreground font-medium">Changes view</p>
+            <p className="text-muted-foreground text-sm mt-1">
               Full change history for this competitor coming soon.
             </p>
           </div>
@@ -236,19 +236,19 @@ export default function CompetitorDetailPage() {
                 <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
               </div>
             ) : !battleCard ? (
-              <div className="bg-white/5 border border-white/10 rounded-xl p-12 text-center">
+              <div className="bg-muted/50 border border-border rounded-xl p-12 text-center">
                 <Shield className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
-                <p className="text-zinc-400 font-medium">No battle card yet</p>
-                <p className="text-zinc-500 text-sm mt-1">
+                <p className="text-muted-foreground font-medium">No battle card yet</p>
+                <p className="text-muted-foreground text-sm mt-1">
                   Battle cards are generated automatically from competitor analysis.
                 </p>
               </div>
             ) : (
               <>
                 {battleCard.win_rate != null && (
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-                    <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Win Rate vs {competitor.name}</p>
-                    <p className="text-3xl font-bold text-white">{(battleCard.win_rate * 100).toFixed(0)}%</p>
+                  <div className="bg-muted/50 border border-border rounded-xl p-5">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Win Rate vs {competitor.name}</p>
+                    <p className="text-3xl font-bold text-foreground">{(battleCard.win_rate * 100).toFixed(0)}%</p>
                   </div>
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

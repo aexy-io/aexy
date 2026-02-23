@@ -82,5 +82,5 @@ class GTMAlertLog(Base):
     )
 
     __table_args__ = (
-        Index("ix_gtm_alert_logs_ws_created", "workspace_id", created_at.desc()),
+        Index("ix_gtm_alert_logs_ws_created", "workspace_id", "created_at"),
     )

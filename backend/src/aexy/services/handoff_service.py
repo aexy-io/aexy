@@ -146,7 +146,7 @@ class HandoffService:
             select(func.count(GTMHandoff.id)).where(and_(base, GTMHandoff.status == "declined"))
         )).scalar() or 0
         breached = (await self.db.execute(
-            select(func.count(GTMHandoff.id)).where(and_(base, GTMHandoff.sla_breached == True))
+            select(func.count(GTMHandoff.id)).where(and_(base, GTMHandoff.sla_breached.is_(True)))
         )).scalar() or 0
 
         avg_accept = (await self.db.execute(

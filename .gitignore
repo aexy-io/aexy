@@ -5,5 +5,5 @@ __pycache__
 .env
 celerybeat-schedule
 backend-rust
-gtm
-prds/crm
+
+prds

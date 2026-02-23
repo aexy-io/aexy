@@ -84,7 +84,7 @@ class CompetitorChange(Base):
     )
 
     __table_args__ = (
-        Index("ix_competitor_changes_ws_detected", "workspace_id", detected_at.desc()),
+        Index("ix_competitor_changes_ws_detected", "workspace_id", "detected_at"),
     )
 
 

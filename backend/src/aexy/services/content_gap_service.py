@@ -64,7 +64,7 @@ class ContentGapService:
             ContentAnalysis.workspace_id == workspace_id,
         )
         total_q = select(func.count()).select_from(base.subquery())
-        total: int = (await self.db.execute(total_q)).scalar_one()
+        total: int = (await self.db.execute(total_q)).scalar() or 0
 
         rows_q = (
             base
