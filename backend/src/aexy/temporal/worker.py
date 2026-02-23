@@ -174,6 +174,26 @@ def get_all_activities() -> list:
         classify_outreach_reply,
         personalize_outreach_batch,
         run_bulk_import,
+        # Batch 1: Alerts + Routing
+        send_gtm_alert,
+        route_new_lead,
+        check_sla_breaches,
+        # Batch 2: Customer Success
+        score_customer_health,
+        batch_score_customer_health,
+        detect_health_drops,
+        evaluate_expansion_triggers,
+        advance_expansion_step,
+        # Batch 3: Intelligence
+        collect_intent_signals,
+        match_intent_signals_to_records,
+        check_competitor_changes,
+        generate_battle_card,
+        run_seo_audit,
+        run_content_gap_analysis,
+        # Batch 4: ABM
+        recalculate_abm_engagement,
+        refresh_dynamic_abm_lists,
     )
 
     return [
@@ -282,6 +302,26 @@ def get_all_activities() -> list:
         classify_outreach_reply,
         personalize_outreach_batch,
         run_bulk_import,
+        # GTM Alerts + Routing
+        send_gtm_alert,
+        route_new_lead,
+        check_sla_breaches,
+        # GTM Customer Success
+        score_customer_health,
+        batch_score_customer_health,
+        detect_health_drops,
+        evaluate_expansion_triggers,
+        advance_expansion_step,
+        # GTM Intelligence
+        collect_intent_signals,
+        match_intent_signals_to_records,
+        check_competitor_changes,
+        generate_battle_card,
+        run_seo_audit,
+        run_content_gap_analysis,
+        # GTM ABM
+        recalculate_abm_engagement,
+        refresh_dynamic_abm_lists,
         # Reminders (Compliance)
         generate_reminder_instances,
         process_escalations,

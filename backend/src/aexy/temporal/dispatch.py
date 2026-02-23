@@ -115,6 +115,40 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
 
     # GTM Bulk Import
     "run_bulk_import": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=30), "heartbeat": timedelta(minutes=5)},
+
+    # GTM Alerts
+    "send_gtm_alert": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=2)},
+
+    # GTM Lead Routing & SLA
+    "route_new_lead": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=2)},
+    "check_sla_breaches": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
+
+    # GTM Customer Health
+    "score_customer_health": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
+    "batch_score_customer_health": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=30), "heartbeat": timedelta(minutes=5)},
+    "detect_health_drops": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
+
+    # GTM Expansion Playbooks
+    "evaluate_expansion_triggers": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
+    "advance_expansion_step": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=2)},
+
+    # GTM Intent Signals
+    "collect_intent_signals": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=30), "heartbeat": timedelta(minutes=5)},
+    "match_intent_signals_to_records": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=10)},
+
+    # GTM Competitor Intelligence
+    "check_competitor_changes": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=30), "heartbeat": timedelta(minutes=5)},
+    "generate_battle_card": {"retry": LLM_RETRY, "timeout": timedelta(minutes=10)},
+
+    # GTM SEO Audit
+    "run_seo_audit": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=15), "heartbeat": timedelta(seconds=30)},
+
+    # GTM Content Gap Analysis
+    "run_content_gap_analysis": {"retry": LLM_RETRY, "timeout": timedelta(minutes=30), "heartbeat": timedelta(minutes=5)},
+
+    # GTM ABM
+    "recalculate_abm_engagement": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=30), "heartbeat": timedelta(minutes=5)},
+    "refresh_dynamic_abm_lists": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=10)},
 }
 
 DEFAULT_CONFIG = {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)}

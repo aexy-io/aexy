@@ -18191,4 +18191,360 @@ export const gtmApi = {
       return response.data;
     },
   },
+  // ---- Alerts (#32) ----
+  alerts: {
+    listConfigs: async (workspaceId: string): Promise<Record<string, unknown>[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/alerts/configs`);
+      return response.data;
+    },
+    createConfig: async (workspaceId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/alerts/configs`, data);
+      return response.data;
+    },
+    updateConfig: async (workspaceId: string, alertId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> => {
+      const response = await api.put(`/workspaces/${workspaceId}/gtm/alerts/configs/${alertId}`, data);
+      return response.data;
+    },
+    deleteConfig: async (workspaceId: string, alertId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/gtm/alerts/configs/${alertId}`);
+    },
+    listLogs: async (workspaceId: string, params?: { page?: number; per_page?: number; event_type?: string }): Promise<{ items: Record<string, unknown>[]; total: number; page: number; per_page: number }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/alerts/logs`, { params });
+      return response.data;
+    },
+    test: async (workspaceId: string, alertId: string): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/alerts/test/${alertId}`);
+      return response.data;
+    },
+  },
+  // ---- Routing & SLA (#26) ----
+  routing: {
+    listRules: async (workspaceId: string): Promise<Record<string, unknown>[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/routing/rules`);
+      return response.data;
+    },
+    createRule: async (workspaceId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/routing/rules`, data);
+      return response.data;
+    },
+    updateRule: async (workspaceId: string, ruleId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> => {
+      const response = await api.put(`/workspaces/${workspaceId}/gtm/routing/rules/${ruleId}`, data);
+      return response.data;
+    },
+    deleteRule: async (workspaceId: string, ruleId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/gtm/routing/rules/${ruleId}`);
+    },
+    route: async (workspaceId: string, recordId: string): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/routing/route/${recordId}`);
+      return response.data;
+    },
+    listAssignments: async (workspaceId: string, params?: { page?: number; per_page?: number; status?: string; assignee_id?: string }): Promise<{ items: Record<string, unknown>[]; total: number; page: number; per_page: number }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/routing/assignments`, { params });
+      return response.data;
+    },
+    respond: async (workspaceId: string, assignmentId: string): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/routing/assignments/${assignmentId}/respond`);
+      return response.data;
+    },
+    reassign: async (workspaceId: string, assignmentId: string, data: { new_assignee_id: string; notes?: string }): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/routing/assignments/${assignmentId}/reassign`, data);
+      return response.data;
+    },
+    slaDashboard: async (workspaceId: string, days?: number): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/routing/sla-dashboard`, { params: { days } });
+      return response.data;
+    },
+  },
+  // ---- Health Scoring (#27) ----
+  health: {
+    dashboard: async (workspaceId: string): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/health/dashboard`);
+      return response.data;
+    },
+    listScores: async (workspaceId: string, params?: { page?: number; per_page?: number; health_status?: string }): Promise<{ items: Record<string, unknown>[]; total: number; page: number; per_page: number }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/health/scores`, { params });
+      return response.data;
+    },
+    getScore: async (workspaceId: string, recordId: string): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/health/scores/${recordId}`);
+      return response.data;
+    },
+    rescore: async (workspaceId: string, recordId: string): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/health/scores/${recordId}/rescore`);
+      return response.data;
+    },
+    batchScore: async (workspaceId: string): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/health/batch-score`);
+      return response.data;
+    },
+    getConfig: async (workspaceId: string): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/health/config`);
+      return response.data;
+    },
+    updateConfig: async (workspaceId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> => {
+      const response = await api.put(`/workspaces/${workspaceId}/gtm/health/config`, data);
+      return response.data;
+    },
+  },
+  // ---- Expansion Playbooks (#28) ----
+  expansion: {
+    listPlaybooks: async (workspaceId: string): Promise<Record<string, unknown>[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/expansion/playbooks`);
+      return response.data;
+    },
+    createPlaybook: async (workspaceId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/expansion/playbooks`, data);
+      return response.data;
+    },
+    getPlaybook: async (workspaceId: string, playbookId: string): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/expansion/playbooks/${playbookId}`);
+      return response.data;
+    },
+    updatePlaybook: async (workspaceId: string, playbookId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> => {
+      const response = await api.put(`/workspaces/${workspaceId}/gtm/expansion/playbooks/${playbookId}`, data);
+      return response.data;
+    },
+    deletePlaybook: async (workspaceId: string, playbookId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/gtm/expansion/playbooks/${playbookId}`);
+    },
+    enroll: async (workspaceId: string, playbookId: string, recordId: string, data?: Record<string, unknown>): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/expansion/playbooks/${playbookId}/enroll/${recordId}`, data || {});
+      return response.data;
+    },
+    listEnrollments: async (workspaceId: string, params?: { page?: number; per_page?: number; playbook_id?: string; status?: string }): Promise<{ items: Record<string, unknown>[]; total: number; page: number; per_page: number }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/expansion/enrollments`, { params });
+      return response.data;
+    },
+    advanceEnrollment: async (workspaceId: string, enrollmentId: string): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/expansion/enrollments/${enrollmentId}/advance`);
+      return response.data;
+    },
+    recordOutcome: async (workspaceId: string, enrollmentId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/expansion/enrollments/${enrollmentId}/outcome`, data);
+      return response.data;
+    },
+    analytics: async (workspaceId: string): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/expansion/analytics`);
+      return response.data;
+    },
+  },
+  // ---- Handoffs (#29) ----
+  handoffs: {
+    create: async (workspaceId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/handoffs`, data);
+      return response.data;
+    },
+    list: async (workspaceId: string, params?: { page?: number; per_page?: number; status?: string; assigned_to?: string }): Promise<{ items: Record<string, unknown>[]; total: number; page: number; per_page: number }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/handoffs`, { params });
+      return response.data;
+    },
+    get: async (workspaceId: string, handoffId: string): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/handoffs/${handoffId}`);
+      return response.data;
+    },
+    accept: async (workspaceId: string, handoffId: string): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/handoffs/${handoffId}/accept`);
+      return response.data;
+    },
+    decline: async (workspaceId: string, handoffId: string, data: { reason: string }): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/handoffs/${handoffId}/decline`, data);
+      return response.data;
+    },
+    convert: async (workspaceId: string, handoffId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/handoffs/${handoffId}/convert`, data);
+      return response.data;
+    },
+    analytics: async (workspaceId: string): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/handoffs/analytics`);
+      return response.data;
+    },
+  },
+  // ---- Intent Signals (#25) ----
+  intent: {
+    listSignals: async (workspaceId: string, params?: { page?: number; per_page?: number; signal_type?: string; intent_strength?: string }): Promise<{ items: Record<string, unknown>[]; total: number; page: number; per_page: number }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/intent/signals`, { params });
+      return response.data;
+    },
+    createSignal: async (workspaceId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/intent/signals`, data);
+      return response.data;
+    },
+    dismissSignal: async (workspaceId: string, signalId: string): Promise<void> => {
+      await api.post(`/workspaces/${workspaceId}/gtm/intent/signals/${signalId}/dismiss`);
+    },
+    getRecordSignals: async (workspaceId: string, recordId: string): Promise<Record<string, unknown>[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/intent/records/${recordId}/signals`);
+      return response.data;
+    },
+    getConfig: async (workspaceId: string): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/intent/config`);
+      return response.data;
+    },
+    updateConfig: async (workspaceId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> => {
+      const response = await api.put(`/workspaces/${workspaceId}/gtm/intent/config`, data);
+      return response.data;
+    },
+    summary: async (workspaceId: string): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/intent/summary`);
+      return response.data;
+    },
+    collect: async (workspaceId: string): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/intent/collect`);
+      return response.data;
+    },
+  },
+  // ---- Competitors (#31) ----
+  competitors: {
+    list: async (workspaceId: string): Promise<Record<string, unknown>[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/competitors`);
+      return response.data;
+    },
+    create: async (workspaceId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/competitors`, data);
+      return response.data;
+    },
+    get: async (workspaceId: string, competitorId: string): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/competitors/${competitorId}`);
+      return response.data;
+    },
+    update: async (workspaceId: string, competitorId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> => {
+      const response = await api.put(`/workspaces/${workspaceId}/gtm/competitors/${competitorId}`, data);
+      return response.data;
+    },
+    delete: async (workspaceId: string, competitorId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/gtm/competitors/${competitorId}`);
+    },
+    listChanges: async (workspaceId: string, params?: { page?: number; per_page?: number; competitor_id?: string }): Promise<{ items: Record<string, unknown>[]; total: number; page: number; per_page: number }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/competitors/changes`, { params });
+      return response.data;
+    },
+    acknowledgeChange: async (workspaceId: string, changeId: string): Promise<void> => {
+      await api.post(`/workspaces/${workspaceId}/gtm/competitors/changes/${changeId}/acknowledge`);
+    },
+    check: async (workspaceId: string, competitorId: string): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/competitors/${competitorId}/check`);
+      return response.data;
+    },
+    getBattleCard: async (workspaceId: string, competitorId: string): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/competitors/${competitorId}/battle-card`);
+      return response.data;
+    },
+    generateBattleCard: async (workspaceId: string, competitorId: string): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/competitors/${competitorId}/battle-card/generate`);
+      return response.data;
+    },
+    updateBattleCard: async (workspaceId: string, competitorId: string, cardId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> => {
+      const response = await api.put(`/workspaces/${workspaceId}/gtm/competitors/${competitorId}/battle-card/${cardId}`, data);
+      return response.data;
+    },
+    publishBattleCard: async (workspaceId: string, competitorId: string, cardId: string): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/competitors/${competitorId}/battle-card/${cardId}/publish`);
+      return response.data;
+    },
+  },
+  // ---- SEO Audit (#18) ----
+  seo: {
+    createAudit: async (workspaceId: string, data: { target_url: string; record_id?: string; max_pages?: number }): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/seo/audits`, data);
+      return response.data;
+    },
+    listAudits: async (workspaceId: string, params?: { page?: number; per_page?: number }): Promise<{ items: Record<string, unknown>[]; total: number; page: number; per_page: number }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/seo/audits`, { params });
+      return response.data;
+    },
+    getAudit: async (workspaceId: string, auditId: string): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/seo/audits/${auditId}`);
+      return response.data;
+    },
+    getAuditPages: async (workspaceId: string, auditId: string): Promise<Record<string, unknown>[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/seo/audits/${auditId}/pages`);
+      return response.data;
+    },
+    getHistory: async (workspaceId: string, domain: string): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/seo/history/${domain}`);
+      return response.data;
+    },
+    deleteAudit: async (workspaceId: string, auditId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/gtm/seo/audits/${auditId}`);
+    },
+  },
+  // ---- Content Gap (#19) ----
+  contentGap: {
+    createAnalysis: async (workspaceId: string, data: { our_domain: string; competitor_domains: string[] }): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/content-gap/analyses`, data);
+      return response.data;
+    },
+    listAnalyses: async (workspaceId: string, params?: { page?: number; per_page?: number }): Promise<{ items: Record<string, unknown>[]; total: number; page: number; per_page: number }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/content-gap/analyses`, { params });
+      return response.data;
+    },
+    getAnalysis: async (workspaceId: string, analysisId: string): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/content-gap/analyses/${analysisId}`);
+      return response.data;
+    },
+    deleteAnalysis: async (workspaceId: string, analysisId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/gtm/content-gap/analyses/${analysisId}`);
+    },
+  },
+  // ---- ABM (#30) ----
+  abm: {
+    listLists: async (workspaceId: string): Promise<Record<string, unknown>[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/abm/lists`);
+      return response.data;
+    },
+    createList: async (workspaceId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/abm/lists`, data);
+      return response.data;
+    },
+    getList: async (workspaceId: string, listId: string): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/abm/lists/${listId}`);
+      return response.data;
+    },
+    updateList: async (workspaceId: string, listId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> => {
+      const response = await api.put(`/workspaces/${workspaceId}/gtm/abm/lists/${listId}`, data);
+      return response.data;
+    },
+    deleteList: async (workspaceId: string, listId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/gtm/abm/lists/${listId}`);
+    },
+    addAccounts: async (workspaceId: string, listId: string, accounts: Record<string, unknown>[]): Promise<Record<string, unknown>[]> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/abm/lists/${listId}/accounts`, accounts);
+      return response.data;
+    },
+    refreshList: async (workspaceId: string, listId: string): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/abm/lists/${listId}/refresh`);
+      return response.data;
+    },
+    listAccounts: async (workspaceId: string, params?: { page?: number; per_page?: number; target_list_id?: string; tier?: string; stage?: string }): Promise<{ items?: Record<string, unknown>[]; accounts?: Record<string, unknown>[]; total: number; page: number; per_page: number }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/abm/accounts`, { params });
+      return response.data;
+    },
+    getAccount: async (workspaceId: string, accountId: string): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/abm/accounts/${accountId}`);
+      return response.data;
+    },
+    updateAccount: async (workspaceId: string, accountId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> => {
+      const response = await api.put(`/workspaces/${workspaceId}/gtm/abm/accounts/${accountId}`, data);
+      return response.data;
+    },
+    deleteAccount: async (workspaceId: string, accountId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/gtm/abm/accounts/${accountId}`);
+    },
+    changeStage: async (workspaceId: string, accountId: string, data: { stage: string; notes?: string }): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/abm/accounts/${accountId}/stage`, data);
+      return response.data;
+    },
+    assignCampaign: async (workspaceId: string, accountId: string, data: { campaign_id: string; campaign_name: string }): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/abm/accounts/${accountId}/campaign`, data);
+      return response.data;
+    },
+    overview: async (workspaceId: string): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/abm/overview`);
+      return response.data;
+    },
+    accountJourney: async (workspaceId: string, accountId: string): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/abm/accounts/${accountId}/journey`);
+      return response.data;
+    },
+  },
 };

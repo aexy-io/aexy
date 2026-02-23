@@ -317,3 +317,259 @@ export function useReplyStats(workspaceId: string | null, days = 30) {
     enabled: !!workspaceId,
   });
 }
+
+// =============================================================================
+// ALERTS (#32)
+// =============================================================================
+
+export function useGTMAlertConfigs(workspaceId: string | null) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmAlertConfigs", workspaceId],
+    queryFn: () => gtmApi.alerts.listConfigs(workspaceId!),
+    enabled: !!workspaceId,
+  });
+  return { configs: data || [], isLoading, error, refetch };
+}
+
+export function useGTMAlertLogs(workspaceId: string | null, params?: { page?: number; per_page?: number; event_type?: string }) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmAlertLogs", workspaceId, params],
+    queryFn: () => gtmApi.alerts.listLogs(workspaceId!, params),
+    enabled: !!workspaceId,
+  });
+  return { logs: data?.items || [], total: data?.total || 0, isLoading, error, refetch };
+}
+
+// =============================================================================
+// ROUTING & SLA (#26)
+// =============================================================================
+
+export function useGTMRoutingRules(workspaceId: string | null) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmRoutingRules", workspaceId],
+    queryFn: () => gtmApi.routing.listRules(workspaceId!),
+    enabled: !!workspaceId,
+  });
+  return { rules: data || [], isLoading, error, refetch };
+}
+
+export function useGTMSLADashboard(workspaceId: string | null, days?: number) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmSLADashboard", workspaceId, days],
+    queryFn: () => gtmApi.routing.slaDashboard(workspaceId!, days),
+    enabled: !!workspaceId,
+  });
+  return { dashboard: data || {}, isLoading, error, refetch };
+}
+
+export function useGTMAssignments(workspaceId: string | null, params?: { page?: number; per_page?: number; status?: string; assignee_id?: string }) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmAssignments", workspaceId, params],
+    queryFn: () => gtmApi.routing.listAssignments(workspaceId!, params),
+    enabled: !!workspaceId,
+  });
+  return { assignments: data?.items || [], total: data?.total || 0, isLoading, error, refetch };
+}
+
+// =============================================================================
+// HEALTH SCORING (#27)
+// =============================================================================
+
+export function useGTMHealthDashboard(workspaceId: string | null) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmHealthDashboard", workspaceId],
+    queryFn: () => gtmApi.health.dashboard(workspaceId!),
+    enabled: !!workspaceId,
+  });
+  return { dashboard: data || {}, isLoading, error, refetch };
+}
+
+export function useGTMHealthScores(workspaceId: string | null, params?: { page?: number; per_page?: number; health_status?: string }) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmHealthScores", workspaceId, params],
+    queryFn: () => gtmApi.health.listScores(workspaceId!, params),
+    enabled: !!workspaceId,
+  });
+  return { scores: data?.items || [], total: data?.total || 0, isLoading, error, refetch };
+}
+
+// =============================================================================
+// EXPANSION PLAYBOOKS (#28)
+// =============================================================================
+
+export function useGTMExpansionPlaybooks(workspaceId: string | null) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmExpansionPlaybooks", workspaceId],
+    queryFn: () => gtmApi.expansion.listPlaybooks(workspaceId!),
+    enabled: !!workspaceId,
+  });
+  return { playbooks: data || [], isLoading, error, refetch };
+}
+
+export function useGTMExpansionAnalytics(workspaceId: string | null) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmExpansionAnalytics", workspaceId],
+    queryFn: () => gtmApi.expansion.analytics(workspaceId!),
+    enabled: !!workspaceId,
+  });
+  return { analytics: data || {}, isLoading, error, refetch };
+}
+
+export function useGTMExpansionEnrollments(workspaceId: string | null, params?: { page?: number; per_page?: number; playbook_id?: string; status?: string }) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmExpansionEnrollments", workspaceId, params],
+    queryFn: () => gtmApi.expansion.listEnrollments(workspaceId!, params),
+    enabled: !!workspaceId,
+  });
+  return { enrollments: data?.items || [], total: data?.total || 0, isLoading, error, refetch };
+}
+
+// =============================================================================
+// HANDOFFS (#29)
+// =============================================================================
+
+export function useGTMHandoffs(workspaceId: string | null, params?: { page?: number; per_page?: number; status?: string; assigned_to?: string }) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmHandoffs", workspaceId, params],
+    queryFn: () => gtmApi.handoffs.list(workspaceId!, params),
+    enabled: !!workspaceId,
+  });
+  return { handoffs: data?.items || [], total: data?.total || 0, isLoading, error, refetch };
+}
+
+export function useGTMHandoffAnalytics(workspaceId: string | null) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmHandoffAnalytics", workspaceId],
+    queryFn: () => gtmApi.handoffs.analytics(workspaceId!),
+    enabled: !!workspaceId,
+  });
+  return { analytics: data || {}, isLoading, error, refetch };
+}
+
+// =============================================================================
+// INTENT SIGNALS (#25)
+// =============================================================================
+
+export function useGTMIntentSignals(workspaceId: string | null, params?: { page?: number; per_page?: number; signal_type?: string; intent_strength?: string }) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmIntentSignals", workspaceId, params],
+    queryFn: () => gtmApi.intent.listSignals(workspaceId!, params),
+    enabled: !!workspaceId,
+  });
+  return { signals: data?.items || [], total: data?.total || 0, isLoading, error, refetch };
+}
+
+export function useGTMIntentSummary(workspaceId: string | null) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmIntentSummary", workspaceId],
+    queryFn: () => gtmApi.intent.summary(workspaceId!),
+    enabled: !!workspaceId,
+  });
+  return { summary: data || {}, isLoading, error, refetch };
+}
+
+// =============================================================================
+// COMPETITORS (#31)
+// =============================================================================
+
+export function useGTMCompetitors(workspaceId: string | null) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmCompetitors", workspaceId],
+    queryFn: () => gtmApi.competitors.list(workspaceId!),
+    enabled: !!workspaceId,
+  });
+  return { competitors: data || [], isLoading, error, refetch };
+}
+
+export function useGTMCompetitor(workspaceId: string | null, competitorId: string | null) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmCompetitor", workspaceId, competitorId],
+    queryFn: () => gtmApi.competitors.get(workspaceId!, competitorId!),
+    enabled: !!workspaceId && !!competitorId,
+  });
+  return { competitor: data, isLoading, error, refetch };
+}
+
+export function useGTMCompetitorChanges(workspaceId: string | null, params?: { page?: number; per_page?: number; competitor_id?: string }) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmCompetitorChanges", workspaceId, params],
+    queryFn: () => gtmApi.competitors.listChanges(workspaceId!, params),
+    enabled: !!workspaceId,
+  });
+  return { changes: data?.items || [], total: data?.total || 0, isLoading, error, refetch };
+}
+
+export function useGTMBattleCard(workspaceId: string | null, competitorId: string | null) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmBattleCard", workspaceId, competitorId],
+    queryFn: () => gtmApi.competitors.getBattleCard(workspaceId!, competitorId!),
+    enabled: !!workspaceId && !!competitorId,
+  });
+  return { battleCard: data, isLoading, error, refetch };
+}
+
+// =============================================================================
+// SEO AUDIT (#18)
+// =============================================================================
+
+export function useGTMSEOAudits(workspaceId: string | null, params?: { page?: number; per_page?: number }) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmSEOAudits", workspaceId, params],
+    queryFn: () => gtmApi.seo.listAudits(workspaceId!, params),
+    enabled: !!workspaceId,
+  });
+  return { audits: data?.items || [], total: data?.total || 0, isLoading, error, refetch };
+}
+
+export function useGTMSEOAudit(workspaceId: string | null, auditId: string | null) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmSEOAudit", workspaceId, auditId],
+    queryFn: () => gtmApi.seo.getAudit(workspaceId!, auditId!),
+    enabled: !!workspaceId && !!auditId,
+  });
+  return { audit: data, isLoading, error, refetch };
+}
+
+// =============================================================================
+// CONTENT GAP ANALYSIS (#19)
+// =============================================================================
+
+export function useGTMContentAnalyses(workspaceId: string | null, params?: { page?: number; per_page?: number }) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmContentAnalyses", workspaceId, params],
+    queryFn: () => gtmApi.contentGap.listAnalyses(workspaceId!, params),
+    enabled: !!workspaceId,
+  });
+  return { analyses: data?.items || [], total: data?.total || 0, isLoading, error, refetch };
+}
+
+// =============================================================================
+// ABM (#30)
+// =============================================================================
+
+export function useGTMABMOverview(workspaceId: string | null) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmABMOverview", workspaceId],
+    queryFn: () => gtmApi.abm.overview(workspaceId!),
+    enabled: !!workspaceId,
+  });
+  return { overview: data || {}, isLoading, error, refetch };
+}
+
+export function useGTMABMTargetLists(workspaceId: string | null) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmABMTargetLists", workspaceId],
+    queryFn: () => gtmApi.abm.listLists(workspaceId!),
+    enabled: !!workspaceId,
+  });
+  return { lists: data || [], isLoading, error, refetch };
+}
+
+export function useGTMABMAccounts(workspaceId: string | null, params?: { page?: number; per_page?: number; target_list_id?: string; tier?: string; stage?: string }) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["gtmABMAccounts", workspaceId, params],
+    queryFn: () => gtmApi.abm.listAccounts(workspaceId!, params),
+    enabled: !!workspaceId,
+  });
+  return { accounts: data?.items || data?.accounts || [], total: data?.total || 0, isLoading, error, refetch };
+}

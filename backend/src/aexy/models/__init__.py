@@ -468,6 +468,16 @@ from aexy.models.gtm_outreach import (
     EnrollmentStatus,
     StepExecutionStatus,
 )
+from aexy.models.gtm_alerts import GTMAlertConfig, GTMAlertLog
+from aexy.models.gtm_routing import GTMRoutingRule, GTMLeadAssignment
+from aexy.models.gtm_health import GTMHealthScore, GTMHealthConfig
+from aexy.models.gtm_expansion import GTMExpansionPlaybook, GTMExpansionEnrollment
+from aexy.models.gtm_handoff import GTMHandoff
+from aexy.models.gtm_intent import IntentSignal, IntentSignalConfig
+from aexy.models.gtm_competitor import CompetitorProfile, CompetitorChange, BattleCard
+from aexy.models.gtm_seo import SEOAudit, SEOAuditPage
+from aexy.models.gtm_content import ContentAnalysis
+from aexy.models.gtm_abm import ABMTargetList, ABMAccount
 
 __all__ = [
     # Plan
@@ -921,4 +931,33 @@ __all__ = [
     "SequenceAction",
     "EnrollmentStatus",
     "StepExecutionStatus",
+    # GTM Alerts
+    "GTMAlertConfig",
+    "GTMAlertLog",
+    # GTM Routing
+    "GTMRoutingRule",
+    "GTMLeadAssignment",
+    # GTM Health
+    "GTMHealthScore",
+    "GTMHealthConfig",
+    # GTM Expansion
+    "GTMExpansionPlaybook",
+    "GTMExpansionEnrollment",
+    # GTM Handoff
+    "GTMHandoff",
+    # GTM Intent
+    "IntentSignal",
+    "IntentSignalConfig",
+    # GTM Competitor
+    "CompetitorProfile",
+    "CompetitorChange",
+    "BattleCard",
+    # GTM SEO
+    "SEOAudit",
+    "SEOAuditPage",
+    # GTM Content
+    "ContentAnalysis",
+    # GTM ABM
+    "ABMTargetList",
+    "ABMAccount",
 ]
