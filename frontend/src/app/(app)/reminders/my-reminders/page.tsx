@@ -13,6 +13,7 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { useMyReminders } from "@/hooks/useReminders";
 import { ReminderInstanceCard } from "@/components/reminders/shared";
 import { ReminderInstance } from "@/lib/api";
+import { useMemo } from "react";
 
 function Section({
   title,
@@ -36,21 +37,21 @@ function Section({
       ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
       : variant === "warning"
       ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
-      : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700";
+      : "bg-card border-border";
 
   const headerClass =
     variant === "danger"
       ? "border-red-200 dark:border-red-800"
       : variant === "warning"
       ? "border-amber-200 dark:border-amber-800"
-      : "border-gray-200 dark:border-gray-700";
+      : "border-border";
 
   const titleClass =
     variant === "danger"
       ? "text-red-700 dark:text-red-400"
       : variant === "warning"
       ? "text-amber-700 dark:text-amber-400"
-      : "text-gray-900 dark:text-white";
+      : "text-foreground";
 
   return (
     <div className={`rounded-lg border ${wrapperClass}`}>
@@ -99,8 +100,25 @@ export default function MyRemindersPage() {
     completeInstance({ instanceId });
   };
 
+  // Deduplicate sections: each instance appears in the highest-priority section only
+  const { filteredAssigned, filteredDueThisWeek, filteredTeam } = useMemo(() => {
+    const shownIds = new Set<string>();
+    for (const i of overdue) shownIds.add(i.id);
+    for (const i of dueToday) shownIds.add(i.id);
+
+    const filteredAssigned = assignedToMe.filter((i) => !shownIds.has(i.id));
+    for (const i of filteredAssigned) shownIds.add(i.id);
+
+    const filteredDueThisWeek = dueThisWeek.filter((i) => !shownIds.has(i.id));
+    for (const i of filteredDueThisWeek) shownIds.add(i.id);
+
+    const filteredTeam = myTeamReminders.filter((i) => !shownIds.has(i.id));
+
+    return { filteredAssigned, filteredDueThisWeek, filteredTeam };
+  }, [overdue, dueToday, assignedToMe, dueThisWeek, myTeamReminders]);
+
   const totalItems =
-    overdue.length + dueToday.length + assignedToMe.length + myTeamReminders.length + dueThisWeek.length;
+    overdue.length + dueToday.length + filteredAssigned.length + filteredDueThisWeek.length + filteredTeam.length;
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -108,26 +126,26 @@ export default function MyRemindersPage() {
       <div className="flex items-center gap-3 mb-6">
         <Link
           href="/reminders"
-          className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ChevronLeft className="h-4 w-4" />
           Reminders
         </Link>
-        <span className="text-gray-300 dark:text-gray-600">/</span>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">My Reminders</h1>
+        <span className="text-border">/</span>
+        <h1 className="text-xl font-bold text-foreground">My Reminders</h1>
       </div>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       ) : totalItems === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-16 text-center">
+        <div className="bg-card rounded-lg border border-border p-16 text-center">
           <CheckCircle2 className="h-12 w-12 text-green-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+          <h3 className="text-lg font-medium text-foreground mb-2">
             All caught up!
           </h3>
-          <p className="text-gray-500 dark:text-gray-400">
+          <p className="text-muted-foreground">
             You have no pending reminders assigned to you or your team.
           </p>
         </div>
@@ -152,24 +170,15 @@ export default function MyRemindersPage() {
           <Section
             title="Assigned to Me"
             icon={<Bell className="h-5 w-5 text-blue-500" />}
-            instances={assignedToMe.filter(
-              (i) =>
-                !overdue.find((o) => o.id === i.id) &&
-                !dueToday.find((d) => d.id === i.id)
-            )}
+            instances={filteredAssigned}
             variant="default"
             onAcknowledge={handleAcknowledge}
             onComplete={handleComplete}
           />
           <Section
             title="Due This Week"
-            icon={<Clock className="h-5 w-5 text-gray-400" />}
-            instances={dueThisWeek.filter(
-              (i) =>
-                !overdue.find((o) => o.id === i.id) &&
-                !dueToday.find((d) => d.id === i.id) &&
-                !assignedToMe.find((a) => a.id === i.id)
-            )}
+            icon={<Clock className="h-5 w-5 text-muted-foreground" />}
+            instances={filteredDueThisWeek}
             variant="default"
             onAcknowledge={handleAcknowledge}
             onComplete={handleComplete}
@@ -177,13 +186,7 @@ export default function MyRemindersPage() {
           <Section
             title="My Team"
             icon={<Users className="h-5 w-5 text-purple-500" />}
-            instances={myTeamReminders.filter(
-              (i) =>
-                !overdue.find((o) => o.id === i.id) &&
-                !dueToday.find((d) => d.id === i.id) &&
-                !assignedToMe.find((a) => a.id === i.id) &&
-                !dueThisWeek.find((w) => w.id === i.id)
-            )}
+            instances={filteredTeam}
             variant="default"
             onAcknowledge={handleAcknowledge}
             onComplete={handleComplete}

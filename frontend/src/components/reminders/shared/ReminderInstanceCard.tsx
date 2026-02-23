@@ -63,8 +63,8 @@ export function ReminderInstanceCard({
   const hoursUntilDue = differenceInHours(dueDate, new Date());
   const isUrgent = hoursUntilDue >= 0 && hoursUntilDue <= 24;
 
-  const handleMenuAction = (action: () => void | Promise<void>) => {
-    action();
+  const handleMenuAction = async (action: () => void | Promise<void>) => {
+    await action();
     setShowMenu(false);
   };
 

@@ -86,17 +86,17 @@ export default function AllRemindersPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/reminders"
-            className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
           >
             <ChevronLeft className="h-4 w-4" />
             Reminders
           </Link>
-          <span className="text-gray-300 dark:text-gray-600">/</span>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">All Reminders</h1>
+          <span className="text-border">/</span>
+          <h1 className="text-xl font-bold text-foreground">All Reminders</h1>
         </div>
         <Link
           href="/reminders/new"
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+          className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 flex items-center gap-2"
         >
           <Plus className="h-4 w-4" />
           New Reminder
@@ -104,22 +104,22 @@ export default function AllRemindersPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-6 space-y-4">
+      <div className="bg-card rounded-lg border border-border p-4 mb-6 space-y-4">
         {/* Search */}
         <form onSubmit={handleSearch} className="flex gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search reminders..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-9 pr-4 py-2 text-sm border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <button
             type="submit"
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-lg hover:bg-primary/90"
           >
             Search
           </button>
@@ -127,7 +127,7 @@ export default function AllRemindersPage() {
             <button
               type="button"
               onClick={clearFilters}
-              className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-1"
+              className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
             >
               <X className="h-4 w-4" />
               Clear
@@ -138,13 +138,13 @@ export default function AllRemindersPage() {
         {/* Category & Priority */}
         <div className="flex flex-wrap gap-3 items-center">
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
-            <span className="text-sm text-gray-500 dark:text-gray-400">Filter:</span>
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Filter:</span>
           </div>
           <select
             value={category ?? ""}
             onChange={(e) => { setCategory(e.target.value as ReminderCategory || undefined); setPage(1); }}
-            className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="text-sm border border-border rounded-lg px-3 py-1.5 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="">All Categories</option>
             {CATEGORIES.map((c) => (
@@ -154,7 +154,7 @@ export default function AllRemindersPage() {
           <select
             value={priority ?? ""}
             onChange={(e) => { setPriority(e.target.value as ReminderPriority || undefined); setPage(1); }}
-            className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="text-sm border border-border rounded-lg px-3 py-1.5 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="">All Priorities</option>
             {PRIORITIES.map((p) => (
@@ -165,15 +165,15 @@ export default function AllRemindersPage() {
       </div>
 
       {/* Status Tabs */}
-      <div className="flex gap-1 mb-6 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex gap-1 mb-6 border-b border-border">
         {STATUS_TABS.map((tab) => (
           <button
             key={tab.label}
             onClick={() => { setStatus(tab.value); setPage(1); }}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               status === tab.value
-                ? "border-blue-600 text-blue-600 dark:text-blue-400"
-                : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             {tab.label}
@@ -183,11 +183,11 @@ export default function AllRemindersPage() {
 
       {/* Results count */}
       <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+        <p className="text-sm text-muted-foreground">
           {isLoading ? "Loading..." : `${total} reminder${total !== 1 ? "s" : ""} found`}
         </p>
         {totalPages > 1 && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-muted-foreground">
             Page {page} of {totalPages}
           </p>
         )}
@@ -196,15 +196,15 @@ export default function AllRemindersPage() {
       {/* Content */}
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       ) : reminders.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-16 text-center">
-          <Bell className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+        <div className="bg-card rounded-lg border border-border p-16 text-center">
+          <Bell className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-foreground mb-2">
             No reminders found
           </h3>
-          <p className="text-gray-500 dark:text-gray-400 mb-6">
+          <p className="text-muted-foreground mb-6">
             {hasFilters
               ? "Try adjusting your filters or search query."
               : "Create your first reminder to start tracking compliance tasks."}
@@ -212,7 +212,7 @@ export default function AllRemindersPage() {
           {!hasFilters && (
             <Link
               href="/reminders/new"
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-lg hover:bg-primary/90"
             >
               <Plus className="h-4 w-4" />
               Create Reminder
@@ -243,7 +243,7 @@ export default function AllRemindersPage() {
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-foreground bg-card border border-border rounded-lg hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <ChevronLeft className="h-4 w-4" />
             Previous
@@ -264,8 +264,8 @@ export default function AllRemindersPage() {
                   onClick={() => setPage(pageNum)}
                   className={`w-9 h-9 text-sm rounded-lg ${
                     pageNum === page
-                      ? "bg-blue-600 text-white font-medium"
-                      : "text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      ? "bg-primary text-primary-foreground font-medium"
+                      : "text-foreground bg-card border border-border hover:bg-accent"
                   }`}
                 >
                   {pageNum}
@@ -276,7 +276,7 @@ export default function AllRemindersPage() {
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-foreground bg-card border border-border rounded-lg hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Next
             <ChevronRight className="h-4 w-4" />
