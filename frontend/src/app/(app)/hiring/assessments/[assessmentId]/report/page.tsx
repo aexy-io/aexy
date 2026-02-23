@@ -32,7 +32,6 @@ interface CandidateResult {
   candidate_name: string;
   candidate_email: string;
   status: string;
-  score: number | null;
   trust_score: number | null;
   started_at: string | null;
   completed_at: string | null;
@@ -335,7 +334,6 @@ export default function AssessmentReportPage() {
       candidate_name: invitation.candidate?.name || "Unknown",
       candidate_email: invitation.candidate?.email || "",
       status,
-      score: invitation.latest_score ?? null,
       trust_score: invitation.latest_trust_score ?? null,
       started_at: invitation.started_at,
       completed_at: invitation.completed_at,
@@ -365,7 +363,7 @@ export default function AssessmentReportPage() {
     })
     .sort((a, b) => {
       if (sortBy === "score") {
-        return (b.score || 0) - (a.score || 0);
+        return (b.percentage_score || 0) - (a.percentage_score || 0);
       }
       if (sortBy === "name") {
         return a.candidate_name.localeCompare(b.candidate_name);

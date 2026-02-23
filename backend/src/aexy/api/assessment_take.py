@@ -411,7 +411,7 @@ async def start_assessment(
                 candidate_id=candidate.id,
                 invitation_token=secrets.token_urlsafe(32),
                 status=InvitationStatus.PENDING,
-                started_at = datetime.now(timezone.utc)
+                started_at=datetime.now(timezone.utc)
             )
             db.add(invitation)
             await db.flush()

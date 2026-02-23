@@ -222,10 +222,7 @@ class AssessmentService:
         if status:
             assessment_query = assessment_query.where(Assessment.status == status.value)
         if search:
-            assessment_query = assessment_query.where(or_(
-                Assessment.title.ilike(f"%{search}%"),
-                Assessment.job_designation.ilike(f"%{search}%"),
-            ))
+            assessment_query = assessment_query.where(search_filter)
         assessment_query = assessment_query.order_by(Assessment.created_at.desc())
         assessment_query = assessment_query.offset(offset).limit(limit)
         result = await self.db.execute(assessment_query)
