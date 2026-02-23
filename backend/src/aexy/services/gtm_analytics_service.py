@@ -445,6 +445,10 @@ class GTMAnalyticsService:
         The *interval* parameter is passed to PostgreSQL's date_trunc (e.g.
         'day', 'week', 'month').
         """
+        VALID_INTERVALS = {"day", "week", "month", "quarter", "year"}
+        if interval not in VALID_INTERVALS:
+            raise ValueError(f"Invalid interval: {interval}")
+
         cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
         # Shared date-truncation expressions (used in GROUP BY / ORDER BY).

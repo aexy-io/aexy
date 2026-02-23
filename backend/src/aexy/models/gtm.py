@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func, Index
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, desc, func, Index
 from sqlalchemy.dialects.postgresql import INET, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -154,7 +154,7 @@ class BehavioralEvent(Base):
     )
 
     __table_args__ = (
-        Index("ix_behavioral_events_anonymous", "anonymous_id", occurred_at.desc()),
+        Index("ix_behavioral_events_anonymous", "anonymous_id", desc("occurred_at")),
     )
 
 

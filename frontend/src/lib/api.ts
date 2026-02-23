@@ -17963,11 +17963,11 @@ export const gtmApi = {
     },
     funnel: async (workspaceId: string, days?: number): Promise<FunnelStageData[]> => {
       const response = await api.get(`/workspaces/${workspaceId}/gtm/dashboard/funnel`, { params: { days } });
-      return response.data;
+      return response.data.stages ?? response.data;
     },
     recentVisitors: async (workspaceId: string, limit?: number): Promise<RecentVisitorRow[]> => {
       const response = await api.get(`/workspaces/${workspaceId}/gtm/dashboard/recent-visitors`, { params: { limit } });
-      return response.data;
+      return response.data.visitors ?? response.data;
     },
   },
   visitors: {

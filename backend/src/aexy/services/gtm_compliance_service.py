@@ -12,7 +12,8 @@ from aexy.models.gtm_compliance import (
     SuppressionList,
     ComplianceAuditLog,
 )
-from aexy.models.gtm import BehavioralEvent, LeadScore
+from aexy.models.gtm import BehavioralEvent, LeadScore, VisitorSession
+from aexy.models.gtm_outreach import OutreachEnrollment, OutreachStepExecution
 
 logger = logging.getLogger(__name__)
 
@@ -302,12 +303,15 @@ class GTMComplianceService:
         if (result.scalar() or 0) > 0:
             return True
 
-        # Check domain match
+        # Check domain match — only match entries that were explicitly added as
+        # domain-level blocks, not entries added for individual emails that happen
+        # to share the same domain.
         if domain:
             domain_q = select(func.count(SuppressionList.id)).where(
                 and_(
                     SuppressionList.workspace_id == workspace_id,
                     SuppressionList.domain == domain,
+                    SuppressionList.reason == "domain_block",
                 )
             )
             result = await self.db.execute(domain_q)
@@ -394,7 +398,49 @@ class GTMComplianceService:
         )
         record_ids = [r[0] for r in audit_records.all() if r[0]]
 
+        # Delete outreach enrollments and their step executions for this email
+        enrollment_ids_result = await self.db.execute(
+            select(OutreachEnrollment.id).where(
+                and_(
+                    OutreachEnrollment.workspace_id == workspace_id,
+                    OutreachEnrollment.email == email,
+                )
+            )
+        )
+        enrollment_ids = [r[0] for r in enrollment_ids_result.all()]
+
+        if enrollment_ids:
+            # Delete step executions for these enrollments first (child records)
+            result = await self.db.execute(
+                delete(OutreachStepExecution).where(
+                    OutreachStepExecution.enrollment_id.in_(enrollment_ids),
+                )
+            )
+            deleted_counts["outreach_step_executions"] = result.rowcount
+
+            # Delete the enrollments themselves
+            result = await self.db.execute(
+                delete(OutreachEnrollment).where(
+                    OutreachEnrollment.id.in_(enrollment_ids),
+                )
+            )
+            deleted_counts["outreach_enrollments"] = result.rowcount
+        else:
+            deleted_counts["outreach_step_executions"] = 0
+            deleted_counts["outreach_enrollments"] = 0
+
         if record_ids:
+            # Delete visitor sessions for these records
+            result = await self.db.execute(
+                delete(VisitorSession).where(
+                    and_(
+                        VisitorSession.workspace_id == workspace_id,
+                        VisitorSession.record_id.in_(record_ids),
+                    )
+                )
+            )
+            deleted_counts["visitor_sessions"] = result.rowcount
+
             # Delete behavioral events for these records
             result = await self.db.execute(
                 delete(BehavioralEvent).where(
@@ -417,6 +463,7 @@ class GTMComplianceService:
             )
             deleted_counts["lead_scores"] = result.rowcount
         else:
+            deleted_counts["visitor_sessions"] = 0
             deleted_counts["behavioral_events"] = 0
             deleted_counts["lead_scores"] = 0
 

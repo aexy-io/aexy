@@ -6,10 +6,12 @@ Resolution methods (in priority order):
 3. Snitcher company match — IP-to-company matched to CRM company record
 """
 
+import json
 import logging
 from datetime import datetime, timezone
 
-from sqlalchemy import select, and_, update
+from sqlalchemy import select, and_, update, type_coerce
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.models.gtm import (
@@ -109,7 +111,7 @@ class IdentityResolutionService:
             select(CRMRecord.id).where(
                 and_(
                     CRMRecord.workspace_id == workspace_id,
-                    CRMRecord.values.op("@>")('{"email": "' + email.lower() + '"}'),
+                    CRMRecord.values.op("@>")(type_coerce(json.dumps({"email": email.lower()}), JSONB)),
                 )
             ).limit(1)
         )
@@ -123,7 +125,7 @@ class IdentityResolutionService:
                 select(CRMRecord.id).where(
                     and_(
                         CRMRecord.workspace_id == workspace_id,
-                        CRMRecord.values.op("@>")('{"' + field_name + '": "' + email.lower() + '"}'),
+                        CRMRecord.values.op("@>")(type_coerce(json.dumps({field_name: email.lower()}), JSONB)),
                     )
                 ).limit(1)
             )
@@ -158,7 +160,7 @@ class IdentityResolutionService:
                 and_(
                     CRMRecord.workspace_id == workspace_id,
                     CRMRecord.object_id == str(company_obj),
-                    CRMRecord.values.op("@>")('{"domain": "' + domain.lower() + '"}'),
+                    CRMRecord.values.op("@>")(type_coerce(json.dumps({"domain": domain.lower()}), JSONB)),
                 )
             ).limit(1)
         )
@@ -172,7 +174,7 @@ class IdentityResolutionService:
                 and_(
                     CRMRecord.workspace_id == workspace_id,
                     CRMRecord.object_id == str(company_obj),
-                    CRMRecord.values.op("@>")('{"website": "' + domain.lower() + '"}'),
+                    CRMRecord.values.op("@>")(type_coerce(json.dumps({"website": domain.lower()}), JSONB)),
                 )
             ).limit(1)
         )

@@ -25,7 +25,7 @@ import { useOutreachSequences, useSequenceMutations } from "@/hooks/useGTM";
 import { OutreachSequence } from "@/lib/api";
 
 const STATUS_STYLES: Record<string, string> = {
-  draft: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",
+  draft: "bg-zinc-500/20 text-muted-foreground border-zinc-500/30",
   active: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
   paused: "bg-amber-500/20 text-amber-400 border-amber-500/30",
   archived: "bg-slate-500/20 text-slate-400 border-slate-500/30",
@@ -67,17 +67,17 @@ function SequenceCard({
       : "0.0";
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-xl p-5 hover:border-white/20 transition-colors">
+    <div className="bg-muted/50 border border-border rounded-xl p-5 hover:border-border transition-colors">
       <div className="flex items-start justify-between mb-3">
         <div>
           <Link
             href={`/gtm/sequences/${sequence.id}`}
-            className="text-white font-semibold hover:text-indigo-400 transition-colors"
+            className="text-foreground font-semibold hover:text-indigo-400 transition-colors"
           >
             {sequence.name}
           </Link>
           {sequence.description && (
-            <p className="text-sm text-zinc-400 mt-1 line-clamp-1">
+            <p className="text-sm text-muted-foreground mt-1 line-clamp-1">
               {sequence.description}
             </p>
           )}
@@ -90,13 +90,13 @@ function SequenceCard({
         {channels.map((ch) => (
           <span
             key={ch}
-            className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-zinc-400"
+            className="inline-flex items-center gap-1 px-2 py-0.5 bg-muted/50 border border-border rounded text-xs text-muted-foreground"
           >
             {CHANNEL_ICONS[ch]}
             {ch}
           </span>
         ))}
-        <span className="text-xs text-zinc-500">
+        <span className="text-xs text-muted-foreground">
           {totalSteps} step{totalSteps !== 1 ? "s" : ""}
         </span>
       </div>
@@ -104,10 +104,10 @@ function SequenceCard({
       {/* Stats row */}
       <div className="grid grid-cols-4 gap-3 mb-4">
         <div className="text-center">
-          <div className="text-lg font-semibold text-white">
+          <div className="text-lg font-semibold text-foreground">
             {sequence.enrolled_count}
           </div>
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wide">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
             Enrolled
           </div>
         </div>
@@ -115,7 +115,7 @@ function SequenceCard({
           <div className="text-lg font-semibold text-blue-400">
             {sequence.active_count}
           </div>
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wide">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
             Active
           </div>
         </div>
@@ -123,7 +123,7 @@ function SequenceCard({
           <div className="text-lg font-semibold text-emerald-400">
             {sequence.completed_count}
           </div>
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wide">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
             Done
           </div>
         </div>
@@ -131,14 +131,14 @@ function SequenceCard({
           <div className="text-lg font-semibold text-indigo-400">
             {replyRate}%
           </div>
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wide">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
             Reply
           </div>
         </div>
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-2 border-t border-white/10 pt-3">
+      <div className="flex items-center gap-2 border-t border-border pt-3">
         {sequence.status === "draft" || sequence.status === "paused" ? (
           <button
             onClick={onActivate}
@@ -158,7 +158,7 @@ function SequenceCard({
         ) : null}
         <Link
           href={`/gtm/sequences/${sequence.id}`}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/5 text-zinc-300 hover:bg-white/10 rounded-lg text-xs font-medium transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-muted/50 text-foreground hover:bg-muted rounded-lg text-xs font-medium transition-colors"
         >
           Edit
         </Link>
@@ -206,15 +206,15 @@ export default function SequencesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Outreach Sequences</h1>
-          <p className="text-sm text-zinc-400 mt-1">
+          <h1 className="text-2xl font-bold text-foreground">Outreach Sequences</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             Multi-channel sequences for email, LinkedIn, and SMS outreach
           </p>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={() => refetch()}
-            className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+            className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -237,7 +237,7 @@ export default function SequencesPage() {
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
               (s === "all" && !statusFilter) || statusFilter === s
                 ? "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30"
-                : "bg-white/5 text-zinc-400 border border-white/10 hover:bg-white/10"
+                : "bg-muted/50 text-muted-foreground border border-border hover:bg-muted"
             }`}
           >
             {s.charAt(0).toUpperCase() + s.slice(1)}
@@ -252,12 +252,12 @@ export default function SequencesPage() {
         </div>
       ) : sequences.length === 0 ? (
         /* Empty state */
-        <div className="bg-white/5 border border-white/10 rounded-xl p-12 text-center">
-          <Mail className="w-12 h-12 text-zinc-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-white mb-2">
+        <div className="bg-muted/50 border border-border rounded-xl p-12 text-center">
+          <Mail className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-2">
             No sequences yet
           </h3>
-          <p className="text-sm text-zinc-400 mb-6 max-w-md mx-auto">
+          <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
             Create a multi-channel outreach sequence to automate your email,
             LinkedIn, and SMS outreach.
           </p>
@@ -291,24 +291,24 @@ export default function SequencesPage() {
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between">
-              <span className="text-sm text-zinc-400">
+              <span className="text-sm text-muted-foreground">
                 {total} sequence{total !== 1 ? "s" : ""}
               </span>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page <= 1}
-                  className="p-1.5 rounded-lg bg-white/5 text-zinc-400 hover:bg-white/10 disabled:opacity-30"
+                  className="p-1.5 rounded-lg bg-muted/50 text-muted-foreground hover:bg-muted disabled:opacity-30"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                <span className="text-sm text-zinc-400">
+                <span className="text-sm text-muted-foreground">
                   {page} / {totalPages}
                 </span>
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page >= totalPages}
-                  className="p-1.5 rounded-lg bg-white/5 text-zinc-400 hover:bg-white/10 disabled:opacity-30"
+                  className="p-1.5 rounded-lg bg-muted/50 text-muted-foreground hover:bg-muted disabled:opacity-30"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -321,21 +321,21 @@ export default function SequencesPage() {
       {/* Create Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-zinc-900 border border-white/10 rounded-xl p-6 w-full max-w-md">
+          <div className="bg-background border border-border rounded-xl p-6 w-full max-w-md">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white">
+              <h2 className="text-lg font-semibold text-foreground">
                 New Sequence
               </h2>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="p-1 text-zinc-400 hover:text-white"
+                className="p-1 text-muted-foreground hover:text-foreground"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Name
                 </label>
                 <input
@@ -343,11 +343,11 @@ export default function SequencesPage() {
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="e.g., Cold Outreach - SaaS CTOs"
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-zinc-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                  className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Description
                 </label>
                 <textarea
@@ -355,13 +355,13 @@ export default function SequencesPage() {
                   onChange={(e) => setNewDescription(e.target.value)}
                   placeholder="Optional description..."
                   rows={3}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-zinc-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none"
+                  className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none"
                 />
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors"
+                  className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Cancel
                 </button>

@@ -1,6 +1,6 @@
 """GTM (Go-To-Market) API endpoints."""
 
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
@@ -457,7 +457,7 @@ async def list_visitors(
         "sessions": sessions,
         "total": total,
         "page": page,
-        "page_size": page_size,
+        "per_page": page_size,
     }
 
 
@@ -561,7 +561,6 @@ async def check_send_permission(
     await check_workspace_permission(workspace_id, current_user, db)
     service = GTMComplianceService(db)
     result = await service.check_send_permission(workspace_id, email, record_id=record_id)
-    await db.commit()
     return result
 
 
@@ -786,8 +785,8 @@ async def list_scored_leads(
     min_score: int | None = Query(default=None, ge=0, le=100),
     max_score: int | None = Query(default=None, ge=0, le=100),
     lifecycle_stage: str | None = Query(default=None),
-    sort_by: str = Query(default="total_score"),
-    sort_dir: str = Query(default="desc"),
+    sort_by: Literal["total_score", "firmographic_score", "behavioral_score", "intent_score", "created_at"] = Query(default="total_score"),
+    sort_dir: Literal["asc", "desc"] = Query(default="desc"),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -894,7 +893,7 @@ async def create_sequence(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new outreach sequence."""
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = OutreachSequenceService(db)
     sequence = await service.create_sequence(
         workspace_id=workspace_id,
@@ -950,7 +949,7 @@ async def update_sequence(
     db: AsyncSession = Depends(get_db),
 ):
     """Update an outreach sequence."""
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = OutreachSequenceService(db)
     kwargs = {}
     if data.name is not None:
@@ -978,7 +977,7 @@ async def delete_sequence(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a sequence (must be draft or archived)."""
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = OutreachSequenceService(db)
     deleted = await service.delete_sequence(workspace_id, sequence_id)
     if not deleted:
@@ -994,7 +993,7 @@ async def activate_sequence(
     db: AsyncSession = Depends(get_db),
 ):
     """Activate a sequence for enrollments."""
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = OutreachSequenceService(db)
     sequence = await service.activate_sequence(workspace_id, sequence_id)
     if not sequence:
@@ -1011,7 +1010,7 @@ async def pause_sequence(
     db: AsyncSession = Depends(get_db),
 ):
     """Pause an active sequence and all its enrollments."""
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = OutreachSequenceService(db)
     sequence = await service.pause_sequence(workspace_id, sequence_id)
     if not sequence:
@@ -1144,7 +1143,7 @@ async def get_enrollment_timeline(
     """Get step execution timeline for an enrollment."""
     await check_workspace_permission(workspace_id, current_user, db)
     service = OutreachSequenceService(db)
-    return await service.get_enrollment_timeline(enrollment_id)
+    return await service.get_enrollment_timeline(workspace_id, enrollment_id)
 
 
 @router.get("/sequences/{sequence_id}/analytics", response_model=SequenceAnalyticsResponse)

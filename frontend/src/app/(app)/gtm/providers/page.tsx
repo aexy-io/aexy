@@ -77,22 +77,22 @@ function StatusBadge({ status }: { status: GTMProviderStatus }) {
     active: {
       icon: <CheckCircle2 className="w-3.5 h-3.5" />,
       label: "Active",
-      className: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+      className: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
     },
     inactive: {
       icon: <XCircle className="w-3.5 h-3.5" />,
       label: "Inactive",
-      className: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",
+      className: "bg-zinc-500/20 text-muted-foreground border-zinc-500/30",
     },
     error: {
       icon: <AlertCircle className="w-3.5 h-3.5" />,
       label: "Error",
-      className: "bg-red-500/20 text-red-400 border-red-500/30",
+      className: "bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30",
     },
     pending_setup: {
       icon: <Clock className="w-3.5 h-3.5" />,
       label: "Pending Setup",
-      className: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+      className: "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/30",
     },
   };
 
@@ -136,6 +136,7 @@ function ConfigureModal({
     success: boolean;
     message: string;
   } | null>(null);
+  const hasExistingKey = !!existingProvider;
 
   async function handleTest() {
     if (!providerName || !apiKey) return;
@@ -159,19 +160,19 @@ function ConfigureModal({
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative bg-[#12121a] border border-white/10 rounded-2xl w-full max-w-lg mx-4 shadow-2xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+      <div className="relative bg-background border border-border rounded-2xl w-full max-w-lg mx-4 shadow-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-foreground">
               Configure {SLOT_LABELS[slot] || slot}
             </h2>
-            <p className="text-zinc-500 text-sm mt-0.5">
+            <p className="text-muted-foreground text-sm mt-0.5">
               {SLOT_DESCRIPTIONS[slot] || "Configure this provider slot."}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -190,7 +191,7 @@ function ConfigureModal({
 
           {/* Provider Name */}
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+            <label className="block text-sm font-medium text-foreground mb-1.5">
               Provider Name
             </label>
             <input
@@ -198,13 +199,13 @@ function ConfigureModal({
               value={providerName}
               onChange={(e) => setProviderName(e.target.value)}
               placeholder={SLOT_RECOMMENDATIONS[slot] || "Provider name"}
-              className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-colors text-sm"
+              className="w-full px-3 py-2.5 bg-muted/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-colors text-sm"
             />
           </div>
 
           {/* API Key */}
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+            <label className="block text-sm font-medium text-foreground mb-1.5">
               API Key
             </label>
             <div className="relative">
@@ -217,12 +218,12 @@ function ConfigureModal({
                     ? "API key is set (enter new to replace)"
                     : "Enter API key"
                 }
-                className="w-full px-3 py-2.5 pr-10 bg-white/5 border border-white/10 rounded-lg text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-colors text-sm"
+                className="w-full px-3 py-2.5 pr-10 bg-muted/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-colors text-sm"
               />
               <button
                 type="button"
                 onClick={() => setShowApiKey(!showApiKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
               >
                 {showApiKey ? (
                   <EyeOff className="w-4 h-4" />
@@ -258,11 +259,11 @@ function ConfigureModal({
           )}
         </div>
 
-        <div className="flex items-center justify-between px-6 py-4 border-t border-white/10">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-border">
           <button
             onClick={handleTest}
             disabled={!providerName || !apiKey || isTesting}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-muted/50 hover:bg-muted border border-border text-foreground rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isTesting ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -274,7 +275,7 @@ function ConfigureModal({
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-zinc-400 hover:text-zinc-200 text-sm font-medium transition-colors"
+              className="px-4 py-2 text-muted-foreground hover:text-foreground text-sm font-medium transition-colors"
             >
               Cancel
             </button>
@@ -347,10 +348,10 @@ export default function GTMProvidersPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
-          <span className="text-zinc-400 text-sm">Loading providers...</span>
+          <span className="text-muted-foreground text-sm">Loading providers...</span>
         </div>
       </div>
     );
@@ -358,17 +359,17 @@ export default function GTMProvidersPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-        <div className="bg-white/5 border border-red-500/20 rounded-xl p-8 max-w-md text-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="bg-muted/50 border border-red-500/20 rounded-xl p-8 max-w-md text-center">
           <p className="text-red-400 font-medium mb-2">
             Failed to load providers
           </p>
-          <p className="text-zinc-500 text-sm mb-4">
+          <p className="text-muted-foreground text-sm mb-4">
             {(error as Error).message || "An unexpected error occurred."}
           </p>
           <button
             onClick={() => refetch()}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/15 text-white rounded-lg text-sm transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-border hover:bg-accent text-foreground rounded-lg text-sm transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             Retry
@@ -379,30 +380,30 @@ export default function GTMProvidersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <Link
               href="/gtm"
-              className="flex items-center justify-center w-9 h-9 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors"
+              className="flex items-center justify-center w-9 h-9 bg-muted/50 hover:bg-muted border border-border rounded-lg transition-colors"
             >
-              <ArrowLeft className="w-4 h-4 text-zinc-400" />
+              <ArrowLeft className="w-4 h-4 text-muted-foreground" />
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
                 <Settings className="w-7 h-7 text-indigo-400" />
                 Provider Settings
               </h1>
-              <p className="text-zinc-400 mt-1">
+              <p className="text-muted-foreground mt-1">
                 Configure the data providers that power your GTM pipeline.
               </p>
             </div>
           </div>
           <button
             onClick={() => refetch()}
-            className="inline-flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 rounded-lg text-sm transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-2 bg-muted/50 hover:bg-muted border border-border text-foreground rounded-lg text-sm transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             Refresh
@@ -420,28 +421,28 @@ export default function GTMProvidersPage() {
             return (
               <div
                 key={slot}
-                className="bg-white/5 border border-white/10 rounded-xl p-5 flex flex-col justify-between gap-4 hover:border-white/20 transition-colors"
+                className="bg-muted/50 border border-border rounded-xl p-5 flex flex-col justify-between gap-4 hover:border-border/80 transition-colors"
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-white font-semibold text-sm">
+                    <h3 className="text-foreground font-semibold text-sm">
                       {SLOT_LABELS[slot]}
                     </h3>
                     <StatusBadge status={status} />
                   </div>
-                  <p className="text-zinc-500 text-xs mb-3 leading-relaxed">
+                  <p className="text-muted-foreground text-xs mb-3 leading-relaxed">
                     {SLOT_DESCRIPTIONS[slot]}
                   </p>
                   {provider ? (
                     <div className="flex items-center gap-2">
-                      <Plug className="w-3.5 h-3.5 text-zinc-500" />
-                      <span className="text-zinc-300 text-sm">
+                      <Plug className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-foreground text-sm">
                         {provider.display_name || provider.provider_name}
                       </span>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <span className="text-zinc-600 text-sm italic">
+                      <span className="text-muted-foreground text-sm italic">
                         No provider configured
                       </span>
                       {SLOT_RECOMMENDATIONS[slot] && (
@@ -452,7 +453,7 @@ export default function GTMProvidersPage() {
                     </div>
                   )}
                   {provider?.last_used_at && (
-                    <p className="text-zinc-600 text-xs mt-2">
+                    <p className="text-muted-foreground text-xs mt-2">
                       Last used:{" "}
                       {new Date(provider.last_used_at).toLocaleDateString()}
                     </p>
@@ -465,7 +466,7 @@ export default function GTMProvidersPage() {
                 </div>
                 <button
                   onClick={() => setConfiguringSlot(slot)}
-                  className="w-full px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 rounded-lg text-sm font-medium transition-colors"
+                  className="w-full px-3 py-2 bg-muted/50 hover:bg-muted border border-border text-foreground rounded-lg text-sm font-medium transition-colors"
                 >
                   Configure
                 </button>
