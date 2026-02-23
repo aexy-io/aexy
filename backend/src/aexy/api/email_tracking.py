@@ -106,6 +106,31 @@ async def _record_open_event(
                 ip_address=ip_address,
             )
             logger.debug(f"Recorded open for pixel {pixel_id}")
+
+            # Dispatch automation event
+            try:
+                from aexy.models.email_marketing import EmailTrackingPixel
+                from aexy.services.automation_service import dispatch_automation_event
+
+                result = await db.execute(
+                    select(EmailTrackingPixel).where(EmailTrackingPixel.id == pixel_id)
+                )
+                pixel = result.scalar_one_or_none()
+                if pixel and pixel.workspace_id:
+                    await dispatch_automation_event(
+                        db=db,
+                        workspace_id=str(pixel.workspace_id),
+                        module="email_marketing",
+                        trigger_type="email.opened",
+                        entity_id=pixel_id,
+                        trigger_data={
+                            "pixel_id": pixel_id,
+                            "campaign_id": str(pixel.campaign_id) if pixel.campaign_id else None,
+                            "recipient_id": str(pixel.recipient_id) if pixel.recipient_id else None,
+                        },
+                    )
+            except Exception as e:
+                logger.error(f"Failed to dispatch email.opened for pixel {pixel_id}: {e}")
     except Exception as e:
         logger.error(f"Failed to record open for pixel {pixel_id}: {e}")
 
@@ -185,6 +210,32 @@ async def _record_click_event(
                 referer=referer,
             )
             logger.debug(f"Recorded click for link {link_id}")
+
+            # Dispatch automation event
+            try:
+                from aexy.models.email_marketing import TrackedLink
+                from aexy.services.automation_service import dispatch_automation_event
+
+                result = await db.execute(
+                    select(TrackedLink).where(TrackedLink.id == link_id)
+                )
+                link = result.scalar_one_or_none()
+                if link and link.workspace_id:
+                    await dispatch_automation_event(
+                        db=db,
+                        workspace_id=str(link.workspace_id),
+                        module="email_marketing",
+                        trigger_type="email.clicked",
+                        entity_id=link_id,
+                        trigger_data={
+                            "link_id": link_id,
+                            "original_url": link.original_url,
+                            "campaign_id": str(link.campaign_id) if link.campaign_id else None,
+                            "recipient_id": recipient_id,
+                        },
+                    )
+            except Exception as e:
+                logger.error(f"Failed to dispatch email.clicked for link {link_id}: {e}")
     except Exception as e:
         logger.error(f"Failed to record click for link {link_id}: {e}")
 
@@ -329,6 +380,23 @@ async def one_click_unsubscribe(
         db.add(event)
 
         await db.commit()
+
+        # Dispatch automation event
+        try:
+            from aexy.services.automation_service import dispatch_automation_event
+            await dispatch_automation_event(
+                db=db,
+                workspace_id=str(subscriber.workspace_id),
+                module="email_marketing",
+                trigger_type="email.unsubscribed",
+                entity_id=str(subscriber.id),
+                trigger_data={
+                    "subscriber_email": subscriber.email,
+                    "campaign_id": c,
+                },
+            )
+        except Exception as e:
+            logger.error(f"Failed to dispatch email.unsubscribed for subscriber {subscriber.id}: {e}")
 
         logger.info(f"Subscriber {subscriber.id} unsubscribed via one-click")
 

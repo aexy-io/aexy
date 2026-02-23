@@ -1046,7 +1046,7 @@ async def create_hiring_candidate(
         db=db,
         workspace_id=workspace_id,
         module="hiring",
-        trigger_type="hiring.candidate_created",
+        trigger_type="candidate.created",
         entity_id=str(candidate.id),
         trigger_data={
             "email": candidate.email,
@@ -1163,7 +1163,7 @@ async def update_hiring_candidate(
         db=db,
         workspace_id=str(candidate.workspace_id),
         module="hiring",
-        trigger_type="hiring.candidate_updated",
+        trigger_type="candidate.updated",
         entity_id=str(candidate.id),
         trigger_data={
             "email": candidate.email,
@@ -1235,7 +1235,7 @@ async def update_candidate_stage(
         db=db,
         workspace_id=str(candidate.workspace_id),
         module="hiring",
-        trigger_type="hiring.candidate_stage_changed",
+        trigger_type="candidate.stage_changed",
         entity_id=str(candidate.id),
         trigger_data={
             "email": candidate.email,
