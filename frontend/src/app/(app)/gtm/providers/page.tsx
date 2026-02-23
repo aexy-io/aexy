@@ -138,20 +138,40 @@ function ConfigureModal({
   } | null>(null);
   const hasExistingKey = !!existingProvider;
 
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   async function handleTest() {
     if (!providerName || !apiKey) return;
     setTestResult(null);
+    setSaveError(null);
     try {
       const result = await onTestCredentials(slot, providerName, { api_key: apiKey });
       setTestResult(result);
-    } catch {
-      setTestResult({ success: false, message: "Connection test failed" });
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 403) {
+        setTestResult({ success: false, message: "You need admin permissions to test provider credentials." });
+      } else {
+        setTestResult({ success: false, message: "Connection test failed" });
+      }
     }
   }
 
   async function handleSave() {
-    await onSave(providerName, apiKey);
-    onClose();
+    setSaveError(null);
+    try {
+      await onSave(providerName, apiKey);
+      onClose();
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 403) {
+        setSaveError("You need admin permissions to configure providers.");
+      } else {
+        const message = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+          || (err instanceof Error ? err.message : "Failed to save provider configuration.");
+        setSaveError(message);
+      }
+    }
   }
 
   return (
@@ -183,7 +203,7 @@ function ConfigureModal({
           {SLOT_RECOMMENDATIONS[slot] && (
             <div className="flex items-center gap-2 px-3 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
               <Shield className="w-4 h-4 text-indigo-400 flex-shrink-0" />
-              <span className="text-indigo-300 text-sm">
+              <span className="text-indigo-600 dark:text-indigo-300 text-sm">
                 Recommended: {SLOT_RECOMMENDATIONS[slot]}
               </span>
             </div>
@@ -250,11 +270,19 @@ function ConfigureModal({
               )}
               <span
                 className={`text-sm ${
-                  testResult.success ? "text-emerald-300" : "text-red-300"
+                  testResult.success ? "text-emerald-600 dark:text-emerald-300" : "text-red-600 dark:text-red-300"
                 }`}
               >
                 {testResult.message}
               </span>
+            </div>
+          )}
+
+          {/* Save Error */}
+          {saveError && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-red-500/10 border-red-500/20">
+              <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+              <span className="text-sm text-red-600 dark:text-red-300">{saveError}</span>
             </div>
           )}
         </div>
