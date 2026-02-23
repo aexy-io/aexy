@@ -221,21 +221,21 @@ async def process_visitor_events(input: ProcessVisitorEventsInput) -> dict:
 
         # Update session metrics
         page_views = sum(1 for e in events if e.event_type == "page_view")
-        session.page_count += page_views
-        session.event_count += len(events)
+        session.page_count = (session.page_count or 0) + page_views
+        session.event_count = (session.event_count or 0) + len(events)
         session.last_page_url = events[-1].page_url
         session.last_activity_at = events[-1].occurred_at
 
         # Calculate duration
         if session.started_at and events[-1].occurred_at:
             duration = (events[-1].occurred_at - session.started_at).total_seconds()
-            session.duration_seconds = max(int(duration), session.duration_seconds)
+            session.duration_seconds = max(int(duration), session.duration_seconds or 0)
 
         # Update max scroll depth
         for e in events:
-            if e.properties.get("scroll_depth"):
+            if e.properties and e.properties.get("scroll_depth"):
                 depth = int(e.properties["scroll_depth"])
-                session.max_scroll_depth = max(session.max_scroll_depth, depth)
+                session.max_scroll_depth = max(session.max_scroll_depth or 0, depth)
 
         # Link events to session
         event_ids = [e.id for e in events]
@@ -728,26 +728,26 @@ async def execute_outreach_step(input: ExecuteStepInput) -> dict:
                     config = input.config
                     if input.action == "linkedin_connect":
                         result = await provider.send_connection_request(
-                            profile_url=config.get("profile_url", ""),
+                            linkedin_url=config.get("profile_url", ""),
                             message=config.get("message", ""),
                         )
                     elif input.action == "linkedin_message":
                         result = await provider.send_message(
-                            profile_url=config.get("profile_url", ""),
+                            linkedin_url=config.get("profile_url", ""),
                             message=config.get("message", ""),
                         )
                     elif input.action == "linkedin_view":
                         result = await provider.view_profile(
-                            profile_url=config.get("profile_url", ""),
+                            linkedin_url=config.get("profile_url", ""),
                         )
                     else:
                         status = StepExecutionStatus.FAILED.value
                         error_message = f"Unknown LinkedIn action: {input.action}"
                         result = {}
 
-                    if result and not result.get("success", True):
+                    if result and not result.success:
                         status = StepExecutionStatus.FAILED.value
-                        error_message = result.get("error", "LinkedIn action failed")
+                        error_message = result.error or "LinkedIn action failed"
 
             elif input.channel == "sms" and input.action == "send_sms":
                 provider = await ProviderRegistry.get_provider(
@@ -759,13 +759,13 @@ async def execute_outreach_step(input: ExecuteStepInput) -> dict:
                 else:
                     config = input.config
                     result = await provider.send_sms(
-                        to=config.get("phone_number", ""),
+                        to_number=config.get("phone_number", ""),
                         body=config.get("message", ""),
                     )
-                    provider_message_id = result.get("message_id")
-                    if not result.get("success", True):
+                    provider_message_id = result.message_id
+                    if not result.success:
                         status = StepExecutionStatus.FAILED.value
-                        error_message = result.get("error", "SMS send failed")
+                        error_message = result.error or "SMS send failed"
 
             else:
                 status = StepExecutionStatus.FAILED.value

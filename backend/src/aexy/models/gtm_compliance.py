@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func, Index
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, desc, func, Index
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -90,7 +90,7 @@ class ContactConsent(Base):
     expiry_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Extra data
-    extra_data: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    extra_data: Mapped[dict] = mapped_column(JSONB, name="metadata", default=dict, nullable=False)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -178,7 +178,7 @@ class ComplianceAuditLog(Base):
     jurisdiction: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     # Extra data
-    extra_data: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    extra_data: Mapped[dict] = mapped_column(JSONB, name="metadata", default=dict, nullable=False)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -188,5 +188,5 @@ class ComplianceAuditLog(Base):
     __table_args__ = (
         Index("ix_compliance_audit_ws_email", "workspace_id", "email"),
         Index("ix_compliance_audit_ws_action", "workspace_id", "action"),
-        Index("ix_compliance_audit_ws_created", "workspace_id", created_at.desc()),
+        Index("ix_compliance_audit_ws_created", "workspace_id", desc("created_at")),
     )

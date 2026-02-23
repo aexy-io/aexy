@@ -24,7 +24,8 @@
 
   var WORKSPACE = script.getAttribute("data-workspace");
   var API_BASE = script.getAttribute("data-api") || "";
-  if (!WORKSPACE) return;
+  var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!WORKSPACE || !UUID_RE.test(WORKSPACE)) { return; }
 
   var ENDPOINT = API_BASE + "/t/" + WORKSPACE + "/events";
   var COOKIE_NAME = "_aexy_id";
@@ -77,7 +78,8 @@
       encodeURIComponent(value) +
       ";expires=" +
       date.toUTCString() +
-      ";path=/;SameSite=Lax";
+      ";path=/;SameSite=Lax" +
+      (location.protocol === "https:" ? ";Secure" : "");
   }
 
   // ==========================================================================
@@ -144,19 +146,23 @@
   function flush() {
     if (queue.length === 0) return;
 
-    var batch = queue.splice(0, MAX_BATCH);
+    var batch = queue.slice(0, MAX_BATCH);
     var payload = JSON.stringify({ events: batch });
 
     // Prefer sendBeacon for reliability on page unload
     if (navigator.sendBeacon) {
       var blob = new Blob([payload], { type: "application/json" });
       var sent = navigator.sendBeacon(ENDPOINT, blob);
-      if (!sent) {
+      if (sent) {
+        queue.splice(0, batch.length);
+      } else {
         // Fallback to fetch if beacon fails
         sendViaFetch(payload);
+        queue.splice(0, batch.length);
       }
     } else {
       sendViaFetch(payload);
+      queue.splice(0, batch.length);
     }
   }
 
@@ -231,21 +237,22 @@
 
   // Flush on page unload
   function onUnload() {
-    // Send final scroll depth
-    if (scrollDepth > 0) {
-      var timeOnPage = Math.round((Date.now() - pageStartTime) / 1000);
-      track("page_exit", {
-        scroll_depth: scrollDepth,
-        time_on_page: timeOnPage,
-      });
-    }
+    // Send final scroll depth and time-on-page
+    var timeOnPage = Math.round((Date.now() - pageStartTime) / 1000);
+    track("page_exit", {
+      scroll_depth: scrollDepth,
+      time_on_page: timeOnPage,
+    });
     flush();
   }
 
   window.addEventListener("beforeunload", onUnload);
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "hidden") {
+      clearInterval(heartbeatTimer);
       flush();
+    } else {
+      startHeartbeat();
     }
   });
 

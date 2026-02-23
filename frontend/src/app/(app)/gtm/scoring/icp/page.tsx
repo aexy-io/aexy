@@ -86,7 +86,7 @@ function MultiSelect({
 
   return (
     <div>
-      <label className="block text-sm font-medium text-zinc-300 mb-2">
+      <label className="block text-sm font-medium text-foreground mb-2">
         {label}
       </label>
       <div className="flex flex-wrap gap-2">
@@ -98,7 +98,7 @@ function MultiSelect({
             className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
               selected.includes(option)
                 ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/30"
-                : "bg-white/5 text-zinc-400 border-white/10 hover:bg-white/10"
+                : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
             }`}
           >
             {selected.includes(option) && (
@@ -126,8 +126,8 @@ function ThresholdSlider({
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <label className="text-sm font-medium text-zinc-300">{label}</label>
-        <span className="text-sm font-mono text-zinc-400">{value}</span>
+        <label className="text-sm font-medium text-foreground">{label}</label>
+        <span className="text-sm font-mono text-muted-foreground">{value}</span>
       </div>
       <input
         type="range"
@@ -156,11 +156,11 @@ function TemplateCard({
   const criteria = template.criteria as Record<string, unknown>;
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-xl p-6 hover:border-indigo-500/30 transition-colors">
+    <div className="bg-muted/50 border border-border rounded-xl p-6 hover:border-indigo-500/30 transition-colors">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
           <Target className="w-5 h-5 text-indigo-400" />
-          <h3 className="text-lg font-semibold text-white">{template.name}</h3>
+          <h3 className="text-lg font-semibold text-foreground">{template.name}</h3>
           {template.is_default && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30">
               <Star className="w-3 h-3" />
@@ -171,13 +171,13 @@ function TemplateCard({
         <div className="flex items-center gap-1">
           <button
             onClick={onEdit}
-            className="p-1.5 rounded hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+            className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
           >
             <Pencil className="w-4 h-4" />
           </button>
           <button
             onClick={onDelete}
-            className="p-1.5 rounded hover:bg-red-500/10 text-zinc-400 hover:text-red-400 transition-colors"
+            className="p-1.5 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -185,25 +185,25 @@ function TemplateCard({
       </div>
 
       {template.description && (
-        <p className="text-sm text-zinc-400 mb-4">{template.description}</p>
+        <p className="text-sm text-muted-foreground mb-4">{template.description}</p>
       )}
 
       <div className="grid grid-cols-2 gap-4 text-sm">
         <div>
-          <span className="text-zinc-500">MQL Threshold</span>
-          <p className="text-zinc-300 font-mono">
+          <span className="text-muted-foreground">MQL Threshold</span>
+          <p className="text-foreground font-mono">
             {(criteria.mql_threshold as number) ?? 40}
           </p>
         </div>
         <div>
-          <span className="text-zinc-500">SQL Threshold</span>
-          <p className="text-zinc-300 font-mono">
+          <span className="text-muted-foreground">SQL Threshold</span>
+          <p className="text-foreground font-mono">
             {(criteria.sql_threshold as number) ?? 70}
           </p>
         </div>
       </div>
 
-      <div className="mt-4 text-xs text-zinc-500">
+      <div className="mt-4 text-xs text-muted-foreground">
         Updated {new Date(template.updated_at).toLocaleDateString()}
       </div>
     </div>
@@ -230,14 +230,14 @@ function TemplateModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-[#12121a] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between sticky top-0 bg-[#12121a] z-10">
-          <h2 className="text-lg font-semibold text-white">
+      <div className="bg-background border border-border rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between sticky top-0 bg-background z-10">
+          <h2 className="text-lg font-semibold text-foreground">
             {initial.name ? "Edit ICP Template" : "New ICP Template"}
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded hover:bg-white/10 text-zinc-400 transition-colors"
+            className="p-1.5 rounded hover:bg-muted text-muted-foreground transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -247,7 +247,7 @@ function TemplateModal({
           {/* Name + Description */}
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Template Name
               </label>
               <input
@@ -255,11 +255,11 @@ function TemplateModal({
                 value={form.name}
                 onChange={(e) => update("name", e.target.value)}
                 placeholder="e.g., Mid-Market SaaS"
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500/50"
+                className="w-full px-3 py-2 bg-muted/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-indigo-500/50"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Description
               </label>
               <textarea
@@ -267,7 +267,7 @@ function TemplateModal({
                 onChange={(e) => update("description", e.target.value)}
                 placeholder="Describe the ideal customer profile..."
                 rows={2}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500/50 resize-none"
+                className="w-full px-3 py-2 bg-muted/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-indigo-500/50 resize-none"
               />
             </div>
           </div>
@@ -294,7 +294,7 @@ function TemplateModal({
 
           {/* Thresholds */}
           <div className="space-y-4">
-            <h4 className="text-sm font-medium text-white">
+            <h4 className="text-sm font-medium text-foreground">
               Lifecycle Thresholds
             </h4>
             <ThresholdSlider
@@ -312,19 +312,19 @@ function TemplateModal({
           </div>
 
           {/* Score Preview */}
-          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-            <h4 className="text-sm font-medium text-white mb-3">
+          <div className="bg-muted/50 border border-border rounded-lg p-4">
+            <h4 className="text-sm font-medium text-foreground mb-3">
               Score Model Preview
             </h4>
             <div className="flex gap-4">
               <div className="flex-1">
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-zinc-400">Firmographic</span>
-                  <span className="text-zinc-300">
+                  <span className="text-muted-foreground">Firmographic</span>
+                  <span className="text-foreground">
                     {form.criteria.firmographic_weight}%
                   </span>
                 </div>
-                <div className="w-full bg-white/5 rounded-full h-3">
+                <div className="w-full bg-muted/50 rounded-full h-3">
                   <div
                     className="bg-blue-500 h-3 rounded-full"
                     style={{
@@ -335,12 +335,12 @@ function TemplateModal({
               </div>
               <div className="flex-1">
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-zinc-400">Behavioral</span>
-                  <span className="text-zinc-300">
+                  <span className="text-muted-foreground">Behavioral</span>
+                  <span className="text-foreground">
                     {form.criteria.behavioral_weight}%
                   </span>
                 </div>
-                <div className="w-full bg-white/5 rounded-full h-3">
+                <div className="w-full bg-muted/50 rounded-full h-3">
                   <div
                     className="bg-violet-500 h-3 rounded-full"
                     style={{
@@ -351,12 +351,12 @@ function TemplateModal({
               </div>
               <div className="flex-1">
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-zinc-400">Engagement</span>
-                  <span className="text-zinc-300">
+                  <span className="text-muted-foreground">Engagement</span>
+                  <span className="text-foreground">
                     {form.criteria.engagement_weight}%
                   </span>
                 </div>
-                <div className="w-full bg-white/5 rounded-full h-3">
+                <div className="w-full bg-muted/50 rounded-full h-3">
                   <div
                     className="bg-emerald-500 h-3 rounded-full"
                     style={{
@@ -374,18 +374,18 @@ function TemplateModal({
               type="checkbox"
               checked={form.is_default}
               onChange={(e) => update("is_default", e.target.checked)}
-              className="rounded border-white/20 bg-white/5 text-indigo-500 focus:ring-indigo-500"
+              className="rounded border-border bg-muted/50 text-indigo-500 focus:ring-indigo-500"
             />
-            <span className="text-sm text-zinc-300">
+            <span className="text-sm text-foreground">
               Set as default template
             </span>
           </label>
         </div>
 
-        <div className="px-6 py-4 border-t border-white/10 flex items-center justify-end gap-3 sticky bottom-0 bg-[#12121a]">
+        <div className="px-6 py-4 border-t border-border flex items-center justify-end gap-3 sticky bottom-0 bg-background">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 rounded-lg text-sm transition-colors"
+            className="px-4 py-2 bg-muted/50 hover:bg-muted border border-border text-foreground rounded-lg text-sm transition-colors"
           >
             Cancel
           </button>
@@ -486,33 +486,33 @@ export default function ICPTemplatesPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
-          <span className="text-zinc-400 text-sm">Loading ICP templates...</span>
+          <span className="text-muted-foreground text-sm">Loading ICP templates...</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="min-h-screen bg-background">
       <div className="max-w-5xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <Link
               href="/gtm/scoring"
-              className="inline-flex items-center gap-1 text-sm text-zinc-400 hover:text-zinc-300 mb-2 transition-colors"
+              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Scoring
             </Link>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
               <Target className="w-7 h-7 text-indigo-400" />
               ICP Templates
             </h1>
-            <p className="text-zinc-400 mt-1">
+            <p className="text-muted-foreground mt-1">
               Define Ideal Customer Profiles with target criteria and scoring thresholds.
             </p>
           </div>
@@ -527,12 +527,12 @@ export default function ICPTemplatesPage() {
 
         {/* Template Grid */}
         {templates.length === 0 ? (
-          <div className="bg-white/5 border border-white/10 border-dashed rounded-xl p-12 text-center">
-            <Target className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-white mb-2">
+          <div className="bg-muted/50 border border-border border-dashed rounded-xl p-12 text-center">
+            <Target className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               No ICP templates yet
             </h3>
-            <p className="text-zinc-400 text-sm mb-6 max-w-md mx-auto">
+            <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
               Create an Ideal Customer Profile template to define your target market.
               Leads will be scored against these criteria automatically.
             </p>

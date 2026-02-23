@@ -30,12 +30,12 @@ function StatCard({ title, value, change, icon }: StatCardProps) {
   const isPositive = change >= 0;
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-xl p-6 flex flex-col gap-3">
+    <div className="bg-muted/50 border border-border rounded-xl p-6 flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <span className="text-zinc-400 text-sm font-medium">{title}</span>
-        <div className="text-zinc-500">{icon}</div>
+        <span className="text-muted-foreground text-sm font-medium">{title}</span>
+        <div className="text-muted-foreground">{icon}</div>
       </div>
-      <div className="text-3xl font-bold text-white">
+      <div className="text-3xl font-bold text-foreground">
         {typeof value === "number" ? value.toLocaleString() : value}
       </div>
       <div className="flex items-center gap-1">
@@ -52,7 +52,7 @@ function StatCard({ title, value, change, icon }: StatCardProps) {
           {isPositive ? "+" : ""}
           {change.toFixed(1)}%
         </span>
-        <span className="text-zinc-500 text-sm ml-1">vs last period</span>
+        <span className="text-muted-foreground text-sm ml-1">vs last period</span>
       </div>
     </div>
   );
@@ -64,8 +64,8 @@ function FunnelVisualization({ stages }: { stages: FunnelStageData[] }) {
   const maxCount = Math.max(...stages.map((s) => s.count));
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-      <h3 className="text-lg font-semibold text-white mb-6">
+    <div className="bg-muted/50 border border-border rounded-xl p-6">
+      <h3 className="text-lg font-semibold text-foreground mb-6">
         Visitor Funnel
       </h3>
       <div className="space-y-4">
@@ -76,19 +76,19 @@ function FunnelVisualization({ stages }: { stages: FunnelStageData[] }) {
           return (
             <div key={stage.stage} className="space-y-1.5">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-zinc-300 font-medium">{stage.stage}</span>
+                <span className="text-foreground/90 font-medium">{stage.stage}</span>
                 <div className="flex items-center gap-3">
-                  <span className="text-white font-semibold">
+                  <span className="text-foreground font-semibold">
                     {stage.count.toLocaleString()}
                   </span>
                   {index > 0 && stage.conversion_rate != null && (
-                    <span className="text-zinc-500 text-xs">
+                    <span className="text-muted-foreground text-xs">
                       {stage.conversion_rate.toFixed(1)}% conversion
                     </span>
                   )}
                 </div>
               </div>
-              <div className="w-full bg-white/5 rounded-full h-3">
+              <div className="w-full bg-muted/50 rounded-full h-3">
                 <div
                   className="bg-gradient-to-r from-indigo-500 to-violet-500 h-3 rounded-full transition-all duration-700"
                   style={{ width: `${Math.max(widthPercent, 2)}%` }}
@@ -119,15 +119,15 @@ function formatLastSeen(dateStr: string): string {
 function RecentVisitorsTable({ visitors }: { visitors: RecentVisitorRow[] }) {
   const statusStyles: Record<string, string> = {
     identified: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-    anonymous: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",
+    anonymous: "bg-muted text-muted-foreground border-border",
     resolved: "bg-blue-500/20 text-blue-400 border-blue-500/30",
     failed: "bg-red-500/20 text-red-400 border-red-500/30",
   };
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-white">Recent Visitors</h3>
+    <div className="bg-muted/50 border border-border rounded-xl overflow-hidden">
+      <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-foreground">Recent Visitors</h3>
         <Link
           href="/gtm/visitors"
           className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
@@ -138,53 +138,53 @@ function RecentVisitorsTable({ visitors }: { visitors: RecentVisitorRow[] }) {
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-white/5">
-              <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-6 py-3">
+            <tr className="border-b border-border/50">
+              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
                 Company / Domain
               </th>
-              <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-6 py-3">
+              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
                 Pages
               </th>
-              <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-6 py-3">
+              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
                 Last Seen
               </th>
-              <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-6 py-3">
+              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
                 Status
               </th>
-              <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-6 py-3">
+              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
                 Score
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/5">
+          <tbody className="divide-y divide-border/50">
             {visitors.map((visitor) => (
               <tr
                 key={visitor.session_id}
-                className="hover:bg-white/5 transition-colors cursor-pointer"
+                className="hover:bg-muted/50 transition-colors cursor-pointer"
               >
                 <td className="px-6 py-4">
                   <div className="flex flex-col">
-                    <span className="text-white text-sm font-medium">
+                    <span className="text-foreground text-sm font-medium">
                       {visitor.company_name || "Unknown"}
                     </span>
                     {visitor.domain && (
-                      <span className="text-zinc-500 text-xs">
+                      <span className="text-muted-foreground text-xs">
                         {visitor.domain}
                       </span>
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 text-zinc-300 text-sm">
+                <td className="px-6 py-4 text-foreground/90 text-sm">
                   {visitor.page_count}
                 </td>
-                <td className="px-6 py-4 text-zinc-400 text-sm">
+                <td className="px-6 py-4 text-muted-foreground text-sm">
                   {formatLastSeen(visitor.last_seen_at)}
                 </td>
                 <td className="px-6 py-4">
                   <span
                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
                       statusStyles[visitor.identification_status] ||
-                      "bg-zinc-500/20 text-zinc-400 border-zinc-500/30"
+                      "bg-muted text-muted-foreground border-border"
                     }`}
                   >
                     {visitor.identification_status}
@@ -192,7 +192,7 @@ function RecentVisitorsTable({ visitors }: { visitors: RecentVisitorRow[] }) {
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-2">
-                    <div className="w-12 bg-white/10 rounded-full h-1.5">
+                    <div className="w-12 bg-border rounded-full h-1.5">
                       <div
                         className="bg-indigo-500 h-1.5 rounded-full"
                         style={{
@@ -200,7 +200,7 @@ function RecentVisitorsTable({ visitors }: { visitors: RecentVisitorRow[] }) {
                         }}
                       />
                     </div>
-                    <span className="text-zinc-300 text-sm">
+                    <span className="text-foreground/90 text-sm">
                       {visitor.score ?? 0}
                     </span>
                   </div>
@@ -211,7 +211,7 @@ function RecentVisitorsTable({ visitors }: { visitors: RecentVisitorRow[] }) {
         </table>
       </div>
       {visitors.length === 0 && (
-        <div className="px-6 py-12 text-center text-zinc-500">
+        <div className="px-6 py-12 text-center text-muted-foreground">
           No recent visitors tracked yet.
         </div>
       )}
@@ -243,10 +243,10 @@ export default function GTMDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
-          <span className="text-zinc-400 text-sm">
+          <span className="text-muted-foreground text-sm">
             Loading GTM Intelligence...
           </span>
         </div>
@@ -254,42 +254,41 @@ export default function GTMDashboardPage() {
     );
   }
 
-  const safeOverview = overview ?? {
-    total_visitors: 0,
-    visitors_change: 0,
-    identified_companies: 0,
-    companies_change: 0,
-    new_leads: 0,
-    leads_change: 0,
-    active_sequences: 0,
-    sequences_change: 0,
+  const safeOverview = {
+    total_visitors: overview?.total_visitors ?? 0,
+    visitors_change_pct: overview?.visitors_change_pct ?? 0,
+    identified_companies: overview?.identified_companies ?? 0,
+    companies_change_pct: overview?.companies_change_pct ?? 0,
+    new_leads: overview?.new_leads ?? 0,
+    leads_change_pct: overview?.leads_change_pct ?? 0,
+    active_sequences: overview?.active_sequences ?? 0,
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
               <LayoutDashboard className="w-7 h-7 text-indigo-400" />
               GTM Intelligence
             </h1>
-            <p className="text-zinc-400 mt-1">
+            <p className="text-muted-foreground mt-1">
               Visitor identification, enrichment, and go-to-market automation.
             </p>
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={() => refetch()}
-              className="inline-flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 rounded-lg text-sm transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-2 bg-muted/50 hover:bg-muted border border-border text-foreground/90 rounded-lg text-sm transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
               Refresh
             </button>
             <Link
               href="/gtm/providers"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 rounded-lg text-sm transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-muted/50 hover:bg-muted border border-border text-foreground/90 rounded-lg text-sm transition-colors"
             >
               <Settings className="w-4 h-4" />
               Settings
@@ -302,25 +301,25 @@ export default function GTMDashboardPage() {
           <StatCard
             title="Total Visitors"
             value={safeOverview.total_visitors}
-            change={safeOverview.visitors_change}
+            change={safeOverview.visitors_change_pct}
             icon={<Eye className="w-5 h-5" />}
           />
           <StatCard
             title="Identified Companies"
             value={safeOverview.identified_companies}
-            change={safeOverview.companies_change}
+            change={safeOverview.companies_change_pct}
             icon={<Building2 className="w-5 h-5" />}
           />
           <StatCard
             title="New Leads"
             value={safeOverview.new_leads}
-            change={safeOverview.leads_change}
+            change={safeOverview.leads_change_pct}
             icon={<Users className="w-5 h-5" />}
           />
           <StatCard
             title="Active Sequences"
             value={safeOverview.active_sequences}
-            change={safeOverview.sequences_change}
+            change={0}
             icon={<TrendingUp className="w-5 h-5" />}
           />
         </div>
@@ -330,12 +329,12 @@ export default function GTMDashboardPage() {
           <div className="lg:col-span-2">
             <FunnelVisualization stages={funnel ?? []} />
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6 flex flex-col justify-between">
+          <div className="bg-muted/50 border border-border rounded-xl p-6 flex flex-col justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-white mb-2">
+              <h3 className="text-lg font-semibold text-foreground mb-2">
                 Provider Status
               </h3>
-              <p className="text-zinc-400 text-sm mb-6">
+              <p className="text-muted-foreground text-sm mb-6">
                 Data providers powering your GTM pipeline.
               </p>
               <div className="flex items-center gap-3 mb-4">
@@ -343,10 +342,10 @@ export default function GTMDashboardPage() {
                   <Globe className="w-6 h-6 text-emerald-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-white">
+                  <p className="text-2xl font-bold text-foreground">
                     {activeProviderCount}
                   </p>
-                  <p className="text-zinc-500 text-sm">Active providers</p>
+                  <p className="text-muted-foreground text-sm">Active providers</p>
                 </div>
               </div>
             </div>

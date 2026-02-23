@@ -613,12 +613,16 @@ class OutreachSequenceService:
 
     async def get_enrollment_timeline(
         self,
+        workspace_id: str,
         enrollment_id: str,
     ) -> list[OutreachStepExecution]:
         """Get all step executions for an enrollment, ordered by step index."""
         result = await self.db.execute(
             select(OutreachStepExecution)
-            .where(OutreachStepExecution.enrollment_id == enrollment_id)
+            .where(
+                OutreachStepExecution.enrollment_id == enrollment_id,
+                OutreachStepExecution.workspace_id == workspace_id,
+            )
             .order_by(OutreachStepExecution.step_index.asc(), OutreachStepExecution.created_at.asc())
         )
         return list(result.scalars().all())

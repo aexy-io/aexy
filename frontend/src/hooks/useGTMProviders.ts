@@ -74,6 +74,9 @@ export function useGTMProviders(workspaceId: string | null) {
   const testCredentialsMutation = useMutation({
     mutationFn: ({ slot, providerName, credentials }: { slot: string; providerName: string; credentials: Record<string, string> }) =>
       gtmApi.providers.testCredentials(workspaceId!, slot, providerName, credentials),
+    onError: () => {
+      toast.error("Failed to test credentials");
+    },
   });
 
   return {
@@ -106,6 +109,9 @@ export function useICPTemplates(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["icpTemplates", workspaceId] });
       toast.success("ICP template created");
     },
+    onError: () => {
+      toast.error("Failed to create ICP template");
+    },
   });
 
   const updateMutation = useMutation({
@@ -115,6 +121,9 @@ export function useICPTemplates(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["icpTemplates", workspaceId] });
       toast.success("ICP template updated");
     },
+    onError: () => {
+      toast.error("Failed to update ICP template");
+    },
   });
 
   const deleteMutation = useMutation({
@@ -122,6 +131,9 @@ export function useICPTemplates(workspaceId: string | null) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["icpTemplates", workspaceId] });
       toast.success("ICP template deleted");
+    },
+    onError: () => {
+      toast.error("Failed to delete ICP template");
     },
   });
 

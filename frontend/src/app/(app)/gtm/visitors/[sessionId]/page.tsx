@@ -98,7 +98,7 @@ function EventIcon({ eventType }: { eventType: string }) {
   };
 
   return (
-    <div className="flex items-center justify-center w-8 h-8 bg-white/5 border border-white/10 rounded-full flex-shrink-0">
+    <div className="flex items-center justify-center w-8 h-8 bg-muted/50 border border-border rounded-full flex-shrink-0">
       {iconMap[eventType] || <Hash className="w-4 h-4" />}
     </div>
   );
@@ -108,8 +108,8 @@ function EventTimeline({ events }: { events: BehavioralEvent[] }) {
   if (!events || events.length === 0) {
     return (
       <div className="text-center py-12">
-        <Activity className="w-10 h-10 text-zinc-700 mx-auto mb-3" />
-        <p className="text-zinc-500 text-sm">No behavioral events recorded.</p>
+        <Activity className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+        <p className="text-muted-foreground text-sm">No behavioral events recorded.</p>
       </div>
     );
   }
@@ -130,20 +130,20 @@ function EventTimeline({ events }: { events: BehavioralEvent[] }) {
             <div className="flex flex-col items-center">
               <EventIcon eventType={event.event_type} />
               {!isLast && (
-                <div className="w-px h-full bg-white/10 min-h-[2rem]" />
+                <div className="w-px h-full bg-border min-h-[2rem]" />
               )}
             </div>
             <div className="pb-6 flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2 mb-1">
-                <span className="text-white text-sm font-medium capitalize">
+                <span className="text-foreground text-sm font-medium capitalize">
                   {event.event_type.replace(/_/g, " ")}
                 </span>
-                <span className="text-zinc-600 text-xs flex-shrink-0">
+                <span className="text-muted-foreground text-xs flex-shrink-0">
                   {formatTimestamp(event.occurred_at)}
                 </span>
               </div>
               {event.page_url && (
-                <p className="text-zinc-400 text-sm truncate">
+                <p className="text-muted-foreground text-sm truncate">
                   {event.page_url}
                 </p>
               )}
@@ -152,10 +152,10 @@ function EventTimeline({ events }: { events: BehavioralEvent[] }) {
                   {Object.entries(properties).map(([key, value]) => (
                     <span
                       key={key}
-                      className="inline-flex items-center px-2 py-0.5 bg-white/5 border border-white/5 rounded text-xs text-zinc-500"
+                      className="inline-flex items-center px-2 py-0.5 bg-muted/50 border border-border/50 rounded text-xs text-muted-foreground"
                     >
-                      <span className="text-zinc-600">{key}:</span>{" "}
-                      <span className="text-zinc-400 ml-1">
+                      <span className="text-muted-foreground">{key}:</span>{" "}
+                      <span className="text-muted-foreground ml-1">
                         {String(value)}
                       </span>
                     </span>
@@ -215,10 +215,10 @@ export default function GTMVisitorDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
-          <span className="text-zinc-400 text-sm">Loading session...</span>
+          <span className="text-muted-foreground text-sm">Loading session...</span>
         </div>
       </div>
     );
@@ -226,19 +226,19 @@ export default function GTMVisitorDetailPage() {
 
   if (error || !detail) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-        <div className="bg-white/5 border border-red-500/20 rounded-xl p-8 max-w-md text-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="bg-muted/50 border border-red-500/20 rounded-xl p-8 max-w-md text-center">
           <p className="text-red-400 font-medium mb-2">
             {error ? "Failed to load session" : "Session not found"}
           </p>
-          <p className="text-zinc-500 text-sm mb-4">
+          <p className="text-muted-foreground text-sm mb-4">
             {(error as Error)?.message ||
               "The requested visitor session could not be found."}
           </p>
           <div className="flex items-center gap-3 justify-center">
             <Link
               href="/gtm/visitors"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/15 text-white rounded-lg text-sm transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-border hover:bg-muted text-foreground rounded-lg text-sm transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Visitors
@@ -246,7 +246,7 @@ export default function GTMVisitorDetailPage() {
             {error && (
               <button
                 onClick={() => refetch()}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/15 text-white rounded-lg text-sm transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-border hover:bg-muted text-foreground rounded-lg text-sm transition-colors"
               >
                 <RefreshCw className="w-4 h-4" />
                 Retry
@@ -259,20 +259,20 @@ export default function GTMVisitorDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <Link
               href="/gtm/visitors"
-              className="flex items-center justify-center w-9 h-9 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors"
+              className="flex items-center justify-center w-9 h-9 bg-muted/50 hover:bg-muted border border-border rounded-lg transition-colors"
             >
-              <ArrowLeft className="w-4 h-4 text-zinc-400" />
+              <ArrowLeft className="w-4 h-4 text-muted-foreground" />
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-white">Session Detail</h1>
-              <p className="text-zinc-500 text-sm font-mono mt-0.5">
+              <h1 className="text-2xl font-bold text-foreground">Session Detail</h1>
+              <p className="text-muted-foreground text-sm font-mono mt-0.5">
                 {detail.anonymous_id}
               </p>
             </div>
@@ -296,7 +296,7 @@ export default function GTMVisitorDetailPage() {
             <button
               onClick={handleLinkToCRM}
               disabled={isLinking || !identification}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-muted/50 hover:bg-muted border border-border text-foreground rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {isLinking ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -307,7 +307,7 @@ export default function GTMVisitorDetailPage() {
             </button>
             <button
               onClick={() => refetch()}
-              className="inline-flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 rounded-lg text-sm transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-2 bg-muted/50 hover:bg-muted border border-border text-foreground rounded-lg text-sm transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
             </button>
@@ -318,85 +318,85 @@ export default function GTMVisitorDetailPage() {
           {/* Left Column: Session Info + Company */}
           <div className="lg:col-span-1 space-y-6">
             {/* Session Info Card */}
-            <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-              <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
+            <div className="bg-muted/50 border border-border rounded-xl p-6">
+              <h2 className="text-base font-semibold text-foreground mb-4 flex items-center gap-2">
                 <Wifi className="w-4 h-4 text-indigo-400" />
                 Session Info
               </h2>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-500 text-sm">Status</span>
+                  <span className="text-muted-foreground text-sm">Status</span>
                   <StatusBadge status={detail.identification_status} />
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-500 text-sm">Anonymous ID</span>
-                  <span className="text-zinc-300 text-sm font-mono truncate max-w-[160px]">
+                  <span className="text-muted-foreground text-sm">Anonymous ID</span>
+                  <span className="text-foreground text-sm font-mono truncate max-w-[160px]">
                     {detail.anonymous_id}
                   </span>
                 </div>
                 {detail.ip_address && (
                   <div className="flex items-center justify-between">
-                    <span className="text-zinc-500 text-sm">IP Address</span>
-                    <span className="text-zinc-300 text-sm font-mono">
+                    <span className="text-muted-foreground text-sm">IP Address</span>
+                    <span className="text-foreground text-sm font-mono">
                       {detail.ip_address}
                     </span>
                   </div>
                 )}
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-500 text-sm">Pages Viewed</span>
-                  <span className="text-zinc-300 text-sm">
+                  <span className="text-muted-foreground text-sm">Pages Viewed</span>
+                  <span className="text-foreground text-sm">
                     {detail.page_count}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-500 text-sm">Duration</span>
-                  <span className="text-zinc-300 text-sm">
+                  <span className="text-muted-foreground text-sm">Duration</span>
+                  <span className="text-foreground text-sm">
                     {formatDuration(detail.total_duration_seconds)}
                   </span>
                 </div>
-                <div className="border-t border-white/5 pt-4">
+                <div className="border-t border-border/50 pt-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-zinc-500 text-sm">First Seen</span>
-                    <span className="text-zinc-400 text-xs">
+                    <span className="text-muted-foreground text-sm">First Seen</span>
+                    <span className="text-muted-foreground text-xs">
                       {formatDate(detail.first_seen_at)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-zinc-500 text-sm">Last Seen</span>
-                    <span className="text-zinc-400 text-xs">
+                    <span className="text-muted-foreground text-sm">Last Seen</span>
+                    <span className="text-muted-foreground text-xs">
                       {formatDate(detail.last_seen_at)}
                     </span>
                   </div>
                 </div>
                 {detail.entry_page && (
-                  <div className="border-t border-white/5 pt-4">
-                    <span className="text-zinc-500 text-sm block mb-1">
+                  <div className="border-t border-border/50 pt-4">
+                    <span className="text-muted-foreground text-sm block mb-1">
                       Entry Page
                     </span>
-                    <span className="text-zinc-400 text-xs break-all">
+                    <span className="text-muted-foreground text-xs break-all">
                       {detail.entry_page}
                     </span>
                   </div>
                 )}
                 {(detail.utm_source || detail.utm_medium || detail.utm_campaign) && (
-                  <div className="border-t border-white/5 pt-4 space-y-2">
-                    <span className="text-zinc-500 text-sm block">UTM</span>
+                  <div className="border-t border-border/50 pt-4 space-y-2">
+                    <span className="text-muted-foreground text-sm block">UTM</span>
                     {detail.utm_source && (
                       <div className="flex items-center justify-between">
-                        <span className="text-zinc-600 text-xs">Source</span>
-                        <span className="text-zinc-400 text-xs">{detail.utm_source}</span>
+                        <span className="text-muted-foreground text-xs">Source</span>
+                        <span className="text-muted-foreground text-xs">{detail.utm_source}</span>
                       </div>
                     )}
                     {detail.utm_medium && (
                       <div className="flex items-center justify-between">
-                        <span className="text-zinc-600 text-xs">Medium</span>
-                        <span className="text-zinc-400 text-xs">{detail.utm_medium}</span>
+                        <span className="text-muted-foreground text-xs">Medium</span>
+                        <span className="text-muted-foreground text-xs">{detail.utm_medium}</span>
                       </div>
                     )}
                     {detail.utm_campaign && (
                       <div className="flex items-center justify-between">
-                        <span className="text-zinc-600 text-xs">Campaign</span>
-                        <span className="text-zinc-400 text-xs">{detail.utm_campaign}</span>
+                        <span className="text-muted-foreground text-xs">Campaign</span>
+                        <span className="text-muted-foreground text-xs">{detail.utm_campaign}</span>
                       </div>
                     )}
                   </div>
@@ -406,14 +406,14 @@ export default function GTMVisitorDetailPage() {
 
             {/* Company Card */}
             {identification && (
-              <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-                <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
+              <div className="bg-muted/50 border border-border rounded-xl p-6">
+                <h2 className="text-base font-semibold text-foreground mb-4 flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-emerald-400" />
                   Identified Company
                 </h2>
                 <div className="space-y-4">
                   <div>
-                    <p className="text-white font-semibold text-lg">
+                    <p className="text-foreground font-semibold text-lg">
                       {identification.company_name}
                     </p>
                     {identification.domain && (
@@ -431,31 +431,31 @@ export default function GTMVisitorDetailPage() {
                   <div className="space-y-3">
                     {identification.industry && (
                       <div className="flex items-center justify-between">
-                        <span className="text-zinc-500 text-sm">Industry</span>
-                        <span className="text-zinc-300 text-sm">
+                        <span className="text-muted-foreground text-sm">Industry</span>
+                        <span className="text-foreground text-sm">
                           {identification.industry}
                         </span>
                       </div>
                     )}
                     {identification.employee_range && (
                       <div className="flex items-center justify-between">
-                        <span className="text-zinc-500 text-sm">
+                        <span className="text-muted-foreground text-sm">
                           Employees
                         </span>
-                        <span className="text-zinc-300 text-sm">
+                        <span className="text-foreground text-sm">
                           {identification.employee_range}
                         </span>
                       </div>
                     )}
                   </div>
-                  <div className="border-t border-white/5 pt-4">
+                  <div className="border-t border-border/50 pt-4">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-zinc-500 text-sm">Confidence</span>
+                      <span className="text-muted-foreground text-sm">Confidence</span>
                       <span className="text-emerald-400 text-sm font-medium">
                         {identification.confidence}%
                       </span>
                     </div>
-                    <div className="w-full bg-white/10 rounded-full h-2">
+                    <div className="w-full bg-border rounded-full h-2">
                       <div
                         className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
                         style={{
@@ -464,8 +464,8 @@ export default function GTMVisitorDetailPage() {
                       />
                     </div>
                   </div>
-                  <div className="border-t border-white/5 pt-3">
-                    <span className="text-zinc-600 text-xs">
+                  <div className="border-t border-border/50 pt-3">
+                    <span className="text-muted-foreground text-xs">
                       Provider: {identification.provider_name}
                     </span>
                   </div>
@@ -476,12 +476,12 @@ export default function GTMVisitorDetailPage() {
             {/* No identification */}
             {!identification &&
               detail.identification_status === "anonymous" && (
-                <div className="bg-white/5 border border-white/10 rounded-xl p-6 text-center">
-                  <Shield className="w-10 h-10 text-zinc-700 mx-auto mb-3" />
-                  <p className="text-zinc-400 text-sm font-medium mb-1">
+                <div className="bg-muted/50 border border-border rounded-xl p-6 text-center">
+                  <Shield className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground text-sm font-medium mb-1">
                     Not yet identified
                   </p>
-                  <p className="text-zinc-600 text-xs mb-4">
+                  <p className="text-muted-foreground text-xs mb-4">
                     Click the Identify button to resolve this visitor to a
                     company.
                   </p>
@@ -503,13 +503,13 @@ export default function GTMVisitorDetailPage() {
 
           {/* Right Column: Event Timeline */}
           <div className="lg:col-span-2">
-            <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+            <div className="bg-muted/50 border border-border rounded-xl p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-base font-semibold text-white flex items-center gap-2">
+                <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
                   <Activity className="w-4 h-4 text-indigo-400" />
                   Event Timeline
                 </h2>
-                <span className="text-zinc-600 text-sm">
+                <span className="text-muted-foreground text-sm">
                   {events.length} event{events.length !== 1 ? "s" : ""}
                 </span>
               </div>

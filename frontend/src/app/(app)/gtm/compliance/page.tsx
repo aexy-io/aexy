@@ -97,31 +97,31 @@ export default function CompliancePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
               <ShieldCheck className="w-7 h-7 text-emerald-400" />
               Compliance
             </h1>
-            <p className="text-zinc-400 mt-1">
+            <p className="text-muted-foreground mt-1">
               GDPR, CAN-SPAM, and CASL compliance infrastructure. Pre-send checks, suppression lists, and audit trails.
             </p>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 bg-white/5 border border-white/10 rounded-lg p-1 w-fit">
+        <div className="flex gap-1 mb-6 bg-muted/50 border border-border rounded-lg p-1 w-fit">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeTab === tab.key
-                  ? "bg-white/10 text-white"
-                  : "text-zinc-400 hover:text-zinc-300"
+                  ? "bg-border text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {tab.icon}
@@ -134,23 +134,23 @@ export default function CompliancePage() {
         {activeTab === "suppression" && (
           <div>
             {/* Add form */}
-            <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-6 flex items-end gap-3">
+            <div className="bg-muted/50 border border-border rounded-xl p-4 mb-6 flex items-end gap-3">
               <div className="flex-1">
-                <label className="block text-xs font-medium text-zinc-400 mb-1">Email Address</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Email Address</label>
                 <input
                   type="email"
                   value={addEmail}
                   onChange={(e) => setAddEmail(e.target.value)}
                   placeholder="email@example.com"
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-indigo-500/50"
+                  className="w-full px-3 py-2 bg-muted/50 border border-border rounded-lg text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:border-indigo-500/50"
                 />
               </div>
               <div className="w-40">
-                <label className="block text-xs font-medium text-zinc-400 mb-1">Reason</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Reason</label>
                 <select
                   value={addReason}
                   onChange={(e) => setAddReason(e.target.value)}
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500/50"
+                  className="w-full px-3 py-2 bg-muted/50 border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-indigo-500/50"
                 >
                   <option value="manual">Manual</option>
                   <option value="unsubscribe">Unsubscribe</option>
@@ -170,36 +170,36 @@ export default function CompliancePage() {
             </div>
 
             {/* Suppression table */}
-            <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+            <div className="bg-muted/50 border border-border rounded-xl overflow-hidden">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-white/5">
-                    <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-6 py-3">Email</th>
-                    <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-6 py-3">Domain</th>
-                    <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-6 py-3">Reason</th>
-                    <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-6 py-3">Source</th>
-                    <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-6 py-3">Added</th>
-                    <th className="text-right text-xs font-medium text-zinc-500 uppercase tracking-wider px-6 py-3">Actions</th>
+                  <tr className="border-b border-border/50">
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">Email</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">Domain</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">Reason</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">Source</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">Added</th>
+                    <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-border/50">
                   {(suppressionData?.entries || []).map((entry: SuppressionEntry) => (
-                    <tr key={entry.id} className="hover:bg-white/5 transition-colors">
-                      <td className="px-6 py-3 text-sm text-white">{entry.email}</td>
-                      <td className="px-6 py-3 text-sm text-zinc-400">{entry.domain || "—"}</td>
+                    <tr key={entry.id} className="hover:bg-muted/50 transition-colors">
+                      <td className="px-6 py-3 text-sm text-foreground">{entry.email}</td>
+                      <td className="px-6 py-3 text-sm text-muted-foreground">{entry.domain || "—"}</td>
                       <td className="px-6 py-3">
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30">
                           {entry.reason}
                         </span>
                       </td>
-                      <td className="px-6 py-3 text-sm text-zinc-400">{entry.source}</td>
-                      <td className="px-6 py-3 text-sm text-zinc-500">
+                      <td className="px-6 py-3 text-sm text-muted-foreground">{entry.source}</td>
+                      <td className="px-6 py-3 text-sm text-muted-foreground">
                         {new Date(entry.added_at).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-3 text-right">
                         <button
                           onClick={() => removeMutation.mutate(entry.email)}
-                          className="p-1 rounded hover:bg-white/10 text-zinc-400 hover:text-red-400 transition-colors"
+                          className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-red-400 transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -214,21 +214,21 @@ export default function CompliancePage() {
                 </div>
               )}
               {!suppressionLoading && (suppressionData?.entries || []).length === 0 && (
-                <div className="px-6 py-12 text-center text-zinc-500">
+                <div className="px-6 py-12 text-center text-muted-foreground">
                   No suppressed contacts. This is where unsubscribes, bounces, and complaints are tracked.
                 </div>
               )}
               {(suppressionData?.total || 0) > 25 && (
-                <div className="px-6 py-3 border-t border-white/5 flex items-center justify-between">
-                  <span className="text-sm text-zinc-500">
+                <div className="px-6 py-3 border-t border-border/50 flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">
                     {suppressionData?.total} total entries
                   </span>
                   <div className="flex gap-2">
-                    <button onClick={() => setSuppressionPage((p) => Math.max(1, p - 1))} disabled={suppressionPage <= 1} className="p-1.5 rounded bg-white/5 hover:bg-white/10 disabled:opacity-30 transition-colors">
-                      <ChevronLeft className="w-4 h-4 text-zinc-400" />
+                    <button onClick={() => setSuppressionPage((p) => Math.max(1, p - 1))} disabled={suppressionPage <= 1} className="p-1.5 rounded bg-muted/50 hover:bg-muted disabled:opacity-30 transition-colors">
+                      <ChevronLeft className="w-4 h-4 text-muted-foreground" />
                     </button>
-                    <button onClick={() => setSuppressionPage((p) => p + 1)} disabled={suppressionPage >= Math.ceil((suppressionData?.total || 0) / 25)} className="p-1.5 rounded bg-white/5 hover:bg-white/10 disabled:opacity-30 transition-colors">
-                      <ChevronRight className="w-4 h-4 text-zinc-400" />
+                    <button onClick={() => setSuppressionPage((p) => p + 1)} disabled={suppressionPage >= Math.ceil((suppressionData?.total || 0) / 25)} className="p-1.5 rounded bg-muted/50 hover:bg-muted disabled:opacity-30 transition-colors">
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
                     </button>
                   </div>
                 </div>
@@ -239,37 +239,37 @@ export default function CompliancePage() {
 
         {/* Audit Log Tab */}
         {activeTab === "audit" && (
-          <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+          <div className="bg-muted/50 border border-border rounded-xl overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-white/5">
-                  <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-6 py-3">Email</th>
-                  <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-6 py-3">Action</th>
-                  <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-6 py-3">Reason</th>
-                  <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-6 py-3">Jurisdiction</th>
-                  <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-6 py-3">Date</th>
+                <tr className="border-b border-border/50">
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">Email</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">Action</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">Reason</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">Jurisdiction</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">Date</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-border/50">
                 {(auditData?.entries || []).map((entry: ComplianceAuditEntry) => {
                   const isBlock = entry.action.includes("blocked");
                   const isApprove = entry.action.includes("approved");
                   return (
-                    <tr key={entry.id} className="hover:bg-white/5 transition-colors">
-                      <td className="px-6 py-3 text-sm text-white">{entry.email}</td>
+                    <tr key={entry.id} className="hover:bg-muted/50 transition-colors">
+                      <td className="px-6 py-3 text-sm text-foreground">{entry.email}</td>
                       <td className="px-6 py-3">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border ${
                           isBlock ? "bg-red-500/20 text-red-400 border-red-500/30" :
                           isApprove ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" :
-                          "bg-zinc-500/20 text-zinc-400 border-zinc-500/30"
+                          "bg-zinc-500/20 text-muted-foreground border-zinc-500/30"
                         }`}>
                           {isBlock ? <XCircle className="w-3 h-3" /> : isApprove ? <CheckCircle2 className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
                           {entry.action}
                         </span>
                       </td>
-                      <td className="px-6 py-3 text-sm text-zinc-400">{entry.reason || "—"}</td>
-                      <td className="px-6 py-3 text-sm text-zinc-400">{entry.jurisdiction || "—"}</td>
-                      <td className="px-6 py-3 text-sm text-zinc-500">
+                      <td className="px-6 py-3 text-sm text-muted-foreground">{entry.reason || "—"}</td>
+                      <td className="px-6 py-3 text-sm text-muted-foreground">{entry.jurisdiction || "—"}</td>
+                      <td className="px-6 py-3 text-sm text-muted-foreground">
                         {new Date(entry.created_at).toLocaleString()}
                       </td>
                     </tr>
@@ -283,7 +283,7 @@ export default function CompliancePage() {
               </div>
             )}
             {!auditLoading && (auditData?.entries || []).length === 0 && (
-              <div className="px-6 py-12 text-center text-zinc-500">
+              <div className="px-6 py-12 text-center text-muted-foreground">
                 No audit entries yet. All send decisions and compliance actions are logged here.
               </div>
             )}
@@ -293,9 +293,9 @@ export default function CompliancePage() {
         {/* Send Check Tab */}
         {activeTab === "check" && (
           <div>
-            <div className="bg-white/5 border border-white/10 rounded-xl p-6 mb-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Pre-Send Compliance Check</h3>
-              <p className="text-sm text-zinc-400 mb-4">
+            <div className="bg-muted/50 border border-border rounded-xl p-6 mb-6">
+              <h3 className="text-lg font-semibold text-foreground mb-4">Pre-Send Compliance Check</h3>
+              <p className="text-sm text-muted-foreground mb-4">
                 Check if an email address passes all compliance checks before sending.
               </p>
               <div className="flex gap-3">
@@ -305,7 +305,7 @@ export default function CompliancePage() {
                   onChange={(e) => setCheckEmail(e.target.value)}
                   placeholder="email@example.com"
                   onKeyDown={(e) => e.key === "Enter" && handleCheck()}
-                  className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-indigo-500/50"
+                  className="flex-1 px-3 py-2 bg-muted/50 border border-border rounded-lg text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:border-indigo-500/50"
                 />
                 <button
                   onClick={handleCheck}
@@ -319,7 +319,7 @@ export default function CompliancePage() {
             </div>
 
             {checkResult && (
-              <div className={`bg-white/5 border rounded-xl p-6 ${
+              <div className={`bg-muted/50 border rounded-xl p-6 ${
                 checkResult.allowed ? "border-emerald-500/30" : "border-red-500/30"
               }`}>
                 <div className="flex items-center gap-3 mb-4">
@@ -332,7 +332,7 @@ export default function CompliancePage() {
                     <h3 className={`text-lg font-semibold ${checkResult.allowed ? "text-emerald-400" : "text-red-400"}`}>
                       {checkResult.allowed ? "Send Allowed" : "Send Blocked"}
                     </h3>
-                    <p className="text-sm text-zinc-400">{checkResult.reason}</p>
+                    <p className="text-sm text-muted-foreground">{checkResult.reason}</p>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -343,8 +343,8 @@ export default function CompliancePage() {
                       ) : (
                         <XCircle className="w-4 h-4 text-red-400 shrink-0" />
                       )}
-                      <span className="text-zinc-300">{check.check}</span>
-                      <span className="text-zinc-500">— {check.detail}</span>
+                      <span className="text-foreground">{check.check}</span>
+                      <span className="text-muted-foreground">— {check.detail}</span>
                     </div>
                   ))}
                 </div>

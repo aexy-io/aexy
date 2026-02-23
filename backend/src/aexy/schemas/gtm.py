@@ -176,7 +176,7 @@ class VisitorSessionListResponse(BaseModel):
     sessions: list[VisitorSessionResponse]
     total: int
     page: int
-    page_size: int
+    per_page: int
 
 
 class VisitorSessionDetailResponse(VisitorSessionResponse):
@@ -401,7 +401,7 @@ class ConsentStatusResponse(BaseModel):
     has_consent: bool
     consent_type: str | None = None
     jurisdiction: str | None = None
-    consent_date: str | None = None
+    consent_date: datetime | None = None
     is_active: bool = False
 
 
@@ -421,12 +421,14 @@ class AddSuppressionRequest(BaseModel):
 
 class SuppressionEntryResponse(BaseModel):
     """A suppression list entry."""
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     email: str
     domain: str | None
     reason: str
     source: str
-    added_at: str
+    added_at: datetime
 
 
 class SuppressionListResponse(BaseModel):
@@ -439,12 +441,14 @@ class SuppressionListResponse(BaseModel):
 
 class ComplianceAuditResponse(BaseModel):
     """A compliance audit log entry."""
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     email: str
     action: str
     reason: str | None
     jurisdiction: str | None
-    created_at: str
+    created_at: datetime
 
 
 class ComplianceAuditListResponse(BaseModel):
@@ -490,7 +494,7 @@ class TopLeadRow(BaseModel):
     behavioral_score: int
     engagement_score: int
     lifecycle_stage: str
-    last_scored_at: str | None
+    last_scored_at: datetime | None
 
 
 class ScoringOverviewResponse(BaseModel):
@@ -521,9 +525,9 @@ class ScoreDetailResponse(BaseModel):
     lifecycle_stage: str
     scoring_factors: dict[str, Any]
     score_history: list[Any]
-    last_scored_at: str | None
-    created_at: str | None
-    updated_at: str | None
+    last_scored_at: datetime | None
+    created_at: datetime | None
+    updated_at: datetime | None
 
 
 # =============================================================================
@@ -852,7 +856,7 @@ class ReplyClassificationStatsResponse(BaseModel):
 
 class BulkImportRequest(BaseModel):
     """Request body for bulk CSV import."""
-    csv_content: str = Field(..., description="Raw CSV content")
+    csv_content: str = Field(..., max_length=10_000_000, description="Raw CSV content")
     verify_emails: bool = True
     skip_duplicates: bool = True
     sequence_id: str | None = None

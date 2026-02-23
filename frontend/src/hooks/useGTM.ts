@@ -207,29 +207,42 @@ export function useSequenceMutations(workspaceId: string | null) {
   };
 
   const createSequence = useMutation({
-    mutationFn: (data: { name: string; description?: string }) =>
-      gtmApi.sequences.create(workspaceId!, data),
+    mutationFn: (data: { name: string; description?: string }) => {
+      if (!workspaceId) throw new Error("Workspace ID required");
+      return gtmApi.sequences.create(workspaceId, data);
+    },
     onSuccess: invalidate,
   });
 
   const activateSequence = useMutation({
-    mutationFn: (sequenceId: string) => gtmApi.sequences.activate(workspaceId!, sequenceId),
+    mutationFn: (sequenceId: string) => {
+      if (!workspaceId) throw new Error("Workspace ID required");
+      return gtmApi.sequences.activate(workspaceId, sequenceId);
+    },
     onSuccess: invalidate,
   });
 
   const pauseSequence = useMutation({
-    mutationFn: (sequenceId: string) => gtmApi.sequences.pause(workspaceId!, sequenceId),
+    mutationFn: (sequenceId: string) => {
+      if (!workspaceId) throw new Error("Workspace ID required");
+      return gtmApi.sequences.pause(workspaceId, sequenceId);
+    },
     onSuccess: invalidate,
   });
 
   const deleteSequence = useMutation({
-    mutationFn: (sequenceId: string) => gtmApi.sequences.delete(workspaceId!, sequenceId),
+    mutationFn: (sequenceId: string) => {
+      if (!workspaceId) throw new Error("Workspace ID required");
+      return gtmApi.sequences.delete(workspaceId, sequenceId);
+    },
     onSuccess: invalidate,
   });
 
   const enrollContact = useMutation({
-    mutationFn: ({ sequenceId, data }: { sequenceId: string; data: { record_id: string; email: string; contact_name?: string } }) =>
-      gtmApi.sequences.enroll(workspaceId!, sequenceId, data),
+    mutationFn: ({ sequenceId, data }: { sequenceId: string; data: { record_id: string; email: string; contact_name?: string } }) => {
+      if (!workspaceId) throw new Error("Workspace ID required");
+      return gtmApi.sequences.enroll(workspaceId, sequenceId, data);
+    },
   });
 
   return { createSequence, activateSequence, pauseSequence, deleteSequence, enrollContact };
@@ -282,7 +295,7 @@ export function useGTMAnalytics(
     attribution: attribution.data,
     sequences: sequences.data,
     trends: trends.data,
-    isLoading: pipeline.isLoading || channels.isLoading || sequences.isLoading || trends.isLoading,
+    isLoading: pipeline.isLoading || channels.isLoading || sequences.isLoading || trends.isLoading || attribution.isLoading,
     refetch: () => {
       pipeline.refetch();
       channels.refetch();
@@ -297,7 +310,7 @@ export function useGTMAnalytics(
 // REPLY CLASSIFICATION
 // =============================================================================
 
-export function useReplyStats(workspaceId: string | undefined, days = 30) {
+export function useReplyStats(workspaceId: string | null, days = 30) {
   return useQuery<ReplyClassificationStats>({
     queryKey: ['gtm', workspaceId, 'reply-stats', days],
     queryFn: () => gtmApi.replies.getStats(workspaceId!, days),

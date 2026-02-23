@@ -437,6 +437,18 @@ from aexy.models.leave import (
     AccrualType,
     DEFAULT_LEAVE_TYPES,
 )
+from aexy.models.gtm import (
+    GTMProviderConfig,
+    BehavioralEvent,
+    VisitorSession,
+    VisitorIdentification,
+    ICPTemplate,
+    LeadScore,
+    GTMProviderSlot,
+    GTMProviderStatus,
+    IdentificationStatus,
+    LifecycleStage,
+)
 from aexy.models.gtm_compliance import (
     ContactConsent,
     SuppressionList,
@@ -881,6 +893,17 @@ __all__ = [
     "LeaveRequestStatus",
     "AccrualType",
     "DEFAULT_LEAVE_TYPES",
+    # GTM Core
+    "GTMProviderConfig",
+    "BehavioralEvent",
+    "VisitorSession",
+    "VisitorIdentification",
+    "ICPTemplate",
+    "LeadScore",
+    "GTMProviderSlot",
+    "GTMProviderStatus",
+    "IdentificationStatus",
+    "LifecycleStage",
     # GTM Compliance
     "ContactConsent",
     "SuppressionList",
