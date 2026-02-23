@@ -1030,3 +1030,477 @@ async def run_bulk_import(input: BulkImportInput) -> dict:
         )
 
     return service.get_job_summary(job)
+
+
+# =============================================================================
+# GTM ALERTS
+# =============================================================================
+
+@dataclass
+class SendGTMAlertInput:
+    workspace_id: str
+    alert_log_id: str
+
+
+@activity.defn(name="send_gtm_alert")
+async def send_gtm_alert(input: SendGTMAlertInput) -> dict:
+    """Deliver a GTM alert via the configured channel (Slack, etc.)."""
+    from aexy.services.gtm_alert_service import GTMAlertService
+    from aexy.models.gtm_alerts import GTMAlertConfig, GTMAlertLog
+
+    logger.info(f"Sending GTM alert log_id={input.alert_log_id}")
+
+    async with async_session_maker() as db:
+        from sqlalchemy import select, and_
+        result = await db.execute(
+            select(GTMAlertLog).where(GTMAlertLog.id == input.alert_log_id)
+        )
+        log = result.scalar_one_or_none()
+        if not log:
+            return {"status": "not_found"}
+
+        config_result = await db.execute(
+            select(GTMAlertConfig).where(GTMAlertConfig.id == log.alert_config_id)
+        )
+        config = config_result.scalar_one_or_none()
+        if not config:
+            return {"status": "config_not_found"}
+
+        try:
+            if config.channel_type == "slack":
+                from aexy.temporal.dispatch import dispatch
+                channel = config.channel_config.get("channel", "#gtm-alerts")
+                template = config.message_template or f"GTM Alert: {log.event_type}"
+                message = template.format(**log.event_data) if log.event_data else template
+                await dispatch("send_slack_message", {
+                    "workspace_id": input.workspace_id,
+                    "channel": channel,
+                    "text": message,
+                })
+
+            alert_svc = GTMAlertService(db)
+            await alert_svc.mark_alert_delivered(input.alert_log_id, "sent")
+            return {"status": "sent"}
+        except Exception as e:
+            logger.error(f"Failed to send alert: {e}")
+            alert_svc = GTMAlertService(db)
+            await alert_svc.mark_alert_delivered(input.alert_log_id, "failed", str(e))
+            return {"status": "failed", "error": str(e)}
+
+
+# =============================================================================
+# LEAD ROUTING & SLA
+# =============================================================================
+
+@dataclass
+class RouteNewLeadInput:
+    workspace_id: str
+    record_id: str
+    record_values: dict = field(default_factory=dict)
+
+
+@activity.defn(name="route_new_lead")
+async def route_new_lead(input: RouteNewLeadInput) -> dict:
+    """Route a new lead through the routing rules engine."""
+    from aexy.services.lead_routing_service import LeadRoutingService
+
+    logger.info(f"Routing lead record_id={input.record_id}")
+
+    async with async_session_maker() as db:
+        service = LeadRoutingService(db)
+        assignment = await service.route_lead(
+            input.workspace_id, input.record_id, input.record_values,
+        )
+
+    if assignment:
+        return {"assigned": True, "assignee_id": assignment.assignee_id, "assignment_id": assignment.id}
+    return {"assigned": False}
+
+
+@dataclass
+class CheckSLABreachesInput:
+    workspace_id: str = ""
+
+
+@activity.defn(name="check_sla_breaches")
+async def check_sla_breaches(input: CheckSLABreachesInput) -> dict:
+    """Check for SLA breaches across all workspaces (or one)."""
+    from aexy.services.lead_routing_service import LeadRoutingService
+
+    logger.info("Checking SLA breaches")
+
+    async with async_session_maker() as db:
+        service = LeadRoutingService(db)
+        if input.workspace_id:
+            count = await service.check_sla_breaches(input.workspace_id)
+        else:
+            # Check all workspaces
+            from aexy.models.workspace import Workspace
+            from sqlalchemy import select
+            ws_result = await db.execute(select(Workspace.id))
+            count = 0
+            for (ws_id,) in ws_result.all():
+                count += await service.check_sla_breaches(ws_id)
+
+    return {"breaches_found": count}
+
+
+# =============================================================================
+# CUSTOMER HEALTH SCORING
+# =============================================================================
+
+@dataclass
+class ScoreCustomerHealthInput:
+    workspace_id: str
+    record_id: str
+
+
+@activity.defn(name="score_customer_health")
+async def score_customer_health(input: ScoreCustomerHealthInput) -> dict:
+    """Score a single customer's health."""
+    from aexy.services.health_scoring_service import HealthScoringService
+
+    logger.info(f"Scoring health for record_id={input.record_id}")
+
+    async with async_session_maker() as db:
+        service = HealthScoringService(db)
+        score = await service.score_customer(input.workspace_id, input.record_id)
+
+    return {"record_id": input.record_id, "total_score": score.total_score, "status": score.health_status}
+
+
+@dataclass
+class BatchScoreCustomerHealthInput:
+    workspace_id: str = ""
+
+
+@activity.defn(name="batch_score_customer_health")
+async def batch_score_customer_health(input: BatchScoreCustomerHealthInput) -> dict:
+    """Batch score all customers in a workspace."""
+    from aexy.services.health_scoring_service import HealthScoringService
+
+    logger.info(f"Batch scoring customer health for workspace {input.workspace_id}")
+
+    async with async_session_maker() as db:
+        service = HealthScoringService(db)
+        if input.workspace_id:
+            count = await service.batch_score_customers(input.workspace_id)
+        else:
+            from aexy.models.workspace import Workspace
+            from sqlalchemy import select
+            ws_result = await db.execute(select(Workspace.id))
+            count = 0
+            for (ws_id,) in ws_result.all():
+                count += await service.batch_score_customers(ws_id)
+
+    return {"scored": count}
+
+
+@dataclass
+class DetectHealthDropsInput:
+    workspace_id: str = ""
+
+
+@activity.defn(name="detect_health_drops")
+async def detect_health_drops(input: DetectHealthDropsInput) -> dict:
+    """Detect health score drops and emit alerts."""
+    from aexy.services.health_scoring_service import HealthScoringService
+
+    logger.info("Detecting health drops")
+
+    async with async_session_maker() as db:
+        service = HealthScoringService(db)
+        if input.workspace_id:
+            alerts = await service.detect_health_drops(input.workspace_id)
+        else:
+            from aexy.models.workspace import Workspace
+            from sqlalchemy import select
+            ws_result = await db.execute(select(Workspace.id))
+            alerts = []
+            for (ws_id,) in ws_result.all():
+                alerts.extend(await service.detect_health_drops(ws_id))
+
+    return {"alerts_sent": len(alerts)}
+
+
+# =============================================================================
+# EXPANSION PLAYBOOKS
+# =============================================================================
+
+@dataclass
+class EvaluateExpansionTriggersInput:
+    workspace_id: str
+    record_id: str
+    health_score: int = 0
+
+
+@activity.defn(name="evaluate_expansion_triggers")
+async def evaluate_expansion_triggers(input: EvaluateExpansionTriggersInput) -> dict:
+    """Evaluate expansion playbook triggers for a customer after health scoring."""
+    from aexy.services.expansion_playbook_service import ExpansionPlaybookService
+
+    logger.info(f"Evaluating expansion triggers for record_id={input.record_id}")
+
+    async with async_session_maker() as db:
+        service = ExpansionPlaybookService(db)
+        matching = await service.evaluate_triggers(
+            input.workspace_id, input.record_id, input.health_score,
+        )
+        enrolled = []
+        for playbook_id in matching:
+            enrollment = await service.enroll_customer(
+                input.workspace_id, playbook_id, input.record_id,
+            )
+            if enrollment:
+                enrolled.append(enrollment.id)
+
+    return {"matching_playbooks": len(matching), "enrolled": len(enrolled)}
+
+
+@dataclass
+class AdvanceExpansionStepInput:
+    workspace_id: str
+    enrollment_id: str
+
+
+@activity.defn(name="advance_expansion_step")
+async def advance_expansion_step(input: AdvanceExpansionStepInput) -> dict:
+    """Advance an expansion enrollment to the next step."""
+    from aexy.services.expansion_playbook_service import ExpansionPlaybookService
+
+    async with async_session_maker() as db:
+        service = ExpansionPlaybookService(db)
+        enrollment = await service.advance_enrollment(input.workspace_id, input.enrollment_id)
+
+    if enrollment:
+        return {"status": enrollment.status, "step": enrollment.current_step_index}
+    return {"status": "not_found"}
+
+
+# =============================================================================
+# INTENT SIGNALS
+# =============================================================================
+
+@dataclass
+class CollectIntentSignalsInput:
+    workspace_id: str = ""
+
+
+@activity.defn(name="collect_intent_signals")
+async def collect_intent_signals(input: CollectIntentSignalsInput) -> dict:
+    """Collect intent signals from external sources."""
+    from aexy.services.intent_signal_service import IntentSignalService
+
+    logger.info("Collecting intent signals")
+
+    async with async_session_maker() as db:
+        service = IntentSignalService(db)
+        if input.workspace_id:
+            jobs = await service.collect_job_posting_signals(input.workspace_id)
+            tech = await service.collect_tech_change_signals(input.workspace_id)
+            matched = await service.match_signals_to_records(input.workspace_id)
+        else:
+            from aexy.models.workspace import Workspace
+            from sqlalchemy import select
+            ws_result = await db.execute(select(Workspace.id))
+            jobs, tech, matched = 0, 0, 0
+            for (ws_id,) in ws_result.all():
+                jobs += await service.collect_job_posting_signals(ws_id)
+                tech += await service.collect_tech_change_signals(ws_id)
+                matched += await service.match_signals_to_records(ws_id)
+
+    return {"job_signals": jobs, "tech_signals": tech, "matched": matched}
+
+
+@dataclass
+class MatchIntentSignalsInput:
+    workspace_id: str
+
+
+@activity.defn(name="match_intent_signals_to_records")
+async def match_intent_signals_to_records(input: MatchIntentSignalsInput) -> dict:
+    """Match unprocessed intent signals to CRM records."""
+    from aexy.services.intent_signal_service import IntentSignalService
+
+    async with async_session_maker() as db:
+        service = IntentSignalService(db)
+        count = await service.match_signals_to_records(input.workspace_id)
+
+    return {"matched": count}
+
+
+# =============================================================================
+# COMPETITOR INTELLIGENCE
+# =============================================================================
+
+@dataclass
+class CheckCompetitorChangesInput:
+    workspace_id: str = ""
+
+
+@activity.defn(name="check_competitor_changes")
+async def check_competitor_changes(input: CheckCompetitorChangesInput) -> dict:
+    """Check all tracked competitors for page changes."""
+    from aexy.services.competitor_intel_service import CompetitorIntelService
+
+    logger.info("Checking competitor changes")
+
+    async with async_session_maker() as db:
+        service = CompetitorIntelService(db)
+        if input.workspace_id:
+            competitors = await service.list_competitors(input.workspace_id)
+            total_changes = 0
+            for comp in competitors:
+                changes = await service.check_for_changes(input.workspace_id, comp.id)
+                total_changes += len(changes)
+        else:
+            from aexy.models.workspace import Workspace
+            from aexy.models.gtm_competitor import CompetitorProfile
+            from sqlalchemy import select
+            ws_result = await db.execute(select(Workspace.id))
+            total_changes = 0
+            for (ws_id,) in ws_result.all():
+                competitors = await service.list_competitors(ws_id)
+                for comp in competitors:
+                    changes = await service.check_for_changes(ws_id, comp.id)
+                    total_changes += len(changes)
+
+    return {"changes_detected": total_changes}
+
+
+@dataclass
+class GenerateBattleCardInput:
+    workspace_id: str
+    competitor_id: str
+
+
+@activity.defn(name="generate_battle_card")
+async def generate_battle_card(input: GenerateBattleCardInput) -> dict:
+    """Generate an LLM-powered battle card for a competitor."""
+    from aexy.services.competitor_intel_service import CompetitorIntelService
+
+    logger.info(f"Generating battle card for competitor_id={input.competitor_id}")
+
+    async with async_session_maker() as db:
+        service = CompetitorIntelService(db)
+        card = await service.generate_battle_card(input.workspace_id, input.competitor_id)
+
+    if card:
+        return {"card_id": card.id, "status": card.status}
+    return {"status": "failed"}
+
+
+# =============================================================================
+# SEO AUDIT
+# =============================================================================
+
+@dataclass
+class RunSEOAuditInput:
+    audit_id: str
+    max_pages: int = 20
+
+
+@activity.defn(name="run_seo_audit")
+async def run_seo_audit(input: RunSEOAuditInput) -> dict:
+    """Run a full SEO audit (crawl + analysis)."""
+    from aexy.services.seo_audit_service import SEOAuditService
+
+    logger.info(f"Running SEO audit id={input.audit_id}")
+
+    async with async_session_maker() as db:
+        service = SEOAuditService(db)
+        await service.run_audit(input.audit_id, max_pages=input.max_pages)
+
+    return {"audit_id": input.audit_id, "status": "completed"}
+
+
+# =============================================================================
+# CONTENT GAP ANALYSIS
+# =============================================================================
+
+@dataclass
+class RunContentGapAnalysisInput:
+    analysis_id: str
+
+
+@activity.defn(name="run_content_gap_analysis")
+async def run_content_gap_analysis(input: RunContentGapAnalysisInput) -> dict:
+    """Run content gap analysis (sitemap crawl + topic extraction)."""
+    from aexy.services.content_gap_service import ContentGapService
+
+    logger.info(f"Running content gap analysis id={input.analysis_id}")
+
+    async with async_session_maker() as db:
+        service = ContentGapService(db)
+        await service.run_analysis(input.analysis_id)
+
+    return {"analysis_id": input.analysis_id, "status": "completed"}
+
+
+# =============================================================================
+# ABM
+# =============================================================================
+
+@dataclass
+class RecalculateABMEngagementInput:
+    workspace_id: str = ""
+
+
+@activity.defn(name="recalculate_abm_engagement")
+async def recalculate_abm_engagement(input: RecalculateABMEngagementInput) -> dict:
+    """Recalculate engagement scores for all ABM accounts."""
+    from aexy.services.abm_service import ABMService
+
+    logger.info("Recalculating ABM engagement scores")
+
+    async with async_session_maker() as db:
+        service = ABMService(db)
+        if input.workspace_id:
+            count = await service.batch_recalculate_engagement(input.workspace_id)
+        else:
+            from aexy.models.workspace import Workspace
+            from sqlalchemy import select
+            ws_result = await db.execute(select(Workspace.id))
+            count = 0
+            for (ws_id,) in ws_result.all():
+                count += await service.batch_recalculate_engagement(ws_id)
+
+    return {"recalculated": count}
+
+
+@dataclass
+class RefreshDynamicABMListsInput:
+    workspace_id: str = ""
+
+
+@activity.defn(name="refresh_dynamic_abm_lists")
+async def refresh_dynamic_abm_lists(input: RefreshDynamicABMListsInput) -> dict:
+    """Refresh dynamic ABM target lists."""
+    from aexy.services.abm_service import ABMService
+
+    logger.info("Refreshing dynamic ABM lists")
+
+    async with async_session_maker() as db:
+        service = ABMService(db)
+        if input.workspace_id:
+            from aexy.models.gtm_abm import ABMTargetList
+            from sqlalchemy import select, and_
+            result = await db.execute(
+                select(ABMTargetList).where(
+                    and_(ABMTargetList.workspace_id == input.workspace_id, ABMTargetList.is_dynamic == True)
+                )
+            )
+            count = 0
+            for lst in result.scalars().all():
+                await service.refresh_dynamic_list(input.workspace_id, lst.id)
+                count += 1
+        else:
+            from aexy.models.gtm_abm import ABMTargetList
+            from sqlalchemy import select
+            result = await db.execute(select(ABMTargetList).where(ABMTargetList.is_dynamic == True))
+            count = 0
+            for lst in result.scalars().all():
+                await service.refresh_dynamic_list(lst.workspace_id, lst.id)
+                count += 1
+
+    return {"refreshed": count}

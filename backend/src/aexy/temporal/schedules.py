@@ -325,6 +325,76 @@ SCHEDULES: list[dict] = [
         "interval": timedelta(weeks=1),
         "queue": TaskQueue.ANALYSIS,
     },
+
+    # === GTM SLA Breach Check (every 5 min) ===
+    {
+        "id": "gtm-check-sla-breaches",
+        "activity": "check_sla_breaches",
+        "input_module": "aexy.temporal.activities.gtm",
+        "input_class": "CheckSLABreachesInput",
+        "interval": timedelta(minutes=5),
+        "queue": TaskQueue.OPERATIONS,
+    },
+
+    # === GTM Batch Customer Health Scoring (daily) ===
+    {
+        "id": "gtm-batch-score-customer-health",
+        "activity": "batch_score_customer_health",
+        "input_module": "aexy.temporal.activities.gtm",
+        "input_class": "BatchScoreCustomerHealthInput",
+        "interval": timedelta(days=1),
+        "queue": TaskQueue.ANALYSIS,
+    },
+
+    # === GTM Health Drop Detection (every 6h) ===
+    {
+        "id": "gtm-detect-health-drops",
+        "activity": "detect_health_drops",
+        "input_module": "aexy.temporal.activities.gtm",
+        "input_class": "DetectHealthDropsInput",
+        "interval": timedelta(hours=6),
+        "queue": TaskQueue.ANALYSIS,
+    },
+
+    # === GTM Intent Signal Collection (every 12h) ===
+    {
+        "id": "gtm-collect-intent-signals",
+        "activity": "collect_intent_signals",
+        "input_module": "aexy.temporal.activities.gtm",
+        "input_class": "CollectIntentSignalsInput",
+        "interval": timedelta(hours=12),
+        "queue": TaskQueue.INTEGRATIONS,
+    },
+
+    # === GTM Competitor Change Check (daily) ===
+    {
+        "id": "gtm-check-competitor-changes",
+        "activity": "check_competitor_changes",
+        "input_module": "aexy.temporal.activities.gtm",
+        "input_class": "CheckCompetitorChangesInput",
+        "interval": timedelta(days=1),
+        "queue": TaskQueue.INTEGRATIONS,
+    },
+
+    # === GTM ABM Engagement Recalculation (every 6h) ===
+    {
+        "id": "gtm-recalculate-abm-engagement",
+        "activity": "recalculate_abm_engagement",
+        "input_module": "aexy.temporal.activities.gtm",
+        "input_class": "RecalculateABMEngagementInput",
+        "interval": timedelta(hours=6),
+        "queue": TaskQueue.ANALYSIS,
+    },
+
+    # === GTM Dynamic ABM List Refresh (daily) ===
+    {
+        "id": "gtm-refresh-dynamic-abm-lists",
+        "activity": "refresh_dynamic_abm_lists",
+        "input_module": "aexy.temporal.activities.gtm",
+        "input_class": "RefreshDynamicABMListsInput",
+        "interval": timedelta(days=1),
+        "queue": TaskQueue.ANALYSIS,
+    },
 ]
 
 
