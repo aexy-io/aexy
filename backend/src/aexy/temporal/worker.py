@@ -32,6 +32,7 @@ def get_all_workflows() -> list:
     from aexy.temporal.workflows.email_campaign import EmailCampaignWorkflow
     from aexy.temporal.workflows.maintenance import CleanupWorkflow
     from aexy.temporal.workflows.onboarding import OnboardingWorkflow
+    from aexy.temporal.workflows.outreach_sequence import OutreachSequenceWorkflow
     from aexy.temporal.workflows.single_activity import SingleActivityWorkflow
     from aexy.temporal.workflows.sync import SyncGmailWorkflow, SyncRepositoryWorkflow
 
@@ -44,6 +45,7 @@ def get_all_workflows() -> list:
         EmailCampaignWorkflow,
         OnboardingWorkflow,
         CleanupWorkflow,
+        OutreachSequenceWorkflow,
     ]
 
 
@@ -160,6 +162,19 @@ def get_all_activities() -> list:
         cleanup_old_executions,
         execute_workflow_action,
     )
+    from aexy.temporal.activities.gtm import (
+        identify_visitor_session,
+        process_visitor_events,
+        verify_email_address,
+        score_lead,
+        batch_score_leads,
+        execute_outreach_step,
+        finalize_enrollment,
+        generate_weekly_gtm_report,
+        classify_outreach_reply,
+        personalize_outreach_batch,
+        run_bulk_import,
+    )
 
     return [
         # Analysis
@@ -255,6 +270,18 @@ def get_all_activities() -> list:
         cleanup_old_executions,
         # Insights
         auto_generate_snapshots,
+        # GTM
+        identify_visitor_session,
+        process_visitor_events,
+        verify_email_address,
+        score_lead,
+        batch_score_leads,
+        execute_outreach_step,
+        finalize_enrollment,
+        generate_weekly_gtm_report,
+        classify_outreach_reply,
+        personalize_outreach_batch,
+        run_bulk_import,
         # Reminders (Compliance)
         generate_reminder_instances,
         process_escalations,
