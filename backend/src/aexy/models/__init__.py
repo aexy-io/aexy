@@ -437,6 +437,25 @@ from aexy.models.leave import (
     AccrualType,
     DEFAULT_LEAVE_TYPES,
 )
+from aexy.models.gtm_compliance import (
+    ContactConsent,
+    SuppressionList,
+    ComplianceAuditLog,
+    ConsentType as GTMConsentType,
+    Jurisdiction as GTMJurisdiction,
+    SuppressionReason as GTMSuppressionReason,
+    ComplianceAction,
+)
+from aexy.models.gtm_outreach import (
+    OutreachSequence,
+    OutreachEnrollment,
+    OutreachStepExecution,
+    SequenceStatus,
+    SequenceChannel,
+    SequenceAction,
+    EnrollmentStatus,
+    StepExecutionStatus,
+)
 
 __all__ = [
     # Plan
@@ -862,4 +881,21 @@ __all__ = [
     "LeaveRequestStatus",
     "AccrualType",
     "DEFAULT_LEAVE_TYPES",
+    # GTM Compliance
+    "ContactConsent",
+    "SuppressionList",
+    "ComplianceAuditLog",
+    "GTMConsentType",
+    "GTMJurisdiction",
+    "GTMSuppressionReason",
+    "ComplianceAction",
+    # GTM Outreach
+    "OutreachSequence",
+    "OutreachEnrollment",
+    "OutreachStepExecution",
+    "SequenceStatus",
+    "SequenceChannel",
+    "SequenceAction",
+    "EnrollmentStatus",
+    "StepExecutionStatus",
 ]

@@ -51,6 +51,11 @@ import {
     RefreshCw,
     Palmtree,
     CheckSquare,
+    Crosshair,
+    Eye,
+    BarChart2,
+    Plug,
+    Upload,
 } from "lucide-react";
 
 export type SidebarLayoutType = "grouped" | "flat";
@@ -160,6 +165,18 @@ const complianceItems: SidebarItemConfig[] = [
     { href: "/compliance/training", label: "Training", icon: GraduationCap },
     { href: "/compliance/certifications", label: "Certifications", icon: ShieldCheck },
     { href: "/compliance/calendar", label: "Calendar", icon: CalendarDays },
+];
+
+const gtmItems: SidebarItemConfig[] = [
+    { href: "/gtm", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/gtm/visitors", label: "Visitors", icon: Eye },
+    { href: "/gtm/sequences", label: "Sequences", icon: Mail },
+    { href: "/gtm/import", label: "Import", icon: Upload },
+    { href: "/gtm/scoring", label: "Scoring", icon: BarChart2 },
+    { href: "/gtm/scoring/icp", label: "ICP Templates", icon: Target },
+    { href: "/gtm/compliance", label: "Compliance", icon: ShieldCheck },
+    { href: "/gtm/providers", label: "Providers", icon: Plug },
+    { href: "/gtm/analytics", label: "Analytics", icon: BarChart2 },
 ];
 
 /**
@@ -286,6 +303,12 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
                     icon: Mail,
                     items: emailItems,
                 },
+                {
+                    href: "/gtm",
+                    label: "GTM",
+                    icon: Crosshair,
+                    items: gtmItems,
+                },
             ],
         },
         {
@@ -389,6 +412,12 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                 },
                 { href: "/docs", label: "Docs", icon: FileText },
                 { href: "/forms", label: "Forms", icon: FormInput },
+                {
+                    href: "/gtm",
+                    label: "GTM",
+                    icon: Crosshair,
+                    items: gtmItems,
+                },
             ],
         },
     ],

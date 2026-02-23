@@ -92,6 +92,29 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
 
     # Insights
     "auto_generate_snapshots": {"retry": STANDARD_RETRY, "timeout": timedelta(hours=1)},
+
+    # GTM (Go-To-Market)
+    "identify_visitor_session": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=2)},
+    "process_visitor_events": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
+    "verify_email_address": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=2)},
+    "score_lead": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
+    "batch_score_leads": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=30), "heartbeat": timedelta(minutes=5)},
+
+    # GTM Outreach Sequences
+    "execute_outreach_step": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
+    "finalize_enrollment": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=2)},
+
+    # GTM Analytics / Reports
+    "generate_weekly_gtm_report": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=10)},
+
+    # GTM Reply Classification
+    "classify_outreach_reply": {"retry": LLM_RETRY, "timeout": timedelta(minutes=2)},
+
+    # GTM Personalization
+    "personalize_outreach_batch": {"retry": LLM_RETRY, "timeout": timedelta(minutes=30), "heartbeat": timedelta(minutes=5)},
+
+    # GTM Bulk Import
+    "run_bulk_import": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=30), "heartbeat": timedelta(minutes=5)},
 }
 
 DEFAULT_CONFIG = {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)}

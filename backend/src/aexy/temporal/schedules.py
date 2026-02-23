@@ -315,6 +315,16 @@ SCHEDULES: list[dict] = [
         "interval": timedelta(hours=24),
         "queue": TaskQueue.ANALYSIS,
     },
+
+    # === GTM Weekly Report ===
+    {
+        "id": "weekly-gtm-report",
+        "activity": "generate_weekly_gtm_report",
+        "input_module": "aexy.temporal.activities.gtm",
+        "input_class": "GenerateWeeklyReportInput",
+        "interval": timedelta(weeks=1),
+        "queue": TaskQueue.ANALYSIS,
+    },
 ]
 
 
