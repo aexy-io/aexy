@@ -14,7 +14,6 @@ import {
   ArrowRight,
   TrendingUp,
   Clock,
-  UserPlus,
   FileText,
   CheckCircle2,
   AlertCircle,
@@ -170,20 +169,6 @@ export default function HiringDashboardPage() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          {/* <Link
-            href="/hiring/candidates"
-            className="group bg-gradient-to-br from-info/10 to-info/5 rounded-xl border border-info/30 p-5 hover:border-info/50 transition"
-          >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
-              <div className="p-2.5 bg-info/20 rounded-lg">
-                <UserPlus className="h-6 w-6 text-info" />
-              </div>
-              <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-info transition" />
-            </div>
-            <h3 className="text-lg font-semibold text-foreground mb-1">Add Candidate</h3>
-            <p className="text-sm text-muted-foreground">Add a new candidate to your pipeline</p>
-          </Link> */}
-
           <Link
             href="/hiring/assessments/new"
             className="group bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/30 p-5 hover:border-primary/50 transition"

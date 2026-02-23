@@ -199,7 +199,7 @@ async def list_assessments(
         offset=offset,
     )
     return {
-        "items": assessments,
+        "items": [AssessmentSummary.model_validate(a) for a in assessments],
         "total": total,
         "limit": limit,
         "offset": offset,
