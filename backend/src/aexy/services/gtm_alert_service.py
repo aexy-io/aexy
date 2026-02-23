@@ -92,7 +92,7 @@ class GTMAlertService:
                 and_(
                     GTMAlertConfig.workspace_id == workspace_id,
                     GTMAlertConfig.event_type == event_type,
-                    GTMAlertConfig.is_active == True,
+                    GTMAlertConfig.is_active.is_(True),
                 )
             )
         )

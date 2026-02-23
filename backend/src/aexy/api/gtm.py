@@ -1716,7 +1716,7 @@ async def batch_score_health(
     from aexy.temporal.task_queues import TaskQueue
     await check_workspace_permission(workspace_id, current_user, db)
     wf_id = await dispatch(
-        "run_batch_health_scoring",
+        "batch_score_customer_health",
         {"workspace_id": workspace_id},
         task_queue=TaskQueue.ANALYSIS,
     )
@@ -1913,7 +1913,7 @@ async def get_expansion_analytics(
     from aexy.services.expansion_playbook_service import ExpansionPlaybookService
     await check_workspace_permission(workspace_id, current_user, db)
     service = ExpansionPlaybookService(db)
-    return await service.get_analytics(workspace_id)
+    return await service.get_playbook_analytics(workspace_id)
 
 
 # =============================================================================
@@ -1945,11 +1945,11 @@ async def list_handoffs(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_handoff import HandoffListResponse
     from aexy.services.handoff_service import HandoffService
     await check_workspace_permission(workspace_id, current_user, db)
     service = HandoffService(db)
-    return await service.list_handoffs(workspace_id, page=page, per_page=per_page, status=status, assigned_to=assigned_to)
+    items, total = await service.list_handoffs(workspace_id, page=page, per_page=per_page, status=status, assigned_to=assigned_to)
+    return {"items": items, "total": total, "page": page, "per_page": per_page}
 
 
 @router.get("/handoffs/analytics")
@@ -1962,7 +1962,7 @@ async def get_handoff_analytics(
     from aexy.services.handoff_service import HandoffService
     await check_workspace_permission(workspace_id, current_user, db)
     service = HandoffService(db)
-    return await service.get_analytics(workspace_id)
+    return await service.get_handoff_analytics(workspace_id)
 
 
 @router.get("/handoffs/{handoff_id}")
@@ -2050,11 +2050,11 @@ async def list_intent_signals(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_intent import IntentSignalListResponse
     from aexy.services.intent_signal_service import IntentSignalService
     await check_workspace_permission(workspace_id, current_user, db)
     service = IntentSignalService(db)
-    return await service.list_signals(workspace_id, page=page, per_page=per_page, signal_type=signal_type, intent_strength=intent_strength)
+    items, total = await service.list_signals(workspace_id, page=page, per_page=per_page, signal_type=signal_type, intent_strength=intent_strength)
+    return {"items": items, "total": total, "page": page, "per_page": per_page}
 
 
 @router.get("/intent/signals/{signal_id}")
@@ -2169,7 +2169,7 @@ async def trigger_intent_collection(
     from aexy.temporal.task_queues import TaskQueue
     await check_workspace_permission(workspace_id, current_user, db)
     wf_id = await dispatch(
-        "run_intent_signal_collection",
+        "collect_intent_signals",
         {"workspace_id": workspace_id},
         task_queue=TaskQueue.ANALYSIS,
     )
@@ -2302,7 +2302,7 @@ async def manual_competitor_check(
     from aexy.temporal.task_queues import TaskQueue
     await check_workspace_permission(workspace_id, current_user, db)
     wf_id = await dispatch(
-        "run_competitor_change_check",
+        "check_competitor_changes",
         {"workspace_id": workspace_id, "competitor_id": competitor_id},
         task_queue=TaskQueue.ANALYSIS,
     )
@@ -2337,7 +2337,7 @@ async def generate_battle_card(
     from aexy.temporal.task_queues import TaskQueue
     await check_workspace_permission(workspace_id, current_user, db)
     wf_id = await dispatch(
-        "run_battle_card_generation",
+        "generate_battle_card",
         {"workspace_id": workspace_id, "competitor_id": competitor_id},
         task_queue=TaskQueue.ANALYSIS,
     )
@@ -2602,7 +2602,7 @@ async def get_abm_overview(
     from aexy.services.abm_service import ABMService
     await check_workspace_permission(workspace_id, current_user, db)
     service = ABMService(db)
-    return await service.get_overview(workspace_id)
+    return await service.get_abm_overview(workspace_id)
 
 
 @router.get("/abm/accounts")
@@ -2701,7 +2701,7 @@ async def refresh_abm_target_list(
     from aexy.temporal.task_queues import TaskQueue
     await check_workspace_permission(workspace_id, current_user, db)
     wf_id = await dispatch(
-        "run_abm_list_refresh",
+        "refresh_dynamic_abm_lists",
         {"workspace_id": workspace_id, "list_id": list_id},
         task_queue=TaskQueue.SYNC,
     )

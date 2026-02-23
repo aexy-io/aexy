@@ -359,7 +359,7 @@ export function useGTMSLADashboard(workspaceId: string | null, days?: number) {
     queryFn: () => gtmApi.routing.slaDashboard(workspaceId!, days),
     enabled: !!workspaceId,
   });
-  return { dashboard: data || {}, isLoading, error, refetch };
+  return { dashboard: data || null, isLoading, error, refetch };
 }
 
 export function useGTMAssignments(workspaceId: string | null, params?: { page?: number; per_page?: number; status?: string; assignee_id?: string }) {
@@ -381,7 +381,7 @@ export function useGTMHealthDashboard(workspaceId: string | null) {
     queryFn: () => gtmApi.health.dashboard(workspaceId!),
     enabled: !!workspaceId,
   });
-  return { dashboard: data || {}, isLoading, error, refetch };
+  return { dashboard: data || null, isLoading, error, refetch };
 }
 
 export function useGTMHealthScores(workspaceId: string | null, params?: { page?: number; per_page?: number; health_status?: string }) {
@@ -412,7 +412,7 @@ export function useGTMExpansionAnalytics(workspaceId: string | null) {
     queryFn: () => gtmApi.expansion.analytics(workspaceId!),
     enabled: !!workspaceId,
   });
-  return { analytics: data || {}, isLoading, error, refetch };
+  return { analytics: data || null, isLoading, error, refetch };
 }
 
 export function useGTMExpansionEnrollments(workspaceId: string | null, params?: { page?: number; per_page?: number; playbook_id?: string; status?: string }) {
@@ -443,7 +443,7 @@ export function useGTMHandoffAnalytics(workspaceId: string | null) {
     queryFn: () => gtmApi.handoffs.analytics(workspaceId!),
     enabled: !!workspaceId,
   });
-  return { analytics: data || {}, isLoading, error, refetch };
+  return { analytics: data || null, isLoading, error, refetch };
 }
 
 // =============================================================================
@@ -465,7 +465,7 @@ export function useGTMIntentSummary(workspaceId: string | null) {
     queryFn: () => gtmApi.intent.summary(workspaceId!),
     enabled: !!workspaceId,
   });
-  return { summary: data || {}, isLoading, error, refetch };
+  return { summary: data || null, isLoading, error, refetch };
 }
 
 // =============================================================================
@@ -553,7 +553,7 @@ export function useGTMABMOverview(workspaceId: string | null) {
     queryFn: () => gtmApi.abm.overview(workspaceId!),
     enabled: !!workspaceId,
   });
-  return { overview: data || {}, isLoading, error, refetch };
+  return { overview: data || null, isLoading, error, refetch };
 }
 
 export function useGTMABMTargetLists(workspaceId: string | null) {

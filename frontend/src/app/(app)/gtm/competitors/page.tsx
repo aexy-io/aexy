@@ -10,7 +10,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 const SEVERITY_STYLES: Record<string, string> = {
   critical:  "bg-red-500/20 text-red-400 border-red-500/30",
   important: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-  info:      "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",
+  info:      "bg-zinc-500/20 text-muted-foreground border-zinc-500/30",
 };
 
 const CHANGE_TYPE_STYLES: Record<string, string> = {
@@ -36,21 +36,21 @@ export default function CompetitorsPage() {
   const totalPages = Math.ceil(total / PER_PAGE);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
               <Swords className="w-7 h-7 text-indigo-400" />
               Competitors
             </h1>
-            <p className="text-zinc-400 mt-1">Competitor intelligence and change monitoring</p>
+            <p className="text-muted-foreground mt-1">Competitor intelligence and change monitoring</p>
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={() => window.location.reload()}
-              className="inline-flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 rounded-lg text-sm transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-2 bg-muted/50 hover:bg-muted border border-border text-foreground rounded-lg text-sm transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
               Refresh
@@ -63,7 +63,7 @@ export default function CompetitorsPage() {
         </div>
 
         {/* Competitor Grid */}
-        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
           Tracked Competitors
         </h2>
         {competitorsLoading ? (
@@ -71,10 +71,10 @@ export default function CompetitorsPage() {
             <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
           </div>
         ) : competitors.length === 0 ? (
-          <div className="bg-white/5 border border-white/10 rounded-xl p-12 text-center mb-8">
+          <div className="bg-muted/50 border border-border rounded-xl p-12 text-center mb-8">
             <Swords className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
-            <p className="text-zinc-400 font-medium">No competitors tracked yet</p>
-            <p className="text-zinc-500 text-sm mt-1">Add a competitor to start monitoring their changes.</p>
+            <p className="text-muted-foreground font-medium">No competitors tracked yet</p>
+            <p className="text-muted-foreground text-sm mt-1">Add a competitor to start monitoring their changes.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
@@ -82,10 +82,10 @@ export default function CompetitorsPage() {
               <Link
                 key={comp.id}
                 href={`/gtm/competitors/${comp.id}`}
-                className="bg-white/5 border border-white/10 rounded-xl p-5 hover:border-white/20 transition-colors group"
+                className="bg-muted/50 border border-border rounded-xl p-5 hover:border-border transition-colors group"
               >
                 <div className="flex items-start justify-between mb-3">
-                  <h3 className="text-white font-semibold group-hover:text-indigo-400 transition-colors">
+                  <h3 className="text-foreground font-semibold group-hover:text-indigo-400 transition-colors">
                     {comp.name}
                   </h3>
                   {comp.is_active ? (
@@ -93,18 +93,18 @@ export default function CompetitorsPage() {
                       Active
                     </span>
                   ) : (
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-zinc-500/20 text-zinc-400 border border-zinc-500/30">
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-zinc-500/20 text-muted-foreground border border-zinc-500/30">
                       Inactive
                     </span>
                   )}
                 </div>
                 {comp.domain && (
-                  <div className="flex items-center gap-1 text-zinc-400 text-xs mb-3">
+                  <div className="flex items-center gap-1 text-muted-foreground text-xs mb-3">
                     <ExternalLink className="w-3 h-3" />
                     {comp.domain}
                   </div>
                 )}
-                <p className="text-zinc-500 text-xs">
+                <p className="text-muted-foreground text-xs">
                   {(comp.tracked_pages ?? []).length} tracked page
                   {(comp.tracked_pages ?? []).length !== 1 ? "s" : ""}
                 </p>
@@ -114,7 +114,7 @@ export default function CompetitorsPage() {
         )}
 
         {/* Recent Changes */}
-        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
           Recent Changes
         </h2>
         {changesLoading ? (
@@ -122,38 +122,38 @@ export default function CompetitorsPage() {
             <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
           </div>
         ) : (
-          <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+          <div className="bg-muted/50 border border-border rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-border/50">
                     {["Competitor", "Change Type", "Title", "Severity", "Detected"].map((h) => (
                       <th
                         key={h}
-                        className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-6 py-3"
+                        className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3"
                       >
                         {h}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-border/50">
                   {changes.map((ch: any) => (
-                    <tr key={ch.id} className="hover:bg-white/5 transition-colors">
-                      <td className="px-6 py-4 text-sm text-zinc-300 font-medium">
+                    <tr key={ch.id} className="hover:bg-muted/50 transition-colors">
+                      <td className="px-6 py-4 text-sm text-foreground font-medium">
                         {ch.competitor_name ?? ch.competitor_id?.slice(0, 8) ?? "—"}
                       </td>
                       <td className="px-6 py-4">
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
                             CHANGE_TYPE_STYLES[ch.change_type] ??
-                            "bg-zinc-500/20 text-zinc-400 border-zinc-500/30"
+                            "bg-zinc-500/20 text-muted-foreground border-zinc-500/30"
                           }`}
                         >
                           {ch.change_type?.replace(/_/g, " ") ?? "—"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-white max-w-xs truncate">
+                      <td className="px-6 py-4 text-sm text-foreground max-w-xs truncate">
                         {ch.title ?? "—"}
                       </td>
                       <td className="px-6 py-4">
@@ -165,7 +165,7 @@ export default function CompetitorsPage() {
                           {ch.severity ?? "—"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-zinc-500">
+                      <td className="px-6 py-4 text-sm text-muted-foreground">
                         {ch.detected_at ? new Date(ch.detected_at).toLocaleDateString() : "—"}
                       </td>
                     </tr>
@@ -176,32 +176,32 @@ export default function CompetitorsPage() {
 
             {changes.length === 0 && (
               <div className="px-6 py-12 text-center">
-                <p className="text-zinc-400 font-medium">No changes detected yet</p>
-                <p className="text-zinc-500 text-sm mt-1">
+                <p className="text-muted-foreground font-medium">No changes detected yet</p>
+                <p className="text-muted-foreground text-sm mt-1">
                   Changes are captured automatically from tracked competitor pages.
                 </p>
               </div>
             )}
 
             {totalPages > 1 && (
-              <div className="px-6 py-3 border-t border-white/5 flex items-center justify-between">
-                <span className="text-sm text-zinc-500">
+              <div className="px-6 py-3 border-t border-border/50 flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
                   Page {changesPage} of {totalPages}
                 </span>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setChangesPage((p) => Math.max(1, p - 1))}
                     disabled={changesPage <= 1}
-                    className="p-1.5 rounded bg-white/5 hover:bg-white/10 disabled:opacity-30 transition-colors"
+                    className="p-1.5 rounded bg-muted/50 hover:bg-muted disabled:opacity-30 transition-colors"
                   >
-                    <ChevronLeft className="w-4 h-4 text-zinc-400" />
+                    <ChevronLeft className="w-4 h-4 text-muted-foreground" />
                   </button>
                   <button
                     onClick={() => setChangesPage((p) => Math.min(totalPages, p + 1))}
                     disabled={changesPage >= totalPages}
-                    className="p-1.5 rounded bg-white/5 hover:bg-white/10 disabled:opacity-30 transition-colors"
+                    className="p-1.5 rounded bg-muted/50 hover:bg-muted disabled:opacity-30 transition-colors"
                   >
-                    <ChevronRight className="w-4 h-4 text-zinc-400" />
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   </button>
                 </div>
               </div>

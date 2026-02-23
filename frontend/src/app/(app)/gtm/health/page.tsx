@@ -15,7 +15,7 @@ import { useGTMHealthDashboard, useGTMHealthScores } from "@/hooks/useGTM";
 
 const HEALTH_STATUS_COLORS: Record<string, string> = {
   healthy: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-  neutral: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",
+  neutral: "bg-zinc-500/20 text-muted-foreground border-zinc-500/30",
   at_risk: "bg-amber-500/20 text-amber-400 border-amber-500/30",
   critical: "bg-red-500/20 text-red-400 border-red-500/30",
 };
@@ -38,13 +38,13 @@ function ScoreBar({ score, max = 100 }: { score: number; max?: number }) {
 
   return (
     <div className="flex items-center gap-2">
-      <div className="w-20 bg-white/10 rounded-full h-2">
+      <div className="w-20 bg-muted rounded-full h-2">
         <div
           className={`${color} h-2 rounded-full transition-all`}
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="text-sm text-zinc-300 font-mono w-8 text-right">
+      <span className="text-sm text-foreground font-mono w-8 text-right">
         {score}
       </span>
     </div>
@@ -56,7 +56,7 @@ function TrendIcon({ trend }: { trend: string }) {
     return <TrendingUp className="w-4 h-4 text-emerald-400" />;
   if (trend === "declining")
     return <TrendingDown className="w-4 h-4 text-red-400" />;
-  return <span className="text-zinc-500 text-sm">—</span>;
+  return <span className="text-muted-foreground text-sm">—</span>;
 }
 
 export default function HealthPage() {
@@ -77,10 +77,10 @@ export default function HealthPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
-          <span className="text-zinc-400 text-sm">Loading health scores...</span>
+          <span className="text-muted-foreground text-sm">Loading health scores...</span>
         </div>
       </div>
     );
@@ -106,22 +106,22 @@ export default function HealthPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
               <Activity className="w-7 h-7 text-indigo-400" />
               Health Scores
             </h1>
-            <p className="text-zinc-400 mt-1">
+            <p className="text-muted-foreground mt-1">
               Monitor customer health and identify at-risk accounts
             </p>
           </div>
           <button
             onClick={() => refetchDash()}
-            className="inline-flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 rounded-lg text-sm transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-2 bg-muted/50 hover:bg-muted border border-border text-foreground rounded-lg text-sm transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             Refresh
@@ -130,17 +130,17 @@ export default function HealthPage() {
 
         {/* KPI Row */}
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-            <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
+          <div className="bg-muted/50 border border-border rounded-xl p-6">
+            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2">
               <Heart className="w-4 h-4" />
               Total Customers
             </div>
-            <p className="text-3xl font-bold text-white">
+            <p className="text-3xl font-bold text-foreground">
               {safeDash.total_customers.toLocaleString()}
             </p>
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-            <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
+          <div className="bg-muted/50 border border-border rounded-xl p-6">
+            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2">
               <Activity className="w-4 h-4 text-emerald-400" />
               Healthy
             </div>
@@ -148,8 +148,8 @@ export default function HealthPage() {
               {safeDash.healthy_count.toLocaleString()}
             </p>
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-            <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
+          <div className="bg-muted/50 border border-border rounded-xl p-6">
+            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2">
               <AlertCircle className="w-4 h-4 text-amber-400" />
               At Risk
             </div>
@@ -157,8 +157,8 @@ export default function HealthPage() {
               {safeDash.at_risk_count.toLocaleString()}
             </p>
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-            <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
+          <div className="bg-muted/50 border border-border rounded-xl p-6">
+            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2">
               <AlertCircle className="w-4 h-4 text-red-400" />
               Critical
             </div>
@@ -170,8 +170,8 @@ export default function HealthPage() {
 
         {/* Status Distribution */}
         {(safeDash.distribution ?? []).length > 0 && (
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6 mb-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Status Distribution</h3>
+          <div className="bg-muted/50 border border-border rounded-xl p-6 mb-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Status Distribution</h3>
             <div className="space-y-3">
               {(safeDash.distribution ?? []).map((d: any) => {
                 const total = safeDash.total_customers || 1;
@@ -185,7 +185,7 @@ export default function HealthPage() {
                     >
                       {d.status?.replace(/_/g, " ")}
                     </span>
-                    <div className="flex-1 bg-white/5 rounded-full h-5 relative overflow-hidden">
+                    <div className="flex-1 bg-muted/50 rounded-full h-5 relative overflow-hidden">
                       <div
                         className={`${
                           HEALTH_BAR_COLORS[d.status] ?? "bg-zinc-500"
@@ -193,10 +193,10 @@ export default function HealthPage() {
                         style={{ width: `${Math.max(parseFloat(pct), 2)}%` }}
                       />
                     </div>
-                    <span className="text-sm text-zinc-300 w-12 text-right">
+                    <span className="text-sm text-foreground w-12 text-right">
                       {d.count}
                     </span>
-                    <span className="text-xs text-zinc-500 w-10 text-right">
+                    <span className="text-xs text-muted-foreground w-10 text-right">
                       {pct}%
                     </span>
                   </div>
@@ -208,7 +208,7 @@ export default function HealthPage() {
 
         {/* Filter Bar */}
         <div className="flex items-center gap-3 mb-4 flex-wrap">
-          <span className="text-sm text-zinc-400">Filter:</span>
+          <span className="text-sm text-muted-foreground">Filter:</span>
           {statusFilters.map(({ value, label }) => (
             <button
               key={value}
@@ -219,7 +219,7 @@ export default function HealthPage() {
               className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                 healthFilter === value
                   ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/30"
-                  : "bg-white/5 text-zinc-400 border-white/10 hover:bg-white/10"
+                  : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
               }`}
             >
               {label}
@@ -228,13 +228,13 @@ export default function HealthPage() {
         </div>
 
         {/* Health Scores Table */}
-        <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-white">Health Scores</h3>
-            <span className="text-sm text-zinc-400">{safeTotal} records</span>
+        <div className="bg-muted/50 border border-border rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-foreground">Health Scores</h3>
+            <span className="text-sm text-muted-foreground">{safeTotal} records</span>
           </div>
           {scoresLoading ? (
-            <div className="px-6 py-12 flex items-center justify-center gap-2 text-zinc-500">
+            <div className="px-6 py-12 flex items-center justify-center gap-2 text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" />
               Loading scores...
             </div>
@@ -242,12 +242,12 @@ export default function HealthPage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-border/50">
                     {["Record ID", "Score", "Status", "Trend", "Delta", "Last Scored"].map(
                       (h) => (
                         <th
                           key={h}
-                          className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-6 py-3"
+                          className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3"
                         >
                           {h}
                         </th>
@@ -255,11 +255,11 @@ export default function HealthPage() {
                     )}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-border/50">
                   {safeScores.map((s: any) => (
-                    <tr key={s.id ?? s.record_id} className="hover:bg-white/5 transition-colors">
+                    <tr key={s.id ?? s.record_id} className="hover:bg-muted/50 transition-colors">
                       <td className="px-6 py-4">
-                        <span className="text-zinc-300 text-sm font-mono">
+                        <span className="text-foreground text-sm font-mono">
                           {s.record_id?.slice(0, 8)}...
                         </span>
                       </td>
@@ -287,17 +287,17 @@ export default function HealthPage() {
                                 ? "text-emerald-400"
                                 : s.score_delta < 0
                                   ? "text-red-400"
-                                  : "text-zinc-500"
+                                  : "text-muted-foreground"
                             }
                           >
                             {s.score_delta > 0 ? "+" : ""}
                             {s.score_delta}
                           </span>
                         ) : (
-                          <span className="text-zinc-500">—</span>
+                          <span className="text-muted-foreground">—</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm text-zinc-500">
+                      <td className="px-6 py-4 text-sm text-muted-foreground">
                         {s.last_scored_at
                           ? new Date(s.last_scored_at).toLocaleDateString()
                           : "—"}
@@ -309,27 +309,27 @@ export default function HealthPage() {
             </div>
           )}
           {!scoresLoading && safeScores.length === 0 && (
-            <div className="px-6 py-12 text-center text-zinc-500">
+            <div className="px-6 py-12 text-center text-muted-foreground">
               No health scores yet. Scores are computed automatically from customer activity.
             </div>
           )}
           {totalPages > 1 && (
-            <div className="px-6 py-3 border-t border-white/5 flex items-center justify-between">
-              <span className="text-sm text-zinc-500">
+            <div className="px-6 py-3 border-t border-border/50 flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">
                 Page {page} of {totalPages}
               </span>
               <div className="flex gap-2">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page <= 1}
-                  className="px-3 py-1.5 rounded bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-zinc-400 text-sm transition-colors"
+                  className="px-3 py-1.5 rounded bg-muted/50 hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed text-muted-foreground text-sm transition-colors"
                 >
                   Previous
                 </button>
                 <button
                   onClick={() => setPage((p) => p + 1)}
                   disabled={page >= totalPages}
-                  className="px-3 py-1.5 rounded bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-zinc-400 text-sm transition-colors"
+                  className="px-3 py-1.5 rounded bg-muted/50 hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed text-muted-foreground text-sm transition-colors"
                 >
                   Next
                 </button>

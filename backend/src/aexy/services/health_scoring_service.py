@@ -328,14 +328,17 @@ class HealthScoringService:
 
         return {
             "total_customers": total_customers,
-            "healthy": healthy,
-            "neutral": neutral,
-            "at_risk": at_risk,
-            "critical": critical,
+            "healthy_count": healthy,
+            "neutral_count": neutral,
+            "at_risk_count": at_risk,
+            "critical_count": critical,
             "avg_score": avg_score,
-            "improving": improving,
-            "declining": declining,
-            "status_distribution": status_distribution,
+            "improving_count": improving,
+            "declining_count": declining,
+            "distribution": [
+                {"status": status, "count": count}
+                for status, count in status_distribution.items()
+            ],
             "recent_drops": recent_drops,
         }
 
