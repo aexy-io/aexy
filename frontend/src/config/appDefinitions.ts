@@ -21,6 +21,7 @@ import {
   MonitorCheck,
   Bot,
   TrendingUp,
+  ShieldCheck,
   LucideIcon,
 } from "lucide-react";
 
@@ -289,6 +290,21 @@ export const APP_CATALOG: Record<string, AppDefinition> = {
       { id: "developer_drilldown", name: "Developer Drill-down", description: "Individual developer metrics deep-dive", route: "/developers" },
     ],
   },
+  compliance: {
+    id: "compliance",
+    name: "Compliance",
+    description: "Compliance management, documents, and reminders",
+    icon: ShieldCheck,
+    category: "people",
+    baseRoute: "/compliance",
+    requiredPermission: "can_view_compliance",
+    modules: [
+      { id: "reminders", name: "Reminders", description: "Recurring compliance reminders", route: "/reminders" },
+      { id: "document_center", name: "Document Center", description: "Upload and manage compliance documents", route: "/documents" },
+      { id: "training", name: "Training", description: "Mandatory training management", route: "/training" },
+      { id: "certifications", name: "Certifications", description: "Certification tracking", route: "/certifications" },
+    ],
+  },
 };
 
 // Get app definition by ID
@@ -362,6 +378,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       automations: { enabled: true },
       agents: { enabled: true },
       insights: { enabled: false },
+      compliance: { enabled: false },
     },
   },
   {
@@ -392,6 +409,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       automations: { enabled: true },
       agents: { enabled: true },
       insights: { enabled: false },
+      compliance: { enabled: true, modules: { reminders: true, document_center: true, training: true, certifications: true } },
     },
   },
   {
@@ -422,6 +440,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       automations: { enabled: true },
       agents: { enabled: true },
       insights: { enabled: false },
+      compliance: { enabled: false },
     },
   },
   {
@@ -455,6 +474,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       automations: { enabled: true },
       agents: { enabled: true },
       insights: { enabled: true, modules: { team_overview: true, leaderboard: true, developer_drilldown: true } },
+      compliance: { enabled: true, modules: { reminders: true, document_center: true, training: true, certifications: true } },
     },
   },
 ];
@@ -512,6 +532,11 @@ export const SIDEBAR_TO_APP_MAP: Record<string, string> = {
   "/insights": "insights",
   "/insights/leaderboard": "insights",
   "/insights/developers": "insights",
+  "/compliance": "compliance",
+  "/compliance/reminders": "compliance",
+  "/compliance/documents": "compliance",
+  "/compliance/training": "compliance",
+  "/compliance/certifications": "compliance",
 };
 
 // Get app ID from pathname

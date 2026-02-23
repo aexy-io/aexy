@@ -108,7 +108,7 @@ export function IndividualTrackingDashboard({
             <span className="text-muted-foreground">Time This Week</span>
           </div>
           <p className="text-3xl font-semibold text-foreground">
-            {formatDuration(dashboard?.time_logged_this_week || 0)}
+            {formatDuration(dashboard?.weekly_summary?.total_time_logged || 0)}
           </p>
           <p className="text-sm text-muted-foreground mt-1">
             {dashboard?.time_entries?.length || 0} entries
