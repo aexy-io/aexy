@@ -654,8 +654,23 @@ export default function BacklogPage({
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+      <div className="p-6 animate-pulse">
+        <div className="flex items-center justify-between mb-6">
+          <div className="h-7 w-40 bg-accent rounded" />
+          <div className="flex gap-2">
+            <div className="h-9 w-24 bg-accent rounded-lg" />
+            <div className="h-9 w-28 bg-accent rounded-lg" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="flex items-center gap-3 p-3 bg-card border border-border rounded-lg">
+              <div className="h-4 w-4 bg-accent rounded" />
+              <div className="h-4 w-48 bg-accent rounded" />
+              <div className="ml-auto h-5 w-16 bg-accent rounded-full" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

@@ -248,10 +248,23 @@ export default function EditAgentPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mx-auto mb-4"></div>
-          <p className="text-foreground">Loading agent...</p>
+      <div className="p-6 max-w-4xl mx-auto animate-pulse">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="h-8 w-8 bg-accent rounded-lg" />
+          <div className="h-6 w-40 bg-accent rounded" />
+        </div>
+        <div className="flex gap-2 mb-6">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-9 w-20 bg-accent rounded-lg" />
+          ))}
+        </div>
+        <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i}>
+              <div className="h-4 w-24 bg-accent rounded mb-2" />
+              <div className="h-10 bg-accent rounded-lg" />
+            </div>
+          ))}
         </div>
       </div>
     );
