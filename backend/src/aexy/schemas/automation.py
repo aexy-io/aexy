@@ -35,135 +35,135 @@ AutomationModule = Literal[
 
 # =============================================================================
 # TRIGGER REGISTRY
-# Each module registers its supported trigger types
+# Each module registers its supported trigger types with descriptions
 # =============================================================================
 
-TRIGGER_REGISTRY: dict[str, list[str]] = {
+TRIGGER_REGISTRY: dict[str, list[dict[str, str]]] = {
     "crm": [
-        "record.created",
-        "record.updated",
-        "record.deleted",
-        "field.changed",
-        "list_entry.added",
-        "list_entry.removed",
-        "status.changed",
-        "stage.changed",
-        "schedule.daily",
-        "schedule.weekly",
-        "date.approaching",
-        "date.passed",
-        "webhook.received",
-        "form.submitted",
-        "email.opened",
-        "email.clicked",
-        "email.replied",
+        {"id": "record.created", "description": "When a new CRM record is created"},
+        {"id": "record.updated", "description": "When a CRM record is updated"},
+        {"id": "record.deleted", "description": "When a CRM record is deleted"},
+        {"id": "field.changed", "description": "When a specific field value changes on a record"},
+        {"id": "list_entry.added", "description": "When a record is added to a list"},
+        {"id": "list_entry.removed", "description": "When a record is removed from a list"},
+        {"id": "status.changed", "description": "When a record status changes"},
+        {"id": "stage.changed", "description": "When a record moves to a different pipeline stage"},
+        {"id": "schedule.daily", "description": "When the daily schedule fires"},
+        {"id": "schedule.weekly", "description": "When the weekly schedule fires"},
+        {"id": "date.approaching", "description": "When a date field is approaching its target"},
+        {"id": "date.passed", "description": "When a date field has passed its target"},
+        {"id": "webhook.received", "description": "When an inbound webhook payload is received"},
+        {"id": "form.submitted", "description": "When a linked form submission is received"},
+        {"id": "email.opened", "description": "When a tracked email is opened by a contact"},
+        {"id": "email.clicked", "description": "When a link in a tracked email is clicked"},
+        {"id": "email.replied", "description": "When a contact replies to a tracked email"},
     ],
     "tickets": [
-        "ticket.created",
-        "ticket.updated",
-        "ticket.status_changed",
-        "ticket.assigned",
-        "ticket.priority_changed",
-        "ticket.escalated",
-        "sla.warning",
-        "sla.breached",
-        "response.received",
-        "response.sent",
+        {"id": "ticket.created", "description": "When a new support ticket is created"},
+        {"id": "ticket.updated", "description": "When a support ticket is updated"},
+        {"id": "ticket.status_changed", "description": "When a ticket status changes"},
+        {"id": "ticket.assigned", "description": "When a ticket is assigned to an agent"},
+        {"id": "ticket.priority_changed", "description": "When a ticket priority level changes"},
+        {"id": "ticket.escalated", "description": "When a ticket is escalated to a higher tier"},
+        {"id": "sla.warning", "description": "When an SLA deadline is approaching"},
+        {"id": "sla.breached", "description": "When an SLA deadline has been breached"},
+        {"id": "response.received", "description": "When a customer response is received on a ticket"},
+        {"id": "response.sent", "description": "When an agent response is sent on a ticket"},
     ],
     "hiring": [
-        "candidate.created",
-        "candidate.updated",
-        "candidate.stage_changed",
-        "candidate.rejected",
-        "candidate.hired",
-        "assessment.completed",
-        "assessment.score_above",
-        "assessment.score_below",
-        "requirement.created",
-        "requirement.status_changed",
-        "offer.sent",
-        "offer.accepted",
-        "offer.declined",
+        {"id": "candidate.created", "description": "When a new candidate is added to the pipeline"},
+        {"id": "candidate.updated", "description": "When candidate information is updated"},
+        {"id": "candidate.stage_changed", "description": "When a candidate moves to a new hiring stage"},
+        {"id": "candidate.rejected", "description": "When a candidate is rejected"},
+        {"id": "candidate.hired", "description": "When a candidate is marked as hired"},
+        {"id": "assessment.completed", "description": "When a candidate completes an assessment"},
+        {"id": "assessment.score_above", "description": "When an assessment score exceeds a threshold"},
+        {"id": "assessment.score_below", "description": "When an assessment score falls below a threshold"},
+        {"id": "requirement.created", "description": "When a new hiring requirement is created"},
+        {"id": "requirement.status_changed", "description": "When a hiring requirement status changes"},
+        {"id": "offer.sent", "description": "When a job offer is sent to a candidate"},
+        {"id": "offer.accepted", "description": "When a candidate accepts a job offer"},
+        {"id": "offer.declined", "description": "When a candidate declines a job offer"},
     ],
     "email_marketing": [
-        "campaign.sent",
-        "campaign.scheduled",
-        "email.opened",
-        "email.clicked",
-        "email.bounced",
-        "email.unsubscribed",
-        "email.complained",
-        "recipient.added",
-        "recipient.removed",
+        {"id": "campaign.sent", "description": "When an email campaign is sent to recipients"},
+        {"id": "campaign.scheduled", "description": "When an email campaign is scheduled for delivery"},
+        {"id": "email.opened", "description": "When a campaign email is opened by a recipient"},
+        {"id": "email.clicked", "description": "When a link in a campaign email is clicked"},
+        {"id": "email.bounced", "description": "When a campaign email bounces"},
+        {"id": "email.unsubscribed", "description": "When a recipient unsubscribes from emails"},
+        {"id": "email.complained", "description": "When a recipient marks an email as spam"},
+        {"id": "recipient.added", "description": "When a recipient is added to a campaign"},
+        {"id": "recipient.removed", "description": "When a recipient is removed from a campaign"},
     ],
     "uptime": [
-        "monitor.created",
-        "monitor.down",
-        "monitor.up",
-        "monitor.degraded",
-        "incident.created",
-        "incident.resolved",
-        "incident.acknowledged",
+        {"id": "monitor.created", "description": "When a new uptime monitor is created"},
+        {"id": "monitor.down", "description": "When a monitored service goes down"},
+        {"id": "monitor.up", "description": "When a monitored service comes back up"},
+        {"id": "monitor.degraded", "description": "When a monitored service shows degraded performance"},
+        {"id": "incident.created", "description": "When a new incident is created"},
+        {"id": "incident.resolved", "description": "When an incident is marked as resolved"},
+        {"id": "incident.acknowledged", "description": "When an incident is acknowledged by responder"},
     ],
     "sprints": [
-        "task.created",
-        "task.status_changed",
-        "task.assigned",
-        "task.completed",
-        "sprint.started",
-        "sprint.completed",
-        "epic.completed",
-        "blocker.created",
-        "blocker.resolved",
+        {"id": "task.created", "description": "When a new task is created in a sprint"},
+        {"id": "task.status_changed", "description": "When a task status changes"},
+        {"id": "task.assigned", "description": "When a task is assigned to a team member"},
+        {"id": "task.completed", "description": "When a task is marked as completed"},
+        {"id": "sprint.started", "description": "When a sprint is started"},
+        {"id": "sprint.completed", "description": "When a sprint is completed"},
+        {"id": "epic.completed", "description": "When all tasks in an epic are completed"},
+        {"id": "blocker.created", "description": "When a new blocker is reported on a task"},
+        {"id": "blocker.resolved", "description": "When a task blocker is resolved"},
     ],
     "forms": [
-        "form.submitted",
-        "form.started",
-        "form.abandoned",
+        {"id": "form.submitted", "description": "When a form submission is received"},
+        {"id": "form.started", "description": "When a user begins filling out a form"},
+        {"id": "form.abandoned", "description": "When a user abandons a partially filled form"},
     ],
     "booking": [
-        "booking.created",
-        "booking.confirmed",
-        "booking.cancelled",
-        "booking.rescheduled",
-        "booking.completed",
-        "booking.no_show",
-        "booking.reminder",
-        "event_type.created",
+        {"id": "booking.created", "description": "When a new booking is created"},
+        {"id": "booking.confirmed", "description": "When a booking is confirmed"},
+        {"id": "booking.cancelled", "description": "When a booking is cancelled"},
+        {"id": "booking.rescheduled", "description": "When a booking is rescheduled"},
+        {"id": "booking.completed", "description": "When a booking session is completed"},
+        {"id": "booking.no_show", "description": "When an attendee does not show up for a booking"},
+        {"id": "booking.reminder", "description": "When a booking reminder time is reached"},
+        {"id": "event_type.created", "description": "When a new bookable event type is created"},
     ],
     "tracking": [
-        "standup.submitted",
-        "standup.missed",
-        "standup.streak",
-        "time_entry.created",
-        "time_entry.threshold",
-        "time_entry.anomaly",
-        "blocker.created",
-        "blocker.escalated",
-        "blocker.resolved",
-        "blocker.stale",
-        "blocker.pattern_detected",
-        "work_log.submitted",
-        "sentiment.negative",
-        "participation.low",
+        {"id": "standup.submitted", "description": "When a team member submits a standup update"},
+        {"id": "standup.missed", "description": "When a team member misses a standup deadline"},
+        {"id": "standup.streak", "description": "When a standup submission streak milestone is reached"},
+        {"id": "time_entry.created", "description": "When a new time entry is logged"},
+        {"id": "time_entry.threshold", "description": "When logged hours exceed a configured threshold"},
+        {"id": "time_entry.anomaly", "description": "When an unusual time entry pattern is detected"},
+        {"id": "blocker.created", "description": "When a new blocker is reported in tracking"},
+        {"id": "blocker.escalated", "description": "When a blocker is escalated to management"},
+        {"id": "blocker.resolved", "description": "When a tracked blocker is resolved"},
+        {"id": "blocker.stale", "description": "When a blocker remains unresolved past its threshold"},
+        {"id": "blocker.pattern_detected", "description": "When a recurring blocker pattern is detected"},
+        {"id": "work_log.submitted", "description": "When a work log entry is submitted"},
+        {"id": "sentiment.negative", "description": "When negative sentiment is detected in updates"},
+        {"id": "participation.low", "description": "When team participation drops below threshold"},
     ],
     "compliance": [
-        "training.created",
-        "training.assigned",
-        "training.started",
-        "training.completed",
-        "training.waived",
-        "assignment.approaching_due",
-        "assignment.overdue",
-        "training.bulk_overdue",
-        "certification.added",
-        "certification.expiring",
-        "certification.expired",
-        "certification.renewed",
-        "certification.revoked",
-        "certification.prerequisite_unmet",
-        "compliance.status_changed",
-        "audit.logged",
+        {"id": "training.created", "description": "When a new training program is created"},
+        {"id": "training.assigned", "description": "When training is assigned to team members"},
+        {"id": "training.started", "description": "When a team member starts assigned training"},
+        {"id": "training.completed", "description": "When a team member completes assigned training"},
+        {"id": "training.waived", "description": "When a training requirement is waived"},
+        {"id": "assignment.approaching_due", "description": "When a training assignment due date is approaching"},
+        {"id": "assignment.overdue", "description": "When a training assignment becomes overdue"},
+        {"id": "training.bulk_overdue", "description": "When multiple training assignments become overdue"},
+        {"id": "certification.added", "description": "When a new certification is added to a profile"},
+        {"id": "certification.expiring", "description": "When a certification is approaching expiration"},
+        {"id": "certification.expired", "description": "When a certification has expired"},
+        {"id": "certification.renewed", "description": "When an expired certification is renewed"},
+        {"id": "certification.revoked", "description": "When a certification is revoked"},
+        {"id": "certification.prerequisite_unmet", "description": "When a certification prerequisite is not met"},
+        {"id": "compliance.status_changed", "description": "When overall compliance status changes for a member"},
+        {"id": "audit.logged", "description": "When a compliance audit event is logged"},
     ],
 }
 
@@ -173,117 +173,149 @@ TRIGGER_REGISTRY: dict[str, list[str]] = {
 # Common actions available across all modules, plus module-specific actions
 # =============================================================================
 
-ACTION_REGISTRY: dict[str, list[str]] = {
+ACTION_REGISTRY: dict[str, list[dict[str, str]]] = {
     "common": [
-        "send_email",
-        "send_slack",
-        "send_sms",
-        "webhook_call",
-        "api_request",
-        "run_agent",
-        "create_task",
-        "notify_user",
-        "notify_team",
-        "wait",
-        "condition",
+        {"id": "send_email", "description": "Send an email notification"},
+        {"id": "send_slack", "description": "Send a Slack message to a channel or user"},
+        {"id": "send_sms", "description": "Send an SMS text message"},
+        {"id": "webhook_call", "description": "Call an external webhook URL"},
+        {"id": "api_request", "description": "Make a custom HTTP API request"},
+        {"id": "run_agent", "description": "Run an AI agent with the trigger context"},
+        {"id": "create_task", "description": "Create a follow-up task"},
+        {"id": "notify_user", "description": "Send an in-app notification to a user"},
+        {"id": "notify_team", "description": "Send an in-app notification to a team"},
+        {"id": "wait", "description": "Wait for a specified duration before continuing"},
+        {"id": "condition", "description": "Evaluate a condition to branch the workflow"},
     ],
     "crm": [
-        "create_record",
-        "update_record",
-        "delete_record",
-        "link_records",
-        "add_to_list",
-        "remove_from_list",
-        "enroll_in_sequence",
-        "remove_from_sequence",
-        "enrich_record",
-        "classify_record",
-        "generate_summary",
+        {"id": "create_record", "description": "Create a new CRM record"},
+        {"id": "update_record", "description": "Update fields on an existing CRM record"},
+        {"id": "delete_record", "description": "Delete a CRM record"},
+        {"id": "link_records", "description": "Link two CRM records together"},
+        {"id": "add_to_list", "description": "Add a record to a CRM list"},
+        {"id": "remove_from_list", "description": "Remove a record from a CRM list"},
+        {"id": "enroll_in_sequence", "description": "Enroll a contact in an email sequence"},
+        {"id": "remove_from_sequence", "description": "Remove a contact from an email sequence"},
+        {"id": "enrich_record", "description": "Enrich a record with external data"},
+        {"id": "classify_record", "description": "Classify a record using AI categorization"},
+        {"id": "generate_summary", "description": "Generate an AI summary for a record"},
     ],
     "tickets": [
-        "assign_ticket",
-        "change_status",
-        "change_priority",
-        "add_response",
-        "escalate",
-        "add_tag",
-        "remove_tag",
-        "merge_tickets",
+        {"id": "assign_ticket", "description": "Assign a ticket to an agent or team"},
+        {"id": "change_status", "description": "Change the status of a ticket"},
+        {"id": "change_priority", "description": "Change the priority level of a ticket"},
+        {"id": "add_response", "description": "Add an automated response to a ticket"},
+        {"id": "escalate", "description": "Escalate a ticket to a higher support tier"},
+        {"id": "add_tag", "description": "Add a tag to a ticket"},
+        {"id": "remove_tag", "description": "Remove a tag from a ticket"},
+        {"id": "merge_tickets", "description": "Merge duplicate tickets together"},
     ],
     "hiring": [
-        "move_stage",
-        "reject_candidate",
-        "schedule_interview",
-        "send_assessment",
-        "create_offer",
-        "add_note",
+        {"id": "move_stage", "description": "Move a candidate to a different hiring stage"},
+        {"id": "reject_candidate", "description": "Reject a candidate from the pipeline"},
+        {"id": "schedule_interview", "description": "Schedule an interview with a candidate"},
+        {"id": "send_assessment", "description": "Send an assessment to a candidate"},
+        {"id": "create_offer", "description": "Create a job offer for a candidate"},
+        {"id": "add_note", "description": "Add an internal note to a candidate profile"},
     ],
     "email_marketing": [
-        "add_to_campaign",
-        "remove_from_campaign",
-        "update_recipient",
-        "pause_campaign",
-        "resume_campaign",
+        {"id": "add_to_campaign", "description": "Add a recipient to an email campaign"},
+        {"id": "remove_from_campaign", "description": "Remove a recipient from an email campaign"},
+        {"id": "update_recipient", "description": "Update recipient attributes or segments"},
+        {"id": "pause_campaign", "description": "Pause an active email campaign"},
+        {"id": "resume_campaign", "description": "Resume a paused email campaign"},
     ],
     "uptime": [
-        "create_incident",
-        "resolve_incident",
-        "acknowledge_incident",
-        "page_on_call",
+        {"id": "create_incident", "description": "Create a new incident from a monitor alert"},
+        {"id": "resolve_incident", "description": "Resolve an existing incident"},
+        {"id": "acknowledge_incident", "description": "Acknowledge an open incident"},
+        {"id": "page_on_call", "description": "Page the on-call responder"},
     ],
     "sprints": [
-        "create_task",
-        "move_task",
-        "assign_task",
-        "add_to_sprint",
-        "remove_from_sprint",
+        {"id": "create_task", "description": "Create a new task in a sprint"},
+        {"id": "move_task", "description": "Move a task to a different status column"},
+        {"id": "assign_task", "description": "Assign a task to a team member"},
+        {"id": "add_to_sprint", "description": "Add a task to a sprint"},
+        {"id": "remove_from_sprint", "description": "Remove a task from a sprint"},
     ],
     "forms": [
-        "create_crm_record",
-        "create_ticket",
-        "send_confirmation",
+        {"id": "create_crm_record", "description": "Create a CRM record from form data"},
+        {"id": "create_ticket", "description": "Create a support ticket from form data"},
+        {"id": "send_confirmation", "description": "Send a confirmation email to the submitter"},
     ],
     "booking": [
-        "confirm_booking",
-        "cancel_booking",
-        "reschedule_booking",
-        "send_reminder",
+        {"id": "confirm_booking", "description": "Confirm a pending booking"},
+        {"id": "cancel_booking", "description": "Cancel an existing booking"},
+        {"id": "reschedule_booking", "description": "Reschedule a booking to a new time"},
+        {"id": "send_reminder", "description": "Send a reminder for an upcoming booking"},
     ],
     "tracking": [
-        "update_activity_pattern",
-        "send_standup_reminder",
-        "celebrate_streak",
-        "escalate_blocker",
-        "flag_anomaly",
+        {"id": "update_activity_pattern", "description": "Update the tracked activity pattern for a member"},
+        {"id": "send_standup_reminder", "description": "Send a reminder to submit standup updates"},
+        {"id": "celebrate_streak", "description": "Celebrate a standup streak milestone"},
+        {"id": "escalate_blocker", "description": "Escalate a stale blocker to management"},
+        {"id": "flag_anomaly", "description": "Flag an anomalous time entry for review"},
     ],
     "compliance": [
-        "send_training_reminder",
-        "update_compliance_status",
-        "restrict_permissions",
-        "send_compliance_digest",
+        {"id": "send_training_reminder", "description": "Send a reminder for pending training assignments"},
+        {"id": "update_compliance_status", "description": "Update compliance status for a team member"},
+        {"id": "restrict_permissions", "description": "Restrict permissions due to non-compliance"},
+        {"id": "send_compliance_digest", "description": "Send a compliance status digest to managers"},
     ],
 }
 
 
-def get_triggers_for_module(module: str) -> list[str]:
-    """Get all supported trigger types for a module."""
+# =============================================================================
+# BACKWARD-COMPATIBLE HELPER FUNCTIONS
+# These extract just the string IDs for code that does membership checks
+# =============================================================================
+
+def get_trigger_ids(module: str) -> list[str]:
+    """Get trigger IDs (strings only) for a module. For backward-compatible membership checks."""
+    entries = TRIGGER_REGISTRY.get(module, [])
+    return [entry["id"] for entry in entries]
+
+
+def get_action_ids(module: str) -> list[str]:
+    """Get action IDs (strings only) for a module (common + module-specific). For backward-compatible membership checks."""
+    common = ACTION_REGISTRY.get("common", [])
+    module_specific = ACTION_REGISTRY.get(module, [])
+    return [entry["id"] for entry in common] + [entry["id"] for entry in module_specific]
+
+
+def get_all_trigger_ids() -> dict[str, list[str]]:
+    """Get all trigger IDs organized by module (strings only)."""
+    return {module: [entry["id"] for entry in entries] for module, entries in TRIGGER_REGISTRY.items()}
+
+
+def get_all_action_ids() -> dict[str, list[str]]:
+    """Get all action IDs organized by module (strings only)."""
+    return {module: [entry["id"] for entry in entries] for module, entries in ACTION_REGISTRY.items()}
+
+
+# =============================================================================
+# RICH REGISTRY ACCESSOR FUNCTIONS (return id + description)
+# =============================================================================
+
+def get_triggers_for_module(module: str) -> list[dict[str, str]]:
+    """Get all supported trigger types with descriptions for a module."""
     return TRIGGER_REGISTRY.get(module, [])
 
 
-def get_actions_for_module(module: str) -> list[str]:
-    """Get all supported action types for a module (common + module-specific)."""
+def get_actions_for_module(module: str) -> list[dict[str, str]]:
+    """Get all supported action types with descriptions for a module (common + module-specific)."""
     common = ACTION_REGISTRY.get("common", [])
     module_specific = ACTION_REGISTRY.get(module, [])
     return common + module_specific
 
 
-def get_all_triggers() -> dict[str, list[str]]:
-    """Get all triggers organized by module."""
+def get_all_triggers() -> dict[str, list[dict[str, str]]]:
+    """Get all triggers organized by module with descriptions."""
     return TRIGGER_REGISTRY.copy()
 
 
-def get_all_actions() -> dict[str, list[str]]:
-    """Get all actions organized by module."""
+def get_all_actions() -> dict[str, list[dict[str, str]]]:
+    """Get all actions organized by module with descriptions."""
     return ACTION_REGISTRY.copy()
 
 
@@ -375,23 +407,29 @@ class AutomationListParams(BaseModel):
     limit: int = Field(default=50, ge=1, le=100)
 
 
+class RegistryEntry(BaseModel):
+    """A single trigger or action entry with ID and description."""
+    id: str
+    description: str
+
+
 class TriggerRegistryResponse(BaseModel):
     """Response schema for trigger registry."""
-    triggers: dict[str, list[str]]
+    triggers: dict[str, list[RegistryEntry]]
 
 
 class ActionRegistryResponse(BaseModel):
     """Response schema for action registry."""
-    actions: dict[str, list[str]]
+    actions: dict[str, list[RegistryEntry]]
 
 
 class ModuleTriggersResponse(BaseModel):
     """Response schema for module-specific triggers."""
     module: str
-    triggers: list[str]
+    triggers: list[RegistryEntry]
 
 
 class ModuleActionsResponse(BaseModel):
     """Response schema for module-specific actions."""
     module: str
-    actions: list[str]
+    actions: list[RegistryEntry]
