@@ -32,6 +32,7 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
         {clearable && value && (
           <button
             type="button"
+            aria-label="Clear search"
             onClick={() => onChange("")}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
           >

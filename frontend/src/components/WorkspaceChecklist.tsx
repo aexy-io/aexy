@@ -81,7 +81,12 @@ export function WorkspaceChecklist({ onDismiss }: { onDismiss?: () => void }) {
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
-      setCompletedIds(JSON.parse(stored));
+      try {
+        setCompletedIds(JSON.parse(stored));
+      } catch {
+        // corrupted data — reset
+        localStorage.removeItem(STORAGE_KEY);
+      }
     }
   }, []);
 
@@ -249,7 +254,10 @@ export function useShouldShowWorkspaceChecklist() {
     const dismissed = localStorage.getItem(DISMISS_KEY);
     const onboardingComplete = localStorage.getItem("aexy_onboarding_complete");
     const progress = localStorage.getItem(STORAGE_KEY);
-    const completedIds = progress ? JSON.parse(progress) : [];
+    let completedIds: string[] = [];
+    if (progress) {
+      try { completedIds = JSON.parse(progress); } catch { /* ignore corrupted data */ }
+    }
 
     setShouldShow(
       onboardingComplete === "true" &&

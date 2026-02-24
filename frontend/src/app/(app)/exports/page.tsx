@@ -272,7 +272,7 @@ export default function ExportsPage() {
 
   const handleCreate = async (data: { export_type: string; format: string }) => {
     try {
-      await createExport(data as any);
+      await createExport(data as { export_type: "report" | "developer_profile" | "team_analytics"; format: "pdf" | "csv" | "json" | "xlsx" });
       setShowCreate(false);
     } catch (error) {
       console.error("Failed to create export:", error);

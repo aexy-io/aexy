@@ -6,6 +6,7 @@
  * these hooks internally with module='crm'.
  */
 
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -250,11 +251,14 @@ export function useAutomationTriggerRegistry(workspaceId: string | null) {
     enabled: !!workspaceId,
   });
 
-  const rawTriggers = data?.triggers || {};
-  const triggers: Record<string, string[]> = {};
-  for (const [mod, items] of Object.entries(rawTriggers)) {
-    triggers[mod] = normalizeRegistryItems(items);
-  }
+  const triggers = useMemo(() => {
+    const raw = data?.triggers || {};
+    const result: Record<string, string[]> = {};
+    for (const [mod, items] of Object.entries(raw)) {
+      result[mod] = normalizeRegistryItems(items);
+    }
+    return result;
+  }, [data]);
 
   return {
     triggers,
@@ -282,11 +286,14 @@ export function useAutomationActionRegistry(workspaceId: string | null) {
     enabled: !!workspaceId,
   });
 
-  const rawActions = data?.actions || {};
-  const actions: Record<string, string[]> = {};
-  for (const [mod, items] of Object.entries(rawActions)) {
-    actions[mod] = normalizeRegistryItems(items);
-  }
+  const actions = useMemo(() => {
+    const raw = data?.actions || {};
+    const result: Record<string, string[]> = {};
+    for (const [mod, items] of Object.entries(raw)) {
+      result[mod] = normalizeRegistryItems(items);
+    }
+    return result;
+  }, [data]);
 
   return {
     actions,
@@ -317,9 +324,12 @@ export function useModuleTriggers(workspaceId: string | null, module: string | n
 
   const rawTriggers = data?.triggers || [];
 
+  const triggers = useMemo(() => normalizeRegistryItems(rawTriggers), [rawTriggers]);
+  const descriptions = useMemo(() => extractDescriptions(rawTriggers), [rawTriggers]);
+
   return {
-    triggers: normalizeRegistryItems(rawTriggers),
-    descriptions: extractDescriptions(rawTriggers),
+    triggers,
+    descriptions,
     isLoading,
     error,
   };
@@ -347,9 +357,12 @@ export function useModuleActions(workspaceId: string | null, module: string | nu
 
   const rawActions = data?.actions || [];
 
+  const actions = useMemo(() => normalizeRegistryItems(rawActions), [rawActions]);
+  const descriptions = useMemo(() => extractDescriptions(rawActions), [rawActions]);
+
   return {
-    actions: normalizeRegistryItems(rawActions),
-    descriptions: extractDescriptions(rawActions),
+    actions,
+    descriptions,
     isLoading,
     error,
   };

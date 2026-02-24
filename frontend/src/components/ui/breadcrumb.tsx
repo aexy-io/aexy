@@ -29,7 +29,7 @@ function Breadcrumb({ items, className }: BreadcrumbProps) {
               <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
             )}
             {isLast || !item.href ? (
-              <span className="text-foreground truncate max-w-xs">
+              <span className="text-foreground truncate max-w-xs" {...(isLast ? { "aria-current": "page" as const } : {})}>
                 {item.label}
               </span>
             ) : (
