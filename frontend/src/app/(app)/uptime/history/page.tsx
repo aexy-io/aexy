@@ -16,6 +16,7 @@ import {
   Activity,
   AlertTriangle,
 } from "lucide-react";
+import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 
 const CHECK_TYPE_ICONS = {
   http: Globe,
@@ -88,6 +89,104 @@ export default function HistoryPage() {
       second: "2-digit",
     });
   };
+
+  const checksColumns: DataTableColumn<UptimeCheck>[] = [
+    {
+      id: "status",
+      header: "Status",
+      cell: (check) =>
+        check.is_up ? (
+          <span className="flex items-center gap-2 text-emerald-400">
+            <CheckCircle2 className="h-4 w-4" />
+            Up
+          </span>
+        ) : (
+          <span className="flex items-center gap-2 text-red-400">
+            <XCircle className="h-4 w-4" />
+            Down
+          </span>
+        ),
+      sortValue: (check) => (check.is_up ? 1 : 0),
+      sortable: true,
+    },
+    {
+      id: "checked_at",
+      header: "Checked At",
+      cell: (check) => formatDate(check.checked_at),
+      sortValue: (check) => new Date(check.checked_at).getTime(),
+      sortable: true,
+    },
+    {
+      id: "response_time",
+      header: "Response Time",
+      cell: (check) =>
+        check.response_time_ms != null ? `${check.response_time_ms}ms` : "-",
+      sortValue: (check) => check.response_time_ms ?? -1,
+      sortable: true,
+    },
+    {
+      id: "status_code",
+      header: "Status Code",
+      cell: (check) =>
+        check.status_code != null ? (
+          <span
+            className={`px-2 py-0.5 rounded text-xs font-medium ${
+              check.status_code >= 200 && check.status_code < 300
+                ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+                : check.status_code >= 400
+                ? "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+                : "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
+            }`}
+          >
+            {check.status_code}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        ),
+      sortValue: (check) => check.status_code ?? -1,
+      sortable: true,
+    },
+    {
+      id: "ssl_expiry",
+      header: "SSL Expiry",
+      cell: (check) =>
+        check.ssl_expiry_days != null ? (
+          <span
+            className={`${
+              check.ssl_expiry_days <= 7
+                ? "text-red-400"
+                : check.ssl_expiry_days <= 30
+                ? "text-amber-400"
+                : "text-foreground"
+            }`}
+          >
+            {check.ssl_expiry_days}d
+          </span>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        ),
+      sortValue: (check) => check.ssl_expiry_days ?? -1,
+      sortable: true,
+    },
+    {
+      id: "error",
+      header: "Error",
+      cell: (check) =>
+        check.error_message ? (
+          <div className="flex items-start gap-2 max-w-xs">
+            <AlertTriangle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
+            <span className="text-sm text-red-400 truncate" title={check.error_message}>
+              {check.error_type && (
+                <span className="font-medium">[{check.error_type}] </span>
+              )}
+              {check.error_message}
+            </span>
+          </div>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        ),
+    },
+  ];
 
   const selectedMonitor = monitors.find((m) => m.id === selectedMonitorId);
 
@@ -260,122 +359,20 @@ export default function HistoryPage() {
             )}
 
             {/* Checks Table */}
-            <div className="bg-muted rounded-xl border border-border">
-              <div className="p-4 border-b border-border">
+            <div>
+              <div className="mb-4">
                 <h2 className="text-lg font-semibold text-foreground">Recent Checks</h2>
               </div>
 
-              {loadingChecks ? (
-                <div className="p-8 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600" />
-                </div>
-              ) : checks.length === 0 ? (
-                <div className="p-8 text-center">
-                  <Clock className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground">No checks recorded yet for this monitor.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[600px]">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Checked At
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Response Time
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Status Code
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          SSL Expiry
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Error
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {checks.map((check) => (
-                        <tr key={check.id} className="hover:bg-accent/50 transition">
-                          <td className="px-4 py-3">
-                            {check.is_up ? (
-                              <span className="flex items-center gap-2 text-emerald-400">
-                                <CheckCircle2 className="h-4 w-4" />
-                                Up
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-2 text-red-400">
-                                <XCircle className="h-4 w-4" />
-                                Down
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-foreground">
-                            {formatDate(check.checked_at)}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-foreground">
-                            {check.response_time_ms != null ? `${check.response_time_ms}ms` : "-"}
-                          </td>
-                          <td className="px-4 py-3">
-                            {check.status_code != null ? (
-                              <span
-                                className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                  check.status_code >= 200 && check.status_code < 300
-                                    ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
-                                    : check.status_code >= 400
-                                    ? "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400"
-                                    : "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
-                                }`}
-                              >
-                                {check.status_code}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-sm">
-                            {check.ssl_expiry_days != null ? (
-                              <span
-                                className={`${
-                                  check.ssl_expiry_days <= 7
-                                    ? "text-red-400"
-                                    : check.ssl_expiry_days <= 30
-                                    ? "text-amber-400"
-                                    : "text-foreground"
-                                }`}
-                              >
-                                {check.ssl_expiry_days}d
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            {check.error_message ? (
-                              <div className="flex items-start gap-2 max-w-xs">
-                                <AlertTriangle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
-                                <span className="text-sm text-red-400 truncate" title={check.error_message}>
-                                  {check.error_type && (
-                                    <span className="font-medium">[{check.error_type}] </span>
-                                  )}
-                                  {check.error_message}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              <DataTable<UptimeCheck>
+                columns={checksColumns}
+                data={checks}
+                rowKey={(check) => check.id}
+                isLoading={loadingChecks}
+                skeletonRows={5}
+                emptyIcon={<Clock className="h-10 w-10" />}
+                emptyTitle="No checks recorded yet for this monitor."
+              />
             </div>
           </>
         )}
