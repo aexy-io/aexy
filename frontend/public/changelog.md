@@ -5,6 +5,112 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-02-24
+
+### Added
+
+#### Leave Management Module
+Full leave management system with request/approval workflows, balance tracking, and holiday calendar management.
+- Backend API with five service layers: `LeaveTypeService`, `LeavePolicyService`, `LeaveRequestService`, `LeaveBalanceService`, `HolidayService`
+- Frontend with `LeaveRequestForm`, `LeaveRequestCard`, `LeaveApprovalCard`, `LeaveBalanceCard`, `LeavePolicySettings`, `LeaveTypeSettings`, `HolidaySettings`, `TeamLeaveTable`
+- Database migration for leave tables and relationships
+- Playwright E2E test suite (749-line spec with fixtures)
+
+#### Team Calendar
+Unified calendar view showing leave, holidays, and team availability.
+- Backend API and service with Pydantic schemas
+- Frontend components: `TeamCalendar`, `CalendarFilters`, `EventDetailModal`, `WhoIsOutPanel`
+
+#### Compliance & Tracking Automation
+Temporal-powered automation for compliance monitoring and developer activity tracking.
+- Compliance automation activities (396 lines): standup compliance checks, time entry audits, auto-escalation
+- Tracking automation activities (492 lines): standup streak tracking, time entry anomaly detection, blocker pattern analysis
+- Compliance service (260 lines) with status change detection
+- Tracking events helper (163 lines), tracking compliance config, CRM automation service, Slack tracking service
+- New automation trigger types: `standup.streak`, `time_entry.anomaly`, `blocker.pattern_detected`, `training.bulk_overdue`, `certification.prerequisite_unmet`
+- Periodic Temporal schedules for compliance and tracking jobs
+
+#### 13 New Dashboard Widgets
+- Engineering manager widgets: `BacklogOverviewWidget`, `BlockersOverviewWidget`, `SprintBurndownWidget`, `TasksCompletedChartWidget`, `TeamStatsSummaryWidget`, `TicketChartWidget`, `TicketPipelineWidget`, `VelocityTrendWidget`, `WorkloadDistributionWidget`
+- Leave-integrated widgets: `LeaveBalanceWidget`, `PendingLeaveApprovalsWidget`, `TeamAvailabilityWidget`, `TeamCalendarWidget`
+- Widget registry expanded from 23 to 36+ widget IDs
+
+#### Email Tracking API
+Campaign open/click tracking endpoints for email marketing analytics.
+
+#### Reminders Module Expansion
+- Dedicated "All Reminders" and "My Reminders" pages
+- Compliance sub-routes for reminders and training
+
+#### App Definitions System
+Dynamic app/module registration via `AppDefinitions` model and frontend config.
+
+#### AI Insights Automation
+Temporal activity for periodic AI-powered insights generation with scheduled execution.
+
+### Improved
+
+#### GitHub Sync Reliability
+- Auto-refresh expired GitHub App tokens (`ghu_`) using stored refresh tokens — tokens no longer silently expire after 8 hours
+- Proper 404 handling: detects GitHub App installation permission issues vs genuinely missing repos, with actionable error messages including direct settings links
+- `GitHubNotFoundError` exception with non-retryable Temporal retry policy
+- Auto-sync skips developers with broken auth (`auth_status="error"`) instead of flooding Temporal with failing workflows
+- Sync logs now include `@github_username` and repo full name instead of opaque UUIDs
+
+#### Settings Module Revamp
+- Complete redesign with `SettingsShell`, `SettingsSidebar`, and `SettingsSearch` components
+- Searchable navigation config (214 lines) with fuzzy-matching
+- GitHub sync job interval configurable from repository settings
+
+#### Full Light Mode Support
+- Theme-aware styling across 380+ frontend components
+- Badge readability improvements across 138 components
+- Fixed docs sidebar, theme toggle, and app access for light mode
+
+#### Stripe Billing & Subscriptions
+- Revamped plan upgrade/downgrade flow with proper subscription state handling
+- Enhanced Stripe setup with expanded plan configuration
+- Plan-based feature gating via limits service
+- `fix_subscription_plans.py` script for correcting plan data
+
+#### Hiring & Assessment Module
+- Assessment evaluation and question generation service improvements
+- Candidate detail page redesign with richer reporting
+- Assessment wizard topic distribution UI improvements
+
+#### Onboarding Flow
+- Improved onboarding for already-invited users with workspace join flow
+- Invitation-aware workspace creation page
+
+#### Gmail & Temporal Sync
+- Gmail sync activity with better error handling
+- Temporal dispatch improvements with new workflow patterns
+
+#### Automation UI
+- Workflow builder `NodePalette` expanded with compliance and tracking trigger/action nodes
+- Automation pages updated for new trigger types
+
+### Fixed
+- Assessment async context manager misuse causing evaluation failures
+- Backend startup import/initialization error
+- GitHub sync race conditions and error handling in Temporal activities
+- Email marketing campaign visibility toggle not persisting
+- Hiring module: missing API fields, candidate page errors, evaluation scoring
+- Dashboard and stats count mismatches across assessment and tracking modules
+- Compliance and tracking page rendering, reminder instance cards, compliance sub-routes
+- Automation trigger registration and booking activity errors
+- Deduplicated logic in sync service, optimized developer insights queries
+- Widget rendering order, sidebar page links, compliance page layout
+- Stale data in `useNotifications` and `useReminders` hooks
+
+### Infrastructure
+- Updated `docker-compose.prod.yml` with additional service configuration
+- Playwright E2E infrastructure: config, mock data fixtures, `test:e2e` / `test:e2e:ui` npm scripts
+- 4 new database migrations: `migrate_leave_management.sql`, `migrate_github_auth_status.sql`, `migrate_developer_email_nullable.sql`, `migrate_repo_sync_settings.sql`
+- Temporal worker: registered compliance, tracking, insights, and booking activities; expanded periodic schedules
+
+---
+
 ## [0.5.6] - 2026-02-14
 
 ### Added
