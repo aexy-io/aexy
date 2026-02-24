@@ -41,6 +41,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: [["G"], ["P"]], label: "Compliance" },
       { keys: [["G"], ["U"]], label: "Uptime" },
       { keys: [["G"], ["I"]], label: "Insights" },
+      { keys: [["G"], ["N"]], label: "Notifications" },
       { keys: [["G"], [","]], label: "Settings" },
     ],
   },

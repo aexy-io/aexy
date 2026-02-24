@@ -26,6 +26,7 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
  *   g then u  →  Uptime
  *   g then i  →  Insights
  *   g then o  →  Automations
+ *   g then n  →  Notifications
  *   g then ,  →  Settings
  *   ?         →  Show shortcuts help
  */
@@ -69,6 +70,7 @@ export function GlobalShortcuts() {
               u: "/uptime/monitors",
               i: "/insights",
               o: "/automations",
+              n: "/notifications",
               ",": "/settings",
             };
 
