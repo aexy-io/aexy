@@ -429,8 +429,33 @@ export default function ComplianceCertificationsPage() {
 
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      <div className="p-6 max-w-7xl mx-auto animate-pulse">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <div className="h-7 w-36 bg-accent rounded mb-2" />
+            <div className="h-4 w-56 bg-accent rounded" />
+          </div>
+          <div className="flex gap-3">
+            <div className="h-9 w-24 bg-accent rounded-lg" />
+            <div className="h-9 w-32 bg-accent rounded-lg" />
+          </div>
+        </div>
+        <div className="bg-muted rounded-xl border border-border overflow-hidden">
+          <div className="grid grid-cols-5 gap-4 px-4 py-3 border-b border-border">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-3 w-20 bg-accent rounded" />
+            ))}
+          </div>
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="grid grid-cols-5 gap-4 px-4 py-3 border-b border-border/50">
+              <div className="h-4 w-32 bg-accent rounded" />
+              <div className="h-4 w-24 bg-accent rounded" />
+              <div className="h-5 w-16 bg-accent rounded-full" />
+              <div className="h-3 w-20 bg-accent rounded" />
+              <div className="h-8 w-16 bg-accent rounded-lg" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

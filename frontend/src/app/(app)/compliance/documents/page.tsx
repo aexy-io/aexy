@@ -135,8 +135,10 @@ export default function DocumentCenterPage() {
               Folders
             </h3>
             {treeLoading ? (
-              <div className="flex items-center justify-center py-4">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
+              <div className="space-y-2 py-2 animate-pulse">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-6 w-full bg-accent rounded px-2" />
+                ))}
               </div>
             ) : (
               <FolderTree
@@ -152,8 +154,14 @@ export default function DocumentCenterPage() {
         {/* Document Grid */}
         <div className="flex-1 min-w-0">
           {isLoading ? (
-            <div className="flex items-center justify-center min-h-[300px]">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="bg-muted rounded-xl p-4 border border-border">
+                  <div className="h-10 w-10 bg-accent rounded-lg mb-3" />
+                  <div className="h-4 w-32 bg-accent rounded mb-2" />
+                  <div className="h-3 w-20 bg-accent rounded" />
+                </div>
+              ))}
             </div>
           ) : documents.length === 0 ? (
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
