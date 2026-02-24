@@ -14,6 +14,10 @@ import {
 } from "@/components/dashboard";
 import { ComingSoonWidget } from "@/components/dashboard/widgets/ComingSoonWidget";
 import { Pencil, Check, Settings2 } from "lucide-react";
+import {
+  WorkspaceChecklist,
+  useShouldShowWorkspaceChecklist,
+} from "@/components/WorkspaceChecklist";
 
 export default function DashboardPage() {
   const { user, isLoading, isAuthenticated } = useAuth();
@@ -22,6 +26,10 @@ export default function DashboardPage() {
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [softSkillsLoading, setSoftSkillsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Getting started checklist
+  const showChecklist = useShouldShowWorkspaceChecklist();
+  const [checklistDismissed, setChecklistDismissed] = useState(false);
 
   // Dashboard customization
   const { preferences, isLoading: prefsLoading, reorderWidgets } = useDashboardPreferences();
@@ -261,6 +269,11 @@ export default function DashboardPage() {
           )}
         </button>
       </div>
+
+      {/* Getting Started Checklist */}
+      {showChecklist && !checklistDismissed && (
+        <WorkspaceChecklist onDismiss={() => setChecklistDismissed(true)} />
+      )}
 
       {/* Dynamic Widget Rendering */}
       {orderedVisibleWidgets.length === 0 ? (
