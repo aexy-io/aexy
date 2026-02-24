@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { uptimeApi, UptimeIncident } from "@/lib/uptime-api";
 import Link from "next/link";
 import {
-  ArrowLeft,
   AlertTriangle,
   CheckCircle2,
   Clock,
@@ -17,6 +16,7 @@ import {
   Server,
   Wifi,
 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 const CHECK_TYPE_ICONS = {
   http: Globe,
@@ -32,7 +32,6 @@ const STATUS_COLORS = {
 
 export default function IncidentDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const { currentWorkspace } = useWorkspace();
   const incidentId = params.incidentId as string;
 
@@ -155,13 +154,14 @@ export default function IncidentDetailPage() {
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-6">
-          <Link
-            href="/uptime/incidents"
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition mb-4"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Incidents
-          </Link>
+          <Breadcrumb
+            items={[
+              { label: "Uptime", href: "/uptime" },
+              { label: "Incidents", href: "/uptime/incidents" },
+              { label: incident.monitor?.name ? `Incident for ${incident.monitor.name}` : "Incident Details" },
+            ]}
+            className="mb-6"
+          />
 
           <div className="flex items-start justify-between">
             <div>

@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
-  ArrowLeft,
   Users,
   FileText,
   Clock,
@@ -410,17 +410,17 @@ export default function AssessmentReportPage() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/hiring/assessments"
-              className="p-2 hover:bg-accent rounded-lg"
-            >
-              <ArrowLeft className="h-5 w-5 text-muted-foreground" />
-            </Link>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">{assessment.title}</h1>
-              <p className="text-muted-foreground">{assessment.job_designation}</p>
-            </div>
+          <div>
+            <Breadcrumb
+              items={[
+                { label: "Hiring", href: "/hiring" },
+                { label: "Assessments", href: "/hiring/assessments" },
+                { label: assessment.title },
+                { label: "Report" },
+              ]}
+              className="mb-2"
+            />
+            <p className="text-muted-foreground">{assessment.job_designation}</p>
           </div>
           <button className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-lg hover:bg-accent text-foreground">
             <Download className="h-4 w-4" />

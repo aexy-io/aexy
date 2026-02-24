@@ -3,10 +3,9 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
   Target,
-  ArrowLeft,
-  ChevronRight,
   Clock,
   CheckCircle,
   AlertCircle,
@@ -129,18 +128,14 @@ export default function GoalDetailPage() {
     <div className="min-h-screen bg-background">
       <main className="max-w-5xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm mb-6">
-          <Link href="/reviews" className="text-muted-foreground hover:text-foreground transition flex items-center gap-1">
-            <ArrowLeft className="h-4 w-4" />
-            Reviews
-          </Link>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          <Link href="/reviews/goals" className="text-muted-foreground hover:text-foreground transition">
-            Goals
-          </Link>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          <span className="text-foreground truncate max-w-xs">{goal.title}</span>
-        </div>
+        <Breadcrumb
+          items={[
+            { label: "Reviews", href: "/reviews" },
+            { label: "Goals", href: "/reviews/goals" },
+            { label: goal.title },
+          ]}
+          className="mb-6"
+        />
 
         {/* Header */}
         <div className="bg-muted/50 rounded-xl border border-border p-6 mb-6">

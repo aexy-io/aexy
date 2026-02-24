@@ -5,10 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { redirect, useParams } from "next/navigation";
 import {
-  ArrowLeft,
   Calendar,
   CheckCircle,
-  ChevronRight,
   Clock,
   Edit2,
   Flag,
@@ -23,6 +21,7 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import {
@@ -183,13 +182,14 @@ export default function EpicDetailPage() {
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-          <Link href="/sprints?tab=epics" className="hover:text-foreground transition">
-            Epics
-          </Link>
-          <ChevronRight className="h-4 w-4" />
-          <span className="text-foreground">{epic.key}</span>
-        </div>
+        <Breadcrumb
+          items={[
+            { label: "Sprints", href: "/sprints" },
+            { label: "Epics", href: "/sprints?tab=epics" },
+            { label: epic.title },
+          ]}
+          className="mb-6"
+        />
 
         {/* Epic Header */}
         <div className="bg-muted rounded-xl border border-border p-6 mb-6">

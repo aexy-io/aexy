@@ -4,10 +4,9 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { redirect, useParams } from "next/navigation";
-import Link from "next/link";
 import { motion } from "framer-motion";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
-  ArrowLeft,
   Mail,
   Phone,
   Calendar,
@@ -220,14 +219,14 @@ export default function CandidateDetailPage() {
 
   return (
     <main className="w-full px-6 py-6">
-        {/* Back Button */}
-        <Link
-          href="/hiring/candidates"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Pipeline
-        </Link>
+        <Breadcrumb
+          items={[
+            { label: "Hiring", href: "/hiring" },
+            { label: "Candidates", href: "/hiring/candidates" },
+            { label: candidate.name },
+          ]}
+          className="mb-6"
+        />
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Main Content */}

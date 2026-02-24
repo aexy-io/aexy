@@ -5,13 +5,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { redirect, useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
   ClipboardCheck,
   Target,
   Users,
   Calendar,
   Plus,
-  ChevronRight,
   CheckCircle,
   Clock,
   AlertCircle,
@@ -20,7 +20,6 @@ import {
   GitCommit,
   MessageSquare,
   TrendingUp,
-  ArrowLeft,
   Eye,
   X,
   Sparkles,
@@ -240,17 +239,14 @@ export default function MemberDetailPage() {
     <div className="min-h-screen bg-background">
 <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm mb-6">
-          <Link href="/reviews" className="text-muted-foreground hover:text-foreground transition">
-            Reviews
-          </Link>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          <Link href="/reviews/manage" className="text-muted-foreground hover:text-foreground transition">
-            Management
-          </Link>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          <span className="text-foreground">{member.name}</span>
-        </div>
+        <Breadcrumb
+          items={[
+            { label: "Reviews", href: "/reviews" },
+            { label: "Team", href: "/reviews/manage" },
+            { label: member.name },
+          ]}
+          className="mb-6"
+        />
 
         {/* Member Header */}
         <div className="bg-muted rounded-xl border border-border p-6 mb-6">
