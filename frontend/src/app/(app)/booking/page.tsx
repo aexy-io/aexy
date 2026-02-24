@@ -16,6 +16,7 @@ import {
   Users,
   ChevronRight,
   ExternalLink,
+  Check,
 } from "lucide-react";
 
 export default function BookingDashboard() {
@@ -24,6 +25,7 @@ export default function BookingDashboard() {
   const [eventTypes, setEventTypes] = useState<EventType[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (currentWorkspace?.id) {
@@ -208,14 +210,21 @@ export default function BookingDashboard() {
                     <button
                       onClick={(e) => {
                         e.preventDefault();
+                        e.stopPropagation();
                         navigator.clipboard.writeText(
                           `${window.location.origin}/book/${currentWorkspace?.slug}/${eventType.slug}`
                         );
+                        setCopiedId(eventType.id);
+                        setTimeout(() => setCopiedId(null), 2000);
                       }}
-                      className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      className={`p-2 ${copiedId === eventType.id ? "text-green-500" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`}
                       title="Copy booking link"
                     >
-                      <ExternalLink className="h-4 w-4" />
+                      {copiedId === eventType.id ? (
+                        <Check className="h-4 w-4" />
+                      ) : (
+                        <ExternalLink className="h-4 w-4" />
+                      )}
                     </button>
                   </Link>
                 ))}
