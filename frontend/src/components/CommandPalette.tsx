@@ -434,12 +434,22 @@ export function CommandPalette({ projectId, onCreateTask }: CommandPaletteProps)
       },
       {
         id: "nav-notifications",
+        label: "Notifications",
+        description: "View all notifications",
+        icon: <Bell className="h-4 w-4" />,
+        shortcut: ["G", "N"],
+        action: () => router.push("/notifications"),
+        category: "navigation",
+        keywords: ["notification", "alert", "bell", "inbox", "unread"],
+      },
+      {
+        id: "nav-notification-settings",
         label: "Notification Settings",
         description: "Configure notification channels and preferences",
         icon: <Bell className="h-4 w-4" />,
         action: () => router.push("/settings/notifications"),
         category: "navigation",
-        keywords: ["notification", "alert", "bell", "email", "slack"],
+        keywords: ["notification", "preferences", "email", "slack"],
       },
       {
         id: "nav-settings",
