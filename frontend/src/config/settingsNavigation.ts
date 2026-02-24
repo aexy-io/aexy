@@ -15,6 +15,9 @@ import {
   Sparkles,
   CreditCard,
   Users,
+  Webhook,
+  KeyRound,
+  Activity,
   type LucideIcon,
 } from "lucide-react";
 
@@ -174,6 +177,31 @@ export const settingsNavigation: SettingsNavCategory[] = [
         description: "Connect Jira, Linear, Slack, and other external tools",
         keywords: ["jira", "linear", "slack", "github", "connect", "external"],
       },
+      {
+        id: "webhooks",
+        label: "Webhooks",
+        href: "/settings/webhooks",
+        icon: Webhook,
+        description: "Manage webhook endpoints for real-time event notifications",
+        adminOnly: true,
+        keywords: ["webhook", "event", "endpoint", "notification", "api", "callback"],
+      },
+    ],
+  },
+  {
+    id: "security",
+    label: "Security",
+    items: [
+      {
+        id: "sso",
+        label: "Single Sign-On",
+        href: "/settings/sso",
+        icon: KeyRound,
+        description: "Configure SAML or OpenID Connect for centralized authentication",
+        adminOnly: true,
+        enterpriseBadge: true,
+        keywords: ["sso", "saml", "oidc", "authentication", "identity", "okta", "azure"],
+      },
     ],
   },
   {
@@ -195,6 +223,14 @@ export const settingsNavigation: SettingsNavCategory[] = [
         icon: CreditCard,
         description: "Manage your subscription, billing, and payment methods",
         keywords: ["billing", "payment", "invoice", "stripe", "credit card"],
+      },
+      {
+        id: "usage",
+        label: "Usage & Limits",
+        href: "/settings/usage",
+        icon: Activity,
+        description: "Monitor AI token consumption, plan limits, and cost projections",
+        keywords: ["usage", "tokens", "limits", "consumption", "cost", "ai", "quota"],
       },
       {
         id: "access",
