@@ -29,7 +29,7 @@ export function AppShell({ children, user, logout }: AppShellProps) {
                             <span className="sr-only">Toggle menu</span>
                         </Button>
                     </SheetTrigger>
-                    <SheetContent side="left" className="p-0 w-[240px]">
+                    <SheetContent side="left" className="p-0 w-[240px] max-w-[85vw]">
                         <Sidebar user={user} logout={logout} className="border-none w-full h-full" />
                     </SheetContent>
                 </Sheet>
