@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { UpgradeBanner } from "@/components/UpgradeBanner";
 import {
   ArrowLeft,
   Bot,
@@ -360,6 +361,8 @@ export default function AgentsListPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
+        <UpgradeBanner trigger="ai_limit" compact />
+
         {/* Stats Summary */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           <div className="bg-muted rounded-xl p-4 border border-border">

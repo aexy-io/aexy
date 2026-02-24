@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { UpgradeBanner } from "@/components/UpgradeBanner";
 import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
 import { bookingApi, Booking, EventType } from "@/lib/booking-api";
 import { format, parseISO, isToday, isTomorrow, isPast } from "date-fns";
@@ -143,6 +144,8 @@ export default function BookingDashboard() {
           </Link>
         </div>
       </div>
+
+      <UpgradeBanner trigger="module_limit" compact />
 
       {/* Stats Cards */}
       {stats && (
