@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   agentsApi,
   writingStyleApi,
@@ -45,7 +46,11 @@ export function useAgents(
   const createMutation = useMutation({
     mutationFn: (data: AgentCreateData) => agentsApi.create(workspaceId!, data),
     onSuccess: () => {
+      toast.success("Agent created");
       queryClient.invalidateQueries({ queryKey: ["agents", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to create agent");
     },
   });
 
@@ -58,23 +63,36 @@ export function useAgents(
       data: AgentUpdateData;
     }) => agentsApi.update(workspaceId!, agentId, data),
     onSuccess: (_, variables) => {
+      toast.success("Agent updated");
       queryClient.invalidateQueries({ queryKey: ["agents", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["agent", workspaceId, variables.agentId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update agent");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (agentId: string) => agentsApi.delete(workspaceId!, agentId),
     onSuccess: () => {
+      toast.success("Agent deleted");
       queryClient.invalidateQueries({ queryKey: ["agents", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to delete agent");
     },
   });
 
   const toggleMutation = useMutation({
     mutationFn: (agentId: string) => agentsApi.toggle(workspaceId!, agentId),
-    onSuccess: (_, agentId) => {
+    onSuccess: (updatedAgent, agentId) => {
+      const isActive = updatedAgent?.is_active;
+      toast.success(isActive ? "Agent enabled" : "Agent disabled");
       queryClient.invalidateQueries({ queryKey: ["agents", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["agent", workspaceId, agentId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to toggle agent");
     },
   });
 
@@ -87,11 +105,15 @@ export function useAgents(
       data: { record_id?: string; context?: Record<string, unknown> };
     }) => agentsApi.execute(workspaceId!, agentId, data),
     onSuccess: (_, variables) => {
+      toast.success("Agent execution started");
       queryClient.invalidateQueries({
         queryKey: ["agentExecutions", workspaceId, variables.agentId],
       });
       queryClient.invalidateQueries({ queryKey: ["agents", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["agentMetrics", workspaceId, variables.agentId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to execute agent");
     },
   });
 
@@ -129,23 +151,36 @@ export function useAgent(workspaceId: string | null, agentId: string | null) {
   const updateMutation = useMutation({
     mutationFn: (data: AgentUpdateData) => agentsApi.update(workspaceId!, agentId!, data),
     onSuccess: () => {
+      toast.success("Agent updated");
       queryClient.invalidateQueries({ queryKey: ["agent", workspaceId, agentId] });
       queryClient.invalidateQueries({ queryKey: ["agents", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update agent");
     },
   });
 
   const toggleMutation = useMutation({
     mutationFn: () => agentsApi.toggle(workspaceId!, agentId!),
-    onSuccess: () => {
+    onSuccess: (updatedAgent) => {
+      const isActive = updatedAgent?.is_active;
+      toast.success(isActive ? "Agent enabled" : "Agent disabled");
       queryClient.invalidateQueries({ queryKey: ["agent", workspaceId, agentId] });
       queryClient.invalidateQueries({ queryKey: ["agents", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to toggle agent");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: () => agentsApi.delete(workspaceId!, agentId!),
     onSuccess: () => {
+      toast.success("Agent deleted");
       queryClient.invalidateQueries({ queryKey: ["agents", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to delete agent");
     },
   });
 
@@ -153,17 +188,27 @@ export function useAgent(workspaceId: string | null, agentId: string | null) {
     mutationFn: (data: { record_id?: string; context?: Record<string, unknown> }) =>
       agentsApi.execute(workspaceId!, agentId!, data),
     onSuccess: () => {
+      toast.success("Agent execution started");
       queryClient.invalidateQueries({
         queryKey: ["agentExecutions", workspaceId, agentId],
       });
       queryClient.invalidateQueries({ queryKey: ["agent", workspaceId, agentId] });
       queryClient.invalidateQueries({ queryKey: ["agentMetrics", workspaceId, agentId] });
     },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to execute agent");
+    },
   });
 
   const testMutation = useMutation({
     mutationFn: (data: { context?: Record<string, unknown> }) =>
       agentsApi.testAgent(workspaceId!, agentId!, data),
+    onSuccess: () => {
+      toast.success("Agent test completed");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to test agent");
+    },
   });
 
   return {
@@ -313,7 +358,11 @@ export function useWritingStyle(workspaceId: string | null) {
     mutationFn: (maxSamples?: number) =>
       writingStyleApi.analyze(workspaceId!, maxSamples),
     onSuccess: () => {
+      toast.success("Writing style analyzed");
       queryClient.invalidateQueries({ queryKey: ["writingStyle", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to analyze writing style");
     },
   });
 
@@ -324,6 +373,12 @@ export function useWritingStyle(workspaceId: string | null) {
       key_points?: string[];
       tone_override?: string;
     }) => writingStyleApi.generateEmail(workspaceId!, data),
+    onSuccess: () => {
+      toast.success("Email generated");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to generate email");
+    },
   });
 
   return {

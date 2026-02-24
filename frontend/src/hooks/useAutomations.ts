@@ -7,6 +7,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   automationsApi,
   Automation,
@@ -84,7 +85,11 @@ export function useAutomations(
       is_active?: boolean;
     }) => automationsApi.create(workspaceId!, data),
     onSuccess: () => {
+      toast.success("Automation created");
       queryClient.invalidateQueries({ queryKey: ["automations", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to create automation");
     },
   });
 
@@ -107,27 +112,46 @@ export function useAutomations(
       }>;
     }) => automationsApi.update(workspaceId!, automationId, data),
     onSuccess: () => {
+      toast.success("Automation updated");
       queryClient.invalidateQueries({ queryKey: ["automations", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update automation");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (automationId: string) => automationsApi.delete(workspaceId!, automationId),
     onSuccess: () => {
+      toast.success("Automation deleted");
       queryClient.invalidateQueries({ queryKey: ["automations", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to delete automation");
     },
   });
 
   const toggleMutation = useMutation({
     mutationFn: (automationId: string) => automationsApi.toggle(workspaceId!, automationId),
-    onSuccess: () => {
+    onSuccess: (updatedAutomation) => {
+      const isActive = updatedAutomation?.is_active;
+      toast.success(isActive ? "Automation enabled" : "Automation disabled");
       queryClient.invalidateQueries({ queryKey: ["automations", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to toggle automation");
     },
   });
 
   const triggerMutation = useMutation({
     mutationFn: ({ automationId, recordId }: { automationId: string; recordId?: string }) =>
       automationsApi.trigger(workspaceId!, automationId, recordId),
+    onSuccess: () => {
+      toast.success("Automation triggered");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to trigger automation");
+    },
   });
 
   return {
