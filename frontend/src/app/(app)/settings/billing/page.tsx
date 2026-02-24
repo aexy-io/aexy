@@ -97,11 +97,30 @@ function BillingContent() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-500 mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading billing information...</p>
+      <div className="space-y-6 animate-pulse">
+        <div>
+          <div className="h-6 w-40 bg-accent rounded mb-2" />
+          <div className="h-4 w-72 bg-accent rounded" />
         </div>
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
+          <div className="h-28 bg-accent" />
+          <div className="p-6">
+            <div className="grid md:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i}>
+                  <div className="h-3 w-20 bg-accent rounded mb-2" />
+                  <div className="h-5 w-32 bg-accent rounded" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-24 bg-accent rounded-xl" />
+          ))}
+        </div>
+        <div className="h-64 bg-accent rounded-xl" />
       </div>
     );
   }
@@ -408,11 +427,18 @@ function BillingContent() {
 
 function BillingLoadingFallback() {
   return (
-    <div className="flex items-center justify-center py-20">
-      <div className="text-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-500 mx-auto mb-4" />
-        <p className="text-muted-foreground">Loading billing information...</p>
+    <div className="space-y-6 animate-pulse">
+      <div>
+        <div className="h-6 w-40 bg-accent rounded mb-2" />
+        <div className="h-4 w-72 bg-accent rounded" />
       </div>
+      <div className="h-28 bg-accent rounded-xl" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-24 bg-accent rounded-xl" />
+        ))}
+      </div>
+      <div className="h-64 bg-accent rounded-xl" />
     </div>
   );
 }

@@ -153,8 +153,41 @@ export default function NotificationSettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="space-y-6 animate-pulse">
+        <div>
+          <div className="h-6 w-36 bg-accent rounded mb-2" />
+          <div className="h-4 w-64 bg-accent rounded" />
+        </div>
+        <div className="bg-muted rounded-xl border border-border p-4">
+          <div className="h-4 w-40 bg-accent rounded mb-3" />
+          <div className="flex items-center gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-4 w-16 bg-accent rounded" />
+            ))}
+          </div>
+        </div>
+        {[1, 2, 3].map((g) => (
+          <div key={g} className="bg-muted rounded-xl border border-border overflow-hidden">
+            <div className="px-5 py-3 border-b border-border">
+              <div className="h-4 w-32 bg-accent rounded" />
+            </div>
+            <div className="divide-y divide-border">
+              {[1, 2, 3].map((r) => (
+                <div key={r} className="flex items-center justify-between px-5 py-3.5">
+                  <div className="space-y-1.5">
+                    <div className="h-4 w-40 bg-accent rounded" />
+                    <div className="h-3 w-56 bg-accent rounded" />
+                  </div>
+                  <div className="flex gap-2">
+                    {[1, 2, 3].map((c) => (
+                      <div key={c} className="h-7 w-16 bg-accent rounded-lg" />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     );
   }

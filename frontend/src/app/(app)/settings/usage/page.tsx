@@ -229,8 +229,21 @@ export default function UsageDashboardPage() {
 
   if (!workspaceId) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="p-6 max-w-6xl mx-auto animate-pulse">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="h-6 w-6 bg-accent rounded" />
+          <div className="h-7 w-48 bg-accent rounded" />
+        </div>
+        <div className="h-20 bg-accent rounded-xl mb-6" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-24 bg-accent rounded-xl" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 h-64 bg-accent rounded-xl" />
+          <div className="h-64 bg-accent rounded-xl" />
+        </div>
       </div>
     );
   }

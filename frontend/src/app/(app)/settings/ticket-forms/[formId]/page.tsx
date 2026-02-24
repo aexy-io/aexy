@@ -401,10 +401,27 @@ export default function FormBuilderPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mx-auto mb-4"></div>
-          <p className="text-foreground">Loading form...</p>
+      <div className="space-y-6 animate-pulse">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 bg-accent rounded-lg" />
+          <div className="h-6 w-48 bg-accent rounded" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-card rounded-xl border border-border p-4 space-y-3">
+                <div className="h-4 w-24 bg-accent rounded" />
+                <div className="h-10 bg-accent rounded-lg" />
+              </div>
+            ))}
+          </div>
+          <div className="space-y-4">
+            <div className="bg-card rounded-xl border border-border p-4 space-y-3">
+              <div className="h-4 w-20 bg-accent rounded" />
+              <div className="h-10 bg-accent rounded-lg" />
+              <div className="h-10 bg-accent rounded-lg" />
+            </div>
+          </div>
         </div>
       </div>
     );
