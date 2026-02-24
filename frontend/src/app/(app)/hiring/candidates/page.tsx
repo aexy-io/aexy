@@ -34,6 +34,7 @@ import {
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/EmptyState";
 import { SearchInput } from "@/components/ui/search-input";
+import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 import { hiringApi, HiringCandidate, HiringCandidateStage } from "@/lib/api";
 
 // Candidate stages
@@ -562,78 +563,101 @@ export default function CandidatesPage() {
 
         {/* List View */}
         {viewMode === "list" && (
-          <div className="bg-background/50 rounded-xl border border-border overflow-hidden overflow-x-auto">
-            <table className="w-full min-w-[600px]">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Candidate</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Role</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Stage</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Score</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Source</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Applied</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filteredCandidates.map((candidate) => {
-                  const stageConfig = STAGE_CONFIG[candidate.stage];
-                  return (
-                    <tr key={candidate.id} className="hover:bg-muted/50 transition">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-blue-500 flex items-center justify-center text-white text-xs font-medium">
-                            {candidate.name.split(" ").map(n => n[0]).join("")}
-                          </div>
-                          <div>
-                            <Link
-                              href={`/hiring/candidates/${candidate.id}`}
-                              className="text-sm font-medium text-foreground hover:text-primary-400 transition"
-                            >
-                              {candidate.name}
-                            </Link>
-                            <p className="text-xs text-muted-foreground">{candidate.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-foreground">{candidate.role}</td>
-                      <td className="px-4 py-3">
-                        <span className={cn("text-xs px-2 py-1 rounded", stageConfig.bgColor, stageConfig.color)}>
-                          {stageConfig.label}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        {candidate.score ? (
-                          <span className={cn(
-                            "text-sm font-medium",
-                            candidate.score >= 80 ? "text-green-400" : candidate.score >= 60 ? "text-yellow-400" : "text-red-400"
-                          )}>
-                            {candidate.score}%
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{candidate.source}</td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{candidate.appliedAt}</td>
-                      <td className="px-4 py-3">
-                        <button className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition">
-                          <MoreVertical className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          (() => {
+            const hasFilters = !!(searchQuery || filterStage !== "all" || filterSource !== "all");
 
-            {filteredCandidates.length === 0 && (
-              searchQuery || filterStage !== "all" || filterSource !== "all" ? (
-                <div className="py-12 text-center">
-                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground">No candidates match your filters</p>
-                </div>
-              ) : (
+            const candidateColumns: DataTableColumn<Candidate>[] = [
+              {
+                id: "candidate",
+                header: "Candidate",
+                sortable: true,
+                sortValue: (row) => row.name.toLowerCase(),
+                cell: (row) => (
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-blue-500 flex items-center justify-center text-white text-xs font-medium">
+                      {row.name.split(" ").map(n => n[0]).join("")}
+                    </div>
+                    <div>
+                      <Link
+                        href={`/hiring/candidates/${row.id}`}
+                        className="text-sm font-medium text-foreground hover:text-primary-400 transition"
+                      >
+                        {row.name}
+                      </Link>
+                      <p className="text-xs text-muted-foreground">{row.email}</p>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                id: "role",
+                header: "Role",
+                sortable: true,
+                sortValue: (row) => row.role.toLowerCase(),
+                cell: (row) => <span className="text-sm text-foreground">{row.role}</span>,
+              },
+              {
+                id: "stage",
+                header: "Stage",
+                sortable: true,
+                sortValue: (row) => {
+                  const order = [...STAGES_ORDER, "rejected" as CandidateStage];
+                  return order.indexOf(row.stage);
+                },
+                cell: (row) => {
+                  const cfg = STAGE_CONFIG[row.stage];
+                  return (
+                    <span className={cn("text-xs px-2 py-1 rounded", cfg.bgColor, cfg.color)}>
+                      {cfg.label}
+                    </span>
+                  );
+                },
+              },
+              {
+                id: "score",
+                header: "Score",
+                sortable: true,
+                sortValue: (row) => row.score ?? -1,
+                cell: (row) =>
+                  row.score ? (
+                    <span className={cn(
+                      "text-sm font-medium",
+                      row.score >= 80 ? "text-green-400" : row.score >= 60 ? "text-yellow-400" : "text-red-400"
+                    )}>
+                      {row.score}%
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground text-sm">-</span>
+                  ),
+              },
+              {
+                id: "source",
+                header: "Source",
+                sortable: true,
+                sortValue: (row) => (row.source ?? "").toLowerCase(),
+                cell: (row) => <span className="text-sm text-muted-foreground">{row.source}</span>,
+              },
+              {
+                id: "applied",
+                header: "Applied",
+                sortable: true,
+                sortValue: (row) => new Date(row.appliedAt).getTime(),
+                cell: (row) => <span className="text-sm text-muted-foreground">{row.appliedAt}</span>,
+              },
+              {
+                id: "actions",
+                header: "",
+                cell: () => (
+                  <button className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition">
+                    <MoreVertical className="h-4 w-4" />
+                  </button>
+                ),
+              },
+            ];
+
+            // When there are no candidates and no filters active, show the full EmptyState
+            if (filteredCandidates.length === 0 && !hasFilters) {
+              return (
                 <EmptyState
                   icon={Users}
                   title="No candidates yet"
@@ -643,9 +667,19 @@ export default function CandidatesPage() {
                   ]}
                   compact
                 />
-              )
-            )}
-          </div>
+              );
+            }
+
+            return (
+              <DataTable<Candidate>
+                columns={candidateColumns}
+                data={filteredCandidates}
+                rowKey={(row) => row.id}
+                emptyIcon={<Users className="h-12 w-12" />}
+                emptyTitle="No candidates match your filters"
+              />
+            );
+          })()
         )}
 
         {/* Add Candidate Modal */}

@@ -14,11 +14,11 @@ import {
   FileSpreadsheet,
   FileJson,
   File,
-  X,
 } from "lucide-react";
 import { useExports, useExportStatus } from "@/hooks/useExports";
 import { EmptyState } from "@/components/EmptyState";
 import { PremiumGate } from "@/components/PremiumGate";
+import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 import { ExportJob } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
 
@@ -147,7 +147,51 @@ function CreateExportForm({
   );
 }
 
-function ExportRow({
+/** Resolves live status for in-progress jobs, falls back to the original job data. */
+function useLiveJob(job: ExportJob): ExportJob {
+  const { data: liveStatus } = useExportStatus(
+    job.status === "pending" || job.status === "processing" ? job.id : null
+  );
+  return liveStatus || job;
+}
+
+/* ---------- Cell components (React components so they can use hooks) ---------- */
+
+function TypeCell({ job }: { job: ExportJob }) {
+  const current = useLiveJob(job);
+  return (
+    <div className="flex items-center gap-2">
+      <File className="h-4 w-4 text-muted-foreground" />
+      <div>
+        <p className="text-sm text-foreground capitalize">
+          {current.export_type.replace(/_/g, " ")}
+        </p>
+        <p className="text-xs text-muted-foreground uppercase">{current.format}</p>
+      </div>
+    </div>
+  );
+}
+
+function StatusCell({ job }: { job: ExportJob }) {
+  const current = useLiveJob(job);
+  return <ExportStatusBadge status={current.status} />;
+}
+
+function SizeCell({ job }: { job: ExportJob }) {
+  const current = useLiveJob(job);
+  return <span className="text-sm text-muted-foreground">{formatFileSize(current.file_size_bytes)}</span>;
+}
+
+function CreatedCell({ job }: { job: ExportJob }) {
+  const current = useLiveJob(job);
+  return (
+    <span className="text-sm text-muted-foreground">
+      {formatDistanceToNow(new Date(current.created_at), { addSuffix: true })}
+    </span>
+  );
+}
+
+function ActionsCell({
   job,
   onDelete,
   onDownload,
@@ -156,56 +200,70 @@ function ExportRow({
   onDelete: (id: string) => void;
   onDownload: (id: string) => void;
 }) {
-  // Auto-poll for in-progress exports
-  const { data: liveStatus } = useExportStatus(
-    job.status === "pending" || job.status === "processing" ? job.id : null
-  );
-  const current = liveStatus || job;
-
+  const current = useLiveJob(job);
   return (
-    <tr className="border-b border-border hover:bg-card/50">
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <File className="h-4 w-4 text-muted-foreground" />
-          <div>
-            <p className="text-sm text-foreground capitalize">
-              {current.export_type.replace(/_/g, " ")}
-            </p>
-            <p className="text-xs text-muted-foreground uppercase">{current.format}</p>
-          </div>
-        </div>
-      </td>
-      <td className="px-4 py-3">
-        <ExportStatusBadge status={current.status} />
-      </td>
-      <td className="px-4 py-3 text-sm text-muted-foreground">
-        {formatFileSize(current.file_size_bytes)}
-      </td>
-      <td className="px-4 py-3 text-sm text-muted-foreground">
-        {formatDistanceToNow(new Date(current.created_at), { addSuffix: true })}
-      </td>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-1">
-          {current.status === "completed" && (
-            <button
-              onClick={() => onDownload(current.id)}
-              className="p-1.5 rounded-lg hover:bg-accent text-blue-400 hover:text-blue-300 transition"
-              title="Download"
-            >
-              <Download className="h-4 w-4" />
-            </button>
-          )}
-          <button
-            onClick={() => onDelete(current.id)}
-            className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-red-400 transition"
-            title="Delete"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      </td>
-    </tr>
+    <div className="flex items-center gap-1">
+      {current.status === "completed" && (
+        <button
+          onClick={() => onDownload(current.id)}
+          className="p-1.5 rounded-lg hover:bg-accent text-blue-400 hover:text-blue-300 transition"
+          title="Download"
+        >
+          <Download className="h-4 w-4" />
+        </button>
+      )}
+      <button
+        onClick={() => onDelete(current.id)}
+        className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-red-400 transition"
+        title="Delete"
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
+    </div>
   );
+}
+
+function exportColumns(
+  onDelete: (id: string) => void,
+  onDownload: (id: string) => void,
+): DataTableColumn<ExportJob>[] {
+  return [
+    {
+      id: "type",
+      header: "Type",
+      cell: (row) => <TypeCell job={row} />,
+      sortValue: (row) => row.export_type,
+      sortable: true,
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (row) => <StatusCell job={row} />,
+      sortValue: (row) => row.status,
+      sortable: true,
+    },
+    {
+      id: "size",
+      header: "Size",
+      cell: (row) => <SizeCell job={row} />,
+      sortValue: (row) => row.file_size_bytes ?? 0,
+      sortable: true,
+    },
+    {
+      id: "created",
+      header: "Created",
+      cell: (row) => <CreatedCell job={row} />,
+      sortValue: (row) => new Date(row.created_at).getTime(),
+      sortable: true,
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: (row) => (
+        <ActionsCell job={row} onDelete={onDelete} onDownload={onDownload} />
+      ),
+    },
+  ];
 }
 
 export default function ExportsPage() {
@@ -309,22 +367,11 @@ export default function ExportsPage() {
       )}
 
       {/* Export list */}
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
-        <div className="px-4 py-3 border-b border-border bg-background/50">
-          <h2 className="text-sm font-semibold text-foreground">Export History</h2>
-        </div>
-        {isLoading ? (
-          <div className="p-4 space-y-3 animate-pulse">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-4 p-3">
-                <div className="h-4 w-24 bg-accent rounded" />
-                <div className="h-4 w-32 bg-accent rounded" />
-                <div className="h-5 w-20 bg-accent rounded-full" />
-                <div className="ml-auto h-3 w-16 bg-accent rounded" />
-              </div>
-            ))}
+      {!isLoading && jobs.length === 0 ? (
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
+          <div className="px-4 py-3 border-b border-border bg-background/50">
+            <h2 className="text-sm font-semibold text-foreground">Export History</h2>
           </div>
-        ) : jobs.length === 0 ? (
           <EmptyState
             icon={Download}
             title="No exports yet"
@@ -334,32 +381,24 @@ export default function ExportsPage() {
             ]}
             compact
           />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[500px]">
-              <thead className="bg-background/50">
-                <tr className="text-left text-muted-foreground text-sm">
-                  <th className="px-4 py-3 font-medium">Type</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Size</th>
-                  <th className="px-4 py-3 font-medium">Created</th>
-                  <th className="px-4 py-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {jobs.map((job) => (
-                  <ExportRow
-                    key={job.id}
-                    job={job}
-                    onDelete={handleDelete}
-                    onDownload={handleDownload}
-                  />
-                ))}
-              </tbody>
-            </table>
+        </div>
+      ) : (
+        <>
+          <div className="px-1">
+            <h2 className="text-sm font-semibold text-foreground mb-3">Export History</h2>
           </div>
-        )}
-      </div>
+          <DataTable<ExportJob>
+            columns={exportColumns(handleDelete, handleDownload)}
+            data={jobs}
+            rowKey={(row) => row.id}
+            isLoading={isLoading}
+            skeletonRows={3}
+            emptyIcon={<Download className="h-8 w-8" />}
+            emptyTitle="No exports yet"
+            emptyDescription="Export your data in PDF, CSV, JSON, or XLSX format for analysis and reporting."
+          />
+        </>
+      )}
     </div>
     </PremiumGate>
   );

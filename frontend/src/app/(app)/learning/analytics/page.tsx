@@ -38,7 +38,9 @@ import {
   ReportType,
   ReportScheduleFrequency,
   ExportFormat,
+  TeamPerformanceEntry,
 } from "@/lib/api";
+import { DataTable } from "@/components/ui/data-table";
 
 type TabType = "dashboard" | "trends" | "reports" | "runs";
 
@@ -477,47 +479,75 @@ export default function LearningAnalyticsPage() {
                 <Users className="h-5 w-5 text-blue-400" />
                 Team Performance Comparison
               </h3>
-              {dashboard.team_comparison.teams.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Users className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-                  <p>No team data available</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[600px]">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left text-sm font-medium text-muted-foreground pb-3">Team</th>
-                        <th className="text-right text-sm font-medium text-muted-foreground pb-3">Learning Hours</th>
-                        <th className="text-right text-sm font-medium text-muted-foreground pb-3">Courses</th>
-                        <th className="text-right text-sm font-medium text-muted-foreground pb-3">Goal Rate</th>
-                        <th className="text-right text-sm font-medium text-muted-foreground pb-3">Compliance</th>
-                        <th className="text-right text-sm font-medium text-muted-foreground pb-3">Budget Used</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {dashboard.team_comparison.teams.map((team) => (
-                        <tr key={team.team_id} className="hover:bg-accent/30">
-                          <td className="py-3 text-foreground font-medium">{team.team_name}</td>
-                          <td className="py-3 text-right text-foreground">{team.learning_hours.toFixed(1)}</td>
-                          <td className="py-3 text-right text-foreground">{team.courses_completed}</td>
-                          <td className="py-3 text-right">
-                            <span className={team.goal_completion_rate >= 0.7 ? "text-green-400" : team.goal_completion_rate >= 0.4 ? "text-yellow-400" : "text-red-400"}>
-                              {formatPercent(team.goal_completion_rate)}
-                            </span>
-                          </td>
-                          <td className="py-3 text-right">
-                            <span className={team.compliance_rate >= 0.9 ? "text-green-400" : team.compliance_rate >= 0.7 ? "text-yellow-400" : "text-red-400"}>
-                              {formatPercent(team.compliance_rate)}
-                            </span>
-                          </td>
-                          <td className="py-3 text-right text-foreground">{formatPercent(team.budget_utilization)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              <DataTable<TeamPerformanceEntry>
+                columns={[
+                  {
+                    id: "team_name",
+                    header: "Team",
+                    cell: (team) => <span className="font-medium">{team.team_name}</span>,
+                    sortValue: (team) => team.team_name,
+                    sortable: true,
+                  },
+                  {
+                    id: "learning_hours",
+                    header: "Learning Hours",
+                    cell: (team) => team.learning_hours.toFixed(1),
+                    sortValue: (team) => team.learning_hours,
+                    sortable: true,
+                    headerClassName: "text-right",
+                    cellClassName: "text-right",
+                  },
+                  {
+                    id: "courses_completed",
+                    header: "Courses",
+                    cell: (team) => team.courses_completed,
+                    sortValue: (team) => team.courses_completed,
+                    sortable: true,
+                    headerClassName: "text-right",
+                    cellClassName: "text-right",
+                  },
+                  {
+                    id: "goal_completion_rate",
+                    header: "Goal Rate",
+                    cell: (team) => (
+                      <span className={team.goal_completion_rate >= 0.7 ? "text-green-400" : team.goal_completion_rate >= 0.4 ? "text-yellow-400" : "text-red-400"}>
+                        {formatPercent(team.goal_completion_rate)}
+                      </span>
+                    ),
+                    sortValue: (team) => team.goal_completion_rate,
+                    sortable: true,
+                    headerClassName: "text-right",
+                    cellClassName: "text-right",
+                  },
+                  {
+                    id: "compliance_rate",
+                    header: "Compliance",
+                    cell: (team) => (
+                      <span className={team.compliance_rate >= 0.9 ? "text-green-400" : team.compliance_rate >= 0.7 ? "text-yellow-400" : "text-red-400"}>
+                        {formatPercent(team.compliance_rate)}
+                      </span>
+                    ),
+                    sortValue: (team) => team.compliance_rate,
+                    sortable: true,
+                    headerClassName: "text-right",
+                    cellClassName: "text-right",
+                  },
+                  {
+                    id: "budget_utilization",
+                    header: "Budget Used",
+                    cell: (team) => formatPercent(team.budget_utilization),
+                    sortValue: (team) => team.budget_utilization,
+                    sortable: true,
+                    headerClassName: "text-right",
+                    cellClassName: "text-right",
+                  },
+                ]}
+                data={dashboard.team_comparison.teams}
+                rowKey={(team) => team.team_id}
+                emptyIcon={<Users className="h-12 w-12" />}
+                emptyTitle="No team data available"
+                compact
+              />
             </div>
           </div>
         )}
