@@ -210,8 +210,17 @@ export function ExecutionHistory({
             </button>
 
             {isLoadingDetail ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+              <div className="px-4 py-4 space-y-4 animate-pulse">
+                <div className="rounded-lg p-3 bg-accent">
+                  <div className="h-4 w-32 bg-muted rounded mb-2" />
+                  <div className="h-3 w-48 bg-muted rounded" />
+                </div>
+                {[1, 2].map((i) => (
+                  <div key={i} className="border border-border rounded-lg p-3">
+                    <div className="h-4 w-24 bg-accent rounded mb-2" />
+                    <div className="h-3 w-full bg-accent rounded" />
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="px-4 py-2">
@@ -333,8 +342,17 @@ export function ExecutionHistory({
           // Executions List
           <div className="flex-1 overflow-y-auto">
             {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+              <div className="space-y-2 p-2 animate-pulse">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-center gap-3 p-2 rounded-lg">
+                    <div className="h-6 w-6 bg-accent rounded-full" />
+                    <div className="flex-1">
+                      <div className="h-3 w-24 bg-accent rounded mb-1" />
+                      <div className="h-2 w-16 bg-accent rounded" />
+                    </div>
+                    <div className="h-5 w-14 bg-accent rounded-full" />
+                  </div>
+                ))}
               </div>
             ) : error ? (
               <div className="text-center py-8 text-red-400">{error}</div>
