@@ -18,6 +18,7 @@ import {
   Webhook,
   KeyRound,
   Activity,
+  Bell,
   type LucideIcon,
 } from "lucide-react";
 
@@ -67,6 +68,14 @@ export const settingsNavigation: SettingsNavCategory[] = [
         icon: Users,
         description: "Configure custom roles and permissions",
         keywords: ["permissions", "role", "custom", "rbac"],
+      },
+      {
+        id: "notifications",
+        label: "Notifications",
+        href: "/settings/notifications",
+        icon: Bell,
+        description: "Configure notification channels and preferences",
+        keywords: ["notification", "alert", "email", "slack", "bell", "in-app"],
       },
     ],
   },
