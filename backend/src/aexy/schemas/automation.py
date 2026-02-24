@@ -28,6 +28,8 @@ AutomationModule = Literal[
     "sprints",       # Tasks, sprints
     "forms",         # Form submissions
     "booking",       # Bookings, events
+    "tracking",      # Standups, time entries, blockers
+    "compliance",    # Training, certifications, audits
 ]
 
 
@@ -122,6 +124,35 @@ TRIGGER_REGISTRY: dict[str, list[str]] = {
         "booking.rescheduled",
         "booking.reminder",
         "event_type.created",
+    ],
+    "tracking": [
+        "standup.submitted",
+        "standup.missed",
+        "time_entry.created",
+        "time_entry.threshold",
+        "blocker.created",
+        "blocker.escalated",
+        "blocker.resolved",
+        "blocker.stale",
+        "work_log.submitted",
+        "sentiment.negative",
+        "participation.low",
+    ],
+    "compliance": [
+        "training.created",
+        "training.assigned",
+        "training.started",
+        "training.completed",
+        "training.waived",
+        "assignment.approaching_due",
+        "assignment.overdue",
+        "certification.added",
+        "certification.expiring",
+        "certification.expired",
+        "certification.renewed",
+        "certification.revoked",
+        "compliance.status_changed",
+        "audit.logged",
     ],
 }
 

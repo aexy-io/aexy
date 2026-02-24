@@ -286,6 +286,34 @@ SCHEDULES: list[dict] = [
         "queue": TaskQueue.OPERATIONS,
     },
 
+    # === Tracking Automation Triggers ===
+    {
+        "id": "check-time-entry-thresholds",
+        "activity": "check_time_entry_thresholds",
+        "input_module": "aexy.temporal.activities.tracking",
+        "input_class": "CheckTimeEntryThresholdsInput",
+        "interval": timedelta(hours=24),
+        "queue": TaskQueue.OPERATIONS,
+    },
+
+    # === Compliance Automation Triggers ===
+    {
+        "id": "check-approaching-due-assignments",
+        "activity": "check_approaching_due_assignments",
+        "input_module": "aexy.temporal.activities.compliance",
+        "input_class": "CheckApproachingDueAssignmentsInput",
+        "interval": timedelta(hours=24),
+        "queue": TaskQueue.OPERATIONS,
+    },
+    {
+        "id": "check-compliance-status-changes",
+        "activity": "check_compliance_status_changes",
+        "input_module": "aexy.temporal.activities.compliance",
+        "input_class": "CheckComplianceStatusChangesInput",
+        "interval": timedelta(hours=12),
+        "queue": TaskQueue.OPERATIONS,
+    },
+
     # === Google Sync ===
     {
         "id": "check-gmail-auto-sync",

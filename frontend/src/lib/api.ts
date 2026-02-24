@@ -8308,7 +8308,9 @@ export type AutomationModule =
   | "uptime"
   | "sprints"
   | "forms"
-  | "booking";
+  | "booking"
+  | "tracking"
+  | "compliance";
 
 export type AutomationTriggerType = string; // Module-specific triggers
 export type AutomationActionType = string; // Module-specific actions

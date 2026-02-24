@@ -136,12 +136,17 @@ def get_all_activities() -> list:
         aggregate_time_entries,
         analyze_activity_patterns,
         check_overdue_blockers,
+        check_time_entry_thresholds,
         generate_sprint_progress_report,
         import_slack_history,
         map_slack_users,
         send_standup_reminders,
         sync_all_slack_channels,
         sync_slack_channel,
+    )
+    from aexy.temporal.activities.compliance import (
+        check_approaching_due_assignments,
+        check_compliance_status_changes,
     )
     from aexy.temporal.activities.uptime import (
         cleanup_old_checks,
@@ -232,6 +237,7 @@ def get_all_activities() -> list:
         send_standup_reminders,
         aggregate_daily_standups,
         check_overdue_blockers,
+        check_time_entry_thresholds,
         analyze_activity_patterns,
         aggregate_time_entries,
         generate_sprint_progress_report,
@@ -264,6 +270,9 @@ def get_all_activities() -> list:
         process_auto_assignment,
         send_weekly_slack_summary,
         send_reminder_notification,
+        # Compliance Automation Triggers
+        check_approaching_due_assignments,
+        check_compliance_status_changes,
     ]
 
 
