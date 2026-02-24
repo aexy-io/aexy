@@ -11,9 +11,8 @@ import {
   LayoutGrid,
   CheckCircle2,
   Eye,
-  Search,
-  X,
 } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Template {
@@ -271,24 +270,12 @@ export default function TemplateSelection() {
           {/* Right side - Templates */}
           <div className="flex-1">
             {/* Search */}
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search for templates, topics, goals..."
-                className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border/50 rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search for templates, topics, goals..."
+              wrapperClassName="mb-4"
+            />
 
             {/* Template list */}
             <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">

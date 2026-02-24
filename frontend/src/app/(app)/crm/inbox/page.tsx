@@ -26,6 +26,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { SearchInput } from "@/components/ui/search-input";
 import { googleIntegrationApi, developerApi, SyncedEmail, SyncJobStatus } from "@/lib/api";
 
 function formatDate(dateString: string) {
@@ -425,16 +426,12 @@ function LinkToRecordModal({
           </button>
         </div>
 
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={`Search ${linkType === "person" ? "people" : "companies"}...`}
-            className="w-full pl-10 pr-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
-          />
-        </div>
+        <SearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder={`Search ${linkType === "person" ? "people" : "companies"}...`}
+          wrapperClassName="mb-4"
+        />
 
         <div className="text-center py-8 text-muted-foreground">
           <p className="text-sm">
@@ -877,16 +874,11 @@ function InboxPageContent() {
             >
               {/* Search */}
               <div className="p-4 border-b border-border">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search emails..."
-                    className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
+                <SearchInput
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder="Search emails..."
+                />
               </div>
 
               {/* Email List */}

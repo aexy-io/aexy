@@ -9,7 +9,6 @@ import {
   FileText,
   Clock,
   TrendingUp,
-  Search,
   Filter,
   Download,
   ChevronDown,
@@ -22,6 +21,7 @@ import {
   AlertCircle,
   Loader2,
 } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAssessment, useAssessmentMetrics, useAssessmentCandidates } from "@/hooks/useAssessments";
@@ -512,16 +512,11 @@ export default function AssessmentReportPage() {
           <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h3 className="font-semibold text-foreground">Candidates</h3>
             <div className="flex items-center gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search candidates..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-4 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground placeholder:text-muted-foreground"
-                />
-              </div>
+              <SearchInput
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search candidates..."
+              />
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}

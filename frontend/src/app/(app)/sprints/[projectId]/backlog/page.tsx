@@ -10,7 +10,6 @@ import {
   GripVertical,
   MoreVertical,
   Check,
-  Search,
   Target,
   User,
   Layers,
@@ -28,6 +27,7 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Badge, PremiumCard, Skeleton } from "@/components/ui/premium-card";
+import { SearchInput } from "@/components/ui/search-input";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string; bgColor: string }> = {
@@ -756,16 +756,12 @@ export default function BacklogPage({
           <div className="max-w-4xl mx-auto px-4 py-6">
             {/* Search and filters */}
             <div className="flex items-center gap-3 mb-6">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search backlog items..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500"
-                />
-              </div>
+              <SearchInput
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search backlog items..."
+                wrapperClassName="flex-1"
+              />
 
               {/* Priority filter */}
               <div className="flex items-center gap-1 bg-muted border border-border rounded-lg p-1">
