@@ -3,6 +3,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/layout/AppShell";
 import { GlobalShortcuts } from "@/components/GlobalShortcuts";
+import { CommandPalette } from "@/components/CommandPalette";
 import { redirect } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -59,6 +60,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
         <AppShell user={user} logout={logout}>
             <GlobalShortcuts />
+            <CommandPalette />
             {children}
         </AppShell>
     );
