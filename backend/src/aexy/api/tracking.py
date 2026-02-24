@@ -24,6 +24,7 @@ from aexy.models.tracking import (
     TrackingSource,
     WorkLog,
 )
+from aexy.services.automation_service import dispatch_automation_event
 from aexy.schemas.tracking import (
     BlockerCreate,
     BlockerEscalation,
