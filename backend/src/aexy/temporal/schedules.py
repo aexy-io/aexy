@@ -315,6 +315,98 @@ SCHEDULES: list[dict] = [
         "interval": timedelta(hours=24),
         "queue": TaskQueue.ANALYSIS,
     },
+
+    # === Tracking Automation ===
+    {
+        "id": "tracking-check-missed-standups",
+        "activity": "check_missed_standups",
+        "input_module": "aexy.temporal.activities.tracking_automation",
+        "input_class": "CheckMissedStandupsInput",
+        "interval": timedelta(hours=24),
+        "queue": TaskQueue.OPERATIONS,
+    },
+    {
+        "id": "tracking-check-time-thresholds",
+        "activity": "check_time_entry_thresholds",
+        "input_module": "aexy.temporal.activities.tracking_automation",
+        "input_class": "CheckTimeEntryThresholdsInput",
+        "interval": timedelta(hours=24),
+        "queue": TaskQueue.OPERATIONS,
+    },
+    {
+        "id": "tracking-check-stale-blockers",
+        "activity": "check_stale_blockers",
+        "input_module": "aexy.temporal.activities.tracking_automation",
+        "input_class": "CheckStaleBlockersInput",
+        "interval": timedelta(hours=24),
+        "queue": TaskQueue.OPERATIONS,
+    },
+    {
+        "id": "tracking-detect-blocker-patterns",
+        "activity": "detect_blocker_patterns",
+        "input_module": "aexy.temporal.activities.tracking_automation",
+        "input_class": "DetectBlockerPatternsInput",
+        "interval": timedelta(weeks=1),
+        "queue": TaskQueue.OPERATIONS,
+    },
+    {
+        "id": "tracking-check-time-anomalies",
+        "activity": "check_time_anomalies",
+        "input_module": "aexy.temporal.activities.tracking_automation",
+        "input_class": "CheckTimeAnomaliesInput",
+        "interval": timedelta(hours=24),
+        "queue": TaskQueue.OPERATIONS,
+    },
+    {
+        "id": "tracking-check-participation",
+        "activity": "check_standup_participation",
+        "input_module": "aexy.temporal.activities.tracking_automation",
+        "input_class": "CheckStandupParticipationInput",
+        "interval": timedelta(hours=24),
+        "queue": TaskQueue.OPERATIONS,
+    },
+
+    # === Compliance Automation ===
+    {
+        "id": "compliance-check-approaching-due",
+        "activity": "check_approaching_due_assignments",
+        "input_module": "aexy.temporal.activities.compliance_automation",
+        "input_class": "CheckApproachingDueInput",
+        "interval": timedelta(hours=24),
+        "queue": TaskQueue.OPERATIONS,
+    },
+    {
+        "id": "compliance-check-overdue",
+        "activity": "check_overdue_assignments",
+        "input_module": "aexy.temporal.activities.compliance_automation",
+        "input_class": "CheckOverdueAssignmentsInput",
+        "interval": timedelta(hours=24),
+        "queue": TaskQueue.OPERATIONS,
+    },
+    {
+        "id": "compliance-check-expiring-certs",
+        "activity": "check_expiring_certifications",
+        "input_module": "aexy.temporal.activities.compliance_automation",
+        "input_class": "CheckExpiringCertsInput",
+        "interval": timedelta(hours=24),
+        "queue": TaskQueue.OPERATIONS,
+    },
+    {
+        "id": "compliance-check-expired-certs",
+        "activity": "check_expired_certifications",
+        "input_module": "aexy.temporal.activities.compliance_automation",
+        "input_class": "CheckExpiredCertsInput",
+        "interval": timedelta(hours=24),
+        "queue": TaskQueue.OPERATIONS,
+    },
+    {
+        "id": "compliance-check-bulk-overdue",
+        "activity": "check_bulk_compliance_rates",
+        "input_module": "aexy.temporal.activities.compliance_automation",
+        "input_class": "CheckBulkComplianceInput",
+        "interval": timedelta(weeks=1),
+        "queue": TaskQueue.OPERATIONS,
+    },
 ]
 
 

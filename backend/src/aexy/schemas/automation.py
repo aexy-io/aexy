@@ -28,6 +28,8 @@ AutomationModule = Literal[
     "sprints",       # Tasks, sprints
     "forms",         # Form submissions
     "booking",       # Bookings, events
+    "tracking",      # Standups, blockers, time entries
+    "compliance",    # Training, certifications, audits
 ]
 
 
@@ -129,6 +131,40 @@ TRIGGER_REGISTRY: dict[str, list[str]] = {
         "booking.reminder",
         "event_type.created",
     ],
+    "tracking": [
+        "standup.submitted",
+        "standup.missed",
+        "standup.streak",
+        "time_entry.created",
+        "time_entry.threshold",
+        "time_entry.anomaly",
+        "blocker.created",
+        "blocker.escalated",
+        "blocker.resolved",
+        "blocker.stale",
+        "blocker.pattern_detected",
+        "work_log.submitted",
+        "sentiment.negative",
+        "participation.low",
+    ],
+    "compliance": [
+        "training.created",
+        "training.assigned",
+        "training.started",
+        "training.completed",
+        "training.waived",
+        "assignment.approaching_due",
+        "assignment.overdue",
+        "training.bulk_overdue",
+        "certification.added",
+        "certification.expiring",
+        "certification.expired",
+        "certification.renewed",
+        "certification.revoked",
+        "certification.prerequisite_unmet",
+        "compliance.status_changed",
+        "audit.logged",
+    ],
 }
 
 
@@ -212,6 +248,19 @@ ACTION_REGISTRY: dict[str, list[str]] = {
         "cancel_booking",
         "reschedule_booking",
         "send_reminder",
+    ],
+    "tracking": [
+        "update_activity_pattern",
+        "send_standup_reminder",
+        "celebrate_streak",
+        "escalate_blocker",
+        "flag_anomaly",
+    ],
+    "compliance": [
+        "send_training_reminder",
+        "update_compliance_status",
+        "restrict_permissions",
+        "send_compliance_digest",
     ],
 }
 
