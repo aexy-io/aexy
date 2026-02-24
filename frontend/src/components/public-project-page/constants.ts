@@ -12,13 +12,9 @@ import {
   LucideIcon,
 } from "lucide-react";
 import { ProjectStatus } from "@/lib/api";
+import { PROJECT_STATUS_COLORS } from "@/lib/statusColors";
 
-export const STATUS_COLORS: Record<ProjectStatus, { bg: string; text: string; dot: string }> = {
-  active: { bg: "bg-green-500/10", text: "text-green-600 dark:text-green-400", dot: "bg-green-500" },
-  on_hold: { bg: "bg-amber-500/10", text: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500" },
-  completed: { bg: "bg-blue-500/10", text: "text-blue-600 dark:text-blue-400", dot: "bg-blue-500" },
-  archived: { bg: "bg-muted-foreground/10", text: "text-muted-foreground", dot: "bg-muted-foreground" },
-};
+export const STATUS_COLORS: Record<ProjectStatus, { bg: string; text: string; dot: string }> = PROJECT_STATUS_COLORS as Record<ProjectStatus, { bg: string; text: string; dot: string }>;
 
 export const STATUS_LABELS: Record<ProjectStatus, string> = {
   active: "Active",

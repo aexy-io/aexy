@@ -22,13 +22,7 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { SearchInput } from "@/components/ui/search-input";
 import { useAssessments, useOrganizationAssessmentMetrics } from "@/hooks/useAssessments";
 import { AssessmentStatus, AssessmentSummary } from "@/lib/api";
-
-const statusColors: Record<AssessmentStatus, string> = {
-  draft: "bg-muted text-muted-foreground",
-  active: "bg-success/20 text-success",
-  completed: "bg-info/20 text-info",
-  archived: "bg-muted text-muted-foreground/60",
-};
+import { ASSESSMENT_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
 const statusLabels: Record<AssessmentStatus, string> = {
   draft: "Draft",
@@ -99,7 +93,9 @@ function AssessmentCard({
               </h3>
               <span
                 className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                  statusColors[assessment.status]
+                  getStatusColor(ASSESSMENT_STATUS_COLORS, assessment.status).bg
+                } ${
+                  getStatusColor(ASSESSMENT_STATUS_COLORS, assessment.status).text
                 }`}
               >
                 {statusLabels[assessment.status]}

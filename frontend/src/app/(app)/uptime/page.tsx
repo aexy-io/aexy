@@ -18,16 +18,7 @@ import {
   Server,
   Wifi,
 } from "lucide-react";
-
-const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-  up: { bg: "bg-emerald-50 dark:bg-emerald-900/30", text: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500" },
-  down: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400", dot: "bg-red-500" },
-  degraded: { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500" },
-  paused: { bg: "bg-accent/50", text: "text-muted-foreground", dot: "bg-muted-foreground" },
-  unknown: { bg: "bg-accent/50", text: "text-muted-foreground", dot: "bg-muted-foreground" },
-};
-
-const DEFAULT_STATUS_STYLE = { bg: "bg-accent/50", text: "text-muted-foreground", dot: "bg-muted-foreground" };
+import { UPTIME_MONITOR_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
 const CHECK_TYPE_ICONS = {
   http: Globe,
@@ -248,7 +239,7 @@ export default function UptimeDashboard() {
                 <div className="divide-y divide-border">
                   {monitors.slice(0, 8).map((monitor) => {
                     const Icon = CHECK_TYPE_ICONS[monitor.check_type] || Globe;
-                    const statusStyle = STATUS_COLORS[monitor.current_status] || DEFAULT_STATUS_STYLE;
+                    const statusStyle = getStatusColor(UPTIME_MONITOR_STATUS_COLORS, monitor.current_status);
 
                     return (
                       <Link

@@ -8,37 +8,39 @@ import {
   Info,
 } from "lucide-react";
 import { BugSeverity } from "@/lib/api";
+import { SEVERITY_COLORS } from "@/lib/statusColors";
 import { cn } from "@/lib/utils";
 
+// Derives bg/text from centralized SEVERITY_COLORS, adds label + icon
 const SEVERITY_CONFIG: Record<BugSeverity, { label: string; color: string; bgColor: string; icon: React.ReactNode }> = {
   blocker: {
     label: "Blocker",
-    color: "text-foreground",
-    bgColor: "bg-red-600",
+    color: SEVERITY_COLORS.blocker.text,
+    bgColor: SEVERITY_COLORS.blocker.bg,
     icon: <AlertOctagon className="h-3 w-3" />,
   },
   critical: {
     label: "Critical",
-    color: "text-foreground",
-    bgColor: "bg-red-500",
+    color: SEVERITY_COLORS.critical.text,
+    bgColor: SEVERITY_COLORS.critical.bg,
     icon: <AlertCircle className="h-3 w-3" />,
   },
   major: {
     label: "Major",
-    color: "text-foreground",
-    bgColor: "bg-orange-500",
+    color: SEVERITY_COLORS.major.text,
+    bgColor: SEVERITY_COLORS.major.bg,
     icon: <AlertTriangle className="h-3 w-3" />,
   },
   minor: {
     label: "Minor",
-    color: "text-black",
-    bgColor: "bg-yellow-500",
+    color: SEVERITY_COLORS.minor.text,
+    bgColor: SEVERITY_COLORS.minor.bg,
     icon: <Info className="h-3 w-3" />,
   },
   trivial: {
     label: "Trivial",
-    color: "text-foreground",
-    bgColor: "bg-muted-foreground",
+    color: SEVERITY_COLORS.trivial.text,
+    bgColor: SEVERITY_COLORS.trivial.bg,
     icon: <Info className="h-3 w-3" />,
   },
 };

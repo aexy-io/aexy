@@ -23,6 +23,7 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { useProjectBoard } from "@/hooks/useProjectBoard";
 import { useEpics } from "@/hooks/useEpics";
 import { SprintTask, SprintListItem, TaskPriority, TaskStatus, EpicListItem, sprintApi } from "@/lib/api";
+import { PRIORITY_COLORS } from "@/lib/statusColors";
 import { CommandPalette } from "@/components/CommandPalette";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -31,10 +32,10 @@ import { SearchInput } from "@/components/ui/search-input";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string; bgColor: string }> = {
-  critical: { label: "Critical", color: "text-red-600 dark:text-red-400", bgColor: "bg-red-100 dark:bg-red-900/30" },
-  high: { label: "High", color: "text-orange-600 dark:text-orange-400", bgColor: "bg-orange-100 dark:bg-orange-900/30" },
-  medium: { label: "Medium", color: "text-yellow-600 dark:text-yellow-400", bgColor: "bg-yellow-100 dark:bg-yellow-900/30" },
-  low: { label: "Low", color: "text-muted-foreground", bgColor: "bg-accent" },
+  critical: { label: "Critical", color: PRIORITY_COLORS.critical.text, bgColor: PRIORITY_COLORS.critical.bg },
+  high: { label: "High", color: PRIORITY_COLORS.high.text, bgColor: PRIORITY_COLORS.high.bg },
+  medium: { label: "Medium", color: PRIORITY_COLORS.medium.text, bgColor: PRIORITY_COLORS.medium.bg },
+  low: { label: "Low", color: PRIORITY_COLORS.low.text, bgColor: PRIORITY_COLORS.low.bg },
 };
 
 interface BacklogItem extends SprintTask {

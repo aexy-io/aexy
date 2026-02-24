@@ -17,6 +17,7 @@ import {
   Wifi,
 } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { UPTIME_INCIDENT_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
 const CHECK_TYPE_ICONS = {
   http: Globe,
@@ -24,10 +25,10 @@ const CHECK_TYPE_ICONS = {
   websocket: Wifi,
 };
 
-const STATUS_COLORS = {
-  ongoing: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400", label: "Ongoing" },
-  acknowledged: { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", label: "Acknowledged" },
-  resolved: { bg: "bg-emerald-50 dark:bg-emerald-900/30", text: "text-emerald-600 dark:text-emerald-400", label: "Resolved" },
+const STATUS_LABELS: Record<string, string> = {
+  ongoing: "Ongoing",
+  acknowledged: "Acknowledged",
+  resolved: "Resolved",
 };
 
 export default function IncidentDetailPage() {
@@ -146,7 +147,7 @@ export default function IncidentDetailPage() {
     );
   }
 
-  const statusStyle = STATUS_COLORS[incident.status];
+  const statusStyle = getStatusColor(UPTIME_INCIDENT_STATUS_COLORS, incident.status);
   const Icon = incident.monitor ? CHECK_TYPE_ICONS[incident.monitor.check_type] : Globe;
 
   return (
@@ -167,7 +168,7 @@ export default function IncidentDetailPage() {
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusStyle.bg} ${statusStyle.text}`}>
-                  {statusStyle.label}
+                  {STATUS_LABELS[incident.status] || incident.status}
                 </span>
                 {incident.ticket_id && (
                   <Link

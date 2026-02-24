@@ -23,17 +23,18 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { TaskTemplate, TaskTemplateCreate, TaskPriority, taskTemplatesApi } from "@/lib/api";
+import { PRIORITY_COLORS } from "@/lib/statusColors";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Badge, Skeleton } from "@/components/ui/premium-card";
 import { SearchInput } from "@/components/ui/search-input";
 
-// Priority configuration
+// Priority configuration – derives colors from centralized tokens, adds label
 const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string; bgColor: string }> = {
-  critical: { label: "Critical", color: "text-red-600 dark:text-red-400", bgColor: "bg-red-500/20" },
-  high: { label: "High", color: "text-orange-600 dark:text-orange-400", bgColor: "bg-orange-500/20" },
-  medium: { label: "Medium", color: "text-yellow-600 dark:text-yellow-400", bgColor: "bg-yellow-500/20" },
-  low: { label: "Low", color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-500/20" },
+  critical: { label: "Critical", color: PRIORITY_COLORS.critical.text, bgColor: PRIORITY_COLORS.critical.bg },
+  high: { label: "High", color: PRIORITY_COLORS.high.text, bgColor: PRIORITY_COLORS.high.bg },
+  medium: { label: "Medium", color: PRIORITY_COLORS.medium.text, bgColor: PRIORITY_COLORS.medium.bg },
+  low: { label: "Low", color: PRIORITY_COLORS.low.text, bgColor: PRIORITY_COLORS.low.bg },
 };
 
 interface TemplateCardProps {

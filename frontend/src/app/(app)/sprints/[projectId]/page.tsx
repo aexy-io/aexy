@@ -31,37 +31,38 @@ import { useBugs, useBugStats } from "@/hooks/useBugs";
 import { useReleases } from "@/hooks/useReleases";
 import { useOKRDashboard } from "@/hooks/useOKRGoals";
 import { SprintListItem, SprintStatus } from "@/lib/api";
+import { SPRINT_STATUS_COLORS } from "@/lib/statusColors";
 import { redirect } from "next/navigation";
 
 const STATUS_CONFIG: Record<SprintStatus, { label: string; color: string; icon: React.ReactNode; bgColor: string }> = {
   planning: {
     label: "Planning",
-    color: "text-blue-600 dark:text-blue-400",
-    bgColor: "bg-blue-100 dark:bg-blue-900/30",
+    color: SPRINT_STATUS_COLORS.planning.text,
+    bgColor: SPRINT_STATUS_COLORS.planning.bg,
     icon: <Target className="h-4 w-4" />,
   },
   active: {
     label: "Active",
-    color: "text-green-600 dark:text-green-400",
-    bgColor: "bg-green-100 dark:bg-green-900/30",
+    color: SPRINT_STATUS_COLORS.active.text,
+    bgColor: SPRINT_STATUS_COLORS.active.bg,
     icon: <Play className="h-4 w-4" />,
   },
   review: {
     label: "In Review",
-    color: "text-amber-600 dark:text-amber-400",
-    bgColor: "bg-amber-100 dark:bg-amber-900/30",
+    color: SPRINT_STATUS_COLORS.review.text,
+    bgColor: SPRINT_STATUS_COLORS.review.bg,
     icon: <Pause className="h-4 w-4" />,
   },
   retrospective: {
     label: "Retrospective",
-    color: "text-purple-600 dark:text-purple-400",
-    bgColor: "bg-purple-100 dark:bg-purple-900/30",
+    color: SPRINT_STATUS_COLORS.retrospective.text,
+    bgColor: SPRINT_STATUS_COLORS.retrospective.bg,
     icon: <RotateCcw className="h-4 w-4" />,
   },
   completed: {
     label: "Completed",
-    color: "text-muted-foreground",
-    bgColor: "bg-accent",
+    color: SPRINT_STATUS_COLORS.completed.text,
+    bgColor: SPRINT_STATUS_COLORS.completed.bg,
     icon: <CheckCircle className="h-4 w-4" />,
   },
 };

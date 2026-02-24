@@ -22,6 +22,7 @@ import {
   Settings,
 } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { UPTIME_MONITOR_STATUS_COLORS, UPTIME_INCIDENT_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
 const CHECK_TYPE_ICONS = {
   http: Globe,
@@ -29,15 +30,13 @@ const CHECK_TYPE_ICONS = {
   websocket: Wifi,
 };
 
-const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  up: { bg: "bg-emerald-50 dark:bg-emerald-900/30", text: "text-emerald-600 dark:text-emerald-400", label: "Up" },
-  down: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400", label: "Down" },
-  degraded: { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", label: "Degraded" },
-  paused: { bg: "bg-accent/50", text: "text-muted-foreground", label: "Paused" },
-  unknown: { bg: "bg-accent/50", text: "text-muted-foreground", label: "Unknown" },
+const MONITOR_STATUS_LABELS: Record<string, string> = {
+  up: "Up",
+  down: "Down",
+  degraded: "Degraded",
+  paused: "Paused",
+  unknown: "Unknown",
 };
-
-const DEFAULT_STATUS_STYLE = { bg: "bg-accent/50", text: "text-muted-foreground", label: "Unknown" };
 
 export default function MonitorDetailPage() {
   const params = useParams();
@@ -163,7 +162,7 @@ export default function MonitorDetailPage() {
   }
 
   const Icon = CHECK_TYPE_ICONS[monitor.check_type] || Globe;
-  const statusStyle = STATUS_COLORS[monitor.current_status] || DEFAULT_STATUS_STYLE;
+  const statusStyle = getStatusColor(UPTIME_MONITOR_STATUS_COLORS, monitor.current_status);
 
   return (
     <div className="min-h-screen bg-background">
@@ -188,7 +187,7 @@ export default function MonitorDetailPage() {
                 <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
                   {monitor.name}
                   <span className={`px-2 py-1 rounded text-sm font-medium ${statusStyle.bg} ${statusStyle.text}`}>
-                    {statusStyle.label}
+                    {MONITOR_STATUS_LABELS[monitor.current_status] || monitor.current_status}
                   </span>
                 </h1>
                 <p className="text-muted-foreground mt-1 flex items-center gap-2">
@@ -383,7 +382,9 @@ export default function MonitorDetailPage() {
                 <div className="p-8 text-center text-muted-foreground">No incidents recorded.</div>
               ) : (
                 <div className="divide-y divide-border">
-                  {incidents.map((incident) => (
+                  {incidents.map((incident) => {
+                    const incidentStyle = getStatusColor(UPTIME_INCIDENT_STATUS_COLORS, incident.status);
+                    return (
                     <Link
                       key={incident.id}
                       href={`/uptime/incidents/${incident.id}`}
@@ -391,13 +392,7 @@ export default function MonitorDetailPage() {
                     >
                       <div className="flex items-center gap-2 mb-1">
                         <span
-                          className={`px-2 py-0.5 rounded text-xs font-medium ${
-                            incident.status === "ongoing"
-                              ? "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400"
-                              : incident.status === "acknowledged"
-                              ? "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
-                              : "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
-                          }`}
+                          className={`px-2 py-0.5 rounded text-xs font-medium ${incidentStyle.bg} ${incidentStyle.text}`}
                         >
                           {incident.status}
                         </span>
@@ -407,7 +402,8 @@ export default function MonitorDetailPage() {
                         {incident.last_error_message || incident.first_error_message || "No details"}
                       </p>
                     </Link>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
