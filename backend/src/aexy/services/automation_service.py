@@ -26,6 +26,10 @@ from aexy.schemas.automation import (
     ACTION_REGISTRY,
     get_triggers_for_module,
     get_actions_for_module,
+    get_trigger_ids,
+    get_action_ids,
+    get_all_trigger_ids,
+    get_all_action_ids,
 )
 
 
@@ -124,7 +128,7 @@ class AutomationService:
     ) -> CRMAutomation:
         """Create a new automation with module context."""
         # Validate trigger type for module
-        valid_triggers = get_triggers_for_module(module)
+        valid_triggers = get_trigger_ids(module)
         if valid_triggers and trigger_type not in valid_triggers:
             # Allow any trigger for now, just log warning
             pass
@@ -277,7 +281,7 @@ class AutomationService:
         This is the main entry point for module-specific events
         (e.g., ticket.created, candidate.stage_changed).
         """
-        print(f"[TRIGGER] Processing: module={module}, trigger_type={trigger_type}, workspace={workspace_id}")
+        logger.info(f"[TRIGGER] Processing: module={module}, trigger_type={trigger_type}, workspace={workspace_id}")
 
         # Find all active automations matching this module and trigger
         stmt = select(CRMAutomation).where(
@@ -289,9 +293,9 @@ class AutomationService:
         result = await self.db.execute(stmt)
         automations = list(result.scalars().all())
 
-        print(f"[TRIGGER] Found {len(automations)} automation(s) for {module}.{trigger_type}")
+        logger.info(f"[TRIGGER] Found {len(automations)} automation(s) for {module}.{trigger_type}")
         for auto in automations:
-            print(f"[TRIGGER]   - {auto.id}: '{auto.name}' (actions={len(auto.actions or [])})")
+            logger.debug(f"[TRIGGER]   - {auto.id}: '{auto.name}' (actions={len(auto.actions or [])})")
 
         runs = []
         for automation in automations:
@@ -302,26 +306,26 @@ class AutomationService:
                     # For tickets, might be ticket form ID
                     # For hiring, might be requirement ID
                     if automation.object_id != entity_id:
-                        print(f"[TRIGGER] Skipping {automation.id}: object_id mismatch ({automation.object_id} != {entity_id})")
+                        logger.debug(f"[TRIGGER] Skipping {automation.id}: object_id mismatch ({automation.object_id} != {entity_id})")
                         continue
 
-                print(f"[TRIGGER] Triggering automation: {automation.id} '{automation.name}'")
+                logger.info(f"[TRIGGER] Triggering automation: {automation.id} '{automation.name}'")
                 run = await self.trigger_automation(
                     automation_id=automation.id,
                     record_id=entity_id,
                     trigger_data=trigger_data,
                 )
                 runs.append(run)
-                print(f"[TRIGGER] Successfully triggered: {automation.id}, run_id={run.id}")
+                logger.info(f"[TRIGGER] Successfully triggered: {automation.id}, run_id={run.id}")
             except ValueError as e:
                 # Skip if automation can't run (limit exceeded, etc.)
-                print(f"[TRIGGER] Skipping {automation.id}: {e}")
+                logger.debug(f"[TRIGGER] Skipping {automation.id}: {e}")
                 continue
             except Exception as e:
-                print(f"[TRIGGER] Error triggering {automation.id}: {e}")
+                logger.error(f"[TRIGGER] Error triggering {automation.id}: {e}")
                 continue
 
-        print(f"[TRIGGER] Total runs created: {len(runs)}")
+        logger.info(f"[TRIGGER] Total runs created: {len(runs)}")
         return runs
 
     # =========================================================================
@@ -329,21 +333,31 @@ class AutomationService:
     # =========================================================================
 
     @staticmethod
-    def get_triggers_for_module(module: str) -> list[str]:
-        """Get all supported trigger types for a module."""
+    def get_triggers_for_module(module: str) -> list[dict[str, str]]:
+        """Get all supported trigger types with descriptions for a module."""
         return get_triggers_for_module(module)
 
     @staticmethod
-    def get_actions_for_module(module: str) -> list[str]:
-        """Get all supported action types for a module."""
+    def get_trigger_ids_for_module(module: str) -> list[str]:
+        """Get trigger IDs (strings only) for a module."""
+        return get_trigger_ids(module)
+
+    @staticmethod
+    def get_actions_for_module(module: str) -> list[dict[str, str]]:
+        """Get all supported action types with descriptions for a module."""
         return get_actions_for_module(module)
 
     @staticmethod
-    def get_all_triggers() -> dict[str, list[str]]:
-        """Get all triggers organized by module."""
+    def get_action_ids_for_module(module: str) -> list[str]:
+        """Get action IDs (strings only) for a module."""
+        return get_action_ids(module)
+
+    @staticmethod
+    def get_all_triggers() -> dict[str, list[dict[str, str]]]:
+        """Get all triggers organized by module with descriptions."""
         return TRIGGER_REGISTRY.copy()
 
     @staticmethod
-    def get_all_actions() -> dict[str, list[str]]:
-        """Get all actions organized by module."""
+    def get_all_actions() -> dict[str, list[dict[str, str]]]:
+        """Get all actions organized by module with descriptions."""
         return ACTION_REGISTRY.copy()
