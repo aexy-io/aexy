@@ -34,6 +34,7 @@ import {
   useDeleteCampaign,
 } from "@/hooks/useEmailMarketing";
 import { EmailCampaign } from "@/lib/api";
+import { EmptyState } from "@/components/EmptyState";
 
 type StatusFilter = "all" | "draft" | "scheduled" | "sending" | "sent" | "paused" | "cancelled";
 type SortOption = "newest" | "oldest" | "name" | "sent_count";
@@ -379,26 +380,29 @@ export default function CampaignsPage() {
               ))}
             </div>
           ) : filteredCampaigns.length === 0 ? (
-            <div className="bg-background/50 border border-border rounded-xl p-16 text-center">
-              <Mail className="h-14 w-14 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-medium text-foreground mb-2">
-                {searchQuery || statusFilter !== "all" ? "No campaigns found" : "No campaigns yet"}
-              </h3>
-              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                {searchQuery || statusFilter !== "all"
-                  ? "Try adjusting your search or filters"
-                  : "Create your first email campaign to start engaging with your audience."}
-              </p>
-              {!searchQuery && statusFilter === "all" && (
-                <Link
-                  href="/email-marketing/campaigns/new"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition"
-                >
-                  <Plus className="h-4 w-4" />
-                  Create Campaign
-                </Link>
-              )}
-            </div>
+            searchQuery || statusFilter !== "all" ? (
+              <EmptyState
+                icon={Search}
+                title="No campaigns found"
+                description="Try adjusting your search or filters"
+                compact
+              />
+            ) : (
+              <EmptyState
+                icon={Mail}
+                title="No campaigns yet"
+                description="Create your first email campaign to start engaging with your audience."
+                actions={[
+                  { label: "Create Campaign", href: "/email-marketing/campaigns/new" },
+                ]}
+                steps={[
+                  { label: "Configure a sending domain", description: "Verify your domain for email delivery" },
+                  { label: "Create an email template", description: "Design reusable email layouts" },
+                  { label: "Build your audience", description: "Import or grow your subscriber list" },
+                  { label: "Launch your first campaign", description: "Send or schedule your email" },
+                ]}
+              />
+            )
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
