@@ -5,6 +5,7 @@ import {
   useReminderDashboard,
 } from "@/hooks/useReminders";
 import Link from "next/link";
+import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
 import {
   ShieldCheck,
   Bell,
@@ -184,6 +185,9 @@ export default function ComplianceDashboardPage() {
           </Link>
         ))}
       </div>
+
+      {/* Automations */}
+      <ModuleAutomationsPanel module="compliance" moduleLabel="Compliance" compact />
     </div>
   );
 }
