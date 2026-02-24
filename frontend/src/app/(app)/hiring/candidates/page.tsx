@@ -32,6 +32,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/EmptyState";
 import { SearchInput } from "@/components/ui/search-input";
 import { hiringApi, HiringCandidate, HiringCandidateStage } from "@/lib/api";
 
@@ -627,10 +628,22 @@ export default function CandidatesPage() {
             </table>
 
             {filteredCandidates.length === 0 && (
-              <div className="py-12 text-center">
-                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground">No candidates found</p>
-              </div>
+              searchQuery || filterStage !== "all" || filterSource !== "all" ? (
+                <div className="py-12 text-center">
+                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">No candidates match your filters</p>
+                </div>
+              ) : (
+                <EmptyState
+                  icon={Users}
+                  title="No candidates yet"
+                  description="Add candidates to your hiring pipeline to track their progress through assessments."
+                  actions={[
+                    { label: "Add Candidate", onClick: () => setShowAddModal(true) },
+                  ]}
+                  compact
+                />
+              )
             )}
           </div>
         )}

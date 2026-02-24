@@ -15,6 +15,7 @@ import {
   ChevronRight,
   BarChart3,
 } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { SearchInput } from "@/components/ui/search-input";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -384,15 +385,24 @@ export default function GoalsPage() {
           <div className="animate-spin h-8 w-8 border-2 border-purple-500 border-t-transparent rounded-full" />
         </div>
       ) : filteredGoals.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-64 text-center">
-          <Target className="h-12 w-12 text-muted-foreground mb-4" />
-          <p className="text-muted-foreground mb-2">No goals found</p>
-          <p className="text-muted-foreground text-sm">
-            {searchQuery || statusFilter !== "all" || typeFilter !== "all"
-              ? "Try adjusting your filters"
-              : "Create your first objective to get started"}
-          </p>
-        </div>
+        searchQuery || statusFilter !== "all" || typeFilter !== "all" ? (
+          <div className="flex flex-col items-center justify-center h-64 text-center">
+            <Target className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground mb-2">No goals found</p>
+            <p className="text-muted-foreground text-sm">
+              Try adjusting your filters
+            </p>
+          </div>
+        ) : (
+          <EmptyState
+            icon={Target}
+            title="No goals yet"
+            description="Set sprint goals to align your team on key objectives for this iteration."
+            actions={[
+              { label: "New Goal", onClick: () => setShowCreateModal(true) },
+            ]}
+          />
+        )
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredGoals.map((goal) => {

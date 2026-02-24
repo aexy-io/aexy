@@ -18,7 +18,9 @@ import {
   Loader2,
   AlertCircle,
   RefreshCw,
+  LayoutTemplate,
 } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
 import {
@@ -209,18 +211,15 @@ export default function EmailMarketingPage() {
                 <Loader2 className="h-8 w-8 text-muted-foreground animate-spin mx-auto" />
               </div>
             ) : campaigns.length === 0 ? (
-              <div className="bg-background/50 border border-border rounded-xl p-12 text-center">
-                <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-foreground mb-2">No campaigns yet</h3>
-                <p className="text-muted-foreground mb-4">Create your first email campaign to get started.</p>
-                <Link
-                  href="/email-marketing/campaigns/new"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition"
-                >
-                  <Plus className="h-4 w-4" />
-                  Create Campaign
-                </Link>
-              </div>
+              <EmptyState
+                icon={Mail}
+                title="No campaigns yet"
+                description="Create email campaigns to engage your audience with targeted messaging."
+                actions={[
+                  { label: "Create Campaign", href: "/email-marketing/campaigns/new" },
+                ]}
+                compact
+              />
             ) : (
               <div className="bg-background/50 border border-border rounded-xl overflow-hidden">
                 <table className="w-full">
@@ -302,18 +301,15 @@ export default function EmailMarketingPage() {
                 <Loader2 className="h-8 w-8 text-muted-foreground animate-spin mx-auto" />
               </div>
             ) : templates.length === 0 ? (
-              <div className="bg-background/50 border border-border rounded-xl p-12 text-center">
-                <Palette className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-foreground mb-2">No templates yet</h3>
-                <p className="text-muted-foreground mb-4">Create reusable email templates for your campaigns.</p>
-                <Link
-                  href="/email-marketing/templates/new"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition"
-                >
-                  <Plus className="h-4 w-4" />
-                  Create Template
-                </Link>
-              </div>
+              <EmptyState
+                icon={LayoutTemplate}
+                title="No templates yet"
+                description="Design reusable email templates to speed up your campaign creation."
+                actions={[
+                  { label: "Create Template", href: "/email-marketing/templates/new" },
+                ]}
+                compact
+              />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {templates.map((template) => (

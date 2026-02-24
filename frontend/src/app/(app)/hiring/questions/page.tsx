@@ -22,6 +22,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
+import { EmptyState } from "@/components/EmptyState";
+import { HelpCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useQuestions } from "@/hooks/useQuestions";
@@ -523,15 +525,23 @@ export default function QuestionsPage() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : questions.length === 0 ? (
-            <div className="text-center py-12">
-              <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">No questions found</h3>
-              <p className="text-muted-foreground mb-4">
-                {searchQuery || typeFilter || difficultyFilter || assessmentFilter
-                  ? "Try adjusting your filters"
-                  : "Create an assessment to add questions"}
-              </p>
-            </div>
+            searchQuery || typeFilter || difficultyFilter || assessmentFilter ? (
+              <div className="text-center py-12">
+                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">No questions found</h3>
+                <p className="text-muted-foreground mb-4">Try adjusting your filters</p>
+              </div>
+            ) : (
+              <EmptyState
+                icon={HelpCircle}
+                title="No questions yet"
+                description="Build a question bank for assessments. Create coding challenges, multiple choice, or free-text questions."
+                actions={[
+                  { label: "Go to Assessments", href: "/hiring/assessments" },
+                ]}
+                compact
+              />
+            )
           ) : (
             <table className="w-full min-w-[600px]">
               <thead className="bg-muted/50 border-b border-border">

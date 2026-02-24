@@ -4,11 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   FileStack,
+  FileText,
   Plus,
   FolderPlus,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import {
   useComplianceDocuments,
@@ -164,30 +166,37 @@ export default function DocumentCenterPage() {
               ))}
             </div>
           ) : documents.length === 0 ? (
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
-              <FileStack className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-              <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                {search || statusFilter || tagFilter
-                  ? "No documents match your filters"
-                  : selectedFolderId
-                  ? "This folder is empty"
-                  : "No documents yet"}
-              </h2>
-              <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-4">
-                {search || statusFilter || tagFilter
-                  ? "Try adjusting your search or filters."
-                  : "Upload your first compliance document to get started."}
-              </p>
-              {!search && !statusFilter && !tagFilter && (
-                <button
-                  onClick={() => setShowUpload(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-                >
-                  <Plus className="h-4 w-4" />
-                  Upload Document
-                </button>
-              )}
-            </div>
+            search || statusFilter || tagFilter ? (
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
+                <FileStack className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  No documents match your filters
+                </h2>
+                <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-4">
+                  Try adjusting your search or filters.
+                </p>
+              </div>
+            ) : selectedFolderId ? (
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
+                <FileStack className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  This folder is empty
+                </h2>
+                <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-4">
+                  Upload a document to this folder to get started.
+                </p>
+              </div>
+            ) : (
+              <EmptyState
+                icon={FileText}
+                title="No documents yet"
+                description="Upload compliance documents to organize and track your regulatory requirements."
+                actions={[
+                  { label: "Upload Document", onClick: () => setShowUpload(true) },
+                ]}
+                compact
+              />
+            )
           ) : (
             <>
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
