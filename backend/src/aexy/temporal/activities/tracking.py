@@ -71,6 +71,7 @@ class MapSlackUsersInput:
     integration_id: str
 
 
+
 @activity.defn
 async def send_standup_reminders(input: SendStandupRemindersInput) -> dict[str, Any]:
     """Send standup reminders to configured channels."""
@@ -161,3 +162,5 @@ async def map_slack_users(input: MapSlackUsersInput) -> dict[str, Any]:
 
     from aexy.processing.tracking_tasks import _map_slack_users
     return await _map_slack_users(input.integration_id)
+
+

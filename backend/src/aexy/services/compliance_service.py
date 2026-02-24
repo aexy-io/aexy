@@ -8,6 +8,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from aexy.services.automation_service import dispatch_automation_event
 from aexy.models.compliance import (
     AssignmentStatus,
     AuditActionType,
@@ -42,8 +43,6 @@ from aexy.schemas.compliance import (
     TrainingAssignmentWaive,
     TrainingAssignmentWithDetails,
 )
-
-from aexy.services.automation_service import dispatch_automation_event
 
 logger = logging.getLogger(__name__)
 
@@ -1720,6 +1719,7 @@ class ComplianceService:
             assignment.status = AssignmentStatus.OVERDUE.value
 
         await self.db.commit()
+
         return len(assignments)
 
     async def update_certification_statuses(
@@ -1748,6 +1748,7 @@ class ComplianceService:
             cert.status = CertificationStatus.EXPIRING_SOON.value
 
         # Find expiring soon certifications that should be marked as expired
+        # (dispatch expiring triggers after commit below)
         expired_query = select(DeveloperCertification).where(
             and_(
                 DeveloperCertification.workspace_id == workspace_id,
@@ -1767,4 +1768,5 @@ class ComplianceService:
             cert.status = CertificationStatus.EXPIRED.value
 
         await self.db.commit()
+
         return len(expiring_certs) + len(expired_certs)
