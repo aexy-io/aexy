@@ -24,6 +24,7 @@ import {
   HiringRequirement,
 } from "@/lib/api";
 import { useOrganizationAssessmentMetrics, useAssessments } from "@/hooks/useAssessments";
+import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
 
 export default function HiringDashboardPage() {
   const { isLoading, isAuthenticated } = useAuth();
@@ -361,6 +362,11 @@ export default function HiringDashboardPage() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Automations */}
+        <div className="mt-8">
+          <ModuleAutomationsPanel module="hiring" moduleLabel="Hiring" compact />
         </div>
     </main>
   );

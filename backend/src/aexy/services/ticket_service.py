@@ -316,6 +316,7 @@ class TicketService:
 
         # Dispatch automation events
         if "status" in data and data["status"] != old_status:
+            new_status = data["status"]
             # Dispatch ticket.status_changed
             await dispatch_automation_event(
                 db=self.db,
@@ -327,12 +328,34 @@ class TicketService:
                     "ticket_id": ticket.id,
                     "ticket_number": ticket.ticket_number,
                     "old_status": old_status,
-                    "new_status": data["status"],
+                    "new_status": new_status,
                     "submitter_email": ticket.submitter_email,
                     "assignee_id": ticket.assignee_id,
                     "workspace_id": ticket.workspace_id,
                 },
             )
+
+            # Dispatch ticket.reopened when a resolved/closed ticket goes back to open state
+            closed_statuses = {TicketStatus.RESOLVED.value, TicketStatus.CLOSED.value}
+            open_statuses = {TicketStatus.NEW.value, TicketStatus.OPEN.value, TicketStatus.IN_PROGRESS.value}
+            if old_status in closed_statuses and new_status in open_statuses:
+                await dispatch_automation_event(
+                    db=self.db,
+                    workspace_id=ticket.workspace_id,
+                    module="tickets",
+                    trigger_type="ticket.reopened",
+                    entity_id=ticket.id,
+                    trigger_data={
+                        "ticket_id": ticket.id,
+                        "ticket_number": ticket.ticket_number,
+                        "old_status": old_status,
+                        "new_status": new_status,
+                        "reopened_by_id": updated_by_id,
+                        "submitter_email": ticket.submitter_email,
+                        "assignee_id": ticket.assignee_id,
+                        "workspace_id": ticket.workspace_id,
+                    },
+                )
         else:
             # Dispatch ticket.updated for other changes
             await dispatch_automation_event(
