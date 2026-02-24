@@ -30,6 +30,7 @@ import {
   useBestSendTimes,
   useTopCampaigns,
 } from "@/hooks/useEmailMarketing";
+import { CAMPAIGN_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
 export default function EmailMarketingPage() {
   const [activeTab, setActiveTab] = useState<"campaigns" | "templates" | "analytics" | "infrastructure" | "automations">("campaigns");
@@ -51,23 +52,6 @@ export default function EmailMarketingPage() {
     avgOpenRate: analyticsOverview?.avg_open_rate || 0,
     avgClickRate: analyticsOverview?.avg_click_rate || 0,
     activeCampaigns: campaigns.filter(c => c.status === "sending" || c.status === "scheduled").length,
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "sent":
-      case "completed":
-        return "bg-emerald-500/20 text-emerald-400";
-      case "sending":
-      case "scheduled":
-        return "bg-sky-500/20 text-sky-400";
-      case "paused":
-        return "bg-amber-500/20 text-amber-400";
-      case "cancelled":
-        return "bg-red-500/20 text-red-400";
-      default:
-        return "bg-muted text-muted-foreground";
-    }
   };
 
   const getDomainStatusColor = (domain: { is_active: boolean; warming_status: string; health_score: number }) => {
@@ -265,7 +249,7 @@ export default function EmailMarketingPage() {
                             </Link>
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(campaign.status)}`}>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(CAMPAIGN_STATUS_COLORS, campaign.status).bg} ${getStatusColor(CAMPAIGN_STATUS_COLORS, campaign.status).text}`}>
                               {campaign.status}
                             </span>
                           </td>

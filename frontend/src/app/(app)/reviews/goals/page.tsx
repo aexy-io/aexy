@@ -21,29 +21,22 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { useGoals } from "@/hooks/useReviews";
 import { SearchInput } from "@/components/ui/search-input";
 import { WorkGoal, GoalType } from "@/lib/api";
+import { GOAL_TYPE_COLORS, GOAL_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
-// Goal type colors
-const goalTypeColors: Record<GoalType, { text: string; bg: string }> = {
-  performance: { text: "text-cyan-600 dark:text-cyan-400", bg: "bg-cyan-500/10" },
-  skill_development: { text: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10" },
-  project: { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10" },
-  leadership: { text: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10" },
-  team_contribution: { text: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10" },
-};
-
-// Goal status colors
-const goalStatusColors: Record<string, { text: string; bg: string; icon: React.ReactNode }> = {
-  active: { text: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10", icon: <Clock className="h-3.5 w-3.5" /> },
-  in_progress: { text: "text-cyan-600 dark:text-cyan-400", bg: "bg-cyan-500/10", icon: <TrendingUp className="h-3.5 w-3.5" /> },
-  completed: { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10", icon: <CheckCircle className="h-3.5 w-3.5" /> },
-  cancelled: { text: "text-muted-foreground", bg: "bg-muted-foreground/10", icon: <AlertCircle className="h-3.5 w-3.5" /> },
+// Goal status colors extended with icons
+const goalStatusIcons: Record<string, React.ReactNode> = {
+  active: <Clock className="h-3.5 w-3.5" />,
+  in_progress: <TrendingUp className="h-3.5 w-3.5" />,
+  completed: <CheckCircle className="h-3.5 w-3.5" />,
+  cancelled: <AlertCircle className="h-3.5 w-3.5" />,
 };
 
 // Goal Card Component
 function GoalCard({ goal, onDelete }: { goal: WorkGoal; onDelete: (id: string) => void }) {
   const progressPercent = goal.progress_percentage || 0;
-  const typeColors = goalTypeColors[goal.goal_type] || goalTypeColors.performance;
-  const statusColors = goalStatusColors[goal.status] || goalStatusColors.active;
+  const typeColors = getStatusColor(GOAL_TYPE_COLORS, goal.goal_type);
+  const statusColors = getStatusColor(GOAL_STATUS_COLORS, goal.status);
+  const statusIcon = goalStatusIcons[goal.status] || null;
 
   return (
     <div className="bg-muted/70 rounded-xl border border-border hover:border-border transition overflow-hidden">
@@ -54,7 +47,7 @@ function GoalCard({ goal, onDelete }: { goal: WorkGoal; onDelete: (id: string) =
               {goal.goal_type.replace("_", " ")}
             </span>
             <span className={`${statusColors.text} ${statusColors.bg} text-xs px-2 py-0.5 rounded-full capitalize flex items-center gap-1`}>
-              {statusColors.icon}
+              {statusIcon}
               {goal.status.replace("_", " ")}
             </span>
           </div>

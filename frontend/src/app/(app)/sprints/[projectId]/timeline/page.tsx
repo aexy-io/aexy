@@ -24,17 +24,14 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/premium-card";
+import { SPRINT_STATUS_COLORS as SPRINT_COLORS_MAP } from "@/lib/statusColors";
 
 type ZoomLevel = "week" | "month" | "quarter";
 
-// Sprint status colors
-const SPRINT_STATUS_COLORS: Record<string, string> = {
-  planning: "bg-blue-500",
-  active: "bg-green-500",
-  review: "bg-amber-500",
-  retrospective: "bg-purple-500",
-  completed: "bg-muted-foreground",
-};
+// Derive flat bg-only map from centralized StatusColor tokens
+const SPRINT_STATUS_COLORS: Record<string, string> = Object.fromEntries(
+  Object.entries(SPRINT_COLORS_MAP).map(([k, v]) => [k, v.bg])
+);
 
 // Generate date range for timeline
 function generateDateRange(startDate: Date, endDate: Date, zoomLevel: ZoomLevel): Date[] {

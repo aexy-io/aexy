@@ -28,16 +28,12 @@ import {
   useContributionSummary,
 } from "@/hooks/useReviews";
 import { WorkGoal, ReviewCycle } from "@/lib/api";
+import { GOAL_STATUS_COLORS, REVIEW_CYCLE_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
 // Goal Card Component
 function GoalCard({ goal }: { goal: WorkGoal }) {
   const progressPercent = goal.progress_percentage || 0;
-  const statusColors: Record<string, string> = {
-    active: "text-blue-400 bg-blue-500/10",
-    in_progress: "text-cyan-400 bg-cyan-500/10",
-    completed: "text-emerald-400 bg-emerald-500/10",
-    cancelled: "text-muted-foreground bg-muted-foreground/10",
-  };
+  const goalColor = getStatusColor(GOAL_STATUS_COLORS, goal.status);
 
   return (
     <Link
@@ -47,9 +43,7 @@ function GoalCard({ goal }: { goal: WorkGoal }) {
       <div className="flex items-start justify-between mb-2">
         <h4 className="text-foreground font-medium line-clamp-1">{goal.title}</h4>
         <span
-          className={`text-xs px-2 py-0.5 rounded-full capitalize ${
-            statusColors[goal.status] || statusColors.active
-          }`}
+          className={`text-xs px-2 py-0.5 rounded-full capitalize ${goalColor.text} ${goalColor.bg}`}
         >
           {goal.status.replace("_", " ")}
         </span>
@@ -75,15 +69,7 @@ function GoalCard({ goal }: { goal: WorkGoal }) {
 
 // Cycle Card Component
 function CycleCard({ cycle }: { cycle: ReviewCycle }) {
-  const statusColors: Record<string, { text: string; bg: string }> = {
-    draft: { text: "text-muted-foreground", bg: "bg-muted-foreground/10" },
-    active: { text: "text-green-600 dark:text-green-400", bg: "bg-green-500/10" },
-    self_review: { text: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10" },
-    peer_review: { text: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10" },
-    manager_review: { text: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10" },
-    completed: { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10" },
-  };
-  const colors = statusColors[cycle.status] || statusColors.draft;
+  const colors = getStatusColor(REVIEW_CYCLE_STATUS_COLORS, cycle.status);
 
   return (
     <Link
