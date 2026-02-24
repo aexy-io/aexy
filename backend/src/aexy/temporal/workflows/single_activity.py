@@ -48,7 +48,7 @@ def _get_retry_policy(name: str) -> RetryPolicy:
             backoff_coefficient=2.0,
             maximum_interval=timedelta(minutes=10),
             maximum_attempts=4,
-            non_retryable_error_types=["GitHubAuthError"],
+            non_retryable_error_types=["GitHubAuthError", "GitHubNotFoundError"],
         )
     elif name == "webhook":
         return RetryPolicy(
