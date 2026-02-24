@@ -13,9 +13,9 @@ from sqlalchemy.orm import selectinload
 from aexy.core.config import get_settings
 from aexy.core.database import async_session_maker
 from aexy.models.activity import CodeReview, Commit, PullRequest
-from aexy.models.developer import Developer, GitHubConnection
+from aexy.models.developer import Developer, GitHubConnection, GitHubInstallation
 from aexy.models.repository import DeveloperRepository, Repository
-from aexy.services.github_service import GitHubAPIError, GitHubAuthError, GitHubService
+from aexy.services.github_service import GitHubAPIError, GitHubAuthError, GitHubNotFoundError, GitHubService
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -149,9 +149,15 @@ class SyncService:
         if not connection:
             raise ValueError("GitHub connection not found")
 
+        # Refresh token if expired (GitHub App tokens expire after ~8 hours)
+        await self._ensure_valid_token(connection)
+
         repo = dev_repo.repository
         owner, repo_name = repo.full_name.split("/")
         repo_language = repo.language if hasattr(repo, 'language') else None
+        github_username = connection.github_username or developer_id
+
+        logger.info(f"Starting sync for {repo.full_name} using token of @{github_username}")
 
         # Mark as syncing
         dev_repo.sync_status = "syncing"
@@ -195,7 +201,7 @@ class SyncService:
             await self.db.flush()
 
             logger.info(
-                f"Sync complete for {repo.full_name}: "
+                f"Sync complete for {repo.full_name} (@{github_username}): "
                 f"{commits_synced} commits, {prs_synced} PRs, {reviews_synced} reviews"
             )
 
@@ -217,7 +223,7 @@ class SyncService:
             }
 
         except GitHubAuthError as e:
-            logger.error(f"GitHub auth failed for repository {repository_id}: {e}")
+            logger.error(f"GitHub auth failed for {repo.full_name} (@{github_username}): {e}")
             dev_repo.sync_status = "failed"
             dev_repo.sync_error = "GitHub authentication failed - please reconnect your GitHub account"
             dev_repo.updated_at = datetime.now(timezone.utc)
@@ -226,13 +232,106 @@ class SyncService:
             connection.auth_error = "GitHub token is invalid or has been revoked. Please reconnect your GitHub account."
             await self.db.flush()
             raise
+        except GitHubNotFoundError as e:
+            # Check if this is a GitHub App token with limited repo access
+            sync_error = await self._get_not_found_error_message(
+                connection, owner, repo_name, repo.full_name
+            )
+            logger.error(f"Repository not accessible: {repo.full_name} (@{github_username}): {e}")
+            dev_repo.sync_status = "failed"
+            dev_repo.sync_error = sync_error
+            dev_repo.updated_at = datetime.now(timezone.utc)
+            await self.db.flush()
+            raise
         except Exception as e:
-            logger.error(f"Sync failed for repository {repository_id}: {e}")
+            logger.error(f"Sync failed for {repo.full_name} (@{github_username}): {e}")
             dev_repo.sync_status = "failed"
             dev_repo.sync_error = str(e)
             dev_repo.updated_at = datetime.now(timezone.utc)
             await self.db.flush()
             raise
+
+    async def _ensure_valid_token(self, connection: GitHubConnection) -> None:
+        """Refresh the GitHub token if it's expired or about to expire.
+
+        GitHub App user-to-server tokens (ghu_) expire after ~8 hours.
+        This method uses the stored refresh token to get a new access token.
+        """
+        if not connection.token_expires_at or not connection.refresh_token:
+            return  # No expiry info or no refresh token — nothing to do
+
+        # Refresh if token expires within 5 minutes
+        from datetime import timedelta
+        if connection.token_expires_at > datetime.now(timezone.utc) + timedelta(minutes=5):
+            return  # Token still valid
+
+        logger.info(f"Refreshing expired GitHub token for @{connection.github_username}")
+        try:
+            gh = GitHubService()
+            refreshed = await gh.refresh_access_token(connection.refresh_token)
+
+            connection.access_token = refreshed.access_token
+            connection.auth_status = "active"
+            connection.auth_error = None
+            if refreshed.refresh_token:
+                connection.refresh_token = refreshed.refresh_token
+            if refreshed.expires_in:
+                connection.token_expires_at = (
+                    datetime.now(timezone.utc) + timedelta(seconds=refreshed.expires_in)
+                )
+            await self.db.flush()
+            logger.info(f"GitHub token refreshed for @{connection.github_username}")
+        except GitHubAuthError as e:
+            logger.error(f"Failed to refresh GitHub token for @{connection.github_username}: {e}")
+            connection.auth_status = "error"
+            connection.auth_error = "GitHub refresh token is invalid or expired. Please reconnect your GitHub account."
+            await self.db.flush()
+            raise
+
+    async def _get_not_found_error_message(
+        self,
+        connection: GitHubConnection,
+        owner: str,
+        repo_name: str,
+        full_name: str,
+    ) -> str:
+        """Build a user-friendly error message for 404 errors.
+
+        Detects whether the 404 is likely due to GitHub App installation
+        permissions vs the repo genuinely not existing.
+        """
+        # ghu_ tokens are GitHub App user-to-server tokens with limited repo access
+        if connection.access_token.startswith("ghu_"):
+            # Check if installation uses "selected" repos
+            stmt = select(GitHubInstallation).where(
+                GitHubInstallation.github_connection_id == connection.id,
+                GitHubInstallation.account_login == owner,
+            )
+            result = await self.db.execute(stmt)
+            installation = result.scalar_one_or_none()
+
+            if installation and installation.repository_selection == "selected":
+                return (
+                    f"Repository '{full_name}' is not accessible with your current GitHub App permissions. "
+                    f"Go to https://github.com/settings/installations/{installation.installation_id} "
+                    f"and add this repository, or switch to 'All repositories'."
+                )
+            elif installation:
+                return (
+                    f"Repository '{full_name}' not found on GitHub - "
+                    f"it may have been deleted, renamed, or made private"
+                )
+            else:
+                return (
+                    f"Repository '{full_name}' is not accessible. "
+                    f"No GitHub App installation found for '{owner}'. "
+                    f"Please reinstall the GitHub App or reconnect your account."
+                )
+
+        return (
+            "Repository not found on GitHub - "
+            "it may have been deleted, renamed, or made private"
+        )
 
     async def _run_sync(
         self,
