@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { redirect } from "next/navigation";
@@ -15,7 +15,8 @@ import {
   Target,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { insightsApi, SprintCapacityResponse } from "@/lib/api";
+import { insightsApi, SprintCapacityResponse, SprintCapacityDeveloper } from "@/lib/api";
+import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 
 export default function SprintCapacityPage() {
   const { isLoading: authLoading, isAuthenticated } = useAuth();
@@ -46,6 +47,88 @@ export default function SprintCapacityPage() {
 
   const confidenceColor = (c: number) =>
     c >= 0.7 ? "text-green-400" : c >= 0.4 ? "text-yellow-400" : "text-red-400";
+
+  const developerColumns = useMemo<DataTableColumn<SprintCapacityDeveloper>[]>(
+    () => [
+      {
+        id: "developer",
+        header: "Developer",
+        sortValue: (row) =>
+          (row.developer_name || row.developer_id).toLowerCase(),
+        cell: (row) => (
+          <Link
+            href={`/insights/developers/${row.developer_id}`}
+            className="text-indigo-400 hover:text-indigo-300"
+          >
+            {row.developer_name || row.developer_id.slice(0, 12)}
+          </Link>
+        ),
+      },
+      {
+        id: "commits",
+        header: "Commits",
+        headerClassName: "text-right",
+        cellClassName: "text-right font-medium",
+        sortValue: (row) => row.forecast.commits,
+        cell: (row) => <>~{row.forecast.commits.toFixed(0)}</>,
+      },
+      {
+        id: "prs",
+        header: "PRs",
+        headerClassName: "text-right",
+        cellClassName: "text-right",
+        sortValue: (row) => row.forecast.prs_merged,
+        cell: (row) => <>~{row.forecast.prs_merged.toFixed(0)}</>,
+      },
+      {
+        id: "lines",
+        header: "Lines",
+        headerClassName: "text-right",
+        cellClassName: "text-right",
+        sortValue: (row) => row.forecast.lines_added,
+        cell: (row) => (
+          <>
+            ~{row.forecast.lines_added > 1000
+              ? `${(row.forecast.lines_added / 1000).toFixed(1)}K`
+              : row.forecast.lines_added.toFixed(0)}
+          </>
+        ),
+      },
+      {
+        id: "story_points",
+        header: "Story Pts",
+        headerClassName: "text-right",
+        cellClassName: "text-right",
+        sortValue: (row) => row.forecast.story_points,
+        cell: (row) => <>~{row.forecast.story_points.toFixed(0)}</>,
+      },
+      {
+        id: "confidence",
+        header: "Confidence",
+        headerClassName: "text-right",
+        cellClassName: "text-right",
+        sortValue: (row) => row.confidence,
+        cell: (row) => (
+          <span className={confidenceColor(row.confidence)}>
+            {(row.confidence * 100).toFixed(0)}%
+          </span>
+        ),
+      },
+    ],
+    // confidenceColor is a stable function declared in the render scope
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  const sortedDevelopers = useMemo(
+    () =>
+      capacity?.per_developer
+        ? [...capacity.per_developer].sort(
+            (a, b) => b.forecast.commits - a.forecast.commits
+          )
+        : [],
+    [capacity?.per_developer]
+  );
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
@@ -149,59 +232,18 @@ export default function SprintCapacityPage() {
           </div>
 
           {/* Per-Developer Breakdown */}
-          <div className="bg-background border border-border rounded-xl p-5">
-            <h3 className="text-sm font-semibold text-foreground mb-4">
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">
               Per-Developer Breakdown
             </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[600px] text-sm">
-                <thead>
-                  <tr className="text-muted-foreground text-xs border-b border-border">
-                    <th className="text-left py-2 font-medium">Developer</th>
-                    <th className="text-right py-2 font-medium">Commits</th>
-                    <th className="text-right py-2 font-medium">PRs</th>
-                    <th className="text-right py-2 font-medium">Lines</th>
-                    <th className="text-right py-2 font-medium">Story Pts</th>
-                    <th className="text-right py-2 font-medium">Confidence</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {capacity.per_developer
-                    .sort((a, b) => b.forecast.commits - a.forecast.commits)
-                    .map((dev) => (
-                      <tr key={dev.developer_id} className="border-b border-border/50">
-                        <td className="py-2">
-                          <Link
-                            href={`/insights/developers/${dev.developer_id}`}
-                            className="text-indigo-400 hover:text-indigo-300"
-                          >
-                            {dev.developer_name || dev.developer_id.slice(0, 12)}
-                          </Link>
-                        </td>
-                        <td className="py-2 text-right text-foreground font-medium">
-                          ~{dev.forecast.commits.toFixed(0)}
-                        </td>
-                        <td className="py-2 text-right text-foreground">
-                          ~{dev.forecast.prs_merged.toFixed(0)}
-                        </td>
-                        <td className="py-2 text-right text-foreground">
-                          ~{dev.forecast.lines_added > 1000
-                            ? `${(dev.forecast.lines_added / 1000).toFixed(1)}K`
-                            : dev.forecast.lines_added.toFixed(0)}
-                        </td>
-                        <td className="py-2 text-right text-foreground">
-                          ~{dev.forecast.story_points.toFixed(0)}
-                        </td>
-                        <td className="py-2 text-right">
-                          <span className={`${confidenceColor(dev.confidence)}`}>
-                            {(dev.confidence * 100).toFixed(0)}%
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              columns={developerColumns}
+              data={sortedDevelopers}
+              rowKey={(row) => row.developer_id}
+              compact
+              emptyTitle="No developer data"
+              emptyDescription="No capacity data available for individual developers"
+            />
           </div>
         </>
       )}
