@@ -27,6 +27,7 @@ import {
   TestTube,
 } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { HelpTooltip } from "@/components/ui/tooltip";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -337,16 +338,25 @@ export default function CampaignDetailPage() {
                 <h3 className="text-lg font-medium text-foreground mb-4">Campaign Details</h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs text-muted-foreground uppercase tracking-wide">From</label>
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-xs text-muted-foreground uppercase tracking-wide">From</label>
+                      <HelpTooltip content="The sender name and email address recipients see. Use a recognizable name to improve open rates" />
+                    </div>
                     <p className="text-foreground">{campaign.from_name} &lt;{campaign.from_email}&gt;</p>
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground uppercase tracking-wide">Subject</label>
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-xs text-muted-foreground uppercase tracking-wide">Subject</label>
+                      <HelpTooltip content="The email subject recipients see in their inbox. Keep under 60 characters for best open rates" />
+                    </div>
                     <p className="text-foreground">{campaign.subject}</p>
                   </div>
                   {campaign.preview_text && (
                     <div>
-                      <label className="text-xs text-muted-foreground uppercase tracking-wide">Preview Text</label>
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-xs text-muted-foreground uppercase tracking-wide">Preview Text</label>
+                        <HelpTooltip content="Text shown after the subject line in email clients. First 90 characters are most visible" />
+                      </div>
                       <p className="text-foreground">{campaign.preview_text}</p>
                     </div>
                   )}

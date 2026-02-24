@@ -26,6 +26,7 @@ import {
   Vote,
 } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { HelpTooltip } from "@/components/ui/tooltip";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useProject } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
@@ -335,7 +336,10 @@ export default function ProjectSettingsPage() {
             </div>
 
             <div>
-              <label className="block text-sm text-muted-foreground mb-2">Status</label>
+              <div className="flex items-center gap-1.5 mb-2">
+                <label className="block text-sm text-muted-foreground">Status</label>
+                <HelpTooltip content="Controls the project lifecycle. Active projects are in progress, On Hold pauses work, Completed marks finished projects, and Archived hides them from default views" />
+              </div>
               <div className="flex gap-2 flex-wrap">
                 {STATUS_OPTIONS.map((opt) => (
                   <button
@@ -393,10 +397,13 @@ export default function ProjectSettingsPage() {
           <div className="bg-card rounded-xl p-6 mt-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <div>
-                <h2 className="text-lg font-medium text-foreground flex items-center gap-2">
-                  <Globe className="h-5 w-5 text-green-400" />
-                  Public Page Configuration
-                </h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-medium text-foreground flex items-center gap-2">
+                    <Globe className="h-5 w-5 text-green-400" />
+                    Public Page Configuration
+                  </h2>
+                  <HelpTooltip content="Configure which sections are visible on your project's public page. Anyone with the link can view enabled tabs" />
+                </div>
                 <p className="text-muted-foreground text-sm mt-1">
                   Choose which tabs to show on your public project page
                 </p>
@@ -520,7 +527,7 @@ export default function ProjectSettingsPage() {
               </div>
             )}
             <div className="flex justify-between">
-              <dt className="text-muted-foreground">Visibility</dt>
+              <dt className="text-muted-foreground flex items-center gap-1.5">Visibility <HelpTooltip content="Controls who can see this project. Public = all workspace members, Private = invited members only" /></dt>
               <dd className={`flex items-center gap-1.5 ${project.is_public ? "text-green-400" : "text-foreground"}`}>
                 {project.is_public ? <Globe className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
                 {project.is_public ? "Public" : "Private"}

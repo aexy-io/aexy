@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
+import { HelpTooltip } from "@/components/ui/tooltip";
 import { ToolSelector } from "@/components/agents/shared";
 import { useAgentTools } from "@/hooks/useAgents";
 import { getAgentTypeConfig, AgentType } from "@/lib/api";
@@ -56,9 +57,12 @@ export function ToolSelectionStep({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-foreground mb-2">
-          Select Tools
-        </h2>
+        <div className="flex items-center gap-1.5 mb-2">
+          <h2 className="text-xl font-semibold text-foreground">
+            Select Tools
+          </h2>
+          <HelpTooltip content="Capabilities the agent can use when responding. More tools increase flexibility but may reduce response speed" />
+        </div>
         <p className="text-muted-foreground">
           Choose which capabilities your agent should have. Tools determine what
           actions the agent can take.

@@ -29,6 +29,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { HelpTooltip } from "@/components/ui/tooltip";
 
 // Type icons
 const typeIcons: Record<CRMAttributeType, React.ReactNode> = {
@@ -57,6 +58,7 @@ interface TypeOption {
   label: string;
   description: string;
   category: "basic" | "select" | "contact" | "advanced";
+  tooltip?: string;
 }
 
 const attributeTypes: TypeOption[] = [
@@ -71,16 +73,16 @@ const attributeTypes: TypeOption[] = [
   // Select
   { value: "select", label: "Single Select", description: "Choose one option", category: "select" },
   { value: "multi_select", label: "Multi Select", description: "Choose multiple", category: "select" },
-  { value: "status", label: "Status", description: "Pipeline stages", category: "select" },
+  { value: "status", label: "Status", description: "Pipeline stages", category: "select", tooltip: "Predefined workflow states with color coding (e.g., New \u2192 In Progress \u2192 Done)" },
   // Contact
   { value: "email", label: "Email", description: "Email address", category: "contact" },
   { value: "phone", label: "Phone", description: "Phone number", category: "contact" },
   { value: "url", label: "URL", description: "Web link", category: "contact" },
   // Advanced
-  { value: "record_reference", label: "Record Reference", description: "Link to another record", category: "advanced" },
-  { value: "user_reference", label: "User Reference", description: "Link to user", category: "advanced" },
-  { value: "formula", label: "Formula", description: "Calculated field", category: "advanced" },
-  { value: "rollup", label: "Rollup", description: "Aggregate values", category: "advanced" },
+  { value: "record_reference", label: "Record Reference", description: "Link to another record", category: "advanced", tooltip: "Creates a link to another record, enabling relationship tracking" },
+  { value: "user_reference", label: "User Reference", description: "Link to user", category: "advanced", tooltip: "Links to a workspace member for ownership or assignment tracking" },
+  { value: "formula", label: "Formula", description: "Calculated field", category: "advanced", tooltip: "Calculated field using values from other attributes (e.g., total = price \u00d7 quantity)" },
+  { value: "rollup", label: "Rollup", description: "Aggregate values", category: "advanced", tooltip: "Aggregates values from linked records. Supports SUM, AVG, COUNT, MIN, MAX" },
   { value: "ai_computed", label: "AI Computed", description: "AI-generated value", category: "advanced" },
 ];
 
@@ -233,8 +235,11 @@ export function CreateAttributeModal({
                           <div className="p-2 bg-accent/50 rounded-lg text-muted-foreground">
                             {typeIcons[type.value]}
                           </div>
-                          <div>
-                            <div className="font-medium text-foreground">{type.label}</div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-medium text-foreground">{type.label}</span>
+                              {type.tooltip && <HelpTooltip content={type.tooltip} />}
+                            </div>
                             <div className="text-xs text-muted-foreground">{type.description}</div>
                           </div>
                         </button>
@@ -350,7 +355,10 @@ export function CreateAttributeModal({
                       className="w-4 h-4 rounded border-border bg-accent text-purple-500 focus:ring-purple-500"
                     />
                     <div>
-                      <div className="font-medium text-foreground">Required</div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium text-foreground">Required</span>
+                        <HelpTooltip content="This field must have a value before a record can be saved" />
+                      </div>
                       <div className="text-xs text-muted-foreground">
                         This field must have a value
                       </div>
@@ -366,7 +374,10 @@ export function CreateAttributeModal({
                         className="w-4 h-4 rounded border-border bg-accent text-purple-500 focus:ring-purple-500"
                       />
                       <div>
-                        <div className="font-medium text-foreground">Unique</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium text-foreground">Unique</span>
+                          <HelpTooltip content="Prevents duplicate values across all records" />
+                        </div>
                         <div className="text-xs text-muted-foreground">
                           No two records can have the same value
                         </div>
