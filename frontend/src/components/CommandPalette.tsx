@@ -12,11 +12,29 @@ import {
   Plus,
   Settings,
   Users,
-  GitBranch,
   Layers,
   Clock,
   ArrowRight,
   X,
+  LayoutDashboard,
+  Ticket,
+  Building2,
+  CalendarCheck,
+  Mail,
+  FormInput,
+  FileText,
+  ClipboardCheck,
+  GraduationCap,
+  MonitorCheck,
+  Bot,
+  Zap,
+  TrendingUp,
+  ShieldCheck,
+  Palmtree,
+  MessageSquare,
+  Ban,
+  Send,
+  UserPlus,
 } from "lucide-react";
 import { useCommandPalette, getModifierKey } from "@/hooks/useKeyboardShortcuts";
 import { Kbd } from "@/components/ui/kbd";
@@ -38,7 +56,7 @@ interface CommandPaletteProps {
   onCreateTask?: () => void;
 }
 
-export function CommandPalette({ workspaceId, projectId, onCreateTask }: CommandPaletteProps) {
+export function CommandPalette({ projectId, onCreateTask }: CommandPaletteProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -71,7 +89,7 @@ export function CommandPalette({ workspaceId, projectId, onCreateTask }: Command
   const commands = useMemo<CommandItem[]>(() => {
     const items: CommandItem[] = [];
 
-    // Navigation commands
+    // ─── Project-Scoped Navigation ─────────────────────
     if (projectId) {
       items.push(
         {
@@ -125,19 +143,199 @@ export function CommandPalette({ workspaceId, projectId, onCreateTask }: Command
       );
     }
 
-    // Global navigation
+    // ─── Global Navigation ─────────────────────────────
     items.push(
       {
-        id: "projects",
-        label: "All Projects",
-        description: "View all projects",
-        icon: <GitBranch className="h-4 w-4" />,
-        action: () => router.push("/sprints"),
+        id: "nav-dashboard",
+        label: "Dashboard",
+        description: "Go to main dashboard",
+        icon: <LayoutDashboard className="h-4 w-4" />,
+        action: () => router.push("/dashboard"),
         category: "navigation",
-        keywords: ["repositories", "teams"],
+        keywords: ["home", "overview", "main"],
       },
       {
-        id: "team",
+        id: "nav-tracking",
+        label: "Tracking",
+        description: "Standups, blockers, and time entries",
+        icon: <Target className="h-4 w-4" />,
+        action: () => router.push("/tracking"),
+        category: "navigation",
+        keywords: ["standup", "daily", "status"],
+      },
+      {
+        id: "nav-standups",
+        label: "Standups",
+        description: "View daily standups",
+        icon: <MessageSquare className="h-4 w-4" />,
+        action: () => router.push("/tracking/standups"),
+        category: "navigation",
+        keywords: ["daily", "standup", "update", "status"],
+      },
+      {
+        id: "nav-blockers",
+        label: "Blockers",
+        description: "View active blockers",
+        icon: <Ban className="h-4 w-4" />,
+        action: () => router.push("/tracking/blockers"),
+        category: "navigation",
+        keywords: ["blocked", "impediment", "issue"],
+      },
+      {
+        id: "nav-time",
+        label: "Time Tracking",
+        description: "Log and view time entries",
+        icon: <Clock className="h-4 w-4" />,
+        action: () => router.push("/tracking/time"),
+        category: "navigation",
+        keywords: ["hours", "timesheet", "log"],
+      },
+      {
+        id: "nav-planning",
+        label: "Planning",
+        description: "Sprint planning and projects",
+        icon: <Calendar className="h-4 w-4" />,
+        action: () => router.push("/sprints"),
+        category: "navigation",
+        keywords: ["sprints", "projects", "board", "kanban"],
+      },
+      {
+        id: "nav-tickets",
+        label: "Tickets",
+        description: "Help desk and support tickets",
+        icon: <Ticket className="h-4 w-4" />,
+        action: () => router.push("/tickets"),
+        category: "navigation",
+        keywords: ["support", "helpdesk", "issues", "bugs"],
+      },
+      {
+        id: "nav-crm",
+        label: "CRM",
+        description: "Contacts, deals, and pipeline",
+        icon: <Building2 className="h-4 w-4" />,
+        action: () => router.push("/crm"),
+        category: "navigation",
+        keywords: ["contacts", "deals", "pipeline", "sales", "customers"],
+      },
+      {
+        id: "nav-booking",
+        label: "Booking",
+        description: "Event types and scheduling",
+        icon: <CalendarCheck className="h-4 w-4" />,
+        action: () => router.push("/booking"),
+        category: "navigation",
+        keywords: ["calendar", "meeting", "schedule", "appointment"],
+      },
+      {
+        id: "nav-email",
+        label: "Email Marketing",
+        description: "Campaigns and email templates",
+        icon: <Mail className="h-4 w-4" />,
+        action: () => router.push("/email-marketing/campaigns"),
+        category: "navigation",
+        keywords: ["campaign", "newsletter", "broadcast", "email"],
+      },
+      {
+        id: "nav-hiring",
+        label: "Hiring",
+        description: "Candidates and assessments",
+        icon: <Users className="h-4 w-4" />,
+        action: () => router.push("/hiring/dashboard"),
+        category: "navigation",
+        keywords: ["recruit", "candidates", "interview", "assess"],
+      },
+      {
+        id: "nav-reviews",
+        label: "Reviews",
+        description: "Performance review cycles",
+        icon: <ClipboardCheck className="h-4 w-4" />,
+        action: () => router.push("/reviews/cycles"),
+        category: "navigation",
+        keywords: ["performance", "feedback", "goals", "peer"],
+      },
+      {
+        id: "nav-compliance",
+        label: "Compliance",
+        description: "Compliance dashboard and reminders",
+        icon: <ShieldCheck className="h-4 w-4" />,
+        action: () => router.push("/compliance"),
+        category: "navigation",
+        keywords: ["audit", "policy", "training", "certification"],
+      },
+      {
+        id: "nav-uptime",
+        label: "Uptime",
+        description: "Service monitors and incidents",
+        icon: <MonitorCheck className="h-4 w-4" />,
+        action: () => router.push("/uptime/monitors"),
+        category: "navigation",
+        keywords: ["monitor", "health", "status", "incident"],
+      },
+      {
+        id: "nav-forms",
+        label: "Forms",
+        description: "Form builder and responses",
+        icon: <FormInput className="h-4 w-4" />,
+        action: () => router.push("/forms"),
+        category: "navigation",
+        keywords: ["survey", "questionnaire", "form"],
+      },
+      {
+        id: "nav-docs",
+        label: "Docs",
+        description: "Documents and knowledge base",
+        icon: <FileText className="h-4 w-4" />,
+        action: () => router.push("/docs"),
+        category: "navigation",
+        keywords: ["wiki", "documentation", "notes", "knowledge"],
+      },
+      {
+        id: "nav-agents",
+        label: "AI Agents",
+        description: "Manage AI agents",
+        icon: <Bot className="h-4 w-4" />,
+        action: () => router.push("/agents"),
+        category: "navigation",
+        keywords: ["ai", "bot", "assistant", "automation"],
+      },
+      {
+        id: "nav-automations",
+        label: "Automations",
+        description: "Workflow automations",
+        icon: <Zap className="h-4 w-4" />,
+        action: () => router.push("/automations"),
+        category: "navigation",
+        keywords: ["workflow", "trigger", "automate"],
+      },
+      {
+        id: "nav-insights",
+        label: "Insights",
+        description: "Team analytics and leaderboard",
+        icon: <TrendingUp className="h-4 w-4" />,
+        action: () => router.push("/insights"),
+        category: "navigation",
+        keywords: ["analytics", "metrics", "leaderboard", "reports"],
+      },
+      {
+        id: "nav-learning",
+        label: "Learning",
+        description: "Courses and training",
+        icon: <GraduationCap className="h-4 w-4" />,
+        action: () => router.push("/learning"),
+        category: "navigation",
+        keywords: ["course", "training", "education"],
+      },
+      {
+        id: "nav-leave",
+        label: "Leave",
+        description: "Time off and leave requests",
+        icon: <Palmtree className="h-4 w-4" />,
+        action: () => router.push("/leave"),
+        category: "navigation",
+        keywords: ["vacation", "pto", "time off", "holiday"],
+      },
+      {
+        id: "nav-team",
         label: "Team",
         description: "View team members",
         icon: <Users className="h-4 w-4" />,
@@ -146,22 +344,22 @@ export function CommandPalette({ workspaceId, projectId, onCreateTask }: Command
         keywords: ["members", "people", "developers"],
       },
       {
-        id: "settings",
+        id: "nav-settings",
         label: "Settings",
         description: "Workspace settings",
         icon: <Settings className="h-4 w-4" />,
         action: () => router.push("/settings"),
         category: "navigation",
-        keywords: ["preferences", "configuration"],
+        keywords: ["preferences", "configuration", "account"],
       }
     );
 
-    // Actions
+    // ─── Quick Actions ─────────────────────────────────
     if (onCreateTask) {
       items.push({
         id: "create-task",
         label: "Create Task",
-        description: "Add a new task",
+        description: "Add a new task to the board",
         icon: <Plus className="h-4 w-4" />,
         shortcut: ["C"],
         action: () => {
@@ -169,9 +367,93 @@ export function CommandPalette({ workspaceId, projectId, onCreateTask }: Command
           onCreateTask();
         },
         category: "actions",
-        keywords: ["new", "add", "issue"],
+        keywords: ["new", "add", "issue", "task"],
       });
     }
+
+    items.push(
+      {
+        id: "action-new-ticket",
+        label: "New Ticket",
+        description: "Create a support ticket",
+        icon: <Plus className="h-4 w-4" />,
+        action: () => router.push("/tickets?action=new"),
+        category: "actions",
+        keywords: ["create", "ticket", "support", "bug"],
+      },
+      {
+        id: "action-submit-standup",
+        label: "Submit Standup",
+        description: "Log your daily standup",
+        icon: <MessageSquare className="h-4 w-4" />,
+        action: () => router.push("/tracking/standups"),
+        category: "actions",
+        keywords: ["daily", "standup", "update"],
+      },
+      {
+        id: "action-log-time",
+        label: "Log Time",
+        description: "Add a time entry",
+        icon: <Clock className="h-4 w-4" />,
+        action: () => router.push("/tracking/time"),
+        category: "actions",
+        keywords: ["hours", "timesheet"],
+      },
+      {
+        id: "action-new-form",
+        label: "Create Form",
+        description: "Build a new form or survey",
+        icon: <FormInput className="h-4 w-4" />,
+        action: () => router.push("/forms?action=new"),
+        category: "actions",
+        keywords: ["survey", "questionnaire"],
+      },
+      {
+        id: "action-new-doc",
+        label: "New Document",
+        description: "Create a new document",
+        icon: <FileText className="h-4 w-4" />,
+        action: () => router.push("/docs?action=new"),
+        category: "actions",
+        keywords: ["document", "page", "write"],
+      },
+      {
+        id: "action-new-automation",
+        label: "Create Automation",
+        description: "Build a new workflow automation",
+        icon: <Zap className="h-4 w-4" />,
+        action: () => router.push("/automations/new"),
+        category: "actions",
+        keywords: ["workflow", "trigger", "automate"],
+      },
+      {
+        id: "action-new-agent",
+        label: "Create Agent",
+        description: "Set up a new AI agent",
+        icon: <Bot className="h-4 w-4" />,
+        action: () => router.push("/agents/new"),
+        category: "actions",
+        keywords: ["ai", "bot", "assistant"],
+      },
+      {
+        id: "action-new-campaign",
+        label: "New Campaign",
+        description: "Create an email campaign",
+        icon: <Send className="h-4 w-4" />,
+        action: () => router.push("/email-marketing/campaigns?action=new"),
+        category: "actions",
+        keywords: ["email", "newsletter", "broadcast"],
+      },
+      {
+        id: "action-new-candidate",
+        label: "Add Candidate",
+        description: "Add a new hiring candidate",
+        icon: <UserPlus className="h-4 w-4" />,
+        action: () => router.push("/hiring/candidates?action=new"),
+        category: "actions",
+        keywords: ["recruit", "hire", "applicant"],
+      }
+    );
 
     return items;
   }, [projectId, router, onCreateTask, closePalette]);
@@ -183,12 +465,19 @@ export function CommandPalette({ workspaceId, projectId, onCreateTask }: Command
     }
 
     const lowerQuery = query.toLowerCase();
-    return commands.filter((cmd) => {
-      const matchLabel = cmd.label.toLowerCase().includes(lowerQuery);
-      const matchDesc = cmd.description?.toLowerCase().includes(lowerQuery);
-      const matchKeywords = cmd.keywords?.some((k) => k.includes(lowerQuery));
-      return matchLabel || matchDesc || matchKeywords;
-    });
+    return commands
+      .map((cmd) => {
+        const labelMatch = cmd.label.toLowerCase().includes(lowerQuery);
+        const descMatch = cmd.description?.toLowerCase().includes(lowerQuery);
+        const keywordMatch = cmd.keywords?.some((k) => k.includes(lowerQuery));
+        const exactLabel = cmd.label.toLowerCase().startsWith(lowerQuery);
+        // Score: exact prefix > label match > keyword match > description match
+        const score = (exactLabel ? 4 : 0) + (labelMatch ? 2 : 0) + (keywordMatch ? 1 : 0) + (descMatch ? 0.5 : 0);
+        return { cmd, score };
+      })
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(({ cmd }) => cmd);
   }, [commands, query]);
 
   // Group commands by category
