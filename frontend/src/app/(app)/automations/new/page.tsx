@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Loader2 } from "lucide-react";
+import { ChevronLeft, Loader2, Sparkles } from "lucide-react";
 import { Node, Edge } from "@xyflow/react";
 
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -36,9 +36,113 @@ const defaultTriggerTypes: Record<string, { type: string; label: string }> = {
   compliance: { type: "training.assigned", label: "Training Assigned" },
 };
 
-const getDefaultNodes = (module: string): Node[] => {
-  const trigger = defaultTriggerTypes[module] || defaultTriggerTypes.crm;
-  return [
+// Template definitions for pre-filling automation from /templates page
+interface AutomationTemplate {
+  name: string;
+  description: string;
+  module: AutomationModule;
+  triggerType: string;
+  triggerLabel: string;
+  actions: { type: string; label: string; config: Record<string, unknown> }[];
+}
+
+const AUTOMATION_TEMPLATES: Record<string, AutomationTemplate> = {
+  "missed-standup": {
+    name: "Missed Standup Follow-up",
+    description: "When a team member misses their standup, create a follow-up task and send a reminder.",
+    module: "tracking",
+    triggerType: "standup.missed",
+    triggerLabel: "Standup Missed",
+    actions: [
+      { type: "create_task", label: "Create Follow-up Task", config: { title: "Missed standup follow-up", priority: "medium" } },
+      { type: "send_notification", label: "Send Reminder", config: { channel: "slack" } },
+    ],
+  },
+  "blocker-escalation": {
+    name: "Blocker Auto-Escalation",
+    description: "Escalate blockers that remain unresolved for more than 2 days to the engineering manager.",
+    module: "tracking",
+    triggerType: "blocker.unresolved",
+    triggerLabel: "Blocker Unresolved",
+    actions: [
+      { type: "send_notification", label: "Notify Manager", config: { channel: "slack", recipient: "manager" } },
+      { type: "update_priority", label: "Increase Priority", config: { priority: "high" } },
+    ],
+  },
+  "velocity-alert": {
+    name: "Sprint Velocity Alert",
+    description: "Notify when sprint burndown deviates more than 20% from the ideal trajectory.",
+    module: "sprints",
+    triggerType: "sprint.velocity_deviation",
+    triggerLabel: "Velocity Deviation",
+    actions: [
+      { type: "send_notification", label: "Alert Team", config: { channel: "slack", threshold: 20 } },
+    ],
+  },
+  "lead-followup": {
+    name: "Lead Follow-up Sequence",
+    description: "Send follow-up emails to new CRM leads after 1, 3, and 7 days.",
+    module: "crm",
+    triggerType: "record.created",
+    triggerLabel: "Lead Created",
+    actions: [
+      { type: "send_email", label: "Day 1 Follow-up", config: { delay_days: 1 } },
+      { type: "send_email", label: "Day 3 Follow-up", config: { delay_days: 3 } },
+      { type: "send_email", label: "Day 7 Follow-up", config: { delay_days: 7 } },
+    ],
+  },
+  "welcome-sequence": {
+    name: "Welcome Email Sequence",
+    description: "Send onboarding emails when a new contact is added to CRM.",
+    module: "crm",
+    triggerType: "record.created",
+    triggerLabel: "Contact Created",
+    actions: [
+      { type: "send_email", label: "Welcome Email", config: { delay_days: 0 } },
+      { type: "send_email", label: "Getting Started", config: { delay_days: 2 } },
+      { type: "send_email", label: "Tips & Resources", config: { delay_days: 5 } },
+    ],
+  },
+  "compliance-alert": {
+    name: "Compliance Due Date Alert",
+    description: "Alert team members 7 days before compliance deadlines and escalate overdue items.",
+    module: "compliance",
+    triggerType: "compliance.deadline_approaching",
+    triggerLabel: "Deadline Approaching",
+    actions: [
+      { type: "send_notification", label: "7-Day Warning", config: { days_before: 7 } },
+      { type: "send_notification", label: "Escalate Overdue", config: { on_overdue: true } },
+    ],
+  },
+  "ai-triage": {
+    name: "AI Ticket Triage",
+    description: "Use AI to classify and route incoming tickets by priority and department.",
+    module: "tickets",
+    triggerType: "ticket.created",
+    triggerLabel: "Ticket Created",
+    actions: [
+      { type: "ai_classify", label: "AI Classification", config: { model: "auto" } },
+      { type: "assign_ticket", label: "Route to Team", config: { based_on: "classification" } },
+    ],
+  },
+  "deal-stage-alert": {
+    name: "Deal Stage Notification",
+    description: "Notify the sales team when a deal moves to a new pipeline stage.",
+    module: "crm",
+    triggerType: "deal.stage_changed",
+    triggerLabel: "Deal Stage Changed",
+    actions: [
+      { type: "send_notification", label: "Notify Sales Team", config: { channel: "slack" } },
+    ],
+  },
+};
+
+const getDefaultNodes = (module: string, tmpl?: AutomationTemplate | null): Node[] => {
+  const trigger = tmpl
+    ? { type: tmpl.triggerType, label: tmpl.triggerLabel }
+    : defaultTriggerTypes[module] || defaultTriggerTypes.crm;
+
+  const nodes: Node[] = [
     {
       id: "trigger-1",
       type: "trigger",
@@ -49,20 +153,57 @@ const getDefaultNodes = (module: string): Node[] => {
       },
     },
   ];
+
+  // Add action nodes from template
+  if (tmpl?.actions) {
+    tmpl.actions.forEach((action, i) => {
+      nodes.push({
+        id: `action-${i + 1}`,
+        type: "action",
+        position: { x: 250, y: 200 + i * 150 },
+        data: {
+          label: action.label,
+          action_type: action.type,
+          config: action.config,
+        },
+      });
+    });
+  }
+
+  return nodes;
 };
 
-const defaultEdges: Edge[] = [];
+const getDefaultEdges = (tmpl?: AutomationTemplate | null): Edge[] => {
+  if (!tmpl?.actions?.length) return [];
+
+  const edges: Edge[] = [
+    { id: "e-trigger-action-1", source: "trigger-1", target: "action-1" },
+  ];
+  for (let i = 1; i < tmpl.actions.length; i++) {
+    edges.push({
+      id: `e-action-${i}-action-${i + 1}`,
+      source: `action-${i}`,
+      target: `action-${i + 1}`,
+    });
+  }
+  return edges;
+};
 
 export default function NewAutomationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentWorkspace } = useWorkspace();
 
-  // Get module from URL query param
+  // Get module and template from URL query params
   const moduleParam = searchParams.get("module") as AutomationModule | null;
-  const [module, setModule] = useState<AutomationModule>(moduleParam || "crm");
-  const [name, setName] = useState("New Automation");
-  const [description, setDescription] = useState("");
+  const templateParam = searchParams.get("template");
+  const template = templateParam ? AUTOMATION_TEMPLATES[templateParam] : null;
+
+  const [module, setModule] = useState<AutomationModule>(
+    template?.module || moduleParam || "crm"
+  );
+  const [name, setName] = useState(template?.name || "New Automation");
+  const [description, setDescription] = useState(template?.description || "");
   const [isCreating, setIsCreating] = useState(false);
   const [automationId, setAutomationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -253,6 +394,17 @@ export default function NewAutomationPage() {
           )}
         </div>
 
+        {/* Template Banner */}
+        {template && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-primary/5 border-b border-primary/20 text-sm">
+            <Sparkles className="h-4 w-4 text-primary shrink-0" />
+            <span className="text-muted-foreground">
+              Pre-filled from template: <span className="text-foreground font-medium">{template.name}</span>
+              {" "}&mdash; customize the workflow below, then save.
+            </span>
+          </div>
+        )}
+
         {/* Workflow Canvas */}
         <div className="flex-1">
           <WorkflowCanvas
@@ -260,8 +412,8 @@ export default function NewAutomationPage() {
             automationId={automationId || "new"}
             workspaceId={workspaceId}
             module={module}
-            initialNodes={getDefaultNodes(module)}
-            initialEdges={defaultEdges}
+            initialNodes={getDefaultNodes(module, template)}
+            initialEdges={getDefaultEdges(template)}
             onSave={handleSave}
             onPublish={handlePublish}
             onUnpublish={handleUnpublish}
