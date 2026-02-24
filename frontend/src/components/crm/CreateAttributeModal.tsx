@@ -2,10 +2,8 @@
 
 import { useState, useEffect } from "react";
 import {
-  X,
   Plus,
   Trash2,
-  GripVertical,
   Type,
   Hash,
   DollarSign,
@@ -24,6 +22,13 @@ import {
 import { cn } from "@/lib/utils";
 import { CRMAttributeType } from "@/lib/api";
 import { ColorPicker, STATUS_COLORS } from "./ColorPicker";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 // Type icons
 const typeIcons: Record<CRMAttributeType, React.ReactNode> = {
@@ -139,8 +144,6 @@ export function CreateAttributeModal({
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
   const handleSelectType = (type: CRMAttributeType) => {
     setSelectedType(type);
     setStep("configure");
@@ -197,20 +200,14 @@ export function CreateAttributeModal({
   const typeInfo = selectedType ? attributeTypes.find((t) => t.value === selectedType) : null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-muted rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-border flex flex-col">
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-2xl p-0 gap-0 max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="text-xl font-semibold text-foreground">
+        <DialogHeader className="px-6 py-4 border-b border-border">
+          <DialogTitle className="text-xl">
             {step === "type" ? "Select attribute type" : "Configure attribute"}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-accent rounded-lg text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
@@ -384,7 +381,7 @@ export function CreateAttributeModal({
 
         {/* Footer */}
         {step === "configure" && (
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
+          <DialogFooter className="px-6 py-4 border-t border-border">
             <button
               onClick={onClose}
               className="px-4 py-2 border border-border text-foreground rounded-lg hover:bg-accent transition-colors"
@@ -398,9 +395,9 @@ export function CreateAttributeModal({
             >
               {isCreating ? "Creating..." : "Create Attribute"}
             </button>
-          </div>
+          </DialogFooter>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

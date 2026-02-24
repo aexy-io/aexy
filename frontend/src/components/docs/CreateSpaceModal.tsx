@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface CreateSpaceModalProps {
   isOpen: boolean;
@@ -79,142 +86,120 @@ export function CreateSpaceModal({
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/60 z-50"
-        onClick={onClose}
-      />
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-md p-0 gap-0">
+        <DialogHeader className="px-5 py-4 border-b border-border">
+          <DialogTitle>Create Space</DialogTitle>
+        </DialogHeader>
 
-      {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div
-          className="bg-muted border border-border rounded-xl shadow-2xl w-full max-w-md"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-            <h2 className="text-lg font-semibold text-foreground">Create Space</h2>
-            <button
-              onClick={onClose}
-              className="p-1 hover:bg-accent rounded-md transition-colors"
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {/* Icon & Color */}
+          <div className="flex items-start gap-4">
+            {/* Icon Preview */}
+            <div
+              className="h-14 w-14 rounded-lg flex items-center justify-center text-2xl flex-shrink-0"
+              style={{ backgroundColor: color }}
             >
-              <X className="h-5 w-5 text-muted-foreground" />
-            </button>
+              {icon}
+            </div>
+
+            {/* Icon & Color Selectors */}
+            <div className="flex-1 space-y-3">
+              {/* Icons */}
+              <div>
+                <label className="text-xs text-muted-foreground mb-1.5 block">Icon</label>
+                <div className="flex flex-wrap gap-1">
+                  {ICONS.map((i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setIcon(i)}
+                      className={`h-7 w-7 rounded flex items-center justify-center text-sm hover:bg-accent transition-colors ${
+                        icon === i ? "bg-accent ring-1 ring-primary-500" : ""
+                      }`}
+                    >
+                      {i}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Colors */}
+              <div>
+                <label className="text-xs text-muted-foreground mb-1.5 block">Color</label>
+                <div className="flex flex-wrap gap-1">
+                  {COLORS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setColor(c)}
+                      className={`h-6 w-6 rounded-full transition-transform ${
+                        color === c ? "ring-2 ring-white ring-offset-2 ring-offset-slate-800 scale-110" : ""
+                      }`}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Content */}
-          <form onSubmit={handleSubmit} className="p-5 space-y-4">
-            {/* Icon & Color */}
-            <div className="flex items-start gap-4">
-              {/* Icon Preview */}
-              <div
-                className="h-14 w-14 rounded-lg flex items-center justify-center text-2xl flex-shrink-0"
-                style={{ backgroundColor: color }}
-              >
-                {icon}
-              </div>
+          {/* Name */}
+          <div>
+            <label className="text-xs text-muted-foreground mb-1.5 block">Name</label>
+            <input
+              ref={inputRef}
+              type="text"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                setError("");
+              }}
+              placeholder="e.g., Engineering, Design, Marketing"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+            />
+          </div>
 
-              {/* Icon & Color Selectors */}
-              <div className="flex-1 space-y-3">
-                {/* Icons */}
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1.5 block">Icon</label>
-                  <div className="flex flex-wrap gap-1">
-                    {ICONS.map((i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setIcon(i)}
-                        className={`h-7 w-7 rounded flex items-center justify-center text-sm hover:bg-accent transition-colors ${
-                          icon === i ? "bg-accent ring-1 ring-primary-500" : ""
-                        }`}
-                      >
-                        {i}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+          {/* Description */}
+          <div>
+            <label className="text-xs text-muted-foreground mb-1.5 block">
+              Description <span className="text-muted-foreground">(optional)</span>
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What is this space for?"
+              rows={2}
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm resize-none"
+            />
+          </div>
 
-                {/* Colors */}
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1.5 block">Color</label>
-                  <div className="flex flex-wrap gap-1">
-                    {COLORS.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setColor(c)}
-                        className={`h-6 w-6 rounded-full transition-transform ${
-                          color === c ? "ring-2 ring-white ring-offset-2 ring-offset-slate-800 scale-110" : ""
-                        }`}
-                        style={{ backgroundColor: c }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
+          {/* Error */}
+          {error && (
+            <p className="text-sm text-red-400">{error}</p>
+          )}
 
-            {/* Name */}
-            <div>
-              <label className="text-xs text-muted-foreground mb-1.5 block">Name</label>
-              <input
-                ref={inputRef}
-                type="text"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  setError("");
-                }}
-                placeholder="e.g., Engineering, Design, Marketing"
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
-              />
-            </div>
-
-            {/* Description */}
-            <div>
-              <label className="text-xs text-muted-foreground mb-1.5 block">
-                Description <span className="text-muted-foreground">(optional)</span>
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="What is this space for?"
-                rows={2}
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm resize-none"
-              />
-            </div>
-
-            {/* Error */}
-            {error && (
-              <p className="text-sm text-red-400">{error}</p>
-            )}
-
-            {/* Actions */}
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-sm text-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isCreating}
-                className="px-4 py-2 text-sm bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {isCreating && <Loader2 className="h-4 w-4 animate-spin" />}
-                Create Space
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </>
+          {/* Actions */}
+          <DialogFooter className="pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm text-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isCreating}
+              className="px-4 py-2 text-sm bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isCreating && <Loader2 className="h-4 w-4 animate-spin" />}
+              Create Space
+            </button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
