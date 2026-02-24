@@ -12,7 +12,6 @@ import {
   ClipboardCheck,
   Mail,
   Plus,
-  Search,
   MoreVertical,
   Edit,
   Copy,
@@ -23,6 +22,7 @@ import {
   Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SearchInput } from "@/components/ui/search-input";
 
 type TemplateType = "jd" | "rubric" | "email";
 
@@ -232,16 +232,12 @@ export default function TemplatesPage() {
 
         {/* Filters */}
         <div className="flex items-center gap-4 mb-8">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search templates..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-muted text-foreground rounded-lg pl-10 pr-4 py-2 border border-border focus:border-primary-500 focus:outline-none text-sm"
-            />
-          </div>
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search templates..."
+            wrapperClassName="flex-1 max-w-md"
+          />
 
           <div className="flex items-center gap-2">
             <button

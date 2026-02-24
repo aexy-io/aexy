@@ -6,12 +6,12 @@ import Link from "next/link";
 import {
   Bell,
   Plus,
-  Search,
   ChevronLeft,
   ChevronRight,
   Filter,
   X,
 } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useReminders } from "@/hooks/useReminders";
 import { ReminderCard } from "@/components/reminders/shared";
@@ -107,16 +107,12 @@ export default function AllRemindersPage() {
       <div className="bg-card rounded-lg border border-border p-4 mb-6 space-y-4">
         {/* Search */}
         <form onSubmit={handleSearch} className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search reminders..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
+          <SearchInput
+            value={searchInput}
+            onChange={setSearchInput}
+            placeholder="Search reminders..."
+            wrapperClassName="flex-1"
+          />
           <button
             type="submit"
             className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-lg hover:bg-primary/90"

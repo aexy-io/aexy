@@ -10,7 +10,6 @@ import {
   Building2,
   Users,
   Plus,
-  Search,
   Filter,
   LayoutGrid,
   List,
@@ -33,6 +32,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SearchInput } from "@/components/ui/search-input";
 import { hiringApi, HiringCandidate, HiringCandidateStage } from "@/lib/api";
 
 // Candidate stages
@@ -486,16 +486,12 @@ export default function CandidatesPage() {
         {/* Filters */}
         <div className="flex items-center gap-4 mb-6">
           {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search candidates..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-muted text-foreground rounded-lg pl-10 pr-4 py-2 border border-border focus:border-primary-500 focus:outline-none text-sm"
-            />
-          </div>
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search candidates..."
+            wrapperClassName="flex-1 max-w-md"
+          />
 
           {/* Stage Filter */}
           <select

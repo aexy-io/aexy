@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   Plus,
-  Search,
   FileText,
   Trash2,
   Edit2,
@@ -27,6 +26,7 @@ import { TaskTemplate, TaskTemplateCreate, TaskPriority, taskTemplatesApi } from
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Badge, Skeleton } from "@/components/ui/premium-card";
+import { SearchInput } from "@/components/ui/search-input";
 
 // Priority configuration
 const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string; bgColor: string }> = {
@@ -594,16 +594,12 @@ export default function TaskTemplatesPage({
 
           {/* Filters */}
           <div className="flex items-center gap-3 mt-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search templates..."
-                className="w-full pl-10 pr-4 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500"
-              />
-            </div>
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Search templates..."
+              wrapperClassName="flex-1 max-w-md"
+            />
 
             {categories && categories.length > 0 && (
               <select

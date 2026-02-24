@@ -10,7 +10,6 @@ import {
   Settings,
   Zap,
   ChevronRight,
-  Search,
   LayoutGrid,
   List,
   Sparkles,
@@ -23,6 +22,7 @@ import {
   RefreshCw,
   ArrowUpRight,
 } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
 import { useCRMObjects } from "@/hooks/useCRM";
@@ -580,16 +580,12 @@ export default function CRMPage() {
               <>
                 {/* Search and View Toggle */}
                 <div className="flex items-center gap-4 mb-6">
-                  <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search objects..."
-                      className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
+                  <SearchInput
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    placeholder="Search objects..."
+                    wrapperClassName="flex-1"
+                  />
                   <div className="flex bg-muted border border-border rounded-lg p-1">
                     <button
                       onClick={() => setViewMode("grid")}

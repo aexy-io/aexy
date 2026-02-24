@@ -8,7 +8,6 @@ import {
   Plus,
   Palette,
   Trash2,
-  Search,
   Clock,
   Eye,
   Loader2,
@@ -20,6 +19,7 @@ import {
   Wand2,
   FileText,
 } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -272,16 +272,12 @@ export default function TemplatesPage() {
 
           {/* Search and Filters */}
           <div className="flex items-center gap-4 mb-6">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search templates..."
-                className="w-full pl-10 pr-4 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
-              />
-            </div>
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search templates..."
+              wrapperClassName="flex-1"
+            />
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition ${
