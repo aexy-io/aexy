@@ -71,6 +71,13 @@ class MapSlackUsersInput:
     integration_id: str
 
 
+@dataclass
+class CheckTimeEntryThresholdsInput:
+    """Check if developers' daily logged time crosses configured thresholds."""
+    min_hours_per_day: float = 4.0
+    max_hours_per_day: float = 12.0
+
+
 @activity.defn
 async def send_standup_reminders(input: SendStandupRemindersInput) -> dict[str, Any]:
     """Send standup reminders to configured channels."""
@@ -161,3 +168,69 @@ async def map_slack_users(input: MapSlackUsersInput) -> dict[str, Any]:
 
     from aexy.processing.tracking_tasks import _map_slack_users
     return await _map_slack_users(input.integration_id)
+
+
+@activity.defn
+async def check_time_entry_thresholds(input: CheckTimeEntryThresholdsInput) -> dict[str, Any]:
+    """Check if any developer's daily logged hours cross thresholds and dispatch automation triggers."""
+    from datetime import date, timezone, datetime
+    from sqlalchemy import select, func
+
+    from aexy.models.tracking import TimeEntry
+    from aexy.models.team import Team, TeamMember
+    from aexy.services.automation_service import dispatch_automation_event
+
+    logger.info("Checking time entry thresholds")
+    today = date.today()
+    triggered = 0
+
+    async with async_session_maker() as db:
+        # Get daily hours per developer (grouped)
+        result = await db.execute(
+            select(
+                TimeEntry.developer_id,
+                TimeEntry.workspace_id,
+                func.sum(TimeEntry.hours).label("total_hours"),
+            )
+            .where(func.date(TimeEntry.created_at) == today)
+            .group_by(TimeEntry.developer_id, TimeEntry.workspace_id)
+        )
+        rows = result.fetchall()
+
+        for row in rows:
+            dev_id = str(row.developer_id)
+            workspace_id = str(row.workspace_id) if row.workspace_id else None
+            total_hours = float(row.total_hours or 0)
+
+            if not workspace_id:
+                continue
+
+            # Check if below minimum or above maximum threshold
+            threshold_type = None
+            if total_hours < input.min_hours_per_day:
+                threshold_type = "below_minimum"
+            elif total_hours > input.max_hours_per_day:
+                threshold_type = "above_maximum"
+
+            if threshold_type:
+                try:
+                    await dispatch_automation_event(
+                        db=db,
+                        workspace_id=workspace_id,
+                        module="tracking",
+                        trigger_type="time_entry.threshold",
+                        entity_id=dev_id,
+                        trigger_data={
+                            "developer_id": dev_id,
+                            "date": str(today),
+                            "total_hours": total_hours,
+                            "threshold_type": threshold_type,
+                            "min_threshold": input.min_hours_per_day,
+                            "max_threshold": input.max_hours_per_day,
+                        },
+                    )
+                    triggered += 1
+                except Exception:
+                    logger.warning(f"Failed to dispatch time_entry.threshold for dev {dev_id}", exc_info=True)
+
+    return {"developers_checked": len(rows), "thresholds_triggered": triggered}

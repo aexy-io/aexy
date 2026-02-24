@@ -249,6 +249,77 @@ async def _aggregate_daily_standups(team_id: str | None) -> dict[str, Any]:
                 db.add(summary)
                 summaries_created += 1
 
+            # --- Automation trigger dispatches ---
+            from aexy.services.automation_service import dispatch_automation_event
+
+            workspace_id = str(team.workspace_id) if team.workspace_id else None
+            if workspace_id:
+                # standup.missed: dispatch for each team member who didn't submit today
+                submitted_dev_ids = {str(s.developer_id) for s in standups}
+                members_result2 = await db.execute(
+                    select(TeamMember.developer_id).where(TeamMember.team_id == team.id)
+                )
+                all_member_ids = [str(row[0]) for row in members_result2.fetchall()]
+                missed_dev_ids = [mid for mid in all_member_ids if mid not in submitted_dev_ids]
+
+                for dev_id in missed_dev_ids:
+                    try:
+                        await dispatch_automation_event(
+                            db=db,
+                            workspace_id=workspace_id,
+                            module="tracking",
+                            trigger_type="standup.missed",
+                            entity_id=dev_id,
+                            trigger_data={
+                                "developer_id": dev_id,
+                                "team_id": str(team.id),
+                                "standup_date": str(today),
+                            },
+                        )
+                    except Exception:
+                        logger.warning(f"Failed to dispatch standup.missed for dev {dev_id}", exc_info=True)
+
+                # participation.low: dispatch if participation rate drops below 50%
+                participation_rate = len(standups) / total_members if total_members > 0 else 0
+                if participation_rate < 0.5 and total_members > 0:
+                    try:
+                        await dispatch_automation_event(
+                            db=db,
+                            workspace_id=workspace_id,
+                            module="tracking",
+                            trigger_type="participation.low",
+                            entity_id=str(team.id),
+                            trigger_data={
+                                "team_id": str(team.id),
+                                "standup_date": str(today),
+                                "participation_rate": participation_rate,
+                                "submitted_count": len(standups),
+                                "total_members": total_members,
+                            },
+                        )
+                    except Exception:
+                        logger.warning(f"Failed to dispatch participation.low for team {team.id}", exc_info=True)
+
+                # sentiment.negative: dispatch if team avg sentiment is negative
+                if avg_sentiment is not None and avg_sentiment < -0.3:
+                    try:
+                        await dispatch_automation_event(
+                            db=db,
+                            workspace_id=workspace_id,
+                            module="tracking",
+                            trigger_type="sentiment.negative",
+                            entity_id=str(team.id),
+                            trigger_data={
+                                "team_id": str(team.id),
+                                "standup_date": str(today),
+                                "avg_sentiment_score": avg_sentiment,
+                                "team_mood": team_mood,
+                                "standups_analyzed": len(sentiments),
+                            },
+                        )
+                    except Exception:
+                        logger.warning(f"Failed to dispatch sentiment.negative for team {team.id}", exc_info=True)
+
         await db.commit()
 
     return {
@@ -335,6 +406,31 @@ async def _check_overdue_blockers() -> dict[str, Any]:
                     )
                     db.add(notification)
                     notifications_sent += 1
+
+                # Dispatch blocker.stale automation trigger
+                workspace_id = str(blocker.workspace_id) if blocker.workspace_id else None
+                if workspace_id:
+                    try:
+                        from aexy.services.automation_service import dispatch_automation_event
+                        hours_active = (datetime.utcnow() - blocker.reported_at).total_seconds() / 3600
+                        await dispatch_automation_event(
+                            db=db,
+                            workspace_id=workspace_id,
+                            module="tracking",
+                            trigger_type="blocker.stale",
+                            entity_id=str(blocker.id),
+                            trigger_data={
+                                "blocker_id": str(blocker.id),
+                                "developer_id": str(blocker.developer_id),
+                                "team_id": str(blocker.team_id),
+                                "severity": blocker.severity,
+                                "description": blocker.description[:200] if blocker.description else None,
+                                "hours_active": round(hours_active, 1),
+                                "reported_at": str(blocker.reported_at),
+                            },
+                        )
+                    except Exception:
+                        logger.warning(f"Failed to dispatch blocker.stale for {blocker.id}", exc_info=True)
 
         await db.commit()
 

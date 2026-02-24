@@ -18,6 +18,8 @@ const moduleLabels: Record<AutomationModule, string> = {
   sprints: "Sprints",
   forms: "Forms",
   booking: "Booking",
+  tracking: "Tracking",
+  compliance: "Compliance",
 };
 
 // Default trigger types per module
@@ -30,6 +32,8 @@ const defaultTriggerTypes: Record<string, { type: string; label: string }> = {
   sprints: { type: "task.created", label: "Task Created" },
   forms: { type: "form.submitted", label: "Form Submitted" },
   booking: { type: "booking.created", label: "Booking Created" },
+  tracking: { type: "standup.submitted", label: "Standup Submitted" },
+  compliance: { type: "training.assigned", label: "Training Assigned" },
 };
 
 const getDefaultNodes = (module: string): Node[] => {

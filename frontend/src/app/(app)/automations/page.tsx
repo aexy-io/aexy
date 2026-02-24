@@ -20,6 +20,8 @@ import {
   Calendar,
   FileText,
   CalendarCheck,
+  Activity,
+  ShieldCheck,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAutomations } from "@/hooks/useAutomations";
@@ -34,6 +36,8 @@ const moduleLabels: Record<AutomationModule, string> = {
   sprints: "Sprints",
   forms: "Forms",
   booking: "Booking",
+  tracking: "Tracking",
+  compliance: "Compliance",
 };
 
 const moduleIcons: Record<AutomationModule, React.ElementType> = {
@@ -45,6 +49,8 @@ const moduleIcons: Record<AutomationModule, React.ElementType> = {
   sprints: Calendar,
   forms: FileText,
   booking: CalendarCheck,
+  tracking: Activity,
+  compliance: ShieldCheck,
 };
 
 const moduleColors: Record<AutomationModule, string> = {
@@ -56,6 +62,8 @@ const moduleColors: Record<AutomationModule, string> = {
   sprints: "bg-yellow-500/20 text-yellow-400",
   forms: "bg-cyan-500/20 text-cyan-400",
   booking: "bg-indigo-500/20 text-indigo-400",
+  tracking: "bg-teal-500/20 text-teal-400",
+  compliance: "bg-red-500/20 text-red-400",
 };
 
 function ModuleBadge({ module }: { module: AutomationModule }) {
@@ -160,7 +168,7 @@ function AutomationCard({
   );
 }
 
-const ALL_MODULES: AutomationModule[] = ["crm", "tickets", "hiring", "email_marketing", "uptime", "sprints", "forms", "booking"];
+const ALL_MODULES: AutomationModule[] = ["crm", "tickets", "hiring", "email_marketing", "uptime", "sprints", "forms", "booking", "tracking", "compliance"];
 
 export default function AutomationsPage() {
   const router = useRouter();

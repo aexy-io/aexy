@@ -23,6 +23,7 @@ from aexy.models.tracking import (
     TrackingSource,
     WorkLog,
 )
+from aexy.services.automation_service import dispatch_automation_event
 from aexy.schemas.tracking import (
     BlockerCreate,
     BlockerEscalation,
@@ -309,6 +310,44 @@ async def submit_standup(
     db.add(new_standup)
     await db.commit()
     await db.refresh(new_standup)
+
+    # Dispatch standup.submitted automation trigger
+    if workspace_id:
+        await dispatch_automation_event(
+            db=db,
+            workspace_id=workspace_id,
+            module="tracking",
+            trigger_type="standup.submitted",
+            entity_id=str(new_standup.id),
+            trigger_data={
+                "standup_id": str(new_standup.id),
+                "developer_id": str(current_developer.id),
+                "team_id": str(new_standup.team_id),
+                "standup_date": str(target_date),
+                "yesterday_summary": standup.yesterday_summary,
+                "today_plan": standup.today_plan,
+                "blockers_summary": standup.blockers_summary,
+                "source": standup.source.value,
+            },
+        )
+
+        # Dispatch sentiment.negative if standup has a negative sentiment score
+        if new_standup.sentiment_score is not None and new_standup.sentiment_score < -0.3:
+            await dispatch_automation_event(
+                db=db,
+                workspace_id=workspace_id,
+                module="tracking",
+                trigger_type="sentiment.negative",
+                entity_id=str(new_standup.id),
+                trigger_data={
+                    "standup_id": str(new_standup.id),
+                    "developer_id": str(current_developer.id),
+                    "team_id": str(new_standup.team_id),
+                    "standup_date": str(target_date),
+                    "sentiment_score": new_standup.sentiment_score,
+                },
+            )
+
     return standup_to_response(new_standup)
 
 
@@ -446,6 +485,25 @@ async def create_work_log(
     db.add(new_log)
     await db.commit()
     await db.refresh(new_log)
+
+    # Dispatch work_log.submitted automation trigger
+    if workspace_id:
+        await dispatch_automation_event(
+            db=db,
+            workspace_id=workspace_id,
+            module="tracking",
+            trigger_type="work_log.submitted",
+            entity_id=str(new_log.id),
+            trigger_data={
+                "work_log_id": str(new_log.id),
+                "developer_id": str(current_developer.id),
+                "task_id": log.task_id,
+                "log_type": log.log_type.value,
+                "notes": log.notes,
+                "source": log.source.value,
+            },
+        )
+
     return work_log_to_response(new_log)
 
 
@@ -514,6 +572,26 @@ async def log_time(
     db.add(new_entry)
     await db.commit()
     await db.refresh(new_entry)
+
+    # Dispatch time_entry.created automation trigger
+    if workspace_id:
+        await dispatch_automation_event(
+            db=db,
+            workspace_id=workspace_id,
+            module="tracking",
+            trigger_type="time_entry.created",
+            entity_id=str(new_entry.id),
+            trigger_data={
+                "time_entry_id": str(new_entry.id),
+                "developer_id": str(current_developer.id),
+                "task_id": entry.task_id,
+                "duration_minutes": entry.duration_minutes,
+                "entry_date": str(new_entry.entry_date),
+                "description": entry.description,
+                "source": entry.source.value,
+            },
+        )
+
     return time_entry_to_response(new_entry)
 
 
@@ -617,6 +695,27 @@ async def report_blocker(
     db.add(new_blocker)
     await db.commit()
     await db.refresh(new_blocker)
+
+    # Dispatch blocker.created automation trigger
+    if workspace_id:
+        await dispatch_automation_event(
+            db=db,
+            workspace_id=workspace_id,
+            module="tracking",
+            trigger_type="blocker.created",
+            entity_id=str(new_blocker.id),
+            trigger_data={
+                "blocker_id": str(new_blocker.id),
+                "developer_id": str(current_developer.id),
+                "team_id": str(new_blocker.team_id),
+                "description": blocker.description,
+                "severity": blocker.severity.value,
+                "category": blocker.category.value,
+                "task_id": blocker.task_id,
+                "source": blocker.source.value,
+            },
+        )
+
     return blocker_to_response(new_blocker)
 
 
@@ -642,6 +741,26 @@ async def resolve_blocker(
 
     await db.commit()
     await db.refresh(blocker)
+
+    # Dispatch blocker.resolved automation trigger
+    if blocker.workspace_id:
+        await dispatch_automation_event(
+            db=db,
+            workspace_id=str(blocker.workspace_id),
+            module="tracking",
+            trigger_type="blocker.resolved",
+            entity_id=str(blocker.id),
+            trigger_data={
+                "blocker_id": str(blocker.id),
+                "developer_id": str(blocker.developer_id),
+                "resolved_by_id": str(current_developer.id),
+                "team_id": str(blocker.team_id),
+                "description": blocker.description,
+                "severity": blocker.severity,
+                "resolution_notes": resolution.resolution_notes,
+            },
+        )
+
     return blocker_to_response(blocker)
 
 
@@ -667,6 +786,26 @@ async def escalate_blocker(
 
     await db.commit()
     await db.refresh(blocker)
+
+    # Dispatch blocker.escalated automation trigger
+    if blocker.workspace_id:
+        await dispatch_automation_event(
+            db=db,
+            workspace_id=str(blocker.workspace_id),
+            module="tracking",
+            trigger_type="blocker.escalated",
+            entity_id=str(blocker.id),
+            trigger_data={
+                "blocker_id": str(blocker.id),
+                "developer_id": str(blocker.developer_id),
+                "escalated_to_id": escalation.escalate_to_id,
+                "team_id": str(blocker.team_id),
+                "description": blocker.description,
+                "severity": blocker.severity,
+                "escalation_notes": escalation.escalation_notes,
+            },
+        )
+
     return blocker_to_response(blocker)
 
 

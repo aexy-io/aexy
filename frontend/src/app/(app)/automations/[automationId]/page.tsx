@@ -18,6 +18,8 @@ const moduleLabels: Record<AutomationModule, string> = {
   sprints: "Sprints",
   forms: "Forms",
   booking: "Booking",
+  tracking: "Tracking",
+  compliance: "Compliance",
 };
 
 interface WorkflowDefinition {

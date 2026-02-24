@@ -8,6 +8,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from aexy.services.automation_service import dispatch_automation_event
 from aexy.models.compliance import (
     AssignmentStatus,
     AuditActionType,
@@ -88,6 +89,27 @@ class ComplianceService:
         )
         self.db.add(log)
         await self.db.flush()
+
+        # Dispatch audit.logged automation trigger
+        try:
+            await dispatch_automation_event(
+                db=self.db,
+                workspace_id=workspace_id,
+                module="compliance",
+                trigger_type="audit.logged",
+                entity_id=str(log.id),
+                trigger_data={
+                    "audit_log_id": str(log.id),
+                    "actor_id": actor_id,
+                    "action_type": action_type.value,
+                    "target_type": target_type,
+                    "target_id": target_id,
+                    "description": description,
+                },
+            )
+        except Exception:
+            logger.warning("Failed to dispatch audit.logged automation trigger", exc_info=True)
+
         return log
 
     # ==================== Mandatory Training CRUD ====================
@@ -128,6 +150,22 @@ class ComplianceService:
             description=f"Created mandatory training: {training.name}",
         )
         await self.db.commit()
+
+        # Dispatch training.created automation trigger
+        await dispatch_automation_event(
+            db=self.db,
+            workspace_id=workspace_id,
+            module="compliance",
+            trigger_type="training.created",
+            entity_id=training.id,
+            trigger_data={
+                "training_id": training.id,
+                "name": training.name,
+                "applies_to_type": training.applies_to_type,
+                "due_days_after_assignment": training.due_days_after_assignment,
+                "created_by_id": created_by_id,
+            },
+        )
 
         logger.info(f"Created mandatory training {training.id} in workspace {workspace_id}")
         return training
@@ -321,6 +359,21 @@ class ComplianceService:
             description=f"Assigned training to developer {data.developer_id}",
         )
         await self.db.commit()
+
+        # Dispatch training.assigned automation trigger
+        await dispatch_automation_event(
+            db=self.db,
+            workspace_id=workspace_id,
+            module="compliance",
+            trigger_type="training.assigned",
+            entity_id=assignment.id,
+            trigger_data={
+                "assignment_id": assignment.id,
+                "developer_id": data.developer_id,
+                "mandatory_training_id": data.mandatory_training_id,
+                "due_date": str(data.due_date),
+            },
+        )
 
         return assignment
 
@@ -587,6 +640,21 @@ class ComplianceService:
             await self.db.commit()
             await self.db.refresh(assignment)
 
+            # Dispatch training.started automation trigger
+            await dispatch_automation_event(
+                db=self.db,
+                workspace_id=workspace_id,
+                module="compliance",
+                trigger_type="training.started",
+                entity_id=assignment.id,
+                trigger_data={
+                    "assignment_id": assignment.id,
+                    "developer_id": developer_id,
+                    "mandatory_training_id": assignment.mandatory_training_id,
+                    "started_at": str(assignment.started_at),
+                },
+            )
+
         return assignment
 
     async def complete_assignment(
@@ -617,6 +685,22 @@ class ComplianceService:
 
         await self.db.commit()
         await self.db.refresh(assignment)
+
+        # Dispatch training.completed automation trigger
+        await dispatch_automation_event(
+            db=self.db,
+            workspace_id=workspace_id,
+            module="compliance",
+            trigger_type="training.completed",
+            entity_id=assignment.id,
+            trigger_data={
+                "assignment_id": assignment.id,
+                "developer_id": developer_id,
+                "mandatory_training_id": assignment.mandatory_training_id,
+                "completed_at": str(assignment.completed_at),
+            },
+        )
+
         return assignment
 
     async def waive_assignment(
@@ -651,6 +735,24 @@ class ComplianceService:
 
         await self.db.commit()
         await self.db.refresh(assignment)
+
+        # Dispatch training.waived automation trigger
+        await dispatch_automation_event(
+            db=self.db,
+            workspace_id=workspace_id,
+            module="compliance",
+            trigger_type="training.waived",
+            entity_id=assignment.id,
+            trigger_data={
+                "assignment_id": assignment.id,
+                "developer_id": assignment.developer_id,
+                "mandatory_training_id": assignment.mandatory_training_id,
+                "waived_by_id": waived_by_id,
+                "waiver_reason": data.reason,
+                "old_status": old_status,
+            },
+        )
+
         return assignment
 
     # ==================== Certification CRUD ====================
@@ -808,6 +910,23 @@ class ComplianceService:
             description=f"Added certification for developer {data.developer_id}",
         )
         await self.db.commit()
+
+        # Dispatch certification.added automation trigger
+        await dispatch_automation_event(
+            db=self.db,
+            workspace_id=workspace_id,
+            module="compliance",
+            trigger_type="certification.added",
+            entity_id=dev_cert.id,
+            trigger_data={
+                "developer_certification_id": dev_cert.id,
+                "developer_id": data.developer_id,
+                "certification_id": data.certification_id,
+                "issued_date": str(data.issued_date),
+                "expiry_date": str(data.expiry_date) if data.expiry_date else None,
+                "status": status,
+            },
+        )
 
         return dev_cert
 
@@ -1041,6 +1160,24 @@ class ComplianceService:
 
         await self.db.commit()
         await self.db.refresh(dev_cert)
+
+        # Dispatch certification.renewed automation trigger
+        await dispatch_automation_event(
+            db=self.db,
+            workspace_id=workspace_id,
+            module="compliance",
+            trigger_type="certification.renewed",
+            entity_id=dev_cert.id,
+            trigger_data={
+                "developer_certification_id": dev_cert.id,
+                "developer_id": dev_cert.developer_id,
+                "certification_id": dev_cert.certification_id,
+                "new_issued_date": str(data.new_issued_date),
+                "new_expiry_date": str(data.new_expiry_date) if data.new_expiry_date else None,
+                "status": dev_cert.status,
+            },
+        )
+
         return dev_cert
 
     async def revoke_developer_certification(
@@ -1074,6 +1211,24 @@ class ComplianceService:
 
         await self.db.commit()
         await self.db.refresh(dev_cert)
+
+        # Dispatch certification.revoked automation trigger
+        await dispatch_automation_event(
+            db=self.db,
+            workspace_id=workspace_id,
+            module="compliance",
+            trigger_type="certification.revoked",
+            entity_id=dev_cert.id,
+            trigger_data={
+                "developer_certification_id": dev_cert.id,
+                "developer_id": dev_cert.developer_id,
+                "certification_id": dev_cert.certification_id,
+                "revoked_by_id": actor_id,
+                "reason": reason,
+                "old_status": old_status,
+            },
+        )
+
         return dev_cert
 
     # ==================== Reports ====================
@@ -1462,6 +1617,24 @@ class ComplianceService:
             assignment.status = AssignmentStatus.OVERDUE.value
 
         await self.db.commit()
+
+        # Dispatch assignment.overdue automation trigger for each
+        for assignment in assignments:
+            await dispatch_automation_event(
+                db=self.db,
+                workspace_id=workspace_id,
+                module="compliance",
+                trigger_type="assignment.overdue",
+                entity_id=assignment.id,
+                trigger_data={
+                    "assignment_id": assignment.id,
+                    "developer_id": assignment.developer_id,
+                    "mandatory_training_id": assignment.mandatory_training_id,
+                    "due_date": str(assignment.due_date),
+                    "days_overdue": (now - assignment.due_date).days,
+                },
+            )
+
         return len(assignments)
 
     async def update_certification_statuses(
@@ -1490,6 +1663,7 @@ class ComplianceService:
             cert.status = CertificationStatus.EXPIRING_SOON.value
 
         # Find expiring soon certifications that should be marked as expired
+        # (dispatch expiring triggers after commit below)
         expired_query = select(DeveloperCertification).where(
             and_(
                 DeveloperCertification.workspace_id == workspace_id,
@@ -1509,4 +1683,40 @@ class ComplianceService:
             cert.status = CertificationStatus.EXPIRED.value
 
         await self.db.commit()
+
+        # Dispatch certification.expiring automation triggers
+        for cert in expiring_certs:
+            days_until = (cert.expiry_date - now).days if cert.expiry_date else None
+            await dispatch_automation_event(
+                db=self.db,
+                workspace_id=workspace_id,
+                module="compliance",
+                trigger_type="certification.expiring",
+                entity_id=cert.id,
+                trigger_data={
+                    "developer_certification_id": cert.id,
+                    "developer_id": cert.developer_id,
+                    "certification_id": cert.certification_id,
+                    "expiry_date": str(cert.expiry_date) if cert.expiry_date else None,
+                    "days_until_expiry": days_until,
+                },
+            )
+
+        # Dispatch certification.expired automation triggers
+        for cert in expired_certs:
+            await dispatch_automation_event(
+                db=self.db,
+                workspace_id=workspace_id,
+                module="compliance",
+                trigger_type="certification.expired",
+                entity_id=cert.id,
+                trigger_data={
+                    "developer_certification_id": cert.id,
+                    "developer_id": cert.developer_id,
+                    "certification_id": cert.certification_id,
+                    "expiry_date": str(cert.expiry_date) if cert.expiry_date else None,
+                    "expired_since_days": (now - cert.expiry_date).days if cert.expiry_date else None,
+                },
+            )
+
         return len(expiring_certs) + len(expired_certs)
