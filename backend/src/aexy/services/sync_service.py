@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 from uuid import uuid4
 
@@ -227,9 +227,10 @@ class SyncService:
             dev_repo.sync_status = "failed"
             dev_repo.sync_error = "GitHub authentication failed - please reconnect your GitHub account"
             dev_repo.updated_at = datetime.now(timezone.utc)
-            # Mark the GitHub connection as broken
-            connection.auth_status = "error"
-            connection.auth_error = "GitHub token is invalid or has been revoked. Please reconnect your GitHub account."
+            # Mark the GitHub connection as broken (unless already marked by _ensure_valid_token)
+            if connection.auth_status != "error":
+                connection.auth_status = "error"
+                connection.auth_error = "GitHub token is invalid or has been revoked. Please reconnect your GitHub account."
             await self.db.flush()
             raise
         except GitHubNotFoundError as e:
@@ -261,7 +262,6 @@ class SyncService:
             return  # No expiry info or no refresh token — nothing to do
 
         # Refresh if token expires within 5 minutes
-        from datetime import timedelta
         if connection.token_expires_at > datetime.now(timezone.utc) + timedelta(minutes=5):
             return  # Token still valid
 
