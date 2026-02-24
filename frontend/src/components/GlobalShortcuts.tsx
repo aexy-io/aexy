@@ -12,13 +12,22 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
  *   g then a  →  Agents
  *   g then s  →  Sprints
  *   g then t  →  Tickets
+ *   g then e  →  Tracking
  *   g then c  →  CRM
  *   g then m  →  Email Marketing
  *   g then b  →  Booking
+ *   g then h  →  Hiring
+ *   g then r  →  Reviews
+ *   g then f  →  Forms
+ *   g then w  →  Docs (wiki)
+ *   g then l  →  Learning
+ *   g then v  →  Leave
+ *   g then p  →  Compliance
+ *   g then u  →  Uptime
  *   g then i  →  Insights
  *   g then o  →  Automations
  *   g then ,  →  Settings
- *   ?         →  Show shortcuts help (via command palette)
+ *   ?         →  Show shortcuts help
  */
 export function GlobalShortcuts() {
   const router = useRouter();
@@ -46,9 +55,18 @@ export function GlobalShortcuts() {
               a: "/agents",
               s: "/sprints",
               t: "/tickets",
+              e: "/tracking",
               c: "/crm",
               m: "/email-marketing",
               b: "/booking",
+              h: "/hiring/dashboard",
+              r: "/reviews/cycles",
+              f: "/forms",
+              w: "/docs",
+              l: "/learning",
+              v: "/leave",
+              p: "/compliance",
+              u: "/uptime/monitors",
               i: "/insights",
               o: "/automations",
               ",": "/settings",
