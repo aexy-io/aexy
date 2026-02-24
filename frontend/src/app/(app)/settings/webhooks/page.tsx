@@ -22,6 +22,7 @@ import {
   ToggleRight,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { PremiumGate } from "@/components/PremiumGate";
 import { useBookingWebhooks, useBookingWebhookEvents } from "@/hooks/useWebhooks";
 import { webhooksApi, BookingWebhook } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
@@ -398,6 +399,7 @@ export default function WebhooksSettingsPage() {
   };
 
   return (
+    <PremiumGate feature="webhooks">
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -512,5 +514,6 @@ const valid = crypto.timingSafeEqual(
         </div>
       </div>
     </div>
+    </PremiumGate>
   );
 }
