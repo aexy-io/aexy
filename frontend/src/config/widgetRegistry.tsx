@@ -29,12 +29,49 @@ import {
   TeamCalendarWidget,
   PendingLeaveApprovalsWidget,
   TeamAvailabilityWidget,
+  // Goals & Growth
+  MyGoalsWidget,
+  GrowthTrajectoryWidget,
+  PeerBenchmarkWidget,
+  LearningPathWidget,
+  SkillGapsWidget,
+  // Tracking
+  StandupStatusWidget,
+  TimeTrackingWidget,
+  UpcomingDeadlinesWidget,
+  // Tickets & Forms
+  SLAOverviewWidget,
+  RecentTicketsWidget,
+  TicketsByPriorityWidget,
+  FormSubmissionsWidget,
+  RecentFormsWidget,
+  // Docs
+  RecentDocsWidget,
+  DocActivityWidget,
+  // Reviews
+  PerformanceReviewsWidget,
+  PendingReviewsWidget,
+  ReviewCycleWidget,
+  // Hiring
+  HiringPipelineWidget,
+  CandidateStatsWidget,
+  OpenPositionsWidget,
+  InterviewScheduleWidget,
+  // CRM
+  DealStatsWidget,
+  RecentDealsWidget,
+  CRMQuickViewWidget,
+  // Team & Admin
+  TeamOverviewWidget,
+  TeamActivityWidget,
+  OrgMetricsWidget,
+  SystemHealthWidget,
 } from "@/components/dashboard/widgets";
 import { TaskMatcherCard } from "@/components/TaskMatcherCard";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const widgetRegistry: Record<string, ComponentType<any>> = {
-  // Fully implemented widgets
+  // Core widgets
   welcome: WelcomeWidget,
   quickStats: QuickStatsWidget,
   languageProficiency: LanguageProficiencyWidget,
@@ -65,6 +102,43 @@ export const widgetRegistry: Record<string, ComponentType<any>> = {
   teamCalendar: TeamCalendarWidget,
   pendingLeaveApprovals: PendingLeaveApprovalsWidget,
   teamAvailability: TeamAvailabilityWidget,
+  // Goals & Growth widgets
+  myGoals: MyGoalsWidget,
+  growthTrajectory: GrowthTrajectoryWidget,
+  peerBenchmark: PeerBenchmarkWidget,
+  learningPath: LearningPathWidget,
+  skillGaps: SkillGapsWidget,
+  // Tracking widgets
+  standupStatus: StandupStatusWidget,
+  timeTracking: TimeTrackingWidget,
+  upcomingDeadlines: UpcomingDeadlinesWidget,
+  // Ticket & Form widgets
+  slaOverview: SLAOverviewWidget,
+  recentTickets: RecentTicketsWidget,
+  ticketsByPriority: TicketsByPriorityWidget,
+  formSubmissions: FormSubmissionsWidget,
+  recentForms: RecentFormsWidget,
+  // Docs widgets
+  recentDocs: RecentDocsWidget,
+  docActivity: DocActivityWidget,
+  // Reviews widgets
+  performanceReviews: PerformanceReviewsWidget,
+  pendingReviews: PendingReviewsWidget,
+  reviewCycle: ReviewCycleWidget,
+  // Hiring widgets
+  hiringPipeline: HiringPipelineWidget,
+  candidateStats: CandidateStatsWidget,
+  openPositions: OpenPositionsWidget,
+  interviewSchedule: InterviewScheduleWidget,
+  // CRM widgets
+  dealStats: DealStatsWidget,
+  recentDeals: RecentDealsWidget,
+  crmQuickView: CRMQuickViewWidget,
+  // Team & Admin widgets
+  teamOverview: TeamOverviewWidget,
+  teamActivity: TeamActivityWidget,
+  orgMetrics: OrgMetricsWidget,
+  systemHealth: SystemHealthWidget,
 };
 
 /**

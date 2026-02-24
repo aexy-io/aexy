@@ -37,7 +37,7 @@ export function TicketChartWidget() {
   }
 
   // Build chart data from stats
-  const statusBreakdown = stats?.by_status || stats?.status_breakdown || {};
+  const statusBreakdown = stats?.by_status || {};
   const chartData = Object.entries(statusBreakdown).map(([status, count]) => ({
     status: status.replace(/_/g, " "),
     count: count as number,
@@ -45,7 +45,11 @@ export function TicketChartWidget() {
   }));
 
   const hasData = chartData.length > 0 && chartData.some((d) => d.count > 0);
-  const slaCompliance = stats?.sla_compliance_rate ?? stats?.sla_compliance;
+  const totalTickets = stats?.total_tickets || 0;
+  const slaBreached = stats?.sla_breached || 0;
+  const slaCompliance = totalTickets > 0
+    ? Math.round(((totalTickets - slaBreached) / totalTickets) * 100)
+    : null;
 
   return (
     <div className="bg-background/50 border border-border rounded-xl overflow-hidden">
@@ -98,28 +102,28 @@ export function TicketChartWidget() {
         ) : (
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis
                 dataKey="status"
-                stroke="#64748b"
-                tick={{ fill: "#94a3b8", fontSize: 11 }}
+                className="stroke-muted-foreground"
+                tick={{ className: "fill-muted-foreground", fontSize: 11 }}
               />
               <YAxis
-                stroke="#64748b"
-                tick={{ fill: "#94a3b8", fontSize: 11 }}
+                className="stroke-muted-foreground"
+                tick={{ className: "fill-muted-foreground", fontSize: 11 }}
                 allowDecimals={false}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#1e293b",
-                  border: "1px solid #334155",
+                  backgroundColor: "hsl(var(--background))",
+                  border: "1px solid hsl(var(--border))",
                   borderRadius: "8px",
-                  color: "#f1f5f9",
+                  color: "hsl(var(--foreground))",
                 }}
               />
               <Bar dataKey="count" radius={[4, 4, 0, 0]} name="Tickets">
-                {chartData.map((entry, index) => (
-                  <Cell key={index} fill={entry.fill} />
+                {chartData.map((entry) => (
+                  <Cell key={entry.status} fill={entry.fill} />
                 ))}
               </Bar>
             </BarChart>

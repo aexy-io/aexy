@@ -5,7 +5,6 @@ import {
   GitPullRequest,
   ChevronRight,
   Ticket,
-  ArrowRight,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useTicketStats } from "@/hooks/useTicketing";
@@ -18,12 +17,6 @@ const PIPELINE_STAGES = [
   { key: "closed", label: "Closed", color: "bg-muted-foreground", textColor: "text-muted-foreground" },
 ];
 
-const PRIORITY_COLORS: Record<string, string> = {
-  critical: "bg-red-500/20 text-red-400",
-  high: "bg-orange-500/20 text-orange-400",
-  medium: "bg-amber-500/20 text-amber-400",
-  low: "bg-muted/50 text-muted-foreground",
-};
 
 export function TicketPipelineWidget() {
   const { currentWorkspace } = useWorkspace();
@@ -42,9 +35,8 @@ export function TicketPipelineWidget() {
     );
   }
 
-  const statusBreakdown = stats?.by_status || stats?.status_breakdown || {};
-  const priorityBreakdown = stats?.by_priority || stats?.priority_breakdown || {};
-  const totalTickets = stats?.total || Object.values(statusBreakdown).reduce((a: number, b: any) => a + (b as number), 0) || 0;
+  const statusBreakdown = stats?.by_status || {};
+  const totalTickets = stats?.total_tickets || 0;
   const hasData = totalTickets > 0;
 
   return (
@@ -90,8 +82,7 @@ export function TicketPipelineWidget() {
             {/* Pipeline stages */}
             <div className="space-y-2">
               {PIPELINE_STAGES.map((stage, idx) => {
-                const count =
-                  (statusBreakdown as any)[stage.key] || 0;
+                const count = statusBreakdown[stage.key] || 0;
                 if (count === 0 && idx > 2) return null; // hide empty trailing stages
                 const width =
                   totalTickets > 0
@@ -122,26 +113,16 @@ export function TicketPipelineWidget() {
               })}
             </div>
 
-            {/* Priority breakdown */}
-            {Object.keys(priorityBreakdown).length > 0 && (
+            {/* SLA info */}
+            {(stats?.sla_breached ?? 0) > 0 && (
               <div className="pt-3 border-t border-border">
                 <span className="text-muted-foreground text-xs mb-2 block">
-                  By Priority
+                  SLA Status
                 </span>
                 <div className="flex flex-wrap gap-2">
-                  {Object.entries(priorityBreakdown).map(
-                    ([priority, count]) =>
-                      (count as number) > 0 && (
-                        <span
-                          key={priority}
-                          className={`px-2 py-1 text-xs font-medium rounded ${
-                            PRIORITY_COLORS[priority] || PRIORITY_COLORS.low
-                          }`}
-                        >
-                          {priority}: {count as number}
-                        </span>
-                      )
-                  )}
+                  <span className="px-2 py-1 text-xs font-medium rounded bg-red-500/20 text-red-400">
+                    {stats?.sla_breached} breached
+                  </span>
                 </div>
               </div>
             )}
