@@ -772,6 +772,20 @@ class CampaignService:
                 await self.db.commit()
                 logger.info(f"Campaign {campaign_id} completed")
 
+                # Dispatch automation event
+                await dispatch_automation_event(
+                    db=self.db,
+                    workspace_id=str(campaign.workspace_id),
+                    module="email_marketing",
+                    trigger_type="campaign.sent",
+                    entity_id=str(campaign.id),
+                    trigger_data={
+                        "campaign_name": campaign.name,
+                        "total_recipients": campaign.total_recipients,
+                        "completed_at": campaign.completed_at.isoformat(),
+                    },
+                )
+
     async def get_pending_recipients(
         self,
         campaign_id: str,
