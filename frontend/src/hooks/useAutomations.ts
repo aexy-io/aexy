@@ -19,6 +19,25 @@ import {
 // Re-export types for convenience
 export type { Automation, AutomationRun, AutomationModule };
 
+/** Registry item from the backend - can be a plain string or {id, description} object */
+export type RegistryItem = string | { id: string; description?: string };
+
+/** Normalize a registry item array to plain string IDs */
+function normalizeRegistryItems(items: RegistryItem[]): string[] {
+  return items.map((item) => (typeof item === "string" ? item : item.id));
+}
+
+/** Extract description map from registry items */
+export function extractDescriptions(items: RegistryItem[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const item of items) {
+    if (typeof item !== "string" && item.description) {
+      map[item.id] = item.description;
+    }
+  }
+  return map;
+}
+
 export interface UseAutomationsOptions {
   module?: AutomationModule;
   object_id?: string;
@@ -191,22 +210,30 @@ export function useAutomation(workspaceId: string | null, automationId: string |
 /**
  * Hook for fetching trigger registry.
  *
+ * Handles both old format (string[]) and new format ({id, description}[]).
+ *
  * @param workspaceId - The workspace ID
- * @returns All available triggers by module
+ * @returns All available triggers by module (normalized to string[])
  */
 export function useAutomationTriggerRegistry(workspaceId: string | null) {
   const {
     data,
     isLoading,
     error,
-  } = useQuery<{ triggers: Record<string, string[]> }>({
+  } = useQuery<{ triggers: Record<string, RegistryItem[]> }>({
     queryKey: ["automationTriggers", workspaceId],
     queryFn: () => automationsApi.getTriggerRegistry(workspaceId!),
     enabled: !!workspaceId,
   });
 
+  const rawTriggers = data?.triggers || {};
+  const triggers: Record<string, string[]> = {};
+  for (const [mod, items] of Object.entries(rawTriggers)) {
+    triggers[mod] = normalizeRegistryItems(items);
+  }
+
   return {
-    triggers: data?.triggers || {},
+    triggers,
     isLoading,
     error,
   };
@@ -215,22 +242,30 @@ export function useAutomationTriggerRegistry(workspaceId: string | null) {
 /**
  * Hook for fetching action registry.
  *
+ * Handles both old format (string[]) and new format ({id, description}[]).
+ *
  * @param workspaceId - The workspace ID
- * @returns All available actions by module
+ * @returns All available actions by module (normalized to string[])
  */
 export function useAutomationActionRegistry(workspaceId: string | null) {
   const {
     data,
     isLoading,
     error,
-  } = useQuery<{ actions: Record<string, string[]> }>({
+  } = useQuery<{ actions: Record<string, RegistryItem[]> }>({
     queryKey: ["automationActions", workspaceId],
     queryFn: () => automationsApi.getActionRegistry(workspaceId!),
     enabled: !!workspaceId,
   });
 
+  const rawActions = data?.actions || {};
+  const actions: Record<string, string[]> = {};
+  for (const [mod, items] of Object.entries(rawActions)) {
+    actions[mod] = normalizeRegistryItems(items);
+  }
+
   return {
-    actions: data?.actions || {},
+    actions,
     isLoading,
     error,
   };
@@ -239,23 +274,28 @@ export function useAutomationActionRegistry(workspaceId: string | null) {
 /**
  * Hook for fetching triggers for a specific module.
  *
+ * Handles both old format (string[]) and new format ({id, description}[]).
+ *
  * @param workspaceId - The workspace ID
  * @param module - The module name
- * @returns Triggers for the module
+ * @returns Triggers for the module (normalized to string[]), plus descriptions
  */
 export function useModuleTriggers(workspaceId: string | null, module: string | null) {
   const {
     data,
     isLoading,
     error,
-  } = useQuery<{ module: string; triggers: string[] }>({
+  } = useQuery<{ module: string; triggers: RegistryItem[] }>({
     queryKey: ["moduleTriggers", workspaceId, module],
     queryFn: () => automationsApi.getModuleTriggers(workspaceId!, module!),
     enabled: !!workspaceId && !!module,
   });
 
+  const rawTriggers = data?.triggers || [];
+
   return {
-    triggers: data?.triggers || [],
+    triggers: normalizeRegistryItems(rawTriggers),
+    descriptions: extractDescriptions(rawTriggers),
     isLoading,
     error,
   };
@@ -264,23 +304,28 @@ export function useModuleTriggers(workspaceId: string | null, module: string | n
 /**
  * Hook for fetching actions for a specific module.
  *
+ * Handles both old format (string[]) and new format ({id, description}[]).
+ *
  * @param workspaceId - The workspace ID
  * @param module - The module name
- * @returns Actions for the module
+ * @returns Actions for the module (normalized to string[]), plus descriptions
  */
 export function useModuleActions(workspaceId: string | null, module: string | null) {
   const {
     data,
     isLoading,
     error,
-  } = useQuery<{ module: string; actions: string[] }>({
+  } = useQuery<{ module: string; actions: RegistryItem[] }>({
     queryKey: ["moduleActions", workspaceId, module],
     queryFn: () => automationsApi.getModuleActions(workspaceId!, module!),
     enabled: !!workspaceId && !!module,
   });
 
+  const rawActions = data?.actions || [];
+
   return {
-    actions: data?.actions || [],
+    actions: normalizeRegistryItems(rawActions),
+    descriptions: extractDescriptions(rawActions),
     isLoading,
     error,
   };
