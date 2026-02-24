@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { PremiumGate } from "@/components/PremiumGate";
 import { useTeams } from "@/hooks/useTeams";
 import { insightsApi } from "@/lib/api";
 
@@ -185,6 +186,7 @@ export default function InsightsSettingsPage() {
   );
 
   return (
+    <PremiumGate feature="advanced_analytics">
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-foreground">Insights</h1>
@@ -525,5 +527,6 @@ export default function InsightsSettingsPage() {
         </div>
       </div>
     </div>
+    </PremiumGate>
   );
 }

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
-  ArrowLeft,
   User,
   Users,
   Mail,
@@ -20,7 +19,11 @@ import {
   Plus,
   X,
   Loader2,
+  Building2,
+  DollarSign,
+  TrendingUp,
 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useTicket, useTicketResponses } from "@/hooks/useTicketing";
@@ -155,14 +158,13 @@ export default function TicketDetailPage() {
   return (
     <div className="min-h-screen bg-background">
 <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Back Button */}
-        <button
-          onClick={() => router.push("/tickets")}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Tickets
-        </button>
+        <Breadcrumb
+          items={[
+            { label: "Tickets", href: "/tickets" },
+            { label: ticket.form_name || `TKT-${ticket.ticket_number}` },
+          ]}
+          className="mb-6"
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
@@ -489,6 +491,86 @@ export default function TicketDetailPage() {
                     </a>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Customer Context (CRM Bridge) */}
+            {(ticket.linked_crm_contact || ticket.submitter_email) && (
+              <div className="bg-muted rounded-xl border border-border p-6">
+                <h3 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Customer Context
+                </h3>
+                {ticket.linked_crm_contact ? (
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => router.push(`/crm?search=${encodeURIComponent(ticket.linked_crm_contact!.display_name)}`)}
+                      className="w-full text-left p-3 bg-background rounded-lg hover:bg-accent transition group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                            {ticket.linked_crm_contact.display_name}
+                          </p>
+                          {ticket.linked_crm_contact.email && (
+                            <p className="text-xs text-muted-foreground">{ticket.linked_crm_contact.email}</p>
+                          )}
+                          {ticket.linked_crm_contact.company && (
+                            <p className="text-xs text-muted-foreground mt-0.5">{ticket.linked_crm_contact.company}</p>
+                          )}
+                        </div>
+                        <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                      {(ticket.linked_crm_contact.deal_value || ticket.linked_crm_contact.deal_stage) && (
+                        <div className="flex items-center gap-3 mt-2 pt-2 border-t border-border">
+                          {ticket.linked_crm_contact.deal_value && (
+                            <span className="flex items-center gap-1 text-xs text-emerald-400">
+                              <DollarSign className="h-3 w-3" />
+                              {ticket.linked_crm_contact.deal_value.toLocaleString()}
+                            </span>
+                          )}
+                          {ticket.linked_crm_contact.deal_stage && (
+                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <TrendingUp className="h-3 w-3" />
+                              {ticket.linked_crm_contact.deal_stage}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </button>
+                    {ticket.customer_impact && ticket.customer_impact !== "none" && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Impact:</span>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                          ticket.customer_impact === "critical" ? "bg-red-500/10 text-red-400" :
+                          ticket.customer_impact === "high" ? "bg-orange-500/10 text-orange-400" :
+                          ticket.customer_impact === "medium" ? "bg-yellow-500/10 text-yellow-400" :
+                          "bg-blue-500/10 text-blue-400"
+                        }`}>
+                          {ticket.customer_impact.charAt(0).toUpperCase() + ticket.customer_impact.slice(1)}
+                        </span>
+                        {ticket.affected_customers_count && ticket.affected_customers_count > 1 && (
+                          <span className="text-xs text-muted-foreground">
+                            ({ticket.affected_customers_count} affected)
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : ticket.submitter_email ? (
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      No CRM contact linked. Submitter email:
+                    </p>
+                    <button
+                      onClick={() => router.push(`/crm?search=${encodeURIComponent(ticket.submitter_email!)}`)}
+                      className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors"
+                    >
+                      <Mail className="h-3.5 w-3.5" />
+                      Find &ldquo;{ticket.submitter_email}&rdquo; in CRM
+                    </button>
+                  </div>
+                ) : null}
               </div>
             )}
 

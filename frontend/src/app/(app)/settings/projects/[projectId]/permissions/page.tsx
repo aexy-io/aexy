@@ -21,6 +21,7 @@ import {
   AlertCircle,
   CheckCircle,
 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useProject, useProjectMembers } from "@/hooks/useProjects";
 import { useRoles } from "@/hooks/useRoles";
@@ -196,14 +197,15 @@ export default function ProjectPermissionsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Back Link */}
-      <Link
-        href={`/settings/projects/${projectId}`}
-        className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-      >
-        <ArrowLeft className="h-3 w-3" />
-        Back to Project
-      </Link>
+      <Breadcrumb
+        items={[
+          { label: "Settings", href: "/settings" },
+          { label: "Projects", href: "/settings/projects" },
+          { label: project.name, href: `/settings/projects/${projectId}` },
+          { label: "Permissions" },
+        ]}
+        className="mb-0"
+      />
 
       {/* Title */}
       <div className="flex items-center gap-3">

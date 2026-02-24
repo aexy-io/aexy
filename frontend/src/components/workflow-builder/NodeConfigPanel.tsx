@@ -5,6 +5,7 @@ import { Node } from "@xyflow/react";
 import { X, Trash2, ChevronDown, Plus, Database, Copy, Check, ExternalLink, Code } from "lucide-react";
 import { FieldPicker, InlineFieldPicker } from "./FieldPicker";
 import { api } from "@/lib/api";
+import { HelpTooltip } from "@/components/ui/tooltip";
 
 interface FieldSchema {
   path: string;
@@ -1792,7 +1793,10 @@ export function NodeConfigPanel({
         </div>
 
         <div className="space-y-3">
-          <label className="block text-sm text-muted-foreground">Conditions</label>
+          <div className="flex items-center gap-1.5">
+            <label className="block text-sm text-muted-foreground">Conditions</label>
+            <HelpTooltip content="Rules that must all be true for the automation to execute. Uses AND logic between conditions" />
+          </div>
           {conditions.map((condition, index) => (
             <div key={index} className="bg-accent/50 rounded-lg p-3 space-y-2">
               <div className="flex gap-2 items-start">
@@ -2606,7 +2610,10 @@ export function NodeConfigPanel({
         </div>
 
         <div>
-          <label className="block text-sm text-muted-foreground mb-1">On Failure</label>
+          <div className="flex items-center gap-1.5 mb-1">
+            <label className="block text-sm text-muted-foreground">On Failure</label>
+            <HelpTooltip content="Controls behavior when an action fails. Stop = halt workflow, Continue = skip and proceed, Skip = bypass join entirely" />
+          </div>
           <select
             value={(node.data.on_failure as string) || "fail"}
             onChange={(e) => onUpdate({ on_failure: e.target.value })}

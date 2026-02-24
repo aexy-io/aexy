@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { UpgradeBanner } from "@/components/UpgradeBanner";
 import {
   ChevronLeft,
   Plus,
@@ -10,7 +11,6 @@ import {
   Pause,
   Trash2,
   Clock,
-  Search,
   Edit2,
   Building2,
   Ticket,
@@ -26,6 +26,8 @@ import {
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAutomations } from "@/hooks/useAutomations";
 import { AutomationModule, Automation } from "@/lib/api";
+import { EmptyState } from "@/components/EmptyState";
+import { SearchInput } from "@/components/ui/search-input";
 
 const moduleLabels: Record<AutomationModule, string> = {
   crm: "CRM",
@@ -244,6 +246,8 @@ export default function AutomationsPage() {
             </div>
           </div>
 
+          <UpgradeBanner trigger="automation_limit" compact />
+
           {/* Module Filter Tabs */}
           <div className="flex items-center gap-1 p-1 bg-muted/50 border border-border rounded-xl mb-6 overflow-x-auto">
             <button
@@ -273,16 +277,12 @@ export default function AutomationsPage() {
 
           {/* Search */}
           <div className="flex items-center gap-4 mb-6">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search automations..."
-                className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search automations..."
+              wrapperClassName="flex-1"
+            />
           </div>
 
           {/* Content */}
@@ -293,24 +293,17 @@ export default function AutomationsPage() {
               ))}
             </div>
           ) : filteredAutomations.length === 0 ? (
-            <div className="text-center py-16">
-              <Zap className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">
-                {selectedModule ? `No ${moduleLabels[selectedModule]} automations yet` : "No automations yet"}
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                {selectedModule
-                  ? `Create your first ${moduleLabels[selectedModule]} automation to streamline your workflows`
-                  : "Create your first automation to streamline your workflows"}
-              </p>
-              <button
-                onClick={handleCreateNew}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
-              >
-                <Plus className="h-4 w-4" />
-                Create Automation
-              </button>
-            </div>
+            <EmptyState
+              icon={Zap}
+              title={selectedModule ? `No ${moduleLabels[selectedModule]} automations yet` : "No automations yet"}
+              description={selectedModule
+                ? `Create your first ${moduleLabels[selectedModule]} automation to streamline your workflows`
+                : "Create your first automation to streamline your workflows"}
+              actions={[
+                { label: "Create Automation", onClick: handleCreateNew },
+              ]}
+              templateHref="/templates?category=automations"
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {filteredAutomations.map((automation) => (

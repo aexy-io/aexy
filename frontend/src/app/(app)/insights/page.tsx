@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { UpgradeBanner } from "@/components/UpgradeBanner";
+import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
@@ -32,7 +34,7 @@ import {
   useGenerateSnapshots,
 } from "@/hooks/useInsights";
 import { useEnabledRepositories } from "@/hooks/useRepositories";
-import { InsightsPeriodType } from "@/lib/api";
+import { InsightsPeriodType, MemberSummary } from "@/lib/api";
 import {
   BarChart,
   Bar,
@@ -106,8 +108,26 @@ export default function InsightsPage() {
 
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500" />
+      <div className="p-6 max-w-7xl mx-auto space-y-6 animate-pulse">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="h-7 w-40 bg-accent rounded mb-2" />
+            <div className="h-4 w-64 bg-accent rounded" />
+          </div>
+          <div className="h-9 w-48 bg-accent rounded-lg" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-muted rounded-xl p-4 border border-border">
+              <div className="h-3 w-20 bg-accent rounded mb-3" />
+              <div className="h-8 w-16 bg-accent rounded" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-muted rounded-xl p-6 border border-border h-64" />
+          <div className="bg-muted rounded-xl p-6 border border-border h-64" />
+        </div>
       </div>
     );
   }
@@ -144,6 +164,83 @@ export default function InsightsPage() {
       toast.error("Failed to generate snapshots. Please try again.");
     }
   };
+
+  const developerColumns: DataTableColumn<MemberSummary>[] = useMemo(
+    () => [
+      {
+        id: "developer",
+        header: "Developer",
+        sortable: true,
+        sortValue: (m) => m.developer_name || m.developer_id,
+        cell: (m) => {
+          const isBottleneck =
+            dist?.bottleneck_developers.includes(m.developer_id) ?? false;
+          return (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-foreground">
+                {m.developer_name || m.developer_id.slice(0, 8)}
+              </span>
+              {isBottleneck && (
+                <span className="text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400">
+                  bottleneck
+                </span>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        id: "commits",
+        header: "Commits",
+        headerClassName: "text-right",
+        cellClassName: "text-right font-mono",
+        sortable: true,
+        sortValue: (m) => m.commits_count,
+        cell: (m) => m.commits_count,
+      },
+      {
+        id: "prs_merged",
+        header: "PRs Merged",
+        headerClassName: "text-right",
+        cellClassName: "text-right font-mono",
+        sortable: true,
+        sortValue: (m) => m.prs_merged,
+        cell: (m) => m.prs_merged,
+      },
+      {
+        id: "lines_changed",
+        header: "Lines Changed",
+        headerClassName: "text-right",
+        cellClassName: "text-right font-mono",
+        sortable: true,
+        sortValue: (m) => m.lines_changed,
+        cell: (m) => formatNumber(m.lines_changed),
+      },
+      {
+        id: "reviews_given",
+        header: "Reviews Given",
+        headerClassName: "text-right",
+        cellClassName: "text-right font-mono",
+        sortable: true,
+        sortValue: (m) => m.reviews_given,
+        cell: (m) => m.reviews_given,
+      },
+      {
+        id: "actions",
+        header: "",
+        cell: (m) => (
+          <Link
+            href={`/insights/developers/${m.developer_id}`}
+            className="text-xs text-indigo-400 hover:text-indigo-300"
+          >
+            Details →
+          </Link>
+        ),
+        cellClassName: "text-right",
+      },
+    ],
+    [dist],
+  );
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -241,6 +338,8 @@ export default function InsightsPage() {
           </button>
         </div>
       </div>
+
+      <UpgradeBanner trigger="repo_limit" compact />
 
       {/* GitHub App not installed */}
       {!reposLoading && !hasInstallation && (
@@ -495,78 +594,20 @@ export default function InsightsPage() {
 
       {/* Member Summary Table */}
       {hasEnabledRepos && members.length > 0 && (
-        <div className="bg-muted rounded-xl border border-border overflow-hidden">
-          <div className="px-6 py-4 border-b border-border">
+        <div>
+          <div className="px-1 pb-3">
             <h2 className="text-lg font-semibold text-foreground">
               Developer Summary
             </h2>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[600px]">
-              <thead>
-                <tr className="text-left text-xs text-muted-foreground border-b border-border">
-                  <th className="px-6 py-3 font-medium">Developer</th>
-                  <th className="px-6 py-3 font-medium text-right">Commits</th>
-                  <th className="px-6 py-3 font-medium text-right">
-                    PRs Merged
-                  </th>
-                  <th className="px-6 py-3 font-medium text-right">
-                    Lines Changed
-                  </th>
-                  <th className="px-6 py-3 font-medium text-right">
-                    Reviews Given
-                  </th>
-                  <th className="px-6 py-3 font-medium text-right"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {members.map((m) => {
-                  const isBottleneck =
-                    dist?.bottleneck_developers.includes(m.developer_id) ??
-                    false;
-                  return (
-                    <tr
-                      key={m.developer_id}
-                      className="border-b border-border/50 hover:bg-accent/30 transition"
-                    >
-                      <td className="px-6 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-foreground">
-                            {m.developer_name || m.developer_id.slice(0, 8)}
-                          </span>
-                          {isBottleneck && (
-                            <span className="text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400">
-                              bottleneck
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-3 text-right text-sm text-foreground font-mono">
-                        {m.commits_count}
-                      </td>
-                      <td className="px-6 py-3 text-right text-sm text-foreground font-mono">
-                        {m.prs_merged}
-                      </td>
-                      <td className="px-6 py-3 text-right text-sm text-foreground font-mono">
-                        {formatNumber(m.lines_changed)}
-                      </td>
-                      <td className="px-6 py-3 text-right text-sm text-foreground font-mono">
-                        {m.reviews_given}
-                      </td>
-                      <td className="px-6 py-3 text-right">
-                        <Link
-                          href={`/insights/developers/${m.developer_id}`}
-                          className="text-xs text-indigo-400 hover:text-indigo-300"
-                        >
-                          Details →
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<MemberSummary>
+            columns={developerColumns}
+            data={members}
+            rowKey={(m) => m.developer_id}
+            emptyTitle="No developer data"
+            emptyDescription="Generate snapshots to see developer metrics."
+            emptyIcon={<Users className="h-8 w-8" />}
+          />
         </div>
       )}
     </div>

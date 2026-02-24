@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { bookingApi, Booking } from "@/lib/booking-api";
 import { toast } from "sonner";
@@ -145,8 +146,23 @@ export default function BookingDetailsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="p-6 max-w-4xl mx-auto animate-pulse">
+        <div className="h-4 w-32 bg-accent rounded mb-6" />
+        <div className="bg-muted rounded-xl border border-border p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="h-6 w-48 bg-accent rounded" />
+            <div className="h-6 w-20 bg-accent rounded-full" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i}>
+                <div className="h-3 w-20 bg-accent rounded mb-2" />
+                <div className="h-4 w-36 bg-accent rounded" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-muted rounded-xl border border-border p-6 h-48" />
       </div>
     );
   }
@@ -178,13 +194,14 @@ export default function BookingDetailsPage() {
     <div className="p-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <Link
-          href="/booking"
-          className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1 mb-4"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Booking
-        </Link>
+        <Breadcrumb
+          items={[
+            { label: "Booking", href: "/booking" },
+            { label: "Bookings", href: "/booking" },
+            { label: `Booking with ${booking.invitee_name}` },
+          ]}
+          className="mb-4"
+        />
 
         <div className="flex items-start justify-between">
           <div>

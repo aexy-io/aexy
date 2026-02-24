@@ -14,15 +14,16 @@ import {
   XCircle,
 } from "lucide-react";
 import { Bug, BugStatus, BugSeverity, BugPriority } from "@/lib/api";
+import { SEVERITY_COLORS } from "@/lib/statusColors";
 import { Badge } from "@/components/ui/premium-card";
 import { cn } from "@/lib/utils";
 
 const SEVERITY_CONFIG: Record<BugSeverity, { label: string; color: string; icon: React.ReactNode }> = {
-  blocker: { label: "Blocker", color: "bg-red-600 text-white", icon: <AlertOctagon className="h-3 w-3" /> },
-  critical: { label: "Critical", color: "bg-red-500 text-white", icon: <AlertCircle className="h-3 w-3" /> },
-  major: { label: "Major", color: "bg-orange-500 text-white", icon: <AlertTriangle className="h-3 w-3" /> },
-  minor: { label: "Minor", color: "bg-yellow-500 text-black", icon: <Info className="h-3 w-3" /> },
-  trivial: { label: "Trivial", color: "bg-muted-foreground text-foreground", icon: <Info className="h-3 w-3" /> },
+  blocker: { label: "Blocker", color: `${SEVERITY_COLORS.blocker.bg} ${SEVERITY_COLORS.blocker.text}`, icon: <AlertOctagon className="h-3 w-3" /> },
+  critical: { label: "Critical", color: `${SEVERITY_COLORS.critical.bg} ${SEVERITY_COLORS.critical.text}`, icon: <AlertCircle className="h-3 w-3" /> },
+  major: { label: "Major", color: `${SEVERITY_COLORS.major.bg} ${SEVERITY_COLORS.major.text}`, icon: <AlertTriangle className="h-3 w-3" /> },
+  minor: { label: "Minor", color: `${SEVERITY_COLORS.minor.bg} ${SEVERITY_COLORS.minor.text}`, icon: <Info className="h-3 w-3" /> },
+  trivial: { label: "Trivial", color: `${SEVERITY_COLORS.trivial.bg} ${SEVERITY_COLORS.trivial.text}`, icon: <Info className="h-3 w-3" /> },
 };
 
 const STATUS_CONFIG: Record<BugStatus, { label: string; color: string }> = {

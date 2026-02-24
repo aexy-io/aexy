@@ -4,15 +4,7 @@ import Link from "next/link";
 import { RefreshCw, ChevronRight } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useReviewCycles, useReviewCycle } from "@/hooks/useReviews";
-
-const statusColors: Record<string, string> = {
-  draft: "bg-gray-500/10 text-gray-400",
-  active: "bg-green-500/10 text-green-400",
-  self_review: "bg-blue-500/10 text-blue-400",
-  peer_review: "bg-violet-500/10 text-violet-400",
-  manager_review: "bg-indigo-500/10 text-indigo-400",
-  completed: "bg-emerald-500/10 text-emerald-400",
-};
+import { REVIEW_CYCLE_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
 const statusLabels: Record<string, string> = {
   draft: "Draft",
@@ -104,7 +96,7 @@ export function ReviewCycleWidget() {
                 {activeCycle.name}
               </span>
               <span
-                className={`text-xs px-2 py-0.5 rounded-full ${statusColors[activeCycle.status] || "bg-gray-500/10 text-gray-400"}`}
+                className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(REVIEW_CYCLE_STATUS_COLORS, activeCycle.status).bg} ${getStatusColor(REVIEW_CYCLE_STATUS_COLORS, activeCycle.status).text}`}
               >
                 {statusLabels[activeCycle.status] || activeCycle.status}
               </span>

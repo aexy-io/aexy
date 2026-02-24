@@ -1,11 +1,13 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { HelpTooltip } from "@/components/ui/tooltip";
 
 interface ConfidenceSliderProps {
   value: number;
   onChange: (value: number) => void;
   label?: string;
+  tooltip?: string;
   description?: string;
   min?: number;
   max?: number;
@@ -19,6 +21,7 @@ export function ConfidenceSlider({
   value,
   onChange,
   label,
+  tooltip,
   description,
   min = 0,
   max = 1,
@@ -49,7 +52,10 @@ export function ConfidenceSlider({
       {(label || showPercentage) && (
         <div className="flex items-center justify-between">
           {label && (
-            <label className="text-sm font-medium text-foreground">{label}</label>
+            <div className="flex items-center gap-1.5">
+              <label className="text-sm font-medium text-foreground">{label}</label>
+              {tooltip && <HelpTooltip content={tooltip} />}
+            </div>
           )}
           {showPercentage && (
             <span className={cn("text-sm font-medium", getColor(value))}>

@@ -331,6 +331,28 @@ class SprintService:
             },
         )
 
+        # Dispatch velocity calculated trigger with analytics data
+        from aexy.services.sprint_analytics_service import SprintAnalyticsService
+        analytics = SprintAnalyticsService(self.db)
+        velocity = await analytics.calculate_sprint_velocity(sprint.id)
+        if velocity:
+            await dispatch_automation_event(
+                db=self.db,
+                workspace_id=str(sprint.workspace_id),
+                module="sprints",
+                trigger_type="sprint.velocity_calculated",
+                entity_id=str(sprint.id),
+                trigger_data={
+                    "sprint_name": sprint.name,
+                    "team_id": str(sprint.team_id),
+                    "committed_points": velocity.committed_points,
+                    "completed_points": velocity.completed_points,
+                    "carry_over_points": velocity.carry_over_points,
+                    "completion_rate": velocity.completion_rate,
+                    "focus_factor": velocity.focus_factor,
+                },
+            )
+
         return sprint
 
     # Carry-over handling

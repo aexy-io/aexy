@@ -11,10 +11,10 @@ import {
   Check,
   Lock,
   Globe,
-  Search,
   ChevronRight,
   ChevronDown,
 } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
 import { motion } from "framer-motion";
 import { useOnboarding } from "../OnboardingContext";
 import { repositoriesApi, Repository, Organization } from "@/lib/api";
@@ -185,16 +185,12 @@ export default function ReposSelection() {
 
         {/* Search and refresh */}
         <div className="flex items-center gap-4 mb-6">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search repositories..."
-              className="w-full pl-10 pr-4 py-2 bg-muted/50 border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary-500/50"
-            />
-          </div>
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search repositories..."
+            wrapperClassName="flex-1"
+          />
           <button
             onClick={handleRefresh}
             disabled={refreshing}

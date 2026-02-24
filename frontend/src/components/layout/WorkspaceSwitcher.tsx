@@ -72,7 +72,7 @@ export function WorkspaceSwitcher({ collapsed = false }: WorkspaceSwitcherProps)
                 </Button>
 
                 {open && (
-                    <div className="absolute left-full top-0 ml-2 z-50 w-64 rounded-md border bg-card shadow-lg p-2">
+                    <div className="absolute left-full top-0 ml-2 z-50 w-64 max-w-[calc(100vw-4rem)] rounded-md border bg-card shadow-lg p-2">
                         <WorkspaceList
                             workspaces={workspaces}
                             currentWorkspaceId={currentWorkspace?.id}

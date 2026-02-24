@@ -1,0 +1,112 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+
+/**
+ * Global keyboard shortcuts for common navigation actions.
+ * Mount once in the app layout.
+ *
+ * Shortcuts:
+ *   g then d  →  Dashboard
+ *   g then a  →  Agents
+ *   g then s  →  Sprints
+ *   g then t  →  Tickets
+ *   g then e  →  Tracking
+ *   g then c  →  CRM
+ *   g then m  →  Email Marketing
+ *   g then b  →  Booking
+ *   g then h  →  Hiring
+ *   g then r  →  Reviews
+ *   g then f  →  Forms
+ *   g then w  →  Docs (wiki)
+ *   g then l  →  Learning
+ *   g then v  →  Leave
+ *   g then p  →  Compliance
+ *   g then u  →  Uptime
+ *   g then i  →  Insights
+ *   g then o  →  Automations
+ *   g then n  →  Notifications
+ *   g then ,  →  Settings
+ *   ?         →  Show shortcuts help
+ */
+export function GlobalShortcuts() {
+  const router = useRouter();
+
+  // "g then X" navigation pattern (like GitHub/Linear)
+  // We track when "g" is pressed and listen for the follow-up key
+  useKeyboardShortcuts({
+    shortcuts: [
+      {
+        key: "g",
+        callback: () => {
+          // Start a "go to" sequence - listen for next key
+          let cleaned = false;
+          const cleanup = () => {
+            if (cleaned) return;
+            cleaned = true;
+            document.removeEventListener("keydown", handler);
+          };
+
+          const handler = (e: KeyboardEvent) => {
+            // Ignore if in input
+            const target = e.target as HTMLElement;
+            if (
+              target.tagName === "INPUT" ||
+              target.tagName === "TEXTAREA" ||
+              target.isContentEditable
+            ) {
+              cleanup();
+              return;
+            }
+
+            const routes: Record<string, string> = {
+              d: "/dashboard",
+              a: "/agents",
+              s: "/sprints",
+              t: "/tickets",
+              e: "/tracking",
+              c: "/crm",
+              m: "/email-marketing",
+              b: "/booking",
+              h: "/hiring/dashboard",
+              r: "/reviews/cycles",
+              f: "/forms",
+              w: "/docs",
+              l: "/learning",
+              v: "/leave",
+              p: "/compliance",
+              u: "/uptime/monitors",
+              i: "/insights",
+              o: "/automations",
+              n: "/notifications",
+              ",": "/settings",
+            };
+
+            const path = routes[e.key.toLowerCase()];
+            if (path) {
+              e.preventDefault();
+              router.push(path);
+            }
+
+            // Clean up after any key press (whether matched or not)
+            cleanup();
+          };
+
+          document.addEventListener("keydown", handler);
+          // Auto-cleanup after 1.5 seconds if no follow-up key
+          const timer = setTimeout(cleanup, 1500);
+
+          // Return cleanup for component unmount scenarios
+          return () => {
+            clearTimeout(timer);
+            cleanup();
+          };
+        },
+        description: "Go to...",
+      },
+    ],
+  });
+
+  return null;
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   integrationsApi,
   JiraIntegration,
@@ -37,7 +38,11 @@ export function useJiraIntegration(workspaceId: string | null) {
       api_token: string;
     }) => integrationsApi.createJiraIntegration(workspaceId!, data),
     onSuccess: () => {
+      toast.success("Jira integration connected");
       queryClient.invalidateQueries({ queryKey: ["jiraIntegration", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to connect Jira integration");
     },
   });
 
@@ -47,6 +52,12 @@ export function useJiraIntegration(workspaceId: string | null) {
       user_email: string;
       api_token: string;
     }) => integrationsApi.testJiraConnection(workspaceId!, data),
+    onSuccess: () => {
+      toast.success("Jira connection test successful");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Jira connection test failed");
+    },
   });
 
   const updateMutation = useMutation({
@@ -58,19 +69,33 @@ export function useJiraIntegration(workspaceId: string | null) {
       sync_direction?: "import" | "bidirectional";
     }) => integrationsApi.updateJiraIntegration(workspaceId!, data),
     onSuccess: () => {
+      toast.success("Jira integration updated");
       queryClient.invalidateQueries({ queryKey: ["jiraIntegration", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update Jira integration");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: () => integrationsApi.deleteJiraIntegration(workspaceId!),
     onSuccess: () => {
+      toast.success("Jira integration disconnected");
       queryClient.invalidateQueries({ queryKey: ["jiraIntegration", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to disconnect Jira integration");
     },
   });
 
   const syncMutation = useMutation({
     mutationFn: (teamId?: string) => integrationsApi.syncJira(workspaceId!, teamId),
+    onSuccess: () => {
+      toast.success("Jira sync started");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to start Jira sync");
+    },
   });
 
   return {
@@ -174,13 +199,23 @@ export function useLinearIntegration(workspaceId: string | null) {
     mutationFn: (data: { api_key: string }) =>
       integrationsApi.createLinearIntegration(workspaceId!, data),
     onSuccess: () => {
+      toast.success("Linear integration connected");
       queryClient.invalidateQueries({ queryKey: ["linearIntegration", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to connect Linear integration");
     },
   });
 
   const testMutation = useMutation({
     mutationFn: (data?: { api_key: string }) =>
       integrationsApi.testLinearConnection(workspaceId!, data),
+    onSuccess: () => {
+      toast.success("Linear connection test successful");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Linear connection test failed");
+    },
   });
 
   const updateMutation = useMutation({
@@ -191,19 +226,33 @@ export function useLinearIntegration(workspaceId: string | null) {
       sync_enabled?: boolean;
     }) => integrationsApi.updateLinearIntegration(workspaceId!, data),
     onSuccess: () => {
+      toast.success("Linear integration updated");
       queryClient.invalidateQueries({ queryKey: ["linearIntegration", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update Linear integration");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: () => integrationsApi.deleteLinearIntegration(workspaceId!),
     onSuccess: () => {
+      toast.success("Linear integration disconnected");
       queryClient.invalidateQueries({ queryKey: ["linearIntegration", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to disconnect Linear integration");
     },
   });
 
   const syncMutation = useMutation({
     mutationFn: (teamId?: string) => integrationsApi.syncLinear(workspaceId!, teamId),
+    onSuccess: () => {
+      toast.success("Linear sync started");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to start Linear sync");
+    },
   });
 
   return {
