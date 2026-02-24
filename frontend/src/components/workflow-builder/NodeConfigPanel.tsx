@@ -1138,7 +1138,7 @@ export function NodeConfigPanel({
                 <option value="owner">Record Owner</option>
               </select>
             </div>
-            {(node.data.notify_type as string) === "email" && (
+            {((node.data.notify_type as string) || "email") === "email" && (
               <div>
                 <label className="block text-sm text-muted-foreground mb-1">Email Address</label>
                 <input
@@ -1150,7 +1150,7 @@ export function NodeConfigPanel({
                 />
               </div>
             )}
-            {(node.data.notify_type as string) === "field" && (
+            {((node.data.notify_type as string) || "email") === "field" && (
               <div>
                 <label className="block text-sm text-muted-foreground mb-1">Email Field</label>
                 <FieldPicker
@@ -1200,7 +1200,7 @@ export function NodeConfigPanel({
                 <option value="in_app">In-App Notification</option>
               </select>
             </div>
-            {(node.data.notify_channel as string) === "slack" && (
+            {((node.data.notify_channel as string) || "slack") === "slack" && (
               <div>
                 <label className="block text-sm text-muted-foreground mb-1">Slack Channel ID</label>
                 <input
@@ -1212,7 +1212,7 @@ export function NodeConfigPanel({
                 />
               </div>
             )}
-            {(node.data.notify_channel as string) === "email" && (
+            {((node.data.notify_channel as string) || "slack") === "email" && (
               <div>
                 <label className="block text-sm text-muted-foreground mb-1">Email Addresses</label>
                 <textarea
