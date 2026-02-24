@@ -42,6 +42,7 @@ import {
   KeyRound,
   Sparkles,
   Activity,
+  Bell,
 } from "lucide-react";
 import { useCommandPalette, getModifierKey } from "@/hooks/useKeyboardShortcuts";
 import { Kbd } from "@/components/ui/kbd";
@@ -412,6 +413,15 @@ export function CommandPalette({ projectId, onCreateTask }: CommandPaletteProps)
         action: () => router.push("/settings/usage"),
         category: "navigation",
         keywords: ["usage", "tokens", "limits", "quota", "consumption", "cost"],
+      },
+      {
+        id: "nav-notifications",
+        label: "Notification Settings",
+        description: "Configure notification channels and preferences",
+        icon: <Bell className="h-4 w-4" />,
+        action: () => router.push("/settings/notifications"),
+        category: "navigation",
+        keywords: ["notification", "alert", "bell", "email", "slack"],
       },
       {
         id: "nav-settings",
