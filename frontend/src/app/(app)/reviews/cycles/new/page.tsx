@@ -4,9 +4,9 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { redirect, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
   Calendar,
-  ArrowLeft,
   Info,
   CheckCircle,
   Users,
@@ -125,14 +125,15 @@ export default function NewReviewCyclePage() {
   return (
     <div className="min-h-screen bg-background">
 <main className="max-w-3xl mx-auto px-4 py-8">
-        {/* Back Link */}
-        <Link
-          href="/reviews/cycles"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Cycles
-        </Link>
+        {/* Breadcrumb */}
+        <Breadcrumb
+          items={[
+            { label: "Reviews", href: "/reviews" },
+            { label: "Cycles", href: "/reviews/cycles" },
+            { label: "New Cycle" },
+          ]}
+          className="mb-6"
+        />
 
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">

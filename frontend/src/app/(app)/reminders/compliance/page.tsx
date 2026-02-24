@@ -5,6 +5,7 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { useQuestionnaires, useQuestionnaire } from "@/hooks/useQuestionnaires";
 import { useReminderSuggestions } from "@/hooks/useReminders";
 import Link from "next/link";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
   ArrowLeft,
   Upload,
@@ -66,6 +67,13 @@ export default function ComplianceCenterPage() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
+      <Breadcrumb
+        items={[
+          { label: "Reminders", href: "/compliance/reminders" },
+          { label: "Compliance" },
+        ]}
+        className="mb-6"
+      />
       {view === "list" ? (
         <QuestionnaireListView
           questionnaires={questionnaires}

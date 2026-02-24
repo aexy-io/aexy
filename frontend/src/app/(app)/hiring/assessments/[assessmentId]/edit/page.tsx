@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Check, Circle, AlertCircle, Loader2 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { Check, Circle, AlertCircle, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAssessment, useAssessmentWizard } from "@/hooks/useAssessments";
@@ -259,35 +260,32 @@ export default function AssessmentWizardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 h-16">
             <div className="flex items-center gap-4">
-              <Link
-                href="/hiring/assessments"
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
-              <div>
-                <h1 className="text-lg font-semibold text-foreground">
-                  {assessment.title || "Untitled Assessment"}
-                </h1>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs px-2 py-0.5 bg-muted text-muted-foreground rounded">
-                    Draft
+              <Breadcrumb
+                items={[
+                  { label: "Hiring", href: "/hiring" },
+                  { label: "Assessments", href: "/hiring/assessments" },
+                  { label: assessment.title || "Untitled Assessment", href: `/hiring/assessments/${assessmentId}/report` },
+                  { label: "Edit" },
+                ]}
+              />
+              <div className="flex items-center gap-2">
+                <span className="text-xs px-2 py-0.5 bg-muted text-muted-foreground rounded">
+                  Draft
+                </span>
+                {autoSaveStatus && (
+                  <span className="text-xs text-muted-foreground">
+                    {autoSaveStatus === "saving" ? (
+                      <span className="flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Saving...
+                      </span>
+                    ) : autoSaveStatus === "saved" ? (
+                      "Saved"
+                    ) : (
+                      "Error saving"
+                    )}
                   </span>
-                  {autoSaveStatus && (
-                    <span className="text-xs text-muted-foreground">
-                      {autoSaveStatus === "saving" ? (
-                        <span className="flex items-center gap-1">
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          Saving...
-                        </span>
-                      ) : autoSaveStatus === "saved" ? (
-                        "Saved"
-                      ) : (
-                        "Error saving"
-                      )}
-                    </span>
-                  )}
-                </div>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-3">

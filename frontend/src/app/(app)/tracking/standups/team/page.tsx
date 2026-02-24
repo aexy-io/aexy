@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   Users,
   Calendar,
   ChevronLeft,
@@ -14,6 +12,7 @@ import {
   AlertTriangle,
   User,
 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { StandupCard } from "@/components/tracking";
 import {
   MetricCard,
@@ -30,7 +29,6 @@ import { useTeams } from "@/hooks/useTeams";
 import { Standup } from "@/lib/api";
 
 export default function TeamStandupsPage() {
-  const router = useRouter();
   const { user } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
@@ -159,13 +157,14 @@ export default function TeamStandupsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <button
-            onClick={() => router.push("/tracking/standups")}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 transition"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Standups
-          </button>
+          <Breadcrumb
+            items={[
+              { label: "Tracking", href: "/tracking" },
+              { label: "Standups", href: "/tracking/standups" },
+              { label: "Team View" },
+            ]}
+            className="mb-6"
+          />
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">

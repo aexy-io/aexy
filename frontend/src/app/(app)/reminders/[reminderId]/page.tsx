@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import Link from "next/link";
 import {
-  ArrowLeft,
   Calendar,
   Clock,
   CheckCircle2,
@@ -16,6 +14,7 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useReminder, useReminderInstances } from "@/hooks/useReminders";
 import { ReminderInstance } from "@/lib/api";
@@ -90,13 +89,13 @@ export default function ReminderDetailPage() {
   if (error || !reminder) {
     return (
       <div className="p-6 max-w-4xl mx-auto">
-        <Link
-          href="/compliance/reminders"
-          className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 mb-4"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Reminders
-        </Link>
+        <Breadcrumb
+          items={[
+            { label: "Reminders", href: "/compliance/reminders" },
+            { label: "Not Found" },
+          ]}
+          className="mb-4"
+        />
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
           <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-2" />
           <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
@@ -122,14 +121,13 @@ export default function ReminderDetailPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      {/* Back link */}
-      <Link
-        href="/compliance/reminders"
-        className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 mb-4"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Reminders
-      </Link>
+      <Breadcrumb
+        items={[
+          { label: "Reminders", href: "/compliance/reminders" },
+          { label: reminder.title },
+        ]}
+        className="mb-4"
+      />
 
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">

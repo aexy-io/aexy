@@ -4,7 +4,6 @@ import { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft,
   Phone,
   Settings,
   Calendar,
@@ -15,6 +14,7 @@ import {
   Globe,
   Clock,
 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useTeam, useTeamMembers } from "@/hooks/useTeams";
 import { useAuth } from "@/hooks/useAuth";
@@ -184,14 +184,15 @@ export default function OnCallSettingsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Back Link */}
-      <Link
-        href={`/settings/projects/${teamId}`}
-        className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-      >
-        <ArrowLeft className="h-3 w-3" />
-        Back to Project
-      </Link>
+      <Breadcrumb
+        items={[
+          { label: "Settings", href: "/settings" },
+          { label: "Projects", href: "/settings/projects" },
+          { label: team?.name || "Project", href: `/settings/projects/${teamId}` },
+          { label: "On-Call" },
+        ]}
+        className="mb-0"
+      />
 
       {/* Title and Settings Button */}
       <div className="flex items-center justify-between">

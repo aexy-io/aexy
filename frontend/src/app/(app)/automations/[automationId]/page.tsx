@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Node, Edge } from "@xyflow/react";
 
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -255,12 +255,12 @@ export default function EditAutomationPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-4 py-3 border-b border-border bg-muted/50 relative z-10">
           <div className="flex items-center gap-4">
-            <button
-              onClick={handleBack}
-              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
+            <Breadcrumb
+              items={[
+                { label: "Automations", href: automation?.module ? `/automations?module=${automation.module}` : "/automations" },
+                { label: name || "Automation" },
+              ]}
+            />
             <div>
               <div className="flex items-center gap-3">
                 <input
