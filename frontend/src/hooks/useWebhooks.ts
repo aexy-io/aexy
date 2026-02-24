@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { webhooksApi, BookingWebhook, WebhookTestResult } from "@/lib/api";
 
 export function useBookingWebhooks(workspaceId: string | null) {
@@ -16,7 +17,11 @@ export function useBookingWebhooks(workspaceId: string | null) {
     mutationFn: (payload: { name: string; url: string; events: string[]; is_active?: boolean }) =>
       webhooksApi.createBookingWebhook(workspaceId!, payload),
     onSuccess: () => {
+      toast.success("Webhook created");
       queryClient.invalidateQueries({ queryKey: ["bookingWebhooks", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to create webhook");
     },
   });
 
@@ -24,7 +29,11 @@ export function useBookingWebhooks(workspaceId: string | null) {
     mutationFn: ({ webhookId, data }: { webhookId: string; data: Partial<BookingWebhook> }) =>
       webhooksApi.updateBookingWebhook(workspaceId!, webhookId, data),
     onSuccess: () => {
+      toast.success("Webhook updated");
       queryClient.invalidateQueries({ queryKey: ["bookingWebhooks", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update webhook");
     },
   });
 
@@ -32,20 +41,34 @@ export function useBookingWebhooks(workspaceId: string | null) {
     mutationFn: (webhookId: string) =>
       webhooksApi.deleteBookingWebhook(workspaceId!, webhookId),
     onSuccess: () => {
+      toast.success("Webhook deleted");
       queryClient.invalidateQueries({ queryKey: ["bookingWebhooks", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to delete webhook");
     },
   });
 
   const testMutation = useMutation({
     mutationFn: (webhookId: string) =>
       webhooksApi.testBookingWebhook(workspaceId!, webhookId),
+    onSuccess: () => {
+      toast.success("Webhook test successful");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Webhook test failed");
+    },
   });
 
   const rotateMutation = useMutation({
     mutationFn: (webhookId: string) =>
       webhooksApi.rotateBookingWebhookSecret(workspaceId!, webhookId),
     onSuccess: () => {
+      toast.success("Webhook secret rotated");
       queryClient.invalidateQueries({ queryKey: ["bookingWebhooks", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to rotate webhook secret");
     },
   });
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { exportsApi, ExportJob } from "@/lib/api";
 
 export function useExports(limit = 20) {
@@ -18,14 +19,22 @@ export function useExports(limit = 20) {
       config?: Record<string, unknown>;
     }) => exportsApi.createExport(payload),
     onSuccess: () => {
+      toast.success("Export started");
       queryClient.invalidateQueries({ queryKey: ["exports"] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to start export");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (jobId: string) => exportsApi.deleteExport(jobId),
     onSuccess: () => {
+      toast.success("Export deleted");
       queryClient.invalidateQueries({ queryKey: ["exports"] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to delete export");
     },
   });
 

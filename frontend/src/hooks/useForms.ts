@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { formsApi } from "@/lib/formsApi";
 import type {
   Form,
@@ -49,7 +50,11 @@ export function useForms(workspaceId: string | null) {
       require_email?: boolean;
     }) => formsApi.create(workspaceId!, data),
     onSuccess: () => {
+      toast.success("Form created");
       queryClient.invalidateQueries({ queryKey: ["forms", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to create form");
     },
   });
 
@@ -57,14 +62,22 @@ export function useForms(workspaceId: string | null) {
     mutationFn: ({ templateType, name }: { templateType: FormTemplateType; name?: string }) =>
       formsApi.createFromTemplate(workspaceId!, templateType, name),
     onSuccess: () => {
+      toast.success("Form created from template");
       queryClient.invalidateQueries({ queryKey: ["forms", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to create form from template");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (formId: string) => formsApi.delete(workspaceId!, formId),
     onSuccess: () => {
+      toast.success("Form deleted");
       queryClient.invalidateQueries({ queryKey: ["forms", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to delete form");
     },
   });
 
@@ -72,7 +85,11 @@ export function useForms(workspaceId: string | null) {
     mutationFn: ({ formId, newName }: { formId: string; newName: string }) =>
       formsApi.duplicate(workspaceId!, formId, newName),
     onSuccess: () => {
+      toast.success("Form duplicated");
       queryClient.invalidateQueries({ queryKey: ["forms", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to duplicate form");
     },
   });
 
@@ -80,7 +97,11 @@ export function useForms(workspaceId: string | null) {
     mutationFn: ({ formId, data }: { formId: string; data: Partial<{ is_active: boolean }> }) =>
       formsApi.update(workspaceId!, formId, data),
     onSuccess: () => {
+      toast.success("Form updated");
       queryClient.invalidateQueries({ queryKey: ["forms", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update form");
     },
   });
 
@@ -153,8 +174,12 @@ export function useForm(workspaceId: string | null, formId: string | null) {
       trigger_automations: boolean;
     }>) => formsApi.update(workspaceId!, formId!, data),
     onSuccess: () => {
+      toast.success("Form updated");
       queryClient.invalidateQueries({ queryKey: ["form", workspaceId, formId] });
       queryClient.invalidateQueries({ queryKey: ["forms", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update form");
     },
   });
 
@@ -174,7 +199,11 @@ export function useForm(workspaceId: string | null, formId: string | null) {
       crm_attribute_id?: string;
     }) => formsApi.addField(workspaceId!, formId!, data),
     onSuccess: () => {
+      toast.success("Field added");
       queryClient.invalidateQueries({ queryKey: ["form", workspaceId, formId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to add field");
     },
   });
 
@@ -182,21 +211,33 @@ export function useForm(workspaceId: string | null, formId: string | null) {
     mutationFn: ({ fieldId, data }: { fieldId: string; data: Partial<FormField> }) =>
       formsApi.updateField(workspaceId!, formId!, fieldId, data),
     onSuccess: () => {
+      toast.success("Field updated");
       queryClient.invalidateQueries({ queryKey: ["form", workspaceId, formId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update field");
     },
   });
 
   const deleteFieldMutation = useMutation({
     mutationFn: (fieldId: string) => formsApi.deleteField(workspaceId!, formId!, fieldId),
     onSuccess: () => {
+      toast.success("Field deleted");
       queryClient.invalidateQueries({ queryKey: ["form", workspaceId, formId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to delete field");
     },
   });
 
   const reorderFieldsMutation = useMutation({
     mutationFn: (fieldIds: string[]) => formsApi.reorderFields(workspaceId!, formId!, fieldIds),
     onSuccess: () => {
+      toast.success("Fields reordered");
       queryClient.invalidateQueries({ queryKey: ["form", workspaceId, formId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to reorder fields");
     },
   });
 
@@ -244,16 +285,24 @@ export function useFormTicketConfig(workspaceId: string | null, formId: string |
       ticket_config?: Record<string, unknown>;
     }) => formsApi.configureTicket(workspaceId!, formId!, data),
     onSuccess: () => {
+      toast.success("Ticket configuration saved");
       queryClient.invalidateQueries({ queryKey: ["formTicketConfig", workspaceId, formId] });
       queryClient.invalidateQueries({ queryKey: ["form", workspaceId, formId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to save ticket configuration");
     },
   });
 
   const disableMutation = useMutation({
     mutationFn: () => formsApi.disableTicket(workspaceId!, formId!),
     onSuccess: () => {
+      toast.success("Ticket creation disabled");
       queryClient.invalidateQueries({ queryKey: ["formTicketConfig", workspaceId, formId] });
       queryClient.invalidateQueries({ queryKey: ["form", workspaceId, formId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to disable ticket creation");
     },
   });
 
@@ -293,16 +342,24 @@ export function useFormCRMMapping(workspaceId: string | null, formId: string | n
       record_owner_id?: string;
     }) => formsApi.configureCRMMapping(workspaceId!, formId!, data),
     onSuccess: () => {
+      toast.success("CRM mapping configured");
       queryClient.invalidateQueries({ queryKey: ["formCRMMapping", workspaceId, formId] });
       queryClient.invalidateQueries({ queryKey: ["form", workspaceId, formId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to configure CRM mapping");
     },
   });
 
   const removeMutation = useMutation({
     mutationFn: () => formsApi.removeCRMMapping(workspaceId!, formId!),
     onSuccess: () => {
+      toast.success("CRM mapping removed");
       queryClient.invalidateQueries({ queryKey: ["formCRMMapping", workspaceId, formId] });
       queryClient.invalidateQueries({ queryKey: ["form", workspaceId, formId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to remove CRM mapping");
     },
   });
 
@@ -343,16 +400,24 @@ export function useFormDealConfig(workspaceId: string | null, formId: string | n
       link_deal_to_record?: boolean;
     }) => formsApi.configureDeal(workspaceId!, formId!, data),
     onSuccess: () => {
+      toast.success("Deal configuration saved");
       queryClient.invalidateQueries({ queryKey: ["formDealConfig", workspaceId, formId] });
       queryClient.invalidateQueries({ queryKey: ["form", workspaceId, formId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to save deal configuration");
     },
   });
 
   const disableMutation = useMutation({
     mutationFn: () => formsApi.disableDeal(workspaceId!, formId!),
     onSuccess: () => {
+      toast.success("Deal creation disabled");
       queryClient.invalidateQueries({ queryKey: ["formDealConfig", workspaceId, formId] });
       queryClient.invalidateQueries({ queryKey: ["form", workspaceId, formId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to disable deal creation");
     },
   });
 
@@ -388,7 +453,11 @@ export function useFormAutomations(workspaceId: string | null, formId: string | 
     mutationFn: (data: { automation_id: string; conditions?: Record<string, unknown>[] }) =>
       formsApi.linkAutomation(workspaceId!, formId!, data),
     onSuccess: () => {
+      toast.success("Automation linked");
       queryClient.invalidateQueries({ queryKey: ["formAutomations", workspaceId, formId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to link automation");
     },
   });
 
@@ -396,7 +465,11 @@ export function useFormAutomations(workspaceId: string | null, formId: string | 
     mutationFn: (automationId: string) =>
       formsApi.unlinkAutomation(workspaceId!, formId!, automationId),
     onSuccess: () => {
+      toast.success("Automation unlinked");
       queryClient.invalidateQueries({ queryKey: ["formAutomations", workspaceId, formId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to unlink automation");
     },
   });
 
@@ -478,6 +551,12 @@ export function usePublicForm(publicToken: string | null) {
       data: Record<string, unknown>;
       utm_params?: Record<string, string>;
     }) => formsApi.submitPublicForm(publicToken!, data),
+    onSuccess: () => {
+      toast.success("Form submitted");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to submit form");
+    },
   });
 
   return {
