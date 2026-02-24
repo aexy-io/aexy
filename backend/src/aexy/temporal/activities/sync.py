@@ -46,7 +46,7 @@ async def sync_repository(input: SyncRepositoryInput) -> dict[str, Any]:
     logger.info(f"Syncing repository {input.repository_id}")
     activity.heartbeat("Starting repository sync")
 
-    from aexy.services.github_service import GitHubAuthError
+    from aexy.services.github_service import GitHubAuthError, GitHubNotFoundError
     from aexy.services.sync_service import SyncService
 
     async with async_session_maker() as db:
@@ -59,8 +59,8 @@ async def sync_repository(input: SyncRepositoryInput) -> dict[str, Any]:
             )
             await db.commit()
             return result
-        except GitHubAuthError:
-            # Commit the auth_status/auth_error changes made by SyncService
+        except (GitHubAuthError, GitHubNotFoundError):
+            # Commit the status/error changes made by SyncService
             try:
                 await db.commit()
             except Exception:
@@ -115,12 +115,13 @@ async def check_repo_auto_sync(input: CheckRepoAutoSyncInput) -> dict[str, Any]:
 
     from sqlalchemy import and_, select
 
-    from aexy.models.developer import Developer
+    from aexy.models.developer import Developer, GitHubConnection
     from aexy.models.repository import DeveloperRepository
     from aexy.temporal.dispatch import dispatch
 
     now = datetime.now(timezone.utc)
     syncs_triggered = 0
+    skipped_auth = 0
 
     async with async_session_maker() as db:
         # Find all developers with auto-sync enabled
@@ -134,6 +135,17 @@ async def check_repo_auto_sync(input: CheckRepoAutoSyncInput) -> dict[str, Any]:
         for developer in developers:
             settings = developer.repo_sync_settings or {}
             if not settings.get("enabled"):
+                continue
+
+            # Skip developers whose GitHub connection has broken auth
+            conn_result = await db.execute(
+                select(GitHubConnection).where(
+                    GitHubConnection.developer_id == developer.id
+                )
+            )
+            connection = conn_result.scalar_one_or_none()
+            if not connection or connection.auth_status == "error":
+                skipped_auth += 1
                 continue
 
             frequency = settings.get("frequency", "1h")
@@ -174,6 +186,9 @@ async def check_repo_auto_sync(input: CheckRepoAutoSyncInput) -> dict[str, Any]:
                     logger.exception(
                         f"Failed to dispatch auto-sync for repo {dev_repo.repository_id}"
                     )
+
+    if skipped_auth:
+        logger.warning(f"Auto-sync skipped {skipped_auth} developers with broken GitHub auth")
 
     logger.info(f"Auto-sync check complete: {syncs_triggered} syncs triggered")
     return {"syncs_triggered": syncs_triggered}
