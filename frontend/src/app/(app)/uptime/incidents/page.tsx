@@ -114,8 +114,44 @@ export default function IncidentsPage() {
 
   if (loading && incidents.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" />
+      <div className="min-h-screen bg-background animate-pulse">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <div className="h-7 w-32 bg-accent rounded mb-2" />
+              <div className="h-4 w-40 bg-accent rounded" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-muted rounded-xl p-4 border border-border">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 bg-accent rounded-lg" />
+                  <div>
+                    <div className="h-6 w-8 bg-accent rounded mb-1" />
+                    <div className="h-3 w-24 bg-accent rounded" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-muted rounded-xl p-4 border border-border">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 bg-accent rounded-lg" />
+                    <div>
+                      <div className="h-4 w-48 bg-accent rounded mb-1" />
+                      <div className="h-3 w-64 bg-accent rounded" />
+                    </div>
+                  </div>
+                  <div className="h-6 w-20 bg-accent rounded-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     );
   }

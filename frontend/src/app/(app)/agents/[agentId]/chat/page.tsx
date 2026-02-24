@@ -81,10 +81,28 @@ export default function AgentChatPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 text-purple-500 animate-spin mx-auto mb-4" />
-          <p className="text-foreground">Loading...</p>
+      <div className="flex h-[calc(100vh-4rem)] animate-pulse">
+        <div className="w-64 border-r border-border p-4 space-y-3">
+          <div className="h-9 bg-accent rounded-lg" />
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-14 bg-accent rounded-lg" />
+          ))}
+        </div>
+        <div className="flex-1 flex flex-col">
+          <div className="border-b border-border p-4 flex items-center gap-3">
+            <div className="h-8 w-8 bg-accent rounded-full" />
+            <div className="h-4 w-32 bg-accent rounded" />
+          </div>
+          <div className="flex-1 p-4 space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : ''}`}>
+                <div className="h-16 w-2/3 bg-accent rounded-xl" />
+              </div>
+            ))}
+          </div>
+          <div className="border-t border-border p-4">
+            <div className="h-10 bg-accent rounded-lg" />
+          </div>
         </div>
       </div>
     );

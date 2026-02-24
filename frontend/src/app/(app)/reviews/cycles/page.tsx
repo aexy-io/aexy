@@ -144,13 +144,26 @@ export default function ReviewCyclesPage() {
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
-            <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+      <div className="p-6 max-w-6xl mx-auto animate-pulse">
+        <div className="flex items-center justify-between mb-6">
+          <div className="h-7 w-36 bg-accent rounded" />
+          <div className="h-9 w-36 bg-accent rounded-lg" />
+        </div>
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="grid grid-cols-5 gap-4 px-4 py-3 border-b border-border">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-3 w-16 bg-accent rounded" />
+            ))}
           </div>
-          <p className="text-muted-foreground text-sm">Loading review cycles...</p>
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="grid grid-cols-5 gap-4 px-4 py-3 border-b border-border/50">
+              <div className="h-4 w-32 bg-accent rounded" />
+              <div className="h-5 w-16 bg-accent rounded-full" />
+              <div className="h-3 w-20 bg-accent rounded" />
+              <div className="h-3 w-20 bg-accent rounded" />
+              <div className="h-3 w-12 bg-accent rounded" />
+            </div>
+          ))}
         </div>
       </div>
     );
