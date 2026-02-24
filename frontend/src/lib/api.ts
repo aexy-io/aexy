@@ -15321,8 +15321,9 @@ export const ssoApi = {
     try {
       const response = await api.get(`/workspaces/${workspaceId}/sso/configuration`);
       return response.data;
-    } catch {
-      return null;
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.status === 404) return null;
+      throw err;
     }
   },
 

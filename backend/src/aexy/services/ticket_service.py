@@ -337,7 +337,7 @@ class TicketService:
 
             # Dispatch ticket.reopened when a resolved/closed ticket goes back to open state
             closed_statuses = {TicketStatus.RESOLVED.value, TicketStatus.CLOSED.value}
-            open_statuses = {TicketStatus.NEW.value, TicketStatus.OPEN.value, TicketStatus.IN_PROGRESS.value}
+            open_statuses = {TicketStatus.NEW.value, TicketStatus.ACKNOWLEDGED.value, TicketStatus.IN_PROGRESS.value}
             if old_status in closed_statuses and new_status in open_statuses:
                 await dispatch_automation_event(
                     db=self.db,

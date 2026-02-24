@@ -139,6 +139,9 @@ export function DashboardWelcome({
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
               className="relative w-full max-w-2xl mx-4 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden pointer-events-auto"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Welcome"
             >
               {/* Header */}
               <div className="px-8 pt-8 pb-4 text-center">

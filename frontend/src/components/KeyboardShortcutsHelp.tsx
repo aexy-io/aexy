@@ -118,17 +118,21 @@ export function KeyboardShortcutsHelp() {
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
               className="relative w-full max-w-lg mx-4 bg-muted/95 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl shadow-black/50 overflow-hidden pointer-events-auto"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="shortcuts-dialog-title"
             >
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-border/50">
                 <div className="flex items-center gap-2.5">
                   <Keyboard className="h-5 w-5 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold text-foreground">
+                  <h2 id="shortcuts-dialog-title" className="text-sm font-semibold text-foreground">
                     Keyboard Shortcuts
                   </h2>
                 </div>
                 <button
                   onClick={close}
+                  aria-label="Close"
                   className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition"
                 >
                   <X className="h-4 w-4" />

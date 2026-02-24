@@ -773,7 +773,7 @@ async def complete_assessment(
         if pct >= 80:
             await dispatch_automation_event(
                 db=db,
-                workspace_id=str(assessment.workspace_id),
+                workspace_id=str(assessment.organization_id),
                 module="hiring",
                 trigger_type="assessment.score_above",
                 entity_id=str(attempt.id),
@@ -790,7 +790,7 @@ async def complete_assessment(
         if pct < 50:
             await dispatch_automation_event(
                 db=db,
-                workspace_id=str(assessment.workspace_id),
+                workspace_id=str(assessment.organization_id),
                 module="hiring",
                 trigger_type="assessment.score_below",
                 entity_id=str(attempt.id),

@@ -49,7 +49,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       }
 
       return (
-        <div className="flex items-center justify-center min-h-[400px] p-6">
+        <div role="alert" className="flex items-center justify-center min-h-[400px] p-6">
           <div className="max-w-md w-full text-center">
             <div className="mx-auto w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
               <AlertTriangle className="h-7 w-7 text-red-500" />

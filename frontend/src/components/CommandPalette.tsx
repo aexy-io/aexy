@@ -59,7 +59,6 @@ interface CommandItem {
 }
 
 interface CommandPaletteProps {
-  workspaceId?: string | null;
   projectId?: string;
   onCreateTask?: () => void;
 }
@@ -406,9 +405,9 @@ export function CommandPalette({ projectId, onCreateTask }: CommandPaletteProps)
         keywords: ["webhook", "api", "endpoint", "notification", "event"],
       },
       {
-        id: "nav-templates",
-        label: "Templates",
-        description: "Browse pre-built templates",
+        id: "nav-automation-templates",
+        label: "Automation Templates",
+        description: "Browse automation & form templates",
         icon: <Sparkles className="h-4 w-4" />,
         action: () => router.push("/templates"),
         category: "navigation",
@@ -674,6 +673,9 @@ export function CommandPalette({ projectId, onCreateTask }: CommandPaletteProps)
               exit={{ opacity: 0, scale: 0.95, y: -20 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
               className="relative w-full max-w-xl mx-4 bg-muted/95 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl shadow-black/50 overflow-hidden pointer-events-auto"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Command palette"
             >
           {/* Search input */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50">
@@ -681,6 +683,10 @@ export function CommandPalette({ projectId, onCreateTask }: CommandPaletteProps)
             <input
               ref={inputRef}
               type="text"
+              role="combobox"
+              aria-expanded="true"
+              aria-controls="command-palette-results"
+              aria-label="Search commands"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search commands, navigate, or type..."
@@ -695,7 +701,7 @@ export function CommandPalette({ projectId, onCreateTask }: CommandPaletteProps)
           </div>
 
           {/* Results */}
-          <div className="max-h-[60vh] overflow-y-auto">
+          <div id="command-palette-results" role="listbox" className="max-h-[60vh] overflow-y-auto">
             {filteredCommands.length === 0 ? (
               <div className="py-12 text-center text-muted-foreground">
                 <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />

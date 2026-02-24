@@ -41,6 +41,13 @@ export function GlobalShortcuts() {
         key: "g",
         callback: () => {
           // Start a "go to" sequence - listen for next key
+          let cleaned = false;
+          const cleanup = () => {
+            if (cleaned) return;
+            cleaned = true;
+            document.removeEventListener("keydown", handler);
+          };
+
           const handler = (e: KeyboardEvent) => {
             // Ignore if in input
             const target = e.target as HTMLElement;
@@ -48,8 +55,10 @@ export function GlobalShortcuts() {
               target.tagName === "INPUT" ||
               target.tagName === "TEXTAREA" ||
               target.isContentEditable
-            )
+            ) {
+              cleanup();
               return;
+            }
 
             const routes: Record<string, string> = {
               d: "/dashboard",
@@ -81,14 +90,18 @@ export function GlobalShortcuts() {
             }
 
             // Clean up after any key press (whether matched or not)
-            document.removeEventListener("keydown", handler);
+            cleanup();
           };
 
           document.addEventListener("keydown", handler);
           // Auto-cleanup after 1.5 seconds if no follow-up key
-          setTimeout(() => {
-            document.removeEventListener("keydown", handler);
-          }, 1500);
+          const timer = setTimeout(cleanup, 1500);
+
+          // Return cleanup for component unmount scenarios
+          return () => {
+            clearTimeout(timer);
+            cleanup();
+          };
         },
         description: "Go to...",
       },
