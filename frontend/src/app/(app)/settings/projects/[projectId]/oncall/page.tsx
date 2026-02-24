@@ -15,6 +15,7 @@ import {
   Clock,
 } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { HelpTooltip } from "@/components/ui/tooltip";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useTeam, useTeamMembers } from "@/hooks/useTeams";
 import { useAuth } from "@/hooks/useAuth";
@@ -199,7 +200,10 @@ export default function OnCallSettingsPage() {
         <div className="flex items-center gap-3">
           <Phone className="h-6 w-6 text-green-400" />
           <div>
-            <h1 className="text-2xl font-semibold text-foreground">On-Call Settings</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-semibold text-foreground">On-Call Settings</h1>
+              <HelpTooltip content="Defines who is responsible for responding to incidents during each time period. Team members are notified before their shifts begin" />
+            </div>
             <p className="text-sm text-muted-foreground mt-0.5">
               {team?.name || "Team"}
             </p>
@@ -328,9 +332,12 @@ export default function OnCallSettingsPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm text-muted-foreground mb-1">
-                      Notify before shift (minutes)
-                    </label>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <label className="block text-sm text-muted-foreground">
+                        Notify before shift (minutes)
+                      </label>
+                      <HelpTooltip content="How many minutes before a shift starts the on-call person receives a reminder notification" />
+                    </div>
                     <input
                       type="number"
                       value={config.notify_before_shift_minutes}
@@ -345,9 +352,12 @@ export default function OnCallSettingsPage() {
                   </div>
                   {isCalendarConnected && calendars.length > 0 && (
                     <div className="md:col-span-2">
-                      <label className="block text-sm text-muted-foreground mb-1">
-                        Sync to Calendar
-                      </label>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <label className="block text-sm text-muted-foreground">
+                          Sync to Calendar
+                        </label>
+                        <HelpTooltip content="Automatically sync on-call schedules to a Google Calendar so shifts appear as calendar events" />
+                      </div>
                       <div className="flex gap-2">
                         <select
                           value={selectedCalendarId || config.google_calendar_id || ""}
@@ -401,7 +411,10 @@ export default function OnCallSettingsPage() {
 
             {/* Schedule Editor */}
             <div>
-              <h3 className="text-lg font-semibold text-foreground mb-3">Schedule</h3>
+              <div className="flex items-center gap-1.5 mb-3">
+                <h3 className="text-lg font-semibold text-foreground">Schedule</h3>
+                <HelpTooltip content="Create and manage on-call rotation slots. Each slot assigns a team member to a specific time period" />
+              </div>
               <OnCallScheduleEditor
                 schedules={schedules}
                 teamMembers={teamMembers}

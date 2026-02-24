@@ -6,6 +6,7 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { bookingApi, EventType, EventTypeUpdate, CustomQuestion } from "@/lib/booking-api";
 import { toast } from "sonner";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { HelpTooltip } from "@/components/ui/tooltip";
 import {
   Clock,
   Video,
@@ -326,9 +327,12 @@ export default function EditEventTypePage() {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Duration
-              </label>
+              <div className="flex items-center gap-1.5 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Duration
+                </label>
+                <HelpTooltip content="Length of the booking slot in minutes" />
+              </div>
               <div className="flex flex-wrap gap-2">
                 {DURATIONS.map((duration) => (
                   <button
@@ -384,9 +388,12 @@ export default function EditEventTypePage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Buffer Before (minutes)
-              </label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Buffer Before (minutes)
+                </label>
+                <HelpTooltip content="Minimum gap before this booking to prevent back-to-back scheduling" />
+              </div>
               <input
                 type="number"
                 value={formData.buffer_before || 0}
@@ -397,9 +404,12 @@ export default function EditEventTypePage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Buffer After (minutes)
-              </label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Buffer After (minutes)
+                </label>
+                <HelpTooltip content="Minimum gap after this booking to prevent back-to-back scheduling" />
+              </div>
               <input
                 type="number"
                 value={formData.buffer_after || 0}
@@ -410,9 +420,12 @@ export default function EditEventTypePage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Minimum Notice (hours)
-              </label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Minimum Notice (hours)
+                </label>
+                <HelpTooltip content="How far in advance someone must book. Prevents last-minute bookings" />
+              </div>
               <input
                 type="number"
                 value={formData.min_notice_hours || 0}
@@ -422,9 +435,12 @@ export default function EditEventTypePage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Max Future Days
-              </label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Max Future Days
+                </label>
+                <HelpTooltip content="How far into the future this event can be booked. Limits the booking window" />
+              </div>
               <input
                 type="number"
                 value={formData.max_future_days || 60}

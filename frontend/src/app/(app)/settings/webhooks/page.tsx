@@ -22,6 +22,7 @@ import {
   ToggleRight,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { HelpTooltip } from "@/components/ui/tooltip";
 import { PremiumGate } from "@/components/PremiumGate";
 import { useBookingWebhooks, useBookingWebhookEvents } from "@/hooks/useWebhooks";
 import { webhooksApi, BookingWebhook } from "@/lib/api";
@@ -252,7 +253,10 @@ function CreateWebhookForm({
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-foreground mb-1">URL</label>
+        <div className="flex items-center gap-1.5 mb-1">
+          <label className="block text-sm font-medium text-foreground">URL</label>
+          <HelpTooltip content="The endpoint that receives HTTP POST requests when selected events occur" />
+        </div>
         <input
           type="url"
           value={url}
@@ -263,7 +267,10 @@ function CreateWebhookForm({
       </div>
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="block text-sm font-medium text-foreground">Events</label>
+          <div className="flex items-center gap-1.5">
+            <label className="block text-sm font-medium text-foreground">Events</label>
+            <HelpTooltip content="Select which events trigger this webhook. Each event sends a JSON payload with relevant data" />
+          </div>
           <button
             type="button"
             onClick={selectAll}
@@ -514,7 +521,10 @@ export default function WebhooksSettingsPage() {
 
       {/* Documentation section */}
       <div className="bg-card rounded-xl border border-border p-5">
-        <h3 className="text-sm font-semibold text-foreground mb-3">Webhook Signature Verification</h3>
+        <div className="flex items-center gap-1.5 mb-3">
+          <h3 className="text-sm font-semibold text-foreground">Webhook Signature Verification</h3>
+          <HelpTooltip content="Used to sign webhook payloads with HMAC-SHA256. Verify signatures to ensure requests are authentic" />
+        </div>
         <p className="text-xs text-muted-foreground mb-3">
           All webhook payloads are signed with HMAC-SHA256. Verify the signature using the{" "}
           <code className="bg-muted px-1 py-0.5 rounded">X-Aexy-Signature</code> header.
