@@ -83,3 +83,7 @@ export { TeamOverviewWidget } from "./TeamOverviewWidget";
 export { TeamActivityWidget } from "./TeamActivityWidget";
 export { OrgMetricsWidget } from "./OrgMetricsWidget";
 export { SystemHealthWidget } from "./SystemHealthWidget";
+
+// Team Health & Burnout widgets
+export { TeamHealthWidget } from "./TeamHealthWidget";
+export { BurnoutRiskWidget } from "./BurnoutRiskWidget";

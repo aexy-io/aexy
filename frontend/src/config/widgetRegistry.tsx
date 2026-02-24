@@ -66,6 +66,9 @@ import {
   TeamActivityWidget,
   OrgMetricsWidget,
   SystemHealthWidget,
+  // Team Health & Burnout
+  TeamHealthWidget,
+  BurnoutRiskWidget,
 } from "@/components/dashboard/widgets";
 import { TaskMatcherCard } from "@/components/TaskMatcherCard";
 
@@ -139,6 +142,9 @@ export const widgetRegistry: Record<string, ComponentType<any>> = {
   teamActivity: TeamActivityWidget,
   orgMetrics: OrgMetricsWidget,
   systemHealth: SystemHealthWidget,
+  // Team Health & Burnout widgets
+  teamHealth: TeamHealthWidget,
+  burnoutRisk: BurnoutRiskWidget,
 };
 
 /**
