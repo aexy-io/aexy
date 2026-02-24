@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import {
-  ChevronLeft,
   Mail,
   Play,
   Pause,
@@ -27,6 +26,7 @@ import {
   Edit2,
   TestTube,
 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -194,13 +194,15 @@ export default function CampaignDetailPage() {
 <div className="p-8">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
+          <Breadcrumb
+            items={[
+              { label: "Email Marketing", href: "/email-marketing" },
+              { label: "Campaigns", href: "/email-marketing/campaigns" },
+              { label: campaign.name },
+            ]}
+            className="mb-4"
+          />
           <div className="flex items-start gap-4 mb-6">
-            <button
-              onClick={() => router.push("/email-marketing/campaigns")}
-              className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition mt-1"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-2xl font-bold text-foreground">{campaign.name}</h1>

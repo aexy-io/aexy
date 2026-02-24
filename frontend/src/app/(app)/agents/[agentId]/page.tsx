@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   Bot,
   Play,
   Pause,
@@ -30,6 +29,7 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAgent, useAgentExecutions, useAgentMetrics } from "@/hooks/useAgents";
 import { CRMAgentExecution, getAgentTypeConfig } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
   AgentTypeBadge,
   AgentStatusBadge,
@@ -430,14 +430,12 @@ export default function AgentDetailPage() {
           <Bot className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-medium text-foreground mb-2">Agent Not Found</h2>
           <p className="text-muted-foreground mb-4">
-            The agent you're looking for doesn't exist or has been deleted.
+            The agent you&apos;re looking for doesn&apos;t exist or has been deleted.
           </p>
-          <Link
-            href="/agents"
-            className="text-purple-400 hover:text-purple-300"
-          >
-            Back to Agents
-          </Link>
+          <Breadcrumb
+            items={[{ label: "Agents", href: "/agents" }]}
+            className="justify-center"
+          />
         </div>
       </div>
     );
@@ -453,14 +451,15 @@ export default function AgentDetailPage() {
       {/* Header */}
       <header className="border-b border-border bg-muted/50">
         <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4 space-y-3 sm:space-y-0">
+          <Breadcrumb
+            items={[
+              { label: "Agents", href: "/agents" },
+              { label: agent.name },
+            ]}
+            className="mb-3"
+          />
           {/* Desktop: single row / Mobile: two rows */}
           <div className="flex items-center gap-2 sm:gap-4">
-            <Link
-              href="/agents"
-              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition flex-shrink-0"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
             <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
               <div
                 className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0"

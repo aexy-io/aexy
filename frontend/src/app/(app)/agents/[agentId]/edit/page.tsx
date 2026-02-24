@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   Bot,
   Save,
   Settings,
@@ -27,6 +26,7 @@ import { useAgent, useAgentTools } from "@/hooks/useAgents";
 import { useAgentEmail, useEmailDomains } from "@/hooks/useAgentInbox";
 import { getAgentTypeConfig, AgentType, WorkingHoursConfig } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
   AgentTypeBadge,
   ToolSelector,
@@ -276,12 +276,10 @@ export default function EditAgentPage() {
         <div className="text-center">
           <Bot className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-medium text-foreground mb-2">Agent Not Found</h2>
-          <Link
-            href="/agents"
-            className="text-purple-400 hover:text-purple-300"
-          >
-            Back to Agents
-          </Link>
+          <Breadcrumb
+            items={[{ label: "Agents", href: "/agents" }]}
+            className="justify-center"
+          />
         </div>
       </div>
     );
@@ -878,13 +876,15 @@ export default function EditAgentPage() {
       {/* Header */}
       <header className="border-b border-border bg-muted/50 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 py-3 sm:py-4">
+          <Breadcrumb
+            items={[
+              { label: "Agents", href: "/agents" },
+              { label: agent.name, href: `/agents/${agentId}` },
+              { label: "Edit" },
+            ]}
+            className="mb-3"
+          />
           <div className="flex items-center gap-2 sm:gap-4">
-            <Link
-              href={`/agents/${agentId}`}
-              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition flex-shrink-0"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
             <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
               <div
                 className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0"

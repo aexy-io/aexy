@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import {
-  ArrowLeft,
   Plus,
   Trash2,
   GripVertical,
@@ -26,6 +25,7 @@ import {
   ToggleLeft,
   Hash,
 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useTicketForm } from "@/hooks/useTicketing";
@@ -446,13 +446,14 @@ export default function FormBuilderPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link
-          href="/settings/ticket-forms"
-          className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-2"
-        >
-          <ArrowLeft className="h-3 w-3" />
-          Back to Ticket Forms
-        </Link>
+        <Breadcrumb
+          items={[
+            { label: "Settings", href: "/settings" },
+            { label: "Ticket Forms", href: "/settings/ticket-forms" },
+            { label: form.name },
+          ]}
+          className="mb-2"
+        />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-xl font-semibold text-foreground">{form.name}</h1>

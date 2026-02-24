@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
-  ArrowLeft,
   User,
   Users,
   Mail,
@@ -24,6 +23,7 @@ import {
   DollarSign,
   TrendingUp,
 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useTicket, useTicketResponses } from "@/hooks/useTicketing";
@@ -158,14 +158,13 @@ export default function TicketDetailPage() {
   return (
     <div className="min-h-screen bg-background">
 <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Back Button */}
-        <button
-          onClick={() => router.push("/tickets")}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Tickets
-        </button>
+        <Breadcrumb
+          items={[
+            { label: "Tickets", href: "/tickets" },
+            { label: ticket.form_name || `TKT-${ticket.ticket_number}` },
+          ]}
+          className="mb-6"
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}

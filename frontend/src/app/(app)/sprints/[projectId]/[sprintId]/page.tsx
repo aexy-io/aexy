@@ -4,7 +4,6 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  ArrowLeft,
   BarChart3,
   Calendar,
   CheckCircle,
@@ -24,6 +23,7 @@ import {
   Edit3,
   ArrowRightLeft,
 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
   DndContext,
   DragEndEvent,
@@ -44,6 +44,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace, useCustomTaskStatuses } from "@/hooks/useWorkspace";
 import { useSprint, useSprintTasks, useSprintAI, useSprintStats, useTaskActivities } from "@/hooks/useSprints";
 import { useEpics } from "@/hooks/useEpics";
+import { useProject } from "@/hooks/useProjects";
 import { SprintTask, TaskStatus, TaskPriority, AssignmentSuggestion, EpicListItem, TaskActivity } from "@/lib/api";
 import { redirect } from "next/navigation";
 
@@ -1036,6 +1037,7 @@ export default function SprintBoardPage({
   } = useSprintAI(sprintId);
 
   const { epics } = useEpics(currentWorkspaceId);
+  const { project } = useProject(currentWorkspaceId, projectId);
 
   // Custom statuses
   const { statuses: customStatuses } = useCustomTaskStatuses(currentWorkspaceId);
@@ -1237,13 +1239,15 @@ export default function SprintBoardPage({
       <header className="border-b border-border bg-muted/50">
         <div className="max-w-[1600px] mx-auto px-4 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Link
-                href={`/sprints/${projectId}`}
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
+            <div className="flex flex-col gap-2">
+              <Breadcrumb
+                items={[
+                  { label: "Sprints", href: "/sprints" },
+                  { label: project?.name || "Project", href: `/sprints/${projectId}` },
+                  { label: sprint.name },
+                ]}
+                className="mb-0"
+              />
               <div>
                 <h1 className="text-xl font-semibold text-foreground">{sprint.name}</h1>
                 {sprint.goal && (

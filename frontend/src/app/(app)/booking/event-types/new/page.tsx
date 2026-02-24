@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { bookingApi, EventTypeCreate, CustomQuestion } from "@/lib/booking-api";
 import { toast } from "sonner";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
-  ArrowLeft,
   Clock,
   Video,
   MapPin,
@@ -133,13 +133,14 @@ export default function NewEventTypePage() {
     <div className="p-6 max-w-3xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <Link
-          href="/booking/event-types"
-          className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1 mb-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Event Types
-        </Link>
+        <Breadcrumb
+          items={[
+            { label: "Booking", href: "/booking" },
+            { label: "Event Types", href: "/booking/event-types" },
+            { label: "New" },
+          ]}
+          className="mb-2"
+        />
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           Create Event Type
         </h1>

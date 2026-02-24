@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft,
   LayoutGrid,
   Columns3,
   Plus,
@@ -25,6 +24,7 @@ import {
   Keyboard,
   Command,
 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
   DndContext,
   DragEndEvent,
@@ -46,6 +46,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useProjectBoard, BoardViewMode, useBoardSelection } from "@/hooks/useProjectBoard";
 import { useEpics } from "@/hooks/useEpics";
+import { useProject } from "@/hooks/useProjects";
 import { SprintTask, TaskStatus, TaskPriority, SprintListItem, EpicListItem, sprintApi, TaskTemplate, taskTemplatesApi } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { TaskCardPremium, TaskCardSkeleton } from "@/components/planning/TaskCardPremium";
@@ -1332,6 +1333,7 @@ export default function ProjectBoardPage({
   } = useBoardSelection();
 
   const { epics } = useEpics(currentWorkspaceId);
+  const { project } = useProject(currentWorkspaceId, projectId);
   const { members } = useWorkspaceMembers(currentWorkspaceId);
 
   // Fetch task templates for the workspace
@@ -1696,13 +1698,15 @@ export default function ProjectBoardPage({
       <header className="flex-shrink-0 border-b border-border bg-muted/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="max-w-[1800px] mx-auto px-4 py-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Link
-                href={`/sprints/${projectId}`}
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
+            <div className="flex flex-col gap-2">
+              <Breadcrumb
+                items={[
+                  { label: "Sprints", href: "/sprints" },
+                  { label: project?.name || "Project", href: `/sprints/${projectId}` },
+                  { label: "Board" },
+                ]}
+                className="mb-0"
+              />
               <div>
                 <h1 className="text-lg font-semibold text-foreground">Project Board</h1>
                 <p className="text-xs text-muted-foreground">

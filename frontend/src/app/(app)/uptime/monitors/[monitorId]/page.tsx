@@ -6,8 +6,6 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { uptimeApi, UptimeMonitor, UptimeCheck, MonitorStats, UptimeIncident } from "@/lib/uptime-api";
 import Link from "next/link";
 import {
-  ArrowLeft,
-  MonitorCheck,
   Globe,
   Server,
   Wifi,
@@ -23,6 +21,7 @@ import {
   RefreshCw,
   Settings,
 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 const CHECK_TYPE_ICONS = {
   http: Globe,
@@ -171,13 +170,14 @@ export default function MonitorDetailPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-6">
-          <Link
-            href="/uptime/monitors"
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition mb-4"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Monitors
-          </Link>
+          <Breadcrumb
+            items={[
+              { label: "Uptime", href: "/uptime" },
+              { label: "Monitors", href: "/uptime/monitors" },
+              { label: monitor.name },
+            ]}
+            className="mb-6"
+          />
 
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-4">
