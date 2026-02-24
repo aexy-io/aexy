@@ -42,6 +42,10 @@ import {
   FileInput,
   Activity,
   MessageSquare,
+  TrendingUp,
+  RotateCcw,
+  ShieldOff,
+  Repeat,
 } from "lucide-react";
 import { useExecutionState, ExecutionStatus } from "./useExecutionState";
 
@@ -77,6 +81,7 @@ const triggerIcons: Record<string, React.ElementType> = {
   "ticket.assigned": UserCheck,
   "ticket.priority_changed": AlertTriangle,
   "ticket.escalated": AlertTriangle,
+  "ticket.reopened": RotateCcw,
   "sla.breached": AlertTriangle,
   "sla.warning": Bell,
   "response.received": MessageSquare,
@@ -116,6 +121,8 @@ const triggerIcons: Record<string, React.ElementType> = {
   "incident.resolved": CheckSquare,
   "incident.acknowledged": UserCheck,
   "ssl.expiring": AlertTriangle,
+  "monitor.ssl_expiring": ShieldOff,
+  "monitor.repeated_failures": Repeat,
   // Sprint triggers
   "task.created": Zap,
   "task.status_changed": RefreshCw,
@@ -123,6 +130,8 @@ const triggerIcons: Record<string, React.ElementType> = {
   "task.completed": CheckSquare,
   "sprint.started": Play,
   "sprint.completed": CheckSquare,
+  "sprint.velocity_calculated": TrendingUp,
+  "sprint.burndown_off_track": TrendingDown,
   "epic.completed": CheckSquare,
   "blocker.created": ShieldAlert,
   "blocker.resolved": CheckSquare,

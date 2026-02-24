@@ -24,6 +24,7 @@ import {
   ClipboardCheck,
   Sparkles,
   Link2,
+  Zap,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -32,6 +33,7 @@ import { useSprints, useActiveSprint } from "@/hooks/useSprints";
 import { redirect } from "next/navigation";
 import { Project, SprintListItem } from "@/lib/api";
 import { EpicsTab } from "./components/EpicsTab";
+import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
 import { cn } from "@/lib/utils";
 
 function ProjectCard({
@@ -469,6 +471,18 @@ function SprintsPageContent() {
             <Layers className="h-4 w-4" />
             Epics
           </button>
+          <button
+            onClick={() => setActiveTab("automations")}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+              activeTab === "automations"
+                ? "bg-primary-500 text-white shadow-lg shadow-primary-500/25"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted",
+            )}
+          >
+            <Zap className="h-4 w-4" />
+            Automations
+          </button>
         </motion.div>
 
         {/* Tab Content */}
@@ -479,6 +493,8 @@ function SprintsPageContent() {
             workspaceId={currentWorkspaceId}
             hasWorkspaces={hasWorkspaces}
           />
+        ) : activeTab === "automations" ? (
+          <ModuleAutomationsPanel module="sprints" moduleLabel="Sprints" />
         ) : (
           <EpicsTab
             workspaceId={currentWorkspaceId}

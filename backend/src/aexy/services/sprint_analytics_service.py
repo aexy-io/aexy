@@ -8,6 +8,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.models.sprint import Sprint, SprintTask, SprintMetrics, TeamVelocity
+from aexy.services.automation_service import dispatch_automation_event
 
 
 class SprintAnalyticsService:
@@ -177,6 +178,29 @@ class SprintAnalyticsService:
         )
         self.db.add(metrics)
         await self.db.flush()
+
+        # Check if burndown is significantly off track (actual > ideal by 20%+)
+        if ideal_burndown > 0 and stats["total_points"] > 0:
+            deviation = (stats["remaining_points"] - ideal_burndown) / stats["total_points"]
+            if deviation >= 0.2:  # 20% or more behind ideal
+                await dispatch_automation_event(
+                    db=self.db,
+                    workspace_id=str(sprint.workspace_id),
+                    module="sprints",
+                    trigger_type="sprint.burndown_off_track",
+                    entity_id=sprint_id,
+                    trigger_data={
+                        "sprint_name": sprint.name,
+                        "team_id": str(sprint.team_id),
+                        "ideal_remaining": round(ideal_burndown, 1),
+                        "actual_remaining": stats["remaining_points"],
+                        "total_points": stats["total_points"],
+                        "deviation_pct": round(deviation * 100, 1),
+                        "completed_points": stats["completed_points"],
+                        "snapshot_date": today.isoformat(),
+                    },
+                )
+
         return metrics
 
     async def record_all_active_sprints(self) -> int:
