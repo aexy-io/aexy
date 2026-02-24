@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 import {
@@ -25,6 +25,10 @@ import {
 } from "@/lib/api";
 import { EmptyState } from "@/components/EmptyState";
 import { BarChart3 } from "lucide-react";
+import { DataTable, DataTableColumn } from "@/components/ui/data-table";
+
+/** Row type for the scheduled reports table, enriched with the resolved report name. */
+type ScheduledReportRow = ScheduledReport & { reportName: string };
 
 export default function ReportsPage() {
   const { isAuthenticated } = useAuth();
@@ -123,6 +127,71 @@ export default function ReportsPage() {
         return "bg-muted-foreground/20 text-muted-foreground";
     }
   };
+
+  // Enrich scheduled report rows with the resolved report name
+  const scheduledReportRows: ScheduledReportRow[] = useMemo(
+    () =>
+      schedules.map((schedule) => ({
+        ...schedule,
+        reportName: reports.find((r) => r.id === schedule.report_id)?.name || "Unknown Report",
+      })),
+    [schedules, reports]
+  );
+
+  const scheduledReportColumns: DataTableColumn<ScheduledReportRow>[] = useMemo(
+    () => [
+      {
+        id: "report",
+        header: "Report",
+        sortable: true,
+        sortValue: (row) => row.reportName,
+        cell: (row) => row.reportName,
+      },
+      {
+        id: "schedule",
+        header: "Schedule",
+        sortable: true,
+        sortValue: (row) => row.schedule,
+        cell: (row) => (
+          <span className="capitalize">
+            {row.schedule} at {row.time_utc} UTC
+          </span>
+        ),
+      },
+      {
+        id: "format",
+        header: "Format",
+        sortable: true,
+        sortValue: (row) => row.export_format,
+        cell: (row) => <span className="uppercase">{row.export_format}</span>,
+      },
+      {
+        id: "next_run",
+        header: "Next Run",
+        sortable: true,
+        sortValue: (row) => new Date(row.next_run_at).getTime(),
+        cell: (row) => new Date(row.next_run_at).toLocaleString(),
+      },
+      {
+        id: "status",
+        header: "Status",
+        sortable: true,
+        sortValue: (row) => (row.is_active ? "Active" : "Paused"),
+        cell: (row) => (
+          <span
+            className={`px-2 py-0.5 rounded text-xs ${
+              row.is_active
+                ? "bg-green-500/20 text-green-400"
+                : "bg-muted-foreground/20 text-muted-foreground"
+            }`}
+          >
+            {row.is_active ? "Active" : "Paused"}
+          </span>
+        ),
+      },
+    ],
+    []
+  );
 
   if (loading) {
     return (
@@ -269,53 +338,13 @@ export default function ReportsPage() {
             <Clock className="h-5 w-5 text-blue-400" />
             Scheduled Reports
           </h2>
-          <div className="bg-card rounded-xl border border-border overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[600px]">
-                <thead className="bg-background/50">
-                  <tr className="text-left text-muted-foreground text-sm">
-                    <th className="px-4 py-3 font-medium">Report</th>
-                    <th className="px-4 py-3 font-medium">Schedule</th>
-                    <th className="px-4 py-3 font-medium">Format</th>
-                    <th className="px-4 py-3 font-medium">Next Run</th>
-                    <th className="px-4 py-3 font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {schedules.map((schedule) => {
-                    const report = reports.find((r) => r.id === schedule.report_id);
-                    return (
-                      <tr key={schedule.id} className="border-t border-border hover:bg-card/50">
-                        <td className="px-4 py-3 text-sm text-foreground">
-                          {report?.name || "Unknown Report"}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-foreground capitalize">
-                          {schedule.schedule} at {schedule.time_utc} UTC
-                        </td>
-                        <td className="px-4 py-3 text-sm text-foreground uppercase">
-                          {schedule.export_format}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-foreground">
-                          {new Date(schedule.next_run_at).toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`px-2 py-0.5 rounded text-xs ${
-                              schedule.is_active
-                                ? "bg-green-500/20 text-green-400"
-                                : "bg-muted-foreground/20 text-muted-foreground"
-                            }`}
-                          >
-                            {schedule.is_active ? "Active" : "Paused"}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <DataTable
+            columns={scheduledReportColumns}
+            data={scheduledReportRows}
+            rowKey={(row) => row.id}
+            emptyTitle="No scheduled reports"
+            emptyDescription="Schedule a report to receive automated deliveries."
+          />
         </div>
       )}
 
