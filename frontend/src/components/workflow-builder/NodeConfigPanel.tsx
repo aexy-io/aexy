@@ -34,6 +34,154 @@ interface NodeConfigPanelProps {
   onClose: () => void;
 }
 
+// Trigger descriptions for the config panel
+const TRIGGER_DESCRIPTIONS: Record<string, Record<string, string>> = {
+  crm: {
+    "record.created": "When a new CRM record is created",
+    "record.updated": "When any field on a CRM record changes",
+    "record.deleted": "When a CRM record is deleted",
+    "field.changed": "When a specific field value changes on a record",
+    "list_entry.added": "When a record is added to a CRM list",
+    "list_entry.removed": "When a record is removed from a CRM list",
+    "status.changed": "When a record's status transitions to a new value",
+    "stage.changed": "When a record moves to a different pipeline stage",
+    "schedule.daily": "When the daily schedule fires at a set time",
+    "schedule.weekly": "When the weekly schedule fires on a set day",
+    "date.approaching": "When a date field is approaching within a threshold",
+    "date.passed": "When a date field has passed without action",
+    "webhook.received": "When an external webhook payload is received",
+    "form.submitted": "When a linked form is submitted",
+    "email.opened": "When a tracked email is opened by a contact",
+    "email.clicked": "When a link in a tracked email is clicked",
+    "email.replied": "When a contact replies to a tracked email",
+    record_created: "When a new CRM record is created",
+    record_updated: "When any field on a CRM record changes",
+    record_deleted: "When a CRM record is deleted",
+    field_changed: "When a specific field value changes on a record",
+    stage_changed: "When a record moves to a different pipeline stage",
+    scheduled: "When a scheduled time interval elapses",
+    webhook_received: "When an external webhook payload is received",
+    form_submitted: "When a linked form is submitted",
+    email_received: "When an inbound email is received for a record",
+    manual: "When manually triggered by a user",
+  },
+  tickets: {
+    "ticket.created": "When a new support ticket is created",
+    "ticket.updated": "When a ticket's details are modified",
+    "ticket.status_changed": "When a ticket's status changes",
+    "ticket.assigned": "When a ticket is assigned to an agent",
+    "ticket.priority_changed": "When a ticket's priority level changes",
+    "ticket.escalated": "When a ticket is escalated to a higher tier",
+    "sla.warning": "When a ticket is approaching its SLA deadline",
+    "sla.breached": "When a ticket exceeds its SLA response time",
+    "response.received": "When a customer responds to a ticket",
+    "response.sent": "When an agent sends a response on a ticket",
+  },
+  hiring: {
+    "candidate.created": "When a new candidate is added to the pipeline",
+    "candidate.updated": "When a candidate's profile is updated",
+    "candidate.stage_changed": "When a candidate moves to a new hiring stage",
+    "candidate.rejected": "When a candidate is rejected from the pipeline",
+    "candidate.hired": "When a candidate is marked as hired",
+    "assessment.completed": "When a candidate completes an assessment",
+    "assessment.score_above": "When an assessment score exceeds a threshold",
+    "assessment.score_below": "When an assessment score falls below a threshold",
+    "requirement.created": "When a new job requirement is created",
+    "requirement.status_changed": "When a requirement's status changes",
+    "offer.sent": "When a job offer is sent to a candidate",
+    "offer.accepted": "When a candidate accepts a job offer",
+    "offer.declined": "When a candidate declines a job offer",
+  },
+  email_marketing: {
+    "campaign.sent": "When an email campaign is sent to recipients",
+    "campaign.scheduled": "When an email campaign is scheduled for sending",
+    "email.opened": "When a recipient opens a campaign email",
+    "email.clicked": "When a recipient clicks a link in a campaign",
+    "email.bounced": "When a campaign email bounces back",
+    "email.unsubscribed": "When a recipient unsubscribes from emails",
+    "email.complained": "When a recipient marks a campaign as spam",
+    "recipient.added": "When a new recipient is added to a campaign",
+    "recipient.removed": "When a recipient is removed from a campaign",
+  },
+  uptime: {
+    "monitor.created": "When a new uptime monitor is created",
+    "monitor.down": "When a monitor detects a service is down",
+    "monitor.up": "When a monitored service comes back online",
+    "monitor.degraded": "When a monitor detects degraded performance",
+    "incident.created": "When a new incident is created from a monitor",
+    "incident.resolved": "When an open incident is resolved",
+    "incident.acknowledged": "When a team member acknowledges an incident",
+  },
+  sprints: {
+    "task.created": "When a new task is created in a sprint or backlog",
+    "task.status_changed": "When a task's status changes",
+    "task.assigned": "When a task is assigned to a team member",
+    "task.completed": "When a task is marked as completed",
+    "sprint.started": "When a sprint is started",
+    "sprint.completed": "When a sprint is completed",
+    "epic.completed": "When all tasks in an epic are completed",
+    "blocker.created": "When a blocker is reported on a task",
+    "blocker.resolved": "When a task blocker is resolved",
+  },
+  forms: {
+    "form.submitted": "When a form submission is received",
+    "form.started": "When a user begins filling out a form",
+    "form.abandoned": "When a user abandons a partially filled form",
+  },
+  booking: {
+    "booking.created": "When a new booking is made",
+    "booking.confirmed": "When a pending booking is confirmed",
+    "booking.cancelled": "When a booking is cancelled",
+    "booking.rescheduled": "When a booking is rescheduled to a new time",
+    "booking.completed": "When a booked session is completed",
+    "booking.no_show": "When a participant does not show up",
+    "booking.reminder": "When a booking reminder is due to be sent",
+    "event_type.created": "When a new bookable event type is created",
+  },
+  tracking: {
+    "standup.submitted": "When a team member submits their daily standup",
+    "standup.missed": "When a team member misses their standup deadline",
+    "standup.streak": "When a team member reaches a standup streak milestone",
+    "time_entry.created": "When a new time entry is logged",
+    "time_entry.threshold": "When logged hours cross a defined threshold",
+    "time_entry.anomaly": "When an unusual time entry pattern is detected",
+    "blocker.created": "When a new blocker is reported",
+    "blocker.escalated": "When a blocker is escalated for attention",
+    "blocker.resolved": "When a reported blocker is resolved",
+    "blocker.stale": "When a blocker remains unresolved past its deadline",
+    "blocker.pattern_detected": "When recurring blocker patterns are identified",
+    "work_log.submitted": "When a work log entry is submitted",
+    "sentiment.negative": "When negative sentiment is detected in standups",
+    "participation.low": "When team participation drops below threshold",
+  },
+  compliance: {
+    "training.created": "When a new training program is created",
+    "training.assigned": "When training is assigned to team members",
+    "training.started": "When a team member starts a training module",
+    "training.completed": "When a team member completes training",
+    "training.waived": "When a training requirement is waived",
+    "training.bulk_overdue": "When multiple training assignments become overdue",
+    "assignment.approaching_due": "When a training assignment deadline is approaching",
+    "assignment.overdue": "When a training assignment passes its due date",
+    "certification.added": "When a new certification is added to a profile",
+    "certification.expiring": "When a certification is approaching expiration",
+    "certification.expired": "When a certification has expired",
+    "certification.renewed": "When an expired certification is renewed",
+    "certification.revoked": "When a certification is revoked",
+    "certification.prerequisite_unmet": "When a certification prerequisite is not met",
+    "compliance.status_changed": "When a member's compliance status changes",
+    "audit.logged": "When a compliance audit event is logged",
+  },
+};
+
+function getTriggerDescription(module: string, triggerType: string): string | undefined {
+  const moduleDescs = TRIGGER_DESCRIPTIONS[module];
+  if (moduleDescs && moduleDescs[triggerType]) {
+    return moduleDescs[triggerType];
+  }
+  return undefined;
+}
+
 const conditionOperators = [
   { value: "equals", label: "equals" },
   { value: "not_equals", label: "does not equal" },
@@ -168,6 +316,24 @@ export function NodeConfigPanel({
             setModuleObjects([
               { id: "event_type", name: "Event Type", slug: "event_type" },
               { id: "booking", name: "Booking", slug: "booking" },
+            ]);
+            break;
+          case "tracking":
+            // Hardcoded for MVP
+            setModuleObjects([
+              { id: "standup", name: "Standup", slug: "standup" },
+              { id: "time_entry", name: "Time Entry", slug: "time_entry" },
+              { id: "blocker", name: "Blocker", slug: "blocker" },
+              { id: "work_log", name: "Work Log", slug: "work_log" },
+            ]);
+            break;
+          case "compliance":
+            // Hardcoded for MVP
+            setModuleObjects([
+              { id: "training", name: "Training", slug: "training" },
+              { id: "assignment", name: "Assignment", slug: "assignment" },
+              { id: "certification", name: "Certification", slug: "certification" },
+              { id: "audit_log", name: "Audit Log", slug: "audit_log" },
             ]);
             break;
           default:
@@ -972,7 +1138,7 @@ export function NodeConfigPanel({
                 <option value="owner">Record Owner</option>
               </select>
             </div>
-            {(node.data.notify_type as string) === "email" && (
+            {((node.data.notify_type as string) || "email") === "email" && (
               <div>
                 <label className="block text-sm text-muted-foreground mb-1">Email Address</label>
                 <input
@@ -984,7 +1150,7 @@ export function NodeConfigPanel({
                 />
               </div>
             )}
-            {(node.data.notify_type as string) === "field" && (
+            {((node.data.notify_type as string) || "email") === "field" && (
               <div>
                 <label className="block text-sm text-muted-foreground mb-1">Email Field</label>
                 <FieldPicker
@@ -1034,7 +1200,7 @@ export function NodeConfigPanel({
                 <option value="in_app">In-App Notification</option>
               </select>
             </div>
-            {(node.data.notify_channel as string) === "slack" && (
+            {((node.data.notify_channel as string) || "slack") === "slack" && (
               <div>
                 <label className="block text-sm text-muted-foreground mb-1">Slack Channel ID</label>
                 <input
@@ -1046,7 +1212,7 @@ export function NodeConfigPanel({
                 />
               </div>
             )}
-            {(node.data.notify_channel as string) === "email" && (
+            {((node.data.notify_channel as string) || "slack") === "email" && (
               <div>
                 <label className="block text-sm text-muted-foreground mb-1">Email Addresses</label>
                 <textarea
@@ -2557,6 +2723,13 @@ export function NodeConfigPanel({
             className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
           />
         </div>
+
+        {/* Trigger description */}
+        {node.type === "trigger" && triggerType && (
+          <p className="text-xs text-muted-foreground italic">
+            {getTriggerDescription(module, triggerType)}
+          </p>
+        )}
 
         {/* Node-specific config */}
         {renderConfigFields()}
