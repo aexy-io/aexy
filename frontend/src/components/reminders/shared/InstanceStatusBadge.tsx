@@ -11,41 +11,35 @@ import {
 } from "lucide-react";
 import { ReminderInstanceStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { REMINDER_INSTANCE_COLORS, getStatusColor } from "@/lib/statusColors";
 
-const STATUS_CONFIG: Record<ReminderInstanceStatus, { label: string; className: string; icon: React.ReactNode }> = {
+const STATUS_CONFIG: Record<ReminderInstanceStatus, { label: string; icon: React.ReactNode }> = {
   pending: {
     label: "Pending",
-    className: "bg-muted-foreground/20 text-muted-foreground",
     icon: <Clock className="h-3 w-3" />,
   },
   notified: {
     label: "Notified",
-    className: "bg-blue-500/20 text-blue-400",
     icon: <Bell className="h-3 w-3" />,
   },
   acknowledged: {
     label: "Acknowledged",
-    className: "bg-purple-500/20 text-purple-400",
     icon: <CheckCircle className="h-3 w-3" />,
   },
   completed: {
     label: "Completed",
-    className: "bg-green-500/20 text-green-400",
     icon: <CheckCircle2 className="h-3 w-3" />,
   },
   skipped: {
     label: "Skipped",
-    className: "bg-amber-500/20 text-amber-400",
     icon: <SkipForward className="h-3 w-3" />,
   },
   escalated: {
     label: "Escalated",
-    className: "bg-orange-500/20 text-orange-400",
     icon: <AlertTriangle className="h-3 w-3" />,
   },
   overdue: {
     label: "Overdue",
-    className: "bg-red-500/20 text-red-400",
     icon: <AlertOctagon className="h-3 w-3" />,
   },
 };
@@ -64,6 +58,7 @@ export function InstanceStatusBadge({
   className,
 }: InstanceStatusBadgeProps) {
   const config = STATUS_CONFIG[status];
+  const colors = getStatusColor(REMINDER_INSTANCE_COLORS, status);
 
   const sizeClasses = {
     sm: "text-xs px-2 py-0.5",
@@ -75,7 +70,8 @@ export function InstanceStatusBadge({
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full font-medium",
-        config.className,
+        colors.bg,
+        colors.text,
         sizeClasses[size],
         className
       )}

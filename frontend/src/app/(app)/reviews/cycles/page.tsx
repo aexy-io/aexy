@@ -19,14 +19,15 @@ import {
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useReviewCycles } from "@/hooks/useReviews";
 import { ReviewCycle } from "@/lib/api";
+import { REVIEW_CYCLE_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
-const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
-  draft: { label: "Draft", color: "text-muted-foreground", bg: "bg-muted-foreground/10" },
-  active: { label: "Active", color: "text-green-600 dark:text-green-400", bg: "bg-green-500/10" },
-  self_review: { label: "Self Review", color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10" },
-  peer_review: { label: "Peer Review", color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10" },
-  manager_review: { label: "Manager Review", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10" },
-  completed: { label: "Completed", color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10" },
+const statusLabels: Record<string, string> = {
+  draft: "Draft",
+  active: "Active",
+  self_review: "Self Review",
+  peer_review: "Peer Review",
+  manager_review: "Manager Review",
+  completed: "Completed",
 };
 
 const cycleTypeLabels: Record<string, string> = {
@@ -37,7 +38,7 @@ const cycleTypeLabels: Record<string, string> = {
 };
 
 function CycleRow({ cycle }: { cycle: ReviewCycle }) {
-  const status = statusConfig[cycle.status] || statusConfig.draft;
+  const statusColor = getStatusColor(REVIEW_CYCLE_STATUS_COLORS, cycle.status);
   const [showMenu, setShowMenu] = useState(false);
 
   return (
@@ -60,11 +61,11 @@ function CycleRow({ cycle }: { cycle: ReviewCycle }) {
         </Link>
       </td>
       <td className="px-6 py-4">
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${status.color} ${status.bg}`}>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusColor.text} ${statusColor.bg}`}>
           {cycle.status === "active" || cycle.status === "self_review" || cycle.status === "peer_review" || cycle.status === "manager_review" ? (
             <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
           ) : null}
-          {status.label}
+          {statusLabels[cycle.status] || cycle.status}
         </span>
       </td>
       <td className="px-6 py-4 text-sm text-muted-foreground">

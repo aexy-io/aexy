@@ -19,15 +19,15 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useReviewCycle } from "@/hooks/useReviews";
 import { ReviewCycleStatus, reviewsApi } from "@/lib/api";
+import { REVIEW_CYCLE_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
-// Status colors
-const statusColors: Record<ReviewCycleStatus, { text: string; bg: string; label: string }> = {
-  draft: { text: "text-muted-foreground", bg: "bg-muted-foreground/10", label: "Draft" },
-  active: { text: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10", label: "Active" },
-  self_review: { text: "text-cyan-600 dark:text-cyan-400", bg: "bg-cyan-500/10", label: "Self Review" },
-  peer_review: { text: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10", label: "Peer Review" },
-  manager_review: { text: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10", label: "Manager Review" },
-  completed: { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10", label: "Completed" },
+const statusLabels: Record<string, string> = {
+  draft: "Draft",
+  active: "Active",
+  self_review: "Self Review",
+  peer_review: "Peer Review",
+  manager_review: "Manager Review",
+  completed: "Completed",
 };
 
 // Cycle type labels
@@ -92,7 +92,7 @@ export default function CycleDetailPage() {
     );
   }
 
-  const statusStyle = statusColors[cycle.status] || statusColors.draft;
+  const statusStyle = getStatusColor(REVIEW_CYCLE_STATUS_COLORS, cycle.status);
   const completionRate = cycle.total_reviews > 0
     ? Math.round((cycle.completed_reviews / cycle.total_reviews) * 100)
     : 0;
@@ -124,7 +124,7 @@ export default function CycleDetailPage() {
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3 flex-wrap">
               <span className={`${statusStyle.text} ${statusStyle.bg} text-sm px-3 py-1 rounded-full`}>
-                {statusStyle.label}
+                {statusLabels[cycle.status] || cycle.status}
               </span>
               <span className="text-muted-foreground bg-accent/50 text-sm px-3 py-1 rounded-full">
                 {cycleTypeLabels[cycle.cycle_type] || cycle.cycle_type}

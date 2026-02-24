@@ -14,6 +14,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { EXECUTION_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
 interface ExecutionStep {
   id: string;
@@ -63,13 +64,13 @@ interface ExecutionHistoryProps {
   onSelectExecution?: (execution: ExecutionDetail) => void;
 }
 
-const statusConfig: Record<string, { icon: typeof CheckCircle; color: string; bg: string }> = {
-  completed: { icon: CheckCircle, color: "text-green-600 dark:text-green-400", bg: "bg-green-500/10" },
-  failed: { icon: XCircle, color: "text-red-600 dark:text-red-400", bg: "bg-red-500/10" },
-  running: { icon: Play, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10" },
-  paused: { icon: Pause, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10" },
-  pending: { icon: Clock, color: "text-muted-foreground", bg: "bg-muted-foreground/10" },
-  cancelled: { icon: AlertCircle, color: "text-muted-foreground", bg: "bg-muted-foreground/10" },
+const statusIcons: Record<string, typeof CheckCircle> = {
+  completed: CheckCircle,
+  failed: XCircle,
+  running: Play,
+  paused: Pause,
+  pending: Clock,
+  cancelled: AlertCircle,
 };
 
 const stepStatusConfig: Record<string, { color: string; bg: string }> = {
@@ -225,14 +226,13 @@ export function ExecutionHistory({
             ) : (
               <div className="px-4 py-2">
                 {/* Execution Status Header */}
-                <div className={`rounded-lg p-3 mb-4 ${statusConfig[selectedExecution.status]?.bg || "bg-accent"}`}>
+                <div className={`rounded-lg p-3 mb-4 ${getStatusColor(EXECUTION_STATUS_COLORS, selectedExecution.status).bg}`}>
                   <div className="flex items-center gap-2">
                     {(() => {
-                      const config = statusConfig[selectedExecution.status];
-                      const Icon = config?.icon || Clock;
-                      return <Icon className={`h-5 w-5 ${config?.color || "text-muted-foreground"}`} />;
+                      const Icon = statusIcons[selectedExecution.status] || Clock;
+                      return <Icon className={`h-5 w-5 ${getStatusColor(EXECUTION_STATUS_COLORS, selectedExecution.status).text}`} />;
                     })()}
-                    <span className={`font-medium capitalize ${statusConfig[selectedExecution.status]?.color || "text-muted-foreground"}`}>
+                    <span className={`font-medium capitalize ${getStatusColor(EXECUTION_STATUS_COLORS, selectedExecution.status).text}`}>
                       {selectedExecution.status}
                     </span>
                     {selectedExecution.is_dry_run && (
@@ -363,8 +363,8 @@ export function ExecutionHistory({
             ) : (
               <div className="divide-y divide-border">
                 {executions.map((execution) => {
-                  const config = statusConfig[execution.status];
-                  const Icon = config?.icon || Clock;
+                  const Icon = statusIcons[execution.status] || Clock;
+                  const execColor = getStatusColor(EXECUTION_STATUS_COLORS, execution.status);
 
                   return (
                     <button
@@ -374,8 +374,8 @@ export function ExecutionHistory({
                     >
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
-                          <Icon className={`h-4 w-4 ${config?.color || "text-muted-foreground"}`} />
-                          <span className={`text-sm font-medium capitalize ${config?.color || "text-muted-foreground"}`}>
+                          <Icon className={`h-4 w-4 ${execColor.text}`} />
+                          <span className={`text-sm font-medium capitalize ${execColor.text}`}>
                             {execution.status}
                           </span>
                           {execution.is_dry_run && (

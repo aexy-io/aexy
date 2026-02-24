@@ -16,11 +16,12 @@ import {
   Eye,
   MessageSquare,
 } from "lucide-react";
+import { UPTIME_INCIDENT_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
-const STATUS_COLORS: Record<UptimeIncidentStatus, { bg: string; text: string; dot: string; label: string }> = {
-  ongoing: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400", dot: "bg-red-500", label: "Ongoing" },
-  acknowledged: { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500", label: "Acknowledged" },
-  resolved: { bg: "bg-emerald-50 dark:bg-emerald-900/30", text: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500", label: "Resolved" },
+const STATUS_LABELS: Record<string, string> = {
+  ongoing: "Ongoing",
+  acknowledged: "Acknowledged",
+  resolved: "Resolved",
 };
 
 export default function IncidentsPage() {
@@ -238,19 +239,22 @@ export default function IncidentsPage() {
                 >
                   All
                 </button>
-                {(Object.keys(STATUS_COLORS) as UptimeIncidentStatus[]).map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => setStatusFilter(status)}
-                    className={`px-2 py-1 rounded text-xs font-medium transition ${
-                      statusFilter === status
-                        ? `${STATUS_COLORS[status].bg} ${STATUS_COLORS[status].text}`
-                        : "bg-accent text-muted-foreground hover:bg-muted"
-                    }`}
-                  >
-                    {STATUS_COLORS[status].label}
-                  </button>
-                ))}
+                {(Object.keys(UPTIME_INCIDENT_STATUS_COLORS) as UptimeIncidentStatus[]).map((status) => {
+                  const sc = getStatusColor(UPTIME_INCIDENT_STATUS_COLORS, status);
+                  return (
+                    <button
+                      key={status}
+                      onClick={() => setStatusFilter(status)}
+                      className={`px-2 py-1 rounded text-xs font-medium transition ${
+                        statusFilter === status
+                          ? `${sc.bg} ${sc.text}`
+                          : "bg-accent text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {STATUS_LABELS[status] || status}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -268,7 +272,7 @@ export default function IncidentsPage() {
           ) : (
             <div className="divide-y divide-border">
               {filteredIncidents.map((incident) => {
-                const statusStyle = STATUS_COLORS[incident.status];
+                const statusStyle = getStatusColor(UPTIME_INCIDENT_STATUS_COLORS, incident.status);
 
                 return (
                   <div key={incident.id} className="p-4 hover:bg-accent/50 transition">
@@ -289,7 +293,7 @@ export default function IncidentsPage() {
                           <span
                             className={`px-2 py-0.5 rounded text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}
                           >
-                            {statusStyle.label}
+                            {STATUS_LABELS[incident.status] || incident.status}
                           </span>
                           {incident.ticket_id && (
                             <Link

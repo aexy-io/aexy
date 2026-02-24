@@ -27,16 +27,15 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
+import { UPTIME_MONITOR_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
-const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-  up: { bg: "bg-emerald-50 dark:bg-emerald-900/30", text: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500", label: "Up" },
-  down: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400", dot: "bg-red-500", label: "Down" },
-  degraded: { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500", label: "Degraded" },
-  paused: { bg: "bg-accent/50", text: "text-muted-foreground", dot: "bg-muted-foreground", label: "Paused" },
-  unknown: { bg: "bg-accent/50", text: "text-muted-foreground", dot: "bg-muted-foreground", label: "Unknown" },
+const STATUS_LABELS: Record<string, string> = {
+  up: "Up",
+  down: "Down",
+  degraded: "Degraded",
+  paused: "Paused",
+  unknown: "Unknown",
 };
-
-const DEFAULT_STATUS_STYLE = { bg: "bg-accent/50", text: "text-muted-foreground", dot: "bg-muted-foreground", label: "Unknown" };
 
 const CHECK_TYPE_ICONS: Record<UptimeCheckType, typeof Globe> = {
   http: Globe,
@@ -293,19 +292,22 @@ export default function MonitorsPage() {
                 >
                   All
                 </button>
-                {(Object.keys(STATUS_COLORS) as UptimeMonitorStatus[]).map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => setStatusFilter(status)}
-                    className={`px-2 py-1 rounded text-xs font-medium transition ${
-                      statusFilter === status
-                        ? `${STATUS_COLORS[status].bg} ${STATUS_COLORS[status].text}`
-                        : "bg-accent text-muted-foreground hover:bg-muted"
-                    }`}
-                  >
-                    {STATUS_COLORS[status].label}
-                  </button>
-                ))}
+                {(Object.keys(UPTIME_MONITOR_STATUS_COLORS) as UptimeMonitorStatus[]).map((status) => {
+                  const sc = getStatusColor(UPTIME_MONITOR_STATUS_COLORS, status);
+                  return (
+                    <button
+                      key={status}
+                      onClick={() => setStatusFilter(status)}
+                      className={`px-2 py-1 rounded text-xs font-medium transition ${
+                        statusFilter === status
+                          ? `${sc.bg} ${sc.text}`
+                          : "bg-accent text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {STATUS_LABELS[status] || status}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -326,7 +328,7 @@ export default function MonitorsPage() {
             <div className="divide-y divide-border">
               {filteredMonitors.map((monitor) => {
                 const Icon = CHECK_TYPE_ICONS[monitor.check_type] || Globe;
-                const statusStyle = STATUS_COLORS[monitor.current_status] || DEFAULT_STATUS_STYLE;
+                const statusStyle = getStatusColor(UPTIME_MONITOR_STATUS_COLORS, monitor.current_status);
 
                 return (
                   <div
@@ -358,7 +360,7 @@ export default function MonitorsPage() {
                     </button>
                     <div className="text-center px-4">
                       <span className={`px-2 py-1 rounded text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}>
-                        {statusStyle.label}
+                        {STATUS_LABELS[monitor.current_status] || monitor.current_status}
                       </span>
                     </div>
                     <div className="text-right min-w-[100px]">

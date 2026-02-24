@@ -24,30 +24,38 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useTickets, useTicketStats, useTicketForms } from "@/hooks/useTicketing";
 import { TicketStatus, TicketPriority, developerApi } from "@/lib/api";
+import {
+  TICKET_STATUS_COLORS,
+  TICKET_PRIORITY_COLORS,
+  TASK_STATUS_COLORS as TASK_STATUS_COLORS_BASE,
+} from "@/lib/statusColors";
 
-const STATUS_COLORS: Record<TicketStatus, { bg: string; text: string; label: string }> = {
-  new: { bg: "bg-blue-50 dark:bg-blue-900/30", text: "text-blue-600 dark:text-blue-400", label: "New" },
-  acknowledged: { bg: "bg-purple-50 dark:bg-purple-900/30", text: "text-purple-600 dark:text-purple-400", label: "Acknowledged" },
-  in_progress: { bg: "bg-yellow-50 dark:bg-yellow-900/30", text: "text-yellow-600 dark:text-yellow-400", label: "In Progress" },
-  waiting_on_submitter: { bg: "bg-orange-50 dark:bg-orange-900/30", text: "text-orange-600 dark:text-orange-400", label: "Waiting" },
-  resolved: { bg: "bg-green-50 dark:bg-green-900/30", text: "text-green-600 dark:text-green-400", label: "Resolved" },
-  closed: { bg: "bg-accent/50", text: "text-muted-foreground", label: "Closed" },
+const STATUS_LABELS: Record<TicketStatus, string> = {
+  new: "New",
+  acknowledged: "Acknowledged",
+  in_progress: "In Progress",
+  waiting_on_submitter: "Waiting",
+  resolved: "Resolved",
+  closed: "Closed",
 };
 
-const PRIORITY_COLORS: Record<TicketPriority, { bg: string; text: string }> = {
-  low: { bg: "bg-accent", text: "text-foreground" },
-  medium: { bg: "bg-blue-50 dark:bg-blue-900/30", text: "text-blue-600 dark:text-blue-400" },
-  high: { bg: "bg-orange-50 dark:bg-orange-900/30", text: "text-orange-600 dark:text-orange-400" },
-  urgent: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400" },
+const STATUS_COLORS = Object.fromEntries(
+  Object.entries(TICKET_STATUS_COLORS).map(([k, v]) => [k, { ...v, label: STATUS_LABELS[k as TicketStatus] ?? k }])
+) as Record<TicketStatus, { bg: string; text: string; label: string }>;
+
+const PRIORITY_COLORS = TICKET_PRIORITY_COLORS as Record<TicketPriority, { bg: string; text: string }>;
+
+const TASK_STATUS_LABELS: Record<string, string> = {
+  backlog: "Backlog",
+  todo: "To Do",
+  in_progress: "In Progress",
+  review: "Review",
+  done: "Done",
 };
 
-const TASK_STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  backlog: { bg: "bg-accent/50", text: "text-muted-foreground", label: "Backlog" },
-  todo: { bg: "bg-blue-50 dark:bg-blue-900/30", text: "text-blue-600 dark:text-blue-400", label: "To Do" },
-  in_progress: { bg: "bg-yellow-50 dark:bg-yellow-900/30", text: "text-yellow-600 dark:text-yellow-400", label: "In Progress" },
-  review: { bg: "bg-purple-50 dark:bg-purple-900/30", text: "text-purple-600 dark:text-purple-400", label: "Review" },
-  done: { bg: "bg-green-50 dark:bg-green-900/30", text: "text-green-600 dark:text-green-400", label: "Done" },
-};
+const TASK_STATUS_COLORS = Object.fromEntries(
+  Object.entries(TASK_STATUS_COLORS_BASE).map(([k, v]) => [k, { ...v, label: TASK_STATUS_LABELS[k] ?? k }])
+) as Record<string, { bg: string; text: string; label: string }>;
 
 type TabType = "tickets" | "my-tasks" | "automations";
 

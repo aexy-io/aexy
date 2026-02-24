@@ -40,6 +40,7 @@ import {
   useDuplicateCampaign,
   useDeleteCampaign,
 } from "@/hooks/useEmailMarketing";
+import { CAMPAIGN_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
 type TabType = "overview" | "recipients" | "analytics";
 
@@ -69,24 +70,6 @@ export default function CampaignDetailPage() {
   const sendCampaign = useSendCampaign(workspaceId);
   const duplicateCampaign = useDuplicateCampaign(workspaceId);
   const deleteCampaign = useDeleteCampaign(workspaceId);
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "sent":
-      case "completed":
-        return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
-      case "sending":
-        return "bg-sky-500/20 text-sky-400 border-sky-500/30";
-      case "scheduled":
-        return "bg-purple-500/20 text-purple-400 border-purple-500/30";
-      case "paused":
-        return "bg-amber-500/20 text-amber-400 border-amber-500/30";
-      case "cancelled":
-        return "bg-red-500/20 text-red-400 border-red-500/30";
-      default:
-        return "bg-muted text-muted-foreground border-border";
-    }
-  };
 
   const getRecipientStatusColor = (status: string) => {
     switch (status) {
@@ -206,7 +189,7 @@ export default function CampaignDetailPage() {
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-2xl font-bold text-foreground">{campaign.name}</h1>
-                <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(campaign.status)}`}>
+                <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(CAMPAIGN_STATUS_COLORS, campaign.status).bg} ${getStatusColor(CAMPAIGN_STATUS_COLORS, campaign.status).text}`}>
                   {campaign.status}
                 </span>
               </div>

@@ -132,6 +132,69 @@ export const PROJECT_STATUS_COLORS: Record<string, StatusColor> = {
   archived: { bg: "bg-muted-foreground/10", text: "text-muted-foreground", dot: "bg-muted-foreground" },
 };
 
+// ─── Reviews / Goals ────────────────────────────────────
+
+export const REVIEW_CYCLE_STATUS_COLORS: Record<string, StatusColor> = {
+  draft: { bg: "bg-muted-foreground/10", text: "text-muted-foreground", dot: "bg-muted-foreground" },
+  active: { bg: "bg-blue-500/10", text: "text-blue-600 dark:text-blue-400", dot: "bg-blue-500" },
+  self_review: { bg: "bg-cyan-500/10", text: "text-cyan-600 dark:text-cyan-400", dot: "bg-cyan-500" },
+  peer_review: { bg: "bg-purple-500/10", text: "text-purple-600 dark:text-purple-400", dot: "bg-purple-500" },
+  manager_review: { bg: "bg-amber-500/10", text: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500" },
+  completed: { bg: "bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500" },
+};
+
+export const GOAL_STATUS_COLORS: Record<string, StatusColor> = {
+  active: { bg: "bg-blue-500/10", text: "text-blue-600 dark:text-blue-400", dot: "bg-blue-500" },
+  in_progress: { bg: "bg-cyan-500/10", text: "text-cyan-600 dark:text-cyan-400", dot: "bg-cyan-500" },
+  completed: { bg: "bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500" },
+  cancelled: { bg: "bg-muted-foreground/10", text: "text-muted-foreground", dot: "bg-muted-foreground" },
+};
+
+export const GOAL_TYPE_COLORS: Record<string, StatusColor> = {
+  performance: { bg: "bg-cyan-500/10", text: "text-cyan-600 dark:text-cyan-400" },
+  skill_development: { bg: "bg-purple-500/10", text: "text-purple-600 dark:text-purple-400" },
+  project: { bg: "bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-400" },
+  leadership: { bg: "bg-amber-500/10", text: "text-amber-600 dark:text-amber-400" },
+  team_contribution: { bg: "bg-blue-500/10", text: "text-blue-600 dark:text-blue-400" },
+};
+
+// ─── Hiring / Assessments ───────────────────────────────
+
+export const ASSESSMENT_STATUS_COLORS: Record<string, StatusColor> = {
+  draft: { bg: "bg-muted", text: "text-muted-foreground" },
+  active: { bg: "bg-green-500/20", text: "text-green-600 dark:text-green-400", dot: "bg-green-500" },
+  completed: { bg: "bg-blue-500/20", text: "text-blue-600 dark:text-blue-400", dot: "bg-blue-500" },
+  archived: { bg: "bg-muted", text: "text-muted-foreground/60" },
+};
+
+// ─── Uptime ─────────────────────────────────────────────
+
+export const UPTIME_MONITOR_STATUS_COLORS: Record<string, StatusColor> = {
+  up: { bg: "bg-emerald-50 dark:bg-emerald-900/30", text: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500" },
+  down: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400", dot: "bg-red-500" },
+  degraded: { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500" },
+  paused: { bg: "bg-accent/50", text: "text-muted-foreground", dot: "bg-muted-foreground" },
+  unknown: { bg: "bg-accent/50", text: "text-muted-foreground", dot: "bg-muted-foreground" },
+};
+
+export const UPTIME_INCIDENT_STATUS_COLORS: Record<string, StatusColor> = {
+  ongoing: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400", dot: "bg-red-500" },
+  acknowledged: { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500" },
+  resolved: { bg: "bg-emerald-50 dark:bg-emerald-900/30", text: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500" },
+};
+
+// ─── Email Marketing ────────────────────────────────────
+
+export const CAMPAIGN_STATUS_COLORS: Record<string, StatusColor> = {
+  draft: { bg: "bg-muted", text: "text-muted-foreground", dot: "bg-muted-foreground" },
+  scheduled: { bg: "bg-blue-500/20", text: "text-blue-600 dark:text-blue-400", dot: "bg-blue-500" },
+  sending: { bg: "bg-amber-500/20", text: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500" },
+  sent: { bg: "bg-green-500/20", text: "text-green-600 dark:text-green-400", dot: "bg-green-500" },
+  paused: { bg: "bg-orange-500/20", text: "text-orange-600 dark:text-orange-400", dot: "bg-orange-500" },
+  cancelled: { bg: "bg-red-500/20", text: "text-red-600 dark:text-red-400", dot: "bg-red-500" },
+  failed: { bg: "bg-red-500/20", text: "text-red-600 dark:text-red-400", dot: "bg-red-500" },
+};
+
 // ─── CRM ─────────────────────────────────────────────────
 
 export const CRM_ATTRIBUTE_TYPE_COLORS: Record<string, string> = {
