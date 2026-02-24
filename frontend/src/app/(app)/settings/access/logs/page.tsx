@@ -70,8 +70,25 @@ export default function AccessLogsPage() {
 
   if (subscriptionLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="space-y-6 animate-pulse">
+        <div>
+          <div className="h-6 w-32 bg-accent rounded mb-2" />
+          <div className="h-4 w-64 bg-accent rounded" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-20 bg-accent rounded-xl" />
+          ))}
+        </div>
+        <div className="bg-card border border-border rounded-lg">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex items-center gap-4 p-4 border-b border-border/50">
+              <div className="h-6 w-28 bg-accent rounded-full" />
+              <div className="h-4 w-32 bg-accent rounded" />
+              <div className="h-3 w-24 bg-accent rounded ml-auto" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -194,8 +211,14 @@ export default function AccessLogsPage() {
 
         {/* Logs Table */}
         {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="bg-card border border-border rounded-lg animate-pulse">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center gap-4 p-4 border-b border-border/50">
+                <div className="h-6 w-28 bg-accent rounded-full" />
+                <div className="h-4 w-32 bg-accent rounded" />
+                <div className="h-3 w-24 bg-accent rounded ml-auto" />
+              </div>
+            ))}
           </div>
         ) : error ? (
           <div className="text-center py-20">
