@@ -51,6 +51,7 @@ import {
     RefreshCw,
     Palmtree,
     CheckSquare,
+    LayoutTemplate,
 } from "lucide-react";
 
 export type SidebarLayoutType = "grouped" | "flat";
@@ -294,6 +295,7 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
             items: [
                 { href: "/docs", label: "Docs", icon: FileText },
                 { href: "/forms", label: "Forms", icon: FormInput },
+                { href: "/templates", label: "Templates", icon: LayoutTemplate },
             ],
         }
     ],
@@ -389,6 +391,7 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                 },
                 { href: "/docs", label: "Docs", icon: FileText },
                 { href: "/forms", label: "Forms", icon: FormInput },
+                { href: "/templates", label: "Templates", icon: LayoutTemplate },
             ],
         },
     ],

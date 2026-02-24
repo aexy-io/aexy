@@ -35,6 +35,7 @@ import {
   Ban,
   Send,
   UserPlus,
+  LayoutTemplate,
 } from "lucide-react";
 import { useCommandPalette, getModifierKey } from "@/hooks/useKeyboardShortcuts";
 import { Kbd } from "@/components/ui/kbd";
@@ -333,6 +334,15 @@ export function CommandPalette({ projectId, onCreateTask }: CommandPaletteProps)
         action: () => router.push("/leave"),
         category: "navigation",
         keywords: ["vacation", "pto", "time off", "holiday"],
+      },
+      {
+        id: "nav-templates",
+        label: "Templates",
+        description: "Browse pre-built templates",
+        icon: <LayoutTemplate className="h-4 w-4" />,
+        action: () => router.push("/templates"),
+        category: "navigation",
+        keywords: ["template", "gallery", "starter", "pre-built"],
       },
       {
         id: "nav-team",
