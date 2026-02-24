@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   User,
   Calendar,
   Filter,
-  Loader2,
 } from "lucide-react";
 import { LeaveRequest } from "@/lib/leave-api";
 import { useLeaveRequests } from "@/hooks/useLeave";
+import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 
 const STATUS_OPTIONS = [
   { value: "", label: "All Statuses" },
@@ -37,19 +37,117 @@ function formatDate(dateStr: string): string {
   });
 }
 
+const columns: DataTableColumn<LeaveRequest>[] = [
+  {
+    id: "employee",
+    header: "Employee",
+    sortable: true,
+    sortValue: (row) =>
+      row.developer?.name || row.developer?.email || "Unknown",
+    cell: (row) => {
+      const developer = row.developer;
+      return (
+        <div className="flex items-center gap-2.5">
+          {developer?.avatar_url ? (
+            <img
+              src={developer.avatar_url}
+              alt={developer.name || "User"}
+              className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+            />
+          ) : (
+            <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+              <User className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+          )}
+          <span className="text-sm font-medium text-foreground truncate">
+            {developer?.name || developer?.email || "Unknown"}
+          </span>
+        </div>
+      );
+    },
+  },
+  {
+    id: "leaveType",
+    header: "Leave Type",
+    sortable: true,
+    sortValue: (row) => row.leave_type?.name || "Leave",
+    cell: (row) => {
+      const leaveType = row.leave_type;
+      return (
+        <div className="flex items-center gap-2">
+          <div
+            className="w-2 h-2 rounded-full flex-shrink-0"
+            style={{
+              backgroundColor: leaveType?.color || "#6366f1",
+            }}
+          />
+          <span className="text-sm text-foreground">
+            {leaveType?.name || "Leave"}
+          </span>
+        </div>
+      );
+    },
+  },
+  {
+    id: "dates",
+    header: "Dates",
+    sortable: true,
+    sortValue: (row) => row.start_date,
+    cell: (row) => {
+      const isSingleDay = row.start_date === row.end_date;
+      return (
+        <div className="flex items-center gap-1.5 text-sm text-foreground">
+          <Calendar className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+          <span>
+            {isSingleDay
+              ? formatDate(row.start_date)
+              : `${formatDate(row.start_date)} - ${formatDate(row.end_date)}`}
+          </span>
+        </div>
+      );
+    },
+  },
+  {
+    id: "days",
+    header: "Days",
+    sortable: true,
+    sortValue: (row) => row.total_days,
+    cell: (row) => (
+      <span className="text-sm text-foreground">
+        {row.total_days}
+        {row.is_half_day && (
+          <span className="text-xs text-muted-foreground ml-1">
+            (half)
+          </span>
+        )}
+      </span>
+    ),
+  },
+  {
+    id: "status",
+    header: "Status",
+    sortable: true,
+    sortValue: (row) => row.status,
+    cell: (row) => {
+      const status = statusBadge[row.status];
+      return (
+        <span
+          className={`text-xs font-medium px-2.5 py-1 rounded-full border ${status.className}`}
+        >
+          {status.label}
+        </span>
+      );
+    },
+  },
+];
+
 export function TeamLeaveTable() {
   const [statusFilter, setStatusFilter] = useState("");
   const { data: requests, isLoading } = useLeaveRequests(
     statusFilter ? { status: statusFilter } : undefined
   );
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
-      </div>
-    );
-  }
+  const data = useMemo(() => requests || [], [requests]);
 
   return (
     <div className="space-y-4">
@@ -70,129 +168,20 @@ export function TeamLeaveTable() {
           </select>
         </div>
         <span className="text-xs text-muted-foreground">
-          {requests?.length || 0} request{(requests?.length || 0) !== 1 ? "s" : ""}
+          {data.length} request{data.length !== 1 ? "s" : ""}
         </span>
       </div>
 
       {/* Table */}
-      <div className="bg-background border border-border rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
-                  Employee
-                </th>
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
-                  Leave Type
-                </th>
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
-                  Dates
-                </th>
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
-                  Days
-                </th>
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {requests?.map((request) => {
-                const status = statusBadge[request.status];
-                const developer = request.developer;
-                const leaveType = request.leave_type;
-                const isSingleDay = request.start_date === request.end_date;
-
-                return (
-                  <tr
-                    key={request.id}
-                    className="hover:bg-muted/50 transition"
-                  >
-                    {/* Employee */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2.5">
-                        {developer?.avatar_url ? (
-                          <img
-                            src={developer.avatar_url}
-                            alt={developer.name || "User"}
-                            className="w-7 h-7 rounded-full object-cover flex-shrink-0"
-                          />
-                        ) : (
-                          <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                            <User className="h-3.5 w-3.5 text-muted-foreground" />
-                          </div>
-                        )}
-                        <span className="text-sm font-medium text-foreground truncate">
-                          {developer?.name || developer?.email || "Unknown"}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Leave Type */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-2 h-2 rounded-full flex-shrink-0"
-                          style={{
-                            backgroundColor: leaveType?.color || "#6366f1",
-                          }}
-                        />
-                        <span className="text-sm text-foreground">
-                          {leaveType?.name || "Leave"}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Dates */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5 text-sm text-foreground">
-                        <Calendar className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                        <span>
-                          {isSingleDay
-                            ? formatDate(request.start_date)
-                            : `${formatDate(request.start_date)} - ${formatDate(request.end_date)}`}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Days */}
-                    <td className="px-4 py-3">
-                      <span className="text-sm text-foreground">
-                        {request.total_days}
-                        {request.is_half_day && (
-                          <span className="text-xs text-muted-foreground ml-1">
-                            (half)
-                          </span>
-                        )}
-                      </span>
-                    </td>
-
-                    {/* Status */}
-                    <td className="px-4 py-3">
-                      <span
-                        className={`text-xs font-medium px-2.5 py-1 rounded-full border ${status.className}`}
-                      >
-                        {status.label}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-              {(!requests || requests.length === 0) && (
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="px-4 py-8 text-center text-sm text-muted-foreground"
-                  >
-                    No leave requests found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable
+        columns={columns}
+        data={data}
+        rowKey={(row) => row.id}
+        isLoading={isLoading}
+        skeletonRows={5}
+        emptyTitle="No leave requests found"
+        emptyDescription="Try adjusting the status filter or check back later."
+      />
     </div>
   );
 }
