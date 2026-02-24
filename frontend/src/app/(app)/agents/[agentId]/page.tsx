@@ -378,10 +378,46 @@ export default function AgentDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mx-auto mb-4"></div>
-          <p className="text-foreground">Loading agent...</p>
+      <div className="p-6 max-w-6xl mx-auto animate-pulse">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="h-8 w-8 bg-accent rounded-lg" />
+          <div className="h-6 w-48 bg-accent rounded" />
+          <div className="h-5 w-16 bg-accent rounded-full ml-2" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+              <div className="h-4 w-24 bg-accent rounded" />
+              <div className="grid grid-cols-3 gap-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-20 bg-accent rounded-lg" />
+                ))}
+              </div>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+              <div className="h-4 w-32 bg-accent rounded" />
+              <div className="h-48 bg-accent rounded-lg" />
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+              <div className="h-4 w-28 bg-accent rounded" />
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex justify-between">
+                  <div className="h-3 w-20 bg-accent rounded" />
+                  <div className="h-3 w-16 bg-accent rounded" />
+                </div>
+              ))}
+            </div>
+            <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+              <div className="h-4 w-24 bg-accent rounded" />
+              <div className="flex gap-2">
+                {[1, 2, 3].map((j) => (
+                  <div key={j} className="h-6 w-16 bg-accent rounded" />
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );

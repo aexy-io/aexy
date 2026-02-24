@@ -236,8 +236,37 @@ export default function EmailDeliverySettingsPage() {
   // Loading state
   if (subscriptionLoading) {
     return (
-      <div className="py-20 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="space-y-6 animate-pulse">
+        <div>
+          <div className="h-6 w-36 bg-accent rounded mb-2" />
+          <div className="h-4 w-64 bg-accent rounded" />
+        </div>
+        <div className="bg-card rounded-xl border border-border p-5 space-y-4">
+          <div className="h-2 w-full bg-accent rounded-full" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-20 bg-accent rounded-lg" />
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-16 bg-accent rounded-lg" />
+          ))}
+        </div>
+        <div className="bg-card rounded-xl border border-border">
+          <div className="px-5 py-4 border-b border-border">
+            <div className="h-5 w-24 bg-accent rounded" />
+          </div>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-border/50">
+              <div className="h-4 w-40 bg-accent rounded" />
+              <div className="h-4 w-48 bg-accent rounded" />
+              <div className="h-5 w-16 bg-accent rounded-full" />
+              <div className="h-3 w-20 bg-accent rounded ml-auto" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -295,8 +324,13 @@ export default function EmailDeliverySettingsPage() {
       <div className="space-y-6">
         {/* Stats */}
         {statsLoading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <div className="bg-card rounded-xl border border-border p-5 animate-pulse space-y-4">
+            <div className="h-2 w-full bg-accent rounded-full" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-20 bg-accent rounded-lg" />
+              ))}
+            </div>
           </div>
         ) : statsError ? (
           <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-400 flex items-center gap-2">
@@ -382,8 +416,29 @@ export default function EmailDeliverySettingsPage() {
           </div>
 
           {logsLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+            <div className="animate-pulse">
+              <table className="w-full">
+                <thead className="bg-background/50">
+                  <tr className="text-left">
+                    {["Recipient", "Subject", "Status", "Type", "Sent"].map((h) => (
+                      <th key={h} className="px-4 py-3">
+                        <div className="h-3 w-16 bg-accent rounded" />
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <tr key={i} className="border-b border-border">
+                      <td className="px-4 py-3"><div className="h-4 w-40 bg-accent rounded" /></td>
+                      <td className="px-4 py-3"><div className="h-4 w-48 bg-accent rounded" /></td>
+                      <td className="px-4 py-3"><div className="h-5 w-16 bg-accent rounded-full" /></td>
+                      <td className="px-4 py-3"><div className="h-3 w-20 bg-accent rounded" /></td>
+                      <td className="px-4 py-3"><div className="h-3 w-16 bg-accent rounded" /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           ) : logsError ? (
             <div className="flex items-center justify-center h-64 text-red-400">

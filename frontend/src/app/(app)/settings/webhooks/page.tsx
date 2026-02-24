@@ -463,8 +463,26 @@ export default function WebhooksSettingsPage() {
       {/* Webhook list */}
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         {isLoading ? (
-          <div className="flex items-center justify-center h-48">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <div className="animate-pulse divide-y divide-border">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-32 bg-accent rounded" />
+                      <div className="h-5 w-16 bg-accent rounded-full" />
+                    </div>
+                    <div className="h-3 w-64 bg-accent rounded" />
+                    <div className="flex gap-2">
+                      {[1, 2].map((j) => (
+                        <div key={j} className="h-4 w-20 bg-accent rounded" />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="h-8 w-8 bg-accent rounded-lg" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : webhooks.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">

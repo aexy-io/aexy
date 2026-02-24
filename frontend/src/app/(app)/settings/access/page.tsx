@@ -160,8 +160,47 @@ export default function AccessControlPage() {
 
         {/* Matrix Table */}
         {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="bg-card border border-border rounded-lg overflow-hidden animate-pulse">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[600px]">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="px-4 py-3 text-left">
+                      <div className="h-4 w-20 bg-accent rounded" />
+                    </th>
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <th key={i} className="px-3 py-3 text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="h-4 w-4 bg-accent rounded" />
+                          <div className="h-3 w-12 bg-accent rounded" />
+                        </div>
+                      </th>
+                    ))}
+                    <th className="px-4 py-3"><div className="h-3 w-12 bg-accent rounded mx-auto" /></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[1, 2, 3, 4].map((i) => (
+                    <tr key={i} className="border-b border-border/50">
+                      <td className="px-4 py-3">
+                        <div className="space-y-1">
+                          <div className="h-4 w-28 bg-accent rounded" />
+                          <div className="h-3 w-16 bg-accent rounded" />
+                        </div>
+                      </td>
+                      {[1, 2, 3, 4, 5].map((j) => (
+                        <td key={j} className="px-3 py-3 text-center">
+                          <div className="h-4 w-4 bg-accent rounded mx-auto" />
+                        </td>
+                      ))}
+                      <td className="px-4 py-3">
+                        <div className="h-7 w-12 bg-accent rounded mx-auto" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : matrixError ? (
           <div className="text-center py-20 text-red-400">

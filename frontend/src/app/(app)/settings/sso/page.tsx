@@ -420,8 +420,27 @@ export default function SSOSettingsPage() {
 
   if (!workspaceId || loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="p-6 max-w-3xl mx-auto animate-pulse">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="h-6 w-6 bg-accent rounded" />
+          <div className="h-7 w-48 bg-accent rounded" />
+        </div>
+        <div className="h-4 w-80 bg-accent rounded mb-8" />
+        <div className="bg-accent/30 rounded-xl p-5 mb-6">
+          <div className="h-4 w-40 bg-accent rounded mb-3" />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="h-10 bg-accent rounded" />
+            <div className="h-10 bg-accent rounded" />
+          </div>
+        </div>
+        <div className="bg-accent/30 rounded-xl p-6 space-y-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i}>
+              <div className="h-4 w-24 bg-accent rounded mb-2" />
+              <div className="h-10 bg-accent rounded-lg" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
