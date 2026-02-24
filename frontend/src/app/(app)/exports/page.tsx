@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { useExports, useExportStatus } from "@/hooks/useExports";
+import { EmptyState } from "@/components/EmptyState";
 import { PremiumGate } from "@/components/PremiumGate";
 import { ExportJob } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
@@ -324,11 +325,15 @@ export default function ExportsPage() {
             ))}
           </div>
         ) : jobs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
-            <Download className="h-10 w-10 mb-3" />
-            <p className="text-sm font-medium">No exports yet</p>
-            <p className="text-xs mt-1">Create an export to download your data</p>
-          </div>
+          <EmptyState
+            icon={Download}
+            title="No exports yet"
+            description="Export your data in PDF, CSV, JSON, or XLSX format for analysis and reporting."
+            actions={[
+              { label: "Create Export", onClick: () => setShowCreate(true) },
+            ]}
+            compact
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[500px]">

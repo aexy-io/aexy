@@ -23,6 +23,8 @@ import {
   ReportTemplate,
   ScheduledReport,
 } from "@/lib/api";
+import { EmptyState } from "@/components/EmptyState";
+import { BarChart3 } from "lucide-react";
 
 export default function ReportsPage() {
   const { isAuthenticated } = useAuth();
@@ -187,20 +189,15 @@ export default function ReportsPage() {
       <div className="mb-10">
         <h2 className="text-lg font-semibold text-foreground mb-4">My Reports</h2>
         {reports.length === 0 ? (
-          <div className="bg-card rounded-xl p-8 border border-border text-center">
-            <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-2">No reports yet</h3>
-            <p className="text-muted-foreground text-sm mb-4">
-              Create your first report from a template to get started
-            </p>
-            <button
-              onClick={() => setShowTemplateModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition"
-            >
-              <Plus className="h-4 w-4" />
-              Create Report
-            </button>
-          </div>
+          <EmptyState
+            icon={BarChart3}
+            title="No reports yet"
+            description="Build custom reports to visualize team performance, productivity trends, and project metrics."
+            actions={[
+              { label: "Create Report", onClick: () => setShowTemplateModal(true) },
+            ]}
+            compact
+          />
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {reports.map((report) => (

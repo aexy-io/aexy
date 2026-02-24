@@ -18,7 +18,9 @@ import {
   Code,
   Wand2,
   FileText,
+  LayoutTemplate,
 } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { SearchInput } from "@/components/ui/search-input";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
@@ -352,26 +354,24 @@ export default function TemplatesPage() {
               ))}
             </div>
           ) : filteredTemplates.length === 0 ? (
-            <div className="bg-background/50 border border-border rounded-xl p-16 text-center">
-              <Palette className="h-14 w-14 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-medium text-foreground mb-2">
-                {searchQuery || typeFilter !== "all" ? "No templates found" : "No templates yet"}
-              </h3>
-              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                {searchQuery || typeFilter !== "all"
-                  ? "Try adjusting your search or filters"
-                  : "Create reusable email templates to streamline your campaigns."}
-              </p>
-              {!searchQuery && typeFilter === "all" && (
-                <Link
-                  href="/email-marketing/templates/new"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition"
-                >
-                  <Plus className="h-4 w-4" />
-                  Create Template
-                </Link>
-              )}
-            </div>
+            searchQuery || typeFilter !== "all" ? (
+              <div className="bg-background/50 border border-border rounded-xl p-16 text-center">
+                <Palette className="h-14 w-14 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-medium text-foreground mb-2">No templates found</h3>
+                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                  Try adjusting your search or filters
+                </p>
+              </div>
+            ) : (
+              <EmptyState
+                icon={LayoutTemplate}
+                title="No email templates yet"
+                description="Create reusable email templates for your campaigns. Design once, send many times."
+                actions={[
+                  { label: "Create Template", href: "/email-marketing/templates/new" },
+                ]}
+              />
+            )
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
