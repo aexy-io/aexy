@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { UpgradeBanner } from "@/components/UpgradeBanner";
 import Image from "next/image";
 import {
   GraduationCap,
@@ -419,6 +420,8 @@ export default function LearningPage() {
             )}
           </div>
         </div>
+
+        <UpgradeBanner trigger="ai_limit" compact />
 
         {/* Project Learning View */}
         {viewMode === "team" && (

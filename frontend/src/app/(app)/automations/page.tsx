@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { UpgradeBanner } from "@/components/UpgradeBanner";
 import {
   ChevronLeft,
   Plus,
@@ -244,6 +245,8 @@ export default function AutomationsPage() {
             </button>
             </div>
           </div>
+
+          <UpgradeBanner trigger="automation_limit" compact />
 
           {/* Module Filter Tabs */}
           <div className="flex items-center gap-1 p-1 bg-muted/50 border border-border rounded-xl mb-6 overflow-x-auto">

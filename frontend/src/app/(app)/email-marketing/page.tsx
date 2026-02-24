@@ -23,6 +23,7 @@ import {
 import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/EmptyState";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { UpgradeBanner } from "@/components/UpgradeBanner";
 import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
 import {
   useEmailCampaigns,
@@ -167,6 +168,8 @@ export default function EmailMarketingPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
+        <UpgradeBanner trigger="module_limit" compact />
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-background/50 border border-border rounded-xl p-5">

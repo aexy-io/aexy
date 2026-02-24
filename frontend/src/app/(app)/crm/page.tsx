@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { UpgradeBanner } from "@/components/UpgradeBanner";
 import {
   Building2,
   Users,
@@ -533,6 +534,8 @@ export default function CRMPage() {
                 </button>
               </div>
             </div>
+
+            <UpgradeBanner trigger="module_limit" compact />
 
             {/* Google Integration Banner */}
             {workspaceId && (

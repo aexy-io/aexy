@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { UpgradeBanner } from "@/components/UpgradeBanner";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
@@ -259,6 +260,8 @@ export default function InsightsPage() {
           </button>
         </div>
       </div>
+
+      <UpgradeBanner trigger="repo_limit" compact />
 
       {/* GitHub App not installed */}
       {!reposLoading && !hasInstallation && (
