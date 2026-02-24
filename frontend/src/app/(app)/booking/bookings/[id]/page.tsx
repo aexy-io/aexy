@@ -145,8 +145,23 @@ export default function BookingDetailsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="p-6 max-w-4xl mx-auto animate-pulse">
+        <div className="h-4 w-32 bg-accent rounded mb-6" />
+        <div className="bg-muted rounded-xl border border-border p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="h-6 w-48 bg-accent rounded" />
+            <div className="h-6 w-20 bg-accent rounded-full" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i}>
+                <div className="h-3 w-20 bg-accent rounded mb-2" />
+                <div className="h-4 w-36 bg-accent rounded" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-muted rounded-xl border border-border p-6 h-48" />
       </div>
     );
   }
