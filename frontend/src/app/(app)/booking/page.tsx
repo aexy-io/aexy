@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
 import { bookingApi, Booking, EventType } from "@/lib/booking-api";
 import { format, parseISO, isToday, isTomorrow, isPast } from "date-fns";
 import Link from "next/link";
@@ -312,6 +313,11 @@ export default function BookingDashboard() {
                 Manage Availability
               </Link>
             </div>
+          </div>
+
+          {/* Automations */}
+          <div className="mt-4">
+            <ModuleAutomationsPanel module="booking" moduleLabel="Booking" compact />
           </div>
         </div>
       </div>

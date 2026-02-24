@@ -29,6 +29,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useForms, useFormTemplates } from "@/hooks/useForms";
+import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
 import type { FormListItem, FormTemplateType } from "@/lib/formsApi";
 
 const TEMPLATE_LABELS: Record<FormTemplateType, { label: string; color: string; bg: string }> = {
@@ -534,6 +535,11 @@ export default function FormsPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Automations */}
+        <div className="mb-8">
+          <ModuleAutomationsPanel module="forms" moduleLabel="Forms" compact />
         </div>
 
         {/* Filters */}
