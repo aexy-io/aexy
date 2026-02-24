@@ -27,6 +27,8 @@ import {
   InstallationStatus,
 } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { useSubscription } from "@/hooks/useSubscription";
+import { UpgradeBanner } from "@/components/UpgradeBanner";
 
 type SyncStatus = "pending" | "syncing" | "synced" | "failed";
 type WebhookStatus = "none" | "pending" | "active" | "failed";
@@ -192,6 +194,7 @@ function CollapsibleSection({
 
 export default function RepositorySettingsPage() {
   const { user } = useAuth();
+  const { isFree, maxRepos } = useSubscription();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -386,6 +389,15 @@ export default function RepositorySettingsPage() {
           Manage which repositories are synced and analyzed
         </p>
       </div>
+
+      {isFree && repositories.length >= maxRepos - 1 && (
+        <UpgradeBanner
+          trigger="repo_limit"
+          current={repositories.length}
+          limit={maxRepos}
+          compact
+        />
+      )}
 
       {user?.github_connection?.auth_status === "error" && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">

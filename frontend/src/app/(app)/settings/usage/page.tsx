@@ -22,6 +22,7 @@ import {
 import { UsageStatsCards } from "@/components/billing/UsageStatsCards";
 import { UsageTrendChart } from "@/components/billing/UsageTrendChart";
 import { UsageAlerts } from "@/components/billing/UsageAlert";
+import { UpgradeBanner } from "@/components/UpgradeBanner";
 
 function ProviderBreakdown() {
   const { data: usageSummary, isLoading } = useUsageSummary();
@@ -244,6 +245,11 @@ export default function UsageDashboardPage() {
         <p className="text-muted-foreground">
           Monitor your AI token consumption, plan limits, and cost projections.
         </p>
+      </div>
+
+      {/* Upgrade Banner */}
+      <div className="mb-6">
+        <UpgradeBanner trigger="ai_limit" />
       </div>
 
       {/* Usage Alerts */}
