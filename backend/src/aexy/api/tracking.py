@@ -1,5 +1,6 @@
 """Tracking API endpoints for standups, work logs, time entries, and blockers."""
 
+import logging
 from datetime import date
 from typing import Any
 
@@ -23,6 +24,7 @@ from aexy.models.tracking import (
     TrackingSource,
     WorkLog,
 )
+from aexy.services.automation_service import dispatch_automation_event
 from aexy.schemas.tracking import (
     BlockerCreate,
     BlockerEscalation,
@@ -58,6 +60,19 @@ from aexy.schemas.tracking import (
     WorkLogResponse,
     WorkLogUpdate,
 )
+from aexy.services.tracking_events import (
+    emit_blocker_created,
+    emit_blocker_escalated,
+    emit_blocker_resolved,
+    emit_standup_submitted,
+    emit_time_entry_created,
+    emit_work_log_submitted,
+    emit_sentiment_negative,
+    emit_standup_streak,
+)
+from aexy.services.tracking_compliance_config import get_tracking_config
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tracking", tags=["tracking"])
 
@@ -290,6 +305,7 @@ async def submit_standup(
         existing_standup.source = standup.source.value
         await db.commit()
         await db.refresh(existing_standup)
+        await _dispatch_standup_events(db, existing_standup)
         return standup_to_response(existing_standup)
 
     # Get active sprint
@@ -309,7 +325,42 @@ async def submit_standup(
     db.add(new_standup)
     await db.commit()
     await db.refresh(new_standup)
+    await _dispatch_standup_events(db, new_standup)
     return standup_to_response(new_standup)
+
+
+async def _dispatch_standup_events(db: AsyncSession, standup) -> None:
+    """Dispatch tracking automation events for a standup submission."""
+    try:
+        await emit_standup_submitted(db, standup)
+
+        # Check sentiment
+        sentiment_score = getattr(standup, "sentiment_score", None)
+        if sentiment_score is not None:
+            config = await get_tracking_config(db, standup.workspace_id)
+            if sentiment_score < config["sentiment_negative_threshold"]:
+                await emit_sentiment_negative(
+                    db, standup, sentiment_score,
+                    concerns=standup.blockers_summary or "",
+                )
+
+        # Check streak milestones
+        from sqlalchemy import select, func
+        from aexy.models.tracking import DeveloperStandup
+
+        streak_q = await db.execute(
+            select(func.count(DeveloperStandup.id)).where(
+                DeveloperStandup.developer_id == standup.developer_id,
+                DeveloperStandup.team_id == standup.team_id,
+            )
+        )
+        streak_count = streak_q.scalar() or 0
+        config = await get_tracking_config(db, standup.workspace_id)
+        milestones = config.get("streak_milestones", [])
+        if streak_count in milestones:
+            await emit_standup_streak(db, standup, streak_count, streak_count)
+    except Exception:
+        logger.exception("Failed to dispatch standup automation events")
 
 
 @router.get("/standups/summary/{sprint_id}", response_model=SprintStandupSummary)
@@ -446,6 +497,10 @@ async def create_work_log(
     db.add(new_log)
     await db.commit()
     await db.refresh(new_log)
+    try:
+        await emit_work_log_submitted(db, new_log)
+    except Exception:
+        logger.exception("Failed to dispatch work_log automation event")
     return work_log_to_response(new_log)
 
 
@@ -514,6 +569,10 @@ async def log_time(
     db.add(new_entry)
     await db.commit()
     await db.refresh(new_entry)
+    try:
+        await emit_time_entry_created(db, new_entry)
+    except Exception:
+        logger.exception("Failed to dispatch time_entry automation event")
     return time_entry_to_response(new_entry)
 
 
@@ -617,6 +676,10 @@ async def report_blocker(
     db.add(new_blocker)
     await db.commit()
     await db.refresh(new_blocker)
+    try:
+        await emit_blocker_created(db, new_blocker)
+    except Exception:
+        logger.exception("Failed to dispatch blocker.created automation event")
     return blocker_to_response(new_blocker)
 
 
@@ -642,6 +705,10 @@ async def resolve_blocker(
 
     await db.commit()
     await db.refresh(blocker)
+    try:
+        await emit_blocker_resolved(db, blocker)
+    except Exception:
+        logger.exception("Failed to dispatch blocker.resolved automation event")
     return blocker_to_response(blocker)
 
 
@@ -667,6 +734,10 @@ async def escalate_blocker(
 
     await db.commit()
     await db.refresh(blocker)
+    try:
+        await emit_blocker_escalated(db, blocker)
+    except Exception:
+        logger.exception("Failed to dispatch blocker.escalated automation event")
     return blocker_to_response(blocker)
 
 

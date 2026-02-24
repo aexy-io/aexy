@@ -8,6 +8,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from aexy.services.automation_service import dispatch_automation_event
 from aexy.models.compliance import (
     AssignmentStatus,
     AuditActionType,
@@ -88,6 +89,23 @@ class ComplianceService:
         )
         self.db.add(log)
         await self.db.flush()
+        try:
+            await dispatch_automation_event(
+                db=self.db,
+                workspace_id=workspace_id,
+                module="compliance",
+                trigger_type="audit.logged",
+                entity_id=log.id,
+                trigger_data={
+                    "actor_id": actor_id,
+                    "action_type": action_type.value,
+                    "target_type": target_type,
+                    "target_id": target_id,
+                    "description": description or "",
+                },
+            )
+        except Exception:
+            logger.exception("Failed to dispatch audit.logged automation event")
         return log
 
     # ==================== Mandatory Training CRUD ====================
@@ -128,6 +146,23 @@ class ComplianceService:
             description=f"Created mandatory training: {training.name}",
         )
         await self.db.commit()
+
+        try:
+            await dispatch_automation_event(
+                db=self.db,
+                workspace_id=workspace_id,
+                module="compliance",
+                trigger_type="training.created",
+                entity_id=training.id,
+                trigger_data={
+                    "training_id": training.id,
+                    "name": training.name,
+                    "applies_to_type": training.applies_to_type,
+                    "due_days": training.due_days_after_assignment,
+                },
+            )
+        except Exception:
+            logger.exception("Failed to dispatch training.created automation event")
 
         logger.info(f"Created mandatory training {training.id} in workspace {workspace_id}")
         return training
@@ -322,6 +357,23 @@ class ComplianceService:
         )
         await self.db.commit()
 
+        try:
+            await dispatch_automation_event(
+                db=self.db,
+                workspace_id=workspace_id,
+                module="compliance",
+                trigger_type="training.assigned",
+                entity_id=assignment.id,
+                trigger_data={
+                    "assignment_id": assignment.id,
+                    "developer_id": data.developer_id,
+                    "training_id": data.mandatory_training_id,
+                    "due_date": str(data.due_date),
+                },
+            )
+        except Exception:
+            logger.exception("Failed to dispatch training.assigned automation event")
+
         return assignment
 
     async def bulk_create_assignments(
@@ -378,6 +430,24 @@ class ComplianceService:
             description=f"Bulk assigned training to {len(assignments)} developers",
         )
         await self.db.commit()
+
+        for assignment in assignments:
+            try:
+                await dispatch_automation_event(
+                    db=self.db,
+                    workspace_id=workspace_id,
+                    module="compliance",
+                    trigger_type="training.assigned",
+                    entity_id=assignment.id,
+                    trigger_data={
+                        "assignment_id": assignment.id,
+                        "developer_id": assignment.developer_id,
+                        "training_id": data.mandatory_training_id,
+                        "due_date": str(assignment.due_date),
+                    },
+                )
+            except Exception:
+                logger.exception("Failed to dispatch training.assigned automation event")
 
         return assignments
 
@@ -587,6 +657,22 @@ class ComplianceService:
             await self.db.commit()
             await self.db.refresh(assignment)
 
+            try:
+                await dispatch_automation_event(
+                    db=self.db,
+                    workspace_id=workspace_id,
+                    module="compliance",
+                    trigger_type="training.started",
+                    entity_id=assignment.id,
+                    trigger_data={
+                        "assignment_id": assignment.id,
+                        "developer_id": assignment.developer_id,
+                        "training_id": assignment.mandatory_training_id,
+                    },
+                )
+            except Exception:
+                logger.exception("Failed to dispatch training.started automation event")
+
         return assignment
 
     async def complete_assignment(
@@ -599,6 +685,10 @@ class ComplianceService:
         assignment = await self.get_assignment(assignment_id, workspace_id)
         if not assignment or assignment.developer_id != developer_id:
             return None
+
+        # Capture compliance status before
+        pre_status = await self.get_developer_compliance_status(developer_id, workspace_id)
+        was_compliant = pre_status.is_compliant if pre_status else None
 
         assignment.status = AssignmentStatus.COMPLETED.value
         assignment.progress_percentage = 100
@@ -617,6 +707,39 @@ class ComplianceService:
 
         await self.db.commit()
         await self.db.refresh(assignment)
+
+        try:
+            await dispatch_automation_event(
+                db=self.db,
+                workspace_id=workspace_id,
+                module="compliance",
+                trigger_type="training.completed",
+                entity_id=assignment.id,
+                trigger_data={
+                    "assignment_id": assignment.id,
+                    "developer_id": developer_id,
+                    "training_id": assignment.mandatory_training_id,
+                    "completed_at": str(assignment.completed_at),
+                },
+            )
+            # Check if compliance status changed
+            post_status = await self.get_developer_compliance_status(developer_id, workspace_id)
+            if post_status and was_compliant is not None and post_status.is_compliant != was_compliant:
+                await dispatch_automation_event(
+                    db=self.db,
+                    workspace_id=workspace_id,
+                    module="compliance",
+                    trigger_type="compliance.status_changed",
+                    entity_id=developer_id,
+                    trigger_data={
+                        "developer_id": developer_id,
+                        "was_compliant": was_compliant,
+                        "is_compliant": post_status.is_compliant,
+                    },
+                )
+        except Exception:
+            logger.exception("Failed to dispatch training.completed automation event")
+
         return assignment
 
     async def waive_assignment(
@@ -630,6 +753,10 @@ class ComplianceService:
         assignment = await self.get_assignment(assignment_id, workspace_id)
         if not assignment:
             return None
+
+        # Capture compliance status before
+        pre_status = await self.get_developer_compliance_status(assignment.developer_id, workspace_id)
+        was_compliant = pre_status.is_compliant if pre_status else None
 
         old_status = assignment.status
         assignment.status = AssignmentStatus.WAIVED.value
@@ -651,6 +778,39 @@ class ComplianceService:
 
         await self.db.commit()
         await self.db.refresh(assignment)
+
+        try:
+            await dispatch_automation_event(
+                db=self.db,
+                workspace_id=workspace_id,
+                module="compliance",
+                trigger_type="training.waived",
+                entity_id=assignment.id,
+                trigger_data={
+                    "assignment_id": assignment.id,
+                    "developer_id": assignment.developer_id,
+                    "waived_by_id": waived_by_id,
+                    "waiver_reason": data.reason or "",
+                },
+            )
+            # Check if compliance status changed
+            post_status = await self.get_developer_compliance_status(assignment.developer_id, workspace_id)
+            if post_status and was_compliant is not None and post_status.is_compliant != was_compliant:
+                await dispatch_automation_event(
+                    db=self.db,
+                    workspace_id=workspace_id,
+                    module="compliance",
+                    trigger_type="compliance.status_changed",
+                    entity_id=assignment.developer_id,
+                    trigger_data={
+                        "developer_id": assignment.developer_id,
+                        "was_compliant": was_compliant,
+                        "is_compliant": post_status.is_compliant,
+                    },
+                )
+        except Exception:
+            logger.exception("Failed to dispatch training.waived automation event")
+
         return assignment
 
     # ==================== Certification CRUD ====================
@@ -808,6 +968,50 @@ class ComplianceService:
             description=f"Added certification for developer {data.developer_id}",
         )
         await self.db.commit()
+
+        try:
+            await dispatch_automation_event(
+                db=self.db,
+                workspace_id=workspace_id,
+                module="compliance",
+                trigger_type="certification.added",
+                entity_id=dev_cert.id,
+                trigger_data={
+                    "developer_id": data.developer_id,
+                    "certification_id": data.certification_id,
+                    "issued_date": str(data.issued_date),
+                    "expiry_date": str(data.expiry_date) if data.expiry_date else None,
+                },
+            )
+            # Check prerequisites
+            cert = await self.get_certification(data.certification_id, workspace_id)
+            if cert and cert.prerequisites:
+                dev_certs_q = await self.db.execute(
+                    select(DeveloperCertification.certification_id).where(
+                        and_(
+                            DeveloperCertification.developer_id == data.developer_id,
+                            DeveloperCertification.workspace_id == workspace_id,
+                            DeveloperCertification.status == CertificationStatus.ACTIVE.value,
+                        )
+                    )
+                )
+                held_cert_ids = {r[0] for r in dev_certs_q.all()}
+                missing = [pid for pid in cert.prerequisites if pid not in held_cert_ids]
+                if missing:
+                    await dispatch_automation_event(
+                        db=self.db,
+                        workspace_id=workspace_id,
+                        module="compliance",
+                        trigger_type="certification.prerequisite_unmet",
+                        entity_id=dev_cert.id,
+                        trigger_data={
+                            "developer_id": data.developer_id,
+                            "certification_id": data.certification_id,
+                            "missing_prerequisites": missing,
+                        },
+                    )
+        except Exception:
+            logger.exception("Failed to dispatch certification.added automation event")
 
         return dev_cert
 
@@ -1041,6 +1245,23 @@ class ComplianceService:
 
         await self.db.commit()
         await self.db.refresh(dev_cert)
+
+        try:
+            await dispatch_automation_event(
+                db=self.db,
+                workspace_id=workspace_id,
+                module="compliance",
+                trigger_type="certification.renewed",
+                entity_id=dev_cert.id,
+                trigger_data={
+                    "developer_id": dev_cert.developer_id,
+                    "certification_id": dev_cert.certification_id,
+                    "new_expiry_date": str(data.new_expiry_date) if data.new_expiry_date else None,
+                },
+            )
+        except Exception:
+            logger.exception("Failed to dispatch certification.renewed automation event")
+
         return dev_cert
 
     async def revoke_developer_certification(
@@ -1054,6 +1275,10 @@ class ComplianceService:
         dev_cert = await self.get_developer_certification(dev_cert_id, workspace_id)
         if not dev_cert:
             return None
+
+        # Capture compliance status before
+        pre_status = await self.get_developer_compliance_status(dev_cert.developer_id, workspace_id)
+        was_compliant = pre_status.is_compliant if pre_status else None
 
         old_status = dev_cert.status
         dev_cert.status = CertificationStatus.REVOKED.value
@@ -1074,6 +1299,38 @@ class ComplianceService:
 
         await self.db.commit()
         await self.db.refresh(dev_cert)
+
+        try:
+            await dispatch_automation_event(
+                db=self.db,
+                workspace_id=workspace_id,
+                module="compliance",
+                trigger_type="certification.revoked",
+                entity_id=dev_cert.id,
+                trigger_data={
+                    "developer_id": dev_cert.developer_id,
+                    "certification_id": dev_cert.certification_id,
+                    "revoked_by_id": actor_id,
+                },
+            )
+            # Check if compliance status changed
+            post_status = await self.get_developer_compliance_status(dev_cert.developer_id, workspace_id)
+            if post_status and was_compliant is not None and post_status.is_compliant != was_compliant:
+                await dispatch_automation_event(
+                    db=self.db,
+                    workspace_id=workspace_id,
+                    module="compliance",
+                    trigger_type="compliance.status_changed",
+                    entity_id=dev_cert.developer_id,
+                    trigger_data={
+                        "developer_id": dev_cert.developer_id,
+                        "was_compliant": was_compliant,
+                        "is_compliant": post_status.is_compliant,
+                    },
+                )
+        except Exception:
+            logger.exception("Failed to dispatch certification.revoked automation event")
+
         return dev_cert
 
     # ==================== Reports ====================
@@ -1462,6 +1719,7 @@ class ComplianceService:
             assignment.status = AssignmentStatus.OVERDUE.value
 
         await self.db.commit()
+
         return len(assignments)
 
     async def update_certification_statuses(
@@ -1490,6 +1748,7 @@ class ComplianceService:
             cert.status = CertificationStatus.EXPIRING_SOON.value
 
         # Find expiring soon certifications that should be marked as expired
+        # (dispatch expiring triggers after commit below)
         expired_query = select(DeveloperCertification).where(
             and_(
                 DeveloperCertification.workspace_id == workspace_id,
@@ -1509,4 +1768,5 @@ class ComplianceService:
             cert.status = CertificationStatus.EXPIRED.value
 
         await self.db.commit()
+
         return len(expiring_certs) + len(expired_certs)
