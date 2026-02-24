@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { ChevronLeft, Loader2 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Node, Edge } from "@xyflow/react";
 
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -197,9 +197,37 @@ export default function EditAutomationPage() {
 
   if (isLoading || !workspaceId) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="flex items-center justify-center h-[calc(100vh-64px)]">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="min-h-screen bg-background animate-pulse">
+        <div className="h-[calc(100vh-64px)] flex flex-col">
+          <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-border bg-muted/50">
+            <div className="flex items-center gap-4">
+              <div className="h-9 w-9 bg-accent rounded-lg" />
+              <div>
+                <div className="h-5 w-56 bg-accent rounded mb-2" />
+                <div className="h-3 w-36 bg-accent rounded" />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-20 bg-accent rounded-lg" />
+              <div className="h-9 w-24 bg-accent rounded-lg" />
+            </div>
+          </div>
+          <div className="flex-1 flex">
+            <div className="flex-1 p-6 space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-muted border border-border rounded-xl p-4">
+                  <div className="h-4 w-32 bg-accent rounded mb-3" />
+                  <div className="h-10 w-full bg-accent rounded-lg" />
+                </div>
+              ))}
+            </div>
+            <div className="w-80 border-l border-border p-4 space-y-3">
+              <div className="h-4 w-24 bg-accent rounded" />
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-10 w-full bg-accent rounded-lg" />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -227,12 +255,12 @@ export default function EditAutomationPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-4 py-3 border-b border-border bg-muted/50 relative z-10">
           <div className="flex items-center gap-4">
-            <button
-              onClick={handleBack}
-              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
+            <Breadcrumb
+              items={[
+                { label: "Automations", href: automation?.module ? `/automations?module=${automation.module}` : "/automations" },
+                { label: name || "Automation" },
+              ]}
+            />
             <div>
               <div className="flex items-center gap-3">
                 <input

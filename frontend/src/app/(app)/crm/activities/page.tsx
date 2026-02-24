@@ -14,7 +14,6 @@ import {
   Users,
   Building2,
   Filter,
-  Search,
   RefreshCw,
   Loader2,
   Edit,
@@ -22,8 +21,11 @@ import {
   Trash,
   Link2,
   Eye,
+  Activity,
 } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { SearchInput } from "@/components/ui/search-input";
 import { crmApi, CRMActivity } from "@/lib/api";
 
 type ActivityType = "all" | "email" | "meeting" | "call" | "note" | "task" | "record_created" | "record_updated" | "record_deleted";
@@ -225,16 +227,12 @@ export default function ActivitiesPage() {
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Filters */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
-          <div className="flex-1 relative w-full sm:w-auto">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search activities..."
-              className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-          </div>
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search activities..."
+            wrapperClassName="flex-1 w-full sm:w-auto"
+          />
           <div className="flex items-center gap-1 bg-muted border border-border rounded-lg p-1 overflow-x-auto">
             {filterTypes.map((type) => {
               const config = getActivityConfig(type);
@@ -270,48 +268,38 @@ export default function ActivitiesPage() {
 
         {/* Content */}
         {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+          <div className="space-y-3 py-4 animate-pulse">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-start gap-4 p-4 bg-muted rounded-xl border border-border">
+                <div className="h-10 w-10 bg-accent rounded-full" />
+                <div className="flex-1">
+                  <div className="h-4 w-48 bg-accent rounded mb-2" />
+                  <div className="h-3 w-full bg-accent rounded mb-1" />
+                  <div className="h-3 w-2/3 bg-accent rounded" />
+                </div>
+                <div className="h-3 w-16 bg-accent rounded" />
+              </div>
+            ))}
           </div>
         ) : filteredActivities.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 px-4">
-            <div className="bg-muted/50 rounded-full p-6 mb-6">
-              <Clock className="h-12 w-12 text-muted-foreground" />
-            </div>
-            <h2 className="text-xl font-semibold text-foreground mb-2">
-              {searchQuery ? "No matching activities" : "No activities yet"}
-            </h2>
-            <p className="text-muted-foreground text-center max-w-md mb-6">
-              {searchQuery
-                ? "Try adjusting your search or filters."
-                : "Activities will appear here as you interact with your contacts, schedule meetings, and track tasks."}
-            </p>
-            {!searchQuery && (
-              <div className="flex flex-wrap justify-center gap-4">
-                <button
-                  onClick={() => router.push("/crm/inbox")}
-                  className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors"
-                >
-                  <Mail className="w-4 h-4" />
-                  View Inbox
-                </button>
-                <button
-                  onClick={() => router.push("/crm/calendar")}
-                  className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors"
-                >
-                  <Calendar className="w-4 h-4" />
-                  View Calendar
-                </button>
-                <button
-                  onClick={() => router.push("/crm/person")}
-                  className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors"
-                >
-                  <Users className="w-4 h-4" />
-                  View People
-                </button>
+          searchQuery ? (
+            <div className="flex flex-col items-center justify-center py-16 px-4">
+              <div className="bg-muted/50 rounded-full p-6 mb-6">
+                <Clock className="h-12 w-12 text-muted-foreground" />
               </div>
-            )}
-          </div>
+              <h2 className="text-xl font-semibold text-foreground mb-2">No matching activities</h2>
+              <p className="text-muted-foreground text-center max-w-md mb-6">
+                Try adjusting your search or filters.
+              </p>
+            </div>
+          ) : (
+            <EmptyState
+              icon={Activity}
+              title="No activities yet"
+              description="Activities will appear as you interact with contacts, deals, and records in your CRM."
+              compact
+            />
+          )
         ) : (
           <>
             {/* Activities List */}

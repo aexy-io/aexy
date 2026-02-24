@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, AlertCircle } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
 import { useAssessments } from "@/hooks/useAssessments";
@@ -83,10 +84,22 @@ export default function NewAssessmentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="text-center">
-        <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
-        <p className="text-muted-foreground">Creating assessment...</p>
+    <div className="min-h-screen bg-background">
+      <div className="px-6 py-6">
+        <Breadcrumb
+          items={[
+            { label: "Hiring", href: "/hiring" },
+            { label: "Assessments", href: "/hiring/assessments" },
+            { label: "New Assessment" },
+          ]}
+          className="mb-6"
+        />
+      </div>
+      <div className="flex items-center justify-center" style={{ minHeight: "50vh" }}>
+        <div className="text-center">
+          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Creating assessment...</p>
+        </div>
       </div>
     </div>
   );

@@ -472,6 +472,22 @@ class CampaignService:
         campaign.total_recipients = created_count
         await self.db.commit()
 
+        # Dispatch recipient.added for the batch
+        if created_count > 0:
+            await dispatch_automation_event(
+                db=self.db,
+                workspace_id=workspace_id,
+                module="email_marketing",
+                trigger_type="recipient.added",
+                entity_id=campaign_id,
+                trigger_data={
+                    "campaign_id": campaign_id,
+                    "campaign_name": campaign.name,
+                    "recipients_added": created_count,
+                    "workspace_id": workspace_id,
+                },
+            )
+
         logger.info(f"Populated {created_count} recipients for campaign {campaign_id}")
         return created_count
 

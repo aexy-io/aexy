@@ -411,7 +411,10 @@ class CRMAutomationService:
             return str(value).lower() not in str(record_value).lower() if record_value else True
         elif operator == "between":
             if isinstance(value, list) and len(value) == 2:
-                return float(value[0]) <= float(record_value or 0) <= float(value[1])
+                try:
+                    return float(value[0]) <= float(record_value or 0) <= float(value[1])
+                except (ValueError, TypeError):
+                    return False
             return False
         return True
 

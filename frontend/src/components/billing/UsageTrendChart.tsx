@@ -42,8 +42,12 @@ export function UsageTrendChart({ months = 6, className = "" }: UsageTrendChartP
     return (
       <div className={`bg-muted rounded-xl border border-border p-6 ${className}`}>
         <h3 className="text-lg font-semibold text-foreground mb-4">Usage Trend</h3>
-        <div className="h-64 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
+        <div className="h-64 animate-pulse">
+          <div className="flex items-end gap-2 h-full">
+            {[40, 65, 50, 80, 60, 75, 45, 90, 55, 70, 85, 60].map((h, i) => (
+              <div key={i} className="flex-1 bg-accent rounded-t" style={{ height: `${h}%` }} />
+            ))}
+          </div>
         </div>
       </div>
     );

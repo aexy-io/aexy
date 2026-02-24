@@ -4,7 +4,6 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  ArrowLeft,
   BarChart3,
   Calendar,
   CheckCircle,
@@ -24,6 +23,7 @@ import {
   Edit3,
   ArrowRightLeft,
 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
   DndContext,
   DragEndEvent,
@@ -44,22 +44,24 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace, useCustomTaskStatuses } from "@/hooks/useWorkspace";
 import { useSprint, useSprintTasks, useSprintAI, useSprintStats, useTaskActivities } from "@/hooks/useSprints";
 import { useEpics } from "@/hooks/useEpics";
+import { useProject } from "@/hooks/useProjects";
 import { SprintTask, TaskStatus, TaskPriority, AssignmentSuggestion, EpicListItem, TaskActivity } from "@/lib/api";
+import { TASK_STATUS_COLORS, PRIORITY_COLORS } from "@/lib/statusColors";
 import { redirect } from "next/navigation";
 
 const COLUMN_CONFIG: Record<TaskStatus, { label: string; color: string; bgColor: string }> = {
-  backlog: { label: "Backlog", color: "text-muted-foreground", bgColor: "bg-accent/50" },
-  todo: { label: "To Do", color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-50 dark:bg-blue-900/20" },
-  in_progress: { label: "In Progress", color: "text-amber-600 dark:text-amber-400", bgColor: "bg-amber-50 dark:bg-amber-900/20" },
-  review: { label: "Review", color: "text-purple-600 dark:text-purple-400", bgColor: "bg-purple-50 dark:bg-purple-900/20" },
-  done: { label: "Done", color: "text-green-600 dark:text-green-400", bgColor: "bg-green-50 dark:bg-green-900/20" },
+  backlog: { label: "Backlog", color: TASK_STATUS_COLORS.backlog.text, bgColor: TASK_STATUS_COLORS.backlog.bg },
+  todo: { label: "To Do", color: TASK_STATUS_COLORS.todo.text, bgColor: TASK_STATUS_COLORS.todo.bg },
+  in_progress: { label: "In Progress", color: TASK_STATUS_COLORS.in_progress.text, bgColor: TASK_STATUS_COLORS.in_progress.bg },
+  review: { label: "Review", color: TASK_STATUS_COLORS.review.text, bgColor: TASK_STATUS_COLORS.review.bg },
+  done: { label: "Done", color: TASK_STATUS_COLORS.done.text, bgColor: TASK_STATUS_COLORS.done.bg },
 };
 
 const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string }> = {
-  critical: { label: "Critical", color: "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30" },
-  high: { label: "High", color: "text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30" },
-  medium: { label: "Medium", color: "text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30" },
-  low: { label: "Low", color: "text-muted-foreground bg-accent" },
+  critical: { label: "Critical", color: `${PRIORITY_COLORS.critical.text} ${PRIORITY_COLORS.critical.bg}` },
+  high: { label: "High", color: `${PRIORITY_COLORS.high.text} ${PRIORITY_COLORS.high.bg}` },
+  medium: { label: "Medium", color: `${PRIORITY_COLORS.medium.text} ${PRIORITY_COLORS.medium.bg}` },
+  low: { label: "Low", color: `${PRIORITY_COLORS.low.text} ${PRIORITY_COLORS.low.bg}` },
 };
 
 const SOURCE_ICONS: Record<string, React.ReactNode> = {
@@ -1036,6 +1038,7 @@ export default function SprintBoardPage({
   } = useSprintAI(sprintId);
 
   const { epics } = useEpics(currentWorkspaceId);
+  const { project } = useProject(currentWorkspaceId, projectId);
 
   // Custom statuses
   const { statuses: customStatuses } = useCustomTaskStatuses(currentWorkspaceId);
@@ -1237,13 +1240,15 @@ export default function SprintBoardPage({
       <header className="border-b border-border bg-muted/50">
         <div className="max-w-[1600px] mx-auto px-4 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Link
-                href={`/sprints/${projectId}`}
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
+            <div className="flex flex-col gap-2">
+              <Breadcrumb
+                items={[
+                  { label: "Sprints", href: "/sprints" },
+                  { label: project?.name || "Project", href: `/sprints/${projectId}` },
+                  { label: sprint.name },
+                ]}
+                className="mb-0"
+              />
               <div>
                 <h1 className="text-xl font-semibold text-foreground">{sprint.name}</h1>
                 {sprint.goal && (

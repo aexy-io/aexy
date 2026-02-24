@@ -5,16 +5,14 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { bookingApi, AvailabilitySchedule, AvailabilityOverride } from "@/lib/booking-api";
 import { toast } from "sonner";
 import { format, parseISO, addDays } from "date-fns";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
-  ArrowLeft,
   Clock,
   Plus,
   Trash2,
   Calendar,
   Save,
 } from "lucide-react";
-import Link from "next/link";
-
 const DAYS = [
   { value: 0, label: "Monday" },
   { value: 1, label: "Tuesday" },
@@ -256,13 +254,13 @@ export default function AvailabilityPage() {
     <div className="p-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <Link
-          href="/booking"
-          className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1 mb-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Booking
-        </Link>
+        <Breadcrumb
+          items={[
+            { label: "Booking", href: "/booking" },
+            { label: "Availability" },
+          ]}
+          className="mb-2"
+        />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">

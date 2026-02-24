@@ -1,19 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Mail,
   Crown,
-  Loader2,
   AlertCircle,
   CheckCircle2,
   XCircle,
   RefreshCw,
-  ChevronLeft,
-  ChevronRight,
-  TrendingUp,
   Filter,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -22,6 +18,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWorkspaceEmailStats, useWorkspaceEmailLogs } from "@/hooks/useWorkspaceEmailDelivery";
 import { formatDistanceToNow } from "date-fns";
 import { WorkspaceEmailLog } from "@/lib/api";
+import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 
 function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { color: string; icon: React.ElementType }> = {
@@ -86,35 +83,6 @@ function StatCard({
   );
 }
 
-function EmailRow({ email }: { email: WorkspaceEmailLog }) {
-  return (
-    <tr className="border-b border-border hover:bg-card/50">
-      <td className="px-4 py-3">
-        <p className="text-foreground">{email.recipient_email}</p>
-      </td>
-      <td className="px-4 py-3">
-        <p className="text-foreground max-w-xs truncate">{email.subject}</p>
-      </td>
-      <td className="px-4 py-3">
-        <StatusBadge status={email.status} />
-      </td>
-      <td className="px-4 py-3">
-        {email.notification_type ? (
-          <span className="text-muted-foreground text-sm">
-            {email.notification_type.replace(/_/g, " ")}
-          </span>
-        ) : (
-          <span className="text-muted-foreground text-sm">-</span>
-        )}
-      </td>
-      <td className="px-4 py-3">
-        <span className="text-muted-foreground text-sm" title={email.created_at}>
-          {formatDistanceToNow(new Date(email.created_at), { addSuffix: true })}
-        </span>
-      </td>
-    </tr>
-  );
-}
 
 function EnterpriseUpgradePrompt() {
   const router = useRouter();
@@ -236,8 +204,37 @@ export default function EmailDeliverySettingsPage() {
   // Loading state
   if (subscriptionLoading) {
     return (
-      <div className="py-20 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="space-y-6 animate-pulse">
+        <div>
+          <div className="h-6 w-36 bg-accent rounded mb-2" />
+          <div className="h-4 w-64 bg-accent rounded" />
+        </div>
+        <div className="bg-card rounded-xl border border-border p-5 space-y-4">
+          <div className="h-2 w-full bg-accent rounded-full" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-20 bg-accent rounded-lg" />
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-16 bg-accent rounded-lg" />
+          ))}
+        </div>
+        <div className="bg-card rounded-xl border border-border">
+          <div className="px-5 py-4 border-b border-border">
+            <div className="h-5 w-24 bg-accent rounded" />
+          </div>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-border/50">
+              <div className="h-4 w-40 bg-accent rounded" />
+              <div className="h-4 w-48 bg-accent rounded" />
+              <div className="h-5 w-16 bg-accent rounded-full" />
+              <div className="h-3 w-20 bg-accent rounded ml-auto" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -269,6 +266,55 @@ export default function EmailDeliverySettingsPage() {
     );
   }
 
+  const emailLogColumns = useMemo<DataTableColumn<WorkspaceEmailLog>[]>(
+    () => [
+      {
+        id: "recipient",
+        header: "Recipient",
+        cell: (row) => <p className="text-foreground">{row.recipient_email}</p>,
+        sortValue: (row) => row.recipient_email,
+      },
+      {
+        id: "subject",
+        header: "Subject",
+        cell: (row) => (
+          <p className="text-foreground max-w-xs truncate">{row.subject}</p>
+        ),
+        sortValue: (row) => row.subject,
+      },
+      {
+        id: "status",
+        header: "Status",
+        cell: (row) => <StatusBadge status={row.status} />,
+        sortValue: (row) => row.status,
+      },
+      {
+        id: "type",
+        header: "Type",
+        cell: (row) =>
+          row.notification_type ? (
+            <span className="text-muted-foreground text-sm">
+              {row.notification_type.replace(/_/g, " ")}
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-sm">-</span>
+          ),
+        sortValue: (row) => row.notification_type ?? "",
+      },
+      {
+        id: "sent",
+        header: "Sent",
+        cell: (row) => (
+          <span className="text-muted-foreground text-sm" title={row.created_at}>
+            {formatDistanceToNow(new Date(row.created_at), { addSuffix: true })}
+          </span>
+        ),
+        sortValue: (row) => new Date(row.created_at).getTime(),
+      },
+    ],
+    []
+  );
+
   const handleRefresh = () => {
     refetchStats();
     refetchLogs();
@@ -295,8 +341,13 @@ export default function EmailDeliverySettingsPage() {
       <div className="space-y-6">
         {/* Stats */}
         {statsLoading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <div className="bg-card rounded-xl border border-border p-5 animate-pulse space-y-4">
+            <div className="h-2 w-full bg-accent rounded-full" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-20 bg-accent rounded-lg" />
+              ))}
+            </div>
           </div>
         ) : statsError ? (
           <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-400 flex items-center gap-2">
@@ -381,74 +432,27 @@ export default function EmailDeliverySettingsPage() {
             </div>
           </div>
 
-          {logsLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-            </div>
-          ) : logsError ? (
+          {logsError ? (
             <div className="flex items-center justify-center h-64 text-red-400">
               <AlertCircle className="h-5 w-5 mr-2" />
               Failed to load email logs
             </div>
-          ) : emailLogs?.items?.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-              <Mail className="h-12 w-12 mb-3 text-muted-foreground" />
-              <p>No email logs found</p>
-              {statusFilter && (
-                <button
-                  onClick={() => setStatusFilter("")}
-                  className="mt-2 text-blue-400 hover:underline"
-                >
-                  Clear filter
-                </button>
-              )}
-            </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[600px]">
-                <thead className="bg-background/50">
-                  <tr className="text-left text-muted-foreground text-sm">
-                    <th className="px-4 py-3 font-medium">Recipient</th>
-                    <th className="px-4 py-3 font-medium">Subject</th>
-                    <th className="px-4 py-3 font-medium">Status</th>
-                    <th className="px-4 py-3 font-medium">Type</th>
-                    <th className="px-4 py-3 font-medium">Sent</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {emailLogs?.items?.map((email) => (
-                    <EmailRow key={email.id} email={email} />
-                  ))}
-                </tbody>
-              </table>
-
-              {/* Pagination */}
-              {emailLogs && emailLogs.total > 25 && (
-                <div className="px-4 py-3 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <span className="text-muted-foreground text-sm">
-                    Showing {(page - 1) * 25 + 1} - {Math.min(page * 25, emailLogs.total)} of{" "}
-                    {emailLogs.total} emails
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                      className="p-2 rounded-lg bg-muted text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                    <span className="text-foreground px-3">Page {page}</span>
-                    <button
-                      onClick={() => setPage((p) => p + 1)}
-                      disabled={!emailLogs.has_next}
-                      className="p-2 rounded-lg bg-muted text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            <DataTable<WorkspaceEmailLog>
+              columns={emailLogColumns}
+              data={emailLogs?.items ?? []}
+              rowKey={(row) => row.id}
+              isLoading={logsLoading}
+              skeletonRows={5}
+              emptyIcon={<Mail className="h-12 w-12" />}
+              emptyTitle="No email logs found"
+              emptyDescription={statusFilter ? "Try clearing the status filter" : undefined}
+              currentPage={page}
+              totalPages={emailLogs ? Math.ceil(emailLogs.total / 25) : 1}
+              totalItems={emailLogs?.total}
+              onPageChange={setPage}
+              className="border-0 [&>div]:border-0 [&>div]:rounded-none"
+            />
           )}
         </div>
       </div>

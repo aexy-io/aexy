@@ -21,6 +21,8 @@ import {
   Eye,
   Edit3,
 } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
+import { FormInput } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useTicketForms, useTicketFormTemplates } from "@/hooks/useTicketing";
@@ -279,10 +281,36 @@ export default function TicketFormsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mx-auto mb-4"></div>
-          <p className="text-foreground">Loading forms...</p>
+      <div className="space-y-6 animate-pulse">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-6 w-32 bg-accent rounded mb-2" />
+            <div className="h-4 w-64 bg-accent rounded" />
+          </div>
+          <div className="h-9 w-28 bg-accent rounded-lg" />
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center gap-4 p-4 bg-card rounded-xl border border-border">
+              <div className="h-12 w-12 bg-accent rounded-lg" />
+              <div className="flex-1 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-36 bg-accent rounded" />
+                  <div className="h-5 w-14 bg-accent rounded-full" />
+                </div>
+                <div className="h-3 w-48 bg-accent rounded" />
+                <div className="flex gap-4">
+                  <div className="h-3 w-24 bg-accent rounded" />
+                  <div className="h-3 w-28 bg-accent rounded" />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <div className="h-8 w-8 bg-accent rounded-lg" />
+                <div className="h-8 w-8 bg-accent rounded-lg" />
+                <div className="h-8 w-8 bg-accent rounded-lg" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -310,20 +338,14 @@ export default function TicketFormsPage() {
       {/* Forms List */}
       <div>
         {forms.length === 0 ? (
-          <div className="bg-card rounded-xl p-12 text-center border border-border">
-            <Ticket className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-foreground mb-2">No forms yet</h3>
-            <p className="text-muted-foreground mb-6">
-              Create your first ticket form to start collecting submissions
-            </p>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition font-medium"
-            >
-              <Plus className="h-5 w-5" />
-              Create Your First Form
-            </button>
-          </div>
+          <EmptyState
+            icon={FormInput}
+            title="No ticket forms yet"
+            description="Create custom forms to collect structured information when tickets are submitted."
+            actions={[
+              { label: "Create Form", onClick: () => setShowCreateModal(true) },
+            ]}
+          />
         ) : (
           <div className="space-y-3">
             {forms.map((form) => (

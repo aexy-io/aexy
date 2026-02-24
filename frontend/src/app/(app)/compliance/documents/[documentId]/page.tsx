@@ -2,8 +2,8 @@
 
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
-  ArrowLeft,
   FileText,
   Download,
   Archive,
@@ -84,14 +84,14 @@ export default function DocumentDetailPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      {/* Back Link */}
-      <Link
-        href="/compliance/documents"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mb-6"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Document Center
-      </Link>
+      <Breadcrumb
+        items={[
+          { label: "Compliance", href: "/compliance" },
+          { label: "Documents", href: "/compliance/documents" },
+          { label: doc.name },
+        ]}
+        className="mb-6"
+      />
 
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">

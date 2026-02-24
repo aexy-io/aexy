@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   Mail,
   MailOpen,
   Send,
@@ -26,6 +25,7 @@ import { useAgent } from "@/hooks/useAgents";
 import { useAgentInbox, useAgentInboxMessage } from "@/hooks/useAgentInbox";
 import { AgentInboxMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 const statusConfig = {
   pending: {
@@ -448,14 +448,16 @@ export default function AgentInboxPage() {
       {/* Header */}
       <div className="border-b border-border bg-muted/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <Breadcrumb
+            items={[
+              { label: "Agents", href: "/agents" },
+              { label: agent?.name || "Agent", href: `/agents/${agentId}` },
+              { label: "Inbox" },
+            ]}
+            className="mb-3"
+          />
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <Link
-                href={`/agents/${agentId}`}
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
               <div>
                 <div className="flex items-center gap-2">
                   <Mail className="h-5 w-5 text-blue-400" />

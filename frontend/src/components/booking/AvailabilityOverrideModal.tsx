@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { X, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface AvailabilityOverrideModalProps {
   isOpen: boolean;
@@ -62,163 +69,142 @@ export function AvailabilityOverrideModal({
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-full items-center justify-center p-4">
-        {/* Backdrop */}
-        <div
-          className="fixed inset-0 bg-black/50 transition-opacity"
-          onClick={onClose}
-        />
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-md p-0 gap-0">
+        <DialogHeader className="p-4 border-b border-border">
+          <DialogTitle>Add Date Override</DialogTitle>
+        </DialogHeader>
 
-        {/* Modal */}
-        <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md">
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Add Date Override
-            </h2>
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg"
-            >
-              <X className="h-5 w-5" />
-            </button>
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          {/* Date */}
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Date
+            </label>
+            <input
+              type="date"
+              value={formData.date}
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+              required
+              className="w-full px-3 py-2 border border-border rounded-lg bg-muted text-foreground"
+            />
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="p-4 space-y-4">
-            {/* Date */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Date
+          {/* Availability Type */}
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Override Type
+            </label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  checked={!formData.is_available}
+                  onChange={() => setFormData({ ...formData, is_available: false })}
+                  className="text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-foreground">
+                  Mark as unavailable
+                </span>
               </label>
-              <input
-                type="date"
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                required
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-              />
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  checked={formData.is_available}
+                  onChange={() => setFormData({ ...formData, is_available: true })}
+                  className="text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-foreground">
+                  Set custom hours
+                </span>
+              </label>
             </div>
+          </div>
 
-            {/* Availability Type */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Override Type
-              </label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    checked={!formData.is_available}
-                    onChange={() => setFormData({ ...formData, is_available: false })}
-                    className="text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    Mark as unavailable
-                  </span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    checked={formData.is_available}
-                    onChange={() => setFormData({ ...formData, is_available: true })}
-                    className="text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    Set custom hours
-                  </span>
-                </label>
-              </div>
-            </div>
-
-            {/* Custom Hours */}
-            {formData.is_available && (
-              <div className="flex items-center gap-2">
-                <select
-                  value={formData.start_time}
-                  onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
-                >
-                  {TIME_OPTIONS.map((time) => (
-                    <option key={time} value={time}>
-                      {formatTimeDisplay(time)}
-                    </option>
-                  ))}
-                </select>
-                <span className="text-gray-400">to</span>
-                <select
-                  value={formData.end_time}
-                  onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
-                >
-                  {TIME_OPTIONS.map((time) => (
-                    <option key={time} value={time}>
-                      {formatTimeDisplay(time)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {/* Reason */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Reason (optional)
-              </label>
+          {/* Custom Hours */}
+          {formData.is_available && (
+            <div className="flex items-center gap-2">
               <select
-                value={formData.reason}
-                onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                value={formData.start_time}
+                onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
+                className="flex-1 px-3 py-2 border border-border rounded-lg bg-muted text-foreground text-sm"
               >
-                <option value="">Select a reason</option>
-                <option value="vacation">Vacation</option>
-                <option value="holiday">Holiday</option>
-                <option value="sick">Sick Leave</option>
-                <option value="personal">Personal</option>
-                <option value="meeting">All-day Meeting</option>
-                <option value="other">Other</option>
+                {TIME_OPTIONS.map((time) => (
+                  <option key={time} value={time}>
+                    {formatTimeDisplay(time)}
+                  </option>
+                ))}
+              </select>
+              <span className="text-muted-foreground">to</span>
+              <select
+                value={formData.end_time}
+                onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
+                className="flex-1 px-3 py-2 border border-border rounded-lg bg-muted text-foreground text-sm"
+              >
+                {TIME_OPTIONS.map((time) => (
+                  <option key={time} value={time}>
+                    {formatTimeDisplay(time)}
+                  </option>
+                ))}
               </select>
             </div>
+          )}
 
-            {/* Notes */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Notes (optional)
-              </label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                rows={2}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                placeholder="Add any notes about this override..."
-              />
-            </div>
+          {/* Reason */}
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Reason (optional)
+            </label>
+            <select
+              value={formData.reason}
+              onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+              className="w-full px-3 py-2 border border-border rounded-lg bg-muted text-foreground"
+            >
+              <option value="">Select a reason</option>
+              <option value="vacation">Vacation</option>
+              <option value="holiday">Holiday</option>
+              <option value="sick">Sick Leave</option>
+              <option value="personal">Personal</option>
+              <option value="meeting">All-day Meeting</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
 
-            {/* Actions */}
-            <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading || !formData.date}
-                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                {loading ? "Saving..." : "Save Override"}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
+          {/* Notes */}
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Notes (optional)
+            </label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              rows={2}
+              className="w-full px-3 py-2 border border-border rounded-lg bg-muted text-foreground"
+              placeholder="Add any notes about this override..."
+            />
+          </div>
+
+          {/* Actions */}
+          <DialogFooter className="flex-row gap-3 pt-2 sm:space-x-0">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 text-sm font-medium text-foreground bg-muted border border-border rounded-lg hover:bg-accent"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !formData.date}
+              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              {loading ? "Saving..." : "Save Override"}
+            </button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

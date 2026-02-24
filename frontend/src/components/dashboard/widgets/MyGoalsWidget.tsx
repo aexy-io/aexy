@@ -4,14 +4,12 @@ import Link from "next/link";
 import { Target, ChevronRight } from "lucide-react";
 import { useGoals } from "@/hooks/useReviews";
 import { useAuth } from "@/hooks/useAuth";
+import { GOAL_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
-const statusColors: Record<string, { bg: string; text: string }> = {
+// Extra statuses not in centralized GOAL_STATUS_COLORS
+const extraGoalStatusColors: Record<string, { bg: string; text: string }> = {
   not_started: { bg: "bg-muted", text: "text-muted-foreground" },
   draft: { bg: "bg-muted", text: "text-muted-foreground" },
-  active: { bg: "bg-blue-500/20", text: "text-blue-400" },
-  in_progress: { bg: "bg-amber-500/20", text: "text-amber-400" },
-  completed: { bg: "bg-emerald-500/20", text: "text-emerald-400" },
-  cancelled: { bg: "bg-red-500/20", text: "text-red-400" },
 };
 
 function formatStatus(status: string): string {
@@ -72,7 +70,7 @@ export function MyGoalsWidget() {
         ) : (
           <div className="space-y-3">
             {displayGoals.map((goal) => {
-              const colors = statusColors[goal.status] || statusColors.draft;
+              const colors = extraGoalStatusColors[goal.status] || getStatusColor(GOAL_STATUS_COLORS, goal.status);
               return (
                 <div
                   key={goal.id}

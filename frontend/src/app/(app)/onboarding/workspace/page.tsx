@@ -8,13 +8,13 @@ import {
   Building2,
   Users,
   Plus,
-  Search,
   Loader2,
   CheckCircle2,
   Clock,
   AlertCircle,
   Mail,
 } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
 import { motion } from "framer-motion";
 import { useOnboarding } from "../OnboardingContext";
 import { workspaceApi, type MyInvitation } from "@/lib/api";
@@ -412,20 +412,15 @@ export default function WorkspaceStep() {
               <label className="block text-sm font-medium text-foreground mb-2">
                 Workspace ID
               </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  value={workspaceId}
-                  onChange={(e) => {
-                    setWorkspaceId(e.target.value);
-                    setError(null);
-                  }}
-                  placeholder="Enter the workspace ID"
-                  className="w-full pl-10 pr-4 py-3 bg-muted/50 border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary-500/50"
-                  autoFocus
-                />
-              </div>
+              <SearchInput
+                value={workspaceId}
+                onChange={(val) => {
+                  setWorkspaceId(val);
+                  setError(null);
+                }}
+                placeholder="Enter the workspace ID"
+                autoFocus
+              />
               <p className="mt-2 text-xs text-muted-foreground">
                 Ask your team admin for the workspace ID.
               </p>

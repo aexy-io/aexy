@@ -269,13 +269,24 @@ export function DocumentEditor({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="w-10 h-10 border-4 border-primary-500/20 rounded-full"></div>
-            <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+      <div className="flex flex-col h-full bg-background animate-pulse">
+        <div className="sticky top-0 z-10 border-b border-border p-4">
+          <div className="h-6 w-48 bg-accent rounded mb-2" />
+          <div className="flex gap-2">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-8 w-8 bg-accent rounded" />
+            ))}
           </div>
-          <p className="text-muted-foreground text-sm">Loading document...</p>
+        </div>
+        <div className="flex-1 max-w-3xl mx-auto w-full p-8 space-y-4">
+          <div className="h-8 w-3/4 bg-accent rounded" />
+          <div className="h-4 w-full bg-accent rounded" />
+          <div className="h-4 w-5/6 bg-accent rounded" />
+          <div className="h-4 w-full bg-accent rounded" />
+          <div className="h-4 w-2/3 bg-accent rounded" />
+          <div className="h-32 w-full bg-accent rounded-lg mt-4" />
+          <div className="h-4 w-full bg-accent rounded" />
+          <div className="h-4 w-4/5 bg-accent rounded" />
         </div>
       </div>
     );

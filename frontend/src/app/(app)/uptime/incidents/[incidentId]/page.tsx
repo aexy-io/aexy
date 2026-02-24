@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { uptimeApi, UptimeIncident } from "@/lib/uptime-api";
 import Link from "next/link";
 import {
-  ArrowLeft,
   AlertTriangle,
   CheckCircle2,
   Clock,
@@ -17,6 +16,8 @@ import {
   Server,
   Wifi,
 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { UPTIME_INCIDENT_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
 const CHECK_TYPE_ICONS = {
   http: Globe,
@@ -24,15 +25,14 @@ const CHECK_TYPE_ICONS = {
   websocket: Wifi,
 };
 
-const STATUS_COLORS = {
-  ongoing: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400", label: "Ongoing" },
-  acknowledged: { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", label: "Acknowledged" },
-  resolved: { bg: "bg-emerald-50 dark:bg-emerald-900/30", text: "text-emerald-600 dark:text-emerald-400", label: "Resolved" },
+const STATUS_LABELS: Record<string, string> = {
+  ongoing: "Ongoing",
+  acknowledged: "Acknowledged",
+  resolved: "Resolved",
 };
 
 export default function IncidentDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const { currentWorkspace } = useWorkspace();
   const incidentId = params.incidentId as string;
 
@@ -147,7 +147,7 @@ export default function IncidentDetailPage() {
     );
   }
 
-  const statusStyle = STATUS_COLORS[incident.status];
+  const statusStyle = getStatusColor(UPTIME_INCIDENT_STATUS_COLORS, incident.status);
   const Icon = incident.monitor ? CHECK_TYPE_ICONS[incident.monitor.check_type] : Globe;
 
   return (
@@ -155,19 +155,20 @@ export default function IncidentDetailPage() {
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-6">
-          <Link
-            href="/uptime/incidents"
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition mb-4"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Incidents
-          </Link>
+          <Breadcrumb
+            items={[
+              { label: "Uptime", href: "/uptime" },
+              { label: "Incidents", href: "/uptime/incidents" },
+              { label: incident.monitor?.name ? `Incident for ${incident.monitor.name}` : "Incident Details" },
+            ]}
+            className="mb-6"
+          />
 
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusStyle.bg} ${statusStyle.text}`}>
-                  {statusStyle.label}
+                  {STATUS_LABELS[incident.status] || incident.status}
                 </span>
                 {incident.ticket_id && (
                   <Link

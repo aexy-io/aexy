@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   projectApi,
   Project,
@@ -34,14 +35,22 @@ export function useProjects(workspaceId: string | null, status?: ProjectStatus) 
   const createMutation = useMutation({
     mutationFn: (data: ProjectCreate) => projectApi.create(workspaceId!, data),
     onSuccess: () => {
+      toast.success("Project created");
       queryClient.invalidateQueries({ queryKey: ["projects", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to create project");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (projectId: string) => projectApi.delete(workspaceId!, projectId),
     onSuccess: () => {
+      toast.success("Project deleted");
       queryClient.invalidateQueries({ queryKey: ["projects", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to delete project");
     },
   });
 
@@ -77,16 +86,24 @@ export function useProject(workspaceId: string | null, projectId: string | null)
   const updateMutation = useMutation({
     mutationFn: (data: ProjectUpdate) => projectApi.update(workspaceId!, projectId!, data),
     onSuccess: () => {
+      toast.success("Project updated");
       queryClient.invalidateQueries({ queryKey: ["project", workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ["projects", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update project");
     },
   });
 
   const toggleVisibilityMutation = useMutation({
     mutationFn: () => projectApi.toggleVisibility(workspaceId!, projectId!),
     onSuccess: () => {
+      toast.success("Project visibility updated");
       queryClient.invalidateQueries({ queryKey: ["project", workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ["projects", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to toggle project visibility");
     },
   });
 
@@ -122,9 +139,13 @@ export function useProjectMembers(workspaceId: string | null, projectId: string 
   const addMutation = useMutation({
     mutationFn: (data: ProjectMemberAdd) => projectApi.addMember(workspaceId!, projectId!, data),
     onSuccess: () => {
+      toast.success("Member added");
       queryClient.invalidateQueries({ queryKey: ["projectMembers", workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ["project", workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ["projects", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to add member");
     },
   });
 
@@ -132,8 +153,12 @@ export function useProjectMembers(workspaceId: string | null, projectId: string 
     mutationFn: ({ developerId, data }: { developerId: string; data: ProjectMemberUpdate }) =>
       projectApi.updateMember(workspaceId!, projectId!, developerId, data),
     onSuccess: () => {
+      toast.success("Member role updated");
       queryClient.invalidateQueries({ queryKey: ["projectMembers", workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ["myProjectPermissions", workspaceId, projectId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update member");
     },
   });
 
@@ -141,19 +166,28 @@ export function useProjectMembers(workspaceId: string | null, projectId: string 
     mutationFn: (developerId: string) =>
       projectApi.removeMember(workspaceId!, projectId!, developerId),
     onSuccess: () => {
+      toast.success("Member removed");
       queryClient.invalidateQueries({ queryKey: ["projectMembers", workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ["project", workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ["projects", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to remove member");
     },
   });
 
   const inviteMutation = useMutation({
     mutationFn: (data: ProjectInviteRequest) =>
       projectApi.invite(workspaceId!, projectId!, data),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      const count = result?.invited?.length || 0;
+      toast.success(count > 0 ? `${count} member${count > 1 ? "s" : ""} invited` : "Invitations sent");
       queryClient.invalidateQueries({ queryKey: ["projectMembers", workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ["project", workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ["projects", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to invite members");
     },
   });
 
@@ -194,18 +228,26 @@ export function useProjectTeams(workspaceId: string | null, projectId: string | 
   const addMutation = useMutation({
     mutationFn: (teamId: string) => projectApi.addTeam(workspaceId!, projectId!, teamId),
     onSuccess: () => {
+      toast.success("Team added to project");
       queryClient.invalidateQueries({ queryKey: ["projectTeams", workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ["project", workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ["projects", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to add team");
     },
   });
 
   const removeMutation = useMutation({
     mutationFn: (teamId: string) => projectApi.removeTeam(workspaceId!, projectId!, teamId),
     onSuccess: () => {
+      toast.success("Team removed from project");
       queryClient.invalidateQueries({ queryKey: ["projectTeams", workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ["project", workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ["projects", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to remove team");
     },
   });
 

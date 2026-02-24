@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import {
-  ChevronLeft,
   Palette,
   Save,
   Loader2,
@@ -17,6 +16,7 @@ import {
   FileText,
   Variable,
 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -180,13 +180,16 @@ export default function TemplateDetailPage() {
 <div className="p-8">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
-          <div className="flex items-start gap-4 mb-6">
-            <button
-              onClick={() => router.push("/email-marketing/templates")}
-              className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition mt-1"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
+          <div className="mb-6">
+            <Breadcrumb
+              items={[
+                { label: "Email Marketing", href: "/email-marketing" },
+                { label: "Templates", href: "/email-marketing/templates" },
+                { label: template.name },
+              ]}
+              className="mb-4"
+            />
+            <div className="flex items-start gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
                 {getTypeIcon(template.template_type)}
@@ -270,6 +273,7 @@ export default function TemplateDetailPage() {
                 </>
               )}
             </div>
+          </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

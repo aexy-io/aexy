@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
-  ArrowLeft,
   Clock,
   TrendingUp,
   Users,
@@ -258,13 +258,14 @@ export default function QuestionDetailPage() {
 <main className="w-full px-6 py-8">
         {/* Header */}
         <div className="mb-6">
-          <Link
-            href="/hiring/questions"
-            className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1 mb-4"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Questions
-          </Link>
+          <Breadcrumb
+            items={[
+              { label: "Hiring", href: "/hiring" },
+              { label: "Question Bank", href: "/hiring/questions" },
+              { label: question.title },
+            ]}
+            className="mb-4"
+          />
 
           <div className="flex items-start justify-between">
             <div>
