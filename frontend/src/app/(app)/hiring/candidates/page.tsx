@@ -377,15 +377,38 @@ export default function CandidatesPage() {
 
   if (isLoading || workspacesLoading || (loading && currentWorkspaceId)) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
-            <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+      <main className="w-full px-6 py-6 animate-pulse">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 bg-accent rounded-xl" />
+            <div>
+              <div className="h-7 w-44 bg-accent rounded mb-2" />
+              <div className="h-4 w-32 bg-accent rounded" />
+            </div>
           </div>
-          <p className="text-muted-foreground text-sm">Loading candidates...</p>
+          <div className="h-9 w-32 bg-accent rounded-lg" />
         </div>
-      </div>
+        <div className="flex items-center gap-4 mb-6">
+          <div className="h-9 flex-1 max-w-md bg-accent rounded-lg" />
+          <div className="h-9 w-32 bg-accent rounded-lg" />
+          <div className="h-9 w-24 bg-accent rounded-lg" />
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="bg-muted rounded-xl p-4 border border-border">
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 bg-accent rounded-full" />
+                <div className="flex-1">
+                  <div className="h-4 w-36 bg-accent rounded mb-2" />
+                  <div className="h-3 w-24 bg-accent rounded" />
+                </div>
+                <div className="h-6 w-20 bg-accent rounded-full" />
+                <div className="h-4 w-16 bg-accent rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
     );
   }
 

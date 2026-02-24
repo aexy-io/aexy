@@ -238,7 +238,15 @@ export default function TicketsPage() {
             {/* Tasks List */}
             <div className="bg-muted rounded-xl border border-border">
               {isLoadingTasks ? (
-                <div className="p-8 text-center text-muted-foreground">Loading tasks...</div>
+                <div className="p-4 space-y-3 animate-pulse">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center gap-3 p-3">
+                      <div className="h-4 w-4 bg-accent rounded" />
+                      <div className="h-4 w-48 bg-accent rounded" />
+                      <div className="ml-auto h-5 w-16 bg-accent rounded-full" />
+                    </div>
+                  ))}
+                </div>
               ) : myTasks.length === 0 ? (
                 <EmptyState
                   icon={ListTodo}
@@ -393,7 +401,19 @@ export default function TicketsPage() {
             {/* Tickets List */}
             <div className="bg-muted rounded-xl border border-border">
               {isLoading ? (
-                <div className="p-8 text-center text-muted-foreground">Loading tickets...</div>
+                <div className="p-4 space-y-3 animate-pulse">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="flex items-center gap-3 p-3">
+                      <div className="h-4 w-4 bg-accent rounded" />
+                      <div className="flex-1">
+                        <div className="h-4 w-56 bg-accent rounded mb-1" />
+                        <div className="h-3 w-32 bg-accent rounded" />
+                      </div>
+                      <div className="h-5 w-16 bg-accent rounded-full" />
+                      <div className="h-3 w-20 bg-accent rounded" />
+                    </div>
+                  ))}
+                </div>
               ) : filteredTickets.length === 0 ? (
                 <EmptyState
                   icon={Ticket}

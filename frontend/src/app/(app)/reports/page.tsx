@@ -124,8 +124,33 @@ export default function ReportsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="p-6 max-w-7xl mx-auto animate-pulse">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <div className="h-7 w-28 bg-accent rounded mb-2" />
+            <div className="h-4 w-64 bg-accent rounded" />
+          </div>
+          <div className="flex gap-2">
+            <div className="h-9 w-24 bg-accent rounded-lg" />
+            <div className="h-9 w-28 bg-accent rounded-lg" />
+          </div>
+        </div>
+        <div className="mb-10">
+          <div className="h-5 w-28 bg-accent rounded mb-4" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-muted rounded-xl p-5 border border-border">
+                <div className="h-5 w-36 bg-accent rounded mb-3" />
+                <div className="h-3 w-full bg-accent rounded mb-2" />
+                <div className="h-3 w-2/3 bg-accent rounded mb-4" />
+                <div className="flex gap-2">
+                  <div className="h-5 w-16 bg-accent rounded-full" />
+                  <div className="h-5 w-20 bg-accent rounded-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
