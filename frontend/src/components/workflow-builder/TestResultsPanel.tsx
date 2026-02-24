@@ -204,9 +204,17 @@ export function TestResultsPanel({
       {/* Node results */}
       <div className="flex-1 overflow-y-auto p-4">
         {isRunning && !testResult && (
-          <div className="flex flex-col items-center justify-center h-full gap-3">
-            <Loader2 className="h-8 w-8 text-blue-400 animate-spin" />
-            <p className="text-muted-foreground">Executing workflow...</p>
+          <div className="space-y-3 animate-pulse">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="border border-border rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-5 w-5 bg-accent rounded-full" />
+                  <div className="h-4 w-32 bg-accent rounded" />
+                </div>
+                <div className="h-3 w-full bg-accent rounded mb-1" />
+                <div className="h-3 w-2/3 bg-accent rounded" />
+              </div>
+            ))}
           </div>
         )}
 

@@ -29,10 +29,17 @@ export function ToolSelectionStep({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 text-purple-400 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading available tools...</p>
+      <div className="py-6 animate-pulse">
+        <div className="grid grid-cols-2 gap-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="border border-border rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-5 w-5 bg-accent rounded" />
+                <div className="h-4 w-24 bg-accent rounded" />
+              </div>
+              <div className="h-3 w-full bg-accent rounded" />
+            </div>
+          ))}
         </div>
       </div>
     );
