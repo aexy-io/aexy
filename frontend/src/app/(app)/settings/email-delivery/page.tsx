@@ -1,19 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Mail,
   Crown,
-  Loader2,
   AlertCircle,
   CheckCircle2,
   XCircle,
   RefreshCw,
-  ChevronLeft,
-  ChevronRight,
-  TrendingUp,
   Filter,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -22,6 +18,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWorkspaceEmailStats, useWorkspaceEmailLogs } from "@/hooks/useWorkspaceEmailDelivery";
 import { formatDistanceToNow } from "date-fns";
 import { WorkspaceEmailLog } from "@/lib/api";
+import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 
 function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { color: string; icon: React.ElementType }> = {
@@ -86,35 +83,6 @@ function StatCard({
   );
 }
 
-function EmailRow({ email }: { email: WorkspaceEmailLog }) {
-  return (
-    <tr className="border-b border-border hover:bg-card/50">
-      <td className="px-4 py-3">
-        <p className="text-foreground">{email.recipient_email}</p>
-      </td>
-      <td className="px-4 py-3">
-        <p className="text-foreground max-w-xs truncate">{email.subject}</p>
-      </td>
-      <td className="px-4 py-3">
-        <StatusBadge status={email.status} />
-      </td>
-      <td className="px-4 py-3">
-        {email.notification_type ? (
-          <span className="text-muted-foreground text-sm">
-            {email.notification_type.replace(/_/g, " ")}
-          </span>
-        ) : (
-          <span className="text-muted-foreground text-sm">-</span>
-        )}
-      </td>
-      <td className="px-4 py-3">
-        <span className="text-muted-foreground text-sm" title={email.created_at}>
-          {formatDistanceToNow(new Date(email.created_at), { addSuffix: true })}
-        </span>
-      </td>
-    </tr>
-  );
-}
 
 function EnterpriseUpgradePrompt() {
   const router = useRouter();
@@ -298,6 +266,55 @@ export default function EmailDeliverySettingsPage() {
     );
   }
 
+  const emailLogColumns = useMemo<DataTableColumn<WorkspaceEmailLog>[]>(
+    () => [
+      {
+        id: "recipient",
+        header: "Recipient",
+        cell: (row) => <p className="text-foreground">{row.recipient_email}</p>,
+        sortValue: (row) => row.recipient_email,
+      },
+      {
+        id: "subject",
+        header: "Subject",
+        cell: (row) => (
+          <p className="text-foreground max-w-xs truncate">{row.subject}</p>
+        ),
+        sortValue: (row) => row.subject,
+      },
+      {
+        id: "status",
+        header: "Status",
+        cell: (row) => <StatusBadge status={row.status} />,
+        sortValue: (row) => row.status,
+      },
+      {
+        id: "type",
+        header: "Type",
+        cell: (row) =>
+          row.notification_type ? (
+            <span className="text-muted-foreground text-sm">
+              {row.notification_type.replace(/_/g, " ")}
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-sm">-</span>
+          ),
+        sortValue: (row) => row.notification_type ?? "",
+      },
+      {
+        id: "sent",
+        header: "Sent",
+        cell: (row) => (
+          <span className="text-muted-foreground text-sm" title={row.created_at}>
+            {formatDistanceToNow(new Date(row.created_at), { addSuffix: true })}
+          </span>
+        ),
+        sortValue: (row) => new Date(row.created_at).getTime(),
+      },
+    ],
+    []
+  );
+
   const handleRefresh = () => {
     refetchStats();
     refetchLogs();
@@ -415,95 +432,27 @@ export default function EmailDeliverySettingsPage() {
             </div>
           </div>
 
-          {logsLoading ? (
-            <div className="animate-pulse">
-              <table className="w-full">
-                <thead className="bg-background/50">
-                  <tr className="text-left">
-                    {["Recipient", "Subject", "Status", "Type", "Sent"].map((h) => (
-                      <th key={h} className="px-4 py-3">
-                        <div className="h-3 w-16 bg-accent rounded" />
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <tr key={i} className="border-b border-border">
-                      <td className="px-4 py-3"><div className="h-4 w-40 bg-accent rounded" /></td>
-                      <td className="px-4 py-3"><div className="h-4 w-48 bg-accent rounded" /></td>
-                      <td className="px-4 py-3"><div className="h-5 w-16 bg-accent rounded-full" /></td>
-                      <td className="px-4 py-3"><div className="h-3 w-20 bg-accent rounded" /></td>
-                      <td className="px-4 py-3"><div className="h-3 w-16 bg-accent rounded" /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : logsError ? (
+          {logsError ? (
             <div className="flex items-center justify-center h-64 text-red-400">
               <AlertCircle className="h-5 w-5 mr-2" />
               Failed to load email logs
             </div>
-          ) : emailLogs?.items?.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-              <Mail className="h-12 w-12 mb-3 text-muted-foreground" />
-              <p>No email logs found</p>
-              {statusFilter && (
-                <button
-                  onClick={() => setStatusFilter("")}
-                  className="mt-2 text-blue-400 hover:underline"
-                >
-                  Clear filter
-                </button>
-              )}
-            </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[600px]">
-                <thead className="bg-background/50">
-                  <tr className="text-left text-muted-foreground text-sm">
-                    <th className="px-4 py-3 font-medium">Recipient</th>
-                    <th className="px-4 py-3 font-medium">Subject</th>
-                    <th className="px-4 py-3 font-medium">Status</th>
-                    <th className="px-4 py-3 font-medium">Type</th>
-                    <th className="px-4 py-3 font-medium">Sent</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {emailLogs?.items?.map((email) => (
-                    <EmailRow key={email.id} email={email} />
-                  ))}
-                </tbody>
-              </table>
-
-              {/* Pagination */}
-              {emailLogs && emailLogs.total > 25 && (
-                <div className="px-4 py-3 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <span className="text-muted-foreground text-sm">
-                    Showing {(page - 1) * 25 + 1} - {Math.min(page * 25, emailLogs.total)} of{" "}
-                    {emailLogs.total} emails
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                      className="p-2 rounded-lg bg-muted text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                    <span className="text-foreground px-3">Page {page}</span>
-                    <button
-                      onClick={() => setPage((p) => p + 1)}
-                      disabled={!emailLogs.has_next}
-                      className="p-2 rounded-lg bg-muted text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            <DataTable<WorkspaceEmailLog>
+              columns={emailLogColumns}
+              data={emailLogs?.items ?? []}
+              rowKey={(row) => row.id}
+              isLoading={logsLoading}
+              skeletonRows={5}
+              emptyIcon={<Mail className="h-12 w-12" />}
+              emptyTitle="No email logs found"
+              emptyDescription={statusFilter ? "Try clearing the status filter" : undefined}
+              currentPage={page}
+              totalPages={emailLogs ? Math.ceil(emailLogs.total / 25) : 1}
+              totalItems={emailLogs?.total}
+              onPageChange={setPage}
+              className="border-0 [&>div]:border-0 [&>div]:rounded-none"
+            />
           )}
         </div>
       </div>
