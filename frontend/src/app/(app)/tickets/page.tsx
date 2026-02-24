@@ -19,6 +19,7 @@ import {
   Zap,
 } from "lucide-react";
 import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
+import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useTickets, useTicketStats, useTicketForms } from "@/hooks/useTicketing";
@@ -239,13 +240,12 @@ export default function TicketsPage() {
               {isLoadingTasks ? (
                 <div className="p-8 text-center text-muted-foreground">Loading tasks...</div>
               ) : myTasks.length === 0 ? (
-                <div className="p-8 text-center">
-                  <ListTodo className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No tasks assigned to you</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Tasks assigned to you from sprints will appear here
-                  </p>
-                </div>
+                <EmptyState
+                  icon={ListTodo}
+                  title="No tasks assigned to you"
+                  description="Tasks assigned to you from sprints will appear here. Ask your team lead to assign tasks or create a new sprint."
+                  compact
+                />
               ) : (
                 <div className="divide-y divide-border">
                   {myTasks.map((task) => (
@@ -395,13 +395,15 @@ export default function TicketsPage() {
               {isLoading ? (
                 <div className="p-8 text-center text-muted-foreground">Loading tickets...</div>
               ) : filteredTickets.length === 0 ? (
-                <div className="p-8 text-center">
-                  <Ticket className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No tickets found</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Create a form to start receiving tickets
-                  </p>
-                </div>
+                <EmptyState
+                  icon={Ticket}
+                  title="No tickets found"
+                  description="Create a form to start receiving tickets from your users."
+                  actions={[
+                    { label: "Manage Forms", href: "/settings/ticket-forms", variant: "secondary" },
+                  ]}
+                  compact
+                />
               ) : (
                 <div className="divide-y divide-border">
                   {filteredTickets.map((ticket) => (

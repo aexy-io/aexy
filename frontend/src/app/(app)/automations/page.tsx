@@ -26,6 +26,7 @@ import {
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAutomations } from "@/hooks/useAutomations";
 import { AutomationModule, Automation } from "@/lib/api";
+import { EmptyState } from "@/components/EmptyState";
 
 const moduleLabels: Record<AutomationModule, string> = {
   crm: "CRM",
@@ -293,24 +294,17 @@ export default function AutomationsPage() {
               ))}
             </div>
           ) : filteredAutomations.length === 0 ? (
-            <div className="text-center py-16">
-              <Zap className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">
-                {selectedModule ? `No ${moduleLabels[selectedModule]} automations yet` : "No automations yet"}
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                {selectedModule
-                  ? `Create your first ${moduleLabels[selectedModule]} automation to streamline your workflows`
-                  : "Create your first automation to streamline your workflows"}
-              </p>
-              <button
-                onClick={handleCreateNew}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
-              >
-                <Plus className="h-4 w-4" />
-                Create Automation
-              </button>
-            </div>
+            <EmptyState
+              icon={Zap}
+              title={selectedModule ? `No ${moduleLabels[selectedModule]} automations yet` : "No automations yet"}
+              description={selectedModule
+                ? `Create your first ${moduleLabels[selectedModule]} automation to streamline your workflows`
+                : "Create your first automation to streamline your workflows"}
+              actions={[
+                { label: "Create Automation", onClick: handleCreateNew },
+              ]}
+              templateHref="/templates?category=automations"
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {filteredAutomations.map((automation) => (

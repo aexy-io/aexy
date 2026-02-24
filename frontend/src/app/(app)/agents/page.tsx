@@ -28,6 +28,7 @@ import {
   AgentStatusBadge,
   ToolBadges,
 } from "@/components/agents/shared";
+import { EmptyState } from "@/components/EmptyState";
 
 function formatNumber(num: number): string {
   if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -228,27 +229,6 @@ function AgentCard({
   );
 }
 
-function AgentEmptyState() {
-  return (
-    <div className="bg-muted rounded-xl p-12 text-center border border-border">
-      <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-        <Bot className="h-8 w-8 text-purple-400" />
-      </div>
-      <h3 className="text-xl font-medium text-foreground mb-2">No Agents Yet</h3>
-      <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-        Create AI agents to automate email responses, schedule meetings, manage
-        CRM data, and more.
-      </p>
-      <Link
-        href="/agents/new"
-        className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition font-medium"
-      >
-        <Plus className="h-4 w-4" />
-        Create Your First Agent
-      </Link>
-    </div>
-  );
-}
 
 export default function AgentsListPage() {
   const router = useRouter();
@@ -431,15 +411,26 @@ export default function AgentsListPage() {
 
         {/* Agents Grid */}
         {agents.length === 0 ? (
-          <AgentEmptyState />
+          <EmptyState
+            icon={Bot}
+            title="No Agents Yet"
+            description="Create AI agents to automate email responses, schedule meetings, manage CRM data, and more."
+            actions={[
+              { label: "Create Your First Agent", href: "/agents/new" },
+            ]}
+            steps={[
+              { label: "Choose an agent type", description: "Support, sales, scheduling, or custom" },
+              { label: "Configure tools & persona", description: "Set up what your agent can do" },
+              { label: "Activate and monitor", description: "Watch your agent handle tasks" },
+            ]}
+          />
         ) : filteredAgents.length === 0 ? (
-          <div className="bg-muted rounded-xl p-8 text-center border border-border">
-            <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-2">No agents found</h3>
-            <p className="text-muted-foreground">
-              Try adjusting your search or filters
-            </p>
-          </div>
+          <EmptyState
+            icon={Search}
+            title="No agents found"
+            description="Try adjusting your search or filters"
+            compact
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredAgents.map((agent) => (

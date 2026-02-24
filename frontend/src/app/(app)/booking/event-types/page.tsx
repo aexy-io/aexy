@@ -20,6 +20,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { toast } from "sonner";
+import { EmptyState } from "@/components/EmptyState";
 
 export default function EventTypesPage() {
   const { currentWorkspace } = useWorkspace();
@@ -140,22 +141,23 @@ export default function EventTypesPage() {
 
       {/* Event Types Grid */}
       {eventTypes.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
-          <Calendar className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            No event types yet
-          </h3>
-          <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
-            Event types are the different kinds of meetings you offer. Create one to start accepting bookings.
-          </p>
-          <Link
-            href="/booking/event-types/new"
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-          >
-            <Plus className="h-4 w-4" />
-            Create Your First Event Type
-          </Link>
-        </div>
+        <EmptyState
+          icon={Calendar}
+          title="No event types yet"
+          description="Event types are the different kinds of meetings you offer. Create one to start accepting bookings."
+          actions={[
+            { label: "Create Your First Event Type", href: "/booking/event-types/new" },
+          ]}
+          steps={[
+            { label: "Create an event type", description: "Set duration, location, and availability" },
+            { label: "Connect your calendar", description: "Sync with Google Calendar or Outlook", completed: false },
+            { label: "Share your booking link", description: "Let people schedule time with you" },
+          ]}
+          connections={[
+            { label: "Google Calendar", href: "/booking/calendars" },
+            { label: "Microsoft Outlook", href: "/booking/calendars" },
+          ]}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {eventTypes.map((eventType) => (
