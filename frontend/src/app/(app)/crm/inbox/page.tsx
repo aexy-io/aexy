@@ -749,9 +749,38 @@ function InboxPageContent() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-<div className="flex items-center justify-center h-[calc(100vh-64px)]">
-          <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+      <div className="min-h-screen bg-background animate-pulse">
+        <div className="border-b border-border px-6 py-4">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="h-4 w-12 bg-accent rounded" />
+              <div className="h-6 w-20 bg-accent rounded" />
+            </div>
+            <div className="flex gap-3">
+              <div className="h-9 w-24 bg-accent rounded-lg" />
+              <div className="h-9 w-20 bg-accent rounded-lg" />
+            </div>
+          </div>
+        </div>
+        <div className="flex h-[calc(100vh-128px)]">
+          <div className="w-80 border-r border-border p-4 space-y-3">
+            <div className="h-9 w-full bg-accent rounded-lg mb-4" />
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="p-3 rounded-lg bg-muted">
+                <div className="h-4 w-32 bg-accent rounded mb-2" />
+                <div className="h-3 w-full bg-accent rounded mb-1" />
+                <div className="h-3 w-2/3 bg-accent rounded" />
+              </div>
+            ))}
+          </div>
+          <div className="flex-1 p-6">
+            <div className="h-6 w-48 bg-accent rounded mb-4" />
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-16 w-3/4 bg-accent rounded-xl" />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );

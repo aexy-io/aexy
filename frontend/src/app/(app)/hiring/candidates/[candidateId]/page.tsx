@@ -180,15 +180,31 @@ export default function CandidateDetailPage() {
 
   if (isLoading || workspacesLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
-            <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+      <main className="w-full px-6 py-6 animate-pulse">
+        <div className="h-4 w-32 bg-accent rounded mb-6" />
+        <div className="grid lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-muted border border-border rounded-xl p-6">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="h-16 w-16 bg-accent rounded-full" />
+                <div>
+                  <div className="h-6 w-40 bg-accent rounded mb-2" />
+                  <div className="h-4 w-28 bg-accent rounded mb-2" />
+                  <div className="flex gap-2">
+                    <div className="h-5 w-16 bg-accent rounded" />
+                    <div className="h-5 w-12 bg-accent rounded" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="bg-muted border border-border rounded-xl p-6 h-64" />
           </div>
-          <p className="text-muted-foreground text-sm">Loading candidate...</p>
+          <div className="space-y-6">
+            <div className="bg-muted border border-border rounded-xl p-6 h-48" />
+            <div className="bg-muted border border-border rounded-xl p-6 h-48" />
+          </div>
         </div>
-      </div>
+      </main>
     );
   }
 
