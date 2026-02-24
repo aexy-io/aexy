@@ -10,7 +10,6 @@ import {
   Pause,
   Trash2,
   Clock,
-  Search,
   Edit2,
   Building2,
   Ticket,
@@ -27,6 +26,7 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAutomations } from "@/hooks/useAutomations";
 import { AutomationModule, Automation } from "@/lib/api";
 import { EmptyState } from "@/components/EmptyState";
+import { SearchInput } from "@/components/ui/search-input";
 
 const moduleLabels: Record<AutomationModule, string> = {
   crm: "CRM",
@@ -274,16 +274,12 @@ export default function AutomationsPage() {
 
           {/* Search */}
           <div className="flex items-center gap-4 mb-6">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search automations..."
-                className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search automations..."
+              wrapperClassName="flex-1"
+            />
           </div>
 
           {/* Content */}

@@ -4,7 +4,6 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  Search,
   Filter,
   MoreVertical,
   FileText,
@@ -22,6 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useQuestions } from "@/hooks/useQuestions";
@@ -424,19 +424,15 @@ export default function QuestionsPage() {
         {/* Filters */}
         <div className="bg-card rounded-lg border border-border mb-6">
           <div className="p-4 flex flex-wrap items-center gap-4">
-            <div className="flex-1 min-w-[200px] relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search questions..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setPage(1);
-                }}
-                className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground placeholder:text-muted-foreground"
-              />
-            </div>
+            <SearchInput
+              value={searchQuery}
+              onChange={(val) => {
+                setSearchQuery(val);
+                setPage(1);
+              }}
+              placeholder="Search questions..."
+              wrapperClassName="flex-1 min-w-[200px]"
+            />
             <select
               value={assessmentFilter}
               onChange={(e) => {

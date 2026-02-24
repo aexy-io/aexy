@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Plus,
-  Search,
   Filter,
   MoreVertical,
   Users,
@@ -20,6 +19,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { SearchInput } from "@/components/ui/search-input";
 import { useAssessments, useOrganizationAssessmentMetrics } from "@/hooks/useAssessments";
 import { AssessmentStatus, AssessmentSummary } from "@/lib/api";
 
@@ -366,16 +366,12 @@ export default function AssessmentsPage() {
 
         {/* Filters */}
         <div className="flex items-center gap-4 mb-6">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search assessments..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground placeholder:text-muted-foreground"
-            />
-          </div>
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search assessments..."
+            wrapperClassName="flex-1"
+          />
           <div className="relative">
             <select
               value={statusFilter}

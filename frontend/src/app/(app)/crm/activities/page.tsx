@@ -14,7 +14,6 @@ import {
   Users,
   Building2,
   Filter,
-  Search,
   RefreshCw,
   Loader2,
   Edit,
@@ -24,6 +23,7 @@ import {
   Eye,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { SearchInput } from "@/components/ui/search-input";
 import { crmApi, CRMActivity } from "@/lib/api";
 
 type ActivityType = "all" | "email" | "meeting" | "call" | "note" | "task" | "record_created" | "record_updated" | "record_deleted";
@@ -225,16 +225,12 @@ export default function ActivitiesPage() {
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Filters */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
-          <div className="flex-1 relative w-full sm:w-auto">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search activities..."
-              className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-          </div>
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search activities..."
+            wrapperClassName="flex-1 w-full sm:w-auto"
+          />
           <div className="flex items-center gap-1 bg-muted border border-border rounded-lg p-1 overflow-x-auto">
             {filterTypes.map((type) => {
               const config = getActivityConfig(type);

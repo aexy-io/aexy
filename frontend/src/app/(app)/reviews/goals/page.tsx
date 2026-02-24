@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useGoals } from "@/hooks/useReviews";
+import { SearchInput } from "@/components/ui/search-input";
 import { WorkGoal, GoalType } from "@/lib/api";
 
 // Goal type colors
@@ -272,16 +273,12 @@ export default function GoalsPage() {
               </button>
             ))}
           </div>
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search goals..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-muted border border-border rounded-lg pl-10 pr-4 py-2 text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500 text-sm"
-            />
-          </div>
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search goals..."
+            wrapperClassName="flex-1"
+          />
         </div>
 
         {/* Goals List or Empty State */}

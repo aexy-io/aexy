@@ -9,10 +9,9 @@ import {
   BarChart3,
   Columns,
   Filter,
-  Search,
-  X,
   Clock,
 } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
 import {
   BlockerBoard,
   BlockerReportForm,
@@ -329,24 +328,12 @@ export default function BlockersPage() {
           </div>
 
           {/* Search */}
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search blockers..."
-              className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-red-500"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search blockers..."
+            wrapperClassName="flex-1"
+          />
 
           {/* Export */}
           <ExportMenu

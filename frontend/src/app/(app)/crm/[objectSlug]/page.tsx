@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   Plus,
-  Search,
   Filter,
   ChevronLeft,
   Trash2,
@@ -14,6 +13,7 @@ import {
   LayoutGrid,
   Settings,
 } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
 import { useCRMObjects, useCRMRecords } from "@/hooks/useCRM";
@@ -373,16 +373,12 @@ export default function RecordsPage() {
 
           {/* Toolbar */}
           <div className="flex items-center gap-4 mb-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={`Search ${currentObject?.plural_name?.toLowerCase() || "records"}...`}
-                className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder={`Search ${currentObject?.plural_name?.toLowerCase() || "records"}...`}
+              wrapperClassName="flex-1"
+            />
             <button className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors">
               <Filter className="h-4 w-4" />
               Filter
