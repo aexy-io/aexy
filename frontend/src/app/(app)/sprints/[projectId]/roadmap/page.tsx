@@ -561,8 +561,27 @@ export default function RoadmapPage({
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+      <div className="p-6 animate-pulse">
+        <div className="flex items-center justify-between mb-6">
+          <div className="h-7 w-36 bg-accent rounded" />
+          <div className="h-9 w-36 bg-accent rounded-lg" />
+        </div>
+        <div className="space-y-6">
+          {[1, 2, 3].map((g) => (
+            <div key={g}>
+              <div className="h-5 w-28 bg-accent rounded mb-3" />
+              <div className="space-y-2">
+                {[1, 2].map((i) => (
+                  <div key={i} className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+                    <div className="h-5 w-5 bg-accent rounded" />
+                    <div className="h-4 w-48 bg-accent rounded" />
+                    <div className="ml-auto h-5 w-12 bg-accent rounded" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

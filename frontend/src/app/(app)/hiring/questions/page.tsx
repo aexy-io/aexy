@@ -4,7 +4,6 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  Search,
   Filter,
   MoreVertical,
   FileText,
@@ -22,6 +21,9 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
+import { EmptyState } from "@/components/EmptyState";
+import { HelpCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useQuestions } from "@/hooks/useQuestions";
@@ -424,19 +426,15 @@ export default function QuestionsPage() {
         {/* Filters */}
         <div className="bg-card rounded-lg border border-border mb-6">
           <div className="p-4 flex flex-wrap items-center gap-4">
-            <div className="flex-1 min-w-[200px] relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search questions..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setPage(1);
-                }}
-                className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground placeholder:text-muted-foreground"
-              />
-            </div>
+            <SearchInput
+              value={searchQuery}
+              onChange={(val) => {
+                setSearchQuery(val);
+                setPage(1);
+              }}
+              placeholder="Search questions..."
+              wrapperClassName="flex-1 min-w-[200px]"
+            />
             <select
               value={assessmentFilter}
               onChange={(e) => {
@@ -527,15 +525,23 @@ export default function QuestionsPage() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : questions.length === 0 ? (
-            <div className="text-center py-12">
-              <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">No questions found</h3>
-              <p className="text-muted-foreground mb-4">
-                {searchQuery || typeFilter || difficultyFilter || assessmentFilter
-                  ? "Try adjusting your filters"
-                  : "Create an assessment to add questions"}
-              </p>
-            </div>
+            searchQuery || typeFilter || difficultyFilter || assessmentFilter ? (
+              <div className="text-center py-12">
+                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">No questions found</h3>
+                <p className="text-muted-foreground mb-4">Try adjusting your filters</p>
+              </div>
+            ) : (
+              <EmptyState
+                icon={HelpCircle}
+                title="No questions yet"
+                description="Build a question bank for assessments. Create coding challenges, multiple choice, or free-text questions."
+                actions={[
+                  { label: "Go to Assessments", href: "/hiring/assessments" },
+                ]}
+                compact
+              />
+            )
           ) : (
             <table className="w-full min-w-[600px]">
               <thead className="bg-muted/50 border-b border-border">

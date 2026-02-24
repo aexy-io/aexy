@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   remindersApi,
   Reminder,
@@ -63,8 +64,12 @@ export function useReminders(
   const createMutation = useMutation({
     mutationFn: (data: ReminderCreate) => remindersApi.create(workspaceId!, data),
     onSuccess: () => {
+      toast.success("Reminder created");
       queryClient.invalidateQueries({ queryKey: ["reminders", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["reminderDashboard", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to create reminder");
     },
   });
 
@@ -72,17 +77,25 @@ export function useReminders(
     mutationFn: ({ reminderId, data }: { reminderId: string; data: ReminderUpdate }) =>
       remindersApi.update(workspaceId!, reminderId, data),
     onSuccess: () => {
+      toast.success("Reminder updated");
       queryClient.invalidateQueries({ queryKey: ["reminders", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["reminder", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["reminderDashboard", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update reminder");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (reminderId: string) => remindersApi.delete(workspaceId!, reminderId),
     onSuccess: () => {
+      toast.success("Reminder deleted");
       queryClient.invalidateQueries({ queryKey: ["reminders", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["reminderDashboard", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to delete reminder");
     },
   });
 
@@ -122,17 +135,25 @@ export function useReminder(workspaceId: string | null, reminderId: string | nul
   const updateMutation = useMutation({
     mutationFn: (data: ReminderUpdate) => remindersApi.update(workspaceId!, reminderId!, data),
     onSuccess: () => {
+      toast.success("Reminder updated");
       queryClient.invalidateQueries({ queryKey: ["reminder", workspaceId, reminderId] });
       queryClient.invalidateQueries({ queryKey: ["reminders", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["reminderDashboard", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update reminder");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: () => remindersApi.delete(workspaceId!, reminderId!),
     onSuccess: () => {
+      toast.success("Reminder deleted");
       queryClient.invalidateQueries({ queryKey: ["reminders", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["reminderDashboard", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to delete reminder");
     },
   });
 
@@ -181,9 +202,13 @@ export function useReminderInstances(
     mutationFn: ({ instanceId, notes }: { instanceId: string; notes?: string }) =>
       remindersApi.acknowledgeInstance(workspaceId!, instanceId, notes),
     onSuccess: () => {
+      toast.success("Reminder acknowledged");
       queryClient.invalidateQueries({ queryKey: ["reminderInstances", workspaceId, reminderId] });
       queryClient.invalidateQueries({ queryKey: ["reminderDashboard", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["myReminders", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to acknowledge reminder");
     },
   });
 
@@ -198,9 +223,13 @@ export function useReminderInstances(
       evidenceUrl?: string;
     }) => remindersApi.completeInstance(workspaceId!, instanceId, { notes, evidence_url: evidenceUrl }),
     onSuccess: () => {
+      toast.success("Reminder completed");
       queryClient.invalidateQueries({ queryKey: ["reminderInstances", workspaceId, reminderId] });
       queryClient.invalidateQueries({ queryKey: ["reminderDashboard", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["myReminders", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to complete reminder");
     },
   });
 
@@ -208,9 +237,13 @@ export function useReminderInstances(
     mutationFn: ({ instanceId, reason }: { instanceId: string; reason: string }) =>
       remindersApi.skipInstance(workspaceId!, instanceId, reason),
     onSuccess: () => {
+      toast.success("Reminder skipped");
       queryClient.invalidateQueries({ queryKey: ["reminderInstances", workspaceId, reminderId] });
       queryClient.invalidateQueries({ queryKey: ["reminderDashboard", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["myReminders", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to skip reminder");
     },
   });
 
@@ -225,8 +258,12 @@ export function useReminderInstances(
       teamId?: string;
     }) => remindersApi.reassignInstance(workspaceId!, instanceId, { owner_id: ownerId, team_id: teamId }),
     onSuccess: () => {
+      toast.success("Reminder reassigned");
       queryClient.invalidateQueries({ queryKey: ["reminderInstances", workspaceId, reminderId] });
       queryClient.invalidateQueries({ queryKey: ["myReminders", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to reassign reminder");
     },
   });
 
@@ -303,8 +340,12 @@ export function useMyReminders(workspaceId: string | null) {
     mutationFn: ({ instanceId, notes }: { instanceId: string; notes?: string }) =>
       remindersApi.acknowledgeInstance(workspaceId!, instanceId, notes),
     onSuccess: () => {
+      toast.success("Reminder acknowledged");
       queryClient.invalidateQueries({ queryKey: ["myReminders", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["reminderDashboard", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to acknowledge reminder");
     },
   });
 
@@ -319,8 +360,12 @@ export function useMyReminders(workspaceId: string | null) {
       evidenceUrl?: string;
     }) => remindersApi.completeInstance(workspaceId!, instanceId, { notes, evidence_url: evidenceUrl }),
     onSuccess: () => {
+      toast.success("Reminder completed");
       queryClient.invalidateQueries({ queryKey: ["myReminders", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["reminderDashboard", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to complete reminder");
     },
   });
 
@@ -385,7 +430,11 @@ export function useControlOwners(workspaceId: string | null, domain?: string) {
   const createMutation = useMutation({
     mutationFn: (data: ControlOwnerCreate) => remindersApi.createControlOwner(workspaceId!, data),
     onSuccess: () => {
+      toast.success("Control owner created");
       queryClient.invalidateQueries({ queryKey: ["controlOwners", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to create control owner");
     },
   });
 
@@ -393,14 +442,22 @@ export function useControlOwners(workspaceId: string | null, domain?: string) {
     mutationFn: ({ controlOwnerId, data }: { controlOwnerId: string; data: ControlOwnerUpdate }) =>
       remindersApi.updateControlOwner(workspaceId!, controlOwnerId, data),
     onSuccess: () => {
+      toast.success("Control owner updated");
       queryClient.invalidateQueries({ queryKey: ["controlOwners", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update control owner");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (controlOwnerId: string) => remindersApi.deleteControlOwner(workspaceId!, controlOwnerId),
     onSuccess: () => {
+      toast.success("Control owner deleted");
       queryClient.invalidateQueries({ queryKey: ["controlOwners", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to delete control owner");
     },
   });
 
@@ -437,14 +494,22 @@ export function useDomainTeamMappings(workspaceId: string | null) {
   const createMutation = useMutation({
     mutationFn: (data: DomainTeamMappingCreate) => remindersApi.createDomainMapping(workspaceId!, data),
     onSuccess: () => {
+      toast.success("Domain mapping created");
       queryClient.invalidateQueries({ queryKey: ["domainTeamMappings", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to create domain mapping");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (mappingId: string) => remindersApi.deleteDomainMapping(workspaceId!, mappingId),
     onSuccess: () => {
+      toast.success("Domain mapping deleted");
       queryClient.invalidateQueries({ queryKey: ["domainTeamMappings", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to delete domain mapping");
     },
   });
 
@@ -479,7 +544,11 @@ export function useAssignmentRules(workspaceId: string | null) {
   const createMutation = useMutation({
     mutationFn: (data: AssignmentRuleCreate) => remindersApi.createAssignmentRule(workspaceId!, data),
     onSuccess: () => {
+      toast.success("Assignment rule created");
       queryClient.invalidateQueries({ queryKey: ["assignmentRules", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to create assignment rule");
     },
   });
 
@@ -487,14 +556,22 @@ export function useAssignmentRules(workspaceId: string | null) {
     mutationFn: ({ ruleId, data }: { ruleId: string; data: Partial<AssignmentRuleCreate> }) =>
       remindersApi.updateAssignmentRule(workspaceId!, ruleId, data),
     onSuccess: () => {
+      toast.success("Assignment rule updated");
       queryClient.invalidateQueries({ queryKey: ["assignmentRules", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update assignment rule");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (ruleId: string) => remindersApi.deleteAssignmentRule(workspaceId!, ruleId),
     onSuccess: () => {
+      toast.success("Assignment rule deleted");
       queryClient.invalidateQueries({ queryKey: ["assignmentRules", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to delete assignment rule");
     },
   });
 
@@ -540,16 +617,24 @@ export function useReminderSuggestions(
       overrides?: Partial<ReminderCreate>;
     }) => remindersApi.acceptSuggestion(workspaceId!, suggestionId, overrides),
     onSuccess: () => {
+      toast.success("Suggestion accepted");
       queryClient.invalidateQueries({ queryKey: ["reminderSuggestions", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["reminders", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["reminderDashboard", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to accept suggestion");
     },
   });
 
   const rejectMutation = useMutation({
     mutationFn: (suggestionId: string) => remindersApi.rejectSuggestion(workspaceId!, suggestionId),
     onSuccess: () => {
+      toast.success("Suggestion rejected");
       queryClient.invalidateQueries({ queryKey: ["reminderSuggestions", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to reject suggestion");
     },
   });
 
@@ -582,8 +667,12 @@ export function useBulkReminderOperations(workspaceId: string | null) {
       teamId?: string;
     }) => remindersApi.bulkAssign(workspaceId!, { instance_ids: instanceIds, owner_id: ownerId, team_id: teamId }),
     onSuccess: () => {
+      toast.success("Reminders assigned");
       queryClient.invalidateQueries({ queryKey: ["reminderInstances", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["myReminders", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to assign reminders");
     },
   });
 
@@ -591,9 +680,13 @@ export function useBulkReminderOperations(workspaceId: string | null) {
     mutationFn: ({ instanceIds, notes }: { instanceIds: string[]; notes?: string }) =>
       remindersApi.bulkComplete(workspaceId!, { instance_ids: instanceIds, notes }),
     onSuccess: () => {
+      toast.success("Reminders completed");
       queryClient.invalidateQueries({ queryKey: ["reminderInstances", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["reminderDashboard", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["myReminders", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to complete reminders");
     },
   });
 

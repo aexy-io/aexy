@@ -225,8 +225,19 @@ export function EntityTimeline({
       {/* Timeline */}
       <div className="space-y-0">
         {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <div className="space-y-4 animate-pulse">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex gap-3">
+                <div className="flex flex-col items-center">
+                  <div className="h-6 w-6 bg-accent rounded-full" />
+                  <div className="w-0.5 flex-1 bg-accent" />
+                </div>
+                <div className="flex-1 pb-4">
+                  <div className="h-3 w-48 bg-accent rounded mb-2" />
+                  <div className="h-2 w-24 bg-accent rounded" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : timeline.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground text-sm">

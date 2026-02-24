@@ -181,12 +181,13 @@ export function DocumentSidebar({
       {/* Document Tree */}
       <div className="flex-1 overflow-auto p-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
         {isLoadingTree ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <div className="relative mb-3">
-              <div className="w-8 h-8 border-3 border-primary-500/20 rounded-full"></div>
-              <div className="w-8 h-8 border-3 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
-            </div>
-            <p className="text-xs text-muted-foreground">Loading documents...</p>
+          <div className="space-y-1 px-2 py-2 animate-pulse">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="flex items-center gap-2 px-2 py-1.5" style={{ paddingLeft: `${(i % 3) * 12 + 8}px` }}>
+                <div className="h-4 w-4 bg-accent rounded" />
+                <div className="h-3 bg-accent rounded" style={{ width: `${60 + (i * 10) % 40}px` }} />
+              </div>
+            ))}
           </div>
         ) : filteredTree.length === 0 ? (
           <div className="text-center py-12 px-4">

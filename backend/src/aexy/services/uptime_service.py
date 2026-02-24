@@ -531,6 +531,42 @@ class UptimeService:
                 },
             )
 
+        # Dispatch SSL certificate expiring trigger (only at key thresholds to avoid spam)
+        if check_result.ssl_expiry_days is not None and check_result.ssl_expiry_days <= 30:
+            if check_result.ssl_expiry_days in (30, 14, 7, 3, 1):
+                await dispatch_automation_event(
+                    db=self.db,
+                    workspace_id=monitor.workspace_id,
+                    module="uptime",
+                    trigger_type="monitor.ssl_expiring",
+                    entity_id=monitor.id,
+                    trigger_data={
+                        **base_trigger_data,
+                        "ssl_expiry_days": check_result.ssl_expiry_days,
+                        "ssl_issuer": getattr(check_result, "ssl_issuer", None),
+                        "days_until_expiry": check_result.ssl_expiry_days,
+                    },
+                )
+
+        # Dispatch repeated failures trigger (only on the exact threshold to avoid spam)
+        if (
+            monitor.consecutive_failures == 3
+            and not is_new_incident
+            and not recovery_occurred
+        ):
+            await dispatch_automation_event(
+                db=self.db,
+                workspace_id=monitor.workspace_id,
+                module="uptime",
+                trigger_type="monitor.repeated_failures",
+                entity_id=monitor.id,
+                trigger_data={
+                    **base_trigger_data,
+                    "consecutive_failures": monitor.consecutive_failures,
+                    "status": monitor.current_status,
+                },
+            )
+
         return check, incident, is_new_incident
 
     async def _handle_failure(

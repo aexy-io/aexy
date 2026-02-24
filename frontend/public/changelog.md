@@ -5,6 +5,111 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.3] - 2026-02-25
+
+### Added
+
+#### Platform Features
+- **Exports page**: Full data export UI with format selection (PDF, CSV, JSON, XLSX), live status polling, and download management
+- **Webhooks settings page**: Webhook endpoint management with secret rotation, event selection, test delivery, and HMAC signature documentation
+- **SSO settings page**: SAML/OIDC configuration with provider setup, connection testing, and activation controls
+- **Usage dashboard**: Workspace-level usage stats, provider breakdown, plan limits overview, and usage alerts
+- **Notification center**: Unified notification page with date grouping, read/unread filtering, and load-more pagination
+- **Notification settings**: Per-channel preferences (email, in-app, Slack) for all event types
+- **Templates gallery**: Browsable catalog of 21 pre-built automation, form, and assessment templates with category filtering
+
+#### Shared UI Components
+- **DataTable**: Generic sortable data table with pagination, skeleton loading, empty states, and accessible keyboard navigation
+- **SearchInput**: Reusable search input with clear button, replacing 33 inline implementations
+- **Breadcrumb**: Navigation breadcrumb component with `aria-current="page"` support
+- **EmptyState**: Shared empty state component with icons, steps, and action buttons, deployed across 15 module pages
+- **ErrorBoundary**: Class-based error boundary with retry and error details toggle
+- **ModuleError**: Per-module Next.js error.tsx boundary component
+- **UpgradeBanner**: Contextual upgrade prompts at key monetization touchpoints with persistent dismissal
+- **WorkspaceChecklist**: Getting-started checklist with progress ring for new workspaces
+- **DashboardWelcome**: First-visit persona picker for personalized dashboard widget layout
+
+#### Keyboard Shortcuts & Command Palette
+- **Global shortcuts**: `g then X` navigation pattern (like GitHub/Linear) for 19 modules
+- **Keyboard shortcuts help overlay**: `?` key opens categorized shortcut reference
+- **Command palette enhancements**: Added navigation entries for exports, webhooks, templates, and all new pages
+
+#### Automation Triggers
+- **Ticket triggers**: `ticket.reopened`, `ticket.priority_changed`, `ticket.escalated`, `response.sent`, `response.received`, `sla.breached`
+- **Hiring triggers**: `candidate.rejected`, `candidate.hired`, `assessment.score_above`, `assessment.score_below`
+- **Sprint triggers**: `sprint.velocity_calculated`, `sprint.burndown_off_track`
+- **Uptime triggers**: `monitor.ssl_expiring`, `monitor.repeated_failures`
+- **Campaign trigger**: `campaign.sent`
+- **Module automation panels**: Inline automation management UI embeddable in any module page
+
+#### UX Improvements
+- **Skeleton loading migration**: Replaced spinner loading states with skeleton placeholders across 20+ pages in 5 batches
+- **DataTable migration**: Migrated 17 pages from custom table markup to shared DataTable component in 3 batches
+- **Status color tokens**: Centralized status color definitions in `statusColors.ts`, migrated 34 files
+- **Toast notifications**: Added success/error toasts to all mutation hooks across 14 hook files
+- **Mobile responsiveness**: Improved layout and tracking page responsiveness
+- **Contextual upgrade banners**: Added to 7 major modules for free-tier users
+
+### Fixed
+
+#### Critical Bugs
+- **Assessment score triggers used wrong ID**: `assessment.workspace_id` did not exist on the Assessment model — changed to `assessment.organization_id` so `score_above`/`score_below` triggers actually fire
+- **Ticket reopen detection crashed**: `TicketStatus.OPEN` did not exist in the enum — changed to `TicketStatus.ACKNOWLEDGED`
+- **Command palette duplicate ID**: Two entries shared `id: "nav-templates"` causing React key collision — renamed second to `nav-automation-templates`
+
+#### Medium Bugs
+- **Burndown off-track trigger skipped on existing metrics**: Early return on updated rows bypassed the deviation check — restructured to always evaluate
+- **Uptime triggers fired on every check**: SSL expiring and repeated failures had no debounce — SSL now fires at day thresholds (30/14/7/3/1), repeated failures fires at exactly 3 consecutive
+- **Webhook test toast misleading**: `onSuccess` always showed success even when `WebhookTestResult.success` was false — now checks the result
+- **useAutomations registry hooks caused re-renders**: Normalization created new object references on every render — wrapped in `useMemo`
+- **SSO page silent errors**: `loadConfig`, `handleToggle`, `handleDelete` used `try/finally` with no catch — added error handling with toast notifications
+- **SSO page stale closure**: `useEffect` missing `loadConfig` in dependency array — wrapped in `useCallback`
+- **SSO API swallowed all errors**: `getConfiguration` caught everything and returned null — now only catches 404
+- **Exports page bypassed type safety**: `createExport(data as any)` — replaced with proper type assertion
+- **Webhooks page null workspace**: `currentWorkspaceId!` non-null assertion could produce `/workspaces/null/` API calls — added guard
+
+#### Code Quality
+- **Hiring dispatch error handling**: Wrapped `candidate.rejected`/`candidate.hired` dispatch calls in try/except for consistency
+- **CRM `between` operator**: Added ValueError/TypeError handling for non-numeric values
+- **GlobalShortcuts cleanup**: Dynamic event listener and timeout now properly cleaned up on unmount
+- **UpgradeBanner dismiss persistence**: Dismiss state now saved to localStorage, survives navigation
+- **WorkspaceChecklist JSON.parse safety**: Wrapped in try/catch to handle corrupted localStorage
+- **ModuleAutomationsPanel confirm dialog**: Replaced native `confirm()` with styled confirmation modal
+- **Dead code removal**: Removed unused `workspaceId` prop from CommandPalette, unused `useAuth` import from SSO page
+
+#### Accessibility
+- **CommandPalette**: Added `role="dialog"`, `aria-modal`, `role="combobox"` on search input, `role="listbox"` on results
+- **DataTable**: Added `aria-sort` on sortable headers, `tabIndex` and keyboard handlers (Enter/Space) for sortable headers and clickable rows
+- **KeyboardShortcutsHelp**: Added `role="dialog"`, `aria-modal`, `aria-labelledby`, `aria-label="Close"` on close button
+- **DashboardWelcome**: Added `role="dialog"`, `aria-modal`, `aria-label`
+- **ErrorBoundary & ModuleError**: Added `role="alert"` on error container
+- **SearchInput**: Added `aria-label="Clear search"` on clear button
+- **Breadcrumb**: Added `aria-current="page"` on last breadcrumb item
+- **UpgradeBanner**: Added `aria-label="Dismiss banner"` on dismiss buttons
+
+---
+
+## [0.6.2] - 2026-02-24
+
+### Added
+
+#### Automation Module Enterprise Improvements
+Comprehensive improvements to the automation workflow builder across all 10 modules.
+
+- **Trigger & action descriptions**: All 105 triggers and 66 actions now have human-readable descriptions displayed in the node palette and config panel
+- **Backend registry upgrade**: `TRIGGER_REGISTRY` and `ACTION_REGISTRY` now return `{id, description}` objects instead of plain strings, with backward-compatible helper functions (`get_trigger_ids`, `get_action_ids`)
+- **Module-aware trigger icons**: TriggerNode now displays context-specific icons for all 10 modules (tracking: ClipboardCheck/Timer/ShieldAlert, compliance: GraduationCap/BookOpen/Award, tickets: Ticket, hiring: UserPlus, etc.) instead of generic Zap
+- **Tracking & compliance objects in config panel**: Added object type selectors for tracking (Standup, Time Entry, Blocker, Work Log) and compliance (Training, Assignment, Certification, Audit Log) modules
+- **Trigger description in config panel**: Clicking a trigger node now shows the full description in italic below the label field
+- **Complete trigger/action label coverage**: Added labels for all missing triggers (`standup.streak`, `time_entry.anomaly`, `blocker.pattern_detected`, `training.bulk_overdue`, `certification.prerequisite_unmet`, etc.) and actions across all modules
+- **Pydantic `RegistryEntry` model**: New schema for typed API responses with `id` and `description` fields
+
+### Fixed
+- **Missing condition operators**: Implemented `starts_with`, `ends_with`, `not_contains`, and `between` operators in `CRMAutomationService._check_condition()` which previously fell through to `return True`
+- **Logging**: Replaced all `print()` calls in `AutomationService.process_module_trigger()` with proper `logger.info/debug/error` calls
+
+---
+
 ## [0.6.1] - 2026-02-24
 
 ### Added

@@ -3,9 +3,9 @@
 import { useAuth } from "@/hooks/useAuth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
   MessageSquare,
-  ArrowLeft,
   Clock,
   CheckCircle,
   XCircle,
@@ -106,14 +106,14 @@ export default function PeerRequestsPage() {
   return (
     <div className="min-h-screen bg-background">
 <main className="max-w-4xl mx-auto px-4 py-8">
-        {/* Back Link */}
-        <Link
-          href="/reviews"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Reviews
-        </Link>
+        {/* Breadcrumb */}
+        <Breadcrumb
+          items={[
+            { label: "Reviews", href: "/reviews" },
+            { label: "Peer Requests" },
+          ]}
+          className="mb-6"
+        />
 
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">

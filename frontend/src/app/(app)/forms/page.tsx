@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   FileText,
   Plus,
-  Search,
   Filter,
   MoreHorizontal,
   ExternalLink,
@@ -29,6 +28,8 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useForms, useFormTemplates } from "@/hooks/useForms";
+import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
+import { SearchInput } from "@/components/ui/search-input";
 import type { FormListItem, FormTemplateType } from "@/lib/formsApi";
 
 const TEMPLATE_LABELS: Record<FormTemplateType, { label: string; color: string; bg: string }> = {
@@ -536,21 +537,20 @@ export default function FormsPage() {
           </div>
         </div>
 
+        {/* Automations */}
+        <div className="mb-8">
+          <ModuleAutomationsPanel module="forms" moduleLabel="Forms" compact />
+        </div>
+
         {/* Filters */}
         <div className="bg-muted rounded-xl border border-border p-4 mb-6">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search forms..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-            </div>
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search forms..."
+              wrapperClassName="flex-1 min-w-[200px]"
+            />
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Status:</span>

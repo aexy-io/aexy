@@ -10,7 +10,6 @@ import {
   Building2,
   Users,
   Plus,
-  Search,
   Filter,
   LayoutGrid,
   List,
@@ -33,6 +32,9 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/EmptyState";
+import { SearchInput } from "@/components/ui/search-input";
+import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 import { hiringApi, HiringCandidate, HiringCandidateStage } from "@/lib/api";
 
 // Candidate stages
@@ -377,15 +379,38 @@ export default function CandidatesPage() {
 
   if (isLoading || workspacesLoading || (loading && currentWorkspaceId)) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
-            <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+      <main className="w-full px-6 py-6 animate-pulse">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 bg-accent rounded-xl" />
+            <div>
+              <div className="h-7 w-44 bg-accent rounded mb-2" />
+              <div className="h-4 w-32 bg-accent rounded" />
+            </div>
           </div>
-          <p className="text-muted-foreground text-sm">Loading candidates...</p>
+          <div className="h-9 w-32 bg-accent rounded-lg" />
         </div>
-      </div>
+        <div className="flex items-center gap-4 mb-6">
+          <div className="h-9 flex-1 max-w-md bg-accent rounded-lg" />
+          <div className="h-9 w-32 bg-accent rounded-lg" />
+          <div className="h-9 w-24 bg-accent rounded-lg" />
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="bg-muted rounded-xl p-4 border border-border">
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 bg-accent rounded-full" />
+                <div className="flex-1">
+                  <div className="h-4 w-36 bg-accent rounded mb-2" />
+                  <div className="h-3 w-24 bg-accent rounded" />
+                </div>
+                <div className="h-6 w-20 bg-accent rounded-full" />
+                <div className="h-4 w-16 bg-accent rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
     );
   }
 
@@ -463,16 +488,12 @@ export default function CandidatesPage() {
         {/* Filters */}
         <div className="flex items-center gap-4 mb-6">
           {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search candidates..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-muted text-foreground rounded-lg pl-10 pr-4 py-2 border border-border focus:border-primary-500 focus:outline-none text-sm"
-            />
-          </div>
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search candidates..."
+            wrapperClassName="flex-1 max-w-md"
+          />
 
           {/* Stage Filter */}
           <select
@@ -542,78 +563,123 @@ export default function CandidatesPage() {
 
         {/* List View */}
         {viewMode === "list" && (
-          <div className="bg-background/50 rounded-xl border border-border overflow-hidden overflow-x-auto">
-            <table className="w-full min-w-[600px]">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Candidate</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Role</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Stage</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Score</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Source</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Applied</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filteredCandidates.map((candidate) => {
-                  const stageConfig = STAGE_CONFIG[candidate.stage];
-                  return (
-                    <tr key={candidate.id} className="hover:bg-muted/50 transition">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-blue-500 flex items-center justify-center text-white text-xs font-medium">
-                            {candidate.name.split(" ").map(n => n[0]).join("")}
-                          </div>
-                          <div>
-                            <Link
-                              href={`/hiring/candidates/${candidate.id}`}
-                              className="text-sm font-medium text-foreground hover:text-primary-400 transition"
-                            >
-                              {candidate.name}
-                            </Link>
-                            <p className="text-xs text-muted-foreground">{candidate.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-foreground">{candidate.role}</td>
-                      <td className="px-4 py-3">
-                        <span className={cn("text-xs px-2 py-1 rounded", stageConfig.bgColor, stageConfig.color)}>
-                          {stageConfig.label}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        {candidate.score ? (
-                          <span className={cn(
-                            "text-sm font-medium",
-                            candidate.score >= 80 ? "text-green-400" : candidate.score >= 60 ? "text-yellow-400" : "text-red-400"
-                          )}>
-                            {candidate.score}%
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{candidate.source}</td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{candidate.appliedAt}</td>
-                      <td className="px-4 py-3">
-                        <button className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition">
-                          <MoreVertical className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          (() => {
+            const hasFilters = !!(searchQuery || filterStage !== "all" || filterSource !== "all");
 
-            {filteredCandidates.length === 0 && (
-              <div className="py-12 text-center">
-                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground">No candidates found</p>
-              </div>
-            )}
-          </div>
+            const candidateColumns: DataTableColumn<Candidate>[] = [
+              {
+                id: "candidate",
+                header: "Candidate",
+                sortable: true,
+                sortValue: (row) => row.name.toLowerCase(),
+                cell: (row) => (
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-blue-500 flex items-center justify-center text-white text-xs font-medium">
+                      {row.name.split(" ").map(n => n[0]).join("")}
+                    </div>
+                    <div>
+                      <Link
+                        href={`/hiring/candidates/${row.id}`}
+                        className="text-sm font-medium text-foreground hover:text-primary-400 transition"
+                      >
+                        {row.name}
+                      </Link>
+                      <p className="text-xs text-muted-foreground">{row.email}</p>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                id: "role",
+                header: "Role",
+                sortable: true,
+                sortValue: (row) => row.role.toLowerCase(),
+                cell: (row) => <span className="text-sm text-foreground">{row.role}</span>,
+              },
+              {
+                id: "stage",
+                header: "Stage",
+                sortable: true,
+                sortValue: (row) => {
+                  const order = [...STAGES_ORDER, "rejected" as CandidateStage];
+                  return order.indexOf(row.stage);
+                },
+                cell: (row) => {
+                  const cfg = STAGE_CONFIG[row.stage];
+                  return (
+                    <span className={cn("text-xs px-2 py-1 rounded", cfg.bgColor, cfg.color)}>
+                      {cfg.label}
+                    </span>
+                  );
+                },
+              },
+              {
+                id: "score",
+                header: "Score",
+                sortable: true,
+                sortValue: (row) => row.score ?? -1,
+                cell: (row) =>
+                  row.score ? (
+                    <span className={cn(
+                      "text-sm font-medium",
+                      row.score >= 80 ? "text-green-400" : row.score >= 60 ? "text-yellow-400" : "text-red-400"
+                    )}>
+                      {row.score}%
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground text-sm">-</span>
+                  ),
+              },
+              {
+                id: "source",
+                header: "Source",
+                sortable: true,
+                sortValue: (row) => (row.source ?? "").toLowerCase(),
+                cell: (row) => <span className="text-sm text-muted-foreground">{row.source}</span>,
+              },
+              {
+                id: "applied",
+                header: "Applied",
+                sortable: true,
+                sortValue: (row) => new Date(row.appliedAt).getTime(),
+                cell: (row) => <span className="text-sm text-muted-foreground">{row.appliedAt}</span>,
+              },
+              {
+                id: "actions",
+                header: "",
+                cell: () => (
+                  <button className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition">
+                    <MoreVertical className="h-4 w-4" />
+                  </button>
+                ),
+              },
+            ];
+
+            // When there are no candidates and no filters active, show the full EmptyState
+            if (filteredCandidates.length === 0 && !hasFilters) {
+              return (
+                <EmptyState
+                  icon={Users}
+                  title="No candidates yet"
+                  description="Add candidates to your hiring pipeline to track their progress through assessments."
+                  actions={[
+                    { label: "Add Candidate", onClick: () => setShowAddModal(true) },
+                  ]}
+                  compact
+                />
+              );
+            }
+
+            return (
+              <DataTable<Candidate>
+                columns={candidateColumns}
+                data={filteredCandidates}
+                rowKey={(row) => row.id}
+                emptyIcon={<Users className="h-12 w-12" />}
+                emptyTitle="No candidates match your filters"
+              />
+            );
+          })()
         )}
 
         {/* Add Candidate Modal */}

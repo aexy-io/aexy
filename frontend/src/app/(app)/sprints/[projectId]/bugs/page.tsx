@@ -6,7 +6,6 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Plus,
-  Search,
   Bug as BugIcon,
   Grid3X3,
   List,
@@ -20,6 +19,7 @@ import {
   RefreshCw,
   XCircle,
 } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useBugs, useBug, useBugStats } from "@/hooks/useBugs";
@@ -279,16 +279,12 @@ export default function BugsPage() {
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4">
         {/* Search */}
-        <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search bugs..."
-            className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-500/50"
-          />
-        </div>
+        <SearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search bugs..."
+          wrapperClassName="flex-1 min-w-[200px] max-w-md"
+        />
 
         {/* Status Filter */}
         <select
