@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { useExports, useExportStatus } from "@/hooks/useExports";
+import { PremiumGate } from "@/components/PremiumGate";
 import { ExportJob } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
 
@@ -254,6 +255,7 @@ export default function ExportsPage() {
   const failedCount = jobs.filter((j) => j.status === "failed").length;
 
   return (
+    <PremiumGate feature="exports">
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -347,5 +349,6 @@ export default function ExportsPage() {
         )}
       </div>
     </div>
+    </PremiumGate>
   );
 }
