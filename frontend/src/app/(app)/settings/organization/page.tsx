@@ -29,6 +29,7 @@ import { useWorkspace, useWorkspaceMembers, useWorkspaceBilling, usePendingInvit
 import { useAuth } from "@/hooks/useAuth";
 import { WorkspaceMember, WorkspacePendingInvite, repositoriesApi, Organization } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
+import { UpgradeBanner } from "@/components/UpgradeBanner";
 
 const ROLE_OPTIONS = [
   { value: "owner", label: "Owner", description: "Full access, can delete workspace" },
@@ -739,6 +740,15 @@ export default function OrganizationSettingsPage() {
           Manage your workspace and team members
         </p>
       </div>
+
+      {members.length >= 3 && (
+        <UpgradeBanner
+          trigger="member_limit"
+          current={members.length}
+          limit={3}
+          compact
+        />
+      )}
 
       <div>
         {/* Workspace Selector */}
