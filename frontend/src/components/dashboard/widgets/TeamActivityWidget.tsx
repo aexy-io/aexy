@@ -2,67 +2,68 @@
 
 import Link from "next/link";
 import {
-  Users,
+  Activity,
+  ChevronRight,
   GitCommit,
   GitPullRequest,
   Eye,
-  Code2,
-  ChevronRight,
+  Users,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { useTeamInsights } from "@/hooks/useInsights";
+import { useTeams, useTeamProfile } from "@/hooks/useTeams";
 
-export function TeamStatsSummaryWidget() {
+export function TeamActivityWidget() {
   const { currentWorkspace } = useWorkspace();
-  const { teamInsights, isLoading } = useTeamInsights(
-    currentWorkspace?.id || null
+  const { teams, isLoading } = useTeams(currentWorkspace?.id || null);
+  const { profile, isLoading: profileLoading } = useTeamProfile(
+    currentWorkspace?.id || null,
+    teams?.[0]?.id || null
   );
 
-  if (isLoading) {
+  if (isLoading || profileLoading) {
     return (
       <div className="bg-background/50 border border-border rounded-xl p-6 animate-pulse">
         <div className="h-6 w-48 bg-muted rounded mb-6" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-24 bg-muted rounded-lg" />
+            <div key={i} className="h-20 bg-muted rounded-lg" />
           ))}
         </div>
       </div>
     );
   }
 
-  const stats = teamInsights;
-  const hasData = !!stats;
-  const aggregate = stats?.aggregate;
+  const teamName = teams?.[0]?.name || "Team";
+  const hasData = !!profile;
 
   const metrics = [
     {
       label: "Commits",
-      value: aggregate?.total_commits ?? 0,
+      value: profile?.velocity?.total_commits ?? 0,
       icon: GitCommit,
-      color: "text-blue-600 dark:text-blue-400",
+      color: "text-blue-400",
       bgColor: "bg-blue-500/10",
     },
     {
-      label: "Pull Requests",
-      value: aggregate?.total_prs_merged ?? 0,
+      label: "PRs Merged",
+      value: profile?.velocity?.merged_prs ?? 0,
       icon: GitPullRequest,
-      color: "text-green-600 dark:text-green-400",
-      bgColor: "bg-green-500/10",
+      color: "text-amber-400",
+      bgColor: "bg-amber-500/10",
     },
     {
-      label: "Reviews",
-      value: aggregate?.total_reviews ?? 0,
+      label: "Lines Added",
+      value: profile?.velocity?.total_additions ?? 0,
       icon: Eye,
-      color: "text-purple-600 dark:text-purple-400",
+      color: "text-purple-400",
       bgColor: "bg-purple-500/10",
     },
     {
-      label: "Lines Changed",
-      value: aggregate?.total_lines_changed ?? 0,
-      icon: Code2,
-      color: "text-amber-600 dark:text-amber-400",
-      bgColor: "bg-amber-500/10",
+      label: "Members",
+      value: profile?.member_count ?? 0,
+      icon: Users,
+      color: "text-cyan-400",
+      bgColor: "bg-cyan-500/10",
     },
   ];
 
@@ -70,39 +71,44 @@ export function TeamStatsSummaryWidget() {
     <div className="bg-background/50 border border-border rounded-xl overflow-hidden">
       <div className="px-6 py-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-500/10 rounded-lg">
-            <Users className="h-5 w-5 text-blue-400" />
+          <div className="p-2 bg-green-500/10 rounded-lg">
+            <Activity className="h-5 w-5 text-green-400" />
           </div>
-          <h3 className="text-lg font-semibold text-foreground">Team Stats</h3>
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">Team Activity</h3>
+            {hasData && (
+              <p className="text-xs text-muted-foreground">{teamName}</p>
+            )}
+          </div>
         </div>
         <Link
-          href="/insights"
-          className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1 transition"
+          href="/teams"
+          className="text-green-400 hover:text-green-300 text-sm flex items-center gap-1 transition"
         >
-          View details <ChevronRight className="w-4 h-4" />
+          View Teams <ChevronRight className="w-4 h-4" />
         </Link>
       </div>
       <div className="p-6">
         {!currentWorkspace ? (
           <div className="text-center py-6">
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-              <Users className="w-8 h-8 text-muted-foreground" />
+              <Activity className="w-8 h-8 text-muted-foreground" />
             </div>
             <p className="text-muted-foreground text-sm">
-              Select a workspace to view team stats.
+              Select a workspace to view team activity.
             </p>
           </div>
         ) : !hasData ? (
           <div className="text-center py-6">
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-              <Users className="w-8 h-8 text-muted-foreground" />
+              <Activity className="w-8 h-8 text-muted-foreground" />
             </div>
             <p className="text-muted-foreground text-sm">
-              No team data available yet. Team insights will appear once members start contributing.
+              No team activity data available yet. Activity will appear once teams start contributing.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             {metrics.map((metric) => (
               <div
                 key={metric.label}

@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2026-02-24
+
+### Added
+
+#### 29 Dashboard Widgets Implemented
+Replaced all "Coming Soon" placeholder widgets with full implementations using live data from existing hooks.
+
+- **Goals & Growth** (5): `MyGoalsWidget`, `GrowthTrajectoryWidget`, `PeerBenchmarkWidget`, `LearningPathWidget`, `SkillGapsWidget`
+- **Tracking** (3): `StandupStatusWidget`, `TimeTrackingWidget`, `UpcomingDeadlinesWidget`
+- **Tickets & Forms** (5): `SLAOverviewWidget`, `RecentTicketsWidget`, `TicketsByPriorityWidget`, `FormSubmissionsWidget`, `RecentFormsWidget`
+- **Docs** (2): `RecentDocsWidget`, `DocActivityWidget`
+- **Reviews** (3): `PerformanceReviewsWidget`, `PendingReviewsWidget`, `ReviewCycleWidget`
+- **Hiring** (4): `HiringPipelineWidget`, `CandidateStatsWidget`, `OpenPositionsWidget`, `InterviewScheduleWidget`
+- **CRM** (3): `DealStatsWidget`, `RecentDealsWidget`, `CRMQuickViewWidget`
+- **Team & Admin** (4): `TeamOverviewWidget`, `TeamActivityWidget`, `OrgMetricsWidget`, `SystemHealthWidget`
+
+### Fixed
+- Fixed `TeamStatsSummaryWidget` to use correct nested `aggregate` property paths
+- Fixed `TicketChartWidget` to use theme-aware colors instead of hardcoded dark-mode hex values
+- Fixed `TicketPipelineWidget` to remove unnecessary `as any` cast
+- Fixed `PeerBenchmarkWidget` ordinal suffixes (1st, 2nd, 3rd instead of always "th")
+- Removed dead code from `TicketsByPriorityWidget` (unreachable priority breakdown branch)
+- Fixed `UpcomingDeadlinesWidget` to use sprint end date and incomplete tasks instead of nonexistent `due_date` field
+
+---
+
 ## [0.6.0] - 2026-02-24
 
 ### Added
