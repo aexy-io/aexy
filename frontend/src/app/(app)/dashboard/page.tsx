@@ -18,6 +18,7 @@ import {
   WorkspaceChecklist,
   useShouldShowWorkspaceChecklist,
 } from "@/components/WorkspaceChecklist";
+import { DashboardWelcome } from "@/components/dashboard/DashboardWelcome";
 
 export default function DashboardPage() {
   const { user, isLoading, isAuthenticated } = useAuth();
@@ -32,7 +33,7 @@ export default function DashboardPage() {
   const [checklistDismissed, setChecklistDismissed] = useState(false);
 
   // Dashboard customization
-  const { preferences, isLoading: prefsLoading, reorderWidgets } = useDashboardPreferences();
+  const { preferences, isLoading: prefsLoading, reorderWidgets, setPreset } = useDashboardPreferences();
   const { isModalOpen, setModalOpen, isCustomizing, setCustomizing } = useDashboardStore();
 
   const defaultWidgetOrder = [
@@ -253,6 +254,12 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 p-4">
+      {/* First-visit welcome with persona picker */}
+      <DashboardWelcome
+        onSelectPreset={setPreset}
+        userName={user?.name || user?.email}
+      />
+
       {/* Dashboard Controls */}
       <div className="flex justify-end gap-2">
         <button
