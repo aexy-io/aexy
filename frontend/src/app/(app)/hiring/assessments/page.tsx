@@ -282,8 +282,40 @@ export default function AssessmentsPage() {
 
   if (authLoading || workspacesLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="min-h-screen bg-background animate-pulse">
+        <main className="max-w-7xl mx-auto px-6 py-8">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <div className="h-7 w-36 bg-accent rounded mb-2" />
+              <div className="h-4 w-64 bg-accent rounded" />
+            </div>
+            <div className="h-9 w-40 bg-accent rounded-lg" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-muted rounded-xl p-4 border border-border">
+                <div className="h-3 w-24 bg-accent rounded mb-2" />
+                <div className="h-7 w-12 bg-accent rounded" />
+              </div>
+            ))}
+          </div>
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-muted rounded-xl p-4 border border-border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="h-5 w-48 bg-accent rounded mb-2" />
+                    <div className="h-3 w-32 bg-accent rounded" />
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="h-6 w-16 bg-accent rounded-full" />
+                    <div className="h-8 w-20 bg-accent rounded-lg" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     );
   }

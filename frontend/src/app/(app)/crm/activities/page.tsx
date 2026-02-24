@@ -270,8 +270,18 @@ export default function ActivitiesPage() {
 
         {/* Content */}
         {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+          <div className="space-y-3 py-4 animate-pulse">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-start gap-4 p-4 bg-muted rounded-xl border border-border">
+                <div className="h-10 w-10 bg-accent rounded-full" />
+                <div className="flex-1">
+                  <div className="h-4 w-48 bg-accent rounded mb-2" />
+                  <div className="h-3 w-full bg-accent rounded mb-1" />
+                  <div className="h-3 w-2/3 bg-accent rounded" />
+                </div>
+                <div className="h-3 w-16 bg-accent rounded" />
+              </div>
+            ))}
           </div>
         ) : filteredActivities.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 px-4">
