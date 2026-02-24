@@ -1247,6 +1247,39 @@ async def update_candidate_stage(
         },
     )
 
+    # Dispatch specific triggers for terminal stages
+    stage_lower = data.stage.lower()
+    if stage_lower in ("rejected", "declined"):
+        await dispatch_automation_event(
+            db=db,
+            workspace_id=str(candidate.workspace_id),
+            module="hiring",
+            trigger_type="candidate.rejected",
+            entity_id=str(candidate.id),
+            trigger_data={
+                "email": candidate.email,
+                "name": candidate.name,
+                "role": candidate.role,
+                "old_stage": old_stage,
+                "score": candidate.score,
+            },
+        )
+    elif stage_lower in ("hired", "accepted", "offer_accepted"):
+        await dispatch_automation_event(
+            db=db,
+            workspace_id=str(candidate.workspace_id),
+            module="hiring",
+            trigger_type="candidate.hired",
+            entity_id=str(candidate.id),
+            trigger_data={
+                "email": candidate.email,
+                "name": candidate.name,
+                "role": candidate.role,
+                "old_stage": old_stage,
+                "score": candidate.score,
+            },
+        )
+
     return candidate_to_response(candidate)
 
 

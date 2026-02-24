@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { uptimeApi, UptimeMonitor, UptimeIncident, WorkspaceUptimeStats } from "@/lib/uptime-api";
 import Link from "next/link";
+import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
 import {
   MonitorCheck,
   Plus,
@@ -327,6 +328,9 @@ export default function UptimeDashboard() {
                 </Link>
               </div>
             </div>
+
+            {/* Automations */}
+            <ModuleAutomationsPanel module="uptime" moduleLabel="Uptime" compact />
           </div>
         </div>
       </main>

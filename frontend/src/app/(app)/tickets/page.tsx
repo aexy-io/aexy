@@ -16,7 +16,9 @@ import {
   Settings,
   ListTodo,
   Layers,
+  Zap,
 } from "lucide-react";
+import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useTickets, useTicketStats, useTicketForms } from "@/hooks/useTicketing";
@@ -46,7 +48,7 @@ const TASK_STATUS_COLORS: Record<string, { bg: string; text: string; label: stri
   done: { bg: "bg-green-50 dark:bg-green-900/30", text: "text-green-600 dark:text-green-400", label: "Done" },
 };
 
-type TabType = "tickets" | "my-tasks";
+type TabType = "tickets" | "my-tasks" | "automations";
 
 export default function TicketsPage() {
   const router = useRouter();
@@ -161,6 +163,17 @@ export default function TicketsPage() {
                 {stats?.open_tickets}
               </span>
             )}
+          </button>
+          <button
+            onClick={() => setActiveTab("automations")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
+              activeTab === "automations"
+                ? "bg-purple-600 text-white"
+                : "bg-muted text-muted-foreground hover:bg-accent border border-border"
+            }`}
+          >
+            <Zap className="h-4 w-4" />
+            Automations
           </button>
         </div>
 
@@ -453,6 +466,10 @@ export default function TicketsPage() {
               </div>
             )}
           </>
+        )}
+
+        {activeTab === "automations" && (
+          <ModuleAutomationsPanel module="tickets" moduleLabel="Tickets" />
         )}
       </main>
     </div>
