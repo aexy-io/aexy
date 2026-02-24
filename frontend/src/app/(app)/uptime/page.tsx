@@ -5,6 +5,7 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { uptimeApi, UptimeMonitor, UptimeIncident, WorkspaceUptimeStats } from "@/lib/uptime-api";
 import Link from "next/link";
 import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
+import { EmptyState } from "@/components/EmptyState";
 import {
   MonitorCheck,
   Plus,
@@ -221,20 +222,15 @@ export default function UptimeDashboard() {
               </div>
 
               {monitors.length === 0 ? (
-                <div className="p-8 text-center">
-                  <MonitorCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-foreground mb-2">No monitors yet</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Create your first monitor to start tracking uptime
-                  </p>
-                  <Link
-                    href="/uptime/monitors?create=true"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create Monitor
-                  </Link>
-                </div>
+                <EmptyState
+                  icon={MonitorCheck}
+                  title="No monitors yet"
+                  description="Set up uptime monitors to track the health and availability of your services."
+                  actions={[
+                    { label: "Create Monitor", href: "/uptime/monitors?create=true" },
+                  ]}
+                  compact
+                />
               ) : (
                 <div className="divide-y divide-border">
                   {monitors.slice(0, 8).map((monitor) => {

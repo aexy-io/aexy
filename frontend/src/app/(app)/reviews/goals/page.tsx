@@ -20,6 +20,7 @@ import {
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useGoals } from "@/hooks/useReviews";
 import { SearchInput } from "@/components/ui/search-input";
+import { EmptyState } from "@/components/EmptyState";
 import { WorkGoal, GoalType } from "@/lib/api";
 import { GOAL_TYPE_COLORS, GOAL_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
@@ -298,46 +299,14 @@ export default function GoalsPage() {
             </div>
           </div>
         ) : (
-          <div className="bg-muted rounded-xl border border-border p-12">
-            <div className="text-center max-w-lg mx-auto">
-              <div className="w-20 h-20 bg-accent rounded-full flex items-center justify-center mx-auto mb-6">
-                <Target className="w-10 h-10 text-muted-foreground" />
-              </div>
-              <h3 className="text-xl font-medium text-foreground mb-3">No goals yet</h3>
-              <p className="text-muted-foreground text-sm mb-8">
-                SMART goals help you track progress and automatically link your GitHub contributions.
-                Set Specific, Measurable, Achievable, Relevant, and Time-bound objectives.
-              </p>
-
-              <Link
-                href="/reviews/goals/new"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition font-medium"
-              >
-                <Plus className="h-4 w-4" />
-                Create Your First Goal
-              </Link>
-
-              {/* Goal Types */}
-              <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-4 text-left">
-                <div className="bg-accent/50 rounded-lg p-4">
-                  <div className="text-cyan-400 text-sm font-medium mb-1">Performance</div>
-                  <p className="text-muted-foreground text-xs">Delivery & quality targets</p>
-                </div>
-                <div className="bg-accent/50 rounded-lg p-4">
-                  <div className="text-purple-400 text-sm font-medium mb-1">Skill Development</div>
-                  <p className="text-muted-foreground text-xs">Learning new technologies</p>
-                </div>
-                <div className="bg-accent/50 rounded-lg p-4">
-                  <div className="text-emerald-400 text-sm font-medium mb-1">Project</div>
-                  <p className="text-muted-foreground text-xs">Feature & milestone goals</p>
-                </div>
-                <div className="bg-accent/50 rounded-lg p-4">
-                  <div className="text-amber-400 text-sm font-medium mb-1">Leadership</div>
-                  <p className="text-muted-foreground text-xs">Mentoring & team impact</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          <EmptyState
+            icon={Target}
+            title="No goals yet"
+            description="Set goals to track progress and align team objectives with company priorities."
+            actions={[
+              { label: "Create Goal", href: "/reviews/goals/new" },
+            ]}
+          />
         )}
       </main>
     </div>

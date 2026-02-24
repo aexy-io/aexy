@@ -21,6 +21,8 @@ import {
   Eye,
   Edit3,
 } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
+import { FormInput } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useTicketForms, useTicketFormTemplates } from "@/hooks/useTicketing";
@@ -336,20 +338,14 @@ export default function TicketFormsPage() {
       {/* Forms List */}
       <div>
         {forms.length === 0 ? (
-          <div className="bg-card rounded-xl p-12 text-center border border-border">
-            <Ticket className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-foreground mb-2">No forms yet</h3>
-            <p className="text-muted-foreground mb-6">
-              Create your first ticket form to start collecting submissions
-            </p>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition font-medium"
-            >
-              <Plus className="h-5 w-5" />
-              Create Your First Form
-            </button>
-          </div>
+          <EmptyState
+            icon={FormInput}
+            title="No ticket forms yet"
+            description="Create custom forms to collect structured information when tickets are submitted."
+            actions={[
+              { label: "Create Form", onClick: () => setShowCreateModal(true) },
+            ]}
+          />
         ) : (
           <div className="space-y-3">
             {forms.map((form) => (

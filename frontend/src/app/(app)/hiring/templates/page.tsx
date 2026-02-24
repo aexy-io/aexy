@@ -22,6 +22,8 @@ import {
   Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/EmptyState";
+import { LayoutTemplate } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 
 type TemplateType = "jd" | "rubric" | "email";
@@ -322,20 +324,22 @@ export default function TemplatesPage() {
         )}
 
         {filteredTemplates.length === 0 && (
-          <div className="py-16 text-center">
-            <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-foreground mb-2">No templates found</h3>
-            <p className="text-muted-foreground mb-6">
-              {searchQuery ? "Try adjusting your search" : "Create your first template to get started"}
-            </p>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-500 text-white px-4 py-2 rounded-lg font-medium transition"
-            >
-              <Plus className="h-4 w-4" />
-              Create Template
-            </button>
-          </div>
+          searchQuery || filterType !== "all" ? (
+            <div className="py-16 text-center">
+              <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-foreground mb-2">No templates found</h3>
+              <p className="text-muted-foreground mb-6">Try adjusting your search or filters</p>
+            </div>
+          ) : (
+            <EmptyState
+              icon={LayoutTemplate}
+              title="No assessment templates yet"
+              description="Create reusable assessment templates to speed up your hiring process."
+              actions={[
+                { label: "Create Template", onClick: () => setShowCreateModal(true) },
+              ]}
+            />
+          )
         )}
 
         {/* Create Template Modal */}

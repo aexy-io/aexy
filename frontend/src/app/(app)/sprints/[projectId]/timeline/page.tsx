@@ -15,6 +15,7 @@ import {
   Layers,
   Clock,
 } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useSprints } from "@/hooks/useSprints";
@@ -414,20 +415,15 @@ export default function TimelinePage({
 
               {/* Empty state */}
               {(!sprints || sprints.length === 0) && (
-                <div className="text-center py-16">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
-                    <Layers className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-lg font-medium text-foreground mb-2">No sprints yet</h3>
-                  <p className="text-muted-foreground mb-4">Create sprints to see them on the timeline</p>
-                  <Link
-                    href={`/sprints/${projectId}`}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create Sprint
-                  </Link>
-                </div>
+                <EmptyState
+                  icon={Calendar}
+                  title="No sprints yet"
+                  description="Create your first sprint to start planning and tracking work in time-boxed iterations."
+                  actions={[
+                    { label: "Create Sprint", href: `/sprints/${projectId}` },
+                  ]}
+                  compact
+                />
               )}
             </div>
           </div>
