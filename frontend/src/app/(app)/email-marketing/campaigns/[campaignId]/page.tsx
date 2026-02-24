@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { HelpTooltip } from "@/components/ui/tooltip";
+import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -41,6 +42,7 @@ import {
   useDuplicateCampaign,
   useDeleteCampaign,
 } from "@/hooks/useEmailMarketing";
+import { CampaignRecipient } from "@/lib/api";
 import { CAMPAIGN_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
 type TabType = "overview" | "recipients" | "analytics";
@@ -88,6 +90,60 @@ export default function CampaignDetailPage() {
         return "text-muted-foreground";
     }
   };
+
+  const recipientColumns: DataTableColumn<CampaignRecipient>[] = [
+    {
+      id: "email",
+      header: "Email",
+      cell: (row) => <span className="text-foreground">{row.email}</span>,
+      sortable: true,
+      sortValue: (row) => row.email,
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (row) => (
+        <span className={`capitalize ${getRecipientStatusColor(row.status)}`}>
+          {row.status}
+        </span>
+      ),
+      sortable: true,
+      sortValue: (row) => row.status,
+    },
+    {
+      id: "sent_at",
+      header: "Sent At",
+      cell: (row) => (
+        <span className="text-muted-foreground">
+          {row.sent_at ? new Date(row.sent_at).toLocaleString() : "-"}
+        </span>
+      ),
+      sortable: true,
+      sortValue: (row) => row.sent_at ? new Date(row.sent_at).getTime() : 0,
+    },
+    {
+      id: "opened_at",
+      header: "Opened",
+      cell: (row) => (
+        <span className="text-muted-foreground">
+          {row.opened_at ? new Date(row.opened_at).toLocaleString() : "-"}
+        </span>
+      ),
+      sortable: true,
+      sortValue: (row) => row.opened_at ? new Date(row.opened_at).getTime() : 0,
+    },
+    {
+      id: "clicked_at",
+      header: "Clicked",
+      cell: (row) => (
+        <span className="text-muted-foreground">
+          {row.clicked_at ? new Date(row.clicked_at).toLocaleString() : "-"}
+        </span>
+      ),
+      sortable: true,
+      sortValue: (row) => row.clicked_at ? new Date(row.clicked_at).getTime() : 0,
+    },
+  ];
 
   const handleSend = async () => {
     if (confirm("Are you sure you want to send this campaign now?")) {
@@ -430,56 +486,21 @@ export default function CampaignDetailPage() {
           )}
 
           {activeTab === "recipients" && (
-            <div className="bg-background/50 border border-border rounded-xl overflow-hidden overflow-x-auto">
-              <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                 <h3 className="text-lg font-medium text-foreground">Recipients</h3>
                 <span className="text-sm text-muted-foreground">
                   {recipientsData?.total || 0} total
                 </span>
               </div>
-              {recipientsLoading ? (
-                <div className="p-8 text-center">
-                  <Loader2 className="h-6 w-6 text-muted-foreground animate-spin mx-auto" />
-                </div>
-              ) : !recipientsData?.items?.length ? (
-                <div className="p-8 text-center">
-                  <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground">No recipients yet</p>
-                </div>
-              ) : (
-                <table className="w-full min-w-[600px]">
-                  <thead className="border-b border-border">
-                    <tr className="text-left text-sm text-muted-foreground">
-                      <th className="px-4 py-3 font-medium">Email</th>
-                      <th className="px-4 py-3 font-medium">Status</th>
-                      <th className="px-4 py-3 font-medium">Sent At</th>
-                      <th className="px-4 py-3 font-medium">Opened</th>
-                      <th className="px-4 py-3 font-medium">Clicked</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {recipientsData.items.map((recipient) => (
-                      <tr key={recipient.id} className="hover:bg-muted/50">
-                        <td className="px-4 py-3 text-foreground">{recipient.email}</td>
-                        <td className="px-4 py-3">
-                          <span className={`capitalize ${getRecipientStatusColor(recipient.status)}`}>
-                            {recipient.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {recipient.sent_at ? new Date(recipient.sent_at).toLocaleString() : "-"}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {recipient.opened_at ? new Date(recipient.opened_at).toLocaleString() : "-"}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {recipient.clicked_at ? new Date(recipient.clicked_at).toLocaleString() : "-"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+              <DataTable<CampaignRecipient>
+                columns={recipientColumns}
+                data={recipientsData?.items || []}
+                rowKey={(row) => row.id}
+                isLoading={recipientsLoading}
+                emptyIcon={<Users className="h-10 w-10" />}
+                emptyTitle="No recipients yet"
+              />
             </div>
           )}
 

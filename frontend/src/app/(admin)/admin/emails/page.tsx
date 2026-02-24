@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Mail,
@@ -11,12 +11,11 @@ import {
   RefreshCw,
   Search,
   Filter,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { useAdminEmailLogs, useResendEmail } from "@/hooks/useAdmin";
-import { formatDistanceToNow, format } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { AdminEmailLog } from "@/lib/api";
+import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 
 function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { color: string; icon: React.ElementType }> = {
@@ -34,65 +33,6 @@ function StatusBadge({ status }: { status: string }) {
       <Icon className="h-3 w-3" />
       {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
-  );
-}
-
-function EmailRow({
-  email,
-  onResend,
-  isResending,
-}: {
-  email: AdminEmailLog;
-  onResend: (id: string) => void;
-  isResending: boolean;
-}) {
-  const canResend = email.status === "failed" || email.status === "bounced";
-
-  return (
-    <tr className="border-b border-border hover:bg-muted/50">
-      <td className="px-4 py-3">
-        <div>
-          <p className="text-foreground">{email.recipient_email}</p>
-          {email.workspace_name && (
-            <p className="text-muted-foreground text-xs">{email.workspace_name}</p>
-          )}
-        </div>
-      </td>
-      <td className="px-4 py-3">
-        <p className="text-foreground max-w-xs truncate">{email.subject}</p>
-      </td>
-      <td className="px-4 py-3">
-        <StatusBadge status={email.status} />
-      </td>
-      <td className="px-4 py-3">
-        {email.template_name ? (
-          <span className="text-muted-foreground text-sm">{email.template_name}</span>
-        ) : (
-          <span className="text-muted-foreground text-sm">-</span>
-        )}
-      </td>
-      <td className="px-4 py-3">
-        <span className="text-muted-foreground text-sm" title={email.created_at}>
-          {formatDistanceToNow(new Date(email.created_at), { addSuffix: true })}
-        </span>
-      </td>
-      <td className="px-4 py-3">
-        {canResend && (
-          <button
-            onClick={() => onResend(email.id)}
-            disabled={isResending}
-            className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300 disabled:opacity-50"
-          >
-            {isResending ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <RefreshCw className="h-3 w-3" />
-            )}
-            Resend
-          </button>
-        )}
-      </td>
-    </tr>
   );
 }
 
@@ -140,14 +80,101 @@ export default function AdminEmailsPage() {
     router.push(`/admin/emails?${params.toString()}`);
   };
 
-  const handleResend = async (emailId: string) => {
-    try {
-      await resendMutation.mutateAsync(emailId);
-      refetch();
-    } catch (err) {
-      console.error("Failed to resend email:", err);
-    }
-  };
+  const handleResend = useCallback(
+    async (emailId: string) => {
+      try {
+        await resendMutation.mutateAsync(emailId);
+        refetch();
+      } catch (err) {
+        console.error("Failed to resend email:", err);
+      }
+    },
+    [resendMutation, refetch]
+  );
+
+  const columns: DataTableColumn<AdminEmailLog>[] = useMemo(
+    () => [
+      {
+        id: "recipient",
+        header: "Recipient",
+        sortable: true,
+        sortValue: (row) => row.recipient_email,
+        cell: (row) => (
+          <div>
+            <p className="text-foreground">{row.recipient_email}</p>
+            {row.workspace_name && (
+              <p className="text-muted-foreground text-xs">{row.workspace_name}</p>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: "subject",
+        header: "Subject",
+        sortable: true,
+        sortValue: (row) => row.subject,
+        cell: (row) => (
+          <p className="text-foreground max-w-xs truncate">{row.subject}</p>
+        ),
+      },
+      {
+        id: "status",
+        header: "Status",
+        sortable: true,
+        sortValue: (row) => row.status,
+        cell: (row) => <StatusBadge status={row.status} />,
+      },
+      {
+        id: "template",
+        header: "Template",
+        sortable: true,
+        sortValue: (row) => row.template_name || "",
+        cell: (row) =>
+          row.template_name ? (
+            <span className="text-muted-foreground text-sm">{row.template_name}</span>
+          ) : (
+            <span className="text-muted-foreground text-sm">-</span>
+          ),
+      },
+      {
+        id: "sent",
+        header: "Sent",
+        sortable: true,
+        sortValue: (row) => new Date(row.created_at).getTime(),
+        cell: (row) => (
+          <span className="text-muted-foreground text-sm" title={row.created_at}>
+            {formatDistanceToNow(new Date(row.created_at), { addSuffix: true })}
+          </span>
+        ),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: (row) => {
+          const canResend = row.status === "failed" || row.status === "bounced";
+          if (!canResend) return null;
+          return (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleResend(row.id);
+              }}
+              disabled={resendMutation.isPending}
+              className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300 disabled:opacity-50"
+            >
+              {resendMutation.isPending ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3 w-3" />
+              )}
+              Resend
+            </button>
+          );
+        },
+      },
+    ],
+    [resendMutation.isPending, handleResend]
+  );
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -201,87 +228,31 @@ export default function AdminEmailsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-muted rounded-xl border border-border overflow-hidden">
-        {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-          </div>
-        ) : error ? (
+      {error ? (
+        <div className="bg-muted rounded-xl border border-border overflow-hidden">
           <div className="flex items-center justify-center h-64 text-red-400">
             <AlertCircle className="h-5 w-5 mr-2" />
             Failed to load email logs
           </div>
-        ) : data?.items?.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-            <Mail className="h-12 w-12 mb-3 text-muted-foreground" />
-            <p>No email logs found</p>
-            {(search || statusFilter) && (
-              <button
-                onClick={() => {
-                  setSearch("");
-                  setStatusFilter("");
-                  router.push("/admin/emails");
-                }}
-                className="mt-2 text-blue-400 hover:underline"
-              >
-                Clear filters
-              </button>
-            )}
-          </div>
-        ) : (
-          <>
-            <table className="w-full">
-              <thead className="bg-background/50">
-                <tr className="text-left text-muted-foreground text-sm">
-                  <th className="px-4 py-3 font-medium">Recipient</th>
-                  <th className="px-4 py-3 font-medium">Subject</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Template</th>
-                  <th className="px-4 py-3 font-medium">Sent</th>
-                  <th className="px-4 py-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data?.items?.map((email) => (
-                  <EmailRow
-                    key={email.id}
-                    email={email}
-                    onResend={handleResend}
-                    isResending={resendMutation.isPending}
-                  />
-                ))}
-              </tbody>
-            </table>
-
-            {/* Pagination */}
-            {data && data.total > 25 && (
-              <div className="px-4 py-3 border-t border-border flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">
-                  Showing {(page - 1) * 25 + 1} - {Math.min(page * 25, data.total)} of{" "}
-                  {data.total} emails
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    className="p-2 rounded-lg bg-accent text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <span className="text-foreground px-3">Page {page}</span>
-                  <button
-                    onClick={() => setPage((p) => p + 1)}
-                    disabled={!data.has_next}
-                    className="p-2 rounded-lg bg-accent text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+        </div>
+      ) : (
+        <DataTable<AdminEmailLog>
+          columns={columns}
+          data={data?.items ?? []}
+          rowKey={(row) => row.id}
+          isLoading={isLoading}
+          skeletonRows={10}
+          emptyIcon={<Mail className="h-12 w-12" />}
+          emptyTitle="No email logs found"
+          emptyDescription={
+            search || statusFilter ? "Try adjusting your search or filters" : undefined
+          }
+          currentPage={page}
+          totalPages={data ? Math.ceil(data.total / 25) : 1}
+          totalItems={data?.total}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }
