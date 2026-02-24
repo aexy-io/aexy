@@ -160,24 +160,24 @@ class SprintAnalyticsService:
             existing.ideal_burndown = ideal_burndown
             existing.actual_burndown = stats["remaining_points"]
             await self.db.flush()
-            return existing
-
-        metrics = SprintMetrics(
-            id=str(uuid4()),
-            sprint_id=sprint_id,
-            snapshot_date=today,
-            total_points=stats["total_points"],
-            completed_points=stats["completed_points"],
-            remaining_points=stats["remaining_points"],
-            total_tasks=stats["total_tasks"],
-            completed_tasks=stats["completed_tasks"],
-            in_progress_tasks=stats["in_progress_tasks"],
-            blocked_tasks=0,
-            ideal_burndown=ideal_burndown,
-            actual_burndown=stats["remaining_points"],
-        )
-        self.db.add(metrics)
-        await self.db.flush()
+            metrics = existing
+        else:
+            metrics = SprintMetrics(
+                id=str(uuid4()),
+                sprint_id=sprint_id,
+                snapshot_date=today,
+                total_points=stats["total_points"],
+                completed_points=stats["completed_points"],
+                remaining_points=stats["remaining_points"],
+                total_tasks=stats["total_tasks"],
+                completed_tasks=stats["completed_tasks"],
+                in_progress_tasks=stats["in_progress_tasks"],
+                blocked_tasks=0,
+                ideal_burndown=ideal_burndown,
+                actual_burndown=stats["remaining_points"],
+            )
+            self.db.add(metrics)
+            await self.db.flush()
 
         # Check if burndown is significantly off track (actual > ideal by 20%+)
         if ideal_burndown > 0 and stats["total_points"] > 0:

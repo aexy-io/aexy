@@ -52,8 +52,12 @@ export function useBookingWebhooks(workspaceId: string | null) {
   const testMutation = useMutation({
     mutationFn: (webhookId: string) =>
       webhooksApi.testBookingWebhook(workspaceId!, webhookId),
-    onSuccess: () => {
-      toast.success("Webhook test successful");
+    onSuccess: (result: WebhookTestResult) => {
+      if (result.success) {
+        toast.success("Webhook test successful");
+      } else {
+        toast.error(result.error || "Webhook endpoint returned an error");
+      }
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : "Webhook test failed");

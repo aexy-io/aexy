@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Zap,
@@ -128,9 +129,16 @@ export function ModuleAutomationsPanel({
     router.push(`/automations?module=${module}`);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Delete this automation?")) {
-      await deleteAutomation(id);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  const handleDelete = (id: string) => {
+    setPendingDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (pendingDeleteId) {
+      await deleteAutomation(pendingDeleteId);
+      setPendingDeleteId(null);
     }
   };
 
@@ -297,6 +305,30 @@ export function ModuleAutomationsPanel({
             ))}
           </div>
         </>
+      )}
+
+      {/* Delete confirmation */}
+      {pendingDeleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-xl p-5 max-w-sm mx-4 shadow-xl" role="dialog" aria-modal="true" aria-label="Confirm delete">
+            <h3 className="text-sm font-semibold text-foreground mb-2">Delete automation?</h3>
+            <p className="text-sm text-muted-foreground mb-4">This action cannot be undone.</p>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setPendingDeleteId(null)}
+                className="px-3 py-1.5 text-sm text-foreground bg-accent rounded-lg hover:bg-accent/80 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-3 py-1.5 text-sm text-white bg-red-500 rounded-lg hover:bg-red-600 transition"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -504,11 +504,11 @@ export default function WebhooksSettingsPage() {
                 {webhooks.length} webhook{webhooks.length !== 1 ? "s" : ""}
               </p>
             </div>
-            {webhooks.map((webhook) => (
+            {currentWorkspaceId && webhooks.map((webhook) => (
               <WebhookRow
                 key={webhook.id}
                 webhook={webhook}
-                workspaceId={currentWorkspaceId!}
+                workspaceId={currentWorkspaceId}
                 onTest={handleTest}
                 onDelete={handleDelete}
                 onToggle={handleToggle}

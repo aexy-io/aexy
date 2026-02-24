@@ -128,6 +128,10 @@ export function DataTable<T>({
                         col.headerClassName
                       )}
                       onClick={isSortable ? () => handleSort(col.id) : undefined}
+                      onKeyDown={isSortable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleSort(col.id); } } : undefined}
+                      tabIndex={isSortable ? 0 : undefined}
+                      role={isSortable ? "button" : undefined}
+                      aria-sort={isSorted ? (sortDirection === "asc" ? "ascending" : "descending") : isSortable ? "none" : undefined}
                     >
                       <span className="flex items-center gap-1">
                         {col.header}
@@ -189,10 +193,13 @@ export function DataTable<T>({
                   <tr
                     key={rowKey(row)}
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
+                    onKeyDown={onRowClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onRowClick(row); } } : undefined}
+                    tabIndex={onRowClick ? 0 : undefined}
+                    role={onRowClick ? "button" : undefined}
                     className={cn(
                       "transition-colors",
                       onRowClick
-                        ? "cursor-pointer hover:bg-accent/50"
+                        ? "cursor-pointer hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:outline-none"
                         : "hover:bg-muted/30"
                     )}
                   >

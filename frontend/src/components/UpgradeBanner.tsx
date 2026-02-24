@@ -74,7 +74,16 @@ export function UpgradeBanner({
   compact = false,
 }: UpgradeBannerProps) {
   const { isFree, isLoading } = useSubscription();
-  const [dismissed, setDismissed] = useState(false);
+  const storageKey = `upgrade_banner_dismissed_${trigger}`;
+  const [dismissed, setDismissed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(storageKey) === "true";
+  });
+
+  const handleDismiss = () => {
+    setDismissed(true);
+    localStorage.setItem(storageKey, "true");
+  };
 
   // Only show to free-tier users
   if (isLoading || !isFree || dismissed) return null;
@@ -104,7 +113,8 @@ export function UpgradeBanner({
         </Link>
         {dismissible && (
           <button
-            onClick={() => setDismissed(true)}
+            onClick={handleDismiss}
+            aria-label="Dismiss banner"
             className="text-muted-foreground hover:text-foreground transition p-0.5"
           >
             <X className="h-3.5 w-3.5" />
@@ -118,7 +128,8 @@ export function UpgradeBanner({
     <div className="relative bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/20 rounded-xl p-5">
       {dismissible && (
         <button
-          onClick={() => setDismissed(true)}
+          onClick={handleDismiss}
+          aria-label="Dismiss banner"
           className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition"
         >
           <X className="h-4 w-4" />

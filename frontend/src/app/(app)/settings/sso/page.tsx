@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   ShieldCheck,
   Crown,
@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useSubscription } from "@/hooks/useSubscription";
-import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 import {
   ssoApi,
   SSOConfiguration,
@@ -339,7 +339,6 @@ function ConfigureForm({
 export default function SSOSettingsPage() {
   const { currentWorkspace } = useWorkspace();
   const { isEnterprise } = useSubscription();
-  const { user } = useAuth();
   const workspaceId = currentWorkspace?.id;
 
   const [config, setConfig] = useState<SSOConfiguration | null>(null);
@@ -350,21 +349,23 @@ export default function SSOSettingsPage() {
   const [deleting, setDeleting] = useState(false);
   const [toggling, setToggling] = useState(false);
 
-  useEffect(() => {
-    if (!workspaceId) return;
-    loadConfig();
-  }, [workspaceId]);
-
-  const loadConfig = async () => {
+  const loadConfig = useCallback(async () => {
     if (!workspaceId) return;
     setLoading(true);
     try {
       const data = await ssoApi.getConfiguration(workspaceId);
       setConfig(data);
+    } catch {
+      toast.error("Failed to load SSO configuration");
     } finally {
       setLoading(false);
     }
-  };
+  }, [workspaceId]);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    loadConfig();
+  }, [workspaceId, loadConfig]);
 
   const handleSave = async (data: SSOConfigurationCreate) => {
     if (!workspaceId) return;
@@ -401,6 +402,8 @@ export default function SSOSettingsPage() {
           ? await ssoApi.deactivateConfiguration(workspaceId)
           : await ssoApi.activateConfiguration(workspaceId);
       setConfig(updated);
+    } catch {
+      toast.error("Failed to toggle SSO configuration");
     } finally {
       setToggling(false);
     }
@@ -413,6 +416,9 @@ export default function SSOSettingsPage() {
       await ssoApi.deleteConfiguration(workspaceId);
       setConfig(null);
       setShowForm(false);
+      toast.success("SSO configuration deleted");
+    } catch {
+      toast.error("Failed to delete SSO configuration");
     } finally {
       setDeleting(false);
     }
