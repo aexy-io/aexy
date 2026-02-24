@@ -226,7 +226,7 @@ export default function StandupsPage() {
                 Your standup history and submissions
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               {/* Team View Link */}
               {canViewTeamStandups && (
                 <button
@@ -290,7 +290,7 @@ export default function StandupsPage() {
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <MetricCard
             title="Total Standups"
             value={stats.total}
@@ -372,7 +372,7 @@ export default function StandupsPage() {
           />
 
           {/* Date Range & Export */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <DateRangePicker
               value={dateRange}
               onChange={setDateRange}

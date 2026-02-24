@@ -169,7 +169,7 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
 
             {/* App Switcher Dropdown */}
             {showAppSwitcher && (
-              <div className="absolute right-0 mt-2 w-72 bg-background/95 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl shadow-black/40 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="absolute right-0 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-background/95 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl shadow-black/40 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="p-2">
                   <div className="grid grid-cols-3 gap-1">
                     {appItems.map(({ href, label, icon: Icon, color }) => (
@@ -245,7 +245,7 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
 
             {/* Tracking Dropdown */}
             {showTrackingMenu && (
-              <div className="absolute right-0 mt-2 w-64 bg-background/95 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl shadow-black/40 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-2rem)] bg-background/95 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl shadow-black/40 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="p-3 border-b border-border/50">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-foreground">Today&apos;s Status</span>
@@ -421,7 +421,7 @@ export function AppHeader({ user, logout }: AppHeaderProps) {
 
             {/* Dropdown Menu */}
             {showUserMenu && (
-              <div className="absolute right-0 mt-2 w-56 bg-background border border-border rounded-xl shadow-xl shadow-black/20 overflow-hidden">
+              <div className="absolute right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] bg-background border border-border rounded-xl shadow-xl shadow-black/20 overflow-hidden">
                 <div className="p-3 border-b border-border">
                   <p className="text-sm font-medium text-foreground">{user?.name}</p>
                   <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
