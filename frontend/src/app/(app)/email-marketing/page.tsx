@@ -20,6 +20,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
 import {
   useEmailCampaigns,
   useEmailTemplates,
@@ -31,7 +32,7 @@ import {
 } from "@/hooks/useEmailMarketing";
 
 export default function EmailMarketingPage() {
-  const [activeTab, setActiveTab] = useState<"campaigns" | "templates" | "analytics" | "infrastructure">("campaigns");
+  const [activeTab, setActiveTab] = useState<"campaigns" | "templates" | "analytics" | "infrastructure" | "automations">("campaigns");
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
 
@@ -179,6 +180,7 @@ export default function EmailMarketingPage() {
             { id: "templates", label: "Templates", icon: Palette },
             { id: "analytics", label: "Analytics", icon: BarChart3 },
             { id: "infrastructure", label: "Infrastructure", icon: Globe },
+            { id: "automations", label: "Automations", icon: Zap },
           ].map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -533,6 +535,10 @@ export default function EmailMarketingPage() {
               )}
             </div>
           </div>
+        )}
+
+        {activeTab === "automations" && (
+          <ModuleAutomationsPanel module="email_marketing" moduleLabel="Email Marketing" />
         )}
       </div>
     </div>

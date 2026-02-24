@@ -19,6 +19,7 @@ import {
   Plus,
 } from "lucide-react";
 import { IndividualTrackingDashboard } from "@/components/tracking";
+import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
 import {
   MetricCard,
   metricPresets,
@@ -342,6 +343,9 @@ export default function TrackingPage() {
                   emptyMessage="No recent activity. Start by submitting a standup!"
                 />
               )}
+            </div>
+            <div className="mt-4">
+              <ModuleAutomationsPanel module="tracking" moduleLabel="Tracking" compact />
             </div>
           </div>
         </div>
