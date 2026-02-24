@@ -1,6 +1,7 @@
 "use client";
 
 import { Info } from "lucide-react";
+import { HelpTooltip } from "@/components/ui/tooltip";
 import { ConfidenceSlider, WorkingHoursConfigPanel } from "@/components/agents/shared";
 import { WorkingHoursConfig } from "@/lib/api";
 
@@ -55,7 +56,10 @@ export function BehaviorStep({
             className="w-5 h-5 mt-0.5 rounded border-border bg-accent text-purple-500 focus:ring-purple-500"
           />
           <div>
-            <div className="font-medium text-foreground">Enable Auto-Response</div>
+            <div className="font-medium text-foreground flex items-center gap-1.5">
+              Enable Auto-Response
+              <HelpTooltip content="When enabled, the agent responds automatically without human review when confidence exceeds the threshold" />
+            </div>
             <p className="text-sm text-muted-foreground mt-1">
               When enabled, the agent will automatically respond to messages above
               the confidence threshold. Disable to require approval for all responses.
@@ -72,6 +76,7 @@ export function BehaviorStep({
           value={confidenceThreshold}
           onChange={onConfidenceThresholdChange}
           label="Minimum Confidence to Respond"
+          tooltip="Minimum confidence score (0-100%) required for the agent to take action. Lower values make the agent more aggressive"
           description="Agent will only take action if confidence is above this threshold"
         />
 
@@ -79,6 +84,7 @@ export function BehaviorStep({
           value={requireApprovalBelow}
           onChange={onRequireApprovalBelowChange}
           label="Require Approval Below"
+          tooltip="Responses with confidence below this threshold are queued for human review before sending"
           description="Responses below this confidence level will require human approval"
         />
 
@@ -97,9 +103,12 @@ export function BehaviorStep({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Max Daily Responses
-            </label>
+            <div className="flex items-center gap-1.5 mb-2">
+              <label className="text-sm font-medium text-foreground">
+                Max Daily Responses
+              </label>
+              <HelpTooltip content="Hard limit on automatic responses per day. Prevents runaway automation costs" />
+            </div>
             <input
               type="number"
               value={maxDailyResponses}
@@ -114,9 +123,12 @@ export function BehaviorStep({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Response Delay (minutes)
-            </label>
+            <div className="flex items-center gap-1.5 mb-2">
+              <label className="text-sm font-medium text-foreground">
+                Response Delay (minutes)
+              </label>
+              <HelpTooltip content="Wait time in seconds before sending a response. Allows time for review or cancellation" />
+            </div>
             <input
               type="number"
               value={responseDelayMinutes}
