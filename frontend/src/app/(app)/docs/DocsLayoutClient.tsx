@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { NotionSidebar } from "@/components/docs/sidebar";
@@ -32,31 +32,11 @@ export default function DocsLayoutClient({
   const [showSearch, setShowSearch] = useState(false);
   const [showInbox, setShowInbox] = useState(false);
 
-  // Scroll-aware header state
-  const [showHeader, setShowHeader] = useState(true);
-  const lastScrollY = useRef(0);
   const contentRef = useRef<HTMLDivElement>(null);
 
   // Handle hydration
   useEffect(() => {
     setMounted(true);
-  }, []);
-
-  // Handle scroll to show/hide header
-  const handleScroll = useCallback(() => {
-    if (!contentRef.current) return;
-
-    const currentScrollY = contentRef.current.scrollTop;
-    const scrollDelta = currentScrollY - lastScrollY.current;
-
-    // Show header when scrolling up, hide when scrolling down
-    if (scrollDelta > 10 && currentScrollY > 80) {
-      setShowHeader(false);
-    } else if (scrollDelta < -10 || currentScrollY < 80) {
-      setShowHeader(true);
-    }
-
-    lastScrollY.current = currentScrollY;
   }, []);
 
   // Global keyboard shortcut for search
@@ -149,15 +129,7 @@ export default function DocsLayoutClient({
   }
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
-      {/* Scroll-aware Header */}
-      <div
-        className={`flex-shrink-0 z-30 transition-all duration-300 ${
-          showHeader ? "h-16 opacity-100" : "h-0 opacity-0 overflow-hidden"
-        }`}
-      >
-</div>
-
+    <div className="h-screen bg-background flex overflow-hidden">
       {/* Main Layout */}
       <div className="flex flex-1 min-h-0">
         {/* Notion-style Sidebar */}
@@ -174,7 +146,6 @@ export default function DocsLayoutClient({
         {/* Main Content */}
         <div
           ref={contentRef}
-          onScroll={handleScroll}
           className="flex-1 overflow-y-auto"
         >
           {children}
