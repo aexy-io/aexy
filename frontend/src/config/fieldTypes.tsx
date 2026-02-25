@@ -12,6 +12,7 @@ import {
   Star,
   ToggleLeft,
   Columns,
+  Paperclip,
 } from "lucide-react";
 import type { CRMAttributeType } from "@/lib/api";
 
@@ -37,6 +38,7 @@ export const FIELD_TYPE_OPTIONS: FieldTypeOption[] = [
   { type: "phone", label: "Phone", icon: <Phone className="h-4 w-4" />, description: "Phone number" },
   { type: "url", label: "URL", icon: <Link2 className="h-4 w-4" />, description: "Web link" },
   { type: "rating", label: "Rating", icon: <Star className="h-4 w-4" />, description: "Star rating" },
+  { type: "file" as CRMAttributeType, label: "File", icon: <Paperclip className="h-4 w-4" />, description: "File attachment URL" },
 ];
 
 export function getFieldTypeOption(type: string): FieldTypeOption | undefined {
