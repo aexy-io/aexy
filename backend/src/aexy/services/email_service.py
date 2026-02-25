@@ -148,14 +148,19 @@ class EmailService:
         action_text: str = "View Details",
     ) -> str:
         """Create a simple HTML email template."""
+        safe_title = html.escape(title)
+        safe_body = body  # body may contain <br> from .replace("\n", "<br>"), escape before that
+        safe_action_text = html.escape(action_text)
+
         button_html = ""
         if action_url:
+            safe_url = html.escape(action_url, quote=True)
             button_html = f"""
             <div style="text-align: center; margin: 30px 0;">
-                <a href="{action_url}"
+                <a href="{safe_url}"
                    style="background-color: #0891b2; color: white; padding: 12px 24px;
                           text-decoration: none; border-radius: 6px; font-weight: 500;">
-                    {action_text}
+                    {safe_action_text}
                 </a>
             </div>
             """
@@ -178,8 +183,8 @@ class EmailService:
 
                 <!-- Content -->
                 <div style="padding: 30px;">
-                    <h2 style="color: #1f2937; margin: 0 0 15px 0; font-size: 20px;">{title}</h2>
-                    <p style="color: #4b5563; line-height: 1.6; margin: 0 0 20px 0;">{body}</p>
+                    <h2 style="color: #1f2937; margin: 0 0 15px 0; font-size: 20px;">{safe_title}</h2>
+                    <p style="color: #4b5563; line-height: 1.6; margin: 0 0 20px 0;">{safe_body}</p>
                     {button_html}
                 </div>
 

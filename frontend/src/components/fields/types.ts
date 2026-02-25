@@ -39,12 +39,61 @@ export type FieldSurface =
   | "kanban_card";
 
 /**
+ * Conditional formatting rule — evaluated top-to-bottom, first match wins.
+ */
+export interface ConditionalFormatRule {
+  operator:
+    | "equals"
+    | "not_equals"
+    | "gt"
+    | "lt"
+    | "gte"
+    | "lte"
+    | "contains"
+    | "is_empty"
+    | "is_not_empty";
+  value?: unknown;
+  style: {
+    bgColor?: string;
+    textColor?: string;
+    fontWeight?: "normal" | "bold";
+    icon?: string;
+  };
+}
+
+/**
+ * Per-field display configuration — stored in saved view column config.
+ * Different views of the same table can display the same field differently.
+ */
+export interface FieldDisplayConfig {
+  /** Override display variant (e.g., 'progress_bar', 'pill', 'relative') */
+  variant?: string;
+  /** Column width in table view (pixels) */
+  width?: number;
+  /** Conditional formatting rules */
+  conditionalFormat?: ConditionalFormatRule[];
+  /** Number/currency: show +/- sign */
+  showSign?: boolean;
+  /** Number/currency: abbreviate large numbers (1.2M) */
+  abbreviate?: boolean;
+  /** Date: override format */
+  dateFormat?: string;
+  /** Rating: override icon */
+  ratingIcon?: string;
+  /** Rating: override max */
+  maxRating?: number;
+  /** Select: override option colors */
+  colorMap?: Record<string, string>;
+}
+
+/**
  * Props passed to every field view (display) component.
  */
 export interface FieldViewProps {
   value: unknown;
   config: AttributeConfig;
   surface: FieldSurface;
+  displayConfig?: FieldDisplayConfig;
 }
 
 /**
@@ -61,6 +110,15 @@ export interface FieldEditProps {
 }
 
 /**
+ * A display variant definition for a field type.
+ */
+export interface DisplayVariant {
+  id: string;
+  label: string;
+  description?: string;
+}
+
+/**
  * A registered field type definition.
  */
 export interface FieldTypeDefinition {
@@ -70,4 +128,8 @@ export interface FieldTypeDefinition {
   view: React.ComponentType<FieldViewProps>;
   /** React component for editing the value */
   edit: React.ComponentType<FieldEditProps>;
+  /** Supported display variants for this field type */
+  variants?: DisplayVariant[];
+  /** Default variant per surface */
+  defaultVariant?: Partial<Record<FieldSurface, string>>;
 }

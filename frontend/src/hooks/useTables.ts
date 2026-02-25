@@ -9,6 +9,8 @@ import {
   TableRecord,
   TableCollaborator,
   TableAccess,
+  TableSavedView,
+  ColumnDisplayConfig,
   TableVisibility,
   TableRowAccessMode,
   TablePermission,
@@ -323,5 +325,83 @@ export function useTableCollaborators(workspaceId: string | null, tableId: strin
     addCollaborator: addMutation.mutateAsync,
     updateCollaborator: updateMutation.mutateAsync,
     removeCollaborator: removeMutation.mutateAsync,
+  };
+}
+
+// ==================== Saved Views Hook ====================
+
+export function useSavedViews(workspaceId: string | null, tableId: string | null) {
+  const queryClient = useQueryClient();
+
+  const { data: views, isLoading, error } = useQuery<TableSavedView[]>({
+    queryKey: ["tableViews", workspaceId, tableId],
+    queryFn: () => tablesApi.views.list(workspaceId!, tableId!),
+    enabled: !!workspaceId && !!tableId,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: {
+      name: string;
+      view_type?: "table" | "board" | "gallery" | "timeline";
+      filters?: Record<string, unknown>[];
+      sorts?: Record<string, unknown>[];
+      visible_attributes?: string[];
+      column_config?: ColumnDisplayConfig[];
+      group_by_attribute?: string;
+      is_private?: boolean;
+    }) => tablesApi.views.create(workspaceId!, tableId!, data),
+    onSuccess: () => {
+      toast.success("View saved");
+      queryClient.invalidateQueries({ queryKey: ["tableViews", workspaceId, tableId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to save view");
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ viewId, data }: {
+      viewId: string;
+      data: Partial<{
+        name: string;
+        view_type: "table" | "board" | "gallery" | "timeline";
+        filters: Record<string, unknown>[];
+        sorts: Record<string, unknown>[];
+        visible_attributes: string[];
+        column_config: ColumnDisplayConfig[];
+        group_by_attribute: string;
+        is_private: boolean;
+      }>;
+    }) => tablesApi.views.update(workspaceId!, tableId!, viewId, data),
+    onSuccess: () => {
+      toast.success("View updated");
+      queryClient.invalidateQueries({ queryKey: ["tableViews", workspaceId, tableId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update view");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (viewId: string) => tablesApi.views.delete(workspaceId!, tableId!, viewId),
+    onSuccess: () => {
+      toast.success("View deleted");
+      queryClient.invalidateQueries({ queryKey: ["tableViews", workspaceId, tableId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to delete view");
+    },
+  });
+
+  return {
+    views: views || [],
+    isLoading,
+    error,
+    createView: createMutation.mutateAsync,
+    updateView: updateMutation.mutateAsync,
+    deleteView: deleteMutation.mutateAsync,
+    isCreating: createMutation.isPending,
+    isUpdating: updateMutation.isPending,
+    isDeleting: deleteMutation.isPending,
   };
 }

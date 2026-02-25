@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   Plus,
@@ -17,14 +17,15 @@ import {
 import { SearchInput } from "@/components/ui/search-input";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { useTables, useTableFields, useTableRecords, useTableAccess } from "@/hooks/useTables";
+import { useTables, useTableFields, useTableRecords, useTableAccess, useSavedViews } from "@/hooks/useTables";
 import { DataTable } from "@/components/crm/DataTable";
 import { ViewSwitcher, ViewMode } from "@/components/crm/ViewSwitcher";
+import { SavedViewSwitcher } from "@/components/crm/SavedViewSwitcher";
 import { KanbanBoard } from "@/components/crm/KanbanBoard";
 import { ColumnVisibilityMenu } from "@/components/crm/ColumnSelector";
 import { FieldEditor } from "@/components/fields";
 import { FIELD_TYPE_OPTIONS, getFieldTypeOption } from "@/config/fieldTypes";
-import type { CRMAttribute, CRMRecord, CRMAttributeType } from "@/lib/api";
+import type { CRMAttribute, CRMRecord, CRMAttributeType, TableSavedView, ColumnDisplayConfig } from "@/lib/api";
 
 function AddFieldPanel({
   onAdd,
@@ -370,6 +371,18 @@ export default function TableDetailPage() {
   const { fields, isLoading: fieldsLoading, addField, deleteField, isAdding } = useTableFields(workspaceId, tableId);
   const { access } = useTableAccess(workspaceId, tableId);
 
+  // Saved views
+  const {
+    views: savedViews,
+    createView,
+    updateView,
+    deleteView: deleteViewMutation,
+    isCreating: isCreatingView,
+    isUpdating: isUpdatingView,
+  } = useSavedViews(workspaceId, tableId);
+  const [activeViewId, setActiveViewId] = useState<string | null>(null);
+  const [columnDisplayConfig, setColumnDisplayConfig] = useState<ColumnDisplayConfig[]>([]);
+
   const [showAddField, setShowAddField] = useState(false);
   const [showFieldManager, setShowFieldManager] = useState(false);
 
@@ -542,6 +555,54 @@ export default function TableDetailPage() {
     );
   };
 
+  // Saved view handlers
+  const handleSelectView = useCallback((view: TableSavedView | null) => {
+    if (!view) {
+      setActiveViewId(null);
+      if (fields.length > 0) {
+        setVisibleColumns(fields.map((f) => f.slug).slice(0, 6));
+        setColumnOrder(fields.map((f) => f.slug));
+      }
+      setSortConfig(null);
+      setColumnDisplayConfig([]);
+      return;
+    }
+    setActiveViewId(view.id);
+    if (view.visible_attributes?.length) {
+      setVisibleColumns(view.visible_attributes);
+    }
+    if (view.column_config?.length) {
+      setColumnDisplayConfig(view.column_config);
+    } else {
+      setColumnDisplayConfig([]);
+    }
+    if (view.sorts?.length) {
+      const first = view.sorts[0] as { attribute?: string; direction?: "asc" | "desc" };
+      if (first.attribute) {
+        setSortConfig({ attribute: first.attribute, direction: first.direction || "asc" });
+      }
+    } else {
+      setSortConfig(null);
+    }
+    if (view.view_type === "board" || view.view_type === "table") {
+      setViewMode(view.view_type as ViewMode);
+    }
+  }, [fields]);
+
+  const handleSaveView = useCallback(async (data: Parameters<typeof createView>[0]) => {
+    const view = await createView(data);
+    setActiveViewId(view.id);
+  }, [createView]);
+
+  const handleUpdateView = useCallback(async (viewId: string, data: Parameters<typeof updateView>[0]["data"]) => {
+    await updateView({ viewId, data });
+  }, [updateView]);
+
+  const handleDeleteView = useCallback(async (viewId: string) => {
+    await deleteViewMutation(viewId);
+    if (activeViewId === viewId) setActiveViewId(null);
+  }, [deleteViewMutation, activeViewId]);
+
   const availableViews: ViewMode[] = hasStatusField ? ["table", "board"] : ["table"];
 
   return (
@@ -579,6 +640,23 @@ export default function TableDetailPage() {
               </div>
             </div>
             <div className="flex-1" />
+
+            <SavedViewSwitcher
+              views={savedViews}
+              activeViewId={activeViewId}
+              onSelectView={handleSelectView}
+              onSaveView={handleSaveView}
+              onUpdateView={handleUpdateView}
+              onDeleteView={handleDeleteView}
+              currentConfig={{
+                visible_attributes: visibleColumns,
+                column_config: columnDisplayConfig,
+                sorts: sortConfig ? [{ attribute: sortConfig.attribute, direction: sortConfig.direction }] : [],
+                view_type: viewMode as "table" | "board",
+              }}
+              isCreating={isCreatingView}
+              isUpdating={isUpdatingView}
+            />
 
             <ViewSwitcher value={viewMode} onChange={setViewMode} availableViews={availableViews} />
 
@@ -709,6 +787,8 @@ export default function TableDetailPage() {
                 onVisibleColumnsChange={setVisibleColumns}
                 columnOrder={columnOrder}
                 onColumnOrderChange={setColumnOrder}
+                columnDisplayConfig={columnDisplayConfig}
+                onColumnDisplayConfigChange={setColumnDisplayConfig}
                 sortConfig={sortConfig}
                 onSort={handleSort}
                 selectedRecords={selectedRecords}

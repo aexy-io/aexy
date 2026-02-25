@@ -2,12 +2,53 @@
 
 import { Node, mergeAttributes } from "@tiptap/core";
 import { ReactNodeViewRenderer, NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
-import { useState, useMemo, useEffect } from "react";
-import { Table2, Plus, ChevronDown, ChevronUp, Link2 } from "lucide-react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import {
+  Table2,
+  Plus,
+  ChevronDown,
+  ChevronUp,
+  Link2,
+  LayoutGrid,
+  ExternalLink,
+  Users,
+  Briefcase,
+  DollarSign,
+  Ticket,
+  UserCheck,
+  ClipboardList,
+  Type,
+  Hash,
+  Calendar,
+  CheckSquare,
+  List,
+  Mail,
+  Star,
+  X,
+} from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useTables, useTableFields, useTableRecords } from "@/hooks/useTables";
 import { DataTable } from "@/components/crm/DataTable";
 import type { CRMAttribute, CRMAttributeType, CRMRecord } from "@/lib/api";
+
+// Scope display metadata
+const SCOPE_META: Record<string, { label: string; color: string; icon: typeof Table2 }> = {
+  standalone: { label: "Table", color: "text-purple-400", icon: Table2 },
+  crm: { label: "CRM", color: "text-blue-400", icon: Briefcase },
+  document: { label: "Doc Table", color: "text-emerald-400", icon: Table2 },
+  project: { label: "Project", color: "text-amber-400", icon: ClipboardList },
+};
+
+// Icon lookup for known CRM object types
+function getObjectIcon(name: string) {
+  const lower = name.toLowerCase();
+  if (lower.includes("lead") || lower.includes("contact") || lower.includes("person")) return Users;
+  if (lower.includes("company") || lower.includes("account")) return Briefcase;
+  if (lower.includes("deal") || lower.includes("opportunity")) return DollarSign;
+  if (lower.includes("ticket") || lower.includes("issue")) return Ticket;
+  if (lower.includes("candidate") || lower.includes("hiring")) return UserCheck;
+  return Table2;
+}
 
 // TipTap Node Definition
 export const InlineDatabase = Node.create({
@@ -18,6 +59,7 @@ export const InlineDatabase = Node.create({
   addAttributes() {
     return {
       tableId: { default: null },
+      scope: { default: null },
       height: { default: 400 },
       collapsed: { default: false },
     };
@@ -41,19 +83,29 @@ function CreateTablePrompt({
   onCreated,
   onLink,
 }: {
-  onCreated: (id: string) => void;
-  onLink: (id: string) => void;
+  onCreated: (id: string, scope?: string) => void;
+  onLink: (id: string, scope?: string) => void;
 }) {
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
   const { tables, createTable, isCreating } = useTables(workspaceId);
-  const [mode, setMode] = useState<"choose" | "create" | "link">("choose");
+  const [mode, setMode] = useState<"choose" | "create" | "link" | "modules">("choose");
   const [name, setName] = useState("");
+
+  // Split tables by scope
+  const standaloneTables = useMemo(
+    () => tables.filter((t) => t.scope === "standalone" || t.scope === "document"),
+    [tables]
+  );
+  const moduleTables = useMemo(
+    () => tables.filter((t) => t.scope === "crm" || t.scope === "project"),
+    [tables]
+  );
 
   const handleCreate = async () => {
     if (!name.trim()) return;
     const table = await createTable({ name, visibility: "workspace" });
-    onCreated(table.id);
+    onCreated(table.id, "document");
   };
 
   if (mode === "create") {
@@ -92,14 +144,14 @@ function CreateTablePrompt({
     return (
       <div className="bg-muted/50 border border-border rounded-lg p-4">
         <p className="text-sm font-medium text-foreground mb-2">Link Existing Table</p>
-        {tables.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No tables available</p>
+        {standaloneTables.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No standalone tables available</p>
         ) : (
           <div className="space-y-1 max-h-48 overflow-y-auto">
-            {tables.map((t) => (
+            {standaloneTables.map((t) => (
               <button
                 key={t.id}
-                onClick={() => onLink(t.id)}
+                onClick={() => onLink(t.id, t.scope)}
                 className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-accent rounded-lg text-left"
               >
                 <Table2 className="h-4 w-4 text-purple-400" />
@@ -107,6 +159,47 @@ function CreateTablePrompt({
                 <span className="ml-auto text-xs text-muted-foreground">{t.record_count} records</span>
               </button>
             ))}
+          </div>
+        )}
+        <button
+          onClick={() => setMode("choose")}
+          className="mt-2 text-sm text-muted-foreground hover:text-foreground"
+        >
+          Back
+        </button>
+      </div>
+    );
+  }
+
+  if (mode === "modules") {
+    return (
+      <div className="bg-muted/50 border border-border rounded-lg p-4">
+        <p className="text-sm font-medium text-foreground mb-2">Embed Module Data</p>
+        <p className="text-xs text-muted-foreground mb-3">
+          Embed a live view of data from CRM, Projects, or other modules
+        </p>
+        {moduleTables.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No module data available. Create CRM objects or project tables first.</p>
+        ) : (
+          <div className="space-y-1 max-h-56 overflow-y-auto">
+            {moduleTables.map((t) => {
+              const Icon = getObjectIcon(t.name);
+              const scopeMeta = SCOPE_META[t.scope] || SCOPE_META.standalone;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => onLink(t.id, t.scope)}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-accent rounded-lg text-left"
+                >
+                  <Icon className={`h-4 w-4 ${scopeMeta.color}`} />
+                  <span>{t.name}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full bg-accent ${scopeMeta.color}`}>
+                    {scopeMeta.label}
+                  </span>
+                  <span className="ml-auto text-xs text-muted-foreground">{t.record_count} records</span>
+                </button>
+              );
+            })}
           </div>
         )}
         <button
@@ -136,7 +229,14 @@ function CreateTablePrompt({
           className="flex items-center gap-1.5 px-3 py-1.5 border border-border text-foreground text-sm rounded-lg hover:bg-accent"
         >
           <Link2 className="h-3.5 w-3.5" />
-          Link Existing
+          Link Table
+        </button>
+        <button
+          onClick={() => setMode("modules")}
+          className="flex items-center gap-1.5 px-3 py-1.5 border border-border text-foreground text-sm rounded-lg hover:bg-accent"
+        >
+          <LayoutGrid className="h-3.5 w-3.5" />
+          Embed Module
         </button>
       </div>
     </div>
@@ -146,25 +246,125 @@ function CreateTablePrompt({
 // Collapsed view
 function CollapsedTableCard({
   tableId,
+  scope,
   onExpand,
 }: {
   tableId: string;
+  scope?: string | null;
   onExpand: () => void;
 }) {
   const { currentWorkspace } = useWorkspace();
   const { tables } = useTables(currentWorkspace?.id || null);
   const table = tables.find((t) => t.id === tableId);
+  const scopeMeta = SCOPE_META[scope || table?.scope || "standalone"] || SCOPE_META.standalone;
+  const Icon = table ? getObjectIcon(table.name) : scopeMeta.icon;
 
   return (
     <button
       onClick={onExpand}
       className="w-full bg-muted/50 border border-border rounded-lg p-3 flex items-center gap-3 hover:border-purple-500/50 transition-colors"
     >
-      <Table2 className="h-5 w-5 text-purple-400" />
+      <Icon className={`h-5 w-5 ${scopeMeta.color}`} />
       <span className="font-medium text-foreground text-sm">{table?.name || "Database"}</span>
+      {scope && scope !== "standalone" && scope !== "document" && (
+        <span className={`text-[10px] px-1.5 py-0.5 rounded-full bg-accent ${scopeMeta.color}`}>
+          {scopeMeta.label}
+        </span>
+      )}
       <span className="text-xs text-muted-foreground">{table?.record_count || 0} records</span>
       <ChevronDown className="h-4 w-4 text-muted-foreground ml-auto" />
     </button>
+  );
+}
+
+// Quick column type options for inline add
+const QUICK_COLUMN_TYPES: { value: string; label: string; icon: React.ReactNode }[] = [
+  { value: "text", label: "Text", icon: <Type className="h-4 w-4" /> },
+  { value: "number", label: "Number", icon: <Hash className="h-4 w-4" /> },
+  { value: "date", label: "Date", icon: <Calendar className="h-4 w-4" /> },
+  { value: "checkbox", label: "Checkbox", icon: <CheckSquare className="h-4 w-4" /> },
+  { value: "select", label: "Select", icon: <List className="h-4 w-4" /> },
+  { value: "email", label: "Email", icon: <Mail className="h-4 w-4" /> },
+  { value: "rating", label: "Rating", icon: <Star className="h-4 w-4" /> },
+];
+
+// Lightweight add-column popover for inline databases
+function AddColumnPopover({
+  onAdd,
+  onClose,
+  isAdding,
+}: {
+  onAdd: (name: string, type: string) => void;
+  onClose: () => void;
+  isAdding: boolean;
+}) {
+  const [name, setName] = useState("");
+  const [selectedType, setSelectedType] = useState("text");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as globalThis.Node)) {
+        onClose();
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [onClose]);
+
+  const handleSubmit = () => {
+    if (!name.trim()) return;
+    onAdd(name.trim(), selectedType);
+  };
+
+  return (
+    <div
+      ref={ref}
+      className="fixed z-50 w-72 bg-muted border border-border rounded-lg shadow-xl p-3 space-y-3"
+      style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-foreground">Add column</span>
+        <button onClick={onClose} className="p-0.5 text-muted-foreground hover:text-foreground">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <input
+        type="text"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Column name..."
+        autoFocus
+        className="w-full px-3 py-1.5 bg-accent border border-border rounded-lg text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
+        onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+      />
+
+      <div className="grid grid-cols-4 gap-1">
+        {QUICK_COLUMN_TYPES.map((t) => (
+          <button
+            key={t.value}
+            onClick={() => setSelectedType(t.value)}
+            className={`flex flex-col items-center gap-1 p-2 rounded-lg text-xs transition-colors ${
+              selectedType === t.value
+                ? "bg-purple-500/20 text-purple-400 border border-purple-500/50"
+                : "text-muted-foreground hover:bg-accent border border-transparent"
+            }`}
+          >
+            {t.icon}
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </div>
+
+      <button
+        onClick={handleSubmit}
+        disabled={!name.trim() || isAdding}
+        className="w-full px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white text-sm rounded-lg transition-colors"
+      >
+        {isAdding ? "Adding..." : "Add Column"}
+      </button>
+    </div>
   );
 }
 
@@ -173,18 +373,84 @@ function InlineTableView({ tableId }: { tableId: string }) {
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
 
-  const { fields } = useTableFields(workspaceId, tableId);
-  const { records: rawRecords, total, isLoading } = useTableRecords(workspaceId, tableId);
+  const { fields, addField, deleteField, isAdding } = useTableFields(workspaceId, tableId);
+  const { records: rawRecords, total, isLoading, createRecord, updateRecord, deleteRecord, bulkDeleteRecords, isCreating } = useTableRecords(workspaceId, tableId);
 
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
   const [columnOrder, setColumnOrder] = useState<string[]>([]);
+  const [showAddColumn, setShowAddColumn] = useState(false);
+  const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
+
+  // Initialize columns on first load, and auto-show newly added fields
+  const columnOrderRef = useRef(columnOrder);
+  columnOrderRef.current = columnOrder;
 
   useEffect(() => {
-    if (fields.length > 0 && visibleColumns.length === 0) {
+    if (fields.length === 0) return;
+    const currentOrder = columnOrderRef.current;
+
+    if (visibleColumns.length === 0 && currentOrder.length === 0) {
+      // First load: show up to 5 columns
       setVisibleColumns(fields.slice(0, 5).map((f) => f.slug));
       setColumnOrder(fields.map((f) => f.slug));
+    } else if (currentOrder.length > 0) {
+      // Detect newly added fields and auto-show them
+      const fieldSlugs = fields.map((f) => f.slug);
+      const newSlugs = fieldSlugs.filter((s) => !currentOrder.includes(s));
+      if (newSlugs.length > 0) {
+        setColumnOrder((prev) => [...prev, ...newSlugs]);
+        setVisibleColumns((prev) => {
+          const combined = [...prev, ...newSlugs];
+          return [...new Set(combined)];
+        });
+      }
     }
-  }, [fields, visibleColumns.length]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fields.length, visibleColumns.length]);
+
+  const handleAddColumn = useCallback(async (name: string, type: string) => {
+    await addField({ name, attribute_type: type });
+    setShowAddColumn(false);
+  }, [addField]);
+
+  const handleDeleteColumn = useCallback(async (slug: string) => {
+    const field = fields.find((f) => f.slug === slug);
+    if (!field) return;
+    if (field.is_system) return;
+    await deleteField(field.id);
+    setVisibleColumns((prev) => prev.filter((s) => s !== slug));
+    setColumnOrder((prev) => prev.filter((s) => s !== slug));
+  }, [fields, deleteField]);
+
+  const handleAddRecord = useCallback(async () => {
+    await createRecord({});
+  }, [createRecord]);
+
+  const handleCellSave = useCallback(async (recordId: string, slug: string, value: unknown) => {
+    await updateRecord({ recordId, values: { [slug]: value } });
+  }, [updateRecord]);
+
+  const handleSelectRecord = useCallback((recordId: string) => {
+    setSelectedRecords((prev) =>
+      prev.includes(recordId) ? prev.filter((id) => id !== recordId) : [...prev, recordId]
+    );
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    setSelectedRecords((prev) =>
+      prev.length === rawRecords.length ? [] : rawRecords.map((r) => r.id)
+    );
+  }, [rawRecords]);
+
+  const handleBulkDelete = useCallback(async (ids: string[]) => {
+    await bulkDeleteRecords(ids);
+    setSelectedRecords([]);
+  }, [bulkDeleteRecords]);
+
+  const handleDeleteRecord = useCallback(async (recordId: string) => {
+    await deleteRecord(recordId);
+    setSelectedRecords((prev) => prev.filter((id) => id !== recordId));
+  }, [deleteRecord]);
 
   const attributes: CRMAttribute[] = useMemo(
     () =>
@@ -225,23 +491,49 @@ function InlineTableView({ tableId }: { tableId: string }) {
         created_at: r.created_at,
         updated_at: r.updated_at,
       })),
-    [rawRecords]
+    [rawRecords, tableId]
   );
 
   return (
-    <DataTable
-      records={records}
-      attributes={attributes}
-      isLoading={isLoading}
-      emptyMessage="No records yet"
-      visibleColumns={visibleColumns}
-      onVisibleColumnsChange={setVisibleColumns}
-      columnOrder={columnOrder}
-      onColumnOrderChange={setColumnOrder}
-      enableColumnReorder={true}
-      enableColumnSelector={false}
-      showNameColumn={false}
-    />
+    <>
+      <DataTable
+        records={records}
+        attributes={attributes}
+        isLoading={isLoading}
+        emptyMessage="No records yet"
+        visibleColumns={visibleColumns}
+        onVisibleColumnsChange={setVisibleColumns}
+        columnOrder={columnOrder}
+        onColumnOrderChange={setColumnOrder}
+        enableColumnReorder={true}
+        enableColumnSelector={true}
+        enableInlineEdit={true}
+        onCellSave={handleCellSave}
+        onAddColumn={() => setShowAddColumn(true)}
+        onDeleteColumn={handleDeleteColumn}
+        selectedRecords={selectedRecords}
+        onSelectRecord={handleSelectRecord}
+        onSelectAll={handleSelectAll}
+        onRecordDelete={handleDeleteRecord}
+        onBulkDelete={handleBulkDelete}
+        showNameColumn={false}
+      />
+      <button
+        onClick={handleAddRecord}
+        disabled={isCreating}
+        className="flex items-center gap-1.5 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors w-full border-t border-border"
+      >
+        <Plus className="h-3.5 w-3.5" />
+        {isCreating ? "Adding..." : "New row"}
+      </button>
+      {showAddColumn && (
+        <AddColumnPopover
+          onAdd={handleAddColumn}
+          onClose={() => setShowAddColumn(false)}
+          isAdding={isAdding}
+        />
+      )}
+    </>
   );
 }
 
@@ -249,6 +541,7 @@ function InlineTableView({ tableId }: { tableId: string }) {
 function InlineDatabaseView(props: ReactNodeViewProps) {
   const { node, updateAttributes } = props;
   const tableId = node.attrs.tableId as string | null;
+  const scope = node.attrs.scope as string | null;
   const height = (node.attrs.height as number) || 400;
   const collapsed = (node.attrs.collapsed as boolean) || false;
   const { currentWorkspace } = useWorkspace();
@@ -259,8 +552,8 @@ function InlineDatabaseView(props: ReactNodeViewProps) {
     return (
       <NodeViewWrapper>
         <CreateTablePrompt
-          onCreated={(id) => updateAttributes({ tableId: id })}
-          onLink={(id) => updateAttributes({ tableId: id })}
+          onCreated={(id, s) => updateAttributes({ tableId: id, scope: s || "document" })}
+          onLink={(id, s) => updateAttributes({ tableId: id, scope: s || "standalone" })}
         />
       </NodeViewWrapper>
     );
@@ -271,21 +564,43 @@ function InlineDatabaseView(props: ReactNodeViewProps) {
       <NodeViewWrapper>
         <CollapsedTableCard
           tableId={tableId}
+          scope={scope}
           onExpand={() => updateAttributes({ collapsed: false })}
         />
       </NodeViewWrapper>
     );
   }
 
+  const effectiveScope = scope || table?.scope || "standalone";
+  const scopeMeta = SCOPE_META[effectiveScope] || SCOPE_META.standalone;
+  const Icon = table ? getObjectIcon(table.name) : scopeMeta.icon;
+  const isModuleEmbed = effectiveScope === "crm" || effectiveScope === "project";
+
   return (
     <NodeViewWrapper>
       <div className="border border-border rounded-lg overflow-hidden my-4">
         {/* Toolbar */}
         <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b border-border">
-          <Table2 className="h-4 w-4 text-purple-400" />
+          <Icon className={`h-4 w-4 ${scopeMeta.color}`} />
           <span className="text-sm font-medium text-foreground">{table?.name || "Database"}</span>
+          {isModuleEmbed && (
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full bg-accent ${scopeMeta.color}`}>
+              {scopeMeta.label}
+            </span>
+          )}
           <span className="text-xs text-muted-foreground ml-1">({table?.record_count || 0})</span>
           <div className="flex-1" />
+          {isModuleEmbed && (
+            <a
+              href={effectiveScope === "crm" ? `/crm/${table?.slug || tableId}` : `/tables/${table?.slug || tableId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1 hover:bg-accent rounded text-muted-foreground"
+              title="Open in module"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          )}
           <button
             onClick={() => updateAttributes({ collapsed: true })}
             className="p-1 hover:bg-accent rounded text-muted-foreground"
@@ -294,7 +609,7 @@ function InlineDatabaseView(props: ReactNodeViewProps) {
           </button>
         </div>
         {/* Table content */}
-        <div style={{ height, overflow: "auto" }}>
+        <div style={{ maxHeight: height, overflow: "auto" }}>
           <InlineTableView tableId={tableId} />
         </div>
       </div>

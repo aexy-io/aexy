@@ -18,6 +18,7 @@ import {
   Users,
   ChevronRight,
   ExternalLink,
+  Copy,
   Check,
 } from "lucide-react";
 
@@ -246,22 +247,26 @@ export default function BookingDashboard() {
                       </div>
                     </div>
                     <button
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        navigator.clipboard.writeText(
-                          `${window.location.origin}/book/${currentWorkspace?.slug}/${eventType.slug}`
-                        );
-                        setCopiedId(eventType.id);
-                        setTimeout(() => setCopiedId(null), 2000);
+                        try {
+                          await navigator.clipboard.writeText(
+                            `${window.location.origin}/book/${currentWorkspace?.slug}/${eventType.slug}`
+                          );
+                          setCopiedId(eventType.id);
+                          setTimeout(() => setCopiedId(null), 2000);
+                        } catch {
+                          // Clipboard API may fail in insecure contexts
+                        }
                       }}
-                      className={`p-2 ${copiedId === eventType.id ? "text-green-500" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`}
+                      className="p-2 text-muted-foreground hover:text-foreground transition-colors"
                       title="Copy booking link"
                     >
                       {copiedId === eventType.id ? (
-                        <Check className="h-4 w-4" />
+                        <Check className="h-4 w-4 text-green-500" />
                       ) : (
-                        <ExternalLink className="h-4 w-4" />
+                        <Copy className="h-4 w-4" />
                       )}
                     </button>
                   </Link>
