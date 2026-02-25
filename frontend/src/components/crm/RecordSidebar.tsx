@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CRMRecord, CRMAttribute, CRMNote } from "@/lib/api";
-import { StatusBadge } from "./CRMBadge";
+import { FieldRenderer, FieldEditor } from "@/components/fields";
 
 type SidebarTab = "details" | "notes" | "lists";
 
@@ -36,128 +36,6 @@ interface RecordSidebarProps {
   // Lists the record belongs to
   lists?: { id: string; name: string; color?: string }[];
   className?: string;
-}
-
-// Attribute value editor
-function AttributeInput({
-  attribute,
-  value,
-  onChange,
-}: {
-  attribute: CRMAttribute;
-  value: unknown;
-  onChange: (value: unknown) => void;
-}) {
-  switch (attribute.attribute_type) {
-    case "text":
-    case "email":
-    case "phone":
-    case "url":
-      return (
-        <input
-          type={attribute.attribute_type === "email" ? "email" : attribute.attribute_type === "url" ? "url" : "text"}
-          value={(value as string) || ""}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full px-3 py-1.5 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all"
-        />
-      );
-    case "number":
-    case "currency":
-      return (
-        <input
-          type="number"
-          value={(value as number) || ""}
-          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-          className="w-full px-3 py-1.5 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all"
-        />
-      );
-    case "checkbox":
-      return (
-        <input
-          type="checkbox"
-          checked={!!value}
-          onChange={(e) => onChange(e.target.checked)}
-          className="w-4 h-4 rounded border-border bg-accent text-purple-500 focus:ring-purple-500"
-        />
-      );
-    case "select":
-    case "status": {
-      const config = attribute.config as { options?: { value: string; label: string }[] } | undefined;
-      return (
-        <select
-          value={(value as string) || ""}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full px-3 py-1.5 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all"
-        >
-          <option value="">Select...</option>
-          {(config?.options || []).map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      );
-    }
-    case "date":
-    case "datetime":
-      return (
-        <input
-          type={attribute.attribute_type === "datetime" ? "datetime-local" : "date"}
-          value={(value as string) || ""}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full px-3 py-1.5 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all"
-        />
-      );
-    default:
-      return (
-        <input
-          type="text"
-          value={String(value || "")}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full px-3 py-1.5 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all"
-        />
-      );
-  }
-}
-
-// Attribute value display
-function AttributeValue({ attribute, value }: { attribute: CRMAttribute; value: unknown }) {
-  if (value === null || value === undefined || value === "") {
-    return <span className="text-muted-foreground text-sm">—</span>;
-  }
-
-  switch (attribute.attribute_type) {
-    case "checkbox":
-      return <span className={value ? "text-green-400" : "text-muted-foreground"}>{value ? "Yes" : "No"}</span>;
-    case "currency":
-      return <span className="text-emerald-400 font-medium">${(value as number).toLocaleString()}</span>;
-    case "status":
-    case "select": {
-      const config = attribute.config as { options?: { value: string; label: string; color?: string }[] } | undefined;
-      const option = config?.options?.find((o) => o.value === value);
-      if (option) {
-        return <StatusBadge label={option.label} color={option.color || "#6366f1"} size="sm" />;
-      }
-      return <span className="text-sm">{String(value)}</span>;
-    }
-    case "email":
-      return (
-        <a href={`mailto:${value}`} className="text-blue-400 hover:text-blue-300 hover:underline text-sm transition-colors">
-          {String(value)}
-        </a>
-      );
-    case "url":
-      return (
-        <a href={String(value)} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 hover:underline text-sm truncate block transition-colors">
-          {String(value).replace(/^https?:\/\//, "")}
-        </a>
-      );
-    case "date":
-    case "datetime":
-      return <span className="text-sm text-foreground">{new Date(String(value)).toLocaleDateString()}</span>;
-    default:
-      return <span className="text-sm text-foreground truncate block">{String(value)}</span>;
-  }
 }
 
 // Collapsed sidebar button with badge
@@ -377,14 +255,14 @@ export function RecordSidebar({
                   <div key={attr.id} className="space-y-1.5">
                     <label className="text-xs font-medium text-muted-foreground">{attr.name}</label>
                     {isEditing ? (
-                      <AttributeInput
+                      <FieldEditor
                         attribute={attr}
                         value={editedValues[attr.slug] ?? record.values[attr.slug]}
                         onChange={(val) => onValueChange?.(attr.slug, val)}
                       />
                     ) : (
                       <div className="text-foreground">
-                        <AttributeValue attribute={attr} value={record.values[attr.slug]} />
+                        <FieldRenderer attribute={attr} value={record.values[attr.slug]} surface="detail_view" />
                       </div>
                     )}
                   </div>

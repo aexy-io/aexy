@@ -22,6 +22,7 @@ import { ViewSwitcher, ViewMode } from "@/components/crm/ViewSwitcher";
 import { DataTable } from "@/components/crm/DataTable";
 import { KanbanBoard } from "@/components/crm/KanbanBoard";
 import { ColumnVisibilityMenu } from "@/components/crm/ColumnSelector";
+import { FieldEditor } from "@/components/fields";
 
 const objectTypeIcons: Record<CRMObjectType, React.ReactNode> = {
   company: <Building2 className="h-5 w-5" />,
@@ -75,66 +76,14 @@ function CreateRecordModal({
                 {attr.name}
                 {attr.is_required && <span className="text-red-400 ml-1">*</span>}
               </label>
-              {attr.attribute_type === "text" || attr.attribute_type === "email" || attr.attribute_type === "url" || attr.attribute_type === "phone" ? (
-                <input
-                  type={attr.attribute_type === "email" ? "email" : attr.attribute_type === "url" ? "url" : "text"}
-                  value={(values[attr.slug] as string) || ""}
-                  onChange={(e) => setValues({ ...values, [attr.slug]: e.target.value })}
-                  required={attr.is_required}
-                  placeholder={attr.description || `Enter ${attr.name.toLowerCase()}`}
-                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              ) : attr.attribute_type === "number" || attr.attribute_type === "currency" ? (
-                <input
-                  type="number"
-                  value={(values[attr.slug] as number) || ""}
-                  onChange={(e) => setValues({ ...values, [attr.slug]: parseFloat(e.target.value) || 0 })}
-                  required={attr.is_required}
-                  placeholder={attr.description || `Enter ${attr.name.toLowerCase()}`}
-                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              ) : attr.attribute_type === "checkbox" ? (
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={!!values[attr.slug]}
-                    onChange={(e) => setValues({ ...values, [attr.slug]: e.target.checked })}
-                    className="w-4 h-4 rounded border-border bg-accent text-purple-500 focus:ring-purple-500"
-                  />
-                  <span className="text-foreground">{attr.description || "Enabled"}</span>
-                </label>
-              ) : attr.attribute_type === "select" || attr.attribute_type === "status" ? (
-                <select
-                  value={(values[attr.slug] as string) || ""}
-                  onChange={(e) => setValues({ ...values, [attr.slug]: e.target.value })}
-                  required={attr.is_required}
-                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="">Select {attr.name.toLowerCase()}</option>
-                  {((attr.config as { options?: { value: string; label: string }[] })?.options || []).map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              ) : attr.attribute_type === "date" || attr.attribute_type === "datetime" ? (
-                <input
-                  type={attr.attribute_type === "datetime" ? "datetime-local" : "date"}
-                  value={(values[attr.slug] as string) || ""}
-                  onChange={(e) => setValues({ ...values, [attr.slug]: e.target.value })}
-                  required={attr.is_required}
-                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              ) : (
-                <input
-                  type="text"
-                  value={(values[attr.slug] as string) || ""}
-                  onChange={(e) => setValues({ ...values, [attr.slug]: e.target.value })}
-                  required={attr.is_required}
-                  placeholder={attr.description || `Enter ${attr.name.toLowerCase()}`}
-                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              )}
+              <FieldEditor
+                attribute={attr}
+                value={values[attr.slug]}
+                onChange={(val) => setValues({ ...values, [attr.slug]: val })}
+                required={attr.is_required}
+                placeholder={attr.description || `Enter ${attr.name.toLowerCase()}`}
+                className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
             </div>
           ))}
           <div className="flex gap-3 pt-4">
