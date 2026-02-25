@@ -286,6 +286,16 @@ SCHEDULES: list[dict] = [
         "queue": TaskQueue.OPERATIONS,
     },
 
+    # === Table Audit Cleanup ===
+    {
+        "id": "cleanup-expired-audit-logs",
+        "activity": "cleanup_expired_audit_logs",
+        "input_module": "aexy.temporal.activities.tables",
+        "input_class": "CleanupExpiredAuditLogsInput",
+        "interval": timedelta(weeks=1),
+        "queue": TaskQueue.OPERATIONS,
+    },
+
     # === Google Sync ===
     {
         "id": "check-gmail-auto-sync",

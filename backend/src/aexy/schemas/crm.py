@@ -388,6 +388,14 @@ class KanbanSettings(BaseModel):
     wip_limits: dict[str, int] | None = None
 
 
+class ColumnDisplayConfig(BaseModel):
+    """Per-column display configuration stored in a saved view."""
+    slug: str
+    width: int | None = None
+    variant: str | None = None
+    conditional_format: list[dict] | None = None
+
+
 class CRMListCreate(BaseModel):
     """Schema for creating a CRM list."""
     name: str = Field(..., min_length=1, max_length=255)
@@ -398,6 +406,7 @@ class CRMListCreate(BaseModel):
     filters: list[FilterCondition] | None = None
     sorts: list[SortCondition] | None = None
     visible_attributes: list[str] | None = None
+    column_config: list[ColumnDisplayConfig] | None = None
     group_by_attribute: str | None = None
     kanban_settings: KanbanSettings | None = None
     date_attribute: str | None = None
@@ -415,6 +424,7 @@ class CRMListUpdate(BaseModel):
     filters: list[FilterCondition] | None = None
     sorts: list[SortCondition] | None = None
     visible_attributes: list[str] | None = None
+    column_config: list[ColumnDisplayConfig] | None = None
     group_by_attribute: str | None = None
     kanban_settings: KanbanSettings | None = None
     date_attribute: str | None = None
@@ -438,6 +448,7 @@ class CRMListResponse(BaseModel):
     filters: list[dict]
     sorts: list[dict]
     visible_attributes: list[str]
+    column_config: list[dict] | None = None
     group_by_attribute: str | None = None
     kanban_settings: dict
     date_attribute: str | None = None
