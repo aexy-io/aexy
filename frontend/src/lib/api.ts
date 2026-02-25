@@ -17835,13 +17835,13 @@ export interface TableAccess {
 export interface TableSavedView {
   id: string;
   workspace_id: string;
-  object_id: string;
+  object_id: string | null;
   name: string;
   slug: string;
   description: string | null;
   icon: string | null;
   color: string | null;
-  view_type: "table" | "board" | "gallery" | "timeline";
+  view_type: "table" | "kanban" | "board" | "gallery" | "timeline" | "calendar";
   filters: Record<string, unknown>[];
   sorts: Record<string, unknown>[];
   visible_attributes: string[];
@@ -17850,6 +17850,8 @@ export interface TableSavedView {
   kanban_settings: Record<string, unknown>;
   is_private: boolean;
   owner_id: string | null;
+  entity_type?: string;
+  entity_scope_id?: string | null;
   entry_count: number;
   created_at: string;
   updated_at: string;
@@ -17917,6 +17919,48 @@ export const customFieldTypesApi = {
   },
   delete: async (workspaceId: string, typeId: string): Promise<void> => {
     await api.delete(`/workspaces/${workspaceId}/custom-field-types/${typeId}`);
+  },
+};
+
+export type SavedViewEntityType = "sprint_task" | "ticket" | "candidate";
+
+export const savedViewsApi = {
+  list: async (workspaceId: string, entityType: SavedViewEntityType, scopeId?: string): Promise<TableSavedView[]> => {
+    const params = scopeId ? { scope_id: scopeId } : {};
+    const response = await api.get(`/workspaces/${workspaceId}/saved-views/${entityType}`, { params });
+    return response.data;
+  },
+  create: async (workspaceId: string, entityType: SavedViewEntityType, data: {
+    name: string;
+    view_type?: "table" | "board" | "gallery" | "timeline";
+    filters?: Record<string, unknown>[];
+    sorts?: Record<string, unknown>[];
+    visible_attributes?: string[];
+    column_config?: ColumnDisplayConfig[];
+    group_by_attribute?: string;
+    kanban_settings?: Record<string, unknown>;
+    is_private?: boolean;
+    entity_scope_id?: string;
+  }): Promise<TableSavedView> => {
+    const response = await api.post(`/workspaces/${workspaceId}/saved-views/${entityType}`, data);
+    return response.data;
+  },
+  update: async (workspaceId: string, entityType: SavedViewEntityType, viewId: string, data: Partial<{
+    name: string;
+    view_type: "table" | "board" | "gallery" | "timeline";
+    filters: Record<string, unknown>[];
+    sorts: Record<string, unknown>[];
+    visible_attributes: string[];
+    column_config: ColumnDisplayConfig[];
+    group_by_attribute: string;
+    kanban_settings: Record<string, unknown>;
+    is_private: boolean;
+  }>): Promise<TableSavedView> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/saved-views/${entityType}/${viewId}`, data);
+    return response.data;
+  },
+  delete: async (workspaceId: string, entityType: SavedViewEntityType, viewId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/saved-views/${entityType}/${viewId}`);
   },
 };
 
