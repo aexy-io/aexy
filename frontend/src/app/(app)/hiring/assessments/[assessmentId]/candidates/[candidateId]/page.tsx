@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
-  ArrowLeft,
   Clock,
   Shield,
   CheckCircle,
@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { formatDuration } from "@/lib/utils";
 
 interface CandidateDetails {
   candidate: {
@@ -236,13 +237,6 @@ export default function CandidateDetailsPage() {
     return "bg-destructive/10";
   };
 
-  const formatDuration = (seconds: number | null) => {
-    if (!seconds) return "N/A";
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}m ${secs}s`;
-  };
-
   const formatTimestamp = (timestamp: string) => {
     return new Date(timestamp).toLocaleString();
   };
@@ -252,19 +246,17 @@ export default function CandidateDetailsPage() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <Link
-            href={`/hiring/assessments/${assessmentId}/report`}
-            className="p-2 hover:bg-accent rounded-lg"
-          >
-            <ArrowLeft className="h-5 w-5 text-muted-foreground" />
-          </Link>
           <div className="flex-1">
-            <h1 className="text-2xl font-bold text-foreground">{details?.candidate.name}</h1>
-            {
-              details?.assessment && (
-                <p className="text-muted-foreground">{details?.assessment?.title}</p>
-              )
-            }
+            <Breadcrumb
+              items={[
+                { label: "Hiring", href: "/hiring" },
+                { label: "Assessments", href: "/hiring/assessments" },
+                { label: details?.assessment?.title || "Assessment", href: `/hiring/assessments/${assessmentId}/report` },
+                { label: "Candidates", href: `/hiring/assessments/${assessmentId}/report` },
+                { label: details?.candidate.name || "Candidate" },
+              ]}
+              className="mb-2"
+            />
           </div>
           <div className="flex items-center gap-2">
             {details?.attempt && (
@@ -366,9 +358,7 @@ export default function CandidateDetailsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Time Taken</p>
                 <p className="text-3xl font-bold text-foreground">
-                  {details?.attempt?.time_taken_seconds
-                    ? `${Math.round(details?.attempt.time_taken_seconds / 60)}m`
-                    : "N/A"}
+                  {formatDuration(details?.attempt?.time_taken_seconds ?? null)}
                 </p>
               </div>
               <Clock className="h-8 w-8 text-blue-500 opacity-50" />

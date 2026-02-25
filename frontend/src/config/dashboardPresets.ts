@@ -46,6 +46,7 @@ export const DASHBOARD_PRESETS: Record<PresetType, DashboardPreset> = {
     color: 'from-green-500 to-green-600',
     widgets: [
       'welcome',
+      'teamHealth',
       'teamStatsSummary',
       'teamOverview',
       'sprintOverview',
@@ -53,6 +54,7 @@ export const DASHBOARD_PRESETS: Record<PresetType, DashboardPreset> = {
       'velocityTrend',
       'tasksCompletedChart',
       'workloadDistribution',
+      'burnoutRisk',
       'ticketChart',
       'trackingSummary',
       'blockersOverview',

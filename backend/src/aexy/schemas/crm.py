@@ -160,6 +160,11 @@ class CRMObjectResponse(BaseModel):
     record_count: int
     is_system: bool
     is_active: bool
+    # Data Table Engine fields (Phase 0)
+    scope: str = "crm"
+    visibility: str = "workspace"
+    row_access_mode: str = "all"
+    created_by_id: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -383,6 +388,14 @@ class KanbanSettings(BaseModel):
     wip_limits: dict[str, int] | None = None
 
 
+class ColumnDisplayConfig(BaseModel):
+    """Per-column display configuration stored in a saved view."""
+    slug: str
+    width: int | None = None
+    variant: str | None = None
+    conditional_format: list[dict] | None = None
+
+
 class CRMListCreate(BaseModel):
     """Schema for creating a CRM list."""
     name: str = Field(..., min_length=1, max_length=255)
@@ -393,6 +406,7 @@ class CRMListCreate(BaseModel):
     filters: list[FilterCondition] | None = None
     sorts: list[SortCondition] | None = None
     visible_attributes: list[str] | None = None
+    column_config: list[ColumnDisplayConfig] | None = None
     group_by_attribute: str | None = None
     kanban_settings: KanbanSettings | None = None
     date_attribute: str | None = None
@@ -410,6 +424,7 @@ class CRMListUpdate(BaseModel):
     filters: list[FilterCondition] | None = None
     sorts: list[SortCondition] | None = None
     visible_attributes: list[str] | None = None
+    column_config: list[ColumnDisplayConfig] | None = None
     group_by_attribute: str | None = None
     kanban_settings: KanbanSettings | None = None
     date_attribute: str | None = None
@@ -433,6 +448,7 @@ class CRMListResponse(BaseModel):
     filters: list[dict]
     sorts: list[dict]
     visible_attributes: list[str]
+    column_config: list[dict] | None = None
     group_by_attribute: str | None = None
     kanban_settings: dict
     date_attribute: str | None = None
@@ -845,6 +861,60 @@ class DealCreate(BaseModel):
     close_date: datetime | None = None
     company_id: str | None = None
     owner_id: str | None = None
+
+
+# =============================================================================
+# TABLE COLLABORATOR SCHEMAS (Phase 1: Authorization)
+# =============================================================================
+
+TablePermission = Literal["view", "comment", "edit", "manage", "admin"]
+
+
+class TableCollaboratorCreate(BaseModel):
+    """Schema for adding a collaborator to a table."""
+    developer_id: str | None = None
+    role_id: str | None = None
+    team_id: str | None = None
+    permission: TablePermission = "view"
+    hidden_columns: list[str] = Field(default_factory=list)
+    readonly_columns: list[str] = Field(default_factory=list)
+    row_filter: list[dict] | None = None
+
+
+class TableCollaboratorUpdate(BaseModel):
+    """Schema for updating a collaborator."""
+    permission: TablePermission | None = None
+    hidden_columns: list[str] | None = None
+    readonly_columns: list[str] | None = None
+    row_filter: list[dict] | None = None
+
+
+class TableCollaboratorResponse(BaseModel):
+    """Schema for collaborator response."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    table_id: str
+    developer_id: str | None = None
+    role_id: str | None = None
+    team_id: str | None = None
+    permission: str
+    hidden_columns: list[str]
+    readonly_columns: list[str]
+    row_filter: list[dict] | None = None
+    created_at: datetime
+    created_by_id: str | None = None
+    # Expanded
+    developer_name: str | None = None
+    team_name: str | None = None
+    role_name: str | None = None
+
+
+class TableAccessResponse(BaseModel):
+    """Schema for the user's resolved access on a table."""
+    permission: str
+    hidden_columns: list[str] = Field(default_factory=list)
+    readonly_columns: list[str] = Field(default_factory=list)
 
 
 # Update forward references

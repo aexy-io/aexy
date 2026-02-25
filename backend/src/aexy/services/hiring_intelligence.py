@@ -1093,7 +1093,7 @@ We are seeking a talented {level} {role_title} to join our engineering team. In 
             db=self.db,
             workspace_id=organization_id,
             module="hiring",
-            trigger_type="hiring.requirement_created",
+            trigger_type="requirement.created",
             entity_id=str(requirement.id),
             trigger_data={
                 "role_title": requirement.role_title,
@@ -1171,7 +1171,7 @@ We are seeking a talented {level} {role_title} to join our engineering team. In 
             db=self.db,
             workspace_id=str(requirement.organization_id),
             module="hiring",
-            trigger_type="hiring.requirement_status_changed",
+            trigger_type="requirement.status_changed",
             entity_id=requirement_id,
             trigger_data={
                 "role_title": requirement.role_title,

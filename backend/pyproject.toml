@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aexy"
-version = "0.5.6"
+version = "0.6.4"
 description = "GitHub-Based Developer Profiling & Analytics Platform"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -49,6 +49,8 @@ dependencies = [
     "PyJWT>=2.8.0",
     # Excel file parsing
     "openpyxl>=3.1.0",
+    # Timezone data (required in minimal Docker images)
+    "tzdata>=2024.1",
 ]
 
 [project.optional-dependencies]

@@ -573,6 +573,12 @@ class IndividualDashboard(BaseModel):
     time_logged_today: int  # minutes
     weekly_summary: WeeklySummary
     activity_pattern: DeveloperActivityPatternResponse | None = None
+    standup_streak: int = 0
+    has_standup_today: bool = False
+    time_entries: list[TimeEntryResponse] = []
+    resolved_blockers_count: int = 0
+    recent_standups: list[StandupResponse] = []
+    work_logs: list[WorkLogResponse] = []
 
 
 class TeamMemberStandupStatus(BaseModel):

@@ -9,6 +9,9 @@ class GitHubAuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     scope: str
+    refresh_token: str | None = None
+    expires_in: int | None = None  # seconds until access_token expires
+    refresh_token_expires_in: int | None = None
 
 
 class TokenResponse(BaseModel):

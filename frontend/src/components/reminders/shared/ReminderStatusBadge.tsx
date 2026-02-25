@@ -3,21 +3,19 @@
 import { Circle, Pause, Archive } from "lucide-react";
 import { ReminderStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { REMINDER_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
-const STATUS_CONFIG: Record<ReminderStatus, { label: string; className: string; icon: React.ReactNode }> = {
+const STATUS_CONFIG: Record<ReminderStatus, { label: string; icon: React.ReactNode }> = {
   active: {
     label: "Active",
-    className: "bg-green-500/20 text-green-400",
     icon: <Circle className="h-2.5 w-2.5 fill-current" />,
   },
   paused: {
     label: "Paused",
-    className: "bg-amber-500/20 text-amber-400",
     icon: <Pause className="h-3 w-3" />,
   },
   archived: {
     label: "Archived",
-    className: "bg-muted-foreground/20 text-muted-foreground",
     icon: <Archive className="h-3 w-3" />,
   },
 };
@@ -36,6 +34,7 @@ export function ReminderStatusBadge({
   className,
 }: ReminderStatusBadgeProps) {
   const config = STATUS_CONFIG[status];
+  const colors = getStatusColor(REMINDER_STATUS_COLORS, status);
 
   const sizeClasses = {
     sm: "text-xs px-2 py-0.5",
@@ -47,7 +46,8 @@ export function ReminderStatusBadge({
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full font-medium",
-        config.className,
+        colors.bg,
+        colors.text,
         sizeClasses[size],
         className
       )}

@@ -1,5 +1,6 @@
 """Notification service for booking module."""
 
+import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -8,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.models.booking import Booking, EventType, BookingWebhook
 from aexy.models.developer import Developer
+
+logger = logging.getLogger(__name__)
 
 
 class BookingNotificationServiceError(Exception):
@@ -24,6 +27,22 @@ class BookingNotificationService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    async def send_confirmation_safe(self, booking: Booking) -> None:
+        """Send booking confirmation emails, swallowing errors.
+
+        Convenience wrapper that creates an EmailService internally,
+        checks if email is configured, and logs any failures without raising.
+        """
+        from aexy.services.email_service import EmailService
+
+        try:
+            email_svc = EmailService()
+            if not email_svc.is_configured:
+                return
+            await self.send_confirmation(booking=booking, email_service=email_svc)
+        except Exception as e:
+            logger.warning(f"Failed to send confirmation emails for booking {booking.id}: {e}")
 
     async def send_confirmation(
         self,
@@ -217,6 +236,7 @@ class BookingNotificationService:
             "event_name": event_type.name if event_type else "Meeting",
             "event_description": event_type.description if event_type else None,
             "duration_minutes": event_type.duration_minutes if event_type else 30,
+            "location_type": event_type.location_type if event_type else None,
             "start_time": booking.start_time.isoformat(),
             "end_time": booking.end_time.isoformat(),
             "timezone": booking.timezone,
@@ -224,6 +244,7 @@ class BookingNotificationService:
             "meeting_link": booking.meeting_link,
             "invitee_name": booking.invitee_name,
             "invitee_email": booking.invitee_email,
+            "invitee_phone": booking.invitee_phone,
             "host_name": host.name if host else None,
             "host_email": host.email if host else None,
             "confirmation_message": event_type.confirmation_message if event_type else None,

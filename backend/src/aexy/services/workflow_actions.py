@@ -2170,18 +2170,47 @@ class WorkflowActionHandler:
     async def _notify_user(
         self, data: dict, context: WorkflowExecutionContext
     ) -> NodeExecutionResult:
-        """Send notification to a specific user."""
+        """Send notification to a specific user.
+
+        Handles frontend field names (notify_email, notify_message, notify_title,
+        notify_type, notify_field) and maps them to the internal fields.
+        """
         from aexy.models.developer import Developer
 
+        # Resolve user target based on notify_type from frontend config
+        notify_type = data.get("notify_type", "email")
         user_id = data.get("user_id")
-        user_email = data.get("user_email")
-        message = data.get("message", data.get("message_template", ""))
+        user_email = data.get("user_email") or data.get("notify_email")
+
+        if notify_type == "field":
+            # Get email from a record field
+            field_name = data.get("notify_field", "")
+            if field_name and context.record_data:
+                field_value = context.record_data.get("values", {}).get(field_name)
+                if field_value:
+                    user_email = self._render_template(str(field_value), context)
+        elif notify_type == "owner":
+            # Get record owner
+            if context.record_data:
+                user_id = user_id or context.record_data.get("owner_id") or context.record_data.get("assigned_to")
+
+        # Resolve template variables in user_email
+        if user_email:
+            user_email = self._render_template(user_email, context)
+
+        # Normalize message/title from frontend field names
+        message = data.get("message", data.get("message_template", data.get("notify_message", "")))
+        title = data.get("email_subject", data.get("notify_title", "Notification"))
         channel = data.get("channel", "slack")
 
         message = self._render_template(message, context)
+        title = self._render_template(title, context)
 
         if not user_id and not user_email:
-            return NodeExecutionResult(node_id="", status="failed", error="No user_id or user_email specified")
+            return NodeExecutionResult(
+                node_id="", status="failed",
+                error="No user_id or user_email specified. Configure an email address or select a record field.",
+            )
 
         try:
             developer = None
@@ -2193,7 +2222,10 @@ class WorkflowActionHandler:
                 developer = result.scalar_one_or_none()
 
             if not developer:
-                return NodeExecutionResult(node_id="", status="failed", error=f"User not found: {user_id or user_email}")
+                return NodeExecutionResult(
+                    node_id="", status="failed",
+                    error=f"User not found: {user_id or user_email}",
+                )
 
             channels_notified = []
 
@@ -2207,7 +2239,7 @@ class WorkflowActionHandler:
 
             if channel in ("email", "both"):
                 email_result = await self._send_email(
-                    {"to": developer.email, "email_subject": data.get("email_subject", "Notification"), "email_body": message},
+                    {"to": developer.email, "email_subject": title, "email_body": message},
                     context,
                 )
                 if email_result.status == "success":
@@ -2223,16 +2255,23 @@ class WorkflowActionHandler:
     async def _notify_team(
         self, data: dict, context: WorkflowExecutionContext
     ) -> NodeExecutionResult:
-        """Send notification to an entire team."""
+        """Send notification to an entire team.
+
+        Handles frontend field names (notify_channel, team_notify_message,
+        team_notify_title, slack_channel_id) and maps them to internal fields.
+        """
         from aexy.models.team import Team
 
         team_id = data.get("team_id")
-        channel_id = data.get("channel_id")
-        message = data.get("message", data.get("message_template", ""))
+        channel_id = data.get("channel_id") or data.get("slack_channel_id")
+        message = data.get("message", data.get("message_template", data.get("team_notify_message", "")))
         message = self._render_template(message, context)
 
         if not team_id and not channel_id:
-            return NodeExecutionResult(node_id="", status="failed", error="No team_id or channel_id specified")
+            return NodeExecutionResult(
+                node_id="", status="failed",
+                error="No team_id or channel_id specified. Configure a team or Slack channel.",
+            )
 
         if team_id and not channel_id:
             try:

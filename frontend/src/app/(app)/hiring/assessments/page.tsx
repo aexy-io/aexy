@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Plus,
-  Search,
   Filter,
   MoreVertical,
   Users,
@@ -20,15 +19,10 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { SearchInput } from "@/components/ui/search-input";
 import { useAssessments, useOrganizationAssessmentMetrics } from "@/hooks/useAssessments";
 import { AssessmentStatus, AssessmentSummary } from "@/lib/api";
-
-const statusColors: Record<AssessmentStatus, string> = {
-  draft: "bg-muted text-muted-foreground",
-  active: "bg-success/20 text-success",
-  completed: "bg-info/20 text-info",
-  archived: "bg-muted text-muted-foreground/60",
-};
+import { ASSESSMENT_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
 const statusLabels: Record<AssessmentStatus, string> = {
   draft: "Draft",
@@ -99,7 +93,9 @@ function AssessmentCard({
               </h3>
               <span
                 className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                  statusColors[assessment.status]
+                  getStatusColor(ASSESSMENT_STATUS_COLORS, assessment.status).bg
+                } ${
+                  getStatusColor(ASSESSMENT_STATUS_COLORS, assessment.status).text
                 }`}
               >
                 {statusLabels[assessment.status]}
@@ -282,8 +278,40 @@ export default function AssessmentsPage() {
 
   if (authLoading || workspacesLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="min-h-screen bg-background animate-pulse">
+        <main className="max-w-7xl mx-auto px-6 py-8">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <div className="h-7 w-36 bg-accent rounded mb-2" />
+              <div className="h-4 w-64 bg-accent rounded" />
+            </div>
+            <div className="h-9 w-40 bg-accent rounded-lg" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-muted rounded-xl p-4 border border-border">
+                <div className="h-3 w-24 bg-accent rounded mb-2" />
+                <div className="h-7 w-12 bg-accent rounded" />
+              </div>
+            ))}
+          </div>
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-muted rounded-xl p-4 border border-border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="h-5 w-48 bg-accent rounded mb-2" />
+                    <div className="h-3 w-32 bg-accent rounded" />
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="h-6 w-16 bg-accent rounded-full" />
+                    <div className="h-8 w-20 bg-accent rounded-lg" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     );
   }
@@ -334,16 +362,12 @@ export default function AssessmentsPage() {
 
         {/* Filters */}
         <div className="flex items-center gap-4 mb-6">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search assessments..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground placeholder:text-muted-foreground"
-            />
-          </div>
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search assessments..."
+            wrapperClassName="flex-1"
+          />
           <div className="relative">
             <select
               value={statusFilter}

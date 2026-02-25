@@ -148,6 +148,8 @@ class DeveloperService:
         github_name: str | None = None,
         github_avatar_url: str | None = None,
         scopes: list[str] | None = None,
+        refresh_token: str | None = None,
+        token_expires_at: datetime | None = None,
     ) -> GitHubConnection:
         """Connect a GitHub account to a developer."""
         developer = await self.get_by_id(developer_id)
@@ -166,6 +168,8 @@ class DeveloperService:
             github_name=github_name,
             github_avatar_url=github_avatar_url,
             access_token=access_token,
+            refresh_token=refresh_token,
+            token_expires_at=token_expires_at,
             scopes=scopes,
         )
         self.db.add(connection)
@@ -188,6 +192,8 @@ class DeveloperService:
         github_name: str | None = None,
         github_avatar_url: str | None = None,
         scopes: list[str] | None = None,
+        refresh_token: str | None = None,
+        token_expires_at: datetime | None = None,
     ) -> Developer:
         """Get or create developer from GitHub OAuth."""
         # Try to find by GitHub ID first
@@ -198,6 +204,10 @@ class DeveloperService:
                 developer.github_connection.access_token = access_token
                 developer.github_connection.auth_status = "active"
                 developer.github_connection.auth_error = None
+                if refresh_token:
+                    developer.github_connection.refresh_token = refresh_token
+                if token_expires_at:
+                    developer.github_connection.token_expires_at = token_expires_at
                 if scopes:
                     developer.github_connection.scopes = scopes
                 await self.db.flush()
@@ -215,6 +225,8 @@ class DeveloperService:
                 github_name=github_name,
                 github_avatar_url=github_avatar_url,
                 scopes=scopes,
+                refresh_token=refresh_token,
+                token_expires_at=token_expires_at,
             )
             await self.db.refresh(developer)
             return developer
@@ -237,6 +249,8 @@ class DeveloperService:
             github_name=github_name,
             github_avatar_url=github_avatar_url,
             scopes=scopes,
+            refresh_token=refresh_token,
+            token_expires_at=token_expires_at,
         )
 
         await self.db.refresh(developer, ["github_connection"])

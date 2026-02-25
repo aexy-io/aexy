@@ -109,6 +109,7 @@ class CRMAutomationTriggerType(str, Enum):
     LIST_ENTRY_ADDED = "list_entry.added"
     LIST_ENTRY_REMOVED = "list_entry.removed"
     STATUS_CHANGED = "status.changed"
+    STAGE_CHANGED = "stage.changed"
     # Time events
     SCHEDULE_DAILY = "schedule.daily"
     SCHEDULE_WEEKLY = "schedule.weekly"
@@ -238,6 +239,37 @@ class CRMObject(Base):
     # Stats
     record_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
+    # Data Table Engine: scope & visibility (Phase 0)
+    scope: Mapped[str] = mapped_column(
+        String(20), default="crm", server_default="crm", nullable=False,
+    )  # 'crm', 'standalone', 'document', 'project'
+    created_by_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    visibility: Mapped[str] = mapped_column(
+        String(20), default="workspace", server_default="workspace", nullable=False,
+    )  # 'private', 'workspace', 'project', 'public'
+
+    # Row-level security (Phase 1)
+    row_access_mode: Mapped[str] = mapped_column(
+        String(20), default="all", server_default="all", nullable=False,
+    )  # 'all', 'owner_only', 'team_filtered', 'rule_based'
+
+    # Inline database link
+    document_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("documents.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # Audit configuration
+    audit_config: Mapped[dict] = mapped_column(
+        JSONB, default=lambda: {"enabled": False}, server_default='{"enabled": false}',
+        nullable=True,
+    )
+
     # System flag (can't be deleted)
     is_system: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
@@ -257,6 +289,9 @@ class CRMObject(Base):
 
     # Relationships
     workspace: Mapped["Workspace"] = relationship("Workspace", lazy="selectin")
+    created_by: Mapped["Developer | None"] = relationship(
+        "Developer", foreign_keys=[created_by_id], lazy="selectin",
+    )
     attributes: Mapped[list["CRMAttribute"]] = relationship(
         "CRMAttribute",
         back_populates="object",
@@ -270,9 +305,17 @@ class CRMObject(Base):
         cascade="all, delete-orphan",
         lazy="noload",
     )
+    collaborators: Mapped[list["TableCollaborator"]] = relationship(
+        "TableCollaborator",
+        back_populates="table",
+        cascade="all, delete-orphan",
+        lazy="noload",
+    )
 
     __table_args__ = (
         UniqueConstraint("workspace_id", "slug", name="uq_crm_object_slug"),
+        Index("idx_crm_objects_scope", "workspace_id", "scope"),
+        Index("idx_crm_objects_visibility", "workspace_id", "visibility"),
     )
 
 
@@ -616,6 +659,14 @@ class CRMList(Base):
         nullable=False,
     )
 
+    # Per-column display config [{slug, width, variant, conditional_format}]
+    column_config: Mapped[list] = mapped_column(
+        JSONB,
+        default=list,
+        nullable=False,
+        server_default="'[]'",
+    )
+
     # Kanban-specific settings
     group_by_attribute: Mapped[str | None] = mapped_column(String(100), nullable=True)
     kanban_settings: Mapped[dict] = mapped_column(
@@ -631,6 +682,19 @@ class CRMList(Base):
     # Privacy
     is_private: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     owner_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # Phase 4: Multi-entity support
+    entity_type: Mapped[str] = mapped_column(
+        String(30), default="crm_record", server_default="crm_record", nullable=False,
+    )  # crm_record, sprint_task, ticket, candidate
+    entity_scope_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), nullable=True,
+    )  # project_id, form_id, etc.
+    created_by_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("developers.id", ondelete="SET NULL"),
         nullable=True,
@@ -655,7 +719,12 @@ class CRMList(Base):
     # Relationships
     workspace: Mapped["Workspace"] = relationship("Workspace", lazy="selectin")
     object: Mapped["CRMObject"] = relationship("CRMObject", lazy="selectin")
-    owner: Mapped["Developer"] = relationship("Developer", lazy="selectin")
+    owner: Mapped["Developer"] = relationship(
+        "Developer", foreign_keys=[owner_id], lazy="selectin",
+    )
+    creator: Mapped["Developer"] = relationship(
+        "Developer", foreign_keys=[created_by_id], lazy="selectin",
+    )
     entries: Mapped[list["CRMListEntry"]] = relationship(
         "CRMListEntry",
         back_populates="list",
@@ -1383,3 +1452,181 @@ class CRMWebhookDelivery(Base):
         nullable=False,
     )
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# =============================================================================
+# TABLE COLLABORATORS (Phase 1: Authorization)
+# =============================================================================
+
+class TableCollaborator(Base):
+    """Per-table authorization: who can access a table and at what level."""
+
+    __tablename__ = "table_collaborators"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    table_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("crm_objects.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # WHO — exactly one of these is set
+    developer_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    role_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("custom_roles.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    team_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("teams.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+
+    # Permission level
+    permission: Mapped[str] = mapped_column(
+        String(20), default="view", nullable=False,
+    )  # 'view', 'comment', 'edit', 'manage', 'admin'
+
+    # Column restrictions
+    hidden_columns: Mapped[list] = mapped_column(
+        JSONB, default=list, server_default="[]", nullable=False,
+    )
+    readonly_columns: Mapped[list] = mapped_column(
+        JSONB, default=list, server_default="[]", nullable=False,
+    )
+
+    # Row restrictions (when row_access_mode = 'rule_based')
+    row_filter: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    created_by_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # Relationships
+    table: Mapped["CRMObject"] = relationship(
+        "CRMObject", back_populates="collaborators", lazy="selectin",
+    )
+    developer: Mapped["Developer | None"] = relationship(
+        "Developer", foreign_keys=[developer_id], lazy="selectin",
+    )
+
+    __table_args__ = (
+        UniqueConstraint("table_id", "developer_id", name="uq_table_collab_developer"),
+        UniqueConstraint("table_id", "role_id", name="uq_table_collab_role"),
+        UniqueConstraint("table_id", "team_id", name="uq_table_collab_team"),
+    )
+
+
+# =============================================================================
+# TABLE SHARE LINKS (Phase 5)
+# =============================================================================
+
+class TableShareLink(Base):
+    """Share link for external/public access to a table."""
+
+    __tablename__ = "table_share_links"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()),
+    )
+    table_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("crm_objects.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    permission: Mapped[str] = mapped_column(
+        String(20), default="view", nullable=False,
+    )  # 'view' or 'edit'
+
+    # Restrictions
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
+    max_uses: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    use_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # What to show
+    view_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("crm_lists.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    hidden_columns: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
+    row_filter: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_by_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False,
+    )
+
+    # Relationships
+    table: Mapped["CRMObject"] = relationship("CRMObject", lazy="selectin")
+    view: Mapped["CRMList | None"] = relationship("CRMList", lazy="selectin")
+
+
+# =============================================================================
+# TABLE AUDIT LOG (Phase 7)
+# =============================================================================
+
+class TableAuditLog(Base):
+    """Audit trail for table operations."""
+
+    __tablename__ = "table_audit_log"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()),
+    )
+    table_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("crm_objects.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    record_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("crm_records.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    actor_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id"),
+        nullable=False,
+    )
+    action: Mapped[str] = mapped_column(String(30), nullable=False)
+    changes: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False,
+    )
+
+    # Relationships
+    table: Mapped["CRMObject"] = relationship("CRMObject", lazy="selectin")
+    actor: Mapped["Developer"] = relationship("Developer", lazy="selectin")

@@ -1,4 +1,8 @@
-"""CRM service for managing objects, records, lists, and activities."""
+"""CRM service for managing objects, records, lists, and activities.
+
+CRM-specific logic (events, automations, activity logging) lives here.
+Core table/record/field CRUD is delegated to the shared DataTableService.
+"""
 
 import re
 from datetime import datetime, timezone
@@ -21,6 +25,7 @@ from aexy.models.crm import (
     CRMObjectType,
     CRMAttributeType,
 )
+from aexy.services.data_table_service import DataTableService
 
 
 def generate_slug(name: str) -> str:
@@ -589,10 +594,15 @@ class CRMAttributeService:
 
 
 class CRMRecordService:
-    """Service for CRM record CRUD operations."""
+    """Service for CRM record CRUD operations.
+
+    Delegates core CRUD to DataTableService and adds CRM-specific logic:
+    activity logging, automation events, and webhook triggering.
+    """
 
     def __init__(self, db: AsyncSession):
         self.db = db
+        self.dts = DataTableService(db)
 
     async def create_record(
         self,
@@ -602,47 +612,16 @@ class CRMRecordService:
         owner_id: str | None = None,
         created_by_id: str | None = None,
     ) -> CRMRecord:
-        """Create a new record."""
-        # Get object to compute display name
-        obj_service = CRMObjectService(self.db)
-        obj = await obj_service.get_object(object_id)
-        if not obj:
-            raise ValueError("Object not found")
-
-        # Compute display name from primary attribute
-        display_name = None
-        if obj.primary_attribute_id:
-            attr_service = CRMAttributeService(self.db)
-            primary_attr = await attr_service.get_attribute(obj.primary_attribute_id)
-            if primary_attr:
-                display_name = str(values.get(primary_attr.slug, ""))[:500]
-
-        # Fallback to first text value
-        if not display_name:
-            for attr in obj.attributes:
-                if attr.attribute_type == CRMAttributeType.TEXT.value:
-                    display_name = str(values.get(attr.slug, ""))[:500]
-                    break
-
-        record = CRMRecord(
-            id=str(uuid4()),
+        """Create a new record with CRM activity logging and events."""
+        record = await self.dts.create_record(
+            table_id=object_id,
             workspace_id=workspace_id,
-            object_id=object_id,
             values=values,
-            display_name=display_name,
             owner_id=owner_id,
             created_by_id=created_by_id,
-            is_archived=False,
         )
-        self.db.add(record)
 
-        # Update object record count
-        obj.record_count = obj.record_count + 1
-
-        await self.db.flush()
-        await self.db.refresh(record)
-
-        # Log activity
+        # CRM-specific: log activity
         await self._log_activity(
             workspace_id=workspace_id,
             record_id=record.id,
@@ -651,7 +630,7 @@ class CRMRecordService:
             metadata={"values": values},
         )
 
-        # Trigger CRM events (automations and webhooks)
+        # CRM-specific: trigger events (automations and webhooks)
         try:
             from aexy.services.crm_events import CRMEventService
             event_service = CRMEventService(self.db)
@@ -663,24 +642,13 @@ class CRMRecordService:
                 created_by_id=created_by_id,
             )
         except Exception:
-            # Don't fail record creation if event triggering fails
             pass
 
         return record
 
     async def get_record(self, record_id: str) -> CRMRecord | None:
         """Get a record by ID."""
-        stmt = (
-            select(CRMRecord)
-            .where(CRMRecord.id == record_id)
-            .options(
-                selectinload(CRMRecord.object).selectinload(CRMObject.attributes),
-                selectinload(CRMRecord.owner),
-                selectinload(CRMRecord.created_by),
-            )
-        )
-        result = await self.db.execute(stmt)
-        return result.scalar_one_or_none()
+        return await self.dts.get_record(record_id)
 
     async def list_records(
         self,
@@ -693,90 +661,15 @@ class CRMRecordService:
         offset: int = 0,
     ) -> tuple[list[CRMRecord], int]:
         """List records with filtering and sorting."""
-        stmt = (
-            select(CRMRecord)
-            .where(
-                CRMRecord.workspace_id == workspace_id,
-                CRMRecord.object_id == object_id,
-            )
+        return await self.dts.list_records(
+            table_id=object_id,
+            workspace_id=workspace_id,
+            filters=filters,
+            sorts=sorts,
+            include_archived=include_archived,
+            limit=limit,
+            offset=offset,
         )
-
-        if not include_archived:
-            stmt = stmt.where(CRMRecord.is_archived == False)
-
-        # Apply filters (basic implementation - can be extended)
-        if filters:
-            for f in filters:
-                attr = f.get("attribute")
-                op = f.get("operator")
-                value = f.get("value")
-
-                if attr and op:
-                    # Use JSONB operators for filtering
-                    if op == "equals":
-                        stmt = stmt.where(
-                            CRMRecord.values[attr].astext == str(value)
-                        )
-                    elif op == "not_equals":
-                        stmt = stmt.where(
-                            CRMRecord.values[attr].astext != str(value)
-                        )
-                    elif op == "contains":
-                        stmt = stmt.where(
-                            CRMRecord.values[attr].astext.ilike(f"%{value}%")
-                        )
-                    elif op == "is_empty":
-                        stmt = stmt.where(
-                            or_(
-                                CRMRecord.values[attr].is_(None),
-                                CRMRecord.values[attr].astext == "",
-                            )
-                        )
-                    elif op == "is_not_empty":
-                        stmt = stmt.where(
-                            and_(
-                                CRMRecord.values[attr].isnot(None),
-                                CRMRecord.values[attr].astext != "",
-                            )
-                        )
-
-        # Get total count
-        count_stmt = select(func.count()).select_from(stmt.subquery())
-        count_result = await self.db.execute(count_stmt)
-        total = count_result.scalar() or 0
-
-        # Apply sorting
-        if sorts:
-            for s in sorts:
-                attr = s.get("attribute")
-                direction = s.get("direction", "asc")
-                if attr:
-                    if attr == "created_at":
-                        if direction == "desc":
-                            stmt = stmt.order_by(CRMRecord.created_at.desc())
-                        else:
-                            stmt = stmt.order_by(CRMRecord.created_at.asc())
-                    elif attr == "updated_at":
-                        if direction == "desc":
-                            stmt = stmt.order_by(CRMRecord.updated_at.desc())
-                        else:
-                            stmt = stmt.order_by(CRMRecord.updated_at.asc())
-                    else:
-                        # Sort by JSONB field
-                        if direction == "desc":
-                            stmt = stmt.order_by(CRMRecord.values[attr].desc())
-                        else:
-                            stmt = stmt.order_by(CRMRecord.values[attr].asc())
-        else:
-            stmt = stmt.order_by(CRMRecord.created_at.desc())
-
-        # Apply pagination
-        stmt = stmt.limit(limit).offset(offset)
-
-        result = await self.db.execute(stmt)
-        records = list(result.scalars().all())
-
-        return records, total
 
     async def update_record(
         self,
@@ -785,39 +678,23 @@ class CRMRecordService:
         owner_id: str | None = None,
         updated_by_id: str | None = None,
     ) -> CRMRecord | None:
-        """Update a record."""
-        record = await self.get_record(record_id)
+        """Update a record with CRM activity logging and events."""
+        # Get old values before update for change tracking
+        record = await self.dts.get_record(record_id)
+        if not record:
+            return None
+        old_values = record.values.copy()
+
+        record = await self.dts.update_record(
+            record_id=record_id,
+            values=values,
+            owner_id=owner_id,
+        )
         if not record:
             return None
 
-        old_values = record.values.copy()
-
-        if values is not None:
-            # Merge values
-            new_values = {**record.values, **values}
-            record.values = new_values
-
-            # Update display name
-            obj = record.object
-            if obj and obj.primary_attribute_id:
-                attr_service = CRMAttributeService(self.db)
-                primary_attr = await attr_service.get_attribute(obj.primary_attribute_id)
-                if primary_attr:
-                    record.display_name = str(new_values.get(primary_attr.slug, ""))[:500]
-
-        if owner_id is not None:
-            record.owner_id = owner_id
-
-        await self.db.flush()
-        await self.db.refresh(record)
-
-        # Log activity
-        changes = []
-        for key, new_val in (values or {}).items():
-            old_val = old_values.get(key)
-            if old_val != new_val:
-                changes.append({"field": key, "old": old_val, "new": new_val})
-
+        # CRM-specific: compute changes and log
+        changes = getattr(record, "_changes", [])
         if changes:
             await self._log_activity(
                 workspace_id=record.workspace_id,
@@ -827,7 +704,6 @@ class CRMRecordService:
                 metadata={"changes": changes},
             )
 
-            # Trigger CRM events (automations and webhooks)
             try:
                 from aexy.services.crm_events import CRMEventService
                 event_service = CRMEventService(self.db)
@@ -841,7 +717,6 @@ class CRMRecordService:
                     updated_by_id=updated_by_id,
                 )
             except Exception:
-                # Don't fail record update if event triggering fails
                 pass
 
         return record
@@ -852,28 +727,16 @@ class CRMRecordService:
         permanent: bool = False,
         deleted_by_id: str | None = None,
     ) -> bool:
-        """Delete a record (archive by default)."""
-        record = await self.get_record(record_id)
+        """Delete a record with CRM activity logging and events."""
+        record = await self.dts.get_record(record_id)
         if not record:
             return False
 
-        # Save record info for event triggering
         workspace_id = record.workspace_id
         object_id = record.object_id
         record_values = record.values.copy()
 
-        if permanent:
-            # Update object record count
-            obj_service = CRMObjectService(self.db)
-            obj = await obj_service.get_object(record.object_id)
-            if obj:
-                obj.record_count = max(0, obj.record_count - 1)
-
-            await self.db.delete(record)
-        else:
-            record.is_archived = True
-            record.archived_at = datetime.now(timezone.utc)
-
+        if not permanent:
             await self._log_activity(
                 workspace_id=record.workspace_id,
                 record_id=record.id,
@@ -882,9 +745,10 @@ class CRMRecordService:
                 metadata={"permanent": permanent},
             )
 
-        await self.db.flush()
+        result = await self.dts.delete_record(record_id, permanent)
+        if not result:
+            return False
 
-        # Trigger CRM events (automations and webhooks)
         try:
             from aexy.services.crm_events import CRMEventService
             event_service = CRMEventService(self.db)
@@ -897,7 +761,6 @@ class CRMRecordService:
                 deleted_by_id=deleted_by_id,
             )
         except Exception:
-            # Don't fail record deletion if event triggering fails
             pass
 
         return True

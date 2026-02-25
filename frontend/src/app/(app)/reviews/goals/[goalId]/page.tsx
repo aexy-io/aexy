@@ -3,10 +3,9 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
   Target,
-  ArrowLeft,
-  ChevronRight,
   Clock,
   CheckCircle,
   AlertCircle,
@@ -24,23 +23,21 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useGoalDetail } from "@/hooks/useReviews";
 import { GoalType, GoalPriority } from "@/lib/api";
+import { GOAL_TYPE_COLORS, GOAL_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
-// Goal type colors
-const goalTypeColors: Record<GoalType, { text: string; bg: string }> = {
-  performance: { text: "text-cyan-600 dark:text-cyan-400", bg: "bg-cyan-500/10" },
-  skill_development: { text: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10" },
-  project: { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10" },
-  leadership: { text: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10" },
-  team_contribution: { text: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10" },
+// Goal status icons (extends centralized colors with icon field)
+const goalStatusIcons: Record<string, React.ReactNode> = {
+  draft: <Clock className="h-4 w-4" />,
+  active: <Clock className="h-4 w-4" />,
+  completed: <CheckCircle className="h-4 w-4" />,
+  cancelled: <AlertCircle className="h-4 w-4" />,
+  deferred: <Clock className="h-4 w-4" />,
 };
 
-// Goal status colors
-const goalStatusColors: Record<string, { text: string; bg: string; icon: React.ReactNode }> = {
-  draft: { text: "text-muted-foreground", bg: "bg-muted-foreground/10", icon: <Clock className="h-4 w-4" /> },
-  active: { text: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10", icon: <Clock className="h-4 w-4" /> },
-  completed: { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10", icon: <CheckCircle className="h-4 w-4" /> },
-  cancelled: { text: "text-muted-foreground", bg: "bg-muted-foreground/10", icon: <AlertCircle className="h-4 w-4" /> },
-  deferred: { text: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-500/10", icon: <Clock className="h-4 w-4" /> },
+// Extra statuses not in centralized GOAL_STATUS_COLORS
+const extraGoalStatusColors: Record<string, { text: string; bg: string }> = {
+  draft: { text: "text-muted-foreground", bg: "bg-muted-foreground/10" },
+  deferred: { text: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-500/10" },
 };
 
 // Priority colors
@@ -120,8 +117,9 @@ export default function GoalDetailPage() {
     );
   }
 
-  const typeColors = goalTypeColors[goal.goal_type] || goalTypeColors.performance;
-  const statusColors = goalStatusColors[goal.status] || goalStatusColors.active;
+  const typeColors = getStatusColor(GOAL_TYPE_COLORS, goal.goal_type);
+  const statusColors = extraGoalStatusColors[goal.status] || getStatusColor(GOAL_STATUS_COLORS, goal.status);
+  const statusIcon = goalStatusIcons[goal.status] || null;
   const prioColors = priorityColors[goal.priority] || priorityColors.medium;
   const progressPercent = goal.progress_percentage || 0;
 
@@ -129,18 +127,14 @@ export default function GoalDetailPage() {
     <div className="min-h-screen bg-background">
       <main className="max-w-5xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm mb-6">
-          <Link href="/reviews" className="text-muted-foreground hover:text-foreground transition flex items-center gap-1">
-            <ArrowLeft className="h-4 w-4" />
-            Reviews
-          </Link>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          <Link href="/reviews/goals" className="text-muted-foreground hover:text-foreground transition">
-            Goals
-          </Link>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          <span className="text-foreground truncate max-w-xs">{goal.title}</span>
-        </div>
+        <Breadcrumb
+          items={[
+            { label: "Reviews", href: "/reviews" },
+            { label: "Goals", href: "/reviews/goals" },
+            { label: goal.title },
+          ]}
+          className="mb-6"
+        />
 
         {/* Header */}
         <div className="bg-muted/50 rounded-xl border border-border p-6 mb-6">
@@ -150,7 +144,7 @@ export default function GoalDetailPage() {
                 {goal.goal_type.replace("_", " ")}
               </span>
               <span className={`${statusColors.text} ${statusColors.bg} text-sm px-3 py-1 rounded-full capitalize flex items-center gap-1.5`}>
-                {statusColors.icon}
+                {statusIcon}
                 {goal.status.replace("_", " ")}
               </span>
               <span className={`${prioColors.text} ${prioColors.bg} text-sm px-3 py-1 rounded-full capitalize`}>

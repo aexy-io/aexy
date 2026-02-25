@@ -317,6 +317,7 @@ class CRMAutomationService:
                         record,
                         automation.workspace_id,
                         trigger_data=run.trigger_data,
+                        run_id=str(run.id),
                     )
                     step_result["status"] = "success"
                     step_result["result"] = result
@@ -402,6 +403,19 @@ class CRMAutomationService:
             return record_value in (value if isinstance(value, list) else [value])
         elif operator == "not_in":
             return record_value not in (value if isinstance(value, list) else [value])
+        elif operator == "starts_with":
+            return str(record_value).lower().startswith(str(value).lower()) if record_value else False
+        elif operator == "ends_with":
+            return str(record_value).lower().endswith(str(value).lower()) if record_value else False
+        elif operator == "not_contains":
+            return str(value).lower() not in str(record_value).lower() if record_value else True
+        elif operator == "between":
+            if isinstance(value, list) and len(value) == 2:
+                try:
+                    return float(value[0]) <= float(record_value or 0) <= float(value[1])
+                except (ValueError, TypeError):
+                    return False
+            return False
         return True
 
     async def _execute_action(
@@ -411,6 +425,7 @@ class CRMAutomationService:
         record: CRMRecord | None,
         workspace_id: str,
         trigger_data: dict | None = None,
+        run_id: str | None = None,
     ) -> dict:
         """Execute a single automation action."""
         if action_type == "update_record":
@@ -477,6 +492,9 @@ class CRMAutomationService:
             return await self._action_cancel_booking(config, trigger_data)
         elif action_type == "reschedule_booking":
             return await self._action_reschedule_booking(config, trigger_data)
+        # AI Agent actions
+        elif action_type == "run_agent":
+            return await self._action_run_agent(config, record, workspace_id, trigger_data, run_id)
         else:
             return {"message": f"Action type {action_type} not implemented"}
 
@@ -2068,6 +2086,58 @@ class CRMAutomationService:
             }
         except Exception as e:
             return {"error": str(e)}
+
+    async def _action_run_agent(
+        self,
+        config: dict,
+        record: CRMRecord | None,
+        workspace_id: str,
+        trigger_data: dict | None = None,
+        run_id: str | None = None,
+    ) -> dict:
+        """Run an AI agent as an automation action."""
+        from aexy.services.automation_agent_service import AutomationAgentService
+        from aexy.models.automation_agent import AgentTriggerPoint
+
+        agent_id = config.get("agent_id")
+        if not agent_id:
+            return {"success": False, "error": "No agent_id specified in action config"}
+
+        input_mapping = config.get("input_mapping")
+        wait_for_completion = config.get("wait_for_completion", False)
+        timeout_seconds = config.get("timeout_seconds", 300)
+
+        # Build context from available data
+        context = {
+            "workspace_id": workspace_id,
+            "trigger_data": trigger_data or {},
+        }
+        if record:
+            context["record_id"] = str(record.id)
+            context["record"] = {
+                "values": record.values,
+                "display_name": record.display_name,
+            }
+
+        agent_service = AutomationAgentService(self.db)
+        try:
+            execution = await agent_service.spawn_agent(
+                agent_id=agent_id,
+                trigger_point=AgentTriggerPoint.AS_ACTION.value,
+                context=context,
+                automation_run_id=run_id,
+                input_mapping=input_mapping,
+                wait_for_completion=wait_for_completion,
+                timeout_seconds=timeout_seconds,
+            )
+            return {
+                "success": True,
+                "execution_id": str(execution.id),
+                "agent_id": agent_id,
+                "status": execution.status,
+            }
+        except ValueError as e:
+            return {"success": False, "error": str(e)}
 
     # =========================================================================
     # TRIGGER MATCHING

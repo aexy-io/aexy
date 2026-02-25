@@ -158,6 +158,21 @@ def get_all_activities() -> list:
         reset_daily_volumes,
         update_warming_metrics,
     )
+    from aexy.temporal.activities.tracking_automation import (
+        check_missed_standups,
+        check_standup_participation,
+        check_stale_blockers,
+        check_time_anomalies,
+        check_time_entry_thresholds,
+        detect_blocker_patterns,
+    )
+    from aexy.temporal.activities.compliance_automation import (
+        check_approaching_due_assignments,
+        check_bulk_compliance_rates,
+        check_expired_certifications,
+        check_expiring_certifications,
+        check_overdue_assignments,
+    )
     from aexy.temporal.activities.workflow_actions import (
         cleanup_old_executions,
         execute_workflow_action,
@@ -331,6 +346,19 @@ def get_all_activities() -> list:
         process_auto_assignment,
         send_weekly_slack_summary,
         send_reminder_notification,
+        # Tracking Automation
+        check_missed_standups,
+        check_time_entry_thresholds,
+        check_stale_blockers,
+        detect_blocker_patterns,
+        check_time_anomalies,
+        check_standup_participation,
+        # Compliance Automation
+        check_approaching_due_assignments,
+        check_overdue_assignments,
+        check_expiring_certifications,
+        check_expired_certifications,
+        check_bulk_compliance_rates,
     ]
 
 

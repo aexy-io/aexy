@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   roleApi,
   CustomRole,
@@ -31,7 +32,11 @@ export function useRoles(workspaceId: string | null, includeInactive = false) {
   const createMutation = useMutation({
     mutationFn: (data: RoleCreate) => roleApi.create(workspaceId!, data),
     onSuccess: () => {
+      toast.success("Role created");
       queryClient.invalidateQueries({ queryKey: ["roles", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to create role");
     },
   });
 
@@ -39,14 +44,22 @@ export function useRoles(workspaceId: string | null, includeInactive = false) {
     mutationFn: ({ roleId, data }: { roleId: string; data: RoleUpdate }) =>
       roleApi.update(workspaceId!, roleId, data),
     onSuccess: () => {
+      toast.success("Role updated");
       queryClient.invalidateQueries({ queryKey: ["roles", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update role");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (roleId: string) => roleApi.delete(workspaceId!, roleId),
     onSuccess: () => {
+      toast.success("Role deleted");
       queryClient.invalidateQueries({ queryKey: ["roles", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to delete role");
     },
   });
 
@@ -54,14 +67,22 @@ export function useRoles(workspaceId: string | null, includeInactive = false) {
     mutationFn: ({ roleId, newName }: { roleId: string; newName?: string }) =>
       roleApi.duplicate(workspaceId!, roleId, newName),
     onSuccess: () => {
+      toast.success("Role duplicated");
       queryClient.invalidateQueries({ queryKey: ["roles", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to duplicate role");
     },
   });
 
   const resetMutation = useMutation({
     mutationFn: (roleId: string) => roleApi.resetToTemplate(workspaceId!, roleId),
     onSuccess: () => {
+      toast.success("Role reset to template");
       queryClient.invalidateQueries({ queryKey: ["roles", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to reset role");
     },
   });
 
@@ -103,8 +124,12 @@ export function useRole(workspaceId: string | null, roleId: string | null) {
   const updateMutation = useMutation({
     mutationFn: (data: RoleUpdate) => roleApi.update(workspaceId!, roleId!, data),
     onSuccess: () => {
+      toast.success("Role updated");
       queryClient.invalidateQueries({ queryKey: ["role", workspaceId, roleId] });
       queryClient.invalidateQueries({ queryKey: ["roles", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update role");
     },
   });
 
@@ -213,7 +238,11 @@ export function useCreateRoleFromTemplate(workspaceId: string | null) {
       });
     },
     onSuccess: () => {
+      toast.success("Role created from template");
       queryClient.invalidateQueries({ queryKey: ["roles", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to create role from template");
     },
   });
 

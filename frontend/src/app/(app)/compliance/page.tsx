@@ -5,6 +5,7 @@ import {
   useReminderDashboard,
 } from "@/hooks/useReminders";
 import Link from "next/link";
+import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
 import {
   ShieldCheck,
   Bell,
@@ -28,8 +29,25 @@ export default function ComplianceDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      <div className="p-6 max-w-7xl mx-auto animate-pulse">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <div className="h-7 w-36 bg-accent rounded mb-2" />
+            <div className="h-4 w-56 bg-accent rounded" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="bg-muted rounded-xl p-5 border border-border">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="h-10 w-10 bg-accent rounded-lg" />
+                <div className="h-5 w-28 bg-accent rounded" />
+              </div>
+              <div className="h-3 w-full bg-accent rounded mb-2" />
+              <div className="h-3 w-2/3 bg-accent rounded" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -184,6 +202,9 @@ export default function ComplianceDashboardPage() {
           </Link>
         ))}
       </div>
+
+      {/* Automations */}
+      <ModuleAutomationsPanel module="compliance" moduleLabel="Compliance" compact />
     </div>
   );
 }

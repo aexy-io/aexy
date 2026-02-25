@@ -2,6 +2,7 @@
 
 import { Circle, Pause, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AGENT_STATUS_COLORS, EXECUTION_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
 interface AgentStatusBadgeProps {
   isActive: boolean;
@@ -28,11 +29,16 @@ export function AgentStatusBadge({
     lg: "h-3 w-3",
   };
 
+  const statusKey = isActive ? "active" : "inactive";
+  const color = getStatusColor(AGENT_STATUS_COLORS, statusKey);
+
   if (isActive) {
     return (
       <span
         className={cn(
-          "inline-flex items-center gap-1.5 rounded-full font-medium bg-green-500/20 text-green-400",
+          "inline-flex items-center gap-1.5 rounded-full font-medium",
+          color.bg,
+          color.text,
           sizeClasses[size],
           className
         )}
@@ -46,7 +52,9 @@ export function AgentStatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full font-medium bg-muted-foreground/20 text-muted-foreground",
+        "inline-flex items-center gap-1.5 rounded-full font-medium",
+        color.bg,
+        color.text,
         sizeClasses[size],
         className
       )}
@@ -73,44 +81,30 @@ export function ExecutionStatusBadge({
     md: "text-sm px-2.5 py-1",
   };
 
-  const statusConfig = {
-    pending: {
-      label: "Pending",
-      className: "bg-amber-500/20 text-amber-400",
-    },
-    running: {
-      label: "Running",
-      className: "bg-blue-500/20 text-blue-400",
-    },
-    completed: {
-      label: "Completed",
-      className: "bg-green-500/20 text-green-400",
-    },
-    failed: {
-      label: "Failed",
-      className: "bg-red-500/20 text-red-400",
-    },
-    cancelled: {
-      label: "Cancelled",
-      className: "bg-muted-foreground/20 text-muted-foreground",
-    },
+  const statusLabels: Record<string, string> = {
+    pending: "Pending",
+    running: "Running",
+    completed: "Completed",
+    failed: "Failed",
+    cancelled: "Cancelled",
   };
 
-  const config = statusConfig[status] || statusConfig.pending;
+  const color = getStatusColor(EXECUTION_STATUS_COLORS, status);
 
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full font-medium",
         sizeClasses[size],
-        config.className,
+        color.bg,
+        color.text,
         className
       )}
     >
       {status === "running" && (
         <span className="h-2 w-2 rounded-full bg-current animate-pulse" />
       )}
-      {config.label}
+      {statusLabels[status] || "Pending"}
     </span>
   );
 }

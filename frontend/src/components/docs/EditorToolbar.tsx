@@ -19,6 +19,7 @@ import {
   Link as LinkIcon,
   Image as ImageIcon,
   Table as TableIcon,
+  Database,
   Undo,
   Redo,
   Save,
@@ -65,6 +66,11 @@ export function EditorToolbar({ editor, onSave, editorMode = "rich", onModeToggl
   // Add table
   const addTable = useCallback(() => {
     editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+  }, [editor]);
+
+  // Add inline database
+  const addInlineDatabase = useCallback(() => {
+    editor.chain().focus().insertContent({ type: "inlineDatabase" }).run();
   }, [editor]);
 
   return (
@@ -243,6 +249,9 @@ export function EditorToolbar({ editor, onSave, editorMode = "rich", onModeToggl
         </ToolbarButton>
         <ToolbarButton onClick={addTable} tooltip="Insert Table">
           <TableIcon className="h-4 w-4" />
+        </ToolbarButton>
+        <ToolbarButton onClick={addInlineDatabase} tooltip="Insert Database">
+          <Database className="h-4 w-4" />
         </ToolbarButton>
       </ToolbarGroup>
 

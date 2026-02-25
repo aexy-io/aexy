@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   Plus,
-  Search,
   Filter,
   ChevronLeft,
   Trash2,
@@ -14,14 +13,18 @@ import {
   LayoutGrid,
   Settings,
 } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
 import { useCRMObjects, useCRMRecords } from "@/hooks/useCRM";
-import { CRMObject, CRMRecord, CRMAttribute, CRMObjectType } from "@/lib/api";
+import { useSavedViews } from "@/hooks/useTables";
+import { CRMObject, CRMRecord, CRMAttribute, CRMObjectType, TableSavedView, ColumnDisplayConfig } from "@/lib/api";
 import { ViewSwitcher, ViewMode } from "@/components/crm/ViewSwitcher";
+import { SavedViewSwitcher } from "@/components/crm/SavedViewSwitcher";
 import { DataTable } from "@/components/crm/DataTable";
 import { KanbanBoard } from "@/components/crm/KanbanBoard";
 import { ColumnVisibilityMenu } from "@/components/crm/ColumnSelector";
+import { FieldEditor } from "@/components/fields";
 
 const objectTypeIcons: Record<CRMObjectType, React.ReactNode> = {
   company: <Building2 className="h-5 w-5" />,
@@ -75,66 +78,14 @@ function CreateRecordModal({
                 {attr.name}
                 {attr.is_required && <span className="text-red-400 ml-1">*</span>}
               </label>
-              {attr.attribute_type === "text" || attr.attribute_type === "email" || attr.attribute_type === "url" || attr.attribute_type === "phone" ? (
-                <input
-                  type={attr.attribute_type === "email" ? "email" : attr.attribute_type === "url" ? "url" : "text"}
-                  value={(values[attr.slug] as string) || ""}
-                  onChange={(e) => setValues({ ...values, [attr.slug]: e.target.value })}
-                  required={attr.is_required}
-                  placeholder={attr.description || `Enter ${attr.name.toLowerCase()}`}
-                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              ) : attr.attribute_type === "number" || attr.attribute_type === "currency" ? (
-                <input
-                  type="number"
-                  value={(values[attr.slug] as number) || ""}
-                  onChange={(e) => setValues({ ...values, [attr.slug]: parseFloat(e.target.value) || 0 })}
-                  required={attr.is_required}
-                  placeholder={attr.description || `Enter ${attr.name.toLowerCase()}`}
-                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              ) : attr.attribute_type === "checkbox" ? (
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={!!values[attr.slug]}
-                    onChange={(e) => setValues({ ...values, [attr.slug]: e.target.checked })}
-                    className="w-4 h-4 rounded border-border bg-accent text-purple-500 focus:ring-purple-500"
-                  />
-                  <span className="text-foreground">{attr.description || "Enabled"}</span>
-                </label>
-              ) : attr.attribute_type === "select" || attr.attribute_type === "status" ? (
-                <select
-                  value={(values[attr.slug] as string) || ""}
-                  onChange={(e) => setValues({ ...values, [attr.slug]: e.target.value })}
-                  required={attr.is_required}
-                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="">Select {attr.name.toLowerCase()}</option>
-                  {((attr.config as { options?: { value: string; label: string }[] })?.options || []).map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              ) : attr.attribute_type === "date" || attr.attribute_type === "datetime" ? (
-                <input
-                  type={attr.attribute_type === "datetime" ? "datetime-local" : "date"}
-                  value={(values[attr.slug] as string) || ""}
-                  onChange={(e) => setValues({ ...values, [attr.slug]: e.target.value })}
-                  required={attr.is_required}
-                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              ) : (
-                <input
-                  type="text"
-                  value={(values[attr.slug] as string) || ""}
-                  onChange={(e) => setValues({ ...values, [attr.slug]: e.target.value })}
-                  required={attr.is_required}
-                  placeholder={attr.description || `Enter ${attr.name.toLowerCase()}`}
-                  className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              )}
+              <FieldEditor
+                attribute={attr}
+                value={values[attr.slug]}
+                onChange={(val) => setValues({ ...values, [attr.slug]: val })}
+                required={attr.is_required}
+                placeholder={attr.description || `Enter ${attr.name.toLowerCase()}`}
+                className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
             </div>
           ))}
           <div className="flex gap-3 pt-4">
@@ -171,6 +122,17 @@ export default function RecordsPage() {
   const { objects } = useCRMObjects(workspaceId);
   const currentObject = objects.find((obj) => obj.slug === objectSlug);
 
+  // Saved views
+  const {
+    views: savedViews,
+    createView,
+    updateView,
+    deleteView,
+    isCreating: isCreatingView,
+    isUpdating: isUpdatingView,
+  } = useSavedViews(workspaceId, currentObject?.id || null);
+  const [activeViewId, setActiveViewId] = useState<string | null>(null);
+
   // View state
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     // Default to board view for deals
@@ -186,6 +148,7 @@ export default function RecordsPage() {
   // Column management state
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
   const [columnOrder, setColumnOrder] = useState<string[]>([]);
+  const [columnDisplayConfig, setColumnDisplayConfig] = useState<ColumnDisplayConfig[]>([]);
 
   // Initialize columns when object loads
   useEffect(() => {
@@ -199,6 +162,50 @@ export default function RecordsPage() {
       }
     }
   }, [currentObject?.attributes, visibleColumns.length, columnOrder.length]);
+
+  // Apply saved view configuration
+  const handleSelectView = useCallback((view: TableSavedView | null) => {
+    if (!view) {
+      setActiveViewId(null);
+      // Reset to defaults
+      if (currentObject?.attributes) {
+        const nonSystemAttrs = currentObject.attributes.filter((a) => !a.is_system);
+        setVisibleColumns(nonSystemAttrs.slice(0, 5).map((a) => a.slug));
+        setColumnOrder(nonSystemAttrs.map((a) => a.slug));
+      }
+      setSortConfig(null);
+      return;
+    }
+    setActiveViewId(view.id);
+    if (view.visible_attributes?.length) {
+      setVisibleColumns(view.visible_attributes);
+    }
+    if (view.sorts?.length) {
+      const first = view.sorts[0] as { attribute?: string; direction?: "asc" | "desc" };
+      if (first.attribute) {
+        setSortConfig({ attribute: first.attribute, direction: first.direction || "asc" });
+      }
+    } else {
+      setSortConfig(null);
+    }
+    if (view.view_type === "board" || view.view_type === "table") {
+      setViewMode(view.view_type as ViewMode);
+    }
+  }, [currentObject?.attributes]);
+
+  const handleSaveView = useCallback(async (data: Parameters<typeof createView>[0]) => {
+    const view = await createView(data);
+    setActiveViewId(view.id);
+  }, [createView]);
+
+  const handleUpdateView = useCallback(async (viewId: string, data: Parameters<typeof updateView>[0]["data"]) => {
+    await updateView({ viewId, data });
+  }, [updateView]);
+
+  const handleDeleteView = useCallback(async (viewId: string) => {
+    await deleteView(viewId);
+    if (activeViewId === viewId) setActiveViewId(null);
+  }, [deleteView, activeViewId]);
 
   const {
     records,
@@ -352,6 +359,25 @@ export default function RecordsPage() {
             </div>
             <div className="flex-1" />
 
+            {/* Saved Views */}
+            {currentObject && (
+              <SavedViewSwitcher
+                views={savedViews}
+                activeViewId={activeViewId}
+                onSelectView={handleSelectView}
+                onSaveView={handleSaveView}
+                onUpdateView={handleUpdateView}
+                onDeleteView={handleDeleteView}
+                currentConfig={{
+                  visible_attributes: visibleColumns,
+                  sorts: sortConfig ? [{ attribute: sortConfig.attribute, direction: sortConfig.direction }] : [],
+                  view_type: viewMode as "table" | "board",
+                }}
+                isCreating={isCreatingView}
+                isUpdating={isUpdatingView}
+              />
+            )}
+
             {/* View Switcher */}
             <ViewSwitcher
               value={viewMode}
@@ -373,16 +399,12 @@ export default function RecordsPage() {
 
           {/* Toolbar */}
           <div className="flex items-center gap-4 mb-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={`Search ${currentObject?.plural_name?.toLowerCase() || "records"}...`}
-                className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder={`Search ${currentObject?.plural_name?.toLowerCase() || "records"}...`}
+              wrapperClassName="flex-1"
+            />
             <button className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors">
               <Filter className="h-4 w-4" />
               Filter
@@ -431,6 +453,8 @@ export default function RecordsPage() {
               onRecordDelete={handleDelete}
               enableColumnReorder={true}
               enableColumnSelector={true}
+              columnDisplayConfig={columnDisplayConfig}
+              onColumnDisplayConfigChange={setColumnDisplayConfig}
             />
           ) : (
             <KanbanBoard
