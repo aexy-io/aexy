@@ -20,6 +20,8 @@ import Collaboration from "@tiptap/extension-collaboration";
 import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
 import { common, createLowlight } from "lowlight";
 import * as Y from "yjs";
+import { InlineDatabase } from "./extensions/InlineDatabase";
+import { SlashCommands } from "./extensions/SlashCommands";
 import { EditorToolbar } from "./EditorToolbar";
 import { CollaborationAwareness, CollaborationBadge } from "./CollaborationAwareness";
 import { useCollaboration, getUserColor } from "@/hooks/useCollaboration";
@@ -186,6 +188,8 @@ export function CollaborativeEditor({
           class: "bg-background rounded-lg p-4 font-mono text-sm overflow-x-auto",
         },
       }),
+      InlineDatabase,
+      SlashCommands,
     ];
 
     // Add collaboration extensions if enabled and ydoc is ready
