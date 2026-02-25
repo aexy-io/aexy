@@ -127,10 +127,12 @@ function TableCard({
   table,
   onClick,
   onDelete,
+  onSettings,
 }: {
   table: StandaloneTable;
   onClick: () => void;
   onDelete: () => void;
+  onSettings: () => void;
 }) {
   const [showMenu, setShowMenu] = useState(false);
   const vis = visibilityConfig[table.visibility] || visibilityConfig.workspace;
@@ -171,6 +173,17 @@ function TableCard({
           </button>
           {showMenu && (
             <div className="absolute right-0 top-8 bg-muted border border-border rounded-lg shadow-lg py-1 w-40 z-10">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMenu(false);
+                  onSettings();
+                }}
+                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-accent"
+              >
+                <Settings className="h-4 w-4" />
+                Settings
+              </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -293,6 +306,7 @@ export default function TablesPage() {
                   table={table}
                   onClick={() => router.push(`/tables/${table.id}`)}
                   onDelete={() => handleDelete(table.id)}
+                  onSettings={() => router.push(`/tables/${table.id}/settings`)}
                 />
               ))}
             </div>

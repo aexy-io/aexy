@@ -3,3 +3,4 @@ export { TablePermissionBadge, getPermissionLabel, PERMISSION_LEVELS } from "./T
 export { RowAccessConfig } from "./RowAccessConfig";
 export { TableFilterPanel, matchesFilters } from "./TableFilterPanel";
 export type { FilterRule, FilterOperator } from "./TableFilterPanel";
+export { TableAuditLog } from "./TableAuditLog";
