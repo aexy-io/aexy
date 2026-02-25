@@ -1,5 +1,6 @@
 """Bookings API endpoints for booking module."""
 
+import logging
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,7 +19,10 @@ from aexy.schemas.booking import (
     AttendeeResponse,
 )
 from aexy.schemas.booking.booking import HostBrief, EventTypeBrief
-from aexy.services.booking import BookingService
+from aexy.services.booking import BookingService, CalendarSyncService
+from aexy.services.booking.booking_notification_service import BookingNotificationService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/workspaces/{workspace_id}/booking/bookings",
@@ -128,6 +132,18 @@ async def create_booking(
 
         await db.commit()
         await db.refresh(booking)
+
+        # Create calendar event and generate meeting link
+        calendar_service = CalendarSyncService(db)
+        try:
+            await calendar_service.create_calendar_event(booking)
+            await db.commit()
+            await db.refresh(booking)
+        except Exception as e:
+            logger.warning(f"Failed to create calendar event for booking {booking.id}: {e}")
+
+        # Send confirmation emails to invitee and host
+        await BookingNotificationService(db).send_confirmation_safe(booking)
 
         return booking_to_response(booking)
 
