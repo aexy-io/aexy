@@ -53,6 +53,7 @@ import {
     CheckSquare,
     LayoutTemplate,
     Download,
+    Table2,
 } from "lucide-react";
 
 export type SidebarLayoutType = "grouped" | "flat";
@@ -300,6 +301,7 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
             label: "Knowledge",
             items: [
                 { href: "/docs", label: "Docs", icon: FileText },
+                { href: "/tables", label: "Tables", icon: Table2 },
                 { href: "/forms", label: "Forms", icon: FormInput },
                 { href: "/templates", label: "Templates", icon: LayoutTemplate },
                 {
@@ -402,6 +404,7 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                     items: leaveItems,
                 },
                 { href: "/docs", label: "Docs", icon: FileText },
+                { href: "/tables", label: "Tables", icon: Table2 },
                 { href: "/forms", label: "Forms", icon: FormInput },
                 { href: "/templates", label: "Templates", icon: LayoutTemplate },
                 {

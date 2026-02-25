@@ -376,6 +376,15 @@ APP_CATALOG: dict[str, AppConfig] = {
             },
         },
     },
+    "tables": {
+        "name": "Tables",
+        "description": "Standalone data tables and databases",
+        "icon": "Table2",
+        "category": AppCategory.PRODUCTIVITY,
+        "base_route": "/tables",
+        "required_permission": "can_view_tables",
+        "modules": {},
+    },
     "compliance": {
         "name": "Compliance",
         "description": "Compliance management, documents, and reminders",
@@ -451,6 +460,7 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             },
             "automations": {"enabled": True, "modules": {}},
             "agents": {"enabled": True, "modules": {}},
+            "tables": {"enabled": True, "modules": {}},
             # Disabled for engineering
             "reviews": {"enabled": False},
             "hiring": {"enabled": False},
@@ -503,6 +513,7 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             "forms": {"enabled": True, "modules": {}},
             "automations": {"enabled": True, "modules": {}},
             "agents": {"enabled": True, "modules": {}},
+            "tables": {"enabled": False},
             # Disabled for people ops
             "tracking": {"enabled": False},
             "sprints": {"enabled": False},
@@ -546,6 +557,7 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             },
             "automations": {"enabled": True, "modules": {}},
             "agents": {"enabled": True, "modules": {}},
+            "tables": {"enabled": True, "modules": {}},
             # Disabled for business
             "tracking": {"enabled": False},
             "sprints": {"enabled": False},
@@ -628,6 +640,7 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             },
             "automations": {"enabled": True, "modules": {}},
             "agents": {"enabled": True, "modules": {}},
+            "tables": {"enabled": True, "modules": {}},
             "insights": {
                 "enabled": True,
                 "modules": {

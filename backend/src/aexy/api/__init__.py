@@ -147,6 +147,9 @@ from aexy.api.compliance_documents import folder_router as compliance_folders_ro
 # Leave Management & Team Calendar
 from aexy.api.leave import router as leave_router
 from aexy.api.team_calendar import router as team_calendar_router
+# Standalone Tables
+from aexy.api.tables import router as tables_router
+from aexy.api.public_tables import router as public_tables_router
 
 api_router = APIRouter()
 
@@ -300,3 +303,6 @@ api_router.include_router(compliance_folders_router, tags=["compliance-folders"]
 # Leave Management & Team Calendar
 api_router.include_router(leave_router, tags=["leave"])
 api_router.include_router(team_calendar_router, tags=["team-calendar"])
+# Standalone Tables
+api_router.include_router(tables_router, tags=["tables"])
+api_router.include_router(public_tables_router, tags=["tables-public"])

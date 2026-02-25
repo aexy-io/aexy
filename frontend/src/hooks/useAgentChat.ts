@@ -141,7 +141,6 @@ export function useSendMessage(
     mutationFn: (content: string) =>
       agentsApi.sendMessage(workspaceId!, agentId!, conversationId!, { content }),
     onSuccess: (data) => {
-      toast.success("Message sent");
       // Update conversation cache with new messages
       queryClient.setQueryData(
         ["agentConversation", workspaceId, agentId, conversationId],
