@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   Plus,
@@ -17,8 +17,10 @@ import { SearchInput } from "@/components/ui/search-input";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
 import { useCRMObjects, useCRMRecords } from "@/hooks/useCRM";
-import { CRMObject, CRMRecord, CRMAttribute, CRMObjectType } from "@/lib/api";
+import { useSavedViews } from "@/hooks/useTables";
+import { CRMObject, CRMRecord, CRMAttribute, CRMObjectType, TableSavedView, ColumnDisplayConfig } from "@/lib/api";
 import { ViewSwitcher, ViewMode } from "@/components/crm/ViewSwitcher";
+import { SavedViewSwitcher } from "@/components/crm/SavedViewSwitcher";
 import { DataTable } from "@/components/crm/DataTable";
 import { KanbanBoard } from "@/components/crm/KanbanBoard";
 import { ColumnVisibilityMenu } from "@/components/crm/ColumnSelector";
@@ -120,6 +122,17 @@ export default function RecordsPage() {
   const { objects } = useCRMObjects(workspaceId);
   const currentObject = objects.find((obj) => obj.slug === objectSlug);
 
+  // Saved views
+  const {
+    views: savedViews,
+    createView,
+    updateView,
+    deleteView,
+    isCreating: isCreatingView,
+    isUpdating: isUpdatingView,
+  } = useSavedViews(workspaceId, currentObject?.id || null);
+  const [activeViewId, setActiveViewId] = useState<string | null>(null);
+
   // View state
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     // Default to board view for deals
@@ -135,6 +148,7 @@ export default function RecordsPage() {
   // Column management state
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
   const [columnOrder, setColumnOrder] = useState<string[]>([]);
+  const [columnDisplayConfig, setColumnDisplayConfig] = useState<ColumnDisplayConfig[]>([]);
 
   // Initialize columns when object loads
   useEffect(() => {
@@ -148,6 +162,50 @@ export default function RecordsPage() {
       }
     }
   }, [currentObject?.attributes, visibleColumns.length, columnOrder.length]);
+
+  // Apply saved view configuration
+  const handleSelectView = useCallback((view: TableSavedView | null) => {
+    if (!view) {
+      setActiveViewId(null);
+      // Reset to defaults
+      if (currentObject?.attributes) {
+        const nonSystemAttrs = currentObject.attributes.filter((a) => !a.is_system);
+        setVisibleColumns(nonSystemAttrs.slice(0, 5).map((a) => a.slug));
+        setColumnOrder(nonSystemAttrs.map((a) => a.slug));
+      }
+      setSortConfig(null);
+      return;
+    }
+    setActiveViewId(view.id);
+    if (view.visible_attributes?.length) {
+      setVisibleColumns(view.visible_attributes);
+    }
+    if (view.sorts?.length) {
+      const first = view.sorts[0] as { attribute?: string; direction?: "asc" | "desc" };
+      if (first.attribute) {
+        setSortConfig({ attribute: first.attribute, direction: first.direction || "asc" });
+      }
+    } else {
+      setSortConfig(null);
+    }
+    if (view.view_type === "board" || view.view_type === "table") {
+      setViewMode(view.view_type as ViewMode);
+    }
+  }, [currentObject?.attributes]);
+
+  const handleSaveView = useCallback(async (data: Parameters<typeof createView>[0]) => {
+    const view = await createView(data);
+    setActiveViewId(view.id);
+  }, [createView]);
+
+  const handleUpdateView = useCallback(async (viewId: string, data: Parameters<typeof updateView>[0]["data"]) => {
+    await updateView({ viewId, data });
+  }, [updateView]);
+
+  const handleDeleteView = useCallback(async (viewId: string) => {
+    await deleteView(viewId);
+    if (activeViewId === viewId) setActiveViewId(null);
+  }, [deleteView, activeViewId]);
 
   const {
     records,
@@ -301,6 +359,25 @@ export default function RecordsPage() {
             </div>
             <div className="flex-1" />
 
+            {/* Saved Views */}
+            {currentObject && (
+              <SavedViewSwitcher
+                views={savedViews}
+                activeViewId={activeViewId}
+                onSelectView={handleSelectView}
+                onSaveView={handleSaveView}
+                onUpdateView={handleUpdateView}
+                onDeleteView={handleDeleteView}
+                currentConfig={{
+                  visible_attributes: visibleColumns,
+                  sorts: sortConfig ? [{ attribute: sortConfig.attribute, direction: sortConfig.direction }] : [],
+                  view_type: viewMode as "table" | "board",
+                }}
+                isCreating={isCreatingView}
+                isUpdating={isUpdatingView}
+              />
+            )}
+
             {/* View Switcher */}
             <ViewSwitcher
               value={viewMode}
@@ -376,6 +453,8 @@ export default function RecordsPage() {
               onRecordDelete={handleDelete}
               enableColumnReorder={true}
               enableColumnSelector={true}
+              columnDisplayConfig={columnDisplayConfig}
+              onColumnDisplayConfigChange={setColumnDisplayConfig}
             />
           ) : (
             <KanbanBoard

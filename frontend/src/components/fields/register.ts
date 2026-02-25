@@ -19,19 +19,139 @@ import { TextareaFieldView, TextareaFieldEdit } from "./types/TextareaField";
 import { RecordReferenceFieldView, UserReferenceFieldView, ReferenceFieldEdit } from "./types/ReferenceField";
 import { FormulaFieldView, RollupFieldView, AiComputedFieldView, ComputedFieldEdit } from "./types/ComputedField";
 
-registerFieldType({ type: "text", label: "Text", view: TextFieldView, edit: TextFieldEdit });
-registerFieldType({ type: "number", label: "Number", view: NumberFieldView, edit: NumberFieldEdit });
-registerFieldType({ type: "currency", label: "Currency", view: CurrencyFieldView, edit: CurrencyFieldEdit });
-registerFieldType({ type: "date", label: "Date", view: DateFieldView, edit: DateFieldEdit });
-registerFieldType({ type: "datetime", label: "Date & Time", view: DatetimeFieldView, edit: DatetimeFieldEdit });
-registerFieldType({ type: "checkbox", label: "Checkbox", view: CheckboxFieldView, edit: CheckboxFieldEdit });
-registerFieldType({ type: "select", label: "Select", view: SelectFieldView, edit: SelectFieldEdit });
-registerFieldType({ type: "status", label: "Status", view: SelectFieldView, edit: SelectFieldEdit });
-registerFieldType({ type: "multi_select", label: "Multi Select", view: MultiSelectFieldView, edit: MultiSelectFieldEdit });
+registerFieldType({
+  type: "text",
+  label: "Text",
+  view: TextFieldView,
+  edit: TextFieldEdit,
+  variants: [
+    { id: "plain", label: "Plain" },
+    { id: "truncated", label: "Truncated" },
+  ],
+});
+
+registerFieldType({
+  type: "number",
+  label: "Number",
+  view: NumberFieldView,
+  edit: NumberFieldEdit,
+  variants: [
+    { id: "plain", label: "Plain" },
+    { id: "progress_bar", label: "Progress Bar", description: "Show as a filled bar" },
+    { id: "colored_badge", label: "Colored Badge", description: "Green for positive, red for negative" },
+  ],
+  defaultVariant: { table_cell: "plain", highlights: "plain" },
+});
+
+registerFieldType({
+  type: "currency",
+  label: "Currency",
+  view: CurrencyFieldView,
+  edit: CurrencyFieldEdit,
+  variants: [
+    { id: "plain", label: "Plain" },
+    { id: "colored", label: "Colored (+/-)", description: "Green for positive, red for negative" },
+    { id: "abbreviated", label: "Abbreviated", description: "$1.2M, $500K" },
+  ],
+  defaultVariant: { table_cell: "plain", detail_view: "colored" },
+});
+
+registerFieldType({
+  type: "date",
+  label: "Date",
+  view: DateFieldView,
+  edit: DateFieldEdit,
+  variants: [
+    { id: "relative", label: "Relative", description: "2 days ago, in 3 weeks" },
+    { id: "absolute", label: "Absolute", description: "Feb 25, 2026" },
+    { id: "short", label: "Short", description: "Feb 25" },
+    { id: "full", label: "Full", description: "February 25, 2026" },
+  ],
+  defaultVariant: { table_cell: "relative", detail_view: "absolute" },
+});
+
+registerFieldType({
+  type: "datetime",
+  label: "Date & Time",
+  view: DatetimeFieldView,
+  edit: DatetimeFieldEdit,
+  variants: [
+    { id: "relative", label: "Relative" },
+    { id: "full", label: "Full" },
+  ],
+  defaultVariant: { table_cell: "relative", detail_view: "full" },
+});
+
+registerFieldType({
+  type: "checkbox",
+  label: "Checkbox",
+  view: CheckboxFieldView,
+  edit: CheckboxFieldEdit,
+  variants: [
+    { id: "check_icon", label: "Check Icon" },
+    { id: "toggle", label: "Toggle Switch" },
+    { id: "yes_no", label: "Yes / No" },
+    { id: "colored_dot", label: "Colored Dot" },
+  ],
+  defaultVariant: { table_cell: "check_icon", detail_view: "toggle" },
+});
+
+registerFieldType({
+  type: "select",
+  label: "Select",
+  view: SelectFieldView,
+  edit: SelectFieldEdit,
+  variants: [
+    { id: "pill", label: "Pill Badge" },
+    { id: "dot_label", label: "Dot + Label" },
+    { id: "text_only", label: "Text Only" },
+    { id: "colored_bg", label: "Colored Background" },
+  ],
+  defaultVariant: { table_cell: "pill", detail_view: "pill" },
+});
+
+registerFieldType({
+  type: "status",
+  label: "Status",
+  view: SelectFieldView,
+  edit: SelectFieldEdit,
+  variants: [
+    { id: "pill", label: "Pill Badge" },
+    { id: "dot_label", label: "Dot + Label" },
+    { id: "colored_bg", label: "Colored Background" },
+  ],
+});
+
+registerFieldType({
+  type: "multi_select",
+  label: "Multi Select",
+  view: MultiSelectFieldView,
+  edit: MultiSelectFieldEdit,
+  variants: [
+    { id: "pills", label: "Pill Badges" },
+    { id: "comma_text", label: "Comma Text" },
+  ],
+});
+
 registerFieldType({ type: "email", label: "Email", view: EmailFieldView, edit: EmailFieldEdit });
 registerFieldType({ type: "phone", label: "Phone", view: PhoneFieldView, edit: PhoneFieldEdit });
 registerFieldType({ type: "url", label: "URL", view: UrlFieldView, edit: UrlFieldEdit });
-registerFieldType({ type: "rating", label: "Rating", view: RatingFieldView, edit: RatingFieldEdit });
+registerFieldType({ type: "textarea", label: "Long Text", view: TextareaFieldView, edit: TextareaFieldEdit });
+
+registerFieldType({
+  type: "rating",
+  label: "Rating",
+  view: RatingFieldView,
+  edit: RatingFieldEdit,
+  variants: [
+    { id: "stars", label: "Stars" },
+    { id: "hearts", label: "Hearts" },
+    { id: "dots", label: "Dots" },
+    { id: "numeric", label: "Numeric (3/5)" },
+  ],
+  defaultVariant: { table_cell: "stars", detail_view: "stars" },
+});
+
 registerFieldType({ type: "record_reference", label: "Record Reference", view: RecordReferenceFieldView, edit: ReferenceFieldEdit });
 registerFieldType({ type: "user_reference", label: "User Reference", view: UserReferenceFieldView, edit: ReferenceFieldEdit });
 registerFieldType({ type: "formula", label: "Formula", view: FormulaFieldView, edit: ComputedFieldEdit });

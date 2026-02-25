@@ -721,6 +721,7 @@ class DataTableService:
         filters: list[dict] | None = None,
         sorts: list[dict] | None = None,
         visible_attributes: list[str] | None = None,
+        column_config: list[dict] | None = None,
         group_by_attribute: str | None = None,
         kanban_settings: dict | None = None,
         is_private: bool = False,
@@ -752,6 +753,7 @@ class DataTableService:
             filters=filters or [],
             sorts=sorts or [],
             visible_attributes=visible_attributes or [],
+            column_config=column_config or [],
             group_by_attribute=group_by_attribute,
             kanban_settings=kanban_settings or {},
             is_private=is_private,
@@ -761,6 +763,52 @@ class DataTableService:
         await self.db.flush()
         await self.db.refresh(view)
         return view
+
+    async def get_view(self, view_id: str, workspace_id: str | None = None) -> CRMList | None:
+        """Get a single saved view by ID, optionally scoped to a workspace."""
+        stmt = select(CRMList).where(CRMList.id == view_id)
+        if workspace_id:
+            stmt = stmt.where(CRMList.workspace_id == workspace_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    _VIEW_ALLOWED_FIELDS = {
+        "name", "slug", "description", "icon", "color", "view_type",
+        "filters", "sorts", "visible_attributes", "column_config",
+        "group_by_attribute", "kanban_settings", "date_attribute",
+        "end_date_attribute", "is_private",
+    }
+
+    async def update_view(self, view_id: str, workspace_id: str | None = None, **kwargs) -> CRMList | None:
+        """Update a saved view with an explicit allowlist of mutable fields."""
+        stmt = select(CRMList).where(CRMList.id == view_id)
+        if workspace_id:
+            stmt = stmt.where(CRMList.workspace_id == workspace_id)
+        result = await self.db.execute(stmt)
+        view = result.scalar_one_or_none()
+        if not view:
+            return None
+
+        for key, value in kwargs.items():
+            if key in self._VIEW_ALLOWED_FIELDS:
+                setattr(view, key, value)
+
+        await self.db.flush()
+        await self.db.refresh(view)
+        return view
+
+    async def delete_view(self, view_id: str, workspace_id: str | None = None) -> bool:
+        """Delete a saved view, optionally scoped to a workspace."""
+        stmt = select(CRMList).where(CRMList.id == view_id)
+        if workspace_id:
+            stmt = stmt.where(CRMList.workspace_id == workspace_id)
+        result = await self.db.execute(stmt)
+        view = result.scalar_one_or_none()
+        if not view:
+            return False
+        await self.db.delete(view)
+        await self.db.flush()
+        return True
 
     async def list_views(
         self,

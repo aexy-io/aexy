@@ -8224,6 +8224,7 @@ export type CRMObjectType = "company" | "person" | "deal" | "custom";
 
 export type CRMAttributeType =
   | "text"
+  | "textarea"
   | "number"
   | "currency"
   | "date"
@@ -8326,22 +8327,35 @@ export interface CRMActivity {
   created_at: string;
 }
 
+export interface ColumnDisplayConfig {
+  slug: string;
+  width?: number;
+  variant?: string;
+  conditional_format?: Record<string, unknown>[];
+}
+
 export interface CRMList {
   id: string;
   workspace_id: string;
   object_id: string;
   name: string;
+  slug?: string;
   description: string | null;
+  icon?: string | null;
+  color?: string | null;
   view_type: "table" | "board" | "gallery" | "timeline";
   is_smart: boolean;
   filters: Record<string, unknown>[];
   sorts: Record<string, unknown>[];
   columns: string[];
+  column_config?: ColumnDisplayConfig[];
   settings: Record<string, unknown>;
   is_default: boolean;
   is_shared: boolean;
+  is_private?: boolean;
   entry_count: number;
   created_by_id: string | null;
+  owner_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -17750,6 +17764,7 @@ export interface StandaloneTable {
   id: string;
   workspace_id: string;
   name: string;
+  slug: string;
   plural_name: string;
   description: string | null;
   icon: string | null;
@@ -17813,6 +17828,29 @@ export interface TableAccess {
   permission: TablePermission;
   hidden_columns: string[];
   readonly_columns: string[];
+}
+
+export interface TableSavedView {
+  id: string;
+  workspace_id: string;
+  object_id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  icon: string | null;
+  color: string | null;
+  view_type: "table" | "board" | "gallery" | "timeline";
+  filters: Record<string, unknown>[];
+  sorts: Record<string, unknown>[];
+  visible_attributes: string[];
+  column_config: ColumnDisplayConfig[];
+  group_by_attribute: string | null;
+  kanban_settings: Record<string, unknown>;
+  is_private: boolean;
+  owner_id: string | null;
+  entry_count: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export const tablesApi = {
@@ -17961,6 +17999,43 @@ export const tablesApi = {
     },
     remove: async (workspaceId: string, tableId: string, collabId: string): Promise<void> => {
       await api.delete(`/workspaces/${workspaceId}/tables/${tableId}/collaborators/${collabId}`);
+    },
+  },
+
+  // Saved Views
+  views: {
+    list: async (workspaceId: string, tableId: string): Promise<TableSavedView[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/tables/${tableId}/views`);
+      return response.data;
+    },
+    create: async (workspaceId: string, tableId: string, data: {
+      name: string;
+      view_type?: "table" | "board" | "gallery" | "timeline";
+      filters?: Record<string, unknown>[];
+      sorts?: Record<string, unknown>[];
+      visible_attributes?: string[];
+      column_config?: ColumnDisplayConfig[];
+      group_by_attribute?: string;
+      is_private?: boolean;
+    }): Promise<TableSavedView> => {
+      const response = await api.post(`/workspaces/${workspaceId}/tables/${tableId}/views`, data);
+      return response.data;
+    },
+    update: async (workspaceId: string, tableId: string, viewId: string, data: Partial<{
+      name: string;
+      view_type: "table" | "board" | "gallery" | "timeline";
+      filters: Record<string, unknown>[];
+      sorts: Record<string, unknown>[];
+      visible_attributes: string[];
+      column_config: ColumnDisplayConfig[];
+      group_by_attribute: string;
+      is_private: boolean;
+    }>): Promise<TableSavedView> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/tables/${tableId}/views/${viewId}`, data);
+      return response.data;
+    },
+    delete: async (workspaceId: string, tableId: string, viewId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/tables/${tableId}/views/${viewId}`);
     },
   },
 };

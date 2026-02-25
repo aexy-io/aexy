@@ -20,6 +20,7 @@ from aexy.schemas.crm import (
     CRMRecordListResponse,
     CRMRecordBulkDelete,
     CRMListCreate,
+    CRMListUpdate,
     CRMListResponse,
     TableCollaboratorCreate,
     TableCollaboratorUpdate,
@@ -957,3 +958,195 @@ async def get_audit_log(
         ],
         "total": total,
     }
+
+
+# =============================================================================
+# SAVED VIEWS (Phase 4)
+# =============================================================================
+
+@router.get("/{table_id}/views", response_model=list[CRMListResponse])
+async def list_views(
+    workspace_id: str,
+    table_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """List saved views for a table."""
+    await check_workspace_permission(workspace_id, current_user, db)
+
+    service = DataTableService(db)
+    views = await service.list_views(
+        table_id=table_id,
+        workspace_id=workspace_id,
+        user_id=str(current_user.id),
+    )
+    return [
+        CRMListResponse(
+            id=str(v.id),
+            workspace_id=str(v.workspace_id),
+            object_id=str(v.object_id),
+            name=v.name,
+            slug=v.slug,
+            description=v.description,
+            icon=v.icon,
+            color=v.color,
+            view_type=v.view_type,
+            filters=v.filters,
+            sorts=v.sorts,
+            visible_attributes=v.visible_attributes,
+            column_config=v.column_config,
+            group_by_attribute=v.group_by_attribute,
+            kanban_settings=v.kanban_settings,
+            date_attribute=v.date_attribute,
+            end_date_attribute=v.end_date_attribute,
+            is_private=v.is_private,
+            owner_id=str(v.owner_id) if v.owner_id else None,
+            entry_count=v.entry_count,
+            created_at=v.created_at,
+            updated_at=v.updated_at,
+        )
+        for v in views
+    ]
+
+
+@router.post("/{table_id}/views", response_model=CRMListResponse, status_code=201)
+async def create_view(
+    workspace_id: str,
+    table_id: str,
+    data: CRMListCreate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a saved view for a table."""
+    await check_workspace_permission(workspace_id, current_user, db)
+
+    service = DataTableService(db)
+    view = await service.create_view(
+        table_id=table_id,
+        workspace_id=workspace_id,
+        name=data.name,
+        view_type=data.view_type,
+        filters=[f.model_dump() for f in data.filters] if data.filters else None,
+        sorts=[s.model_dump() for s in data.sorts] if data.sorts else None,
+        visible_attributes=data.visible_attributes,
+        column_config=[c.model_dump() for c in data.column_config] if data.column_config else None,
+        group_by_attribute=data.group_by_attribute,
+        kanban_settings=data.kanban_settings.model_dump() if data.kanban_settings else None,
+        is_private=data.is_private,
+        owner_id=str(current_user.id),
+    )
+
+    await db.commit()
+    return CRMListResponse(
+        id=str(view.id),
+        workspace_id=str(view.workspace_id),
+        object_id=str(view.object_id),
+        name=view.name,
+        slug=view.slug,
+        description=view.description,
+        icon=view.icon,
+        color=view.color,
+        view_type=view.view_type,
+        filters=view.filters,
+        sorts=view.sorts,
+        visible_attributes=view.visible_attributes,
+        column_config=view.column_config,
+        group_by_attribute=view.group_by_attribute,
+        kanban_settings=view.kanban_settings,
+        date_attribute=view.date_attribute,
+        end_date_attribute=view.end_date_attribute,
+        is_private=view.is_private,
+        owner_id=str(view.owner_id) if view.owner_id else None,
+        entry_count=view.entry_count,
+        created_at=view.created_at,
+        updated_at=view.updated_at,
+    )
+
+
+@router.patch("/{table_id}/views/{view_id}", response_model=CRMListResponse)
+async def update_view(
+    workspace_id: str,
+    table_id: str,
+    view_id: str,
+    data: CRMListUpdate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a saved view."""
+    await check_workspace_permission(workspace_id, current_user, db)
+
+    service = DataTableService(db)
+    existing = await service.get_view(view_id, workspace_id=workspace_id)
+    if not existing or str(existing.object_id) != table_id:
+        raise HTTPException(status_code=404, detail="View not found")
+
+    # Private views can only be updated by their owner
+    if existing.is_private and str(existing.owner_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Cannot modify another user's private view")
+
+    update_data = data.model_dump(exclude_unset=True)
+    if "filters" in update_data and update_data["filters"] is not None:
+        update_data["filters"] = [f if isinstance(f, dict) else f.model_dump() for f in update_data["filters"]]
+    if "sorts" in update_data and update_data["sorts"] is not None:
+        update_data["sorts"] = [s if isinstance(s, dict) else s.model_dump() for s in update_data["sorts"]]
+    if "column_config" in update_data and update_data["column_config"] is not None:
+        update_data["column_config"] = [c if isinstance(c, dict) else c.model_dump() for c in update_data["column_config"]]
+    if "kanban_settings" in update_data and update_data["kanban_settings"] is not None:
+        ks = update_data["kanban_settings"]
+        update_data["kanban_settings"] = ks if isinstance(ks, dict) else ks.model_dump()
+
+    view = await service.update_view(view_id, workspace_id=workspace_id, **update_data)
+    if not view:
+        raise HTTPException(status_code=404, detail="View not found")
+
+    await db.commit()
+    return CRMListResponse(
+        id=str(view.id),
+        workspace_id=str(view.workspace_id),
+        object_id=str(view.object_id),
+        name=view.name,
+        slug=view.slug,
+        description=view.description,
+        icon=view.icon,
+        color=view.color,
+        view_type=view.view_type,
+        filters=view.filters,
+        sorts=view.sorts,
+        visible_attributes=view.visible_attributes,
+        column_config=view.column_config,
+        group_by_attribute=view.group_by_attribute,
+        kanban_settings=view.kanban_settings,
+        date_attribute=view.date_attribute,
+        end_date_attribute=view.end_date_attribute,
+        is_private=view.is_private,
+        owner_id=str(view.owner_id) if view.owner_id else None,
+        entry_count=view.entry_count,
+        created_at=view.created_at,
+        updated_at=view.updated_at,
+    )
+
+
+@router.delete("/{table_id}/views/{view_id}", status_code=204)
+async def delete_view(
+    workspace_id: str,
+    table_id: str,
+    view_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a saved view."""
+    await check_workspace_permission(workspace_id, current_user, db)
+
+    service = DataTableService(db)
+    existing = await service.get_view(view_id, workspace_id=workspace_id)
+    if not existing or str(existing.object_id) != table_id:
+        raise HTTPException(status_code=404, detail="View not found")
+
+    # Private views can only be deleted by their owner
+    if existing.is_private and str(existing.owner_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Cannot delete another user's private view")
+
+    if not await service.delete_view(view_id, workspace_id=workspace_id):
+        raise HTTPException(status_code=404, detail="View not found")
+
+    await db.commit()

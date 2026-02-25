@@ -12,6 +12,7 @@ interface ColumnSelectorProps {
   onToggleColumn: (slug: string) => void;
   onShowAll?: () => void;
   onHideAll?: () => void;
+  onAddColumn?: () => void;
   className?: string;
 }
 
@@ -21,11 +22,14 @@ export function ColumnSelector({
   onToggleColumn,
   onShowAll,
   onHideAll,
+  onAddColumn,
   className,
 }: ColumnSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
 
   // Filter out system attributes and apply search
   const selectableAttributes = attributes.filter((attr) => {
@@ -51,9 +55,16 @@ export function ColumnSelector({
 
   return (
     <th className={cn("px-2 py-3", className)}>
-      <div className="relative" ref={menuRef}>
+      <div ref={menuRef}>
         <button
-          onClick={() => setIsOpen(!isOpen)}
+          ref={btnRef}
+          onClick={() => {
+            if (!isOpen && btnRef.current) {
+              const rect = btnRef.current.getBoundingClientRect();
+              setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+            }
+            setIsOpen(!isOpen);
+          }}
           className={cn(
             "p-1.5 rounded-lg transition-colors",
             isOpen
@@ -65,8 +76,8 @@ export function ColumnSelector({
           <Plus className="h-4 w-4" />
         </button>
 
-        {isOpen && (
-          <div className="absolute right-0 top-full mt-1 z-50 w-72 bg-muted border border-border rounded-lg shadow-xl">
+        {isOpen && menuPos && (
+          <div className="fixed z-50 w-72 bg-muted border border-border rounded-lg shadow-xl" style={{ top: menuPos.top, right: menuPos.right }}>
             {/* Search */}
             <div className="p-2 border-b border-border">
               <div className="relative">
@@ -154,8 +165,22 @@ export function ColumnSelector({
             </div>
 
             {/* Footer */}
-            <div className="px-3 py-2 border-t border-border text-xs text-muted-foreground">
-              {visibleColumns.length} of {attributes.filter((a) => !a.is_system).length} columns visible
+            <div className="px-3 py-2 border-t border-border flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                {visibleColumns.length} of {attributes.filter((a) => !a.is_system).length} columns visible
+              </span>
+              {onAddColumn && (
+                <button
+                  onClick={() => {
+                    onAddColumn();
+                    setIsOpen(false);
+                  }}
+                  className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 font-medium"
+                >
+                  <Plus className="h-3 w-3" />
+                  New column
+                </button>
+              )}
             </div>
           </div>
         )}

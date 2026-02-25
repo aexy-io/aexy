@@ -8,6 +8,8 @@ import logging
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
+logger = logging.getLogger(__name__)
+
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -465,7 +467,7 @@ async def create_public_booking(
             await db.refresh(booking)
         except Exception as e:
             # Log but don't fail the booking if calendar creation fails
-            logging.warning(f"Failed to create calendar events for booking {booking.id}: {e}")
+            logger.warning(f"Failed to create calendar events for booking {booking.id}: {e}")
 
         # Send confirmation emails to invitee and host
         await BookingNotificationService(db).send_confirmation_safe(booking)
