@@ -23,6 +23,12 @@ from aexy.models.tracking import (
     WorkLogType,
 )
 from aexy.schemas.integrations import SlackCommandResponse, SlackSlashCommand
+from aexy.services.tracking_events import (
+    emit_blocker_created,
+    emit_standup_submitted,
+    emit_time_entry_created,
+    emit_work_log_submitted,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -220,6 +226,10 @@ class SlackTrackingService:
             existing_standup.slack_message_ts = None  # No message TS for commands
             existing_standup.slack_channel_id = command.channel_id
             await db.commit()
+            try:
+                await emit_standup_submitted(db, existing_standup)
+            except Exception:
+                logger.exception("Failed to dispatch standup automation event")
 
             return SlackCommandResponse(
                 response_type="ephemeral",
@@ -273,6 +283,10 @@ class SlackTrackingService:
         )
         db.add(standup)
         await db.commit()
+        try:
+            await emit_standup_submitted(db, standup)
+        except Exception:
+            logger.exception("Failed to dispatch standup automation event")
 
         return SlackCommandResponse(
             response_type="ephemeral",
@@ -400,6 +414,10 @@ class SlackTrackingService:
         )
         db.add(log)
         await db.commit()
+        try:
+            await emit_work_log_submitted(db, log)
+        except Exception:
+            logger.exception("Failed to dispatch work_log automation event")
 
         task_display = task.title if task else task_ref
         status_display = f" → *{status}*" if status else ""
@@ -522,6 +540,10 @@ class SlackTrackingService:
         )
         db.add(blocker)
         await db.commit()
+        try:
+            await emit_blocker_created(db, blocker)
+        except Exception:
+            logger.exception("Failed to dispatch blocker automation event")
 
         severity_emoji = {
             "low": ":white_circle:",
@@ -642,6 +664,10 @@ class SlackTrackingService:
         )
         db.add(entry)
         await db.commit()
+        try:
+            await emit_time_entry_created(db, entry)
+        except Exception:
+            logger.exception("Failed to dispatch time_entry automation event")
 
         # Format duration for display
         hours = duration_minutes // 60
@@ -750,6 +776,10 @@ class SlackTrackingService:
         )
         db.add(log)
         await db.commit()
+        try:
+            await emit_work_log_submitted(db, log)
+        except Exception:
+            logger.exception("Failed to dispatch work_log automation event")
 
         task_display = task.title if task else (task_ref or "General")
 

@@ -5,13 +5,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { redirect, useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
   ClipboardCheck,
   Target,
   Users,
   Calendar,
   Plus,
-  ChevronRight,
   CheckCircle,
   Clock,
   AlertCircle,
@@ -20,7 +20,6 @@ import {
   GitCommit,
   MessageSquare,
   TrendingUp,
-  ArrowLeft,
   Eye,
   X,
   Sparkles,
@@ -40,18 +39,10 @@ import {
 } from "lucide-react";
 import { reviewsApi, IndividualReviewDetail, WorkGoal, GoalSuggestion } from "@/lib/api";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { GOAL_TYPE_COLORS, GOAL_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
-const goalTypeColors: Record<string, { bg: string; text: string }> = {
-  performance: { bg: "bg-cyan-500/20", text: "text-cyan-600 dark:text-cyan-400" },
-  skill_development: { bg: "bg-purple-500/20", text: "text-purple-600 dark:text-purple-400" },
-  project: { bg: "bg-emerald-500/20", text: "text-emerald-600 dark:text-emerald-400" },
-  leadership: { bg: "bg-amber-500/20", text: "text-amber-600 dark:text-amber-400" },
-  team_contribution: { bg: "bg-blue-500/20", text: "text-blue-600 dark:text-blue-400" },
-};
-
-const goalStatusColors: Record<string, { bg: string; text: string }> = {
-  in_progress: { bg: "bg-blue-500/20", text: "text-blue-600 dark:text-blue-400" },
-  completed: { bg: "bg-emerald-500/20", text: "text-emerald-600 dark:text-emerald-400" },
+// Extra statuses specific to the manage view (at_risk, pending not in centralized GOAL_STATUS_COLORS)
+const extraGoalStatusColors: Record<string, { bg: string; text: string }> = {
   at_risk: { bg: "bg-red-500/20", text: "text-red-600 dark:text-red-400" },
   pending: { bg: "bg-muted-foreground/20", text: "text-muted-foreground" },
 };
@@ -240,17 +231,14 @@ export default function MemberDetailPage() {
     <div className="min-h-screen bg-background">
 <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm mb-6">
-          <Link href="/reviews" className="text-muted-foreground hover:text-foreground transition">
-            Reviews
-          </Link>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          <Link href="/reviews/manage" className="text-muted-foreground hover:text-foreground transition">
-            Management
-          </Link>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          <span className="text-foreground">{member.name}</span>
-        </div>
+        <Breadcrumb
+          items={[
+            { label: "Reviews", href: "/reviews" },
+            { label: "Team", href: "/reviews/manage" },
+            { label: member.name },
+          ]}
+          className="mb-6"
+        />
 
         {/* Member Header */}
         <div className="bg-muted rounded-xl border border-border p-6 mb-6">
@@ -385,13 +373,13 @@ export default function MemberDetailPage() {
                         <div>
                           <div className="flex items-center gap-2 mb-1">
                             <h4 className="text-foreground font-medium">{goal.title}</h4>
-                            <span className={`px-2 py-0.5 rounded-full text-xs ${goalTypeColors[goal.type]?.bg} ${goalTypeColors[goal.type]?.text}`}>
+                            <span className={`px-2 py-0.5 rounded-full text-xs ${getStatusColor(GOAL_TYPE_COLORS, goal.type).bg} ${getStatusColor(GOAL_TYPE_COLORS, goal.type).text}`}>
                               {goal.type.replace("_", " ")}
                             </span>
                           </div>
                           <p className="text-muted-foreground text-sm">Due: {new Date(goal.dueDate).toLocaleDateString()}</p>
                         </div>
-                        <span className={`px-2 py-0.5 rounded-full text-xs ${goalStatusColors[goal.status]?.bg} ${goalStatusColors[goal.status]?.text}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${(extraGoalStatusColors[goal.status] || getStatusColor(GOAL_STATUS_COLORS, goal.status)).bg} ${(extraGoalStatusColors[goal.status] || getStatusColor(GOAL_STATUS_COLORS, goal.status)).text}`}>
                           {goal.progress}%
                         </span>
                       </div>
@@ -597,10 +585,10 @@ export default function MemberDetailPage() {
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="text-foreground font-semibold">{goal.title}</h3>
-                        <span className={`px-2 py-0.5 rounded-full text-xs ${goalTypeColors[goal.type]?.bg} ${goalTypeColors[goal.type]?.text}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${getStatusColor(GOAL_TYPE_COLORS, goal.type).bg} ${getStatusColor(GOAL_TYPE_COLORS, goal.type).text}`}>
                           {goal.type.replace("_", " ")}
                         </span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs ${goalStatusColors[goal.status]?.bg} ${goalStatusColors[goal.status]?.text}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${(extraGoalStatusColors[goal.status] || getStatusColor(GOAL_STATUS_COLORS, goal.status)).bg} ${(extraGoalStatusColors[goal.status] || getStatusColor(GOAL_STATUS_COLORS, goal.status)).text}`}>
                           {goal.status.replace("_", " ")}
                         </span>
                       </div>

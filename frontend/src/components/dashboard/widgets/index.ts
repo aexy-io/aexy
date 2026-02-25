@@ -38,3 +38,52 @@ export { FrameworksToolsWidget } from "./FrameworksToolsWidget";
 export { AIInsightsWidget } from "./AIInsightsWidget";
 export { SoftSkillsWidget } from "./SoftSkillsWidget";
 export { ComingSoonWidget } from "./ComingSoonWidget";
+
+// Goals & Growth widgets
+export { MyGoalsWidget } from "./MyGoalsWidget";
+export { GrowthTrajectoryWidget } from "./GrowthTrajectoryWidget";
+export { PeerBenchmarkWidget } from "./PeerBenchmarkWidget";
+export { LearningPathWidget } from "./LearningPathWidget";
+export { SkillGapsWidget } from "./SkillGapsWidget";
+
+// Tracking widgets
+export { StandupStatusWidget } from "./StandupStatusWidget";
+export { TimeTrackingWidget } from "./TimeTrackingWidget";
+export { UpcomingDeadlinesWidget } from "./UpcomingDeadlinesWidget";
+
+// Ticket & Form widgets
+export { SLAOverviewWidget } from "./SLAOverviewWidget";
+export { RecentTicketsWidget } from "./RecentTicketsWidget";
+export { TicketsByPriorityWidget } from "./TicketsByPriorityWidget";
+export { FormSubmissionsWidget } from "./FormSubmissionsWidget";
+export { RecentFormsWidget } from "./RecentFormsWidget";
+
+// Docs widgets
+export { RecentDocsWidget } from "./RecentDocsWidget";
+export { DocActivityWidget } from "./DocActivityWidget";
+
+// Reviews widgets
+export { PerformanceReviewsWidget } from "./PerformanceReviewsWidget";
+export { PendingReviewsWidget } from "./PendingReviewsWidget";
+export { ReviewCycleWidget } from "./ReviewCycleWidget";
+
+// Hiring widgets
+export { HiringPipelineWidget } from "./HiringPipelineWidget";
+export { CandidateStatsWidget } from "./CandidateStatsWidget";
+export { OpenPositionsWidget } from "./OpenPositionsWidget";
+export { InterviewScheduleWidget } from "./InterviewScheduleWidget";
+
+// CRM widgets
+export { DealStatsWidget } from "./DealStatsWidget";
+export { RecentDealsWidget } from "./RecentDealsWidget";
+export { CRMQuickViewWidget } from "./CRMQuickViewWidget";
+
+// Team & Admin widgets
+export { TeamOverviewWidget } from "./TeamOverviewWidget";
+export { TeamActivityWidget } from "./TeamActivityWidget";
+export { OrgMetricsWidget } from "./OrgMetricsWidget";
+export { SystemHealthWidget } from "./SystemHealthWidget";
+
+// Team Health & Burnout widgets
+export { TeamHealthWidget } from "./TeamHealthWidget";
+export { BurnoutRiskWidget } from "./BurnoutRiskWidget";

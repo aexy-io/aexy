@@ -9,10 +9,14 @@ import {
   Filter,
   GripVertical,
   MoreVertical,
+  Palette,
+  Trash2,
 } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
+import { getFieldTypeOrFallback } from "@/components/fields";
+import type { DisplayVariant } from "@/components/fields";
 
 interface ColumnHeaderProps {
   id: string;
@@ -26,6 +30,16 @@ interface ColumnHeaderProps {
   width?: number;
   onResize?: (width: number) => void;
   className?: string;
+  /** Field type for display variant config */
+  fieldType?: string;
+  /** Current display variant */
+  displayVariant?: string;
+  /** Callback when user selects a display variant */
+  onDisplayVariantChange?: (variant: string) => void;
+  /** Callback to open conditional formatting panel */
+  onConditionalFormat?: () => void;
+  /** Callback to delete this column */
+  onDelete?: () => void;
 }
 
 export function ColumnHeader({
@@ -40,10 +54,18 @@ export function ColumnHeader({
   width,
   onResize,
   className,
+  fieldType,
+  displayVariant,
+  onDisplayVariantChange,
+  onConditionalFormat,
+  onDelete,
 }: ColumnHeaderProps) {
   const [showMenu, setShowMenu] = useState(false);
+  const [showVariants, setShowVariants] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
   const resizeStartX = useRef<number>(0);
   const startWidth = useRef<number>(0);
 
@@ -62,11 +84,16 @@ export function ColumnHeader({
     width: width ? `${width}px` : undefined,
   };
 
+  // Resolve available variants for this field type
+  const fieldDef = fieldType ? getFieldTypeOrFallback(fieldType) : null;
+  const variants: DisplayVariant[] = fieldDef?.variants || [];
+
   // Close menu on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setShowMenu(false);
+        setShowVariants(false);
       }
     };
     if (showMenu) {
@@ -106,7 +133,7 @@ export function ColumnHeader({
       style={style}
       className={cn(
         "px-4 py-3 text-left relative group",
-        isDragging && "opacity-50 bg-accent",
+        isDragging && "opacity-50 bg-accent z-10",
         className
       )}
       {...attributes}
@@ -114,12 +141,12 @@ export function ColumnHeader({
       <div className="flex items-center gap-1">
         {/* Drag handle */}
         {isDraggable && (
-          <button
+          <div
             {...listeners}
-            className="p-0.5 -ml-1 cursor-grab opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
+            className="p-1 -ml-1.5 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition-colors"
           >
-            <GripVertical className="h-3 w-3" />
-          </button>
+            <GripVertical className="h-4 w-4" />
+          </div>
         )}
 
         {/* Label with sort */}
@@ -138,7 +165,15 @@ export function ColumnHeader({
 
         {/* Menu button */}
         <button
-          onClick={() => setShowMenu(!showMenu)}
+          ref={menuBtnRef}
+          onClick={() => {
+            if (!showMenu && menuBtnRef.current) {
+              const rect = menuBtnRef.current.getBoundingClientRect();
+              setMenuPos({ top: rect.bottom + 4, left: rect.left });
+            }
+            setShowMenu(!showMenu);
+            setShowVariants(false);
+          }}
           className="p-0.5 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
         >
           <MoreVertical className="h-3 w-3" />
@@ -146,10 +181,11 @@ export function ColumnHeader({
       </div>
 
       {/* Dropdown menu */}
-      {showMenu && (
+      {showMenu && menuPos && (
         <div
           ref={menuRef}
-          className="absolute top-full left-0 mt-1 z-50 w-48 bg-muted border border-border rounded-lg shadow-xl py-1"
+          className="fixed z-50 w-52 bg-muted border border-border rounded-lg shadow-xl py-1"
+          style={{ top: menuPos.top, left: menuPos.left }}
         >
           {onSort && (
             <>
@@ -187,19 +223,92 @@ export function ColumnHeader({
               Filter by this column
             </button>
           )}
-          {onHide && (
+
+          {/* Display variant picker */}
+          {variants.length > 0 && onDisplayVariantChange && (
             <>
               <div className="border-t border-border my-1" />
-              <button
-                onClick={() => {
-                  onHide();
-                  setShowMenu(false);
-                }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
-              >
-                <EyeOff className="h-4 w-4" />
-                Hide column
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowVariants(!showVariants)}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                >
+                  <Palette className="h-4 w-4" />
+                  Display as
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {variants.find((v) => v.id === displayVariant)?.label || "Default"}
+                  </span>
+                </button>
+                {showVariants && (
+                  <div className="absolute left-full top-0 ml-1 w-48 bg-muted border border-border rounded-lg shadow-xl py-1">
+                    {variants.map((v) => (
+                      <button
+                        key={v.id}
+                        onClick={() => {
+                          onDisplayVariantChange(v.id);
+                          setShowMenu(false);
+                          setShowVariants(false);
+                        }}
+                        className={cn(
+                          "w-full flex flex-col items-start px-3 py-2 text-sm hover:bg-accent transition-colors",
+                          displayVariant === v.id && "bg-accent text-purple-400"
+                        )}
+                      >
+                        <span className={displayVariant === v.id ? "text-purple-400 font-medium" : "text-foreground"}>
+                          {v.label}
+                        </span>
+                        {v.description && (
+                          <span className="text-xs text-muted-foreground">{v.description}</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {onConditionalFormat && (
+            <button
+              onClick={() => {
+                onConditionalFormat();
+                setShowMenu(false);
+                setShowVariants(false);
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+            >
+              <Palette className="h-4 w-4" />
+              Conditional formatting...
+            </button>
+          )}
+
+          {(onHide || onDelete) && (
+            <>
+              <div className="border-t border-border my-1" />
+              {onHide && (
+                <button
+                  onClick={() => {
+                    onHide();
+                    setShowMenu(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                >
+                  <EyeOff className="h-4 w-4" />
+                  Hide column
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  onClick={() => {
+                    onDelete();
+                    setShowMenu(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete column
+                </button>
+              )}
             </>
           )}
         </div>

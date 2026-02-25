@@ -14,6 +14,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EXECUTION_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 import {
   AutomationAgentExecutionListItem,
   AutomationAgentExecution,
@@ -29,38 +30,12 @@ interface AgentExecutionLogProps {
   className?: string;
 }
 
-const STATUS_CONFIG = {
-  pending: {
-    icon: Clock,
-    color: "text-yellow-500",
-    bgColor: "bg-yellow-50",
-    label: "Pending",
-  },
-  running: {
-    icon: Loader2,
-    color: "text-blue-500",
-    bgColor: "bg-blue-50",
-    label: "Running",
-    animate: true,
-  },
-  completed: {
-    icon: CheckCircle2,
-    color: "text-green-500",
-    bgColor: "bg-green-50",
-    label: "Completed",
-  },
-  failed: {
-    icon: XCircle,
-    color: "text-red-500",
-    bgColor: "bg-red-50",
-    label: "Failed",
-  },
-  timeout: {
-    icon: AlertTriangle,
-    color: "text-orange-500",
-    bgColor: "bg-orange-50",
-    label: "Timeout",
-  },
+const STATUS_ICONS: Record<string, { icon: typeof Clock; label: string; animate?: boolean }> = {
+  pending: { icon: Clock, label: "Pending" },
+  running: { icon: Loader2, label: "Running", animate: true },
+  completed: { icon: CheckCircle2, label: "Completed" },
+  failed: { icon: XCircle, label: "Failed" },
+  timeout: { icon: AlertTriangle, label: "Timeout" },
 };
 
 export function AgentExecutionLog({
@@ -154,8 +129,9 @@ function ExecutionItem({
   isExpanded,
   onToggleExpand,
 }: ExecutionItemProps) {
-  const statusConfig = STATUS_CONFIG[execution.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.pending;
-  const StatusIcon = statusConfig.icon;
+  const iconConfig = STATUS_ICONS[execution.status as keyof typeof STATUS_ICONS] || STATUS_ICONS.pending;
+  const StatusIcon = iconConfig.icon;
+  const execColor = getStatusColor(EXECUTION_STATUS_COLORS, execution.status);
 
   return (
     <div className="rounded-lg border bg-card">
@@ -164,12 +140,12 @@ function ExecutionItem({
         onClick={onToggleExpand}
         className="w-full flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors"
       >
-        <div className={cn("rounded-full p-1.5", statusConfig.bgColor)}>
+        <div className={cn("rounded-full p-1.5", execColor.bg)}>
           <StatusIcon
             className={cn(
               "h-4 w-4",
-              statusConfig.color,
-              (statusConfig as { animate?: boolean }).animate && "animate-spin"
+              execColor.text,
+              iconConfig.animate && "animate-spin"
             )}
           />
         </div>
@@ -187,8 +163,8 @@ function ExecutionItem({
             {execution.duration_ms !== null && (
               <span>{formatDuration(execution.duration_ms)}</span>
             )}
-            <span className={cn("font-medium", statusConfig.color)}>
-              {statusConfig.label}
+            <span className={cn("font-medium", execColor.text)}>
+              {iconConfig.label}
             </span>
           </div>
         </div>

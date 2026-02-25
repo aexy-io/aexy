@@ -98,8 +98,16 @@ export function NotificationInbox({
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+            <div className="divide-y divide-border animate-pulse">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex items-start gap-3 p-4">
+                  <div className="h-8 w-8 bg-accent rounded-full" />
+                  <div className="flex-1">
+                    <div className="h-3 w-48 bg-accent rounded mb-2" />
+                    <div className="h-2 w-24 bg-accent rounded" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">

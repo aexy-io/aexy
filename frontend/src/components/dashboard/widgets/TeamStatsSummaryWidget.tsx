@@ -33,32 +33,33 @@ export function TeamStatsSummaryWidget() {
 
   const stats = teamInsights;
   const hasData = !!stats;
+  const aggregate = stats?.aggregate;
 
   const metrics = [
     {
       label: "Commits",
-      value: stats?.total_commits ?? 0,
+      value: aggregate?.total_commits ?? 0,
       icon: GitCommit,
       color: "text-blue-600 dark:text-blue-400",
       bgColor: "bg-blue-500/10",
     },
     {
       label: "Pull Requests",
-      value: stats?.total_prs ?? 0,
+      value: aggregate?.total_prs_merged ?? 0,
       icon: GitPullRequest,
       color: "text-green-600 dark:text-green-400",
       bgColor: "bg-green-500/10",
     },
     {
       label: "Reviews",
-      value: stats?.total_reviews ?? 0,
+      value: aggregate?.total_reviews ?? 0,
       icon: Eye,
       color: "text-purple-600 dark:text-purple-400",
       bgColor: "bg-purple-500/10",
     },
     {
       label: "Lines Changed",
-      value: stats?.total_lines_changed ?? 0,
+      value: aggregate?.total_lines_changed ?? 0,
       icon: Code2,
       color: "text-amber-600 dark:text-amber-400",
       bgColor: "bg-amber-500/10",

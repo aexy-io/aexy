@@ -162,8 +162,13 @@ export function NotionSidebar({
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
+          <div className="space-y-1 px-2 py-2 animate-pulse">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center gap-2 px-2 py-1.5">
+                <div className="h-4 w-4 bg-accent rounded" />
+                <div className="h-3 w-24 bg-accent rounded" />
+              </div>
+            ))}
           </div>
         ) : (
           <>

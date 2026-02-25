@@ -18,6 +18,7 @@ from sqlalchemy.orm import selectinload
 from aexy.models.epic import Epic
 from aexy.models.sprint import SprintTask, Sprint
 from aexy.models.developer import Developer
+from aexy.services.automation_service import dispatch_automation_event
 
 logger = logging.getLogger(__name__)
 
@@ -322,6 +323,21 @@ class EpicService:
             if epic.status != "done":
                 epic.status = "done"
                 epic.completed_date = date.today()
+
+                # Dispatch automation event for epic completion
+                await dispatch_automation_event(
+                    db=self.db,
+                    workspace_id=str(epic.workspace_id),
+                    module="sprints",
+                    trigger_type="epic.completed",
+                    entity_id=str(epic.id),
+                    trigger_data={
+                        "epic_title": epic.title,
+                        "total_tasks": epic.total_tasks,
+                        "completed_tasks": epic.completed_tasks,
+                        "total_story_points": epic.total_story_points,
+                    },
+                )
         elif epic.completed_tasks > 0 or any(
             task.status == "in_progress" for task in await self._get_epic_tasks(epic_id)
         ):

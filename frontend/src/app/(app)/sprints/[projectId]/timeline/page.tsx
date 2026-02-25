@@ -15,6 +15,7 @@ import {
   Layers,
   Clock,
 } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useSprints } from "@/hooks/useSprints";
@@ -24,17 +25,14 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/premium-card";
+import { SPRINT_STATUS_COLORS as SPRINT_COLORS_MAP } from "@/lib/statusColors";
 
 type ZoomLevel = "week" | "month" | "quarter";
 
-// Sprint status colors
-const SPRINT_STATUS_COLORS: Record<string, string> = {
-  planning: "bg-blue-500",
-  active: "bg-green-500",
-  review: "bg-amber-500",
-  retrospective: "bg-purple-500",
-  completed: "bg-muted-foreground",
-};
+// Derive flat bg-only map from centralized StatusColor tokens
+const SPRINT_STATUS_COLORS: Record<string, string> = Object.fromEntries(
+  Object.entries(SPRINT_COLORS_MAP).map(([k, v]) => [k, v.bg])
+);
 
 // Generate date range for timeline
 function generateDateRange(startDate: Date, endDate: Date, zoomLevel: ZoomLevel): Date[] {
@@ -417,20 +415,15 @@ export default function TimelinePage({
 
               {/* Empty state */}
               {(!sprints || sprints.length === 0) && (
-                <div className="text-center py-16">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
-                    <Layers className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-lg font-medium text-foreground mb-2">No sprints yet</h3>
-                  <p className="text-muted-foreground mb-4">Create sprints to see them on the timeline</p>
-                  <Link
-                    href={`/sprints/${projectId}`}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create Sprint
-                  </Link>
-                </div>
+                <EmptyState
+                  icon={Calendar}
+                  title="No sprints yet"
+                  description="Create your first sprint to start planning and tracking work in time-boxed iterations."
+                  actions={[
+                    { label: "Create Sprint", href: `/sprints/${projectId}` },
+                  ]}
+                  compact
+                />
               )}
             </div>
           </div>

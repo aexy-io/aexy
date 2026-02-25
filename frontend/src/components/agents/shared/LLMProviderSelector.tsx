@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, Check, Sparkles, Cpu, Server } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { HelpTooltip } from "@/components/ui/tooltip";
 
 type LLMProvider = "claude" | "gemini" | "ollama";
 
@@ -124,9 +125,12 @@ export function LLMProviderSelector({
     <div className={cn("space-y-4", className)}>
       {/* Provider Selector */}
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">
-          LLM Provider
-        </label>
+        <div className="flex items-center gap-1.5 mb-2">
+          <label className="text-sm font-medium text-foreground">
+            LLM Provider
+          </label>
+          <HelpTooltip content="The AI service that powers your agent. Claude excels at nuanced tasks, Gemini offers fast responses, and Ollama runs locally for data privacy" />
+        </div>
         <div className="relative">
           <button
             type="button"
@@ -196,9 +200,12 @@ export function LLMProviderSelector({
 
       {/* Model Selector */}
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">
-          Model
-        </label>
+        <div className="flex items-center gap-1.5 mb-2">
+          <label className="text-sm font-medium text-foreground">
+            Model
+          </label>
+          <HelpTooltip content="Specific model version to use. Larger models are more capable but slower and more expensive. Smaller models are faster and cheaper" />
+        </div>
         <div className="relative">
           <button
             type="button"

@@ -4,10 +4,9 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { redirect, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
   Target,
-  ChevronRight,
-  ArrowLeft,
   Plus,
   Trash2,
   Info,
@@ -170,27 +169,17 @@ export default function NewGoalPage() {
     <div className="min-h-screen bg-background">
 <main className="max-w-4xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm mb-6">
-          <Link href="/reviews" className="text-muted-foreground hover:text-foreground transition">
-            Reviews
-          </Link>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          <Link href="/reviews/goals" className="text-muted-foreground hover:text-foreground transition">
-            Goals
-          </Link>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          <span className="text-foreground">New Goal</span>
-        </div>
+        <Breadcrumb
+          items={[
+            { label: "Reviews", href: "/reviews" },
+            { label: "Goals", href: "/reviews/goals" },
+            { label: "New Goal" },
+          ]}
+          className="mb-6"
+        />
 
         {/* Header */}
         <div className="mb-8">
-          <Link
-            href="/reviews/goals"
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition mb-4"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Goals
-          </Link>
           <h1 className="text-3xl font-bold text-foreground">Create SMART Goal</h1>
           <p className="text-muted-foreground mt-1">
             Define specific, measurable objectives with key results

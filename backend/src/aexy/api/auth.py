@@ -164,6 +164,11 @@ async def github_callback(
     dev_service = DeveloperService(db)
     scopes = auth_response.scope.split(",") if auth_response.scope else None
 
+    # Calculate token expiry if GitHub provided it (GitHub App tokens expire)
+    token_expires_at = None
+    if auth_response.expires_in:
+        token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=auth_response.expires_in)
+
     developer = await dev_service.get_or_create_by_github(
         github_id=user_info.id,
         github_username=user_info.login,
@@ -172,6 +177,8 @@ async def github_callback(
         github_name=user_info.name,
         github_avatar_url=user_info.avatar_url,
         scopes=scopes,
+        refresh_token=auth_response.refresh_token,
+        token_expires_at=token_expires_at,
     )
 
     # If this is an installation callback, sync the installation and fetch repos

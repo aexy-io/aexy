@@ -4,23 +4,24 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { uptimeApi, UptimeIncident, UptimeIncidentStatus } from "@/lib/uptime-api";
+import { SearchInput } from "@/components/ui/search-input";
 import Link from "next/link";
 import {
   AlertTriangle,
   CheckCircle2,
   Clock,
   Filter,
-  Search,
   ExternalLink,
   ChevronRight,
   Eye,
   MessageSquare,
 } from "lucide-react";
+import { UPTIME_INCIDENT_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
-const STATUS_COLORS: Record<UptimeIncidentStatus, { bg: string; text: string; dot: string; label: string }> = {
-  ongoing: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400", dot: "bg-red-500", label: "Ongoing" },
-  acknowledged: { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500", label: "Acknowledged" },
-  resolved: { bg: "bg-emerald-50 dark:bg-emerald-900/30", text: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500", label: "Resolved" },
+const STATUS_LABELS: Record<string, string> = {
+  ongoing: "Ongoing",
+  acknowledged: "Acknowledged",
+  resolved: "Resolved",
 };
 
 export default function IncidentsPage() {
@@ -114,8 +115,44 @@ export default function IncidentsPage() {
 
   if (loading && incidents.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" />
+      <div className="min-h-screen bg-background animate-pulse">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <div className="h-7 w-32 bg-accent rounded mb-2" />
+              <div className="h-4 w-40 bg-accent rounded" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-muted rounded-xl p-4 border border-border">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 bg-accent rounded-lg" />
+                  <div>
+                    <div className="h-6 w-8 bg-accent rounded mb-1" />
+                    <div className="h-3 w-24 bg-accent rounded" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-muted rounded-xl p-4 border border-border">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 bg-accent rounded-lg" />
+                    <div>
+                      <div className="h-4 w-48 bg-accent rounded mb-1" />
+                      <div className="h-3 w-64 bg-accent rounded" />
+                    </div>
+                  </div>
+                  <div className="h-6 w-20 bg-accent rounded-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     );
   }
@@ -182,18 +219,12 @@ export default function IncidentsPage() {
         {/* Filters */}
         <div className="bg-muted rounded-xl border border-border p-4 mb-6">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search incidents..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-            </div>
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search incidents..."
+              wrapperClassName="flex-1 min-w-[200px]"
+            />
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Status:</span>
@@ -208,19 +239,22 @@ export default function IncidentsPage() {
                 >
                   All
                 </button>
-                {(Object.keys(STATUS_COLORS) as UptimeIncidentStatus[]).map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => setStatusFilter(status)}
-                    className={`px-2 py-1 rounded text-xs font-medium transition ${
-                      statusFilter === status
-                        ? `${STATUS_COLORS[status].bg} ${STATUS_COLORS[status].text}`
-                        : "bg-accent text-muted-foreground hover:bg-muted"
-                    }`}
-                  >
-                    {STATUS_COLORS[status].label}
-                  </button>
-                ))}
+                {(Object.keys(UPTIME_INCIDENT_STATUS_COLORS) as UptimeIncidentStatus[]).map((status) => {
+                  const sc = getStatusColor(UPTIME_INCIDENT_STATUS_COLORS, status);
+                  return (
+                    <button
+                      key={status}
+                      onClick={() => setStatusFilter(status)}
+                      className={`px-2 py-1 rounded text-xs font-medium transition ${
+                        statusFilter === status
+                          ? `${sc.bg} ${sc.text}`
+                          : "bg-accent text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {STATUS_LABELS[status] || status}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -238,7 +272,7 @@ export default function IncidentsPage() {
           ) : (
             <div className="divide-y divide-border">
               {filteredIncidents.map((incident) => {
-                const statusStyle = STATUS_COLORS[incident.status];
+                const statusStyle = getStatusColor(UPTIME_INCIDENT_STATUS_COLORS, incident.status);
 
                 return (
                   <div key={incident.id} className="p-4 hover:bg-accent/50 transition">
@@ -259,7 +293,7 @@ export default function IncidentsPage() {
                           <span
                             className={`px-2 py-0.5 rounded text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}
                           >
-                            {statusStyle.label}
+                            {STATUS_LABELS[incident.status] || incident.status}
                           </span>
                           {incident.ticket_id && (
                             <Link

@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   agentsApi,
   AgentConversation,
@@ -35,9 +36,13 @@ export function useAgentConversations(
     mutationFn: (conversationId: string) =>
       agentsApi.deleteConversation(workspaceId!, agentId!, conversationId),
     onSuccess: () => {
+      toast.success("Conversation deleted");
       queryClient.invalidateQueries({
         queryKey: ["agentConversations", workspaceId, agentId],
       });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to delete conversation");
     },
   });
 
@@ -74,12 +79,16 @@ export function useAgentConversation(
     mutationFn: (data: { title?: string; status?: "active" | "completed" | "archived" }) =>
       agentsApi.updateConversation(workspaceId!, agentId!, conversationId!, data),
     onSuccess: () => {
+      toast.success("Conversation updated");
       queryClient.invalidateQueries({
         queryKey: ["agentConversation", workspaceId, agentId, conversationId],
       });
       queryClient.invalidateQueries({
         queryKey: ["agentConversations", workspaceId, agentId],
       });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update conversation");
     },
   });
 
@@ -104,9 +113,13 @@ export function useCreateConversation(
     mutationFn: (data: { message: string; record_id?: string; title?: string }) =>
       agentsApi.createConversation(workspaceId!, agentId!, data),
     onSuccess: () => {
+      toast.success("Conversation created");
       queryClient.invalidateQueries({
         queryKey: ["agentConversations", workspaceId, agentId],
       });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to create conversation");
     },
   });
 
@@ -136,6 +149,9 @@ export function useSendMessage(
       queryClient.invalidateQueries({
         queryKey: ["agentConversations", workspaceId, agentId],
       });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to send message");
     },
   });
 

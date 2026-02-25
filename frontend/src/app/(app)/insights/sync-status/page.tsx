@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useSyncStatus } from "@/hooks/useInsights";
 import { DeveloperSyncStatusData, RepositorySyncInfo } from "@/lib/api";
+import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 
 function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { bg: string; text: string; icon: React.ReactNode; label: string }> = {
@@ -69,6 +70,85 @@ function formatDate(dateStr?: string | null): string {
     minute: "2-digit",
   });
 }
+
+const repoColumns: DataTableColumn<RepositorySyncInfo>[] = [
+  {
+    id: "repository",
+    header: "Repository",
+    cell: (repo) => (
+      <span>
+        <span className="text-sm text-foreground">{repo.repository_full_name}</span>
+        {!repo.is_enabled && (
+          <span className="text-xs text-muted-foreground ml-1">(disabled)</span>
+        )}
+      </span>
+    ),
+    sortValue: (repo) => repo.repository_full_name,
+    sortable: true,
+    cellClassName: "pl-12",
+    headerClassName: "pl-12",
+  },
+  {
+    id: "status",
+    header: "Status",
+    cell: (repo) => <StatusBadge status={repo.sync_status} />,
+    sortValue: (repo) => repo.sync_status,
+    sortable: true,
+    headerClassName: "text-center",
+    cellClassName: "text-center",
+  },
+  {
+    id: "commits",
+    header: "Commits",
+    cell: (repo) => (
+      <span className="font-mono">{repo.commits_synced.toLocaleString()}</span>
+    ),
+    sortValue: (repo) => repo.commits_synced,
+    sortable: true,
+    headerClassName: "text-right",
+    cellClassName: "text-right",
+  },
+  {
+    id: "prs",
+    header: "PRs",
+    cell: (repo) => (
+      <span className="font-mono">{repo.prs_synced.toLocaleString()}</span>
+    ),
+    sortValue: (repo) => repo.prs_synced,
+    sortable: true,
+    headerClassName: "text-right",
+    cellClassName: "text-right",
+  },
+  {
+    id: "reviews",
+    header: "Reviews",
+    cell: (repo) => (
+      <span className="font-mono">{repo.reviews_synced.toLocaleString()}</span>
+    ),
+    sortValue: (repo) => repo.reviews_synced,
+    sortable: true,
+    headerClassName: "text-right",
+    cellClassName: "text-right",
+  },
+  {
+    id: "last_sync",
+    header: "Last Sync",
+    cell: (repo) => (
+      <span className="text-xs text-muted-foreground">
+        {formatDate(repo.last_sync_at)}
+        {repo.sync_error && (
+          <div className="text-red-400 mt-0.5 truncate max-w-[200px]" title={repo.sync_error}>
+            {repo.sync_error}
+          </div>
+        )}
+      </span>
+    ),
+    sortValue: (repo) => repo.last_sync_at ? new Date(repo.last_sync_at).getTime() : 0,
+    sortable: true,
+    headerClassName: "text-right",
+    cellClassName: "text-right",
+  },
+];
 
 function DeveloperRow({ developer }: { developer: DeveloperSyncStatusData }) {
   const [expanded, setExpanded] = useState(false);
@@ -128,63 +208,13 @@ function DeveloperRow({ developer }: { developer: DeveloperSyncStatusData }) {
       </button>
 
       {expanded && developer.repositories.length > 0 && (
-        <div className="border-t border-border overflow-x-auto">
-          <table className="w-full min-w-[600px]">
-            <thead>
-              <tr className="text-left border-b border-border/50">
-                <th className="px-4 py-2 text-xs font-medium text-muted-foreground uppercase pl-12">
-                  Repository
-                </th>
-                <th className="px-4 py-2 text-xs font-medium text-muted-foreground uppercase text-center">
-                  Status
-                </th>
-                <th className="px-4 py-2 text-xs font-medium text-muted-foreground uppercase text-right">
-                  Commits
-                </th>
-                <th className="px-4 py-2 text-xs font-medium text-muted-foreground uppercase text-right">
-                  PRs
-                </th>
-                <th className="px-4 py-2 text-xs font-medium text-muted-foreground uppercase text-right">
-                  Reviews
-                </th>
-                <th className="px-4 py-2 text-xs font-medium text-muted-foreground uppercase text-right">
-                  Last Sync
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/30">
-              {sortedRepos.map((repo) => (
-                <tr key={repo.repository_id} className="hover:bg-accent/20 transition">
-                  <td className="px-4 py-2 pl-12">
-                    <span className="text-sm text-foreground">{repo.repository_full_name}</span>
-                    {!repo.is_enabled && (
-                      <span className="text-xs text-muted-foreground ml-1">(disabled)</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2 text-center">
-                    <StatusBadge status={repo.sync_status} />
-                  </td>
-                  <td className="px-4 py-2 text-right text-sm font-mono text-foreground">
-                    {repo.commits_synced.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-2 text-right text-sm font-mono text-foreground">
-                    {repo.prs_synced.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-2 text-right text-sm font-mono text-foreground">
-                    {repo.reviews_synced.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-2 text-right text-xs text-muted-foreground">
-                    {formatDate(repo.last_sync_at)}
-                    {repo.sync_error && (
-                      <div className="text-red-400 mt-0.5 truncate max-w-[200px]" title={repo.sync_error}>
-                        {repo.sync_error}
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="border-t border-border">
+          <DataTable<RepositorySyncInfo>
+            columns={repoColumns}
+            data={sortedRepos}
+            rowKey={(repo) => repo.repository_id}
+            compact
+          />
         </div>
       )}
 

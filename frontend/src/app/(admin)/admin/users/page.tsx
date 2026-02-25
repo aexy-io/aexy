@@ -1,14 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Users,
-  Loader2,
   AlertCircle,
   Search,
-  ChevronLeft,
-  ChevronRight,
   Building2,
   Github,
   Chrome,
@@ -16,62 +13,9 @@ import {
 import { useAdminUsers } from "@/hooks/useAdmin";
 import { formatDistanceToNow } from "date-fns";
 import { AdminUser } from "@/lib/api";
+import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 
-function UserRow({ user }: { user: AdminUser }) {
-  return (
-    <tr className="border-b border-border hover:bg-muted/50">
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-3">
-          {user.avatar_url ? (
-            <img
-              src={user.avatar_url}
-              alt={user.name || user.email}
-              className="h-8 w-8 rounded-full"
-            />
-          ) : (
-            <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center">
-              <span className="text-muted-foreground text-sm">
-                {(user.name || user.email).charAt(0).toUpperCase()}
-              </span>
-            </div>
-          )}
-          <div>
-            <p className="text-foreground">{user.name || "-"}</p>
-            <p className="text-muted-foreground text-xs">{user.email}</p>
-          </div>
-        </div>
-      </td>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          {user.has_github && (
-            <span className="text-foreground" title="GitHub connected">
-              <Github className="h-4 w-4" />
-            </span>
-          )}
-          {user.has_google && (
-            <span className="text-foreground" title="Google connected">
-              <Chrome className="h-4 w-4" />
-            </span>
-          )}
-          {!user.has_github && !user.has_google && (
-            <span className="text-muted-foreground text-xs">-</span>
-          )}
-        </div>
-      </td>
-      <td className="px-4 py-3">
-        <span className="text-foreground flex items-center gap-1">
-          <Building2 className="h-4 w-4 text-muted-foreground" />
-          {user.workspace_count}
-        </span>
-      </td>
-      <td className="px-4 py-3">
-        <span className="text-muted-foreground text-sm" title={user.created_at}>
-          {formatDistanceToNow(new Date(user.created_at), { addSuffix: true })}
-        </span>
-      </td>
-    </tr>
-  );
-}
+const PER_PAGE = 25;
 
 export default function AdminUsersPage() {
   const router = useRouter();
@@ -82,7 +26,7 @@ export default function AdminUsersPage() {
 
   const { data, isLoading, error, refetch } = useAdminUsers({
     page,
-    per_page: 25,
+    per_page: PER_PAGE,
     search: search || undefined,
   });
 
@@ -93,6 +37,85 @@ export default function AdminUsersPage() {
     if (search) params.set("search", search);
     router.push(`/admin/users?${params.toString()}`);
   };
+
+  const columns = useMemo<DataTableColumn<AdminUser>[]>(
+    () => [
+      {
+        id: "user",
+        header: "User",
+        sortable: true,
+        sortValue: (user) => (user.name || user.email).toLowerCase(),
+        cell: (user) => (
+          <div className="flex items-center gap-3">
+            {user.avatar_url ? (
+              <img
+                src={user.avatar_url}
+                alt={user.name || user.email}
+                className="h-8 w-8 rounded-full"
+              />
+            ) : (
+              <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center">
+                <span className="text-muted-foreground text-sm">
+                  {(user.name || user.email).charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
+            <div>
+              <p className="text-foreground">{user.name || "-"}</p>
+              <p className="text-muted-foreground text-xs">{user.email}</p>
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: "connections",
+        header: "Connections",
+        cell: (user) => (
+          <div className="flex items-center gap-2">
+            {user.has_github && (
+              <span className="text-foreground" title="GitHub connected">
+                <Github className="h-4 w-4" />
+              </span>
+            )}
+            {user.has_google && (
+              <span className="text-foreground" title="Google connected">
+                <Chrome className="h-4 w-4" />
+              </span>
+            )}
+            {!user.has_github && !user.has_google && (
+              <span className="text-muted-foreground text-xs">-</span>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: "workspaces",
+        header: "Workspaces",
+        sortable: true,
+        sortValue: (user) => user.workspace_count,
+        cell: (user) => (
+          <span className="text-foreground flex items-center gap-1">
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+            {user.workspace_count}
+          </span>
+        ),
+      },
+      {
+        id: "joined",
+        header: "Joined",
+        sortable: true,
+        sortValue: (user) => new Date(user.created_at).getTime(),
+        cell: (user) => (
+          <span className="text-muted-foreground text-sm" title={user.created_at}>
+            {formatDistanceToNow(new Date(user.created_at), { addSuffix: true })}
+          </span>
+        ),
+      },
+    ],
+    []
+  );
+
+  const totalPages = data ? Math.ceil(data.total / PER_PAGE) : undefined;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -127,69 +150,29 @@ export default function AdminUsersPage() {
         </div>
       </form>
 
-      {/* Table */}
-      <div className="bg-muted rounded-xl border border-border overflow-hidden">
-        {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
-          </div>
-        ) : error ? (
+      {/* Error state */}
+      {error ? (
+        <div className="bg-muted rounded-xl border border-border overflow-hidden">
           <div className="flex items-center justify-center h-64 text-red-400">
             <AlertCircle className="h-5 w-5 mr-2" />
             Failed to load users
           </div>
-        ) : data?.items?.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-            <Users className="h-12 w-12 mb-3 text-muted-foreground" />
-            <p>No users found</p>
-          </div>
-        ) : (
-          <>
-            <table className="w-full">
-              <thead className="bg-background/50">
-                <tr className="text-left text-muted-foreground text-sm">
-                  <th className="px-4 py-3 font-medium">User</th>
-                  <th className="px-4 py-3 font-medium">Connections</th>
-                  <th className="px-4 py-3 font-medium">Workspaces</th>
-                  <th className="px-4 py-3 font-medium">Joined</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data?.items?.map((user) => (
-                  <UserRow key={user.id} user={user} />
-                ))}
-              </tbody>
-            </table>
-
-            {/* Pagination */}
-            {data && data.total > 25 && (
-              <div className="px-4 py-3 border-t border-border flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">
-                  Showing {(page - 1) * 25 + 1} - {Math.min(page * 25, data.total)} of{" "}
-                  {data.total} users
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    className="p-2 rounded-lg bg-accent text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <span className="text-foreground px-3">Page {page}</span>
-                  <button
-                    onClick={() => setPage((p) => p + 1)}
-                    disabled={!data.has_next}
-                    className="p-2 rounded-lg bg-accent text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={data?.items ?? []}
+          rowKey={(user) => user.id}
+          isLoading={isLoading}
+          skeletonRows={8}
+          emptyIcon={<Users className="h-12 w-12" />}
+          emptyTitle="No users found"
+          currentPage={page}
+          totalPages={totalPages}
+          totalItems={data?.total}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }

@@ -29,6 +29,7 @@ import { useWorkspace, useWorkspaceMembers, useWorkspaceBilling, usePendingInvit
 import { useAuth } from "@/hooks/useAuth";
 import { WorkspaceMember, WorkspacePendingInvite, repositoriesApi, Organization } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
+import { UpgradeBanner } from "@/components/UpgradeBanner";
 
 const ROLE_OPTIONS = [
   { value: "owner", label: "Owner", description: "Full access, can delete workspace" },
@@ -714,10 +715,37 @@ export default function OrganizationSettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-foreground">Loading workspace...</p>
+      <div className="space-y-6 animate-pulse">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-6 w-36 bg-accent rounded mb-2" />
+            <div className="h-4 w-64 bg-accent rounded" />
+          </div>
+          <div className="h-9 w-32 bg-accent rounded-lg" />
+        </div>
+        <div className="bg-card rounded-xl border border-border p-5 space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="h-14 w-14 bg-accent rounded-xl" />
+            <div className="space-y-2">
+              <div className="h-5 w-40 bg-accent rounded" />
+              <div className="h-3 w-24 bg-accent rounded" />
+            </div>
+          </div>
+        </div>
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
+          <div className="px-5 py-3 border-b border-border">
+            <div className="h-4 w-20 bg-accent rounded" />
+          </div>
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-center gap-4 px-5 py-3 border-b border-border/50">
+              <div className="h-9 w-9 bg-accent rounded-full" />
+              <div className="space-y-1 flex-1">
+                <div className="h-4 w-32 bg-accent rounded" />
+                <div className="h-3 w-44 bg-accent rounded" />
+              </div>
+              <div className="h-5 w-16 bg-accent rounded-full" />
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -739,6 +767,15 @@ export default function OrganizationSettingsPage() {
           Manage your workspace and team members
         </p>
       </div>
+
+      {members.length >= 3 && (
+        <UpgradeBanner
+          trigger="member_limit"
+          current={members.length}
+          limit={3}
+          compact
+        />
+      )}
 
       <div>
         {/* Workspace Selector */}

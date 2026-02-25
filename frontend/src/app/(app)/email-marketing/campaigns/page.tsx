@@ -34,6 +34,9 @@ import {
   useDeleteCampaign,
 } from "@/hooks/useEmailMarketing";
 import { EmailCampaign } from "@/lib/api";
+import { EmptyState } from "@/components/EmptyState";
+import { SearchInput } from "@/components/ui/search-input";
+import { CAMPAIGN_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
 type StatusFilter = "all" | "draft" | "scheduled" | "sending" | "sent" | "paused" | "cancelled";
 type SortOption = "newest" | "oldest" | "name" | "sent_count";
@@ -59,23 +62,7 @@ function CampaignCard({
   const openRate = campaign.sent_count > 0 ? (campaign.open_count / campaign.sent_count) * 100 : 0;
   const clickRate = campaign.sent_count > 0 ? (campaign.click_count / campaign.sent_count) * 100 : 0;
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "sent":
-      case "completed":
-        return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
-      case "sending":
-        return "bg-sky-500/20 text-sky-400 border-sky-500/30";
-      case "scheduled":
-        return "bg-purple-500/20 text-purple-400 border-purple-500/30";
-      case "paused":
-        return "bg-amber-500/20 text-amber-400 border-amber-500/30";
-      case "cancelled":
-        return "bg-red-500/20 text-red-400 border-red-500/30";
-      default:
-        return "bg-muted text-muted-foreground border-border";
-    }
-  };
+  const statusColor = getStatusColor(CAMPAIGN_STATUS_COLORS, campaign.status);
 
   return (
     <div className="bg-background/50 border border-border rounded-xl p-5 hover:border-border transition group">
@@ -95,7 +82,7 @@ function CampaignCard({
           </div>
         </Link>
         <div className="flex items-center gap-2">
-          <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(campaign.status)}`}>
+          <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${statusColor.bg} ${statusColor.text}`}>
             {campaign.status}
           </span>
           <div className="relative">
@@ -291,16 +278,12 @@ export default function CampaignsPage() {
 
           {/* Search and Filters */}
           <div className="flex items-center gap-4 mb-6">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search campaigns..."
-                className="w-full pl-10 pr-4 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
-              />
-            </div>
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search campaigns..."
+              wrapperClassName="flex-1"
+            />
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition ${
@@ -379,26 +362,29 @@ export default function CampaignsPage() {
               ))}
             </div>
           ) : filteredCampaigns.length === 0 ? (
-            <div className="bg-background/50 border border-border rounded-xl p-16 text-center">
-              <Mail className="h-14 w-14 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-medium text-foreground mb-2">
-                {searchQuery || statusFilter !== "all" ? "No campaigns found" : "No campaigns yet"}
-              </h3>
-              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                {searchQuery || statusFilter !== "all"
-                  ? "Try adjusting your search or filters"
-                  : "Create your first email campaign to start engaging with your audience."}
-              </p>
-              {!searchQuery && statusFilter === "all" && (
-                <Link
-                  href="/email-marketing/campaigns/new"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition"
-                >
-                  <Plus className="h-4 w-4" />
-                  Create Campaign
-                </Link>
-              )}
-            </div>
+            searchQuery || statusFilter !== "all" ? (
+              <EmptyState
+                icon={Search}
+                title="No campaigns found"
+                description="Try adjusting your search or filters"
+                compact
+              />
+            ) : (
+              <EmptyState
+                icon={Mail}
+                title="No campaigns yet"
+                description="Create your first email campaign to start engaging with your audience."
+                actions={[
+                  { label: "Create Campaign", href: "/email-marketing/campaigns/new" },
+                ]}
+                steps={[
+                  { label: "Configure a sending domain", description: "Verify your domain for email delivery" },
+                  { label: "Create an email template", description: "Design reusable email layouts" },
+                  { label: "Build your audience", description: "Import or grow your subscriber list" },
+                  { label: "Launch your first campaign", description: "Send or schedule your email" },
+                ]}
+              />
+            )
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
