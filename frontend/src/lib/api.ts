@@ -17772,6 +17772,8 @@ export interface StandaloneTable {
   scope: string;
   visibility: TableVisibility;
   row_access_mode: TableRowAccessMode;
+  settings: Record<string, unknown> | null;
+  audit_config: { enabled?: boolean; retention_days?: number } | null;
   created_by_id: string | null;
   record_count: number;
   is_active: boolean;
@@ -17865,6 +17867,16 @@ export interface TableShareLink {
   created_at: string | null;
 }
 
+export interface TableAuditEntry {
+  id: string;
+  action: string;
+  record_id: string | null;
+  actor_id: string;
+  actor_name: string | null;
+  changes: Record<string, unknown> | null;
+  created_at: string;
+}
+
 export const tablesApi = {
   // Tables CRUD
   tables: {
@@ -17899,6 +17911,8 @@ export const tablesApi = {
       visibility: TableVisibility;
       row_access_mode: TableRowAccessMode;
       is_active: boolean;
+      settings: Record<string, unknown>;
+      audit_config: { enabled?: boolean; retention_days?: number };
     }>): Promise<StandaloneTable> => {
       const response = await api.patch(`/workspaces/${workspaceId}/tables/${tableId}`, data);
       return response.data;
@@ -17932,11 +17946,13 @@ export const tablesApi = {
     },
     update: async (workspaceId: string, tableId: string, fieldId: string, data: Partial<{
       name: string;
+      description: string;
       is_required: boolean;
       is_unique: boolean;
       is_filterable: boolean;
       default_value: unknown;
       options: Record<string, unknown>;
+      position: number;
     }>): Promise<TableField> => {
       const response = await api.patch(`/workspaces/${workspaceId}/tables/${tableId}/fields/${fieldId}`, data);
       return response.data;
@@ -18048,6 +18064,19 @@ export const tablesApi = {
     },
     delete: async (workspaceId: string, tableId: string, viewId: string): Promise<void> => {
       await api.delete(`/workspaces/${workspaceId}/tables/${tableId}/views/${viewId}`);
+    },
+  },
+
+  // Audit Log
+  auditLog: {
+    list: async (workspaceId: string, tableId: string, params?: {
+      limit?: number;
+      offset?: number;
+      action?: string;
+      record_id?: string;
+    }): Promise<{ entries: TableAuditEntry[]; total: number }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/tables/${tableId}/audit-log`, { params });
+      return response.data;
     },
   },
 

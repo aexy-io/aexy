@@ -148,6 +148,7 @@ class TableUpdate(BaseModel):
     row_access_mode: str | None = None
     is_active: bool | None = None
     settings: dict | None = None
+    audit_config: dict | None = None
 
 
 class ShareLinkCreate(BaseModel):
