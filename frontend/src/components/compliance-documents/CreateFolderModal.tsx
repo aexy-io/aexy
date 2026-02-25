@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { X, FolderPlus, Loader2 } from "lucide-react";
+import { FolderPlus, Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface CreateFolderModalProps {
   parentId?: string;
@@ -31,53 +38,48 @@ export function CreateFolderModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-md p-0 gap-0">
+        <DialogHeader className="p-4 border-b border-border">
           <div className="flex items-center gap-2">
             <FolderPlus className="h-5 w-5 text-blue-500" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {parentId ? "New Subfolder" : "New Folder"}
-            </h2>
+            <DialogTitle>{parentId ? "New Subfolder" : "New Folder"}</DialogTitle>
           </div>
-          <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
-            <X className="h-5 w-5 text-gray-400" />
-          </button>
-        </div>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Folder Name
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-muted text-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="e.g., Policies, Evidence, Audits"
               autoFocus
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Description <span className="text-gray-400">(optional)</span>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Description <span className="text-muted-foreground">(optional)</span>
             </label>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-muted text-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Brief description..."
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
+          <DialogFooter className="pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+              className="px-4 py-2 text-sm font-medium text-foreground bg-muted border border-border rounded-lg hover:bg-accent"
             >
               Cancel
             </button>
@@ -93,9 +95,9 @@ export function CreateFolderModal({
               )}
               Create Folder
             </button>
-          </div>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

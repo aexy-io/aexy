@@ -2,10 +2,8 @@
 
 import { useState, useEffect } from "react";
 import {
-  X,
   Plus,
   Trash2,
-  GripVertical,
   Type,
   Hash,
   DollarSign,
@@ -24,6 +22,14 @@ import {
 import { cn } from "@/lib/utils";
 import { CRMAttributeType } from "@/lib/api";
 import { ColorPicker, STATUS_COLORS } from "./ColorPicker";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { HelpTooltip } from "@/components/ui/tooltip";
 
 // Type icons
 const typeIcons: Record<CRMAttributeType, React.ReactNode> = {
@@ -52,6 +58,7 @@ interface TypeOption {
   label: string;
   description: string;
   category: "basic" | "select" | "contact" | "advanced";
+  tooltip?: string;
 }
 
 const attributeTypes: TypeOption[] = [
@@ -66,16 +73,16 @@ const attributeTypes: TypeOption[] = [
   // Select
   { value: "select", label: "Single Select", description: "Choose one option", category: "select" },
   { value: "multi_select", label: "Multi Select", description: "Choose multiple", category: "select" },
-  { value: "status", label: "Status", description: "Pipeline stages", category: "select" },
+  { value: "status", label: "Status", description: "Pipeline stages", category: "select", tooltip: "Predefined workflow states with color coding (e.g., New \u2192 In Progress \u2192 Done)" },
   // Contact
   { value: "email", label: "Email", description: "Email address", category: "contact" },
   { value: "phone", label: "Phone", description: "Phone number", category: "contact" },
   { value: "url", label: "URL", description: "Web link", category: "contact" },
   // Advanced
-  { value: "record_reference", label: "Record Reference", description: "Link to another record", category: "advanced" },
-  { value: "user_reference", label: "User Reference", description: "Link to user", category: "advanced" },
-  { value: "formula", label: "Formula", description: "Calculated field", category: "advanced" },
-  { value: "rollup", label: "Rollup", description: "Aggregate values", category: "advanced" },
+  { value: "record_reference", label: "Record Reference", description: "Link to another record", category: "advanced", tooltip: "Creates a link to another record, enabling relationship tracking" },
+  { value: "user_reference", label: "User Reference", description: "Link to user", category: "advanced", tooltip: "Links to a workspace member for ownership or assignment tracking" },
+  { value: "formula", label: "Formula", description: "Calculated field", category: "advanced", tooltip: "Calculated field using values from other attributes (e.g., total = price \u00d7 quantity)" },
+  { value: "rollup", label: "Rollup", description: "Aggregate values", category: "advanced", tooltip: "Aggregates values from linked records. Supports SUM, AVG, COUNT, MIN, MAX" },
   { value: "ai_computed", label: "AI Computed", description: "AI-generated value", category: "advanced" },
 ];
 
@@ -139,8 +146,6 @@ export function CreateAttributeModal({
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
   const handleSelectType = (type: CRMAttributeType) => {
     setSelectedType(type);
     setStep("configure");
@@ -197,20 +202,14 @@ export function CreateAttributeModal({
   const typeInfo = selectedType ? attributeTypes.find((t) => t.value === selectedType) : null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-muted rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-border flex flex-col">
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-2xl p-0 gap-0 max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="text-xl font-semibold text-foreground">
+        <DialogHeader className="px-6 py-4 border-b border-border">
+          <DialogTitle className="text-xl">
             {step === "type" ? "Select attribute type" : "Configure attribute"}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-accent rounded-lg text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
@@ -236,8 +235,11 @@ export function CreateAttributeModal({
                           <div className="p-2 bg-accent/50 rounded-lg text-muted-foreground">
                             {typeIcons[type.value]}
                           </div>
-                          <div>
-                            <div className="font-medium text-foreground">{type.label}</div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-medium text-foreground">{type.label}</span>
+                              {type.tooltip && <HelpTooltip content={type.tooltip} />}
+                            </div>
                             <div className="text-xs text-muted-foreground">{type.description}</div>
                           </div>
                         </button>
@@ -353,7 +355,10 @@ export function CreateAttributeModal({
                       className="w-4 h-4 rounded border-border bg-accent text-purple-500 focus:ring-purple-500"
                     />
                     <div>
-                      <div className="font-medium text-foreground">Required</div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium text-foreground">Required</span>
+                        <HelpTooltip content="This field must have a value before a record can be saved" />
+                      </div>
                       <div className="text-xs text-muted-foreground">
                         This field must have a value
                       </div>
@@ -369,7 +374,10 @@ export function CreateAttributeModal({
                         className="w-4 h-4 rounded border-border bg-accent text-purple-500 focus:ring-purple-500"
                       />
                       <div>
-                        <div className="font-medium text-foreground">Unique</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium text-foreground">Unique</span>
+                          <HelpTooltip content="Prevents duplicate values across all records" />
+                        </div>
                         <div className="text-xs text-muted-foreground">
                           No two records can have the same value
                         </div>
@@ -384,7 +392,7 @@ export function CreateAttributeModal({
 
         {/* Footer */}
         {step === "configure" && (
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
+          <DialogFooter className="px-6 py-4 border-t border-border">
             <button
               onClick={onClose}
               className="px-4 py-2 border border-border text-foreground rounded-lg hover:bg-accent transition-colors"
@@ -398,9 +406,9 @@ export function CreateAttributeModal({
             >
               {isCreating ? "Creating..." : "Create Attribute"}
             </button>
-          </div>
+          </DialogFooter>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

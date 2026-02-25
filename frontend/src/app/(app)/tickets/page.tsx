@@ -6,7 +6,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Ticket,
   Filter,
-  Search,
   AlertTriangle,
   Clock,
   CheckCircle2,
@@ -16,37 +15,49 @@ import {
   Settings,
   ListTodo,
   Layers,
+  Zap,
 } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
+import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
+import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useTickets, useTicketStats, useTicketForms } from "@/hooks/useTicketing";
 import { TicketStatus, TicketPriority, developerApi } from "@/lib/api";
+import {
+  TICKET_STATUS_COLORS,
+  TICKET_PRIORITY_COLORS,
+  TASK_STATUS_COLORS as TASK_STATUS_COLORS_BASE,
+} from "@/lib/statusColors";
 
-const STATUS_COLORS: Record<TicketStatus, { bg: string; text: string; label: string }> = {
-  new: { bg: "bg-blue-50 dark:bg-blue-900/30", text: "text-blue-600 dark:text-blue-400", label: "New" },
-  acknowledged: { bg: "bg-purple-50 dark:bg-purple-900/30", text: "text-purple-600 dark:text-purple-400", label: "Acknowledged" },
-  in_progress: { bg: "bg-yellow-50 dark:bg-yellow-900/30", text: "text-yellow-600 dark:text-yellow-400", label: "In Progress" },
-  waiting_on_submitter: { bg: "bg-orange-50 dark:bg-orange-900/30", text: "text-orange-600 dark:text-orange-400", label: "Waiting" },
-  resolved: { bg: "bg-green-50 dark:bg-green-900/30", text: "text-green-600 dark:text-green-400", label: "Resolved" },
-  closed: { bg: "bg-accent/50", text: "text-muted-foreground", label: "Closed" },
+const STATUS_LABELS: Record<TicketStatus, string> = {
+  new: "New",
+  acknowledged: "Acknowledged",
+  in_progress: "In Progress",
+  waiting_on_submitter: "Waiting",
+  resolved: "Resolved",
+  closed: "Closed",
 };
 
-const PRIORITY_COLORS: Record<TicketPriority, { bg: string; text: string }> = {
-  low: { bg: "bg-accent", text: "text-foreground" },
-  medium: { bg: "bg-blue-50 dark:bg-blue-900/30", text: "text-blue-600 dark:text-blue-400" },
-  high: { bg: "bg-orange-50 dark:bg-orange-900/30", text: "text-orange-600 dark:text-orange-400" },
-  urgent: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400" },
+const STATUS_COLORS = Object.fromEntries(
+  Object.entries(TICKET_STATUS_COLORS).map(([k, v]) => [k, { ...v, label: STATUS_LABELS[k as TicketStatus] ?? k }])
+) as Record<TicketStatus, { bg: string; text: string; label: string }>;
+
+const PRIORITY_COLORS = TICKET_PRIORITY_COLORS as Record<TicketPriority, { bg: string; text: string }>;
+
+const TASK_STATUS_LABELS: Record<string, string> = {
+  backlog: "Backlog",
+  todo: "To Do",
+  in_progress: "In Progress",
+  review: "Review",
+  done: "Done",
 };
 
-const TASK_STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  backlog: { bg: "bg-accent/50", text: "text-muted-foreground", label: "Backlog" },
-  todo: { bg: "bg-blue-50 dark:bg-blue-900/30", text: "text-blue-600 dark:text-blue-400", label: "To Do" },
-  in_progress: { bg: "bg-yellow-50 dark:bg-yellow-900/30", text: "text-yellow-600 dark:text-yellow-400", label: "In Progress" },
-  review: { bg: "bg-purple-50 dark:bg-purple-900/30", text: "text-purple-600 dark:text-purple-400", label: "Review" },
-  done: { bg: "bg-green-50 dark:bg-green-900/30", text: "text-green-600 dark:text-green-400", label: "Done" },
-};
+const TASK_STATUS_COLORS = Object.fromEntries(
+  Object.entries(TASK_STATUS_COLORS_BASE).map(([k, v]) => [k, { ...v, label: TASK_STATUS_LABELS[k] ?? k }])
+) as Record<string, { bg: string; text: string; label: string }>;
 
-type TabType = "tickets" | "my-tasks";
+type TabType = "tickets" | "my-tasks" | "automations";
 
 export default function TicketsPage() {
   const router = useRouter();
@@ -162,6 +173,17 @@ export default function TicketsPage() {
               </span>
             )}
           </button>
+          <button
+            onClick={() => setActiveTab("automations")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
+              activeTab === "automations"
+                ? "bg-purple-600 text-white"
+                : "bg-muted text-muted-foreground hover:bg-accent border border-border"
+            }`}
+          >
+            <Zap className="h-4 w-4" />
+            Automations
+          </button>
         </div>
 
         {/* My Assigned Tasks Tab */}
@@ -224,15 +246,22 @@ export default function TicketsPage() {
             {/* Tasks List */}
             <div className="bg-muted rounded-xl border border-border">
               {isLoadingTasks ? (
-                <div className="p-8 text-center text-muted-foreground">Loading tasks...</div>
-              ) : myTasks.length === 0 ? (
-                <div className="p-8 text-center">
-                  <ListTodo className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No tasks assigned to you</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Tasks assigned to you from sprints will appear here
-                  </p>
+                <div className="p-4 space-y-3 animate-pulse">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center gap-3 p-3">
+                      <div className="h-4 w-4 bg-accent rounded" />
+                      <div className="h-4 w-48 bg-accent rounded" />
+                      <div className="ml-auto h-5 w-16 bg-accent rounded-full" />
+                    </div>
+                  ))}
                 </div>
+              ) : myTasks.length === 0 ? (
+                <EmptyState
+                  icon={ListTodo}
+                  title="No tasks assigned to you"
+                  description="Tasks assigned to you from sprints will appear here. Ask your team lead to assign tasks or create a new sprint."
+                  compact
+                />
               ) : (
                 <div className="divide-y divide-border">
                   {myTasks.map((task) => (
@@ -337,18 +366,12 @@ export default function TicketsPage() {
             {/* Filters */}
             <div className="bg-muted rounded-xl border border-border p-4 mb-6">
               <div className="flex flex-wrap items-center gap-4">
-                <div className="flex-1 min-w-[200px]">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <input
-                      type="text"
-                      placeholder="Search tickets..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-                </div>
+                <SearchInput
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder="Search tickets..."
+                  wrapperClassName="flex-1 min-w-[200px]"
+                />
                 <div className="flex items-center gap-2">
                   <Filter className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">Status:</span>
@@ -380,15 +403,29 @@ export default function TicketsPage() {
             {/* Tickets List */}
             <div className="bg-muted rounded-xl border border-border">
               {isLoading ? (
-                <div className="p-8 text-center text-muted-foreground">Loading tickets...</div>
-              ) : filteredTickets.length === 0 ? (
-                <div className="p-8 text-center">
-                  <Ticket className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No tickets found</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Create a form to start receiving tickets
-                  </p>
+                <div className="p-4 space-y-3 animate-pulse">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="flex items-center gap-3 p-3">
+                      <div className="h-4 w-4 bg-accent rounded" />
+                      <div className="flex-1">
+                        <div className="h-4 w-56 bg-accent rounded mb-1" />
+                        <div className="h-3 w-32 bg-accent rounded" />
+                      </div>
+                      <div className="h-5 w-16 bg-accent rounded-full" />
+                      <div className="h-3 w-20 bg-accent rounded" />
+                    </div>
+                  ))}
                 </div>
+              ) : filteredTickets.length === 0 ? (
+                <EmptyState
+                  icon={Ticket}
+                  title="No tickets found"
+                  description="Create a form to start receiving tickets from your users."
+                  actions={[
+                    { label: "Manage Forms", href: "/settings/ticket-forms", variant: "secondary" },
+                  ]}
+                  compact
+                />
               ) : (
                 <div className="divide-y divide-border">
                   {filteredTickets.map((ticket) => (
@@ -453,6 +490,10 @@ export default function TicketsPage() {
               </div>
             )}
           </>
+        )}
+
+        {activeTab === "automations" && (
+          <ModuleAutomationsPanel module="tickets" moduleLabel="Tickets" />
         )}
       </main>
     </div>

@@ -126,13 +126,20 @@ export function NotificationBell({ developerId }: NotificationBellProps) {
           </div>
 
           {/* Footer */}
-          <div className="border-t border-border p-2">
+          <div className="border-t border-border p-2 flex items-center gap-1">
+            <Link
+              href="/notifications"
+              onClick={() => setIsOpen(false)}
+              className="flex-1 block text-center text-xs text-muted-foreground hover:text-foreground py-1.5 rounded hover:bg-muted/50 transition"
+            >
+              View all
+            </Link>
             <Link
               href="/settings/notifications"
               onClick={() => setIsOpen(false)}
-              className="block text-center text-xs text-muted-foreground hover:text-foreground py-1.5 rounded hover:bg-muted/50 transition"
+              className="flex-1 block text-center text-xs text-muted-foreground hover:text-foreground py-1.5 rounded hover:bg-muted/50 transition"
             >
-              Notification Settings
+              Settings
             </Link>
           </div>
         </div>

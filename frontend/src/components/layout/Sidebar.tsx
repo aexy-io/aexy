@@ -16,6 +16,7 @@ import {
     Star,
     Folder,
     Users,
+    Compass,
 } from "lucide-react";
 import React, { useState } from "react";
 import { Button } from "../ui/button";
@@ -322,6 +323,23 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
         );
     };
 
+    // Collect hidden items across all sections for the Discover section
+    const getHiddenItems = (): SidebarItemConfig[] => {
+        if (accessLoading) return [];
+        const hidden: SidebarItemConfig[] = [];
+        for (const section of layoutConfig.sections) {
+            for (const item of section.items) {
+                if (!canAccessItem(item)) {
+                    hidden.push(item);
+                }
+            }
+        }
+        return hidden;
+    };
+
+    const hiddenItems = getHiddenItems();
+    const isDiscoverExpanded = expandedItems["__discover"];
+
     // Render a section with optional label
     const renderSection = (section: SidebarSectionConfig) => {
         // Filter items based on app access
@@ -351,6 +369,63 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                         return renderItem(item);
                     })}
                 </div>
+            </div>
+        );
+    };
+
+    // Render a "Discover more tools" section for hidden items
+    const renderDiscoverSection = () => {
+        if (hiddenItems.length === 0 || isCollapsed) return null;
+
+        return (
+            <div className="mb-2 mt-1 border-t border-border/50 pt-2">
+                <button
+                    onClick={(e) => toggleExpand("__discover", e)}
+                    className="w-full flex items-center gap-x-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground/70 hover:text-muted-foreground hover:bg-accent/50 transition-all"
+                >
+                    <Compass className="h-4 w-4 shrink-0" />
+                    <span className="flex-1 text-left truncate">Discover more</span>
+                    <span className="text-[10px] bg-accent/80 px-1.5 py-0.5 rounded-full">{hiddenItems.length}</span>
+                    <motion.div
+                        animate={{ rotate: isDiscoverExpanded ? 90 : 0 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        <ChevronRight className="h-3 w-3" />
+                    </motion.div>
+                </button>
+                <AnimatePresence>
+                    {isDiscoverExpanded && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2, ease: "easeInOut" }}
+                            className="overflow-hidden"
+                        >
+                            <div className="ml-4 mt-1 border-l border-border/30 pl-2 space-y-0.5">
+                                {hiddenItems.map(item => {
+                                    const Icon = item.icon;
+                                    return (
+                                        <Link
+                                            key={item.href}
+                                            href="/settings/access"
+                                            className="flex items-center gap-x-3 rounded-md px-3 py-1.5 text-xs text-muted-foreground/60 hover:text-muted-foreground hover:bg-accent/30 transition-all"
+                                        >
+                                            <Icon className="h-3.5 w-3.5 shrink-0" />
+                                            <span className="truncate">{item.label}</span>
+                                        </Link>
+                                    );
+                                })}
+                                <Link
+                                    href="/settings/access"
+                                    className="flex items-center gap-x-2 rounded-md px-3 py-1.5 text-xs text-primary/70 hover:text-primary transition-all font-medium"
+                                >
+                                    Enable in Settings →
+                                </Link>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         );
     };
@@ -439,6 +514,9 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                         <nav className="px-2">
                             {/* Render sections based on layout config */}
                             {layoutConfig.sections.map(section => renderSection(section))}
+
+                            {/* Discover more tools - shows filtered-out modules */}
+                            {renderDiscoverSection()}
                         </nav>
                     </div>
 

@@ -16,7 +16,6 @@ import {
   Clock,
   AlertCircle,
   AlertTriangle,
-  Search,
   Filter,
   GitPullRequest,
   GitCommit,
@@ -36,6 +35,7 @@ import {
 } from "lucide-react";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useManagerReviews, useReviewCycles } from "@/hooks/useReviews";
+import { SearchInput } from "@/components/ui/search-input";
 import { IndividualReview, WorkspaceMember } from "@/lib/api";
 
 // Types for suggestions (to be replaced with real API data when available)
@@ -169,14 +169,55 @@ export default function ReviewsManagePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
-            <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+      <div className="min-h-screen bg-background animate-pulse">
+        <main className="max-w-7xl mx-auto px-4 py-8">
+          <div className="flex items-center gap-2 text-sm mb-6">
+            <div className="h-4 w-16 bg-accent rounded" />
+            <div className="h-4 w-4 bg-accent rounded" />
+            <div className="h-4 w-24 bg-accent rounded" />
           </div>
-          <p className="text-muted-foreground text-sm">Loading management data...</p>
-        </div>
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <div className="h-8 w-48 bg-accent rounded mb-2" />
+              <div className="h-4 w-72 bg-accent rounded" />
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-32 bg-accent rounded-lg" />
+              <div className="h-9 w-32 bg-accent rounded-lg" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="bg-muted rounded-xl p-4 border border-border">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="h-9 w-9 bg-accent rounded-lg" />
+                  <div className="h-3 w-20 bg-accent rounded" />
+                </div>
+                <div className="h-7 w-10 bg-accent rounded" />
+              </div>
+            ))}
+          </div>
+          <div className="bg-muted rounded-xl border border-border overflow-hidden">
+            <div className="grid grid-cols-6 gap-4 px-4 py-3 border-b border-border">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="h-3 w-16 bg-accent rounded" />
+              ))}
+            </div>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="grid grid-cols-6 gap-4 px-4 py-4 border-b border-border/50">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 bg-accent rounded-full" />
+                  <div className="h-4 w-24 bg-accent rounded" />
+                </div>
+                <div className="h-3 w-20 bg-accent rounded" />
+                <div className="h-5 w-16 bg-accent rounded-full" />
+                <div className="h-2 w-full bg-accent rounded-full" />
+                <div className="h-3 w-20 bg-accent rounded" />
+                <div className="h-8 w-16 bg-accent rounded-lg" />
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     );
   }
@@ -315,16 +356,12 @@ export default function ReviewsManagePage() {
           <div className="space-y-6">
             {/* Filters */}
             <div className="flex items-center gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search team members..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-muted border border-border rounded-lg pl-10 pr-4 py-2 text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500 text-sm"
-                />
-              </div>
+              <SearchInput
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search team members..."
+                wrapperClassName="flex-1"
+              />
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}

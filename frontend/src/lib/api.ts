@@ -1628,6 +1628,115 @@ export const exportsApi = {
   },
 
   getDownloadUrl: (jobId: string) => `${api.defaults.baseURL}/exports/${jobId}/download`,
+
+  deleteExport: async (jobId: string): Promise<void> => {
+    await api.delete(`/exports/${jobId}`);
+  },
+
+  getAvailableFormats: async (): Promise<ExportFormatInfo[]> => {
+    const response = await api.get("/exports/formats/available");
+    return response.data?.formats || response.data;
+  },
+};
+
+// Export Types
+export interface ExportJob {
+  id: string;
+  export_type: string;
+  format: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  file_path: string | null;
+  file_size_bytes: number | null;
+  error_message: string | null;
+  created_at: string;
+  completed_at: string | null;
+  expires_at: string;
+}
+
+export interface ExportFormatInfo {
+  format: string;
+  name: string;
+  description: string;
+  available: boolean;
+  requirements?: string;
+}
+
+// ============================================================================
+// Webhook Management Types & API
+// ============================================================================
+
+export interface BookingWebhook {
+  id: string;
+  workspace_id: string;
+  name: string;
+  url: string;
+  events: string[];
+  is_active: boolean;
+  last_triggered_at: string | null;
+  failure_count: number;
+  last_failure_at: string | null;
+  last_failure_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WebhookTestResult {
+  success: boolean;
+  status_code: number | null;
+  response_time_ms: number | null;
+  error: string | null;
+}
+
+export const webhooksApi = {
+  // Booking webhooks
+  listBookingWebhooks: async (workspaceId: string): Promise<{ webhooks: BookingWebhook[]; total: number }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/booking/webhooks`);
+    return response.data;
+  },
+
+  createBookingWebhook: async (workspaceId: string, data: {
+    name: string;
+    url: string;
+    events: string[];
+    is_active?: boolean;
+  }): Promise<BookingWebhook> => {
+    const response = await api.post(`/workspaces/${workspaceId}/booking/webhooks`, data);
+    return response.data;
+  },
+
+  updateBookingWebhook: async (workspaceId: string, webhookId: string, data: {
+    name?: string;
+    url?: string;
+    events?: string[];
+    is_active?: boolean;
+  }): Promise<BookingWebhook> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/booking/webhooks/${webhookId}`, data);
+    return response.data;
+  },
+
+  deleteBookingWebhook: async (workspaceId: string, webhookId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/booking/webhooks/${webhookId}`);
+  },
+
+  testBookingWebhook: async (workspaceId: string, webhookId: string): Promise<WebhookTestResult> => {
+    const response = await api.post(`/workspaces/${workspaceId}/booking/webhooks/${webhookId}/test`);
+    return response.data;
+  },
+
+  rotateBookingWebhookSecret: async (workspaceId: string, webhookId: string): Promise<BookingWebhook> => {
+    const response = await api.post(`/workspaces/${workspaceId}/booking/webhooks/${webhookId}/rotate-secret`);
+    return response.data;
+  },
+
+  getBookingWebhookSecret: async (workspaceId: string, webhookId: string): Promise<{ secret: string }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/booking/webhooks/${webhookId}/secret`);
+    return response.data;
+  },
+
+  getBookingWebhookEvents: async (workspaceId: string): Promise<string[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/booking/webhooks/events`);
+    return response.data;
+  },
 };
 
 // ============================================================================
@@ -6638,6 +6747,16 @@ export interface Ticket {
   team_id?: string;
   external_issues: ExternalIssue[];
   linked_task_id?: string;
+  linked_crm_contact?: {
+    id: string;
+    display_name: string;
+    email?: string;
+    company?: string;
+    deal_value?: number;
+    deal_stage?: string;
+  } | null;
+  customer_impact?: "none" | "low" | "medium" | "high" | "critical";
+  affected_customers_count?: number;
   first_response_at?: string;
   resolved_at?: string;
   closed_at?: string;
@@ -9446,7 +9565,7 @@ export const googleIntegrationApi = {
 // =============================================================================
 
 // Standard agent types with predefined configurations
-export type StandardAgentType = "support" | "sales" | "scheduling" | "onboarding" | "recruiting" | "newsletter" | "custom";
+export type StandardAgentType = "support" | "sales" | "scheduling" | "onboarding" | "recruiting" | "newsletter" | "triage" | "insights" | "standup" | "custom";
 // Allow any string for backwards compatibility with existing CRM agent types
 export type AgentType = StandardAgentType | (string & {});
 
@@ -9759,6 +9878,27 @@ export const AGENT_TYPE_CONFIG: Record<StandardAgentType, AgentTypeConfigItem> =
     icon: "newspaper",
     color: "#06b6d4",
     defaultTools: ["reply", "send_email", "get_writing_style"],
+  },
+  triage: {
+    label: "Triage Agent",
+    description: "Classify and route incoming tickets by priority and department",
+    icon: "filter",
+    color: "#ef4444",
+    defaultTools: ["classify_ticket", "assign_ticket", "escalate", "reply", "search_contacts"],
+  },
+  insights: {
+    label: "Insights Agent",
+    description: "Proactively surface team metrics, burnout risks, and performance trends",
+    icon: "bar-chart",
+    color: "#10b981",
+    defaultTools: ["get_team_metrics", "get_burnout_risk", "get_velocity", "send_slack", "create_task"],
+  },
+  standup: {
+    label: "Standup Agent",
+    description: "Draft standup summaries from activity and remind team members",
+    icon: "message-circle",
+    color: "#8b5cf6",
+    defaultTools: ["get_git_activity", "get_task_updates", "send_slack", "reply", "create_task"],
   },
   custom: {
     label: "Custom Agent",
@@ -15111,6 +15251,117 @@ export interface AppAccessLogsSummary {
   total_events: number;
   period_days: number;
 }
+
+// ============================================================================
+// SSO / SAML Types
+// ============================================================================
+
+export type SSOProvider = "saml" | "oidc";
+export type SSOStatus = "inactive" | "active" | "testing";
+
+export interface SSOConfiguration {
+  id: string;
+  workspace_id: string;
+  provider: SSOProvider;
+  status: SSOStatus;
+  display_name: string;
+  // SAML fields
+  entity_id: string | null;
+  sso_url: string | null;
+  certificate: string | null;
+  // OIDC fields
+  client_id: string | null;
+  issuer_url: string | null;
+  // Common
+  enforce_sso: boolean;
+  allowed_domains: string[];
+  auto_provision_users: boolean;
+  default_role_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SSOConfigurationCreate {
+  provider: SSOProvider;
+  display_name: string;
+  entity_id?: string;
+  sso_url?: string;
+  certificate?: string;
+  client_id?: string;
+  client_secret?: string;
+  issuer_url?: string;
+  enforce_sso?: boolean;
+  allowed_domains?: string[];
+  auto_provision_users?: boolean;
+  default_role_id?: string;
+}
+
+export interface SSOConfigurationUpdate {
+  display_name?: string;
+  entity_id?: string;
+  sso_url?: string;
+  certificate?: string;
+  client_id?: string;
+  client_secret?: string;
+  issuer_url?: string;
+  enforce_sso?: boolean;
+  allowed_domains?: string[];
+  auto_provision_users?: boolean;
+  default_role_id?: string;
+}
+
+export interface SSOTestResult {
+  success: boolean;
+  error: string | null;
+  user_attributes: Record<string, string> | null;
+}
+
+export const ssoApi = {
+  getConfiguration: async (workspaceId: string): Promise<SSOConfiguration | null> => {
+    try {
+      const response = await api.get(`/workspaces/${workspaceId}/sso/configuration`);
+      return response.data;
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.status === 404) return null;
+      throw err;
+    }
+  },
+
+  createConfiguration: async (
+    workspaceId: string,
+    data: SSOConfigurationCreate
+  ): Promise<SSOConfiguration> => {
+    const response = await api.post(`/workspaces/${workspaceId}/sso/configuration`, data);
+    return response.data;
+  },
+
+  updateConfiguration: async (
+    workspaceId: string,
+    data: SSOConfigurationUpdate
+  ): Promise<SSOConfiguration> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/sso/configuration`, data);
+    return response.data;
+  },
+
+  deleteConfiguration: async (workspaceId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/sso/configuration`);
+  },
+
+  testConfiguration: async (workspaceId: string): Promise<SSOTestResult> => {
+    const response = await api.post(`/workspaces/${workspaceId}/sso/test`);
+    return response.data;
+  },
+
+  activateConfiguration: async (workspaceId: string): Promise<SSOConfiguration> => {
+    const response = await api.post(`/workspaces/${workspaceId}/sso/activate`);
+    return response.data;
+  },
+
+  deactivateConfiguration: async (workspaceId: string): Promise<SSOConfiguration> => {
+    const response = await api.post(`/workspaces/${workspaceId}/sso/deactivate`);
+    return response.data;
+  },
+};
 
 // ============================================================================
 // Knowledge Graph Types

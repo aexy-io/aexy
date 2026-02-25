@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { uptimeApi, UptimeMonitor, UptimeIncident, WorkspaceUptimeStats } from "@/lib/uptime-api";
 import Link from "next/link";
+import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
+import { EmptyState } from "@/components/EmptyState";
 import {
   MonitorCheck,
   Plus,
@@ -17,16 +19,7 @@ import {
   Server,
   Wifi,
 } from "lucide-react";
-
-const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-  up: { bg: "bg-emerald-50 dark:bg-emerald-900/30", text: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500" },
-  down: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400", dot: "bg-red-500" },
-  degraded: { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500" },
-  paused: { bg: "bg-accent/50", text: "text-muted-foreground", dot: "bg-muted-foreground" },
-  unknown: { bg: "bg-accent/50", text: "text-muted-foreground", dot: "bg-muted-foreground" },
-};
-
-const DEFAULT_STATUS_STYLE = { bg: "bg-accent/50", text: "text-muted-foreground", dot: "bg-muted-foreground" };
+import { UPTIME_MONITOR_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
 const CHECK_TYPE_ICONS = {
   http: Globe,
@@ -85,8 +78,45 @@ export default function UptimeDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" />
+      <div className="min-h-screen bg-background animate-pulse">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <div className="h-7 w-48 bg-accent rounded mb-2" />
+              <div className="h-4 w-64 bg-accent rounded" />
+            </div>
+            <div className="h-9 w-32 bg-accent rounded-lg" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="bg-muted rounded-xl p-4 border border-border">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 bg-accent rounded-lg" />
+                  <div>
+                    <div className="h-6 w-8 bg-accent rounded mb-1" />
+                    <div className="h-3 w-20 bg-accent rounded" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-muted rounded-xl p-4 border border-border">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 bg-accent rounded-lg" />
+                    <div>
+                      <div className="h-4 w-40 bg-accent rounded mb-1" />
+                      <div className="h-3 w-56 bg-accent rounded" />
+                    </div>
+                  </div>
+                  <div className="h-6 w-16 bg-accent rounded-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     );
   }
@@ -192,25 +222,20 @@ export default function UptimeDashboard() {
               </div>
 
               {monitors.length === 0 ? (
-                <div className="p-8 text-center">
-                  <MonitorCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-foreground mb-2">No monitors yet</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Create your first monitor to start tracking uptime
-                  </p>
-                  <Link
-                    href="/uptime/monitors?create=true"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create Monitor
-                  </Link>
-                </div>
+                <EmptyState
+                  icon={MonitorCheck}
+                  title="No monitors yet"
+                  description="Set up uptime monitors to track the health and availability of your services."
+                  actions={[
+                    { label: "Create Monitor", href: "/uptime/monitors?create=true" },
+                  ]}
+                  compact
+                />
               ) : (
                 <div className="divide-y divide-border">
                   {monitors.slice(0, 8).map((monitor) => {
                     const Icon = CHECK_TYPE_ICONS[monitor.check_type] || Globe;
-                    const statusStyle = STATUS_COLORS[monitor.current_status] || DEFAULT_STATUS_STYLE;
+                    const statusStyle = getStatusColor(UPTIME_MONITOR_STATUS_COLORS, monitor.current_status);
 
                     return (
                       <Link
@@ -327,6 +352,9 @@ export default function UptimeDashboard() {
                 </Link>
               </div>
             </div>
+
+            {/* Automations */}
+            <ModuleAutomationsPanel module="uptime" moduleLabel="Uptime" compact />
           </div>
         </div>
       </main>

@@ -278,6 +278,7 @@ class TicketService:
             return None
 
         old_status = ticket.status
+        old_priority = ticket.priority
         data = update_data.model_dump(exclude_unset=True)
 
         for field, value in data.items():
@@ -315,6 +316,7 @@ class TicketService:
 
         # Dispatch automation events
         if "status" in data and data["status"] != old_status:
+            new_status = data["status"]
             # Dispatch ticket.status_changed
             await dispatch_automation_event(
                 db=self.db,
@@ -326,12 +328,34 @@ class TicketService:
                     "ticket_id": ticket.id,
                     "ticket_number": ticket.ticket_number,
                     "old_status": old_status,
-                    "new_status": data["status"],
+                    "new_status": new_status,
                     "submitter_email": ticket.submitter_email,
                     "assignee_id": ticket.assignee_id,
                     "workspace_id": ticket.workspace_id,
                 },
             )
+
+            # Dispatch ticket.reopened when a resolved/closed ticket goes back to open state
+            closed_statuses = {TicketStatus.RESOLVED.value, TicketStatus.CLOSED.value}
+            open_statuses = {TicketStatus.NEW.value, TicketStatus.ACKNOWLEDGED.value, TicketStatus.IN_PROGRESS.value}
+            if old_status in closed_statuses and new_status in open_statuses:
+                await dispatch_automation_event(
+                    db=self.db,
+                    workspace_id=ticket.workspace_id,
+                    module="tickets",
+                    trigger_type="ticket.reopened",
+                    entity_id=ticket.id,
+                    trigger_data={
+                        "ticket_id": ticket.id,
+                        "ticket_number": ticket.ticket_number,
+                        "old_status": old_status,
+                        "new_status": new_status,
+                        "reopened_by_id": updated_by_id,
+                        "submitter_email": ticket.submitter_email,
+                        "assignee_id": ticket.assignee_id,
+                        "workspace_id": ticket.workspace_id,
+                    },
+                )
         else:
             # Dispatch ticket.updated for other changes
             await dispatch_automation_event(
@@ -347,6 +371,24 @@ class TicketService:
                     "priority": ticket.priority,
                     "submitter_email": ticket.submitter_email,
                     "updated_fields": list(data.keys()),
+                    "workspace_id": ticket.workspace_id,
+                },
+            )
+
+        # Dispatch ticket.priority_changed
+        if "priority" in data and data["priority"] != old_priority:
+            await dispatch_automation_event(
+                db=self.db,
+                workspace_id=ticket.workspace_id,
+                module="tickets",
+                trigger_type="ticket.priority_changed",
+                entity_id=ticket.id,
+                trigger_data={
+                    "ticket_id": ticket.id,
+                    "ticket_number": ticket.ticket_number,
+                    "old_priority": old_priority,
+                    "new_priority": data["priority"],
+                    "submitter_email": ticket.submitter_email,
                     "workspace_id": ticket.workspace_id,
                 },
             )
@@ -486,6 +528,44 @@ class TicketService:
         self.db.add(response)
         await self.db.flush()
         await self.db.refresh(response)
+
+        # Dispatch response automation events (skip internal notes)
+        if not comment_data.is_internal:
+            if author_id:
+                # Team member replied -> response.sent
+                await dispatch_automation_event(
+                    db=self.db,
+                    workspace_id=ticket.workspace_id,
+                    module="tickets",
+                    trigger_type="response.sent",
+                    entity_id=response.id,
+                    trigger_data={
+                        "ticket_id": ticket_id,
+                        "ticket_number": ticket.ticket_number,
+                        "response_id": response.id,
+                        "author_id": author_id,
+                        "submitter_email": ticket.submitter_email,
+                        "workspace_id": ticket.workspace_id,
+                    },
+                )
+            else:
+                # Submitter replied -> response.received
+                await dispatch_automation_event(
+                    db=self.db,
+                    workspace_id=ticket.workspace_id,
+                    module="tickets",
+                    trigger_type="response.received",
+                    entity_id=response.id,
+                    trigger_data={
+                        "ticket_id": ticket_id,
+                        "ticket_number": ticket.ticket_number,
+                        "response_id": response.id,
+                        "author_email": author_email,
+                        "submitter_email": ticket.submitter_email,
+                        "workspace_id": ticket.workspace_id,
+                    },
+                )
+
         return response
 
     async def list_responses(
@@ -609,6 +689,27 @@ class TicketService:
             ticket.sla_breached = True
 
         await self.db.flush()
+
+        # Dispatch sla.breached for each breached ticket
+        for ticket in breached_tickets:
+            await dispatch_automation_event(
+                db=self.db,
+                workspace_id=workspace_id,
+                module="tickets",
+                trigger_type="sla.breached",
+                entity_id=ticket.id,
+                trigger_data={
+                    "ticket_id": ticket.id,
+                    "ticket_number": ticket.ticket_number,
+                    "sla_due_at": ticket.sla_due_at.isoformat() if ticket.sla_due_at else None,
+                    "status": ticket.status,
+                    "priority": ticket.priority,
+                    "submitter_email": ticket.submitter_email,
+                    "assignee_id": ticket.assignee_id,
+                    "workspace_id": workspace_id,
+                },
+            )
+
         return breached_tickets
 
     # ==================== Statistics ====================
@@ -821,6 +922,23 @@ class TicketService:
                     self.db.add(escalation)
                     await self.db.flush()
                     await self.db.refresh(escalation)
+
+                    # Dispatch ticket.escalated
+                    await dispatch_automation_event(
+                        db=self.db,
+                        workspace_id=ticket.workspace_id,
+                        module="tickets",
+                        trigger_type="ticket.escalated",
+                        entity_id=escalation.id,
+                        trigger_data={
+                            "ticket_id": ticket.id,
+                            "ticket_number": ticket.ticket_number,
+                            "escalation_id": escalation.id,
+                            "escalation_level": level,
+                            "notified_users": escalation.notified_users,
+                            "workspace_id": ticket.workspace_id,
+                        },
+                    )
                     return escalation
 
         return None

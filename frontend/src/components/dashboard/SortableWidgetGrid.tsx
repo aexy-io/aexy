@@ -123,7 +123,7 @@ export function SortableWidgetGrid({
 
   if (!isEditing) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {renderableWidgets.map((widgetId,index) => (
           <div key={widgetId+index} className={getGridClass?.(widgetId) || ""}>{renderWidget(widgetId)}</div>
         ))}
@@ -139,7 +139,7 @@ export function SortableWidgetGrid({
       onDragEnd={handleDragEnd}
     >
       <SortableContext items={renderableWidgets} strategy={rectSortingStrategy}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {renderableWidgets.map((widgetId,index) => (
             <SortableWidget key={widgetId+index} id={widgetId} isEditing={isEditing} className={getGridClass?.(widgetId) || ""}>
               {renderWidget(widgetId)}

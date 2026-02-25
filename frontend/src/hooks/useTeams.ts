@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { teamApi, TeamListItem, Team, TeamMember, TeamProfile } from "@/lib/api";
 
 export function useTeams(workspaceId: string | null) {
@@ -20,16 +21,24 @@ export function useTeams(workspaceId: string | null) {
   const createMutation = useMutation({
     mutationFn: (data: Parameters<typeof teamApi.create>[1]) => teamApi.create(workspaceId!, data),
     onSuccess: () => {
+      toast.success("Team created");
       queryClient.invalidateQueries({ queryKey: ["teams", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to create team");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (teamId: string) => teamApi.delete(workspaceId!, teamId),
     onSuccess: () => {
+      toast.success("Team deleted");
       queryClient.invalidateQueries({ queryKey: ["teams", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to delete team");
     },
   });
 
@@ -37,8 +46,12 @@ export function useTeams(workspaceId: string | null) {
     mutationFn: (data: Parameters<typeof teamApi.createFromRepository>[1]) =>
       teamApi.createFromRepository(workspaceId!, data),
     onSuccess: () => {
+      toast.success("Team created from repository");
       queryClient.invalidateQueries({ queryKey: ["teams", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to create team from repository");
     },
   });
 
@@ -72,16 +85,24 @@ export function useTeam(workspaceId: string | null, teamId: string | null) {
   const updateMutation = useMutation({
     mutationFn: (data: Parameters<typeof teamApi.update>[2]) => teamApi.update(workspaceId!, teamId!, data),
     onSuccess: () => {
+      toast.success("Team updated");
       queryClient.invalidateQueries({ queryKey: ["team", workspaceId, teamId] });
       queryClient.invalidateQueries({ queryKey: ["teams", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update team");
     },
   });
 
   const syncMutation = useMutation({
     mutationFn: () => teamApi.sync(workspaceId!, teamId!),
     onSuccess: () => {
+      toast.success("Team synced");
       queryClient.invalidateQueries({ queryKey: ["team", workspaceId, teamId] });
       queryClient.invalidateQueries({ queryKey: ["teamMembers", workspaceId, teamId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to sync team");
     },
   });
 
@@ -115,9 +136,13 @@ export function useTeamMembers(workspaceId: string | null, teamId: string | null
     mutationFn: ({ developerId, role }: { developerId: string; role?: string }) =>
       teamApi.addMember(workspaceId!, teamId!, developerId, role),
     onSuccess: () => {
+      toast.success("Member added");
       queryClient.invalidateQueries({ queryKey: ["teamMembers", workspaceId, teamId] });
       queryClient.invalidateQueries({ queryKey: ["team", workspaceId, teamId] });
       queryClient.invalidateQueries({ queryKey: ["teams", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to add member");
     },
   });
 
@@ -125,16 +150,24 @@ export function useTeamMembers(workspaceId: string | null, teamId: string | null
     mutationFn: ({ developerId, role }: { developerId: string; role: string }) =>
       teamApi.updateMemberRole(workspaceId!, teamId!, developerId, role),
     onSuccess: () => {
+      toast.success("Member role updated");
       queryClient.invalidateQueries({ queryKey: ["teamMembers", workspaceId, teamId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update member role");
     },
   });
 
   const removeMutation = useMutation({
     mutationFn: (developerId: string) => teamApi.removeMember(workspaceId!, teamId!, developerId),
     onSuccess: () => {
+      toast.success("Member removed");
       queryClient.invalidateQueries({ queryKey: ["teamMembers", workspaceId, teamId] });
       queryClient.invalidateQueries({ queryKey: ["team", workspaceId, teamId] });
       queryClient.invalidateQueries({ queryKey: ["teams", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to remove member");
     },
   });
 

@@ -8,7 +8,6 @@ import {
   Plus,
   Palette,
   Trash2,
-  Search,
   Clock,
   Eye,
   Loader2,
@@ -19,7 +18,10 @@ import {
   Code,
   Wand2,
   FileText,
+  LayoutTemplate,
 } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
+import { SearchInput } from "@/components/ui/search-input";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -272,16 +274,12 @@ export default function TemplatesPage() {
 
           {/* Search and Filters */}
           <div className="flex items-center gap-4 mb-6">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search templates..."
-                className="w-full pl-10 pr-4 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
-              />
-            </div>
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search templates..."
+              wrapperClassName="flex-1"
+            />
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition ${
@@ -356,26 +354,24 @@ export default function TemplatesPage() {
               ))}
             </div>
           ) : filteredTemplates.length === 0 ? (
-            <div className="bg-background/50 border border-border rounded-xl p-16 text-center">
-              <Palette className="h-14 w-14 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-medium text-foreground mb-2">
-                {searchQuery || typeFilter !== "all" ? "No templates found" : "No templates yet"}
-              </h3>
-              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                {searchQuery || typeFilter !== "all"
-                  ? "Try adjusting your search or filters"
-                  : "Create reusable email templates to streamline your campaigns."}
-              </p>
-              {!searchQuery && typeFilter === "all" && (
-                <Link
-                  href="/email-marketing/templates/new"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition"
-                >
-                  <Plus className="h-4 w-4" />
-                  Create Template
-                </Link>
-              )}
-            </div>
+            searchQuery || typeFilter !== "all" ? (
+              <div className="bg-background/50 border border-border rounded-xl p-16 text-center">
+                <Palette className="h-14 w-14 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-medium text-foreground mb-2">No templates found</h3>
+                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                  Try adjusting your search or filters
+                </p>
+              </div>
+            ) : (
+              <EmptyState
+                icon={LayoutTemplate}
+                title="No email templates yet"
+                description="Create reusable email templates for your campaigns. Design once, send many times."
+                actions={[
+                  { label: "Create Template", href: "/email-marketing/templates/new" },
+                ]}
+              />
+            )
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">

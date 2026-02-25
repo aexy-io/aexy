@@ -27,6 +27,8 @@ import {
   InstallationStatus,
 } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { useSubscription } from "@/hooks/useSubscription";
+import { UpgradeBanner } from "@/components/UpgradeBanner";
 
 type SyncStatus = "pending" | "syncing" | "synced" | "failed";
 type WebhookStatus = "none" | "pending" | "active" | "failed";
@@ -192,6 +194,7 @@ function CollapsibleSection({
 
 export default function RepositorySettingsPage() {
   const { user } = useAuth();
+  const { isFree, maxRepos } = useSubscription();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -369,10 +372,36 @@ export default function RepositorySettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-foreground">Loading repositories...</p>
+      <div className="space-y-6 animate-pulse">
+        <div>
+          <div className="h-6 w-44 bg-accent rounded mb-2" />
+          <div className="h-4 w-72 bg-accent rounded" />
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="h-8 w-20 bg-accent rounded" />
+            <div className="h-4 w-40 bg-accent rounded" />
+          </div>
+          <div className="h-9 w-40 bg-accent rounded-lg" />
+        </div>
+        <div className="bg-card rounded-xl overflow-hidden">
+          <div className="p-4 border-b border-border flex items-center gap-3">
+            <div className="h-10 w-10 bg-accent rounded-lg" />
+            <div className="space-y-1.5">
+              <div className="h-4 w-44 bg-accent rounded" />
+              <div className="h-3 w-32 bg-accent rounded" />
+            </div>
+          </div>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="p-3 px-4 flex items-center justify-between border-b border-border/50">
+              <div className="flex items-center gap-3">
+                <div className="h-4 w-4 bg-accent rounded" />
+                <div className="h-4 w-48 bg-accent rounded" />
+                <div className="h-3 w-3 bg-accent rounded" />
+              </div>
+              <div className="h-5 w-16 bg-accent rounded" />
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -386,6 +415,15 @@ export default function RepositorySettingsPage() {
           Manage which repositories are synced and analyzed
         </p>
       </div>
+
+      {isFree && repositories.length >= maxRepos - 1 && (
+        <UpgradeBanner
+          trigger="repo_limit"
+          current={repositories.length}
+          limit={maxRepos}
+          compact
+        />
+      )}
 
       {user?.github_connection?.auth_status === "error" && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">

@@ -172,15 +172,33 @@ export default function HiringAnalyticsPage() {
 
   if (isLoading || loading || workspacesLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
-            <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+      <main className="w-full px-6 py-8 animate-pulse">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 bg-accent rounded-xl" />
+            <div>
+              <div className="h-7 w-44 bg-accent rounded mb-2" />
+              <div className="h-4 w-32 bg-accent rounded" />
+            </div>
           </div>
-          <p className="text-muted-foreground text-sm">Loading analytics...</p>
+          <div className="flex gap-3">
+            <div className="h-9 w-40 bg-accent rounded-lg" />
+            <div className="h-9 w-28 bg-accent rounded-lg" />
+          </div>
         </div>
-      </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-muted rounded-xl p-5 border border-border">
+              <div className="h-3 w-24 bg-accent rounded mb-3" />
+              <div className="h-8 w-16 bg-accent rounded" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-muted rounded-xl p-6 border border-border h-72" />
+          <div className="bg-muted rounded-xl p-6 border border-border h-72" />
+        </div>
+      </main>
     );
   }
 
