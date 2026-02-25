@@ -7,51 +7,42 @@ import {
   Filter,
   ChevronLeft,
   Trash2,
-  Building2,
-  Users,
-  DollarSign,
-  LayoutGrid,
+  Table2,
   Settings,
 } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
-import { useCRMObjects, useCRMRecords } from "@/hooks/useCRM";
-import { CRMObject, CRMRecord, CRMAttribute, CRMObjectType } from "@/lib/api";
-import { ViewSwitcher, ViewMode } from "@/components/crm/ViewSwitcher";
+import { useTables, useTableFields, useTableRecords, useTableAccess } from "@/hooks/useTables";
 import { DataTable } from "@/components/crm/DataTable";
+import { ViewSwitcher, ViewMode } from "@/components/crm/ViewSwitcher";
 import { KanbanBoard } from "@/components/crm/KanbanBoard";
 import { ColumnVisibilityMenu } from "@/components/crm/ColumnSelector";
 import { FieldEditor } from "@/components/fields";
-
-const objectTypeIcons: Record<CRMObjectType, React.ReactNode> = {
-  company: <Building2 className="h-5 w-5" />,
-  person: <Users className="h-5 w-5" />,
-  deal: <DollarSign className="h-5 w-5" />,
-  custom: <LayoutGrid className="h-5 w-5" />,
-};
+import type { CRMAttribute, CRMRecord } from "@/lib/api";
 
 function CreateRecordModal({
   isOpen,
   onClose,
   onCreate,
   isCreating,
-  object,
+  fields,
+  tableName,
   defaultValues,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onCreate: (values: Record<string, unknown>) => Promise<void>;
   isCreating: boolean;
-  object: CRMObject;
+  fields: CRMAttribute[];
+  tableName: string;
   defaultValues?: Record<string, unknown>;
 }) {
   const [values, setValues] = useState<Record<string, unknown>>(defaultValues || {});
 
   useEffect(() => {
-    if (defaultValues) {
-      setValues(defaultValues);
-    }
+    if (defaultValues) setValues(defaultValues);
   }, [defaultValues]);
 
   if (!isOpen) return null;
@@ -63,29 +54,32 @@ function CreateRecordModal({
     onClose();
   };
 
-  const editableAttributes = object.attributes?.filter((attr) => !attr.is_system) || [];
+  const editableFields = fields.filter((f) => !f.is_system);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-muted rounded-xl p-6 w-full max-w-lg border border-border max-h-[80vh] overflow-y-auto">
-        <h3 className="text-xl font-semibold text-foreground mb-4">Create {object.name}</h3>
+        <h3 className="text-xl font-semibold text-foreground mb-4">Add Record to {tableName}</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {editableAttributes.map((attr) => (
-            <div key={attr.id}>
+          {editableFields.map((field) => (
+            <div key={field.id}>
               <label className="block text-sm font-medium text-foreground mb-1">
-                {attr.name}
-                {attr.is_required && <span className="text-red-400 ml-1">*</span>}
+                {field.name}
+                {field.is_required && <span className="text-red-400 ml-1">*</span>}
               </label>
               <FieldEditor
-                attribute={attr}
-                value={values[attr.slug]}
-                onChange={(val) => setValues({ ...values, [attr.slug]: val })}
-                required={attr.is_required}
-                placeholder={attr.description || `Enter ${attr.name.toLowerCase()}`}
+                attribute={field}
+                value={values[field.slug]}
+                onChange={(val) => setValues({ ...values, [field.slug]: val })}
+                required={field.is_required}
+                placeholder={`Enter ${field.name.toLowerCase()}`}
                 className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
           ))}
+          {editableFields.length === 0 && (
+            <p className="text-muted-foreground text-sm">No fields defined yet. Add fields first.</p>
+          )}
           <div className="flex gap-3 pt-4">
             <button
               type="button"
@@ -96,7 +90,7 @@ function CreateRecordModal({
             </button>
             <button
               type="submit"
-              disabled={isCreating}
+              disabled={isCreating || editableFields.length === 0}
               className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white rounded-lg transition-colors"
             >
               {isCreating ? "Creating..." : "Create"}
@@ -108,87 +102,116 @@ function CreateRecordModal({
   );
 }
 
-export default function RecordsPage() {
+export default function TableDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const objectSlug = params.objectSlug as string;
+  const tableId = params.tableId as string;
 
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
 
-  const { objects } = useCRMObjects(workspaceId);
-  const currentObject = objects.find((obj) => obj.slug === objectSlug);
+  const { tables } = useTables(workspaceId);
+  const table = tables.find((t) => t.id === tableId);
+
+  const { fields, isLoading: fieldsLoading } = useTableFields(workspaceId, tableId);
+  const { access } = useTableAccess(workspaceId, tableId);
+
+  // Adapt fields to CRMAttribute shape for DataTable compatibility
+  const attributes: CRMAttribute[] = useMemo(() => {
+    return fields.map((f) => ({
+      id: f.id,
+      object_id: f.object_id,
+      name: f.name,
+      slug: f.slug,
+      attribute_type: f.attribute_type,
+      is_required: f.is_required,
+      is_unique: f.is_unique,
+      is_filterable: f.is_filterable,
+      is_primary: f.is_primary,
+      is_system: false,
+      default_value: f.default_value,
+      options: f.options,
+      display_order: f.display_order,
+      description: null,
+      created_at: f.created_at,
+      updated_at: f.updated_at,
+    }));
+  }, [fields]);
 
   // View state
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    // Default to board view for deals
-    if (objectSlug === "deals") return "board";
-    return "table";
-  });
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createDefaultValues, setCreateDefaultValues] = useState<Record<string, unknown>>({});
   const [sortConfig, setSortConfig] = useState<{ attribute: string; direction: "asc" | "desc" } | null>(null);
-
-  // Column management state
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
   const [columnOrder, setColumnOrder] = useState<string[]>([]);
 
-  // Initialize columns when object loads
+  // Initialize columns
   useEffect(() => {
-    if (currentObject?.attributes) {
-      const nonSystemAttrs = currentObject.attributes.filter((a) => !a.is_system);
+    if (fields.length > 0) {
       if (visibleColumns.length === 0) {
-        setVisibleColumns(nonSystemAttrs.slice(0, 5).map((a) => a.slug));
+        setVisibleColumns(fields.slice(0, 6).map((f) => f.slug));
       }
       if (columnOrder.length === 0) {
-        setColumnOrder(nonSystemAttrs.map((a) => a.slug));
+        setColumnOrder(fields.map((f) => f.slug));
       }
     }
-  }, [currentObject?.attributes, visibleColumns.length, columnOrder.length]);
+  }, [fields, visibleColumns.length, columnOrder.length]);
 
   const {
-    records,
+    records: rawRecords,
     total,
-    isLoading,
+    isLoading: recordsLoading,
     createRecord,
     updateRecord,
     deleteRecord,
     bulkDeleteRecords,
     isCreating,
-    isDeleting,
-  } = useCRMRecords(workspaceId, currentObject?.id || null, {
-    sorts: sortConfig ? [{ attribute: sortConfig.attribute, direction: sortConfig.direction }] : undefined,
+  } = useTableRecords(workspaceId, tableId, {
+    sort_by: sortConfig?.attribute,
+    sort_dir: sortConfig?.direction,
   });
 
-  // Filter records by search
+  // Adapt records to CRMRecord shape
+  const records: CRMRecord[] = useMemo(() => {
+    return rawRecords.map((r) => ({
+      id: r.id,
+      object_id: r.object_id,
+      values: r.values,
+      display_name: null,
+      created_by_id: r.created_by_id,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+      is_deleted: false,
+      deleted_at: null,
+    }));
+  }, [rawRecords]);
+
+  // Filter by search
   const filteredRecords = useMemo(() => {
     if (!searchQuery) return records;
-    const query = searchQuery.toLowerCase();
-    return records.filter((record) => {
-      if (record.display_name?.toLowerCase().includes(query)) return true;
-      return Object.values(record.values).some((val) =>
-        String(val).toLowerCase().includes(query)
-      );
-    });
+    const q = searchQuery.toLowerCase();
+    return records.filter((r) =>
+      Object.values(r.values).some((val) => String(val).toLowerCase().includes(q))
+    );
   }, [records, searchQuery]);
 
-  // Check if object has status attribute (for board view)
-  const hasStatusAttribute = useMemo(() => {
-    return currentObject?.attributes?.some((a) => a.attribute_type === "status");
-  }, [currentObject]);
+  const hasStatusField = useMemo(() => {
+    return fields.some((f) => f.attribute_type === "status");
+  }, [fields]);
 
-  // Get attributes that should be highlighted on kanban cards
   const kanbanHighlightAttributes = useMemo(() => {
-    if (!currentObject?.attributes) return [];
-    // Show currency and date fields on cards
-    return currentObject.attributes
-      .filter((a) => ["currency", "date", "email"].includes(a.attribute_type) && !a.is_system)
+    return fields
+      .filter((f) => ["currency", "date", "email"].includes(f.attribute_type))
       .slice(0, 2)
-      .map((a) => a.slug);
-  }, [currentObject]);
+      .map((f) => f.slug);
+  }, [fields]);
+
+  const isLoading = fieldsLoading || recordsLoading;
+  const canEdit = access ? ["edit", "manage", "admin"].includes(access.permission) : true;
 
   const handleSort = (attribute: string) => {
     if (sortConfig?.attribute === attribute) {
@@ -199,125 +222,109 @@ export default function RecordsPage() {
   };
 
   const handleSelectAll = () => {
-    if (selectedRecords.length === filteredRecords.length) {
-      setSelectedRecords([]);
-    } else {
-      setSelectedRecords(filteredRecords.map((r) => r.id));
-    }
+    setSelectedRecords(
+      selectedRecords.length === filteredRecords.length ? [] : filteredRecords.map((r) => r.id)
+    );
   };
 
   const handleSelectRecord = (recordId: string) => {
-    if (selectedRecords.includes(recordId)) {
-      setSelectedRecords(selectedRecords.filter((id) => id !== recordId));
-    } else {
-      setSelectedRecords([...selectedRecords, recordId]);
-    }
+    setSelectedRecords((prev) =>
+      prev.includes(recordId) ? prev.filter((id) => id !== recordId) : [...prev, recordId]
+    );
   };
 
   const handleCreate = async (values: Record<string, unknown>) => {
-    await createRecord({ values });
+    await createRecord(values);
     setCreateDefaultValues({});
   };
 
   const handleDelete = async (recordId: string) => {
-    if (confirm("Are you sure you want to delete this record?")) {
-      await deleteRecord({ recordId });
+    if (confirm("Delete this record?")) {
+      await deleteRecord(recordId);
     }
   };
 
   const handleBulkDelete = async () => {
-    if (confirm(`Are you sure you want to delete ${selectedRecords.length} records?`)) {
-      await bulkDeleteRecords({ recordIds: selectedRecords });
+    if (confirm(`Delete ${selectedRecords.length} records?`)) {
+      await bulkDeleteRecords(selectedRecords);
       setSelectedRecords([]);
     }
   };
 
   const handleRecordClick = (record: CRMRecord) => {
-    router.push(`/crm/${objectSlug}/${record.id}`);
+    // Could open a sidebar in the future
   };
 
   const handleRecordUpdate = async (recordId: string, values: Record<string, unknown>) => {
-    await updateRecord({ recordId, data: { values } });
+    await updateRecord({ recordId, values });
   };
 
   const handleCreateInStage = (stage: string) => {
-    const statusAttr = currentObject?.attributes?.find((a) => a.attribute_type === "status");
-    if (statusAttr) {
-      setCreateDefaultValues({ [statusAttr.slug]: stage });
+    const statusField = fields.find((f) => f.attribute_type === "status");
+    if (statusField) {
+      setCreateDefaultValues({ [statusField.slug]: stage });
     }
     setShowCreateModal(true);
   };
 
   const handleToggleColumn = (slug: string) => {
-    if (visibleColumns.includes(slug)) {
-      setVisibleColumns(visibleColumns.filter((s) => s !== slug));
-    } else {
-      setVisibleColumns([...visibleColumns, slug]);
-    }
+    setVisibleColumns((prev) =>
+      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
+    );
   };
 
-  if (!currentObject && !isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-<div className="p-8">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center py-16">
-              <h2 className="text-2xl font-bold text-foreground mb-2">Object not found</h2>
-              <p className="text-muted-foreground mb-4">The object you&apos;re looking for doesn&apos;t exist.</p>
-              <button
-                onClick={() => router.push("/crm")}
-                className="text-purple-400 hover:text-purple-300"
-              >
-                Go back to CRM
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const icon = currentObject ? objectTypeIcons[currentObject.object_type as CRMObjectType] || objectTypeIcons.custom : null;
-  const availableViews: ViewMode[] = hasStatusAttribute ? ["table", "board"] : ["table"];
+  const availableViews: ViewMode[] = hasStatusField ? ["table", "board"] : ["table"];
 
   return (
     <div className="min-h-screen bg-background">
-<div className="p-8">
+      <div className="p-8">
         <div className="max-w-7xl mx-auto">
+          <Breadcrumb
+            items={[
+              { label: "Tables", href: "/tables" },
+              { label: table?.name || "Table" },
+            ]}
+          />
+
           {/* Header */}
-          <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-4 mb-6 mt-4">
             <button
-              onClick={() => router.push("/crm")}
+              onClick={() => router.push("/tables")}
               className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-3">
-              {icon && <div className="text-purple-400">{icon}</div>}
+              <div
+                className="p-2 rounded-lg"
+                style={{ backgroundColor: table?.color ? `${table.color}20` : "rgba(147, 51, 234, 0.2)" }}
+              >
+                <Table2
+                  className="h-5 w-5"
+                  style={{ color: table?.color || "#a855f7" }}
+                />
+              </div>
               <div>
-                <h1 className="text-2xl font-bold text-foreground">{currentObject?.plural_name || "Records"}</h1>
+                <h1 className="text-2xl font-bold text-foreground">{table?.name || "Table"}</h1>
                 <p className="text-sm text-muted-foreground">{total} records</p>
               </div>
             </div>
             <div className="flex-1" />
 
-            {/* View Switcher */}
-            <ViewSwitcher
-              value={viewMode}
-              onChange={setViewMode}
-              availableViews={availableViews}
-            />
+            <ViewSwitcher value={viewMode} onChange={setViewMode} availableViews={availableViews} />
 
-            <button
-              onClick={() => {
-                setCreateDefaultValues({});
-                setShowCreateModal(true);
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              New {currentObject?.name}
-            </button>
+            {canEdit && (
+              <button
+                onClick={() => {
+                  setCreateDefaultValues({});
+                  setShowCreateModal(true);
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                Add Record
+              </button>
+            )}
           </div>
 
           {/* Toolbar */}
@@ -325,7 +332,7 @@ export default function RecordsPage() {
             <SearchInput
               value={searchQuery}
               onChange={setSearchQuery}
-              placeholder={`Search ${currentObject?.plural_name?.toLowerCase() || "records"}...`}
+              placeholder={`Search records...`}
               wrapperClassName="flex-1"
             />
             <button className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors">
@@ -333,21 +340,19 @@ export default function RecordsPage() {
               Filter
             </button>
 
-            {/* Column visibility (table view only) */}
-            {viewMode === "table" && currentObject?.attributes && (
+            {viewMode === "table" && attributes.length > 0 && (
               <ColumnVisibilityMenu
-                attributes={currentObject.attributes}
+                attributes={attributes}
                 visibleColumns={visibleColumns}
                 onToggleColumn={handleToggleColumn}
-                onShowAll={() => setVisibleColumns(currentObject.attributes?.filter((a) => !a.is_system).map((a) => a.slug) || [])}
+                onShowAll={() => setVisibleColumns(fields.map((f) => f.slug))}
                 onHideAll={() => setVisibleColumns([])}
               />
             )}
 
-            {selectedRecords.length > 0 && (
+            {selectedRecords.length > 0 && canEdit && (
               <button
                 onClick={handleBulkDelete}
-                disabled={isDeleting}
                 className="flex items-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600/30 text-red-400 rounded-lg transition-colors"
               >
                 <Trash2 className="h-4 w-4" />
@@ -360,9 +365,9 @@ export default function RecordsPage() {
           {viewMode === "table" ? (
             <DataTable
               records={filteredRecords}
-              attributes={currentObject?.attributes || []}
+              attributes={attributes}
               isLoading={isLoading}
-              emptyMessage={searchQuery ? "No records match your search" : `No ${currentObject?.plural_name?.toLowerCase() || "records"} yet`}
+              emptyMessage={searchQuery ? "No records match your search" : "No records yet"}
               visibleColumns={visibleColumns}
               onVisibleColumnsChange={setVisibleColumns}
               columnOrder={columnOrder}
@@ -373,14 +378,14 @@ export default function RecordsPage() {
               onSelectRecord={handleSelectRecord}
               onSelectAll={handleSelectAll}
               onRecordClick={handleRecordClick}
-              onRecordDelete={handleDelete}
+              onRecordDelete={canEdit ? handleDelete : undefined}
               enableColumnReorder={true}
               enableColumnSelector={true}
             />
           ) : (
             <KanbanBoard
               records={filteredRecords}
-              attributes={currentObject?.attributes || []}
+              attributes={attributes}
               onRecordClick={handleRecordClick}
               onRecordUpdate={handleRecordUpdate}
               onCreateInStage={handleCreateInStage}
@@ -388,22 +393,21 @@ export default function RecordsPage() {
               isLoading={isLoading}
             />
           )}
-
-          {currentObject && (
-            <CreateRecordModal
-              isOpen={showCreateModal}
-              onClose={() => {
-                setShowCreateModal(false);
-                setCreateDefaultValues({});
-              }}
-              onCreate={handleCreate}
-              isCreating={isCreating}
-              object={currentObject}
-              defaultValues={createDefaultValues}
-            />
-          )}
         </div>
       </div>
+
+      <CreateRecordModal
+        isOpen={showCreateModal}
+        onClose={() => {
+          setShowCreateModal(false);
+          setCreateDefaultValues({});
+        }}
+        onCreate={handleCreate}
+        isCreating={isCreating}
+        fields={attributes}
+        tableName={table?.name || "Table"}
+        defaultValues={createDefaultValues}
+      />
     </div>
   );
 }
