@@ -4,6 +4,7 @@ These endpoints are accessible without authentication and are used
 for the public booking pages.
 """
 
+import logging
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
@@ -465,8 +466,19 @@ async def create_public_booking(
             await db.refresh(booking)
         except Exception as e:
             # Log but don't fail the booking if calendar creation fails
-            import logging
             logging.warning(f"Failed to create calendar events for booking {booking.id}: {e}")
+
+        # Send confirmation emails to invitee and host
+        try:
+            notification_service = BookingNotificationService(db)
+            email_svc = EmailService()
+            if email_svc.is_configured:
+                await notification_service.send_confirmation(
+                    booking=booking,
+                    email_service=email_svc,
+                )
+        except Exception as e:
+            logging.warning(f"Failed to send confirmation emails for booking {booking.id}: {e}")
 
         # Get host info
         host_stmt = select(Developer).where(Developer.id == booking.host_id)

@@ -46,19 +46,19 @@ export default function CalendarsPage() {
     const success = searchParams.get("success");
     const error = searchParams.get("error");
     const provider = searchParams.get("provider");
+
+    // Wait for workspace to be loaded before handling callback params
+    // so loadConnections() can actually fetch the new connection
+    if (!currentWorkspace?.id) return;
+    if (!success && !error) return;
+
     const providerName = provider === "microsoft" ? "Microsoft Outlook" : "Google Calendar";
 
     if (success === "true") {
       toast.success(`${providerName} connected successfully!`);
-      // Reload connections to show the new one
-      if (currentWorkspace?.id) {
-        loadConnections();
-      }
-      // Clear URL params
-      router.replace("/booking/calendars", { scroll: false });
+      loadConnections();
     } else if (error) {
       const decodedError = decodeURIComponent(error);
-      // Format error message for better readability
       if (decodedError.includes("not configured")) {
         toast.error(`${providerName} integration is not configured. Please contact your administrator.`);
       } else if (decodedError.includes("access_denied")) {
@@ -68,10 +68,11 @@ export default function CalendarsPage() {
       } else {
         toast.error(`Failed to connect ${providerName}: ${decodedError}`);
       }
-      // Clear URL params
-      router.replace("/booking/calendars", { scroll: false });
     }
-  }, [searchParams, router, currentWorkspace?.id]);
+
+    // Clear URL params after handling
+    router.replace("/booking/calendars", { scroll: false });
+  }, [searchParams, currentWorkspace?.id]);
 
   useEffect(() => {
     if (currentWorkspace?.id) {

@@ -507,6 +507,109 @@ class EmailService:
             logger.error(f"Failed to send booking email '{template_name}' to {to_email}: {e}")
             return {"success": False, "error": str(e)}
 
+    def _format_location_for_email(
+        self,
+        location_type: str | None,
+        meeting_link: str | None,
+        location: str | None,
+    ) -> str:
+        """Format location details based on location type for email body."""
+        location_type = location_type or ""
+        video_types = ("zoom", "google_meet", "microsoft_teams")
+
+        label_map = {
+            "google_meet": "Google Meet",
+            "zoom": "Zoom",
+            "microsoft_teams": "Microsoft Teams",
+            "phone": "Phone Call",
+            "in_person": "In Person",
+            "custom": "Custom",
+        }
+        type_label = label_map.get(location_type, location_type.replace("_", " ").title())
+
+        if location_type in video_types:
+            if meeting_link:
+                return f"Location: {type_label}\nMeeting Link: {meeting_link}"
+            return f"Location: {type_label} (meeting link will be provided before the event)"
+        elif location_type == "phone":
+            return f"Location: {type_label}" + (f"\nPhone: {location}" if location else "")
+        elif location_type == "in_person":
+            return f"Location: In Person" + (f"\nAddress: {location}" if location else "")
+        elif location:
+            return f"Location: {location}"
+        elif meeting_link:
+            return f"Meeting Link: {meeting_link}"
+        else:
+            return "Location: To be determined"
+
+    def _create_booking_html_email(
+        self,
+        title: str,
+        body: str,
+        meeting_link: str | None = None,
+        location_type: str | None = None,
+    ) -> str:
+        """Create an HTML email for booking notifications with a meeting link button."""
+        video_types = ("zoom", "google_meet", "microsoft_teams")
+        show_meeting_button = meeting_link and (location_type or "") in video_types
+
+        meeting_button_html = ""
+        if show_meeting_button:
+            label_map = {
+                "google_meet": "Join Google Meet",
+                "zoom": "Join Zoom Meeting",
+                "microsoft_teams": "Join Teams Meeting",
+            }
+            button_label = label_map.get(location_type or "", "Join Meeting")
+            meeting_button_html = f"""
+            <div style="text-align: center; margin: 25px 0;">
+                <a href="{meeting_link}"
+                   style="background-color: #2563eb; color: white; padding: 14px 28px;
+                          text-decoration: none; border-radius: 8px; font-weight: 600;
+                          font-size: 16px; display: inline-block;">
+                    &#127909; {button_label}
+                </a>
+            </div>
+            """
+
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                     background-color: #f3f4f6; margin: 0; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: white;
+                        border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <!-- Header -->
+                <div style="background-color: #0f172a; padding: 20px; text-align: center;">
+                    <h1 style="color: white; margin: 0; font-size: 24px;">Aexy</h1>
+                </div>
+
+                <!-- Content -->
+                <div style="padding: 30px;">
+                    <h2 style="color: #1f2937; margin: 0 0 15px 0; font-size: 20px;">{title}</h2>
+                    <p style="color: #4b5563; line-height: 1.6; margin: 0 0 20px 0;">{body}</p>
+                    {meeting_button_html}
+                </div>
+
+                <!-- Footer -->
+                <div style="background-color: #f9fafb; padding: 20px; text-align: center;
+                            border-top: 1px solid #e5e7eb;">
+                    <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+                        You're receiving this email because a booking was made via Aexy.
+                        <br>
+                        <a href="{settings.frontend_url}/settings/notifications"
+                           style="color: #0891b2;">Manage notification preferences</a>
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
     def _get_booking_email_content(
         self,
         template_name: str,
@@ -542,9 +645,18 @@ class EmailService:
         event_name = context.get("event_name", "Meeting")
         invitee_name = context.get("invitee_name", "Guest")
         host_name = context.get("host_name", "Host")
+        host_email = context.get("host_email", "")
         duration = context.get("duration_minutes", 30)
-        location = context.get("location") or context.get("meeting_link") or "To be determined"
+        location_type = context.get("location_type", "")
+        meeting_link = context.get("meeting_link")
+        location = context.get("location")
+        invitee_phone = context.get("invitee_phone")
         confirmation_message = context.get("confirmation_message", "")
+
+        # Build location display based on location_type
+        location_display = self._format_location_for_email(
+            location_type, meeting_link, location
+        )
 
         # Template content based on template_name
         templates = {
@@ -555,13 +667,12 @@ class EmailService:
 Your booking has been confirmed!
 
 Event: {event_name}
+Host: {host_name}{f" ({host_email})" if host_email else ""}
 Date: {date_str}
 Time: {time_str} ({timezone})
 Duration: {duration} minutes
-Location: {location}
-
+{location_display}
 {f"Note from host: {confirmation_message}" if confirmation_message else ""}
-
 If you need to make changes, you can cancel or reschedule from your confirmation page.
 
 See you soon!""",
@@ -573,12 +684,12 @@ See you soon!""",
 You have a new booking!
 
 Event: {event_name}
-Guest: {invitee_name}
+Guest: {invitee_name} ({context.get("invitee_email", "")})
+{f"Phone: {invitee_phone}" if invitee_phone else ""}
 Date: {date_str}
 Time: {time_str} ({timezone})
 Duration: {duration} minutes
-Location: {location}
-
+{location_display}
 The guest has been sent a confirmation email with the booking details.""",
             },
             "booking_reminder_invitee": {
@@ -591,8 +702,7 @@ Event: {event_name}
 Date: {date_str}
 Time: {time_str} ({timezone})
 Duration: {duration} minutes
-Location: {location}
-
+{location_display}
 See you soon!""",
             },
             "booking_reminder_host": {
@@ -606,7 +716,7 @@ Guest: {invitee_name}
 Date: {date_str}
 Time: {time_str} ({timezone})
 Duration: {duration} minutes
-Location: {location}""",
+{location_display}""",
             },
             "booking_cancelled_invitee": {
                 "subject": f"Cancelled: {event_name} with {host_name}",
@@ -645,8 +755,7 @@ Event: {event_name}
 New Date: {date_str}
 New Time: {time_str} ({timezone})
 Duration: {duration} minutes
-Location: {location}
-
+{location_display}
 See you at the new time!""",
             },
             "booking_rescheduled_host": {
@@ -660,7 +769,7 @@ Guest: {invitee_name}
 New Date: {date_str}
 New Time: {time_str} ({timezone})
 Duration: {duration} minutes
-Location: {location}""",
+{location_display}""",
             },
         }
 
@@ -671,9 +780,11 @@ Location: {location}""",
 
         subject = template["subject"]
         body_text = template["body"]
-        body_html = self._create_html_email(
+        body_html = self._create_booking_html_email(
             title=subject,
             body=body_text.replace("\n", "<br>"),
+            meeting_link=meeting_link,
+            location_type=location_type,
         )
 
         return subject, body_text, body_html
