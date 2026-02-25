@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import {
-  ChevronLeft,
   Mail,
   Play,
   Pause,
@@ -27,6 +26,9 @@ import {
   Edit2,
   TestTube,
 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { HelpTooltip } from "@/components/ui/tooltip";
+import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -40,6 +42,8 @@ import {
   useDuplicateCampaign,
   useDeleteCampaign,
 } from "@/hooks/useEmailMarketing";
+import { CampaignRecipient } from "@/lib/api";
+import { CAMPAIGN_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
 type TabType = "overview" | "recipients" | "analytics";
 
@@ -70,24 +74,6 @@ export default function CampaignDetailPage() {
   const duplicateCampaign = useDuplicateCampaign(workspaceId);
   const deleteCampaign = useDeleteCampaign(workspaceId);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "sent":
-      case "completed":
-        return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
-      case "sending":
-        return "bg-sky-500/20 text-sky-400 border-sky-500/30";
-      case "scheduled":
-        return "bg-purple-500/20 text-purple-400 border-purple-500/30";
-      case "paused":
-        return "bg-amber-500/20 text-amber-400 border-amber-500/30";
-      case "cancelled":
-        return "bg-red-500/20 text-red-400 border-red-500/30";
-      default:
-        return "bg-muted text-muted-foreground border-border";
-    }
-  };
-
   const getRecipientStatusColor = (status: string) => {
     switch (status) {
       case "delivered":
@@ -104,6 +90,60 @@ export default function CampaignDetailPage() {
         return "text-muted-foreground";
     }
   };
+
+  const recipientColumns: DataTableColumn<CampaignRecipient>[] = [
+    {
+      id: "email",
+      header: "Email",
+      cell: (row) => <span className="text-foreground">{row.email}</span>,
+      sortable: true,
+      sortValue: (row) => row.email,
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (row) => (
+        <span className={`capitalize ${getRecipientStatusColor(row.status)}`}>
+          {row.status}
+        </span>
+      ),
+      sortable: true,
+      sortValue: (row) => row.status,
+    },
+    {
+      id: "sent_at",
+      header: "Sent At",
+      cell: (row) => (
+        <span className="text-muted-foreground">
+          {row.sent_at ? new Date(row.sent_at).toLocaleString() : "-"}
+        </span>
+      ),
+      sortable: true,
+      sortValue: (row) => row.sent_at ? new Date(row.sent_at).getTime() : 0,
+    },
+    {
+      id: "opened_at",
+      header: "Opened",
+      cell: (row) => (
+        <span className="text-muted-foreground">
+          {row.opened_at ? new Date(row.opened_at).toLocaleString() : "-"}
+        </span>
+      ),
+      sortable: true,
+      sortValue: (row) => row.opened_at ? new Date(row.opened_at).getTime() : 0,
+    },
+    {
+      id: "clicked_at",
+      header: "Clicked",
+      cell: (row) => (
+        <span className="text-muted-foreground">
+          {row.clicked_at ? new Date(row.clicked_at).toLocaleString() : "-"}
+        </span>
+      ),
+      sortable: true,
+      sortValue: (row) => row.clicked_at ? new Date(row.clicked_at).getTime() : 0,
+    },
+  ];
 
   const handleSend = async () => {
     if (confirm("Are you sure you want to send this campaign now?")) {
@@ -194,17 +234,19 @@ export default function CampaignDetailPage() {
 <div className="p-8">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
+          <Breadcrumb
+            items={[
+              { label: "Email Marketing", href: "/email-marketing" },
+              { label: "Campaigns", href: "/email-marketing/campaigns" },
+              { label: campaign.name },
+            ]}
+            className="mb-4"
+          />
           <div className="flex items-start gap-4 mb-6">
-            <button
-              onClick={() => router.push("/email-marketing/campaigns")}
-              className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition mt-1"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-2xl font-bold text-foreground">{campaign.name}</h1>
-                <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(campaign.status)}`}>
+                <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(CAMPAIGN_STATUS_COLORS, campaign.status).bg} ${getStatusColor(CAMPAIGN_STATUS_COLORS, campaign.status).text}`}>
                   {campaign.status}
                 </span>
               </div>
@@ -352,16 +394,25 @@ export default function CampaignDetailPage() {
                 <h3 className="text-lg font-medium text-foreground mb-4">Campaign Details</h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs text-muted-foreground uppercase tracking-wide">From</label>
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-xs text-muted-foreground uppercase tracking-wide">From</label>
+                      <HelpTooltip content="The sender name and email address recipients see. Use a recognizable name to improve open rates" />
+                    </div>
                     <p className="text-foreground">{campaign.from_name} &lt;{campaign.from_email}&gt;</p>
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground uppercase tracking-wide">Subject</label>
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-xs text-muted-foreground uppercase tracking-wide">Subject</label>
+                      <HelpTooltip content="The email subject recipients see in their inbox. Keep under 60 characters for best open rates" />
+                    </div>
                     <p className="text-foreground">{campaign.subject}</p>
                   </div>
                   {campaign.preview_text && (
                     <div>
-                      <label className="text-xs text-muted-foreground uppercase tracking-wide">Preview Text</label>
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-xs text-muted-foreground uppercase tracking-wide">Preview Text</label>
+                        <HelpTooltip content="Text shown after the subject line in email clients. First 90 characters are most visible" />
+                      </div>
                       <p className="text-foreground">{campaign.preview_text}</p>
                     </div>
                   )}
@@ -435,56 +486,21 @@ export default function CampaignDetailPage() {
           )}
 
           {activeTab === "recipients" && (
-            <div className="bg-background/50 border border-border rounded-xl overflow-hidden overflow-x-auto">
-              <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                 <h3 className="text-lg font-medium text-foreground">Recipients</h3>
                 <span className="text-sm text-muted-foreground">
                   {recipientsData?.total || 0} total
                 </span>
               </div>
-              {recipientsLoading ? (
-                <div className="p-8 text-center">
-                  <Loader2 className="h-6 w-6 text-muted-foreground animate-spin mx-auto" />
-                </div>
-              ) : !recipientsData?.items?.length ? (
-                <div className="p-8 text-center">
-                  <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground">No recipients yet</p>
-                </div>
-              ) : (
-                <table className="w-full min-w-[600px]">
-                  <thead className="border-b border-border">
-                    <tr className="text-left text-sm text-muted-foreground">
-                      <th className="px-4 py-3 font-medium">Email</th>
-                      <th className="px-4 py-3 font-medium">Status</th>
-                      <th className="px-4 py-3 font-medium">Sent At</th>
-                      <th className="px-4 py-3 font-medium">Opened</th>
-                      <th className="px-4 py-3 font-medium">Clicked</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {recipientsData.items.map((recipient) => (
-                      <tr key={recipient.id} className="hover:bg-muted/50">
-                        <td className="px-4 py-3 text-foreground">{recipient.email}</td>
-                        <td className="px-4 py-3">
-                          <span className={`capitalize ${getRecipientStatusColor(recipient.status)}`}>
-                            {recipient.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {recipient.sent_at ? new Date(recipient.sent_at).toLocaleString() : "-"}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {recipient.opened_at ? new Date(recipient.opened_at).toLocaleString() : "-"}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {recipient.clicked_at ? new Date(recipient.clicked_at).toLocaleString() : "-"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+              <DataTable<CampaignRecipient>
+                columns={recipientColumns}
+                data={recipientsData?.items || []}
+                rowKey={(row) => row.id}
+                isLoading={recipientsLoading}
+                emptyIcon={<Users className="h-10 w-10" />}
+                emptyTitle="No recipients yet"
+              />
             </div>
           )}
 

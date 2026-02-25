@@ -10,7 +10,6 @@ import {
   FileSpreadsheet,
   ChevronRight,
   ChevronDown,
-  ArrowLeft,
   CheckCircle2,
   XCircle,
   Loader2,
@@ -19,6 +18,7 @@ import {
   Check,
   X,
 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
   QuestionnaireImportResult,
   QuestionnaireQuestion,
@@ -132,13 +132,13 @@ export default function ImportQuestionnairePage() {
     <div className="p-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <Link
-          href="/compliance/reminders"
-          className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 mb-4"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Reminders
-        </Link>
+        <Breadcrumb
+          items={[
+            { label: "Reminders", href: "/compliance/reminders" },
+            { label: "Import" },
+          ]}
+          className="mb-4"
+        />
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           Import Questionnaire
         </h1>

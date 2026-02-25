@@ -4,6 +4,7 @@ import { format, parseISO, isToday, isTomorrow, isPast } from "date-fns";
 import Link from "next/link";
 import { Video, MapPin, Phone, User, Clock, Calendar, Users, CheckCircle, XCircle, HelpCircle } from "lucide-react";
 import { Booking, BookingAttendee } from "@/lib/booking-api";
+import { BOOKING_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
 interface BookingCardProps {
   booking: Booking;
@@ -51,33 +52,18 @@ export function BookingCard({
   };
 
   const getStatusBadge = () => {
-    const statusConfig: Record<string, { label: string; className: string }> = {
-      pending: {
-        label: "Pending",
-        className: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400",
-      },
-      confirmed: {
-        label: "Confirmed",
-        className: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400",
-      },
-      cancelled: {
-        label: "Cancelled",
-        className: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400",
-      },
-      completed: {
-        label: "Completed",
-        className: "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400",
-      },
-      no_show: {
-        label: "No Show",
-        className: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400",
-      },
+    const statusLabels: Record<string, string> = {
+      pending: "Pending",
+      confirmed: "Confirmed",
+      cancelled: "Cancelled",
+      completed: "Completed",
+      no_show: "No Show",
     };
 
-    const config = statusConfig[booking.status] || statusConfig.pending;
+    const color = getStatusColor(BOOKING_STATUS_COLORS, booking.status);
     return (
-      <span className={`px-2 py-0.5 text-xs font-medium rounded ${config.className}`}>
-        {config.label}
+      <span className={`px-2 py-0.5 text-xs font-medium rounded ${color.bg} ${color.text}`}>
+        {statusLabels[booking.status] || "Pending"}
       </span>
     );
   };

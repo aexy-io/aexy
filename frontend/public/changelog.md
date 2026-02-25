@@ -5,6 +5,305 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.4] - 2026-02-25
+
+### Added
+
+#### Standalone Data Tables
+- **Data Tables module**: New first-class `/tables` route for creating and managing standalone data tables, independent of CRM objects
+- **Table detail page**: Full table view with search, filtering, column visibility, view switching (table/kanban), and breadcrumb navigation
+- **DataTableService**: New service layer (~1000 lines) abstracting table operations away from the CRM service
+- **Tables API**: Complete REST API (`/api/v1/workspaces/{id}/tables`) with listing, detail, field CRUD, record CRUD, and bulk operations
+- **React hooks**: `useTables`, `useTableFields`, `useTableRecords`, `useTableAccess` hooks for frontend data fetching
+
+#### Field Type System
+- **Pluggable field type registry**: Extensible registry pattern for registering and rendering field types
+- **14 built-in field renderers**: Text, Number, Date, Email, Phone, URL, Currency, Rating, Checkbox, Select, Multi-Select, Textarea, Computed, Reference
+- **FieldRenderer component**: Unified component that resolves and renders fields by type from the registry
+- **InlineCell component**: Click-to-edit cells with Tab/Enter/Escape keyboard navigation
+- **Column add/edit UI**: Dedicated panel for adding new columns with type picker and configuring existing columns
+
+#### Document Integration
+- **InlineDatabase TipTap extension**: Embed live, interactive data tables inside documents with full CRUD support
+
+#### Sharing & Access Control
+- **Public share links**: Generate shareable table links with token-based auth, configurable hidden columns, and row filters
+- **Public tables API**: Dedicated `/api/v1/public/tables` endpoints for unauthenticated shared access
+- **7-layer authorization**: JWT, workspace, app, RBAC, table, row, and column-level access checks
+- **`owner_only` row access mode**: Restrict row visibility to the creating user, with admin bypass
+- **TableCollaborator visibility**: Private tables now visible to explicitly added collaborators
+
+#### Audit & Observability
+- **Table audit trail**: `table_audit_log` table and `TableAuditService` for tracking all table mutations
+- **Multi-entity shared views**: Extended `crm_lists` with `entity_type` for shared views across entity types
+
+### Fixed
+
+#### Security
+- Escape LIKE wildcards (`%`, `_`) in filter inputs to prevent filter injection
+- Switch share link passwords from SHA-256 to bcrypt
+- Validate record-to-table ownership before update/delete operations
+- Move share link password from query parameter to `X-Share-Password` header
+
+#### Performance
+- Replace N+1 bulk delete queries with batch validation and 100-record limit
+- Deduplicate 3 redundant `WorkspaceMember` queries into 1 in `resolve_access`
+
+#### Bug Fixes
+- Fix `__import__` hack, return type annotations, and `ip_address` type mismatches in backend
+- Allow clearing nullable table fields via update
+- Remove no-op `_strip_hidden_columns` method
+- Remove noisy chat toast notification
+- Fix `useMemo` unstable dependency array in frontend components
+- TypeScript type fixes across table components
+
+### Changed
+- Added Pydantic request models for `update_table` and `create_share_link` endpoints
+- Refactored CRM service to delegate table operations to new `DataTableService`
+
+### Database Migrations
+- `migrate_data_tables.sql` — Core tables for data table support
+- `migrate_data_tables_phase3_7.sql` — Audit log and share link tables
+
+---
+
+## [0.6.3] - 2026-02-25
+
+### Added
+
+#### Platform Features
+- **Exports page**: Full data export UI with format selection (PDF, CSV, JSON, XLSX), live status polling, and download management
+- **Webhooks settings page**: Webhook endpoint management with secret rotation, event selection, test delivery, and HMAC signature documentation
+- **SSO settings page**: SAML/OIDC configuration with provider setup, connection testing, and activation controls
+- **Usage dashboard**: Workspace-level usage stats, provider breakdown, plan limits overview, and usage alerts
+- **Notification center**: Unified notification page with date grouping, read/unread filtering, and load-more pagination
+- **Notification settings**: Per-channel preferences (email, in-app, Slack) for all event types
+- **Templates gallery**: Browsable catalog of 21 pre-built automation, form, and assessment templates with category filtering
+
+#### Shared UI Components
+- **DataTable**: Generic sortable data table with pagination, skeleton loading, empty states, and accessible keyboard navigation
+- **SearchInput**: Reusable search input with clear button, replacing 33 inline implementations
+- **Breadcrumb**: Navigation breadcrumb component with `aria-current="page"` support
+- **EmptyState**: Shared empty state component with icons, steps, and action buttons, deployed across 15 module pages
+- **ErrorBoundary**: Class-based error boundary with retry and error details toggle
+- **ModuleError**: Per-module Next.js error.tsx boundary component
+- **UpgradeBanner**: Contextual upgrade prompts at key monetization touchpoints with persistent dismissal
+- **WorkspaceChecklist**: Getting-started checklist with progress ring for new workspaces
+- **DashboardWelcome**: First-visit persona picker for personalized dashboard widget layout
+
+#### Keyboard Shortcuts & Command Palette
+- **Global shortcuts**: `g then X` navigation pattern (like GitHub/Linear) for 19 modules
+- **Keyboard shortcuts help overlay**: `?` key opens categorized shortcut reference
+- **Command palette enhancements**: Added navigation entries for exports, webhooks, templates, and all new pages
+
+#### Automation Triggers
+- **Ticket triggers**: `ticket.reopened`, `ticket.priority_changed`, `ticket.escalated`, `response.sent`, `response.received`, `sla.breached`
+- **Hiring triggers**: `candidate.rejected`, `candidate.hired`, `assessment.score_above`, `assessment.score_below`
+- **Sprint triggers**: `sprint.velocity_calculated`, `sprint.burndown_off_track`
+- **Uptime triggers**: `monitor.ssl_expiring`, `monitor.repeated_failures`
+- **Campaign trigger**: `campaign.sent`
+- **Module automation panels**: Inline automation management UI embeddable in any module page
+
+#### UX Improvements
+- **Skeleton loading migration**: Replaced spinner loading states with skeleton placeholders across 20+ pages in 5 batches
+- **DataTable migration**: Migrated 17 pages from custom table markup to shared DataTable component in 3 batches
+- **Status color tokens**: Centralized status color definitions in `statusColors.ts`, migrated 34 files
+- **Toast notifications**: Added success/error toasts to all mutation hooks across 14 hook files
+- **Mobile responsiveness**: Improved layout and tracking page responsiveness
+- **Contextual upgrade banners**: Added to 7 major modules for free-tier users
+
+### Fixed
+
+#### Critical Bugs
+- **Assessment score triggers used wrong ID**: `assessment.workspace_id` did not exist on the Assessment model — changed to `assessment.organization_id` so `score_above`/`score_below` triggers actually fire
+- **Ticket reopen detection crashed**: `TicketStatus.OPEN` did not exist in the enum — changed to `TicketStatus.ACKNOWLEDGED`
+- **Command palette duplicate ID**: Two entries shared `id: "nav-templates"` causing React key collision — renamed second to `nav-automation-templates`
+
+#### Medium Bugs
+- **Burndown off-track trigger skipped on existing metrics**: Early return on updated rows bypassed the deviation check — restructured to always evaluate
+- **Uptime triggers fired on every check**: SSL expiring and repeated failures had no debounce — SSL now fires at day thresholds (30/14/7/3/1), repeated failures fires at exactly 3 consecutive
+- **Webhook test toast misleading**: `onSuccess` always showed success even when `WebhookTestResult.success` was false — now checks the result
+- **useAutomations registry hooks caused re-renders**: Normalization created new object references on every render — wrapped in `useMemo`
+- **SSO page silent errors**: `loadConfig`, `handleToggle`, `handleDelete` used `try/finally` with no catch — added error handling with toast notifications
+- **SSO page stale closure**: `useEffect` missing `loadConfig` in dependency array — wrapped in `useCallback`
+- **SSO API swallowed all errors**: `getConfiguration` caught everything and returned null — now only catches 404
+- **Exports page bypassed type safety**: `createExport(data as any)` — replaced with proper type assertion
+- **Webhooks page null workspace**: `currentWorkspaceId!` non-null assertion could produce `/workspaces/null/` API calls — added guard
+
+#### Code Quality
+- **Hiring dispatch error handling**: Wrapped `candidate.rejected`/`candidate.hired` dispatch calls in try/except for consistency
+- **CRM `between` operator**: Added ValueError/TypeError handling for non-numeric values
+- **GlobalShortcuts cleanup**: Dynamic event listener and timeout now properly cleaned up on unmount
+- **UpgradeBanner dismiss persistence**: Dismiss state now saved to localStorage, survives navigation
+- **WorkspaceChecklist JSON.parse safety**: Wrapped in try/catch to handle corrupted localStorage
+- **ModuleAutomationsPanel confirm dialog**: Replaced native `confirm()` with styled confirmation modal
+- **Dead code removal**: Removed unused `workspaceId` prop from CommandPalette, unused `useAuth` import from SSO page
+
+#### Accessibility
+- **CommandPalette**: Added `role="dialog"`, `aria-modal`, `role="combobox"` on search input, `role="listbox"` on results
+- **DataTable**: Added `aria-sort` on sortable headers, `tabIndex` and keyboard handlers (Enter/Space) for sortable headers and clickable rows
+- **KeyboardShortcutsHelp**: Added `role="dialog"`, `aria-modal`, `aria-labelledby`, `aria-label="Close"` on close button
+- **DashboardWelcome**: Added `role="dialog"`, `aria-modal`, `aria-label`
+- **ErrorBoundary & ModuleError**: Added `role="alert"` on error container
+- **SearchInput**: Added `aria-label="Clear search"` on clear button
+- **Breadcrumb**: Added `aria-current="page"` on last breadcrumb item
+- **UpgradeBanner**: Added `aria-label="Dismiss banner"` on dismiss buttons
+
+---
+
+## [0.6.2] - 2026-02-24
+
+### Added
+
+#### Automation Module Enterprise Improvements
+Comprehensive improvements to the automation workflow builder across all 10 modules.
+
+- **Trigger & action descriptions**: All 105 triggers and 66 actions now have human-readable descriptions displayed in the node palette and config panel
+- **Backend registry upgrade**: `TRIGGER_REGISTRY` and `ACTION_REGISTRY` now return `{id, description}` objects instead of plain strings, with backward-compatible helper functions (`get_trigger_ids`, `get_action_ids`)
+- **Module-aware trigger icons**: TriggerNode now displays context-specific icons for all 10 modules (tracking: ClipboardCheck/Timer/ShieldAlert, compliance: GraduationCap/BookOpen/Award, tickets: Ticket, hiring: UserPlus, etc.) instead of generic Zap
+- **Tracking & compliance objects in config panel**: Added object type selectors for tracking (Standup, Time Entry, Blocker, Work Log) and compliance (Training, Assignment, Certification, Audit Log) modules
+- **Trigger description in config panel**: Clicking a trigger node now shows the full description in italic below the label field
+- **Complete trigger/action label coverage**: Added labels for all missing triggers (`standup.streak`, `time_entry.anomaly`, `blocker.pattern_detected`, `training.bulk_overdue`, `certification.prerequisite_unmet`, etc.) and actions across all modules
+- **Pydantic `RegistryEntry` model**: New schema for typed API responses with `id` and `description` fields
+
+### Fixed
+- **Missing condition operators**: Implemented `starts_with`, `ends_with`, `not_contains`, and `between` operators in `CRMAutomationService._check_condition()` which previously fell through to `return True`
+- **Logging**: Replaced all `print()` calls in `AutomationService.process_module_trigger()` with proper `logger.info/debug/error` calls
+
+---
+
+## [0.6.1] - 2026-02-24
+
+### Added
+
+#### 29 Dashboard Widgets Implemented
+Replaced all "Coming Soon" placeholder widgets with full implementations using live data from existing hooks.
+
+- **Goals & Growth** (5): `MyGoalsWidget`, `GrowthTrajectoryWidget`, `PeerBenchmarkWidget`, `LearningPathWidget`, `SkillGapsWidget`
+- **Tracking** (3): `StandupStatusWidget`, `TimeTrackingWidget`, `UpcomingDeadlinesWidget`
+- **Tickets & Forms** (5): `SLAOverviewWidget`, `RecentTicketsWidget`, `TicketsByPriorityWidget`, `FormSubmissionsWidget`, `RecentFormsWidget`
+- **Docs** (2): `RecentDocsWidget`, `DocActivityWidget`
+- **Reviews** (3): `PerformanceReviewsWidget`, `PendingReviewsWidget`, `ReviewCycleWidget`
+- **Hiring** (4): `HiringPipelineWidget`, `CandidateStatsWidget`, `OpenPositionsWidget`, `InterviewScheduleWidget`
+- **CRM** (3): `DealStatsWidget`, `RecentDealsWidget`, `CRMQuickViewWidget`
+- **Team & Admin** (4): `TeamOverviewWidget`, `TeamActivityWidget`, `OrgMetricsWidget`, `SystemHealthWidget`
+
+### Fixed
+- Fixed `TeamStatsSummaryWidget` to use correct nested `aggregate` property paths
+- Fixed `TicketChartWidget` to use theme-aware colors instead of hardcoded dark-mode hex values
+- Fixed `TicketPipelineWidget` to remove unnecessary `as any` cast
+- Fixed `PeerBenchmarkWidget` ordinal suffixes (1st, 2nd, 3rd instead of always "th")
+- Removed dead code from `TicketsByPriorityWidget` (unreachable priority breakdown branch)
+- Fixed `UpcomingDeadlinesWidget` to use sprint end date and incomplete tasks instead of nonexistent `due_date` field
+
+---
+
+## [0.6.0] - 2026-02-24
+
+### Added
+
+#### Leave Management Module
+Full leave management system with request/approval workflows, balance tracking, and holiday calendar management.
+- Backend API with five service layers: `LeaveTypeService`, `LeavePolicyService`, `LeaveRequestService`, `LeaveBalanceService`, `HolidayService`
+- Frontend with `LeaveRequestForm`, `LeaveRequestCard`, `LeaveApprovalCard`, `LeaveBalanceCard`, `LeavePolicySettings`, `LeaveTypeSettings`, `HolidaySettings`, `TeamLeaveTable`
+- Database migration for leave tables and relationships
+- Playwright E2E test suite (749-line spec with fixtures)
+
+#### Team Calendar
+Unified calendar view showing leave, holidays, and team availability.
+- Backend API and service with Pydantic schemas
+- Frontend components: `TeamCalendar`, `CalendarFilters`, `EventDetailModal`, `WhoIsOutPanel`
+
+#### Compliance & Tracking Automation
+Temporal-powered automation for compliance monitoring and developer activity tracking.
+- Compliance automation activities (396 lines): standup compliance checks, time entry audits, auto-escalation
+- Tracking automation activities (492 lines): standup streak tracking, time entry anomaly detection, blocker pattern analysis
+- Compliance service (260 lines) with status change detection
+- Tracking events helper (163 lines), tracking compliance config, CRM automation service, Slack tracking service
+- New automation trigger types: `standup.streak`, `time_entry.anomaly`, `blocker.pattern_detected`, `training.bulk_overdue`, `certification.prerequisite_unmet`
+- Periodic Temporal schedules for compliance and tracking jobs
+
+#### 13 New Dashboard Widgets
+- Engineering manager widgets: `BacklogOverviewWidget`, `BlockersOverviewWidget`, `SprintBurndownWidget`, `TasksCompletedChartWidget`, `TeamStatsSummaryWidget`, `TicketChartWidget`, `TicketPipelineWidget`, `VelocityTrendWidget`, `WorkloadDistributionWidget`
+- Leave-integrated widgets: `LeaveBalanceWidget`, `PendingLeaveApprovalsWidget`, `TeamAvailabilityWidget`, `TeamCalendarWidget`
+- Widget registry expanded from 23 to 36+ widget IDs
+
+#### Email Tracking API
+Campaign open/click tracking endpoints for email marketing analytics.
+
+#### Reminders Module Expansion
+- Dedicated "All Reminders" and "My Reminders" pages
+- Compliance sub-routes for reminders and training
+
+#### App Definitions System
+Dynamic app/module registration via `AppDefinitions` model and frontend config.
+
+#### AI Insights Automation
+Temporal activity for periodic AI-powered insights generation with scheduled execution.
+
+### Improved
+
+#### GitHub Sync Reliability
+- Auto-refresh expired GitHub App tokens (`ghu_`) using stored refresh tokens — tokens no longer silently expire after 8 hours
+- Proper 404 handling: detects GitHub App installation permission issues vs genuinely missing repos, with actionable error messages including direct settings links
+- `GitHubNotFoundError` exception with non-retryable Temporal retry policy
+- Auto-sync skips developers with broken auth (`auth_status="error"`) instead of flooding Temporal with failing workflows
+- Sync logs now include `@github_username` and repo full name instead of opaque UUIDs
+
+#### Settings Module Revamp
+- Complete redesign with `SettingsShell`, `SettingsSidebar`, and `SettingsSearch` components
+- Searchable navigation config (214 lines) with fuzzy-matching
+- GitHub sync job interval configurable from repository settings
+
+#### Full Light Mode Support
+- Theme-aware styling across 380+ frontend components
+- Badge readability improvements across 138 components
+- Fixed docs sidebar, theme toggle, and app access for light mode
+
+#### Stripe Billing & Subscriptions
+- Revamped plan upgrade/downgrade flow with proper subscription state handling
+- Enhanced Stripe setup with expanded plan configuration
+- Plan-based feature gating via limits service
+- `fix_subscription_plans.py` script for correcting plan data
+
+#### Hiring & Assessment Module
+- Assessment evaluation and question generation service improvements
+- Candidate detail page redesign with richer reporting
+- Assessment wizard topic distribution UI improvements
+
+#### Onboarding Flow
+- Improved onboarding for already-invited users with workspace join flow
+- Invitation-aware workspace creation page
+
+#### Gmail & Temporal Sync
+- Gmail sync activity with better error handling
+- Temporal dispatch improvements with new workflow patterns
+
+#### Automation UI
+- Workflow builder `NodePalette` expanded with compliance and tracking trigger/action nodes
+- Automation pages updated for new trigger types
+
+### Fixed
+- Assessment async context manager misuse causing evaluation failures
+- Backend startup import/initialization error
+- GitHub sync race conditions and error handling in Temporal activities
+- Email marketing campaign visibility toggle not persisting
+- Hiring module: missing API fields, candidate page errors, evaluation scoring
+- Dashboard and stats count mismatches across assessment and tracking modules
+- Compliance and tracking page rendering, reminder instance cards, compliance sub-routes
+- Automation trigger registration and booking activity errors
+- Deduplicated logic in sync service, optimized developer insights queries
+- Widget rendering order, sidebar page links, compliance page layout
+- Stale data in `useNotifications` and `useReminders` hooks
+
+### Infrastructure
+- Updated `docker-compose.prod.yml` with additional service configuration
+- Playwright E2E infrastructure: config, mock data fixtures, `test:e2e` / `test:e2e:ui` npm scripts
+- 4 new database migrations: `migrate_leave_management.sql`, `migrate_github_auth_status.sql`, `migrate_developer_email_nullable.sql`, `migrate_repo_sync_settings.sql`
+- Temporal worker: registered compliance, tracking, insights, and booking activities; expanded periodic schedules
+
+---
+
 ## [0.5.6] - 2026-02-14
 
 ### Added

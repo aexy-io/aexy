@@ -89,6 +89,23 @@ async def send_booking_reminders(input: SendBookingRemindersInput) -> dict[str, 
                     from aexy.services.booking.booking_notification_service import BookingNotificationService
                     notification_service = BookingNotificationService(db)
                     await notification_service.send_reminder(str(booking.id), hours_before=24)
+
+                    # Dispatch automation event for reminder
+                    from aexy.services.automation_service import dispatch_automation_event
+                    await dispatch_automation_event(
+                        db=db,
+                        workspace_id=str(booking.workspace_id),
+                        module="booking",
+                        trigger_type="booking.reminder",
+                        entity_id=str(booking.id),
+                        trigger_data={
+                            "email": booking.invitee_email,
+                            "name": booking.invitee_name,
+                            "start_time": booking.start_time.isoformat(),
+                            "end_time": booking.end_time.isoformat(),
+                            "hours_before": 24,
+                        },
+                    )
                 except Exception as e:
                     logger.error(f"Failed to send 24h reminder for booking {booking.id}: {e}")
 
@@ -112,6 +129,23 @@ async def send_booking_reminders(input: SendBookingRemindersInput) -> dict[str, 
                     from aexy.services.booking.booking_notification_service import BookingNotificationService
                     notification_service = BookingNotificationService(db)
                     await notification_service.send_reminder(str(booking.id), hours_before=1)
+
+                    # Dispatch automation event for reminder
+                    from aexy.services.automation_service import dispatch_automation_event
+                    await dispatch_automation_event(
+                        db=db,
+                        workspace_id=str(booking.workspace_id),
+                        module="booking",
+                        trigger_type="booking.reminder",
+                        entity_id=str(booking.id),
+                        trigger_data={
+                            "email": booking.invitee_email,
+                            "name": booking.invitee_name,
+                            "start_time": booking.start_time.isoformat(),
+                            "end_time": booking.end_time.isoformat(),
+                            "hours_before": 1,
+                        },
+                    )
                 except Exception as e:
                     logger.error(f"Failed to send 1h reminder for booking {booking.id}: {e}")
 
@@ -268,6 +302,27 @@ async def mark_completed_bookings(input: MarkCompletedBookingsInput) -> dict[str
                 booking.status = BookingStatus.COMPLETED
 
             await db.commit()
+
+            # Dispatch automation events for completed bookings
+            for booking in completed:
+                try:
+                    from aexy.services.automation_service import dispatch_automation_event
+                    await dispatch_automation_event(
+                        db=db,
+                        workspace_id=str(booking.workspace_id),
+                        module="booking",
+                        trigger_type="booking.completed",
+                        entity_id=str(booking.id),
+                        trigger_data={
+                            "email": booking.invitee_email,
+                            "name": booking.invitee_name,
+                            "start_time": booking.start_time.isoformat(),
+                            "end_time": booking.end_time.isoformat(),
+                        },
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to dispatch booking.completed for {booking.id}: {e}")
+
             return {"completed": len(completed)}
         except Exception as e:
             await db.rollback()

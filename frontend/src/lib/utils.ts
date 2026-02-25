@@ -22,6 +22,18 @@ export function formatRelativeTime(dateString: string): string {
   return date.toLocaleDateString();
 }
 
+export function formatDuration(seconds: number | null | undefined): string {
+  if (seconds === null || seconds === undefined || seconds === 0) return "-";
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.round(seconds % 60);
+  const parts: string[] = [];
+  if (hrs > 0) parts.push(`${hrs}hr`);
+  if (mins > 0) parts.push(`${mins}m`);
+  if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
+  return parts.join(" ");
+}
+
 export function debounce<T extends (...args: any[]) => void>(
   func: T,
   wait: number

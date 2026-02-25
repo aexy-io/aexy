@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Clock, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { HelpTooltip } from "@/components/ui/tooltip";
 import { WorkingHoursConfig as WorkingHoursConfigType } from "@/lib/api";
 
 const TIMEZONES = [
@@ -80,6 +81,7 @@ export function WorkingHoursConfigPanel({
           <div className="font-medium text-foreground flex items-center gap-2">
             <Clock className="h-4 w-4 text-muted-foreground" />
             Enable Working Hours
+            <HelpTooltip content="Agent will only respond during these hours. Outside working hours, messages are queued until the next active period" />
           </div>
           <div className="text-sm text-muted-foreground">
             Agent will only respond during specified hours
@@ -91,10 +93,13 @@ export function WorkingHoursConfigPanel({
         <div className="space-y-4 pl-4 border-l-2 border-border">
           {/* Timezone */}
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+            <div className="flex items-center gap-2 mb-2">
               <Globe className="h-4 w-4" />
-              Timezone
-            </label>
+              <label className="text-sm font-medium text-foreground">
+                Timezone
+              </label>
+              <HelpTooltip content="All times are displayed in the selected timezone. The agent converts to UTC internally" />
+            </div>
             <select
               value={config.timezone}
               onChange={(e) => updateConfig({ timezone: e.target.value })}

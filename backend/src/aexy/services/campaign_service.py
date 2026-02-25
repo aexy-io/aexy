@@ -472,6 +472,22 @@ class CampaignService:
         campaign.total_recipients = created_count
         await self.db.commit()
 
+        # Dispatch recipient.added for the batch
+        if created_count > 0:
+            await dispatch_automation_event(
+                db=self.db,
+                workspace_id=workspace_id,
+                module="email_marketing",
+                trigger_type="recipient.added",
+                entity_id=campaign_id,
+                trigger_data={
+                    "campaign_id": campaign_id,
+                    "campaign_name": campaign.name,
+                    "recipients_added": created_count,
+                    "workspace_id": workspace_id,
+                },
+            )
+
         logger.info(f"Populated {created_count} recipients for campaign {campaign_id}")
         return created_count
 
@@ -771,6 +787,20 @@ class CampaignService:
                 campaign.completed_at = datetime.now(timezone.utc)
                 await self.db.commit()
                 logger.info(f"Campaign {campaign_id} completed")
+
+                # Dispatch automation event
+                await dispatch_automation_event(
+                    db=self.db,
+                    workspace_id=str(campaign.workspace_id),
+                    module="email_marketing",
+                    trigger_type="campaign.sent",
+                    entity_id=str(campaign.id),
+                    trigger_data={
+                        "campaign_name": campaign.name,
+                        "total_recipients": campaign.total_recipients,
+                        "completed_at": campaign.completed_at.isoformat(),
+                    },
+                )
 
     async def get_pending_recipients(
         self,

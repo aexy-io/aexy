@@ -3,13 +3,12 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
-  ArrowLeft,
   Users,
   FileText,
   Clock,
   TrendingUp,
-  Search,
   Filter,
   Download,
   ChevronDown,
@@ -22,20 +21,24 @@ import {
   AlertCircle,
   Loader2,
 } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAssessment, useAssessmentMetrics, useAssessmentCandidates } from "@/hooks/useAssessments";
+import { formatDuration } from "@/lib/utils";
 
 interface CandidateResult {
   id: string;
   candidate_name: string;
   candidate_email: string;
   status: string;
-  score: number | null;
   trust_score: number | null;
   started_at: string | null;
   completed_at: string | null;
-  time_taken_minutes: number | null;
+  time_taken_seconds: number | null;
+  percentage_score: number | null;
+  attempt_completed_at: string | null;
+  attempt_started_at: string | null;
 }
 
 function MetricCard({
@@ -175,24 +178,22 @@ function CandidateRow({
       </td>
       <td className="px-4 py-3">{getStatusBadge(candidate.status)}</td>
       <td className="px-4 py-3">
-        {candidate.score !== null ? (
-          <span className="font-semibold text-foreground">{candidate.score}%</span>
+        {candidate.percentage_score !== null ? (
+          <span className="font-semibold text-foreground">{candidate.percentage_score}%</span>
         ) : (
           <span className="text-muted-foreground">-</span>
         )}
       </td>
       <td className="px-4 py-3">{getTrustScoreBadge(candidate.trust_score)}</td>
       <td className="px-4 py-3">
-        {candidate.time_taken_minutes !== null ? (
-          <span className="text-foreground">{candidate.time_taken_minutes} min</span>
-        ) : (
-          <span className="text-muted-foreground">-</span>
-        )}
+        <span className={candidate.time_taken_seconds ? "text-foreground" : "text-muted-foreground"}>
+          {formatDuration(candidate.time_taken_seconds)}
+        </span>
       </td>
       <td className="px-4 py-3">
-        {candidate.completed_at ? (
+        {candidate.attempt_completed_at ? (
           <span className="text-sm text-muted-foreground">
-            {new Date(candidate.completed_at).toLocaleDateString()}
+            {new Date(candidate.attempt_completed_at).toLocaleDateString()}
           </span>
         ) : (
           <span className="text-muted-foreground">-</span>
@@ -310,12 +311,12 @@ export default function AssessmentReportPage() {
 
   // Transform invitation data to CandidateResult format
   const candidates: CandidateResult[] = (rawCandidates || []).map((invitation) => {
-    // Calculate time taken if completed
-    let timeTakenMinutes: number | null = null;
-    if (invitation.started_at && invitation.completed_at) {
+    // Calculate time taken from backend field, or compute from timestamps
+    let timeTakenSeconds: number | null = invitation.time_taken_seconds ?? null;
+    if (!timeTakenSeconds && invitation.started_at && invitation.completed_at) {
       const startTime = new Date(invitation.started_at).getTime();
       const endTime = new Date(invitation.completed_at).getTime();
-      timeTakenMinutes = Math.round((endTime - startTime) / 60000);
+      timeTakenSeconds = Math.round((endTime - startTime) / 1000);
     }
 
     // Map status
@@ -333,11 +334,13 @@ export default function AssessmentReportPage() {
       candidate_name: invitation.candidate?.name || "Unknown",
       candidate_email: invitation.candidate?.email || "",
       status,
-      score: invitation.latest_score ?? null,
       trust_score: invitation.latest_trust_score ?? null,
       started_at: invitation.started_at,
       completed_at: invitation.completed_at,
-      time_taken_minutes: timeTakenMinutes,
+      time_taken_seconds: timeTakenSeconds,
+      percentage_score: invitation.percentage_score ?? null,
+      attempt_completed_at: invitation.attempt_completed_at ?? null,
+      attempt_started_at: invitation.attempt_started_at ?? null,
     };
   });
 
@@ -360,7 +363,7 @@ export default function AssessmentReportPage() {
     })
     .sort((a, b) => {
       if (sortBy === "score") {
-        return (b.score || 0) - (a.score || 0);
+        return (b.percentage_score || 0) - (a.percentage_score || 0);
       }
       if (sortBy === "name") {
         return a.candidate_name.localeCompare(b.candidate_name);
@@ -375,11 +378,11 @@ export default function AssessmentReportPage() {
   const averageScore =
     completedCandidates.length > 0
       ? Math.round(
-          completedCandidates.reduce((sum, c) => sum + (c.score || 0), 0) /
+          completedCandidates.reduce((sum, c) => sum + (c.percentage_score || 0), 0) /
             completedCandidates.length
         )
       : 0;
-  const scores = completedCandidates.map((c) => c.score || 0);
+  const scores = completedCandidates.map((c) => c.percentage_score || 0);
 
   if (authLoading || workspacesLoading || assessmentLoading) {
     return (
@@ -407,17 +410,17 @@ export default function AssessmentReportPage() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/hiring/assessments"
-              className="p-2 hover:bg-accent rounded-lg"
-            >
-              <ArrowLeft className="h-5 w-5 text-muted-foreground" />
-            </Link>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">{assessment.title}</h1>
-              <p className="text-muted-foreground">{assessment.job_designation}</p>
-            </div>
+          <div>
+            <Breadcrumb
+              items={[
+                { label: "Hiring", href: "/hiring" },
+                { label: "Assessments", href: "/hiring/assessments" },
+                { label: assessment.title },
+                { label: "Report" },
+              ]}
+              className="mb-2"
+            />
+            <p className="text-muted-foreground">{assessment.job_designation}</p>
           </div>
           <button className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-lg hover:bg-accent text-foreground">
             <Download className="h-4 w-4" />
@@ -447,14 +450,16 @@ export default function AssessmentReportPage() {
           />
           <MetricCard
             title="Avg Time"
-            value={`${
+            value={
               completedCandidates.length > 0
-                ? Math.round(
-                    completedCandidates.reduce((sum, c) => sum + (c.time_taken_minutes || 0), 0) /
-                      completedCandidates.length
+                ? formatDuration(
+                    Math.round(
+                      completedCandidates.reduce((sum, c) => sum + (c.time_taken_seconds || 0), 0) /
+                        completedCandidates.length
+                    )
                   )
-                : 0
-            } min`}
+                : "-"
+            }
             icon={Clock}
             color="yellow"
           />
@@ -507,16 +512,11 @@ export default function AssessmentReportPage() {
           <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h3 className="font-semibold text-foreground">Candidates</h3>
             <div className="flex items-center gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search candidates..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-4 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground placeholder:text-muted-foreground"
-                />
-              </div>
+              <SearchInput
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search candidates..."
+              />
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}

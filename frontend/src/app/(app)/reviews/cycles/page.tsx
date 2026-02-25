@@ -7,10 +7,8 @@ import Link from "next/link";
 import {
   Calendar,
   Plus,
-  ChevronRight,
   Clock,
   CheckCircle,
-  Play,
   Users,
   Settings,
   MoreVertical,
@@ -19,14 +17,16 @@ import {
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useReviewCycles } from "@/hooks/useReviews";
 import { ReviewCycle } from "@/lib/api";
+import { REVIEW_CYCLE_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
+import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 
-const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
-  draft: { label: "Draft", color: "text-muted-foreground", bg: "bg-muted-foreground/10" },
-  active: { label: "Active", color: "text-green-600 dark:text-green-400", bg: "bg-green-500/10" },
-  self_review: { label: "Self Review", color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10" },
-  peer_review: { label: "Peer Review", color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10" },
-  manager_review: { label: "Manager Review", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10" },
-  completed: { label: "Completed", color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10" },
+const statusLabels: Record<string, string> = {
+  draft: "Draft",
+  active: "Active",
+  self_review: "Self Review",
+  peer_review: "Peer Review",
+  manager_review: "Manager Review",
+  completed: "Completed",
 };
 
 const cycleTypeLabels: Record<string, string> = {
@@ -36,38 +36,106 @@ const cycleTypeLabels: Record<string, string> = {
   custom: "Custom",
 };
 
-function CycleRow({ cycle }: { cycle: ReviewCycle }) {
-  const status = statusConfig[cycle.status] || statusConfig.draft;
+const statusSortOrder: Record<string, number> = {
+  draft: 0,
+  active: 1,
+  self_review: 2,
+  peer_review: 3,
+  manager_review: 4,
+  completed: 5,
+};
+
+function ActionsCell({ cycle }: { cycle: ReviewCycle }) {
   const [showMenu, setShowMenu] = useState(false);
 
   return (
-    <tr className="border-b border-border/50 hover:bg-muted/30 transition">
-      <td className="px-6 py-4">
-        <Link href={`/reviews/cycles/${cycle.id}`} className="group">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-500/10 rounded-lg">
-              <Calendar className="h-4 w-4 text-purple-400" />
-            </div>
-            <div>
-              <p className="text-foreground font-medium group-hover:text-purple-400 transition">
-                {cycle.name}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {cycleTypeLabels[cycle.cycle_type] || cycle.cycle_type}
-              </p>
-            </div>
+    <div className="flex items-center justify-end gap-2">
+      <Link
+        href={`/reviews/cycles/${cycle.id}`}
+        className="px-3 py-1.5 text-sm text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 rounded-lg transition"
+      >
+        View
+      </Link>
+      <div className="relative">
+        <button
+          onClick={() => setShowMenu(!showMenu)}
+          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
+        >
+          <MoreVertical className="h-4 w-4" />
+        </button>
+        {showMenu && (
+          <div className="absolute right-0 mt-1 w-40 bg-muted border border-border rounded-lg shadow-xl z-10">
+            <Link
+              href={`/reviews/cycles/${cycle.id}`}
+              className="block px-4 py-2 text-sm text-foreground hover:text-foreground hover:bg-accent transition"
+            >
+              View Details
+            </Link>
+            {cycle.status === "draft" && (
+              <button className="w-full text-left px-4 py-2 text-sm text-green-400 hover:bg-accent transition">
+                Activate Cycle
+              </button>
+            )}
+            {(cycle.status === "self_review" || cycle.status === "peer_review") && (
+              <button className="w-full text-left px-4 py-2 text-sm text-amber-400 hover:bg-accent transition">
+                Advance Phase
+              </button>
+            )}
           </div>
-        </Link>
-      </td>
-      <td className="px-6 py-4">
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${status.color} ${status.bg}`}>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const cycleColumns: DataTableColumn<ReviewCycle>[] = [
+  {
+    id: "cycle",
+    header: "Cycle",
+    sortable: true,
+    sortValue: (cycle) => cycle.name.toLowerCase(),
+    cell: (cycle) => (
+      <Link href={`/reviews/cycles/${cycle.id}`} className="group">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-purple-500/10 rounded-lg">
+            <Calendar className="h-4 w-4 text-purple-400" />
+          </div>
+          <div>
+            <p className="text-foreground font-medium group-hover:text-purple-400 transition">
+              {cycle.name}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {cycleTypeLabels[cycle.cycle_type] || cycle.cycle_type}
+            </p>
+          </div>
+        </div>
+      </Link>
+    ),
+  },
+  {
+    id: "status",
+    header: "Status",
+    sortable: true,
+    sortValue: (cycle) => statusSortOrder[cycle.status] ?? 99,
+    cell: (cycle) => {
+      const statusColor = getStatusColor(REVIEW_CYCLE_STATUS_COLORS, cycle.status);
+      return (
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusColor.text} ${statusColor.bg}`}>
           {cycle.status === "active" || cycle.status === "self_review" || cycle.status === "peer_review" || cycle.status === "manager_review" ? (
             <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
           ) : null}
-          {status.label}
+          {statusLabels[cycle.status] || cycle.status}
         </span>
-      </td>
-      <td className="px-6 py-4 text-sm text-muted-foreground">
+      );
+    },
+  },
+  {
+    id: "period",
+    header: "Period",
+    sortable: true,
+    sortValue: (cycle) => new Date(cycle.period_start).getTime(),
+    cell: (cycle) => (
+      <span className="text-sm text-muted-foreground">
         {new Date(cycle.period_start).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
@@ -79,61 +147,39 @@ function CycleRow({ cycle }: { cycle: ReviewCycle }) {
           day: "numeric",
           year: "numeric",
         })}
-      </td>
-      <td className="px-6 py-4">
-        <div className="flex items-center gap-2">
-          {cycle.self_review_deadline && (
-            <span className="text-xs text-muted-foreground" title="Self Review Deadline">
-              <Clock className="h-3 w-3 inline mr-1" />
-              {new Date(cycle.self_review_deadline).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-              })}
-            </span>
-          )}
-        </div>
-      </td>
-      <td className="px-6 py-4">
-        <div className="flex items-center justify-end gap-2">
-          <Link
-            href={`/reviews/cycles/${cycle.id}`}
-            className="px-3 py-1.5 text-sm text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 rounded-lg transition"
-          >
-            View
-          </Link>
-          <div className="relative">
-            <button
-              onClick={() => setShowMenu(!showMenu)}
-              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </button>
-            {showMenu && (
-              <div className="absolute right-0 mt-1 w-40 bg-muted border border-border rounded-lg shadow-xl z-10">
-                <Link
-                  href={`/reviews/cycles/${cycle.id}`}
-                  className="block px-4 py-2 text-sm text-foreground hover:text-foreground hover:bg-accent transition"
-                >
-                  View Details
-                </Link>
-                {cycle.status === "draft" && (
-                  <button className="w-full text-left px-4 py-2 text-sm text-green-400 hover:bg-accent transition">
-                    Activate Cycle
-                  </button>
-                )}
-                {(cycle.status === "self_review" || cycle.status === "peer_review") && (
-                  <button className="w-full text-left px-4 py-2 text-sm text-amber-400 hover:bg-accent transition">
-                    Advance Phase
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </td>
-    </tr>
-  );
-}
+      </span>
+    ),
+  },
+  {
+    id: "deadlines",
+    header: "Deadlines",
+    sortable: true,
+    sortValue: (cycle) =>
+      cycle.self_review_deadline
+        ? new Date(cycle.self_review_deadline).getTime()
+        : Number.MAX_SAFE_INTEGER,
+    cell: (cycle) => (
+      <div className="flex items-center gap-2">
+        {cycle.self_review_deadline && (
+          <span className="text-xs text-muted-foreground" title="Self Review Deadline">
+            <Clock className="h-3 w-3 inline mr-1" />
+            {new Date(cycle.self_review_deadline).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })}
+          </span>
+        )}
+      </div>
+    ),
+  },
+  {
+    id: "actions",
+    header: "Actions",
+    headerClassName: "text-right",
+    cellClassName: "text-right",
+    cell: (cycle) => <ActionsCell cycle={cycle} />,
+  },
+];
 
 export default function ReviewCyclesPage() {
   const { user, isLoading: authLoading, isAuthenticated, logout } = useAuth();
@@ -144,13 +190,26 @@ export default function ReviewCyclesPage() {
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
-            <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+      <div className="p-6 max-w-6xl mx-auto animate-pulse">
+        <div className="flex items-center justify-between mb-6">
+          <div className="h-7 w-36 bg-accent rounded" />
+          <div className="h-9 w-36 bg-accent rounded-lg" />
+        </div>
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="grid grid-cols-5 gap-4 px-4 py-3 border-b border-border">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-3 w-16 bg-accent rounded" />
+            ))}
           </div>
-          <p className="text-muted-foreground text-sm">Loading review cycles...</p>
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="grid grid-cols-5 gap-4 px-4 py-3 border-b border-border/50">
+              <div className="h-4 w-32 bg-accent rounded" />
+              <div className="h-5 w-16 bg-accent rounded-full" />
+              <div className="h-3 w-20 bg-accent rounded" />
+              <div className="h-3 w-20 bg-accent rounded" />
+              <div className="h-3 w-12 bg-accent rounded" />
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -248,12 +307,8 @@ export default function ReviewCyclesPage() {
         </div>
 
         {/* Cycles Table */}
-        <div className="bg-background/50 rounded-xl border border-border overflow-hidden">
-          {isLoading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500"></div>
-            </div>
-          ) : error ? (
+        {error ? (
+          <div className="bg-background/50 rounded-xl border border-border overflow-hidden">
             <div className="text-center py-12">
               <p className="text-red-400">Failed to load review cycles</p>
               <button
@@ -263,52 +318,23 @@ export default function ReviewCyclesPage() {
                 Try again
               </button>
             </div>
-          ) : cycles.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+          </div>
+        ) : (
+          <DataTable
+            columns={cycleColumns}
+            data={cycles}
+            rowKey={(cycle) => cycle.id}
+            isLoading={isLoading}
+            skeletonRows={4}
+            emptyIcon={
+              <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto">
                 <Calendar className="w-10 h-10 text-muted-foreground" />
               </div>
-              <h3 className="text-xl font-medium text-foreground mb-2">No review cycles yet</h3>
-              <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
-                Create your first review cycle to start collecting 360° feedback from your team.
-              </p>
-              <Link
-                href="/reviews/cycles/new"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition font-medium"
-              >
-                <Plus className="h-4 w-4" />
-                Create First Cycle
-              </Link>
-            </div>
-          ) : (
-            <table className="w-full">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Cycle
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Period
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Deadlines
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {cycles.map((cycle) => (
-                  <CycleRow key={cycle.id} cycle={cycle} />
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+            }
+            emptyTitle="No review cycles yet"
+            emptyDescription="Create your first review cycle to start collecting 360° feedback from your team."
+          />
+        )}
 
         {/* Help Section */}
         <div className="mt-8 grid md:grid-cols-3 gap-4">

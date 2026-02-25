@@ -26,6 +26,12 @@ class GitHubAPIError(GitHubServiceError):
     pass
 
 
+class GitHubNotFoundError(GitHubServiceError):
+    """Repository or resource not found (404)."""
+
+    pass
+
+
 class GitHubService:
     """Service for interacting with GitHub API."""
 
@@ -41,6 +47,8 @@ class GitHubService:
             raise GitHubAuthError(f"GitHub authentication failed during {action}: {response.text}")
         if response.status_code == 403 and "bad credentials" in response.text.lower():
             raise GitHubAuthError(f"GitHub credentials revoked during {action}: {response.text}")
+        if response.status_code == 404:
+            raise GitHubNotFoundError(f"GitHub resource not found during {action}: {response.text}")
 
     async def __aenter__(self) -> "GitHubService":
         """Async context manager entry."""
@@ -96,6 +104,39 @@ class GitHubService:
                 access_token=data["access_token"],
                 token_type=data.get("token_type", "bearer"),
                 scope=data.get("scope", ""),
+                refresh_token=data.get("refresh_token"),
+                expires_in=data.get("expires_in"),
+                refresh_token_expires_in=data.get("refresh_token_expires_in"),
+            )
+
+    async def refresh_access_token(self, refresh_token: str) -> GitHubAuthResponse:
+        """Refresh an expired GitHub access token using a refresh token."""
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.settings.github_oauth_url}/access_token",
+                data={
+                    "client_id": self.settings.github_client_id,
+                    "client_secret": self.settings.github_client_secret,
+                    "grant_type": "refresh_token",
+                    "refresh_token": refresh_token,
+                },
+                headers={"Accept": "application/json"},
+            )
+
+            if response.status_code != 200:
+                raise GitHubAuthError(f"Failed to refresh token: {response.text}")
+
+            data = response.json()
+            if "error" in data:
+                raise GitHubAuthError(f"GitHub token refresh error: {data.get('error_description', data['error'])}")
+
+            return GitHubAuthResponse(
+                access_token=data["access_token"],
+                token_type=data.get("token_type", "bearer"),
+                scope=data.get("scope", ""),
+                refresh_token=data.get("refresh_token"),
+                expires_in=data.get("expires_in"),
+                refresh_token_expires_in=data.get("refresh_token_expires_in"),
             )
 
     async def get_user_info(self) -> GitHubUserInfo:

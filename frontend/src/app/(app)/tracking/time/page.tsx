@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   Clock,
   Plus,
   Calendar,
@@ -13,6 +11,7 @@ import {
   PieChart,
   BarChart3,
 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { TimeLogForm, TimeEntryList, WeeklyTimesheetView } from "@/components/tracking";
 import {
   MetricCard,
@@ -41,7 +40,6 @@ type GroupBy = "date" | "project" | "none";
 type ChartType = "project" | "daily" | "heatmap";
 
 export default function TimeTrackingPage() {
-  const router = useRouter();
   const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -145,13 +143,13 @@ export default function TimeTrackingPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <button
-            onClick={() => router.push("/tracking")}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 transition"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Tracking
-          </button>
+          <Breadcrumb
+            items={[
+              { label: "Tracking", href: "/tracking" },
+              { label: "Time Entries" },
+            ]}
+            className="mb-6"
+          />
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
@@ -289,10 +287,10 @@ export default function TimeTrackingPage() {
             </div>
           )}
 
-          <div className="flex-1" />
+          <div className="hidden lg:block flex-1" />
 
           {/* Date Range & Export */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <DateRangePicker
               value={dateRange}
               onChange={setDateRange}

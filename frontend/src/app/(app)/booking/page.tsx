@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { UpgradeBanner } from "@/components/UpgradeBanner";
+import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
 import { bookingApi, Booking, EventType } from "@/lib/booking-api";
 import { format, parseISO, isToday, isTomorrow, isPast } from "date-fns";
 import Link from "next/link";
@@ -16,6 +18,8 @@ import {
   Users,
   ChevronRight,
   ExternalLink,
+  Copy,
+  Check,
 } from "lucide-react";
 
 export default function BookingDashboard() {
@@ -24,6 +28,7 @@ export default function BookingDashboard() {
   const [eventTypes, setEventTypes] = useState<EventType[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (currentWorkspace?.id) {
@@ -75,8 +80,42 @@ export default function BookingDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      <div className="p-6 max-w-7xl mx-auto animate-pulse">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <div className="h-7 w-28 bg-accent rounded mb-2" />
+            <div className="h-4 w-64 bg-accent rounded" />
+          </div>
+          <div className="flex gap-3">
+            <div className="h-9 w-28 bg-accent rounded-lg" />
+            <div className="h-9 w-32 bg-accent rounded-lg" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-muted rounded-xl p-5 border border-border">
+              <div className="h-4 w-20 bg-accent rounded mb-3" />
+              <div className="h-8 w-12 bg-accent rounded mb-2" />
+              <div className="h-3 w-32 bg-accent rounded" />
+            </div>
+          ))}
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-muted rounded-xl p-4 border border-border">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 bg-accent rounded-lg" />
+                  <div>
+                    <div className="h-4 w-36 bg-accent rounded mb-1" />
+                    <div className="h-3 w-48 bg-accent rounded" />
+                  </div>
+                </div>
+                <div className="h-6 w-16 bg-accent rounded-full" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -108,6 +147,8 @@ export default function BookingDashboard() {
           </Link>
         </div>
       </div>
+
+      <UpgradeBanner trigger="module_limit" compact />
 
       {/* Stats Cards */}
       {stats && (
@@ -206,16 +247,27 @@ export default function BookingDashboard() {
                       </div>
                     </div>
                     <button
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.preventDefault();
-                        navigator.clipboard.writeText(
-                          `${window.location.origin}/book/${currentWorkspace?.slug}/${eventType.slug}`
-                        );
+                        e.stopPropagation();
+                        try {
+                          await navigator.clipboard.writeText(
+                            `${window.location.origin}/book/${currentWorkspace?.slug}/${eventType.slug}`
+                          );
+                          setCopiedId(eventType.id);
+                          setTimeout(() => setCopiedId(null), 2000);
+                        } catch {
+                          // Clipboard API may fail in insecure contexts
+                        }
                       }}
-                      className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      className="p-2 text-muted-foreground hover:text-foreground transition-colors"
                       title="Copy booking link"
                     >
-                      <ExternalLink className="h-4 w-4" />
+                      {copiedId === eventType.id ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
                     </button>
                   </Link>
                 ))}
@@ -312,6 +364,11 @@ export default function BookingDashboard() {
                 Manage Availability
               </Link>
             </div>
+          </div>
+
+          {/* Automations */}
+          <div className="mt-4">
+            <ModuleAutomationsPanel module="booking" moduleLabel="Booking" compact />
           </div>
         </div>
       </div>

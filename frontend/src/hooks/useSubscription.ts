@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { billingApi, SubscriptionStatus, PlanFeatures } from "@/lib/api";
 
 export function useSubscription(workspaceId?: string | null) {
@@ -94,9 +95,13 @@ export function useChangePlan(workspaceId?: string | null) {
         workspace_id: workspaceId || undefined,
       }),
     onSuccess: () => {
+      toast.success("Plan changed successfully");
       // Invalidate subscription status to refetch the new plan
       queryClient.invalidateQueries({ queryKey: ["subscriptionStatus", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["subscriptionStatus"] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to change plan");
     },
   });
 }
@@ -111,5 +116,8 @@ export function useCheckout() {
         cancel_url: `${window.location.origin}/settings/plans?checkout=cancelled`,
         workspace_id: workspaceId,
       }),
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to start checkout");
+    },
   });
 }

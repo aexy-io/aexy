@@ -1,6 +1,12 @@
 "use client";
 
-import { X, Calendar, Clock, User, Palmtree, CalendarCheck } from "lucide-react";
+import { Calendar, Clock, User, Palmtree, CalendarCheck } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface CalendarEvent {
   id: string;
@@ -27,10 +33,8 @@ const typeConfig = {
 };
 
 export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
-  if (!event) return null;
-
-  const config = typeConfig[event.type];
-  const Icon = config.icon;
+  const config = event ? typeConfig[event.type] : null;
+  const Icon = config?.icon || Calendar;
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr + (dateStr.includes("T") ? "" : "T00:00:00"));
@@ -52,162 +56,156 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div className="relative w-full max-w-md mx-4 bg-background border border-border/50 rounded-2xl shadow-2xl overflow-hidden">
-        {/* Color bar */}
-        <div className="h-1" style={{ backgroundColor: event.color }} />
+    <Dialog open={!!event} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-md p-0 gap-0 overflow-hidden">
+        {event && config && (
+          <>
+            {/* Color bar */}
+            <div className="h-1" style={{ backgroundColor: event.color }} />
 
-        {/* Header */}
-        <div className="flex items-start justify-between p-5 pb-3">
-          <div className="flex items-start gap-3">
-            <div
-              className="p-2 rounded-lg"
-              style={{ backgroundColor: `${event.color}15` }}
-            >
-              <Icon className="h-5 w-5" style={{ color: event.color }} />
-            </div>
-            <div>
-              <h3 className="text-base font-semibold text-foreground">
-                {event.title}
-              </h3>
-              <span
-                className={`inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full ${config.badgeClass}`}
-              >
-                {config.label}
-              </span>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+            {/* Header */}
+            <DialogHeader className="p-5 pb-3">
+              <div className="flex items-start gap-3">
+                <div
+                  className="p-2 rounded-lg"
+                  style={{ backgroundColor: `${event.color}15` }}
+                >
+                  <Icon className="h-5 w-5" style={{ color: event.color }} />
+                </div>
+                <div>
+                  <DialogTitle className="text-base">
+                    {event.title}
+                  </DialogTitle>
+                  <span
+                    className={`inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full ${config.badgeClass}`}
+                  >
+                    {config.label}
+                  </span>
+                </div>
+              </div>
+            </DialogHeader>
 
-        {/* Details */}
-        <div className="px-5 pb-5 space-y-3">
-          {/* Date/time */}
-          <div className="flex items-center gap-2 text-sm text-foreground">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span>{formatDate(event.start)}</span>
-            {event.start !== event.end && (
-              <>
-                <span className="text-muted-foreground">-</span>
-                <span>{formatDate(event.end)}</span>
-              </>
-            )}
-          </div>
+            {/* Details */}
+            <div className="px-5 pb-5 space-y-3">
+              {/* Date/time */}
+              <div className="flex items-center gap-2 text-sm text-foreground">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span>{formatDate(event.start)}</span>
+                {event.start !== event.end && (
+                  <>
+                    <span className="text-muted-foreground">-</span>
+                    <span>{formatDate(event.end)}</span>
+                  </>
+                )}
+              </div>
 
-          {!event.all_day && (formatTime(event.start) || formatTime(event.end)) && (
-            <div className="flex items-center gap-2 text-sm text-foreground">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span>
-                {formatTime(event.start)}
-                {formatTime(event.end) && ` - ${formatTime(event.end)}`}
-              </span>
-            </div>
-          )}
-
-          {/* Developer */}
-          {event.developer_name && (
-            <div className="flex items-center gap-2 text-sm text-foreground">
-              {event.developer_avatar ? (
-                <img
-                  src={event.developer_avatar}
-                  alt=""
-                  className="w-5 h-5 rounded-full"
-                />
-              ) : (
-                <User className="h-4 w-4 text-muted-foreground" />
-              )}
-              <span>{event.developer_name}</span>
-            </div>
-          )}
-
-          {/* Metadata */}
-          {event.metadata && Object.keys(event.metadata).length > 0 && (
-            <div className="pt-2 border-t border-border space-y-2">
-              {event.type === "leave" && (
-                <>
-                  {event.metadata.leave_type && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Leave Type</span>
-                      <span className="text-foreground">
-                        {String(event.metadata.leave_type)}
-                      </span>
-                    </div>
-                  )}
-                  {event.metadata.total_days && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Duration</span>
-                      <span className="text-foreground">
-                        {String(event.metadata.total_days)} day
-                        {Number(event.metadata.total_days) !== 1 ? "s" : ""}
-                        {event.metadata.is_half_day && ` (${event.metadata.half_day_period === "first_half" ? "AM" : "PM"})`}
-                      </span>
-                    </div>
-                  )}
-                  {event.metadata.reason && (
-                    <div className="text-xs">
-                      <span className="text-muted-foreground">Reason</span>
-                      <p className="mt-1 text-foreground bg-muted/50 rounded-lg p-2">
-                        {String(event.metadata.reason)}
-                      </p>
-                    </div>
-                  )}
-                </>
+              {!event.all_day && (formatTime(event.start) || formatTime(event.end)) && (
+                <div className="flex items-center gap-2 text-sm text-foreground">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span>
+                    {formatTime(event.start)}
+                    {formatTime(event.end) && ` - ${formatTime(event.end)}`}
+                  </span>
+                </div>
               )}
 
-              {event.type === "booking" && (
-                <>
-                  {event.metadata.event_type && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Event Type</span>
-                      <span className="text-foreground">
-                        {String(event.metadata.event_type)}
-                      </span>
-                    </div>
+              {/* Developer */}
+              {event.developer_name && (
+                <div className="flex items-center gap-2 text-sm text-foreground">
+                  {event.developer_avatar ? (
+                    <img
+                      src={event.developer_avatar}
+                      alt=""
+                      className="w-5 h-5 rounded-full"
+                    />
+                  ) : (
+                    <User className="h-4 w-4 text-muted-foreground" />
                   )}
-                  {event.metadata.invitee_name && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Invitee</span>
-                      <span className="text-foreground">
-                        {String(event.metadata.invitee_name)}
-                      </span>
-                    </div>
-                  )}
-                </>
+                  <span>{event.developer_name}</span>
+                </div>
               )}
 
-              {event.type === "holiday" && (
-                <>
-                  {event.metadata.description && (
-                    <div className="text-xs">
-                      <span className="text-muted-foreground">Description</span>
-                      <p className="mt-1 text-foreground">
-                        {String(event.metadata.description)}
-                      </p>
-                    </div>
+              {/* Metadata */}
+              {event.metadata && Object.keys(event.metadata).length > 0 && (
+                <div className="pt-2 border-t border-border space-y-2">
+                  {event.type === "leave" && (
+                    <>
+                      {event.metadata.leave_type && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">Leave Type</span>
+                          <span className="text-foreground">
+                            {String(event.metadata.leave_type)}
+                          </span>
+                        </div>
+                      )}
+                      {event.metadata.total_days && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">Duration</span>
+                          <span className="text-foreground">
+                            {String(event.metadata.total_days)} day
+                            {Number(event.metadata.total_days) !== 1 ? "s" : ""}
+                            {event.metadata.is_half_day && ` (${event.metadata.half_day_period === "first_half" ? "AM" : "PM"})`}
+                          </span>
+                        </div>
+                      )}
+                      {event.metadata.reason && (
+                        <div className="text-xs">
+                          <span className="text-muted-foreground">Reason</span>
+                          <p className="mt-1 text-foreground bg-muted/50 rounded-lg p-2">
+                            {String(event.metadata.reason)}
+                          </p>
+                        </div>
+                      )}
+                    </>
                   )}
-                  {event.metadata.is_optional !== undefined && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Type</span>
-                      <span className="text-foreground">
-                        {event.metadata.is_optional ? "Optional" : "Mandatory"}
-                      </span>
-                    </div>
+
+                  {event.type === "booking" && (
+                    <>
+                      {event.metadata.event_type && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">Event Type</span>
+                          <span className="text-foreground">
+                            {String(event.metadata.event_type)}
+                          </span>
+                        </div>
+                      )}
+                      {event.metadata.invitee_name && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">Invitee</span>
+                          <span className="text-foreground">
+                            {String(event.metadata.invitee_name)}
+                          </span>
+                        </div>
+                      )}
+                    </>
                   )}
-                </>
+
+                  {event.type === "holiday" && (
+                    <>
+                      {event.metadata.description && (
+                        <div className="text-xs">
+                          <span className="text-muted-foreground">Description</span>
+                          <p className="mt-1 text-foreground">
+                            {String(event.metadata.description)}
+                          </p>
+                        </div>
+                      )}
+                      {event.metadata.is_optional !== undefined && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">Type</span>
+                          <span className="text-foreground">
+                            {event.metadata.is_optional ? "Optional" : "Mandatory"}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
-      </div>
-    </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

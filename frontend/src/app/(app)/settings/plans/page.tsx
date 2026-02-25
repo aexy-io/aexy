@@ -138,10 +138,35 @@ export default function PlansPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-500 mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading plans...</p>
+      <div className="space-y-6 animate-pulse">
+        <div>
+          <div className="h-6 w-44 bg-accent rounded mb-2" />
+          <div className="h-4 w-72 bg-accent rounded" />
+        </div>
+        <div className="flex justify-center">
+          <div className="h-10 w-56 bg-accent rounded-full" />
+        </div>
+        <div className="grid md:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-card border border-border rounded-xl p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 bg-accent rounded-lg" />
+                <div className="h-3 w-16 bg-accent rounded" />
+              </div>
+              <div className="h-6 w-24 bg-accent rounded" />
+              <div className="h-4 w-full bg-accent rounded" />
+              <div className="h-8 w-20 bg-accent rounded" />
+              <div className="h-10 w-full bg-accent rounded-lg" />
+              <div className="space-y-2 pt-4">
+                {[1, 2, 3, 4, 5, 6].map((j) => (
+                  <div key={j} className="flex items-center gap-2">
+                    <div className="h-4 w-4 bg-accent rounded-full" />
+                    <div className="h-3 w-36 bg-accent rounded" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );

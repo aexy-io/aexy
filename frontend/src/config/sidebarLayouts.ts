@@ -59,6 +59,9 @@ import {
     ArrowRightLeft,
     Swords,
     Globe,
+    LayoutTemplate,
+    Download,
+    Table2,
 } from "lucide-react";
 
 export type SidebarLayoutType = "grouped" | "flat";
@@ -158,6 +161,11 @@ const leaveItems: SidebarItemConfig[] = [
     { href: "/leave", label: "My Leaves", icon: Palmtree },
     { href: "/leave?tab=approvals", label: "Approvals", icon: CheckSquare },
     { href: "/leave?tab=settings", label: "Settings", icon: Settings },
+];
+
+const reportsItems: SidebarItemConfig[] = [
+    { href: "/reports", label: "Custom Reports", icon: FileText },
+    { href: "/exports", label: "Exports", icon: Download },
 ];
 
 const complianceItems: SidebarItemConfig[] = [
@@ -328,7 +336,15 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
             label: "Knowledge",
             items: [
                 { href: "/docs", label: "Docs", icon: FileText },
+                { href: "/tables", label: "Tables", icon: Table2 },
                 { href: "/forms", label: "Forms", icon: FormInput },
+                { href: "/templates", label: "Templates", icon: LayoutTemplate },
+                {
+                    href: "/reports",
+                    label: "Reports",
+                    icon: BarChart,
+                    items: reportsItems,
+                },
             ],
         }
     ],
@@ -423,12 +439,20 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                     items: leaveItems,
                 },
                 { href: "/docs", label: "Docs", icon: FileText },
+                { href: "/tables", label: "Tables", icon: Table2 },
                 { href: "/forms", label: "Forms", icon: FormInput },
                 {
                     href: "/gtm",
                     label: "GTM",
                     icon: Crosshair,
                     items: gtmItems,
+                },
+                { href: "/templates", label: "Templates", icon: LayoutTemplate },
+                {
+                    href: "/reports",
+                    label: "Reports",
+                    icon: BarChart,
+                    items: reportsItems,
                 },
             ],
         },

@@ -10,7 +10,6 @@ import {
   GripVertical,
   MoreVertical,
   Check,
-  Search,
   Target,
   User,
   Layers,
@@ -24,17 +23,19 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { useProjectBoard } from "@/hooks/useProjectBoard";
 import { useEpics } from "@/hooks/useEpics";
 import { SprintTask, SprintListItem, TaskPriority, TaskStatus, EpicListItem, sprintApi } from "@/lib/api";
+import { PRIORITY_COLORS } from "@/lib/statusColors";
 import { CommandPalette } from "@/components/CommandPalette";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Badge, PremiumCard, Skeleton } from "@/components/ui/premium-card";
+import { SearchInput } from "@/components/ui/search-input";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string; bgColor: string }> = {
-  critical: { label: "Critical", color: "text-red-600 dark:text-red-400", bgColor: "bg-red-100 dark:bg-red-900/30" },
-  high: { label: "High", color: "text-orange-600 dark:text-orange-400", bgColor: "bg-orange-100 dark:bg-orange-900/30" },
-  medium: { label: "Medium", color: "text-yellow-600 dark:text-yellow-400", bgColor: "bg-yellow-100 dark:bg-yellow-900/30" },
-  low: { label: "Low", color: "text-muted-foreground", bgColor: "bg-accent" },
+  critical: { label: "Critical", color: PRIORITY_COLORS.critical.text, bgColor: PRIORITY_COLORS.critical.bg },
+  high: { label: "High", color: PRIORITY_COLORS.high.text, bgColor: PRIORITY_COLORS.high.bg },
+  medium: { label: "Medium", color: PRIORITY_COLORS.medium.text, bgColor: PRIORITY_COLORS.medium.bg },
+  low: { label: "Low", color: PRIORITY_COLORS.low.text, bgColor: PRIORITY_COLORS.low.bg },
 };
 
 interface BacklogItem extends SprintTask {
@@ -654,8 +655,23 @@ export default function BacklogPage({
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+      <div className="p-6 animate-pulse">
+        <div className="flex items-center justify-between mb-6">
+          <div className="h-7 w-40 bg-accent rounded" />
+          <div className="flex gap-2">
+            <div className="h-9 w-24 bg-accent rounded-lg" />
+            <div className="h-9 w-28 bg-accent rounded-lg" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="flex items-center gap-3 p-3 bg-card border border-border rounded-lg">
+              <div className="h-4 w-4 bg-accent rounded" />
+              <div className="h-4 w-48 bg-accent rounded" />
+              <div className="ml-auto h-5 w-16 bg-accent rounded-full" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -741,16 +757,12 @@ export default function BacklogPage({
           <div className="max-w-4xl mx-auto px-4 py-6">
             {/* Search and filters */}
             <div className="flex items-center gap-3 mb-6">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search backlog items..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500"
-                />
-              </div>
+              <SearchInput
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search backlog items..."
+                wrapperClassName="flex-1"
+              />
 
               {/* Priority filter */}
               <div className="flex items-center gap-1 bg-muted border border-border rounded-lg p-1">

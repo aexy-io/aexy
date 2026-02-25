@@ -1628,6 +1628,115 @@ export const exportsApi = {
   },
 
   getDownloadUrl: (jobId: string) => `${api.defaults.baseURL}/exports/${jobId}/download`,
+
+  deleteExport: async (jobId: string): Promise<void> => {
+    await api.delete(`/exports/${jobId}`);
+  },
+
+  getAvailableFormats: async (): Promise<ExportFormatInfo[]> => {
+    const response = await api.get("/exports/formats/available");
+    return response.data?.formats || response.data;
+  },
+};
+
+// Export Types
+export interface ExportJob {
+  id: string;
+  export_type: string;
+  format: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  file_path: string | null;
+  file_size_bytes: number | null;
+  error_message: string | null;
+  created_at: string;
+  completed_at: string | null;
+  expires_at: string;
+}
+
+export interface ExportFormatInfo {
+  format: string;
+  name: string;
+  description: string;
+  available: boolean;
+  requirements?: string;
+}
+
+// ============================================================================
+// Webhook Management Types & API
+// ============================================================================
+
+export interface BookingWebhook {
+  id: string;
+  workspace_id: string;
+  name: string;
+  url: string;
+  events: string[];
+  is_active: boolean;
+  last_triggered_at: string | null;
+  failure_count: number;
+  last_failure_at: string | null;
+  last_failure_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WebhookTestResult {
+  success: boolean;
+  status_code: number | null;
+  response_time_ms: number | null;
+  error: string | null;
+}
+
+export const webhooksApi = {
+  // Booking webhooks
+  listBookingWebhooks: async (workspaceId: string): Promise<{ webhooks: BookingWebhook[]; total: number }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/booking/webhooks`);
+    return response.data;
+  },
+
+  createBookingWebhook: async (workspaceId: string, data: {
+    name: string;
+    url: string;
+    events: string[];
+    is_active?: boolean;
+  }): Promise<BookingWebhook> => {
+    const response = await api.post(`/workspaces/${workspaceId}/booking/webhooks`, data);
+    return response.data;
+  },
+
+  updateBookingWebhook: async (workspaceId: string, webhookId: string, data: {
+    name?: string;
+    url?: string;
+    events?: string[];
+    is_active?: boolean;
+  }): Promise<BookingWebhook> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/booking/webhooks/${webhookId}`, data);
+    return response.data;
+  },
+
+  deleteBookingWebhook: async (workspaceId: string, webhookId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/booking/webhooks/${webhookId}`);
+  },
+
+  testBookingWebhook: async (workspaceId: string, webhookId: string): Promise<WebhookTestResult> => {
+    const response = await api.post(`/workspaces/${workspaceId}/booking/webhooks/${webhookId}/test`);
+    return response.data;
+  },
+
+  rotateBookingWebhookSecret: async (workspaceId: string, webhookId: string): Promise<BookingWebhook> => {
+    const response = await api.post(`/workspaces/${workspaceId}/booking/webhooks/${webhookId}/rotate-secret`);
+    return response.data;
+  },
+
+  getBookingWebhookSecret: async (workspaceId: string, webhookId: string): Promise<{ secret: string }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/booking/webhooks/${webhookId}/secret`);
+    return response.data;
+  },
+
+  getBookingWebhookEvents: async (workspaceId: string): Promise<string[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/booking/webhooks/events`);
+    return response.data;
+  },
 };
 
 // ============================================================================
@@ -6638,6 +6747,16 @@ export interface Ticket {
   team_id?: string;
   external_issues: ExternalIssue[];
   linked_task_id?: string;
+  linked_crm_contact?: {
+    id: string;
+    display_name: string;
+    email?: string;
+    company?: string;
+    deal_value?: number;
+    deal_stage?: string;
+  } | null;
+  customer_impact?: "none" | "low" | "medium" | "high" | "critical";
+  affected_customers_count?: number;
   first_response_at?: string;
   resolved_at?: string;
   closed_at?: string;
@@ -7379,6 +7498,10 @@ export interface AssessmentInvitation {
   attempt_count?: number;
   latest_score?: number | null;
   latest_trust_score?: number | null;
+  percentage_score?: number | null;
+  time_taken_seconds?: number | null;
+  attempt_started_at?: string | null;
+  attempt_completed_at?: string | null;
   // Alternative flat properties
   candidate_email?: string;
   candidate_name?: string;
@@ -8101,6 +8224,7 @@ export type CRMObjectType = "company" | "person" | "deal" | "custom";
 
 export type CRMAttributeType =
   | "text"
+  | "textarea"
   | "number"
   | "currency"
   | "date"
@@ -8203,22 +8327,35 @@ export interface CRMActivity {
   created_at: string;
 }
 
+export interface ColumnDisplayConfig {
+  slug: string;
+  width?: number;
+  variant?: string;
+  conditional_format?: Record<string, unknown>[];
+}
+
 export interface CRMList {
   id: string;
   workspace_id: string;
   object_id: string;
   name: string;
+  slug?: string;
   description: string | null;
+  icon?: string | null;
+  color?: string | null;
   view_type: "table" | "board" | "gallery" | "timeline";
   is_smart: boolean;
   filters: Record<string, unknown>[];
   sorts: Record<string, unknown>[];
   columns: string[];
+  column_config?: ColumnDisplayConfig[];
   settings: Record<string, unknown>;
   is_default: boolean;
   is_shared: boolean;
+  is_private?: boolean;
   entry_count: number;
   created_by_id: string | null;
+  owner_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -8304,7 +8441,9 @@ export type AutomationModule =
   | "uptime"
   | "sprints"
   | "forms"
-  | "booking";
+  | "booking"
+  | "tracking"
+  | "compliance";
 
 export type AutomationTriggerType = string; // Module-specific triggers
 export type AutomationActionType = string; // Module-specific actions
@@ -9440,7 +9579,7 @@ export const googleIntegrationApi = {
 // =============================================================================
 
 // Standard agent types with predefined configurations
-export type StandardAgentType = "support" | "sales" | "scheduling" | "onboarding" | "recruiting" | "newsletter" | "custom";
+export type StandardAgentType = "support" | "sales" | "scheduling" | "onboarding" | "recruiting" | "newsletter" | "triage" | "insights" | "standup" | "custom";
 // Allow any string for backwards compatibility with existing CRM agent types
 export type AgentType = StandardAgentType | (string & {});
 
@@ -9753,6 +9892,27 @@ export const AGENT_TYPE_CONFIG: Record<StandardAgentType, AgentTypeConfigItem> =
     icon: "newspaper",
     color: "#06b6d4",
     defaultTools: ["reply", "send_email", "get_writing_style"],
+  },
+  triage: {
+    label: "Triage Agent",
+    description: "Classify and route incoming tickets by priority and department",
+    icon: "filter",
+    color: "#ef4444",
+    defaultTools: ["classify_ticket", "assign_ticket", "escalate", "reply", "search_contacts"],
+  },
+  insights: {
+    label: "Insights Agent",
+    description: "Proactively surface team metrics, burnout risks, and performance trends",
+    icon: "bar-chart",
+    color: "#10b981",
+    defaultTools: ["get_team_metrics", "get_burnout_risk", "get_velocity", "send_slack", "create_task"],
+  },
+  standup: {
+    label: "Standup Agent",
+    description: "Draft standup summaries from activity and remind team members",
+    icon: "message-circle",
+    color: "#8b5cf6",
+    defaultTools: ["get_git_activity", "get_task_updates", "send_slack", "reply", "create_task"],
   },
   custom: {
     label: "Custom Agent",
@@ -15107,6 +15267,117 @@ export interface AppAccessLogsSummary {
 }
 
 // ============================================================================
+// SSO / SAML Types
+// ============================================================================
+
+export type SSOProvider = "saml" | "oidc";
+export type SSOStatus = "inactive" | "active" | "testing";
+
+export interface SSOConfiguration {
+  id: string;
+  workspace_id: string;
+  provider: SSOProvider;
+  status: SSOStatus;
+  display_name: string;
+  // SAML fields
+  entity_id: string | null;
+  sso_url: string | null;
+  certificate: string | null;
+  // OIDC fields
+  client_id: string | null;
+  issuer_url: string | null;
+  // Common
+  enforce_sso: boolean;
+  allowed_domains: string[];
+  auto_provision_users: boolean;
+  default_role_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SSOConfigurationCreate {
+  provider: SSOProvider;
+  display_name: string;
+  entity_id?: string;
+  sso_url?: string;
+  certificate?: string;
+  client_id?: string;
+  client_secret?: string;
+  issuer_url?: string;
+  enforce_sso?: boolean;
+  allowed_domains?: string[];
+  auto_provision_users?: boolean;
+  default_role_id?: string;
+}
+
+export interface SSOConfigurationUpdate {
+  display_name?: string;
+  entity_id?: string;
+  sso_url?: string;
+  certificate?: string;
+  client_id?: string;
+  client_secret?: string;
+  issuer_url?: string;
+  enforce_sso?: boolean;
+  allowed_domains?: string[];
+  auto_provision_users?: boolean;
+  default_role_id?: string;
+}
+
+export interface SSOTestResult {
+  success: boolean;
+  error: string | null;
+  user_attributes: Record<string, string> | null;
+}
+
+export const ssoApi = {
+  getConfiguration: async (workspaceId: string): Promise<SSOConfiguration | null> => {
+    try {
+      const response = await api.get(`/workspaces/${workspaceId}/sso/configuration`);
+      return response.data;
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.status === 404) return null;
+      throw err;
+    }
+  },
+
+  createConfiguration: async (
+    workspaceId: string,
+    data: SSOConfigurationCreate
+  ): Promise<SSOConfiguration> => {
+    const response = await api.post(`/workspaces/${workspaceId}/sso/configuration`, data);
+    return response.data;
+  },
+
+  updateConfiguration: async (
+    workspaceId: string,
+    data: SSOConfigurationUpdate
+  ): Promise<SSOConfiguration> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/sso/configuration`, data);
+    return response.data;
+  },
+
+  deleteConfiguration: async (workspaceId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/sso/configuration`);
+  },
+
+  testConfiguration: async (workspaceId: string): Promise<SSOTestResult> => {
+    const response = await api.post(`/workspaces/${workspaceId}/sso/test`);
+    return response.data;
+  },
+
+  activateConfiguration: async (workspaceId: string): Promise<SSOConfiguration> => {
+    const response = await api.post(`/workspaces/${workspaceId}/sso/activate`);
+    return response.data;
+  },
+
+  deactivateConfiguration: async (workspaceId: string): Promise<SSOConfiguration> => {
+    const response = await api.post(`/workspaces/${workspaceId}/sso/deactivate`);
+    return response.data;
+  },
+};
+
+// ============================================================================
 // Knowledge Graph Types
 // ============================================================================
 
@@ -17727,13 +17998,35 @@ export interface OutreachSequence {
   replied_count: number;
   bounced_count: number;
   created_by: string | null;
+// ============================================================================
+// Standalone Tables Types & API
+// ============================================================================
+
+export type TablePermission = "view" | "comment" | "edit" | "manage" | "admin";
+export type TableVisibility = "workspace" | "private" | "public";
+export type TableRowAccessMode = "all" | "owner_only" | "team_filtered" | "rule_based";
+
+export interface StandaloneTable {
+  id: string;
+  workspace_id: string;
+  name: string;
+  slug: string;
+  plural_name: string;
+  description: string | null;
+  icon: string | null;
+  color: string | null;
+  scope: string;
+  visibility: TableVisibility;
+  row_access_mode: TableRowAccessMode;
+  created_by_id: string | null;
+  record_count: number;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
 
 export interface SequenceStep {
   step_index: number;
-  channel: "email" | "linkedin" | "sms" | "wait";
   action: string;
   delay_days: number;
   delay_hours: number;
@@ -18548,5 +18841,265 @@ export const gtmApi = {
       const response = await api.get(`/workspaces/${workspaceId}/gtm/abm/accounts/${accountId}/journey`);
       return response.data;
     },
+  }
+}
+export interface TableField {
+  id: string;
+  name: string;
+  slug: string;
+  attribute_type: string;
+  description: string | null;
+  is_required: boolean;
+  is_unique: boolean;
+  is_filterable: boolean;
+  is_sortable: boolean;
+  is_visible: boolean;
+  is_system: boolean;
+  default_value: unknown;
+  config: Record<string, unknown>;
+  position: number;
+  column_width: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TableRecord {
+  id: string;
+  object_id: string;
+  values: Record<string, unknown>;
+  created_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TableCollaborator {
+  id: string;
+  table_id: string;
+  developer_id: string | null;
+  role_id: string | null;
+  team_id: string | null;
+  permission: TablePermission;
+  hidden_columns: string[];
+  readonly_columns: string[];
+  developer_name?: string | null;
+  team_name?: string | null;
+  role_name?: string | null;
+  created_at: string;
+}
+
+export interface TableAccess {
+  permission: TablePermission;
+  hidden_columns: string[];
+  readonly_columns: string[];
+}
+
+export interface TableSavedView {
+  id: string;
+  workspace_id: string;
+  object_id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  icon: string | null;
+  color: string | null;
+  view_type: "table" | "board" | "gallery" | "timeline";
+  filters: Record<string, unknown>[];
+  sorts: Record<string, unknown>[];
+  visible_attributes: string[];
+  column_config: ColumnDisplayConfig[];
+  group_by_attribute: string | null;
+  kanban_settings: Record<string, unknown>;
+  is_private: boolean;
+  owner_id: string | null;
+  entry_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+
+export const tablesApi = {
+  // Tables CRUD
+  tables: {
+    list: async (workspaceId: string, scope?: string): Promise<StandaloneTable[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/tables`, {
+        params: scope ? { scope } : undefined,
+      });
+      return response.data;
+    },
+    get: async (workspaceId: string, tableId: string): Promise<StandaloneTable> => {
+      const response = await api.get(`/workspaces/${workspaceId}/tables/${tableId}`);
+      return response.data;
+    },
+    create: async (workspaceId: string, data: {
+      name: string;
+      plural_name?: string;
+      description?: string;
+      icon?: string;
+      color?: string;
+      visibility?: TableVisibility;
+      row_access_mode?: TableRowAccessMode;
+    }): Promise<StandaloneTable> => {
+      const response = await api.post(`/workspaces/${workspaceId}/tables`, data);
+      return response.data;
+    },
+    update: async (workspaceId: string, tableId: string, data: Partial<{
+      name: string;
+      plural_name: string;
+      description: string;
+      icon: string;
+      color: string;
+      visibility: TableVisibility;
+      row_access_mode: TableRowAccessMode;
+      is_active: boolean;
+    }>): Promise<StandaloneTable> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/tables/${tableId}`, data);
+      return response.data;
+    },
+    delete: async (workspaceId: string, tableId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/tables/${tableId}`);
+    },
   },
-};
+
+  // Fields
+  fields: {
+    list: async (workspaceId: string, tableId: string): Promise<TableField[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/tables/${tableId}/fields`);
+      return response.data;
+    },
+    create: async (workspaceId: string, tableId: string, data: {
+      name: string;
+      slug?: string;
+      attribute_type: string;
+      is_required?: boolean;
+      is_unique?: boolean;
+      is_filterable?: boolean;
+      default_value?: unknown;
+      options?: Record<string, unknown>;
+    }): Promise<TableField> => {
+      // Backend expects config (AttributeConfig) not top-level options
+      const { options, ...rest } = data;
+      const payload = options ? { ...rest, config: options } : rest;
+      const response = await api.post(`/workspaces/${workspaceId}/tables/${tableId}/fields`, payload);
+      return response.data;
+    },
+    update: async (workspaceId: string, tableId: string, fieldId: string, data: Partial<{
+      name: string;
+      is_required: boolean;
+      is_unique: boolean;
+      is_filterable: boolean;
+      default_value: unknown;
+      options: Record<string, unknown>;
+    }>): Promise<TableField> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/tables/${tableId}/fields/${fieldId}`, data);
+      return response.data;
+    },
+    delete: async (workspaceId: string, tableId: string, fieldId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/tables/${tableId}/fields/${fieldId}`);
+    },
+  },
+
+  // Records
+  records: {
+    list: async (workspaceId: string, tableId: string, params?: {
+      skip?: number;
+      limit?: number;
+      sort_by?: string;
+      sort_dir?: "asc" | "desc";
+      filters?: Record<string, unknown>[];
+      search?: string;
+    }): Promise<{ records: TableRecord[]; total: number }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/tables/${tableId}/records`, { params });
+      return response.data;
+    },
+    create: async (workspaceId: string, tableId: string, values: Record<string, unknown>): Promise<TableRecord> => {
+      const response = await api.post(`/workspaces/${workspaceId}/tables/${tableId}/records`, { values });
+      return response.data;
+    },
+    update: async (workspaceId: string, tableId: string, recordId: string, values: Record<string, unknown>): Promise<TableRecord> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/tables/${tableId}/records/${recordId}`, { values });
+      return response.data;
+    },
+    delete: async (workspaceId: string, tableId: string, recordId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/tables/${tableId}/records/${recordId}`);
+    },
+    bulkDelete: async (workspaceId: string, tableId: string, recordIds: string[]): Promise<{ deleted: number }> => {
+      const response = await api.post(`/workspaces/${workspaceId}/tables/${tableId}/records/bulk-delete`, { record_ids: recordIds });
+      return response.data;
+    },
+  },
+
+  // Access
+  access: {
+    getMyAccess: async (workspaceId: string, tableId: string): Promise<TableAccess> => {
+      const response = await api.get(`/workspaces/${workspaceId}/tables/${tableId}/access`);
+      return response.data;
+    },
+  },
+
+  // Collaborators
+  collaborators: {
+    list: async (workspaceId: string, tableId: string): Promise<TableCollaborator[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/tables/${tableId}/collaborators`);
+      return response.data;
+    },
+    add: async (workspaceId: string, tableId: string, data: {
+      developer_id?: string;
+      role_id?: string;
+      team_id?: string;
+      permission?: TablePermission;
+      hidden_columns?: string[];
+      readonly_columns?: string[];
+    }): Promise<TableCollaborator> => {
+      const response = await api.post(`/workspaces/${workspaceId}/tables/${tableId}/collaborators`, data);
+      return response.data;
+    },
+    update: async (workspaceId: string, tableId: string, collabId: string, data: Partial<{
+      permission: TablePermission;
+      hidden_columns: string[];
+      readonly_columns: string[];
+    }>): Promise<TableCollaborator> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/tables/${tableId}/collaborators/${collabId}`, data);
+      return response.data;
+    },
+    remove: async (workspaceId: string, tableId: string, collabId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/tables/${tableId}/collaborators/${collabId}`);
+    },
+  },
+
+  // Saved Views
+  views: {
+    list: async (workspaceId: string, tableId: string): Promise<TableSavedView[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/tables/${tableId}/views`);
+      return response.data;
+    },
+    create: async (workspaceId: string, tableId: string, data: {
+      name: string;
+      view_type?: "table" | "board" | "gallery" | "timeline";
+      filters?: Record<string, unknown>[];
+      sorts?: Record<string, unknown>[];
+      visible_attributes?: string[];
+      column_config?: ColumnDisplayConfig[];
+      group_by_attribute?: string;
+      is_private?: boolean;
+    }): Promise<TableSavedView> => {
+      const response = await api.post(`/workspaces/${workspaceId}/tables/${tableId}/views`, data);
+      return response.data;
+    },
+    update: async (workspaceId: string, tableId: string, viewId: string, data: Partial<{
+      name: string;
+      view_type: "table" | "board" | "gallery" | "timeline";
+      filters: Record<string, unknown>[];
+      sorts: Record<string, unknown>[];
+      visible_attributes: string[];
+      column_config: ColumnDisplayConfig[];
+      group_by_attribute: string;
+      is_private: boolean;
+    }>): Promise<TableSavedView> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/tables/${tableId}/views/${viewId}`, data);
+      return response.data;
+    },
+    delete: async (workspaceId: string, tableId: string, viewId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/tables/${tableId}/views/${viewId}`);
+    },
+  },
+}

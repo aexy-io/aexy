@@ -19,6 +19,7 @@ import {
   Plus,
 } from "lucide-react";
 import { IndividualTrackingDashboard } from "@/components/tracking";
+import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
 import {
   MetricCard,
   metricPresets,
@@ -225,7 +226,7 @@ export default function TrackingPage() {
           />
           <MetricCard
             title="Time This Week"
-            value={formatDuration(dashboard?.time_logged_this_week || 0)}
+            value={formatDuration(dashboard?.weekly_summary.total_time_logged || 0)}
             subtitle={`${dashboard?.time_entries?.length || 0} entries`}
             icon={Clock}
             {...metricPresets.time}
@@ -251,8 +252,8 @@ export default function TrackingPage() {
           />
           <MetricCard
             title="Work Logs"
-            value={dashboard?.work_logs?.length || 0}
-            subtitle="This sprint"
+            value={dashboard?.weekly_summary.work_logs_count || 0}
+            subtitle="This week"
             icon={Activity}
             {...metricPresets.activity}
             loading={isLoading}
@@ -343,6 +344,9 @@ export default function TrackingPage() {
                 />
               )}
             </div>
+            <div className="mt-4">
+              <ModuleAutomationsPanel module="tracking" moduleLabel="Tracking" compact />
+            </div>
           </div>
         </div>
 
@@ -362,7 +366,7 @@ export default function TrackingPage() {
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <MetricCard
                 title="Open"
                 value={ticketStats.open_tickets}

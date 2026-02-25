@@ -4,8 +4,11 @@ These endpoints are accessible without authentication and are used
 for the public booking pages.
 """
 
+import logging
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy import select, and_
@@ -27,7 +30,6 @@ from aexy.schemas.booking import (
 )
 from aexy.services.booking import BookingService, AvailabilityService, CalendarSyncService
 from aexy.services.booking.booking_notification_service import BookingNotificationService
-from aexy.services.email_service import EmailService
 
 router = APIRouter(
     prefix="/public/book",
@@ -465,8 +467,10 @@ async def create_public_booking(
             await db.refresh(booking)
         except Exception as e:
             # Log but don't fail the booking if calendar creation fails
-            import logging
-            logging.warning(f"Failed to create calendar events for booking {booking.id}: {e}")
+            logger.warning(f"Failed to create calendar events for booking {booking.id}: {e}")
+
+        # Send confirmation emails to invitee and host
+        await BookingNotificationService(db).send_confirmation_safe(booking)
 
         # Get host info
         host_stmt = select(Developer).where(Developer.id == booking.host_id)

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft,
   LayoutGrid,
   Columns3,
   Plus,
@@ -25,6 +24,7 @@ import {
   Keyboard,
   Command,
 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
   DndContext,
   DragEndEvent,
@@ -46,6 +46,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useProjectBoard, BoardViewMode, useBoardSelection } from "@/hooks/useProjectBoard";
 import { useEpics } from "@/hooks/useEpics";
+import { useProject } from "@/hooks/useProjects";
 import { SprintTask, TaskStatus, TaskPriority, SprintListItem, EpicListItem, sprintApi, TaskTemplate, taskTemplatesApi } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { TaskCardPremium, TaskCardSkeleton } from "@/components/planning/TaskCardPremium";
@@ -56,24 +57,24 @@ import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Badge, PremiumCard, Skeleton } from "@/components/ui/premium-card";
 import { X, Loader2, FileText, Zap } from "lucide-react";
+import {
+  SPRINT_STATUS_COLORS as SPRINT_STATUS_COLORS_BASE,
+  TASK_STATUS_COLORS as TASK_STATUS_COLORS_BASE,
+} from "@/lib/statusColors";
 
-// Status column configuration
+// Status column configuration – derives text/bg from centralized tokens, adds label
 const STATUS_CONFIG: Record<TaskStatus, { label: string; color: string; bgColor: string }> = {
-  backlog: { label: "Backlog", color: "text-muted-foreground", bgColor: "bg-accent/30" },
-  todo: { label: "To Do", color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-50 dark:bg-blue-900/20" },
-  in_progress: { label: "In Progress", color: "text-amber-600 dark:text-amber-400", bgColor: "bg-amber-50 dark:bg-amber-900/20" },
-  review: { label: "Review", color: "text-purple-600 dark:text-purple-400", bgColor: "bg-purple-50 dark:bg-purple-900/20" },
-  done: { label: "Done", color: "text-green-600 dark:text-green-400", bgColor: "bg-green-50 dark:bg-green-900/20" },
+  backlog: { label: "Backlog", color: TASK_STATUS_COLORS_BASE.backlog.text, bgColor: TASK_STATUS_COLORS_BASE.backlog.bg },
+  todo: { label: "To Do", color: TASK_STATUS_COLORS_BASE.todo.text, bgColor: TASK_STATUS_COLORS_BASE.todo.bg },
+  in_progress: { label: "In Progress", color: TASK_STATUS_COLORS_BASE.in_progress.text, bgColor: TASK_STATUS_COLORS_BASE.in_progress.bg },
+  review: { label: "Review", color: TASK_STATUS_COLORS_BASE.review.text, bgColor: TASK_STATUS_COLORS_BASE.review.bg },
+  done: { label: "Done", color: TASK_STATUS_COLORS_BASE.done.text, bgColor: TASK_STATUS_COLORS_BASE.done.bg },
 };
 
-// Sprint status colors
-const SPRINT_STATUS_COLORS: Record<string, string> = {
-  planning: "bg-blue-500",
-  active: "bg-green-500",
-  review: "bg-amber-500",
-  retrospective: "bg-purple-500",
-  completed: "bg-muted-foreground",
-};
+// Sprint status dot colors – derived from centralized tokens
+const SPRINT_STATUS_COLORS: Record<string, string> = Object.fromEntries(
+  Object.entries(SPRINT_STATUS_COLORS_BASE).map(([k, v]) => [k, v.dot || "bg-muted-foreground"])
+);
 
 interface KanbanColumnProps {
   id: string;
@@ -1332,6 +1333,7 @@ export default function ProjectBoardPage({
   } = useBoardSelection();
 
   const { epics } = useEpics(currentWorkspaceId);
+  const { project } = useProject(currentWorkspaceId, projectId);
   const { members } = useWorkspaceMembers(currentWorkspaceId);
 
   // Fetch task templates for the workspace
@@ -1696,13 +1698,15 @@ export default function ProjectBoardPage({
       <header className="flex-shrink-0 border-b border-border bg-muted/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="max-w-[1800px] mx-auto px-4 py-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Link
-                href={`/sprints/${projectId}`}
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
+            <div className="flex flex-col gap-2">
+              <Breadcrumb
+                items={[
+                  { label: "Sprints", href: "/sprints" },
+                  { label: project?.name || "Project", href: `/sprints/${projectId}` },
+                  { label: "Board" },
+                ]}
+                className="mb-0"
+              />
               <div>
                 <h1 className="text-lg font-semibold text-foreground">Project Board</h1>
                 <p className="text-xs text-muted-foreground">

@@ -19,30 +19,25 @@ import {
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useGoals } from "@/hooks/useReviews";
+import { SearchInput } from "@/components/ui/search-input";
+import { EmptyState } from "@/components/EmptyState";
 import { WorkGoal, GoalType } from "@/lib/api";
+import { GOAL_TYPE_COLORS, GOAL_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
-// Goal type colors
-const goalTypeColors: Record<GoalType, { text: string; bg: string }> = {
-  performance: { text: "text-cyan-600 dark:text-cyan-400", bg: "bg-cyan-500/10" },
-  skill_development: { text: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10" },
-  project: { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10" },
-  leadership: { text: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10" },
-  team_contribution: { text: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10" },
-};
-
-// Goal status colors
-const goalStatusColors: Record<string, { text: string; bg: string; icon: React.ReactNode }> = {
-  active: { text: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10", icon: <Clock className="h-3.5 w-3.5" /> },
-  in_progress: { text: "text-cyan-600 dark:text-cyan-400", bg: "bg-cyan-500/10", icon: <TrendingUp className="h-3.5 w-3.5" /> },
-  completed: { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10", icon: <CheckCircle className="h-3.5 w-3.5" /> },
-  cancelled: { text: "text-muted-foreground", bg: "bg-muted-foreground/10", icon: <AlertCircle className="h-3.5 w-3.5" /> },
+// Goal status colors extended with icons
+const goalStatusIcons: Record<string, React.ReactNode> = {
+  active: <Clock className="h-3.5 w-3.5" />,
+  in_progress: <TrendingUp className="h-3.5 w-3.5" />,
+  completed: <CheckCircle className="h-3.5 w-3.5" />,
+  cancelled: <AlertCircle className="h-3.5 w-3.5" />,
 };
 
 // Goal Card Component
 function GoalCard({ goal, onDelete }: { goal: WorkGoal; onDelete: (id: string) => void }) {
   const progressPercent = goal.progress_percentage || 0;
-  const typeColors = goalTypeColors[goal.goal_type] || goalTypeColors.performance;
-  const statusColors = goalStatusColors[goal.status] || goalStatusColors.active;
+  const typeColors = getStatusColor(GOAL_TYPE_COLORS, goal.goal_type);
+  const statusColors = getStatusColor(GOAL_STATUS_COLORS, goal.status);
+  const statusIcon = goalStatusIcons[goal.status] || null;
 
   return (
     <div className="bg-muted/70 rounded-xl border border-border hover:border-border transition overflow-hidden">
@@ -53,7 +48,7 @@ function GoalCard({ goal, onDelete }: { goal: WorkGoal; onDelete: (id: string) =
               {goal.goal_type.replace("_", " ")}
             </span>
             <span className={`${statusColors.text} ${statusColors.bg} text-xs px-2 py-0.5 rounded-full capitalize flex items-center gap-1`}>
-              {statusColors.icon}
+              {statusIcon}
               {goal.status.replace("_", " ")}
             </span>
           </div>
@@ -181,14 +176,42 @@ export default function GoalsPage() {
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
-            <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+      <div className="min-h-screen bg-background animate-pulse">
+        <main className="max-w-7xl mx-auto px-4 py-8">
+          <div className="flex items-center gap-2 text-sm mb-6">
+            <div className="h-4 w-16 bg-accent rounded" />
+            <div className="h-4 w-4 bg-accent rounded" />
+            <div className="h-4 w-12 bg-accent rounded" />
           </div>
-          <p className="text-muted-foreground text-sm">Loading goals...</p>
-        </div>
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <div className="h-8 w-32 bg-accent rounded mb-2" />
+              <div className="h-4 w-56 bg-accent rounded" />
+            </div>
+            <div className="h-9 w-28 bg-accent rounded-lg" />
+          </div>
+          <div className="flex items-center gap-4 mb-6">
+            <div className="flex bg-muted rounded-lg p-1 gap-1">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-8 w-20 bg-accent rounded-lg" />
+              ))}
+            </div>
+            <div className="h-9 flex-1 bg-accent rounded-lg" />
+          </div>
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-muted rounded-xl border border-border p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="h-5 w-48 bg-accent rounded" />
+                  <div className="h-6 w-20 bg-accent rounded-full" />
+                </div>
+                <div className="h-3 w-full bg-accent rounded mb-2" />
+                <div className="h-3 w-2/3 bg-accent rounded mb-4" />
+                <div className="h-2 w-full bg-accent rounded-full" />
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     );
   }
@@ -244,16 +267,12 @@ export default function GoalsPage() {
               </button>
             ))}
           </div>
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search goals..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-muted border border-border rounded-lg pl-10 pr-4 py-2 text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500 text-sm"
-            />
-          </div>
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search goals..."
+            wrapperClassName="flex-1"
+          />
         </div>
 
         {/* Goals List or Empty State */}
@@ -280,46 +299,14 @@ export default function GoalsPage() {
             </div>
           </div>
         ) : (
-          <div className="bg-muted rounded-xl border border-border p-12">
-            <div className="text-center max-w-lg mx-auto">
-              <div className="w-20 h-20 bg-accent rounded-full flex items-center justify-center mx-auto mb-6">
-                <Target className="w-10 h-10 text-muted-foreground" />
-              </div>
-              <h3 className="text-xl font-medium text-foreground mb-3">No goals yet</h3>
-              <p className="text-muted-foreground text-sm mb-8">
-                SMART goals help you track progress and automatically link your GitHub contributions.
-                Set Specific, Measurable, Achievable, Relevant, and Time-bound objectives.
-              </p>
-
-              <Link
-                href="/reviews/goals/new"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition font-medium"
-              >
-                <Plus className="h-4 w-4" />
-                Create Your First Goal
-              </Link>
-
-              {/* Goal Types */}
-              <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-4 text-left">
-                <div className="bg-accent/50 rounded-lg p-4">
-                  <div className="text-cyan-400 text-sm font-medium mb-1">Performance</div>
-                  <p className="text-muted-foreground text-xs">Delivery & quality targets</p>
-                </div>
-                <div className="bg-accent/50 rounded-lg p-4">
-                  <div className="text-purple-400 text-sm font-medium mb-1">Skill Development</div>
-                  <p className="text-muted-foreground text-xs">Learning new technologies</p>
-                </div>
-                <div className="bg-accent/50 rounded-lg p-4">
-                  <div className="text-emerald-400 text-sm font-medium mb-1">Project</div>
-                  <p className="text-muted-foreground text-xs">Feature & milestone goals</p>
-                </div>
-                <div className="bg-accent/50 rounded-lg p-4">
-                  <div className="text-amber-400 text-sm font-medium mb-1">Leadership</div>
-                  <p className="text-muted-foreground text-xs">Mentoring & team impact</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          <EmptyState
+            icon={Target}
+            title="No goals yet"
+            description="Set goals to track progress and align team objectives with company priorities."
+            actions={[
+              { label: "Create Goal", href: "/reviews/goals/new" },
+            ]}
+          />
         )}
       </main>
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { Info } from "lucide-react";
+import { HelpTooltip } from "@/components/ui/tooltip";
 import { LLMProviderSelector } from "@/components/agents/shared";
 
 interface LLMConfigStepProps {
@@ -47,9 +48,12 @@ export function LLMConfigStep({
 
       {/* Temperature */}
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">
-          Temperature
-        </label>
+        <div className="flex items-center gap-1.5 mb-2">
+          <label className="text-sm font-medium text-foreground">
+            Temperature
+          </label>
+          <HelpTooltip content="Controls response randomness. 0.0 = focused and deterministic, 1.0 = creative and varied. Recommended: 0.3-0.5 for support, 0.7-0.9 for creative tasks" />
+        </div>
         <div className="space-y-3">
           <div className="flex items-center gap-4">
             <input
@@ -82,9 +86,12 @@ export function LLMConfigStep({
 
       {/* Max Tokens */}
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">
-          Max Response Length
-        </label>
+        <div className="flex items-center gap-1.5 mb-2">
+          <label className="text-sm font-medium text-foreground">
+            Max Response Length
+          </label>
+          <HelpTooltip content="Maximum response length in tokens. ~750 words per 1,000 tokens. Higher values allow longer responses but increase cost" />
+        </div>
         <div className="grid grid-cols-4 gap-2">
           {[1000, 2000, 4000, 8000].map((tokens) => (
             <button

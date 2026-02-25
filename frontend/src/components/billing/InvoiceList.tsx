@@ -65,8 +65,16 @@ export function InvoiceList({ limit = 10, className = "" }: InvoiceListProps) {
     return (
       <div className={`bg-muted rounded-xl border border-border p-6 ${className}`}>
         <h3 className="text-lg font-semibold text-foreground mb-4">Invoice History</h3>
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
+        <div className="space-y-3 animate-pulse">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center justify-between py-2">
+              <div className="flex items-center gap-3">
+                <div className="h-4 w-24 bg-accent rounded" />
+                <div className="h-5 w-16 bg-accent rounded-full" />
+              </div>
+              <div className="h-4 w-20 bg-accent rounded" />
+            </div>
+          ))}
         </div>
       </div>
     );

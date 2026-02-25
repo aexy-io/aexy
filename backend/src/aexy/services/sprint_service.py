@@ -16,6 +16,7 @@ from aexy.models.sprint import (
     SprintRetrospective,
 )
 from aexy.models.team import Team, TeamMember
+from aexy.services.automation_service import dispatch_automation_event
 
 
 class SprintService:
@@ -213,6 +214,20 @@ class SprintService:
         # Record initial metrics
         await self._record_metrics_snapshot(sprint)
 
+        # Dispatch automation event
+        await dispatch_automation_event(
+            db=self.db,
+            workspace_id=str(sprint.workspace_id),
+            module="sprints",
+            trigger_type="sprint.started",
+            entity_id=str(sprint.id),
+            trigger_data={
+                "sprint_name": sprint.name,
+                "team_id": str(sprint.team_id),
+                "status": sprint.status,
+            },
+        )
+
         return sprint
 
     async def start_review(self, sprint_id: str) -> Sprint:
@@ -301,6 +316,43 @@ class SprintService:
         await self._calculate_velocity(sprint)
 
         await self.db.refresh(sprint)
+
+        # Dispatch automation event
+        await dispatch_automation_event(
+            db=self.db,
+            workspace_id=str(sprint.workspace_id),
+            module="sprints",
+            trigger_type="sprint.completed",
+            entity_id=str(sprint.id),
+            trigger_data={
+                "sprint_name": sprint.name,
+                "team_id": str(sprint.team_id),
+                "status": sprint.status,
+            },
+        )
+
+        # Dispatch velocity calculated trigger with analytics data
+        from aexy.services.sprint_analytics_service import SprintAnalyticsService
+        analytics = SprintAnalyticsService(self.db)
+        velocity = await analytics.calculate_sprint_velocity(sprint.id)
+        if velocity:
+            await dispatch_automation_event(
+                db=self.db,
+                workspace_id=str(sprint.workspace_id),
+                module="sprints",
+                trigger_type="sprint.velocity_calculated",
+                entity_id=str(sprint.id),
+                trigger_data={
+                    "sprint_name": sprint.name,
+                    "team_id": str(sprint.team_id),
+                    "committed_points": velocity.committed_points,
+                    "completed_points": velocity.completed_points,
+                    "carry_over_points": velocity.carry_over_points,
+                    "completion_rate": velocity.completion_rate,
+                    "focus_factor": velocity.focus_factor,
+                },
+            )
+
         return sprint
 
     # Carry-over handling

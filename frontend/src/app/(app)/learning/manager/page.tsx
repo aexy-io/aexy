@@ -13,6 +13,8 @@ import {
   LearningGoalStatus,
   LearningGoalType,
 } from "@/lib/api";
+import { GraduationCap } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 
 function formatCurrency(cents: number, currency = "USD"): string {
   return new Intl.NumberFormat("en-US", {
@@ -383,9 +385,12 @@ export default function ManagerLearningPage() {
                 </div>
               </>
             ) : (
-              <div className="text-center py-12 text-muted-foreground">
-                No data available
-              </div>
+              <EmptyState
+                icon={GraduationCap}
+                title="No learning data yet"
+                description="Learning analytics will appear as team members complete courses and activities."
+                compact
+              />
             )}
           </div>
         )}

@@ -14,6 +14,7 @@ import {
   Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { HelpTooltip } from "@/components/ui/tooltip";
 import {
   AutomationAgentTriggerListItem,
   AutomationAgentTriggerCreate,
@@ -36,16 +37,19 @@ const TRIGGER_POINTS = [
     value: "on_start",
     label: "On Start",
     description: "Run agent when automation starts",
+    tooltip: "Agent runs immediately when the automation workflow begins",
   },
   {
     value: "on_condition_match",
     label: "On Condition Match",
     description: "Run agent when conditions are met",
+    tooltip: "Agent runs only when specified conditions evaluate to true",
   },
   {
     value: "as_action",
     label: "As Action",
     description: "Run agent as an action step",
+    tooltip: "Agent is invoked as an explicit step in the workflow",
   },
 ] as const;
 
@@ -239,7 +243,10 @@ function AddTriggerForm({
 
         {/* Trigger Point */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Trigger Point</label>
+          <div className="flex items-center gap-1.5">
+            <label className="text-sm font-medium">Trigger Point</label>
+            <HelpTooltip content={TRIGGER_POINTS.find(tp => tp.value === selectedTriggerPoint)?.tooltip || "When the agent should run in the workflow"} />
+          </div>
           <select
             value={selectedTriggerPoint}
             onChange={(e) => setSelectedTriggerPoint(e.target.value)}
@@ -268,6 +275,7 @@ function AddTriggerForm({
             className="rounded"
           />
           Wait for completion
+          <HelpTooltip content="Blocks the workflow until the agent finishes responding. Use timeout to prevent indefinite hanging" />
         </label>
 
         {waitForCompletion && (
@@ -282,6 +290,7 @@ function AddTriggerForm({
               className="w-20 rounded-md border bg-background px-2 py-1 text-sm"
             />
             <span className="text-sm text-muted-foreground">seconds timeout</span>
+            <HelpTooltip content="Maximum seconds to wait for agent response before the workflow continues without it" />
           </div>
         )}
       </div>
@@ -422,16 +431,16 @@ function TriggerItem({
         <div className="border-t px-3 py-3 space-y-3 text-sm">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <span className="text-muted-foreground">Trigger Point:</span>{" "}
+              <span className="inline-flex items-center gap-1 text-muted-foreground">Trigger Point: <HelpTooltip content={TRIGGER_POINTS.find(tp => tp.value === trigger.trigger_point)?.tooltip || ""} /></span>{" "}
               <span className="font-medium">{triggerPointInfo?.label}</span>
             </div>
             <div>
-              <span className="text-muted-foreground">Wait for Completion:</span>{" "}
+              <span className="inline-flex items-center gap-1 text-muted-foreground">Wait for Completion: <HelpTooltip content="Blocks the workflow until the agent finishes responding. Use timeout to prevent indefinite hanging" /></span>{" "}
               <span className="font-medium">{trigger.wait_for_completion ? "Yes" : "No"}</span>
             </div>
             {trigger.wait_for_completion && (
               <div>
-                <span className="text-muted-foreground">Timeout:</span>{" "}
+                <span className="inline-flex items-center gap-1 text-muted-foreground">Timeout: <HelpTooltip content="Maximum seconds to wait for agent response before the workflow continues without it" /></span>{" "}
                 <span className="font-medium">{trigger.timeout_seconds} seconds</span>
               </div>
             )}
