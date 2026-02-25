@@ -94,6 +94,11 @@ function StatusBadge({ status }: { status: GTMProviderStatus }) {
       label: "Pending Setup",
       className: "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/30",
     },
+    suspended: {
+      icon: <XCircle className="w-3.5 h-3.5" />,
+      label: "Suspended",
+      className: "bg-zinc-500/20 text-muted-foreground border-zinc-500/30",
+    },
   };
 
   const { icon, label, className } = config[status] || config.inactive;
@@ -167,8 +172,15 @@ function ConfigureModal({
       if (status === 403) {
         setSaveError("You need admin permissions to configure providers.");
       } else {
-        const message = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-          || (err instanceof Error ? err.message : "Failed to save provider configuration.");
+        const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
+        let message: string;
+        if (typeof detail === "string") {
+          message = detail;
+        } else if (Array.isArray(detail)) {
+          message = detail.map((d: { msg?: string }) => d.msg || String(d)).join("; ");
+        } else {
+          message = err instanceof Error ? err.message : "Failed to save provider configuration.";
+        }
         setSaveError(message);
       }
     }
@@ -365,6 +377,7 @@ export default function GTMProvidersPage() {
       await createProvider({
         slot: configuringSlot as GTMProviderConfig["slot"],
         provider_name: providerName,
+        display_name: providerName,
         credentials: { api_key: apiKey },
       });
     }
@@ -480,15 +493,15 @@ export default function GTMProvidersPage() {
                       )}
                     </div>
                   )}
-                  {provider?.last_used_at && (
+                  {provider?.last_tested_at && (
                     <p className="text-muted-foreground text-xs mt-2">
-                      Last used:{" "}
-                      {new Date(provider.last_used_at).toLocaleDateString()}
+                      Last tested:{" "}
+                      {new Date(provider.last_tested_at).toLocaleDateString()}
                     </p>
                   )}
-                  {provider?.error_message && (
+                  {provider?.last_error && (
                     <p className="text-red-400/80 text-xs mt-2">
-                      {provider.error_message}
+                      {provider.last_error}
                     </p>
                   )}
                 </div>

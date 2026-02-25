@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Target, Plus, Loader2, RefreshCw, Users, BarChart2 } from "lucide-react";
+import { Target, Plus, Loader2, RefreshCw, Users, BarChart2, X } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import {
   useGTMABMOverview,
@@ -9,6 +9,8 @@ import {
   useGTMABMAccounts,
 } from "@/hooks/useGTM";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { gtmApi } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Tier styles
 const TIER_STYLES: Record<string, string> = {
@@ -98,8 +100,14 @@ function StageBar({
 export default function ABMPage() {
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id ?? null;
+  const queryClient = useQueryClient();
 
   const [page, setPage] = useState(1);
+  const [showModal, setShowModal] = useState(false);
+  const [formName, setFormName] = useState("");
+  const [formDynamic, setFormDynamic] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [tierFilter, setTierFilter]   = useState<string | undefined>();
   const [stageFilter, setStageFilter] = useState<string | undefined>();
   const [listFilter, setListFilter]   = useState<string | undefined>();
@@ -144,7 +152,10 @@ export default function ABMPage() {
               <RefreshCw className="w-4 h-4" />
               Refresh
             </button>
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors">
+            <button
+              onClick={() => { setShowModal(true); setFormName(""); setFormDynamic(false); setFormError(null); }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors"
+            >
               <Plus className="w-4 h-4" />
               New List
             </button>
@@ -404,6 +415,57 @@ export default function ABMPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+        {/* New List Modal */}
+        {showModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+            <div className="relative bg-background border border-border rounded-2xl w-full max-w-md mx-4 shadow-2xl">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                <h2 className="text-lg font-semibold text-foreground">New Target List</h2>
+                <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="px-6 py-5 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Name</label>
+                  <input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g. Enterprise Target Accounts" className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+                </div>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={formDynamic} onChange={(e) => setFormDynamic(e.target.checked)} className="w-4 h-4 rounded border-border text-indigo-600 focus:ring-indigo-500/50" />
+                  <div>
+                    <span className="text-sm font-medium text-foreground">Dynamic list</span>
+                    <p className="text-xs text-muted-foreground">Automatically add accounts matching criteria</p>
+                  </div>
+                </label>
+                {formError && <p className="text-sm text-red-400">{formError}</p>}
+              </div>
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
+                <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+                <button
+                  disabled={!formName.trim() || creating}
+                  onClick={async () => {
+                    if (!workspaceId || !formName.trim()) return;
+                    setCreating(true);
+                    setFormError(null);
+                    try {
+                      await gtmApi.abm.createList(workspaceId, { name: formName.trim(), is_dynamic: formDynamic, is_active: true });
+                      queryClient.invalidateQueries({ queryKey: ["gtmABMTargetLists", workspaceId] });
+                      queryClient.invalidateQueries({ queryKey: ["gtmABMOverview", workspaceId] });
+                      setShowModal(false);
+                    } catch {
+                      setFormError("Failed to create target list");
+                    } finally {
+                      setCreating(false);
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
+                >
+                  {creating && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Create List
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

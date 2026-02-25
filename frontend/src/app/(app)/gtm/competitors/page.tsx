@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Swords, Plus, Loader2, RefreshCw, ExternalLink } from "lucide-react";
+import { Swords, Plus, Loader2, RefreshCw, ExternalLink, X } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useGTMCompetitors, useGTMCompetitorChanges } from "@/hooks/useGTM";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { gtmApi } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
 
 const SEVERITY_STYLES: Record<string, string> = {
   critical:  "bg-red-500/20 text-red-400 border-red-500/30",
@@ -24,8 +26,14 @@ const CHANGE_TYPE_STYLES: Record<string, string> = {
 export default function CompetitorsPage() {
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id ?? null;
+  const queryClient = useQueryClient();
 
   const [changesPage, setChangesPage] = useState(1);
+  const [showModal, setShowModal] = useState(false);
+  const [formName, setFormName] = useState("");
+  const [formDomain, setFormDomain] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const { competitors, isLoading: competitorsLoading } = useGTMCompetitors(workspaceId);
   const { changes, total, isLoading: changesLoading } = useGTMCompetitorChanges(workspaceId, {
@@ -55,7 +63,10 @@ export default function CompetitorsPage() {
               <RefreshCw className="w-4 h-4" />
               Refresh
             </button>
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors">
+            <button
+              onClick={() => { setShowModal(true); setFormName(""); setFormDomain(""); setFormError(null); }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors"
+            >
               <Plus className="w-4 h-4" />
               Add Competitor
             </button>
@@ -206,6 +217,53 @@ export default function CompetitorsPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+        {/* Add Competitor Modal */}
+        {showModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+            <div className="relative bg-background border border-border rounded-2xl w-full max-w-md mx-4 shadow-2xl">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                <h2 className="text-lg font-semibold text-foreground">Add Competitor</h2>
+                <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="px-6 py-5 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Company Name</label>
+                  <input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g. Acme Corp" className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Domain</label>
+                  <input value={formDomain} onChange={(e) => setFormDomain(e.target.value)} placeholder="e.g. acme.com" className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+                </div>
+                {formError && <p className="text-sm text-red-400">{formError}</p>}
+              </div>
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
+                <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+                <button
+                  disabled={!formName.trim() || creating}
+                  onClick={async () => {
+                    if (!workspaceId || !formName.trim()) return;
+                    setCreating(true);
+                    setFormError(null);
+                    try {
+                      await gtmApi.competitors.create(workspaceId, { name: formName.trim(), domain: formDomain.trim() || undefined, is_active: true });
+                      queryClient.invalidateQueries({ queryKey: ["gtmCompetitors", workspaceId] });
+                      setShowModal(false);
+                    } catch {
+                      setFormError("Failed to add competitor");
+                    } finally {
+                      setCreating(false);
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
+                >
+                  {creating && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Add Competitor
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

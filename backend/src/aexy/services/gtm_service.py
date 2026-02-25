@@ -68,11 +68,15 @@ class GTMProviderService:
         # Look up provider class for metadata
         klass = ProviderRegistry.get_class(data["slot"], data["provider_name"])
 
+        # If credentials were provided, mark as active immediately
+        initial_status = "active" if credentials else "pending_setup"
+
         config = GTMProviderConfig(
             id=str(uuid4()),
             workspace_id=workspace_id,
             credentials=encrypted,
             monthly_cost_cents=klass.MONTHLY_COST_CENTS if klass else 0,
+            status=initial_status,
             **data,
         )
 
@@ -95,6 +99,10 @@ class GTMProviderService:
         # Handle credentials update
         if "credentials" in data and data["credentials"] is not None:
             config.credentials = encrypt_credentials(data.pop("credentials"))
+            # Mark as active when credentials are (re-)provided
+            if config.status in ("pending_setup", "error"):
+                config.status = "active"
+                config.last_error = None
 
         # Handle default toggle
         if data.get("is_default"):

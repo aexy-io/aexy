@@ -165,25 +165,36 @@ async def create_provider(
 
     _ensure_providers_registered()
 
+    # Normalize provider_name to lowercase for registry lookup
+    normalized_name = data.provider_name.lower().replace(" ", "_")
+
     # Check if provider class exists
-    if not ProviderRegistry.get_class(data.slot, data.provider_name):
+    if not ProviderRegistry.get_class(data.slot, normalized_name):
+        available = ProviderRegistry.list_available(data.slot)
+        names = [p["name"] for p in available]
+        hint = f" Available: {', '.join(names)}" if names else ""
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unknown provider: {data.slot}/{data.provider_name}",
+            detail=f"Unknown provider: {data.slot}/{data.provider_name}.{hint}",
         )
 
     service = GTMProviderService(db)
 
+    # Use the normalized name for storage
+    payload = data.model_dump()
+    payload["provider_name"] = normalized_name
+
     # Check for duplicate
-    existing = await service.get_provider(workspace_id, data.slot, data.provider_name)
+    existing = await service.get_provider(workspace_id, data.slot, normalized_name)
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Provider {data.provider_name} already configured for slot {data.slot}",
+            detail=f"Provider {normalized_name} already configured for slot {data.slot}",
         )
 
-    config = await service.create_provider(workspace_id, data.model_dump())
+    config = await service.create_provider(workspace_id, payload)
     await db.commit()
+    await db.refresh(config)
     return config
 
 
@@ -542,6 +553,7 @@ def _ensure_providers_registered():
     import aexy.integrations.providers.contact_enrichment  # noqa: F401
     import aexy.integrations.providers.linkedin_automation  # noqa: F401
     import aexy.integrations.providers.sms_provider  # noqa: F401
+    import aexy.integrations.providers.generic_providers  # noqa: F401
     _providers_registered = True
 
 
@@ -999,6 +1011,7 @@ async def activate_sequence(
     if not sequence:
         raise HTTPException(status_code=400, detail="Cannot activate sequence — must have steps and be in draft/paused status")
     await db.commit()
+    await db.refresh(sequence)
     return sequence
 
 
@@ -1016,6 +1029,7 @@ async def pause_sequence(
     if not sequence:
         raise HTTPException(status_code=400, detail="Sequence is not active")
     await db.commit()
+    await db.refresh(sequence)
     return sequence
 
 
@@ -1414,7 +1428,7 @@ async def list_alert_configs(
     from aexy.services.gtm_alert_service import GTMAlertService
     await check_workspace_permission(workspace_id, current_user, db)
     service = GTMAlertService(db)
-    return await service.list_configs(workspace_id)
+    return await service.list_alert_configs(workspace_id)
 
 
 @router.post("/alerts/configs")
@@ -1429,7 +1443,7 @@ async def create_alert_config(
     await check_workspace_permission(workspace_id, current_user, db)
     parsed = AlertConfigCreate(**data)
     service = GTMAlertService(db)
-    return await service.create_config(workspace_id, parsed)
+    return await service.create_alert_config(workspace_id, parsed.model_dump())
 
 
 @router.put("/alerts/configs/{alert_id}")
@@ -1445,7 +1459,7 @@ async def update_alert_config(
     await check_workspace_permission(workspace_id, current_user, db)
     parsed = AlertConfigUpdate(**data)
     service = GTMAlertService(db)
-    result = await service.update_config(workspace_id, alert_id, parsed.model_dump(exclude_none=True))
+    result = await service.update_alert_config(workspace_id, alert_id, parsed.model_dump(exclude_none=True))
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     return result
@@ -1461,7 +1475,7 @@ async def delete_alert_config(
     from aexy.services.gtm_alert_service import GTMAlertService
     await check_workspace_permission(workspace_id, current_user, db)
     service = GTMAlertService(db)
-    deleted = await service.delete_config(workspace_id, alert_id)
+    deleted = await service.delete_alert_config(workspace_id, alert_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Not found")
 
@@ -1479,7 +1493,7 @@ async def list_alert_logs(
     from aexy.services.gtm_alert_service import GTMAlertService
     await check_workspace_permission(workspace_id, current_user, db)
     service = GTMAlertService(db)
-    return await service.list_logs(workspace_id, page=page, per_page=per_page, event_type=event_type)
+    return await service.list_alert_logs(workspace_id, page=page, per_page=per_page, event_type=event_type)
 
 
 @router.post("/alerts/test/{alert_id}")
@@ -1528,7 +1542,7 @@ async def create_routing_rule(
     await check_workspace_permission(workspace_id, current_user, db)
     parsed = RoutingRuleCreate(**data)
     service = LeadRoutingService(db)
-    return await service.create_rule(workspace_id, parsed)
+    return await service.create_rule(workspace_id, parsed.model_dump())
 
 
 @router.put("/routing/rules/{rule_id}")
@@ -1780,7 +1794,7 @@ async def create_expansion_playbook(
     await check_workspace_permission(workspace_id, current_user, db)
     parsed = PlaybookCreate(**data)
     service = ExpansionPlaybookService(db)
-    return await service.create_playbook(workspace_id, parsed)
+    return await service.create_playbook(workspace_id, parsed.model_dump())
 
 
 @router.get("/expansion/playbooks/{playbook_id}")
@@ -1932,7 +1946,7 @@ async def create_handoff(
     await check_workspace_permission(workspace_id, current_user, db)
     parsed = HandoffCreate(**data)
     service = HandoffService(db)
-    return await service.create_handoff(workspace_id, parsed)
+    return await service.create_handoff(workspace_id, parsed.model_dump())
 
 
 @router.get("/handoffs")
@@ -2205,7 +2219,7 @@ async def create_competitor(
     await check_workspace_permission(workspace_id, current_user, db)
     parsed = CompetitorCreate(**data)
     service = CompetitorIntelService(db)
-    return await service.create_competitor(workspace_id, parsed)
+    return await service.create_competitor(workspace_id, parsed.model_dump())
 
 
 @router.get("/competitors/changes")
@@ -2399,7 +2413,7 @@ async def create_seo_audit(
     await check_workspace_permission(workspace_id, current_user, db)
     parsed = SEOAuditCreate(**data)
     service = SEOAuditService(db)
-    audit = await service.create_audit(workspace_id, parsed)
+    audit = await service.create_audit(workspace_id, parsed.target_url, record_id=parsed.record_id)
     wf_id = await dispatch(
         "run_seo_audit",
         {"workspace_id": workspace_id, "audit_id": str(audit.id)},
@@ -2504,7 +2518,7 @@ async def create_content_gap_analysis(
     await check_workspace_permission(workspace_id, current_user, db)
     parsed = ContentAnalysisCreate(**data)
     service = ContentGapService(db)
-    analysis = await service.create_analysis(workspace_id, parsed)
+    analysis = await service.create_analysis(workspace_id, parsed.our_domain, parsed.competitor_domains)
     wf_id = await dispatch(
         "run_content_gap_analysis",
         {"workspace_id": workspace_id, "analysis_id": str(analysis.id)},
@@ -2525,7 +2539,8 @@ async def list_content_gap_analyses(
     from aexy.services.content_gap_service import ContentGapService
     await check_workspace_permission(workspace_id, current_user, db)
     service = ContentGapService(db)
-    return await service.list_analyses(workspace_id, page=page, per_page=per_page)
+    items, total = await service.list_analyses(workspace_id, page=page, per_page=per_page)
+    return {"items": items, "total": total, "page": page, "per_page": per_page}
 
 
 @router.get("/content-gap/analyses/{analysis_id}")
@@ -2589,7 +2604,7 @@ async def create_abm_target_list(
     await check_workspace_permission(workspace_id, current_user, db)
     parsed = TargetListCreate(**data)
     service = ABMService(db)
-    return await service.create_target_list(workspace_id, parsed)
+    return await service.create_target_list(workspace_id, parsed.model_dump())
 
 
 @router.get("/abm/overview")
@@ -2685,7 +2700,7 @@ async def add_abm_accounts_to_list(
     from aexy.schemas.gtm_abm import ABMAccountCreate
     from aexy.services.abm_service import ABMService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = [ABMAccountCreate(**item) for item in data]
+    parsed = [ABMAccountCreate(**item).model_dump() for item in data]
     service = ABMService(db)
     return await service.add_accounts(workspace_id, list_id, parsed)
 

@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Globe, Plus, Loader2, RefreshCw, BarChart2 } from "lucide-react";
+import { Globe, Plus, Loader2, RefreshCw, BarChart2, X } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useGTMSEOAudits } from "@/hooks/useGTM";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { gtmApi } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
 
 const STATUS_STYLES: Record<string, string> = {
   pending:   "bg-amber-500/20 text-amber-400 border-amber-500/30",
@@ -51,8 +53,14 @@ function formatDuration(seconds: number | null | undefined): string {
 export default function SEOAuditPage() {
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id ?? null;
+  const queryClient = useQueryClient();
 
   const [page, setPage] = useState(1);
+  const [showModal, setShowModal] = useState(false);
+  const [formUrl, setFormUrl] = useState("");
+  const [formMaxPages, setFormMaxPages] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const { audits, total, isLoading } = useGTMSEOAudits(workspaceId, { page });
 
@@ -79,7 +87,10 @@ export default function SEOAuditPage() {
               <RefreshCw className="w-4 h-4" />
               Refresh
             </button>
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors">
+            <button
+              onClick={() => { setShowModal(true); setFormUrl(""); setFormMaxPages(""); setFormError(null); }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors"
+            >
               <Plus className="w-4 h-4" />
               New Audit
             </button>
@@ -189,6 +200,56 @@ export default function SEOAuditPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+        {/* New Audit Modal */}
+        {showModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+            <div className="relative bg-background border border-border rounded-2xl w-full max-w-md mx-4 shadow-2xl">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                <h2 className="text-lg font-semibold text-foreground">New SEO Audit</h2>
+                <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="px-6 py-5 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Target URL</label>
+                  <input value={formUrl} onChange={(e) => setFormUrl(e.target.value)} placeholder="e.g. https://example.com" className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Max Pages to Crawl</label>
+                  <input type="number" value={formMaxPages} onChange={(e) => setFormMaxPages(e.target.value)} placeholder="Optional (default: unlimited)" className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+                </div>
+                {formError && <p className="text-sm text-red-400">{formError}</p>}
+              </div>
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
+                <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+                <button
+                  disabled={!formUrl.trim() || creating}
+                  onClick={async () => {
+                    if (!workspaceId || !formUrl.trim()) return;
+                    setCreating(true);
+                    setFormError(null);
+                    try {
+                      await gtmApi.seo.createAudit(workspaceId, {
+                        target_url: formUrl.trim(),
+                        max_pages: formMaxPages ? parseInt(formMaxPages, 10) : undefined,
+                      });
+                      queryClient.invalidateQueries({ queryKey: ["gtmSEOAudits", workspaceId] });
+                      setShowModal(false);
+                    } catch {
+                      setFormError("Failed to start audit");
+                    } finally {
+                      setCreating(false);
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
+                >
+                  {creating && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Start Audit
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
