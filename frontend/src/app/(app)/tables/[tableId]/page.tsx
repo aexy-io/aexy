@@ -9,6 +9,7 @@ import {
   Trash2,
   Table2,
   Settings,
+  Share2,
   X,
   Type,
   Columns,
@@ -16,14 +17,23 @@ import {
 } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
-import { useWorkspace } from "@/hooks/useWorkspace";
-import { useTables, useTableFields, useTableRecords, useTableAccess, useSavedViews } from "@/hooks/useTables";
+import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
+import {
+  useTables,
+  useTableFields,
+  useTableRecords,
+  useTableAccess,
+  useSavedViews,
+  useTableCollaborators,
+  useTableShareLinks,
+} from "@/hooks/useTables";
 import { DataTable } from "@/components/crm/DataTable";
 import { ViewSwitcher, ViewMode } from "@/components/crm/ViewSwitcher";
 import { SavedViewSwitcher } from "@/components/crm/SavedViewSwitcher";
 import { KanbanBoard } from "@/components/crm/KanbanBoard";
 import { ColumnVisibilityMenu } from "@/components/crm/ColumnSelector";
 import { FieldEditor } from "@/components/fields";
+import { TableShareDialog, TablePermissionBadge } from "@/components/tables";
 import { FIELD_TYPE_OPTIONS, getFieldTypeOption } from "@/config/fieldTypes";
 import type { CRMAttribute, CRMRecord, CRMAttributeType, TableSavedView, ColumnDisplayConfig } from "@/lib/api";
 
@@ -365,11 +375,24 @@ export default function TableDetailPage() {
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
 
-  const { tables } = useTables(workspaceId);
+  const { tables, updateTable, isUpdating } = useTables(workspaceId);
   const table = tables.find((t) => t.id === tableId);
 
   const { fields, isLoading: fieldsLoading, addField, deleteField, isAdding } = useTableFields(workspaceId, tableId);
   const { access } = useTableAccess(workspaceId, tableId);
+  const {
+    collaborators,
+    addCollaborator,
+    updateCollaborator,
+    removeCollaborator,
+  } = useTableCollaborators(workspaceId, tableId);
+  const {
+    shareLinks,
+    createShareLink,
+    revokeShareLink,
+    isCreating: isCreatingLink,
+  } = useTableShareLinks(workspaceId, tableId);
+  const { members: workspaceMembers } = useWorkspaceMembers(workspaceId);
 
   // Saved views
   const {
@@ -385,6 +408,7 @@ export default function TableDetailPage() {
 
   const [showAddField, setShowAddField] = useState(false);
   const [showFieldManager, setShowFieldManager] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
 
   // Adapt fields to CRMAttribute shape for DataTable compatibility
   const attributes: CRMAttribute[] = useMemo(() => {
@@ -658,6 +682,18 @@ export default function TableDetailPage() {
               isUpdating={isUpdatingView}
             />
 
+            <button
+              onClick={() => setShowShareDialog(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors"
+              title="Share table"
+            >
+              <Share2 className="h-4 w-4" />
+              Share
+              {access && (
+                <TablePermissionBadge permission={access.permission} size="sm" className="ml-0.5" />
+              )}
+            </button>
+
             <ViewSwitcher value={viewMode} onChange={setViewMode} availableViews={availableViews} />
 
             {canEdit && (
@@ -826,6 +862,55 @@ export default function TableDetailPage() {
         fields={attributes}
         tableName={table?.name || "Table"}
         defaultValues={createDefaultValues}
+      />
+
+      <TableShareDialog
+        open={showShareDialog}
+        onOpenChange={setShowShareDialog}
+        tableId={tableId}
+        tableName={table?.name || "Table"}
+        visibility={table?.visibility || "workspace"}
+        rowAccessMode={table?.row_access_mode || "all"}
+        myAccess={access}
+        fields={fields.map((f) => ({
+          id: f.id,
+          object_id: f.object_id,
+          name: f.name,
+          slug: f.slug,
+          attribute_type: f.attribute_type,
+          description: f.description,
+          is_required: f.is_required,
+          is_unique: f.is_unique,
+          is_filterable: f.is_filterable,
+          is_sortable: f.is_sortable ?? true,
+          is_visible: f.is_visible ?? true,
+          is_system: f.is_system,
+          default_value: f.default_value,
+          config: f.config,
+          position: f.position,
+          column_width: f.column_width,
+          created_at: f.created_at,
+          updated_at: f.updated_at,
+        }))}
+        collaborators={collaborators}
+        onAddCollaborator={addCollaborator}
+        onUpdateCollaborator={updateCollaborator}
+        onRemoveCollaborator={removeCollaborator}
+        shareLinks={shareLinks}
+        onCreateShareLink={createShareLink}
+        onRevokeShareLink={revokeShareLink}
+        isCreatingLink={isCreatingLink}
+        onUpdateTable={({ visibility, row_access_mode }) =>
+          updateTable({
+            tableId,
+            data: {
+              ...(visibility !== undefined && { visibility }),
+              ...(row_access_mode !== undefined && { row_access_mode }),
+            },
+          })
+        }
+        isUpdatingTable={isUpdating}
+        workspaceMembers={workspaceMembers}
       />
     </div>
   );
