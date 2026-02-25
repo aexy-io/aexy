@@ -659,6 +659,14 @@ class CRMList(Base):
         nullable=False,
     )
 
+    # Per-column display config [{slug, width, variant, conditional_format}]
+    column_config: Mapped[list] = mapped_column(
+        JSONB,
+        default=list,
+        nullable=False,
+        server_default="'[]'",
+    )
+
     # Kanban-specific settings
     group_by_attribute: Mapped[str | None] = mapped_column(String(100), nullable=True)
     kanban_settings: Mapped[dict] = mapped_column(

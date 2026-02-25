@@ -721,6 +721,7 @@ class DataTableService:
         filters: list[dict] | None = None,
         sorts: list[dict] | None = None,
         visible_attributes: list[str] | None = None,
+        column_config: list[dict] | None = None,
         group_by_attribute: str | None = None,
         kanban_settings: dict | None = None,
         is_private: bool = False,
@@ -752,6 +753,7 @@ class DataTableService:
             filters=filters or [],
             sorts=sorts or [],
             visible_attributes=visible_attributes or [],
+            column_config=column_config or [],
             group_by_attribute=group_by_attribute,
             kanban_settings=kanban_settings or {},
             is_private=is_private,
@@ -761,6 +763,39 @@ class DataTableService:
         await self.db.flush()
         await self.db.refresh(view)
         return view
+
+    async def get_view(self, view_id: str) -> CRMList | None:
+        """Get a single saved view by ID."""
+        stmt = select(CRMList).where(CRMList.id == view_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def update_view(self, view_id: str, **kwargs) -> CRMList | None:
+        """Update a saved view."""
+        stmt = select(CRMList).where(CRMList.id == view_id)
+        result = await self.db.execute(stmt)
+        view = result.scalar_one_or_none()
+        if not view:
+            return None
+
+        for key, value in kwargs.items():
+            if hasattr(view, key):
+                setattr(view, key, value)
+
+        await self.db.flush()
+        await self.db.refresh(view)
+        return view
+
+    async def delete_view(self, view_id: str) -> bool:
+        """Delete a saved view."""
+        stmt = select(CRMList).where(CRMList.id == view_id)
+        result = await self.db.execute(stmt)
+        view = result.scalar_one_or_none()
+        if not view:
+            return False
+        await self.db.delete(view)
+        await self.db.flush()
+        return True
 
     async def list_views(
         self,
