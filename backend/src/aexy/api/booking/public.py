@@ -30,7 +30,6 @@ from aexy.schemas.booking import (
 )
 from aexy.services.booking import BookingService, AvailabilityService, CalendarSyncService
 from aexy.services.booking.booking_notification_service import BookingNotificationService
-from aexy.services.email_service import EmailService
 
 router = APIRouter(
     prefix="/public/book",
@@ -470,42 +469,13 @@ async def create_public_booking(
             # Log but don't fail the booking if calendar creation fails
             logger.warning(f"Failed to create calendar events for booking {booking.id}: {e}")
 
+        # Send confirmation emails to invitee and host
+        await BookingNotificationService(db).send_confirmation_safe(booking)
+
         # Get host info
         host_stmt = select(Developer).where(Developer.id == booking.host_id)
         host_result = await db.execute(host_stmt)
         host = host_result.scalar_one_or_none()
-
-        # Send confirmation emails (best-effort, don't fail the booking)
-        try:
-            from aexy.services.email_service import email_service
-
-            email_context = {
-                "event_name": event_type.name,
-                "invitee_name": booking.invitee_name,
-                "host_name": host.name if host else "Host",
-                "start_time": booking.start_time.isoformat() if booking.start_time else "",
-                "end_time": booking.end_time.isoformat() if booking.end_time else "",
-                "timezone": booking.timezone or "UTC",
-                "duration_minutes": event_type.duration_minutes,
-                "location": booking.location or booking.meeting_link,
-                "confirmation_message": event_type.confirmation_message or "",
-            }
-            # Email to invitee
-            if booking.invitee_email:
-                await email_service.send_booking_email(
-                    to_email=booking.invitee_email,
-                    template_name="booking_confirmation_invitee",
-                    context=email_context,
-                )
-            # Email to host
-            if host and host.email:
-                await email_service.send_booking_email(
-                    to_email=host.email,
-                    template_name="booking_confirmation_host",
-                    context=email_context,
-                )
-        except Exception as e:
-            logger.warning(f"Failed to send confirmation emails for booking {booking.id}: {e}")
 
         return BookingConfirmationResponse(
             id=booking.id,
