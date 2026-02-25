@@ -1076,9 +1076,13 @@ async def update_view(
     await check_workspace_permission(workspace_id, current_user, db)
 
     service = DataTableService(db)
-    existing = await service.get_view(view_id)
+    existing = await service.get_view(view_id, workspace_id=workspace_id)
     if not existing or str(existing.object_id) != table_id:
         raise HTTPException(status_code=404, detail="View not found")
+
+    # Private views can only be updated by their owner
+    if existing.is_private and str(existing.owner_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Cannot modify another user's private view")
 
     update_data = data.model_dump(exclude_unset=True)
     if "filters" in update_data and update_data["filters"] is not None:
@@ -1091,7 +1095,7 @@ async def update_view(
         ks = update_data["kanban_settings"]
         update_data["kanban_settings"] = ks if isinstance(ks, dict) else ks.model_dump()
 
-    view = await service.update_view(view_id, **update_data)
+    view = await service.update_view(view_id, workspace_id=workspace_id, **update_data)
     if not view:
         raise HTTPException(status_code=404, detail="View not found")
 
@@ -1134,11 +1138,15 @@ async def delete_view(
     await check_workspace_permission(workspace_id, current_user, db)
 
     service = DataTableService(db)
-    existing = await service.get_view(view_id)
+    existing = await service.get_view(view_id, workspace_id=workspace_id)
     if not existing or str(existing.object_id) != table_id:
         raise HTTPException(status_code=404, detail="View not found")
 
-    if not await service.delete_view(view_id):
+    # Private views can only be deleted by their owner
+    if existing.is_private and str(existing.owner_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Cannot delete another user's private view")
+
+    if not await service.delete_view(view_id, workspace_id=workspace_id):
         raise HTTPException(status_code=404, detail="View not found")
 
     await db.commit()

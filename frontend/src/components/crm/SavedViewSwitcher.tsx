@@ -217,6 +217,7 @@ export function SavedViewSwitcher({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            if (!confirm(`Delete view "${view.name}"? This cannot be undone.`)) return;
                             onDeleteView(view.id);
                             if (activeViewId === view.id) onSelectView(null);
                           }}
