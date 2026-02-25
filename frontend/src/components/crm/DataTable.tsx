@@ -4,6 +4,8 @@ import { useState, useMemo, useCallback } from "react";
 import {
   DndContext,
   DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
   PointerSensor,
   useSensor,
   useSensors,
@@ -49,6 +51,7 @@ interface DataTableProps {
   enableColumnSelector?: boolean;
   showCheckboxes?: boolean;
   showActions?: boolean;
+  showNameColumn?: boolean;
   className?: string;
 }
 
@@ -75,6 +78,7 @@ export function DataTable({
   enableColumnSelector = true,
   showCheckboxes = true,
   showActions = true,
+  showNameColumn = true,
   className,
 }: DataTableProps) {
   // Internal state for uncontrolled mode
@@ -108,20 +112,33 @@ export function DataTable({
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 5,
       },
     })
   );
 
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(event.active.id as string);
+  };
+
   // Handle column reorder
   const handleDragEnd = (event: DragEndEvent) => {
+    setActiveDragId(null);
     const { active, over } = event;
     if (over && active.id !== over.id) {
       const oldIndex = columnOrder.indexOf(active.id as string);
       const newIndex = columnOrder.indexOf(over.id as string);
-      setColumnOrder(arrayMove(columnOrder, oldIndex, newIndex));
+      if (oldIndex !== -1 && newIndex !== -1) {
+        setColumnOrder(arrayMove(columnOrder, oldIndex, newIndex));
+      }
     }
   };
+
+  const activeDragAttribute = activeDragId
+    ? visibleAttributes.find((a) => a.slug === activeDragId)
+    : null;
 
   // Toggle column visibility
   const handleToggleColumn = useCallback((slug: string) => {
@@ -154,6 +171,7 @@ export function DataTable({
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
           <table className="w-full">
@@ -171,12 +189,14 @@ export function DataTable({
                   </th>
                 )}
 
-                {/* Name column (always first) */}
-                <SimpleColumnHeader
-                  label="Name"
-                  sortDirection={sortConfig?.attribute === "display_name" ? sortConfig.direction : null}
-                  onSort={() => onSort?.("display_name")}
-                />
+                {/* Name column (CRM entities) */}
+                {showNameColumn && (
+                  <SimpleColumnHeader
+                    label="Name"
+                    sortDirection={sortConfig?.attribute === "display_name" ? sortConfig.direction : null}
+                    onSort={() => onSort?.("display_name")}
+                  />
+                )}
 
                 {/* Dynamic columns */}
                 <SortableContext
@@ -220,7 +240,7 @@ export function DataTable({
               {isLoading ? (
                 <tr>
                   <td
-                    colSpan={visibleAttributes.length + (showCheckboxes ? 1 : 0) + (showActions ? 1 : 0) + (enableColumnSelector ? 1 : 0) + 1}
+                    colSpan={visibleAttributes.length + (showCheckboxes ? 1 : 0) + (showActions ? 1 : 0) + (enableColumnSelector ? 1 : 0) + (showNameColumn ? 1 : 0)}
                     className="px-4 py-8 text-center text-muted-foreground"
                   >
                     Loading records...
@@ -229,7 +249,7 @@ export function DataTable({
               ) : records.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={visibleAttributes.length + (showCheckboxes ? 1 : 0) + (showActions ? 1 : 0) + (enableColumnSelector ? 1 : 0) + 1}
+                    colSpan={visibleAttributes.length + (showCheckboxes ? 1 : 0) + (showActions ? 1 : 0) + (enableColumnSelector ? 1 : 0) + (showNameColumn ? 1 : 0)}
                     className="px-4 py-8 text-center text-muted-foreground"
                   >
                     {emptyMessage}
@@ -253,15 +273,17 @@ export function DataTable({
                       </td>
                     )}
 
-                    {/* Name */}
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => onRecordClick?.(record)}
-                        className="text-foreground font-medium hover:text-purple-400 transition-colors text-left"
-                      >
-                        {record.display_name || "Untitled"}
-                      </button>
-                    </td>
+                    {/* Name (CRM entities) */}
+                    {showNameColumn && (
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => onRecordClick?.(record)}
+                          className="text-foreground font-medium hover:text-purple-400 transition-colors text-left"
+                        >
+                          {record.display_name || "Untitled"}
+                        </button>
+                      </td>
+                    )}
 
                     {/* Dynamic columns */}
                     {visibleAttributes.map((attr) => (
@@ -305,6 +327,13 @@ export function DataTable({
               )}
             </tbody>
           </table>
+          <DragOverlay>
+            {activeDragAttribute ? (
+              <div className="px-4 py-3 bg-muted border border-purple-500 rounded-lg shadow-lg text-sm font-medium text-foreground">
+                {activeDragAttribute.name}
+              </div>
+            ) : null}
+          </DragOverlay>
         </DndContext>
       </div>
 
