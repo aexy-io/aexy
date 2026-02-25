@@ -22,6 +22,7 @@ import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useTables, useTableFields } from "@/hooks/useTables";
 import { getFieldTypeOption } from "@/config/fieldTypes";
+import { CustomFieldTypeManager } from "@/components/fields";
 import type { TableVisibility, TableRowAccessMode } from "@/lib/api";
 
 const VISIBILITY_OPTIONS: { value: TableVisibility; label: string; description: string; icon: typeof Globe }[] = [
@@ -457,6 +458,11 @@ export default function TableSettingsPage() {
                 })}
               </div>
             )}
+          </section>
+
+          {/* Custom Field Types */}
+          <section className="border border-border rounded-xl p-6">
+            <CustomFieldTypeManager workspaceId={workspaceId} />
           </section>
 
           {/* Danger Zone */}

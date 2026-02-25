@@ -13,6 +13,7 @@ import {
   X,
   Columns,
   Loader2,
+  Star,
 } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
@@ -37,34 +38,54 @@ import { FieldEditor } from "@/components/fields";
 import { TableShareDialog, TablePermissionBadge, TableAuditLog } from "@/components/tables";
 import { TableFilterPanel, FilterRule, matchesFilters } from "@/components/tables/TableFilterPanel";
 import { FIELD_TYPE_OPTIONS } from "@/config/fieldTypes";
-import type { CRMAttribute, CRMRecord, CRMAttributeType, TableSavedView, ColumnDisplayConfig } from "@/lib/api";
+import { registerCustomFieldTypes, getAllCustomFieldTypes } from "@/components/fields";
+import { useCustomFieldTypes } from "@/hooks/useTables";
+import type { CRMAttribute, CRMRecord, CRMAttributeType, TableSavedView, ColumnDisplayConfig, WorkspaceFieldType } from "@/lib/api";
 
 function AddFieldPanel({
   onAdd,
   isAdding,
   onClose,
+  customFieldTypes,
 }: {
   onAdd: (data: { name: string; attribute_type: string; options?: Record<string, unknown> }) => Promise<unknown>;
   isAdding: boolean;
   onClose: () => void;
+  customFieldTypes?: WorkspaceFieldType[];
 }) {
   const [step, setStep] = useState<"pick" | "configure">("pick");
   const [selectedType, setSelectedType] = useState<CRMAttributeType | null>(null);
   const [fieldName, setFieldName] = useState("");
   const [statusOptions, setStatusOptions] = useState<string[]>(["To Do", "In Progress", "Done"]);
   const [selectOptions, setSelectOptions] = useState<string[]>([""]);
+  const [selectedCustomType, setSelectedCustomType] = useState<WorkspaceFieldType | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const handlePickType = (type: CRMAttributeType) => {
     setSelectedType(type);
+    setSelectedCustomType(null);
     setFieldName("");
+    setStep("configure");
+  };
+
+  const handlePickCustomType = (cft: WorkspaceFieldType) => {
+    setSelectedCustomType(cft);
+    setSelectedType(cft.base_type as CRMAttributeType);
+    setFieldName(cft.name);
+    // Pre-populate select options from preset
+    if (cft.preset_options && cft.preset_options.length > 0) {
+      setSelectOptions(cft.preset_options.map((o) => o.label));
+    }
     setStep("configure");
   };
 
   const handleCreate = async () => {
     if (!selectedType || !fieldName.trim()) return;
+    const attrType = selectedCustomType ? `custom:${selectedCustomType.slug}` : selectedType;
     const options: Record<string, unknown> = {};
-    if (selectedType === "status") {
+    if (selectedCustomType?.preset_options && selectedCustomType.preset_options.length > 0) {
+      options.options = selectedCustomType.preset_options;
+    } else if (selectedType === "status") {
       options.options = statusOptions.filter(Boolean).map((label) => ({
         value: label.toLowerCase().replace(/\s+/g, "_"),
         label,
@@ -81,7 +102,7 @@ function AddFieldPanel({
     } else if (selectedType === "rating") {
       options.max_rating = 5;
     }
-    await onAdd({ name: fieldName.trim(), attribute_type: selectedType, options: Object.keys(options).length > 0 ? options : undefined });
+    await onAdd({ name: fieldName.trim(), attribute_type: attrType, options: Object.keys(options).length > 0 ? options : undefined });
     onClose();
   };
 
@@ -100,20 +121,45 @@ function AddFieldPanel({
       </div>
 
       {step === "pick" ? (
-        <div className="p-3 grid grid-cols-2 gap-2 max-h-[400px] overflow-y-auto">
-          {FIELD_TYPE_OPTIONS.map((ft) => (
-            <button
-              key={ft.type}
-              onClick={() => handlePickType(ft.type)}
-              className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent text-left transition-colors border border-transparent hover:border-border"
-            >
-              <div className="p-1.5 rounded-md bg-purple-500/10 text-purple-500">{ft.icon}</div>
-              <div>
-                <div className="text-sm font-medium text-foreground">{ft.label}</div>
-                <div className="text-xs text-muted-foreground">{ft.description}</div>
+        <div className="p-3 max-h-[400px] overflow-y-auto space-y-3">
+          {customFieldTypes && customFieldTypes.length > 0 && (
+            <>
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Custom</div>
+              <div className="grid grid-cols-2 gap-2">
+                {customFieldTypes.map((cft) => (
+                  <button
+                    key={cft.id}
+                    onClick={() => handlePickCustomType(cft)}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent text-left transition-colors border border-transparent hover:border-border"
+                  >
+                    <div className="p-1.5 rounded-md" style={{ backgroundColor: cft.color ? `${cft.color}20` : "rgba(139, 92, 246, 0.1)" }}>
+                      <Star className="h-4 w-4" style={{ color: cft.color || "#8b5cf6" }} />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-foreground">{cft.name}</div>
+                      <div className="text-xs text-muted-foreground">{FIELD_TYPE_OPTIONS.find((f) => f.type === cft.base_type)?.label || cft.base_type}</div>
+                    </div>
+                  </button>
+                ))}
               </div>
-            </button>
-          ))}
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Built-in</div>
+            </>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            {FIELD_TYPE_OPTIONS.map((ft) => (
+              <button
+                key={ft.type}
+                onClick={() => handlePickType(ft.type)}
+                className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent text-left transition-colors border border-transparent hover:border-border"
+              >
+                <div className="p-1.5 rounded-md bg-purple-500/10 text-purple-500">{ft.icon}</div>
+                <div>
+                  <div className="text-sm font-medium text-foreground">{ft.label}</div>
+                  <div className="text-xs text-muted-foreground">{ft.description}</div>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="p-4 space-y-4">
@@ -317,7 +363,15 @@ export default function TableDetailPage() {
   const table = tables.find((t) => t.id === tableId);
 
   const { fields, isLoading: fieldsLoading, addField, isAdding } = useTableFields(workspaceId, tableId);
+  const { fieldTypes: customFieldTypes } = useCustomFieldTypes(workspaceId);
   const { access } = useTableAccess(workspaceId, tableId);
+
+  // Register custom field types for the field registry to resolve custom:slug types
+  useEffect(() => {
+    if (customFieldTypes.length > 0) {
+      registerCustomFieldTypes(customFieldTypes);
+    }
+  }, [customFieldTypes]);
   const {
     collaborators,
     addCollaborator,
@@ -671,6 +725,7 @@ export default function TableDetailPage() {
                     onAdd={addField}
                     isAdding={isAdding}
                     onClose={() => setShowAddField(false)}
+                    customFieldTypes={customFieldTypes}
                   />
                 )}
               </div>

@@ -17867,6 +17867,59 @@ export interface TableShareLink {
   created_at: string | null;
 }
 
+export interface WorkspaceFieldType {
+  id: string;
+  workspace_id: string;
+  name: string;
+  slug: string;
+  base_type: string;
+  default_variant: string | null;
+  default_display_config: Record<string, unknown> | null;
+  icon: string | null;
+  color: string | null;
+  validation_rules: Record<string, unknown> | null;
+  preset_options: { value: string; label: string; color?: string }[] | null;
+  created_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const customFieldTypesApi = {
+  list: async (workspaceId: string): Promise<WorkspaceFieldType[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/custom-field-types`);
+    return response.data;
+  },
+  create: async (workspaceId: string, data: {
+    name: string;
+    slug?: string;
+    base_type: string;
+    default_variant?: string;
+    default_display_config?: Record<string, unknown>;
+    icon?: string;
+    color?: string;
+    validation_rules?: Record<string, unknown>;
+    preset_options?: { value: string; label: string; color?: string }[];
+  }): Promise<WorkspaceFieldType> => {
+    const response = await api.post(`/workspaces/${workspaceId}/custom-field-types`, data);
+    return response.data;
+  },
+  update: async (workspaceId: string, typeId: string, data: Partial<{
+    name: string;
+    default_variant: string;
+    default_display_config: Record<string, unknown>;
+    icon: string;
+    color: string;
+    validation_rules: Record<string, unknown>;
+    preset_options: { value: string; label: string; color?: string }[];
+  }>): Promise<WorkspaceFieldType> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/custom-field-types/${typeId}`, data);
+    return response.data;
+  },
+  delete: async (workspaceId: string, typeId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/custom-field-types/${typeId}`);
+  },
+};
+
 export interface TableAuditEntry {
   id: string;
   action: string;
