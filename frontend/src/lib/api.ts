@@ -17495,7 +17495,7 @@ export type GTMProviderSlot =
   | "analytics"
   | "data_warehouse";
 
-export type GTMProviderStatus = "active" | "inactive" | "error" | "pending_setup";
+export type GTMProviderStatus = "active" | "inactive" | "error" | "pending_setup" | "suspended";
 
 export type IdentificationStatus = "anonymous" | "identified" | "resolved" | "failed";
 
@@ -17506,15 +17506,16 @@ export interface GTMProviderConfig {
   workspace_id: string;
   slot: GTMProviderSlot;
   provider_name: string;
-  display_name: string;
+  display_name: string | null;
   status: GTMProviderStatus;
   is_default: boolean;
-  settings: Record<string, unknown>;
-  monthly_cost_cents: number | null;
-  usage_this_month: number;
+  is_active: boolean;
+  config: Record<string, unknown>;
+  monthly_cost_cents: number;
+  usage_count: number;
   usage_limit: number | null;
-  last_used_at: string | null;
-  error_message: string | null;
+  last_error: string | null;
+  last_tested_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -17524,15 +17525,16 @@ export interface GTMProviderConfigCreate {
   provider_name: string;
   display_name?: string;
   credentials: Record<string, string>;
-  settings?: Record<string, unknown>;
+  config?: Record<string, unknown>;
   is_default?: boolean;
 }
 
 export interface GTMProviderConfigUpdate {
   display_name?: string;
   credentials?: Record<string, string>;
-  settings?: Record<string, unknown>;
+  config?: Record<string, unknown>;
   is_default?: boolean;
+  is_active?: boolean;
 }
 
 export interface VisitorSession {

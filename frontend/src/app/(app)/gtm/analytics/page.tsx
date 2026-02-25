@@ -94,7 +94,7 @@ export default function GTMAnalyticsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -167,8 +167,8 @@ export default function GTMAnalyticsPage() {
                 />
                 <Tooltip
                   {...chartTooltipStyle}
-                  formatter={(value: number, _name: string, props: { payload: { conversion_rate: number } }) => [
-                    `${value} (${(props.payload.conversion_rate * 100).toFixed(1)}% conv.)`,
+                  formatter={(value: number | undefined, _name: string, props: unknown) => [
+                    `${value ?? 0} (${(((props as { payload?: { conversion_rate?: number } })?.payload?.conversion_rate ?? 0) * 100).toFixed(1)}% conv.)`,
                     "Count",
                   ]}
                 />
@@ -306,7 +306,7 @@ export default function GTMAnalyticsPage() {
                       <Tooltip
                         {...chartTooltipStyle}
                         labelFormatter={(label: string) => label}
-                        formatter={(value: number) => [value, chart.label]}
+                        formatter={(value: number | undefined) => [value ?? 0, chart.label]}
                       />
                       <Area
                         type="monotone"
@@ -352,8 +352,8 @@ export default function GTMAnalyticsPage() {
                 <YAxis tick={{ fill: "#a1a1aa", fontSize: 12 }} />
                 <Tooltip
                   {...chartTooltipStyle}
-                  formatter={(value: number, _name: string, props: { payload: { percentage: number } }) => [
-                    `${value} (${props.payload.percentage.toFixed(1)}%)`,
+                  formatter={(value: number | undefined, _name: string, props: unknown) => [
+                    `${value ?? 0} (${((props as { payload?: { percentage?: number } })?.payload?.percentage ?? 0).toFixed(1)}%)`,
                     "Conversions",
                   ]}
                 />

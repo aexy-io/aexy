@@ -12,7 +12,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 GTMProviderSlot = Literal[
     "visitor_identification", "email_verification", "contact_enrichment",
-    "linkedin_automation", "sms"
+    "linkedin_automation", "sms", "intent_data", "seo_tracking",
+    "ad_platform", "analytics", "data_warehouse"
 ]
 
 GTMProviderStatus = Literal["pending_setup", "active", "error", "suspended"]

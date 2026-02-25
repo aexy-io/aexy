@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { FileSearch, Plus, Loader2, RefreshCw } from "lucide-react";
+import { FileSearch, Plus, Loader2, RefreshCw, X } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useGTMContentAnalyses } from "@/hooks/useGTM";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { gtmApi } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
 
 const STATUS_STYLES: Record<string, string> = {
   pending:   "bg-amber-500/20 text-amber-400 border-amber-500/30",
@@ -28,8 +30,14 @@ function StatusBadge({ status }: { status: string }) {
 export default function ContentGapPage() {
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id ?? null;
+  const queryClient = useQueryClient();
 
   const [page, setPage] = useState(1);
+  const [showModal, setShowModal] = useState(false);
+  const [formOurDomain, setFormOurDomain] = useState("");
+  const [formCompetitorDomains, setFormCompetitorDomains] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const { analyses, total, isLoading } = useGTMContentAnalyses(workspaceId, { page });
 
@@ -58,7 +66,10 @@ export default function ContentGapPage() {
               <RefreshCw className="w-4 h-4" />
               Refresh
             </button>
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors">
+            <button
+              onClick={() => { setShowModal(true); setFormOurDomain(""); setFormCompetitorDomains(""); setFormError(null); }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors"
+            >
               <Plus className="w-4 h-4" />
               New Analysis
             </button>
@@ -106,18 +117,22 @@ export default function ContentGapPage() {
                         {analysis.our_domain ?? "—"}
                       </td>
                       <td className="px-6 py-4 text-sm text-foreground font-mono">
-                        {Array.isArray(analysis.competitors)
-                          ? analysis.competitors.length
-                          : analysis.competitor_count ?? "—"}
+                        {Array.isArray(analysis.competitor_domains)
+                          ? analysis.competitor_domains.length
+                          : "—"}
                       </td>
                       <td className="px-6 py-4">
                         <StatusBadge status={analysis.status ?? "pending"} />
                       </td>
                       <td className="px-6 py-4 text-sm text-foreground font-mono">
-                        {analysis.gaps_count?.toLocaleString() ?? "—"}
+                        {Array.isArray(analysis.gaps)
+                          ? analysis.gaps.length.toLocaleString()
+                          : "—"}
                       </td>
                       <td className="px-6 py-4 text-sm text-emerald-400 font-mono">
-                        {analysis.opportunities_count?.toLocaleString() ?? "—"}
+                        {Array.isArray(analysis.opportunities)
+                          ? analysis.opportunities.length.toLocaleString()
+                          : "—"}
                       </td>
                       <td className="px-6 py-4 text-sm text-muted-foreground font-mono">
                         {analysis.pages_analyzed?.toLocaleString() ?? "—"}
@@ -166,6 +181,62 @@ export default function ContentGapPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+        {/* New Analysis Modal */}
+        {showModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+            <div className="relative bg-background border border-border rounded-2xl w-full max-w-md mx-4 shadow-2xl">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                <h2 className="text-lg font-semibold text-foreground">New Content Gap Analysis</h2>
+                <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="px-6 py-5 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Your Domain</label>
+                  <input value={formOurDomain} onChange={(e) => setFormOurDomain(e.target.value)} placeholder="e.g. yourcompany.com" className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Competitor Domains</label>
+                  <textarea
+                    value={formCompetitorDomains}
+                    onChange={(e) => setFormCompetitorDomains(e.target.value)}
+                    rows={3}
+                    placeholder="One domain per line, e.g.&#10;competitor1.com&#10;competitor2.com"
+                    className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Enter one domain per line</p>
+                </div>
+                {formError && <p className="text-sm text-red-400">{formError}</p>}
+              </div>
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
+                <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+                <button
+                  disabled={!formOurDomain.trim() || !formCompetitorDomains.trim() || creating}
+                  onClick={async () => {
+                    if (!workspaceId || !formOurDomain.trim() || !formCompetitorDomains.trim()) return;
+                    setCreating(true);
+                    setFormError(null);
+                    const domains = formCompetitorDomains.split("\n").map(d => d.trim()).filter(Boolean);
+                    if (domains.length === 0) { setFormError("Add at least one competitor domain"); setCreating(false); return; }
+                    try {
+                      await gtmApi.contentGap.createAnalysis(workspaceId, { our_domain: formOurDomain.trim(), competitor_domains: domains });
+                      queryClient.invalidateQueries({ queryKey: ["gtmContentAnalyses", workspaceId] });
+                      setShowModal(false);
+                    } catch {
+                      setFormError("Failed to start analysis");
+                    } finally {
+                      setCreating(false);
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
+                >
+                  {creating && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Start Analysis
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

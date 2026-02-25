@@ -22,6 +22,11 @@ class GTMProviderSlot(str, Enum):
     CONTACT_ENRICHMENT = "contact_enrichment"
     LINKEDIN_AUTOMATION = "linkedin_automation"
     SMS = "sms"
+    INTENT_DATA = "intent_data"
+    SEO_TRACKING = "seo_tracking"
+    AD_PLATFORM = "ad_platform"
+    ANALYTICS = "analytics"
+    DATA_WAREHOUSE = "data_warehouse"
 
 
 class GTMProviderStatus(str, Enum):
