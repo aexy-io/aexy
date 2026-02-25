@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useSearchParams, useRouter } from "next/navigation";
 import { bookingApi, CalendarConnection } from "@/lib/booking-api";
@@ -41,45 +41,7 @@ export default function CalendarsPage() {
   const [connecting, setConnecting] = useState<string | null>(null);
   const [syncing, setSyncing] = useState<string | null>(null);
 
-  // Handle OAuth callback results from URL params
-  useEffect(() => {
-    const success = searchParams.get("success");
-    const error = searchParams.get("error");
-    const provider = searchParams.get("provider");
-    const providerName = provider === "microsoft" ? "Microsoft Outlook" : "Google Calendar";
-
-    if (success === "true") {
-      toast.success(`${providerName} connected successfully!`);
-      // Reload connections to show the new one
-      if (currentWorkspace?.id) {
-        loadConnections();
-      }
-      // Clear URL params
-      router.replace("/booking/calendars", { scroll: false });
-    } else if (error) {
-      const decodedError = decodeURIComponent(error);
-      // Format error message for better readability
-      if (decodedError.includes("not configured")) {
-        toast.error(`${providerName} integration is not configured. Please contact your administrator.`);
-      } else if (decodedError.includes("access_denied")) {
-        toast.error(`Authorization was denied. Please try again and grant the required permissions.`);
-      } else if (decodedError.includes("invalid_grant")) {
-        toast.error(`Authorization expired. Please try connecting again.`);
-      } else {
-        toast.error(`Failed to connect ${providerName}: ${decodedError}`);
-      }
-      // Clear URL params
-      router.replace("/booking/calendars", { scroll: false });
-    }
-  }, [searchParams, router, currentWorkspace?.id]);
-
-  useEffect(() => {
-    if (currentWorkspace?.id) {
-      loadConnections();
-    }
-  }, [currentWorkspace?.id]);
-
-  const loadConnections = async () => {
+  const loadConnections = useCallback(async () => {
     if (!currentWorkspace?.id) return;
 
     try {
@@ -92,7 +54,46 @@ export default function CalendarsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentWorkspace?.id]);
+
+  // Handle OAuth callback results from URL params
+  useEffect(() => {
+    const success = searchParams.get("success");
+    const error = searchParams.get("error");
+    const provider = searchParams.get("provider");
+
+    // Wait for workspace to be loaded before handling callback params
+    // so loadConnections() can actually fetch the new connection
+    if (!currentWorkspace?.id) return;
+    if (!success && !error) return;
+
+    const providerName = provider === "microsoft" ? "Microsoft Outlook" : "Google Calendar";
+
+    if (success === "true") {
+      toast.success(`${providerName} connected successfully!`);
+      loadConnections();
+    } else if (error) {
+      const decodedError = decodeURIComponent(error);
+      if (decodedError.includes("not configured")) {
+        toast.error(`${providerName} integration is not configured. Please contact your administrator.`);
+      } else if (decodedError.includes("access_denied")) {
+        toast.error(`Authorization was denied. Please try again and grant the required permissions.`);
+      } else if (decodedError.includes("invalid_grant")) {
+        toast.error(`Authorization expired. Please try connecting again.`);
+      } else {
+        toast.error(`Failed to connect ${providerName}: ${decodedError}`);
+      }
+    }
+
+    // Clear URL params after handling
+    router.replace("/booking/calendars", { scroll: false });
+  }, [searchParams, currentWorkspace?.id, loadConnections]);
+
+  useEffect(() => {
+    if (currentWorkspace?.id) {
+      loadConnections();
+    }
+  }, [currentWorkspace?.id, loadConnections]);
 
   const connectCalendar = async (provider: string) => {
     if (!currentWorkspace?.id) return;
