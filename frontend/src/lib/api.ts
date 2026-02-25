@@ -17764,6 +17764,7 @@ export interface StandaloneTable {
   id: string;
   workspace_id: string;
   name: string;
+  slug: string;
   plural_name: string;
   description: string | null;
   icon: string | null;
