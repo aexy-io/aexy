@@ -51,6 +51,8 @@ import { SprintTask, TaskStatus, TaskPriority, SprintListItem, EpicListItem, spr
 import { useQuery } from "@tanstack/react-query";
 import { TaskCardPremium, TaskCardSkeleton } from "@/components/planning/TaskCardPremium";
 import { FilterBar } from "@/components/planning/FilterBar";
+import { SavedViewSwitcher } from "@/components/crm/SavedViewSwitcher";
+import { useSavedViews } from "@/hooks/useSavedViews";
 import { CommandPalette } from "@/components/CommandPalette";
 import { TaskDescriptionEditor, TaskDescriptionEditorRef, MentionUser } from "@/components/planning/TaskDescriptionEditor";
 import { redirect } from "next/navigation";
@@ -1336,6 +1338,17 @@ export default function ProjectBoardPage({
   const { project } = useProject(currentWorkspaceId, projectId);
   const { members } = useWorkspaceMembers(currentWorkspaceId);
 
+  // Saved views for sprint tasks
+  const {
+    views: savedViews,
+    createView,
+    updateView,
+    deleteView,
+    isCreating: isCreatingView,
+    isUpdating: isUpdatingView,
+  } = useSavedViews(currentWorkspaceId, "sprint_task", projectId);
+  const [activeViewId, setActiveViewId] = useState<string | null>(null);
+
   // Fetch task templates for the workspace
   const { data: templatesData } = useQuery({
     queryKey: ["taskTemplates", currentWorkspaceId],
@@ -1354,6 +1367,53 @@ export default function ProjectBoardPage({
         avatar_url: m.developer_avatar_url || undefined,
       }));
   }, [members]);
+
+  // Apply saved view filters to the board
+  const handleSelectView = useCallback((view: typeof savedViews[number] | null) => {
+    if (!view) {
+      setActiveViewId(null);
+      clearFilters();
+      return;
+    }
+    setActiveViewId(view.id);
+    // Map saved view filters back to BoardFilters
+    const newFilters: Record<string, unknown> = {};
+    for (const f of view.filters || []) {
+      const attr = f.attribute as string;
+      const val = f.value;
+      if (attr === "assignee_id" || attr === "assignees") newFilters.assignees = Array.isArray(val) ? val : [val];
+      else if (attr === "priority" || attr === "priorities") newFilters.priorities = Array.isArray(val) ? val : [val];
+      else if (attr === "labels") newFilters.labels = Array.isArray(val) ? val : [val];
+      else if (attr === "epic_id" || attr === "epics") newFilters.epics = Array.isArray(val) ? val : [val];
+      else if (attr === "sprint_id" || attr === "sprints") newFilters.sprints = Array.isArray(val) ? val : [val];
+      else if (attr === "search") newFilters.search = val as string;
+    }
+    updateFilters(newFilters as Parameters<typeof updateFilters>[0]);
+    if (view.view_type === "kanban" || view.view_type === "board") setViewMode("status");
+    else if (view.view_type === "table") setViewMode("sprint");
+  }, [clearFilters, updateFilters, setViewMode]);
+
+  const handleSaveView = useCallback(async (data: Parameters<typeof createView>[0]) => {
+    // Convert current BoardFilters into the generic filter format
+    const filterList: Record<string, unknown>[] = [];
+    if (filters.assignees.length) filterList.push({ attribute: "assignees", operator: "in", value: filters.assignees });
+    if (filters.priorities.length) filterList.push({ attribute: "priorities", operator: "in", value: filters.priorities });
+    if (filters.labels.length) filterList.push({ attribute: "labels", operator: "in", value: filters.labels });
+    if (filters.epics.length) filterList.push({ attribute: "epics", operator: "in", value: filters.epics });
+    if (filters.sprints.length) filterList.push({ attribute: "sprints", operator: "in", value: filters.sprints });
+    if (filters.search) filterList.push({ attribute: "search", operator: "equals", value: filters.search });
+
+    await createView({
+      ...data,
+      view_type: viewMode === "status" ? "kanban" : "table",
+      filters: filterList,
+      entity_scope_id: projectId,
+    });
+  }, [createView, filters, viewMode, projectId]);
+
+  const handleUpdateView = useCallback(async (viewId: string, data: Parameters<typeof updateView>[1]) => {
+    await updateView(viewId, data);
+  }, [updateView]);
 
   const [selectedTask, setSelectedTask] = useState<SprintTask | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -1717,6 +1777,21 @@ export default function ProjectBoardPage({
 
             <div className="flex items-center gap-3">
               {/* View Mode Toggle */}
+              <SavedViewSwitcher
+                views={savedViews}
+                activeViewId={activeViewId}
+                onSelectView={handleSelectView}
+                onSaveView={handleSaveView}
+                onUpdateView={handleUpdateView}
+                onDeleteView={deleteView}
+                currentConfig={{
+                  view_type: viewMode === "status" ? "kanban" : "table",
+                  sorts: [],
+                }}
+                isCreating={isCreatingView}
+                isUpdating={isUpdatingView}
+              />
+
               <div className="flex items-center bg-muted border border-border rounded-lg p-0.5">
                 <button
                   onClick={() => setViewMode("sprint")}

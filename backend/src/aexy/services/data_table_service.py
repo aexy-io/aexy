@@ -714,7 +714,7 @@ class DataTableService:
 
     async def create_view(
         self,
-        table_id: str,
+        table_id: str | None,
         workspace_id: str,
         name: str,
         view_type: str = "table",
@@ -726,6 +726,8 @@ class DataTableService:
         kanban_settings: dict | None = None,
         is_private: bool = False,
         owner_id: str | None = None,
+        entity_type: str = "crm_record",
+        entity_scope_id: str | None = None,
     ) -> CRMList:
         """Create a saved view on a table."""
         base_slug = _generate_slug(name)
@@ -758,6 +760,8 @@ class DataTableService:
             kanban_settings=kanban_settings or {},
             is_private=is_private,
             owner_id=owner_id,
+            entity_type=entity_type,
+            entity_scope_id=entity_scope_id,
         )
         self.db.add(view)
         await self.db.flush()
@@ -812,15 +816,22 @@ class DataTableService:
 
     async def list_views(
         self,
-        table_id: str,
-        workspace_id: str,
+        table_id: str | None = None,
+        workspace_id: str = "",
         user_id: str | None = None,
+        entity_type: str | None = None,
+        entity_scope_id: str | None = None,
     ) -> list[CRMList]:
-        """List saved views for a table."""
-        stmt = select(CRMList).where(
-            CRMList.workspace_id == workspace_id,
-            CRMList.object_id == table_id,
-        )
+        """List saved views, optionally filtered by table or entity type."""
+        stmt = select(CRMList).where(CRMList.workspace_id == workspace_id)
+
+        if table_id:
+            stmt = stmt.where(CRMList.object_id == table_id)
+        if entity_type:
+            stmt = stmt.where(CRMList.entity_type == entity_type)
+        if entity_scope_id:
+            stmt = stmt.where(CRMList.entity_scope_id == entity_scope_id)
+
         if user_id:
             stmt = stmt.where(
                 or_(

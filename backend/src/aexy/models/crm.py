@@ -619,10 +619,10 @@ class CRMList(Base):
         nullable=False,
         index=True,
     )
-    object_id: Mapped[str] = mapped_column(
+    object_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("crm_objects.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
 
