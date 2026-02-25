@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   Plus,
-  Filter,
   ChevronLeft,
   Trash2,
   Table2,
@@ -34,6 +33,7 @@ import { KanbanBoard } from "@/components/crm/KanbanBoard";
 import { ColumnVisibilityMenu } from "@/components/crm/ColumnSelector";
 import { FieldEditor } from "@/components/fields";
 import { TableShareDialog, TablePermissionBadge } from "@/components/tables";
+import { TableFilterPanel, FilterRule, matchesFilters } from "@/components/tables/TableFilterPanel";
 import { FIELD_TYPE_OPTIONS, getFieldTypeOption } from "@/config/fieldTypes";
 import type { CRMAttribute, CRMRecord, CRMAttributeType, TableSavedView, ColumnDisplayConfig } from "@/lib/api";
 
@@ -440,6 +440,7 @@ export default function TableDetailPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createDefaultValues, setCreateDefaultValues] = useState<Record<string, unknown>>({});
   const [sortConfig, setSortConfig] = useState<{ attribute: string; direction: "asc" | "desc" } | null>(null);
+  const [filterRules, setFilterRules] = useState<FilterRule[]>([]);
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
   const [columnOrder, setColumnOrder] = useState<string[]>([]);
 
@@ -496,14 +497,22 @@ export default function TableDetailPage() {
     }));
   }, [rawRecords]);
 
-  // Filter by search
+  // Filter by search + filter rules
   const filteredRecords = useMemo(() => {
-    if (!searchQuery) return records;
-    const q = searchQuery.toLowerCase();
-    return records.filter((r) =>
-      Object.values(r.values).some((val) => String(val).toLowerCase().includes(q))
-    );
-  }, [records, searchQuery]);
+    let result = records;
+    // Apply filter rules
+    if (filterRules.length > 0) {
+      result = result.filter((r) => matchesFilters(r, filterRules, attributes));
+    }
+    // Apply search
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((r) =>
+        Object.values(r.values).some((val) => String(val).toLowerCase().includes(q))
+      );
+    }
+    return result;
+  }, [records, searchQuery, filterRules, attributes]);
 
   const hasStatusField = useMemo(() => {
     return fields.some((f) => f.attribute_type === "status");
@@ -762,10 +771,11 @@ export default function TableDetailPage() {
               placeholder={`Search records...`}
               wrapperClassName="flex-1"
             />
-            <button className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors">
-              <Filter className="h-4 w-4" />
-              Filter
-            </button>
+            <TableFilterPanel
+              attributes={attributes}
+              filters={filterRules}
+              onChange={setFilterRules}
+            />
 
             {viewMode === "table" && attributes.length > 0 && (
               <ColumnVisibilityMenu

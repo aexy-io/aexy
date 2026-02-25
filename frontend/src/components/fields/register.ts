@@ -18,6 +18,7 @@ import { RatingFieldView, RatingFieldEdit } from "./types/RatingField";
 import { TextareaFieldView, TextareaFieldEdit } from "./types/TextareaField";
 import { RecordReferenceFieldView, UserReferenceFieldView, ReferenceFieldEdit } from "./types/ReferenceField";
 import { FormulaFieldView, RollupFieldView, AiComputedFieldView, ComputedFieldEdit } from "./types/ComputedField";
+import { FileFieldView, FileFieldEdit } from "./types/FileField";
 
 registerFieldType({
   type: "text",
@@ -157,3 +158,4 @@ registerFieldType({ type: "user_reference", label: "User Reference", view: UserR
 registerFieldType({ type: "formula", label: "Formula", view: FormulaFieldView, edit: ComputedFieldEdit });
 registerFieldType({ type: "rollup", label: "Rollup", view: RollupFieldView, edit: ComputedFieldEdit });
 registerFieldType({ type: "ai_computed", label: "AI Computed", view: AiComputedFieldView, edit: ComputedFieldEdit });
+registerFieldType({ type: "file" as any, label: "File", view: FileFieldView, edit: FileFieldEdit });
