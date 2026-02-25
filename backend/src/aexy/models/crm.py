@@ -1638,3 +1638,59 @@ class TableAuditLog(Base):
     # Relationships
     table: Mapped["CRMObject"] = relationship("CRMObject", lazy="selectin")
     actor: Mapped["Developer"] = relationship("Developer", lazy="selectin")
+
+
+# =============================================================================
+# CUSTOM FIELD TYPES (Phase 8.7)
+# =============================================================================
+
+class CustomFieldType(Base):
+    """Workspace-defined custom field type composing a built-in base type."""
+
+    __tablename__ = "custom_field_types"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()),
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    slug: Mapped[str] = mapped_column(String(50), nullable=False)
+    base_type: Mapped[str] = mapped_column(String(30), nullable=False)
+
+    # Display configuration
+    default_variant: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    default_display_config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    icon: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    color: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
+    # Validation
+    validation_rules: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    # Preset options (for select-based custom types)
+    preset_options: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+
+    created_by_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False,
+    )
+
+    # Relationships
+    workspace: Mapped["Workspace"] = relationship("Workspace", lazy="selectin")
+    created_by: Mapped["Developer | None"] = relationship("Developer", lazy="selectin")
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "slug", name="uq_custom_field_type_slug"),
+    )
