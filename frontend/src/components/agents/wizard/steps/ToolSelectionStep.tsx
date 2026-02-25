@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
+import { HelpTooltip } from "@/components/ui/tooltip";
 import { ToolSelector } from "@/components/agents/shared";
 import { useAgentTools } from "@/hooks/useAgents";
 import { getAgentTypeConfig, AgentType } from "@/lib/api";
@@ -29,10 +30,17 @@ export function ToolSelectionStep({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 text-purple-400 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading available tools...</p>
+      <div className="py-6 animate-pulse">
+        <div className="grid grid-cols-2 gap-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="border border-border rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-5 w-5 bg-accent rounded" />
+                <div className="h-4 w-24 bg-accent rounded" />
+              </div>
+              <div className="h-3 w-full bg-accent rounded" />
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -49,9 +57,12 @@ export function ToolSelectionStep({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-foreground mb-2">
-          Select Tools
-        </h2>
+        <div className="flex items-center gap-1.5 mb-2">
+          <h2 className="text-xl font-semibold text-foreground">
+            Select Tools
+          </h2>
+          <HelpTooltip content="Capabilities the agent can use when responding. More tools increase flexibility but may reduce response speed" />
+        </div>
         <p className="text-muted-foreground">
           Choose which capabilities your agent should have. Tools determine what
           actions the agent can take.

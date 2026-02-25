@@ -14,6 +14,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { EXECUTION_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
 interface ExecutionStep {
   id: string;
@@ -63,13 +64,13 @@ interface ExecutionHistoryProps {
   onSelectExecution?: (execution: ExecutionDetail) => void;
 }
 
-const statusConfig: Record<string, { icon: typeof CheckCircle; color: string; bg: string }> = {
-  completed: { icon: CheckCircle, color: "text-green-600 dark:text-green-400", bg: "bg-green-500/10" },
-  failed: { icon: XCircle, color: "text-red-600 dark:text-red-400", bg: "bg-red-500/10" },
-  running: { icon: Play, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10" },
-  paused: { icon: Pause, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10" },
-  pending: { icon: Clock, color: "text-muted-foreground", bg: "bg-muted-foreground/10" },
-  cancelled: { icon: AlertCircle, color: "text-muted-foreground", bg: "bg-muted-foreground/10" },
+const statusIcons: Record<string, typeof CheckCircle> = {
+  completed: CheckCircle,
+  failed: XCircle,
+  running: Play,
+  paused: Pause,
+  pending: Clock,
+  cancelled: AlertCircle,
 };
 
 const stepStatusConfig: Record<string, { color: string; bg: string }> = {
@@ -210,20 +211,28 @@ export function ExecutionHistory({
             </button>
 
             {isLoadingDetail ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+              <div className="px-4 py-4 space-y-4 animate-pulse">
+                <div className="rounded-lg p-3 bg-accent">
+                  <div className="h-4 w-32 bg-muted rounded mb-2" />
+                  <div className="h-3 w-48 bg-muted rounded" />
+                </div>
+                {[1, 2].map((i) => (
+                  <div key={i} className="border border-border rounded-lg p-3">
+                    <div className="h-4 w-24 bg-accent rounded mb-2" />
+                    <div className="h-3 w-full bg-accent rounded" />
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="px-4 py-2">
                 {/* Execution Status Header */}
-                <div className={`rounded-lg p-3 mb-4 ${statusConfig[selectedExecution.status]?.bg || "bg-accent"}`}>
+                <div className={`rounded-lg p-3 mb-4 ${getStatusColor(EXECUTION_STATUS_COLORS, selectedExecution.status).bg}`}>
                   <div className="flex items-center gap-2">
                     {(() => {
-                      const config = statusConfig[selectedExecution.status];
-                      const Icon = config?.icon || Clock;
-                      return <Icon className={`h-5 w-5 ${config?.color || "text-muted-foreground"}`} />;
+                      const Icon = statusIcons[selectedExecution.status] || Clock;
+                      return <Icon className={`h-5 w-5 ${getStatusColor(EXECUTION_STATUS_COLORS, selectedExecution.status).text}`} />;
                     })()}
-                    <span className={`font-medium capitalize ${statusConfig[selectedExecution.status]?.color || "text-muted-foreground"}`}>
+                    <span className={`font-medium capitalize ${getStatusColor(EXECUTION_STATUS_COLORS, selectedExecution.status).text}`}>
                       {selectedExecution.status}
                     </span>
                     {selectedExecution.is_dry_run && (
@@ -333,8 +342,17 @@ export function ExecutionHistory({
           // Executions List
           <div className="flex-1 overflow-y-auto">
             {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+              <div className="space-y-2 p-2 animate-pulse">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-center gap-3 p-2 rounded-lg">
+                    <div className="h-6 w-6 bg-accent rounded-full" />
+                    <div className="flex-1">
+                      <div className="h-3 w-24 bg-accent rounded mb-1" />
+                      <div className="h-2 w-16 bg-accent rounded" />
+                    </div>
+                    <div className="h-5 w-14 bg-accent rounded-full" />
+                  </div>
+                ))}
               </div>
             ) : error ? (
               <div className="text-center py-8 text-red-400">{error}</div>
@@ -345,8 +363,8 @@ export function ExecutionHistory({
             ) : (
               <div className="divide-y divide-border">
                 {executions.map((execution) => {
-                  const config = statusConfig[execution.status];
-                  const Icon = config?.icon || Clock;
+                  const Icon = statusIcons[execution.status] || Clock;
+                  const execColor = getStatusColor(EXECUTION_STATUS_COLORS, execution.status);
 
                   return (
                     <button
@@ -356,8 +374,8 @@ export function ExecutionHistory({
                     >
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
-                          <Icon className={`h-4 w-4 ${config?.color || "text-muted-foreground"}`} />
-                          <span className={`text-sm font-medium capitalize ${config?.color || "text-muted-foreground"}`}>
+                          <Icon className={`h-4 w-4 ${execColor.text}`} />
+                          <span className={`text-sm font-medium capitalize ${execColor.text}`}>
                             {execution.status}
                           </span>
                           {execution.is_dry_run && (

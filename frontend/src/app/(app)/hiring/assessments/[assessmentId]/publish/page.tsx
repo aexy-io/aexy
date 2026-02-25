@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
   CheckCircle,
   Users,
@@ -66,6 +67,16 @@ export default function AssessmentPublishSuccessPage() {
   return (
     <div className="min-h-screen bg-background">
 <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <Breadcrumb
+          items={[
+            { label: "Hiring", href: "/hiring" },
+            { label: "Assessments", href: "/hiring/assessments" },
+            { label: assessment.title, href: `/hiring/assessments/${assessmentId}/report` },
+            { label: "Publish" },
+          ]}
+          className="mb-6"
+        />
+
         {/* Success Header */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-success/20 rounded-full mb-4">

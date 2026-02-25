@@ -3,8 +3,8 @@
 import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
-  ChevronLeft,
   Plus,
   Settings,
   Trash2,
@@ -1361,13 +1361,13 @@ function CRMSettingsPageContent() {
         <div className="w-64 flex flex-col bg-muted/30 border-r border-border">
         {/* Header */}
         <div className="p-4 border-b border-border">
-          <button
-            onClick={() => router.push("/crm")}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-3"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Back to CRM
-          </button>
+          <Breadcrumb
+            items={[
+              { label: "CRM", href: "/crm" },
+              { label: "Settings" },
+            ]}
+            className="mb-3"
+          />
           <h1 className="text-lg font-bold text-foreground">CRM Settings</h1>
         </div>
 

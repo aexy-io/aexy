@@ -52,4 +52,28 @@ function SimpleTooltip({ children, content, className, side = "top" }: SimpleToo
   );
 }
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, SimpleTooltip };
+// Help tooltip: Info icon that shows explanatory text on hover
+interface HelpTooltipProps {
+  content: string;
+  side?: "top" | "right" | "bottom" | "left";
+  className?: string;
+}
+
+function HelpTooltip({ content, side = "right", className }: HelpTooltipProps) {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className={cn("inline-flex cursor-help text-muted-foreground hover:text-foreground transition-colors", className)}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side={side} className="max-w-xs">
+          {content}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, SimpleTooltip, HelpTooltip };

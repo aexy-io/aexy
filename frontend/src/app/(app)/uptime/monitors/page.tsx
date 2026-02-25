@@ -13,7 +13,6 @@ import {
 import {
   MonitorCheck,
   Plus,
-  Search,
   Filter,
   Globe,
   Server,
@@ -27,16 +26,16 @@ import {
   X,
   AlertTriangle,
 } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
+import { UPTIME_MONITOR_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
-const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-  up: { bg: "bg-emerald-50 dark:bg-emerald-900/30", text: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500", label: "Up" },
-  down: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400", dot: "bg-red-500", label: "Down" },
-  degraded: { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500", label: "Degraded" },
-  paused: { bg: "bg-accent/50", text: "text-muted-foreground", dot: "bg-muted-foreground", label: "Paused" },
-  unknown: { bg: "bg-accent/50", text: "text-muted-foreground", dot: "bg-muted-foreground", label: "Unknown" },
+const STATUS_LABELS: Record<string, string> = {
+  up: "Up",
+  down: "Down",
+  degraded: "Degraded",
+  paused: "Paused",
+  unknown: "Unknown",
 };
-
-const DEFAULT_STATUS_STYLE = { bg: "bg-accent/50", text: "text-muted-foreground", dot: "bg-muted-foreground", label: "Unknown" };
 
 const CHECK_TYPE_ICONS: Record<UptimeCheckType, typeof Globe> = {
   http: Globe,
@@ -204,8 +203,45 @@ export default function MonitorsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" />
+      <div className="min-h-screen bg-background animate-pulse">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <div className="h-7 w-32 bg-accent rounded mb-2" />
+              <div className="h-4 w-48 bg-accent rounded" />
+            </div>
+            <div className="h-9 w-32 bg-accent rounded-lg" />
+          </div>
+          <div className="bg-muted rounded-xl border border-border p-4 mb-6">
+            <div className="flex items-center gap-4">
+              <div className="h-9 flex-1 max-w-md bg-accent rounded-lg" />
+              <div className="flex gap-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-7 w-16 bg-accent rounded" />
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="bg-muted rounded-xl p-4 border border-border">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 bg-accent rounded-lg" />
+                    <div>
+                      <div className="h-4 w-40 bg-accent rounded mb-1" />
+                      <div className="h-3 w-56 bg-accent rounded" />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="h-6 w-16 bg-accent rounded-full" />
+                    <div className="h-4 w-20 bg-accent rounded" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     );
   }
@@ -236,18 +272,12 @@ export default function MonitorsPage() {
         {/* Filters */}
         <div className="bg-muted rounded-xl border border-border p-4 mb-6">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search monitors..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-            </div>
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search monitors..."
+              wrapperClassName="flex-1 min-w-[200px]"
+            />
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Status:</span>
@@ -262,19 +292,22 @@ export default function MonitorsPage() {
                 >
                   All
                 </button>
-                {(Object.keys(STATUS_COLORS) as UptimeMonitorStatus[]).map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => setStatusFilter(status)}
-                    className={`px-2 py-1 rounded text-xs font-medium transition ${
-                      statusFilter === status
-                        ? `${STATUS_COLORS[status].bg} ${STATUS_COLORS[status].text}`
-                        : "bg-accent text-muted-foreground hover:bg-muted"
-                    }`}
-                  >
-                    {STATUS_COLORS[status].label}
-                  </button>
-                ))}
+                {(Object.keys(UPTIME_MONITOR_STATUS_COLORS) as UptimeMonitorStatus[]).map((status) => {
+                  const sc = getStatusColor(UPTIME_MONITOR_STATUS_COLORS, status);
+                  return (
+                    <button
+                      key={status}
+                      onClick={() => setStatusFilter(status)}
+                      className={`px-2 py-1 rounded text-xs font-medium transition ${
+                        statusFilter === status
+                          ? `${sc.bg} ${sc.text}`
+                          : "bg-accent text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {STATUS_LABELS[status] || status}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -295,7 +328,7 @@ export default function MonitorsPage() {
             <div className="divide-y divide-border">
               {filteredMonitors.map((monitor) => {
                 const Icon = CHECK_TYPE_ICONS[monitor.check_type] || Globe;
-                const statusStyle = STATUS_COLORS[monitor.current_status] || DEFAULT_STATUS_STYLE;
+                const statusStyle = getStatusColor(UPTIME_MONITOR_STATUS_COLORS, monitor.current_status);
 
                 return (
                   <div
@@ -327,7 +360,7 @@ export default function MonitorsPage() {
                     </button>
                     <div className="text-center px-4">
                       <span className={`px-2 py-1 rounded text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}>
-                        {statusStyle.label}
+                        {STATUS_LABELS[monitor.current_status] || monitor.current_status}
                       </span>
                     </div>
                     <div className="text-right min-w-[100px]">

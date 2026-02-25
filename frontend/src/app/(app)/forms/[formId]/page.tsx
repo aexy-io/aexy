@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
-  ChevronLeft,
   FileText,
   Save,
   Settings,
@@ -28,6 +27,7 @@ import {
   PartyPopper,
   ShieldCheck,
 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import {
@@ -1464,13 +1464,13 @@ export default function FormEditorPage() {
 <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
-          <button
-            onClick={() => router.push("/forms")}
-            className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <div className="flex-1">
+          <Breadcrumb
+            items={[
+              { label: "Forms", href: "/forms" },
+              { label: form.name || "Form" },
+            ]}
+          />
+          <div className="flex-1 ml-auto">
             <input
               type="text"
               value={localFormName}

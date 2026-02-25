@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   Bot,
   Play,
   Pause,
@@ -30,6 +29,7 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAgent, useAgentExecutions, useAgentMetrics } from "@/hooks/useAgents";
 import { CRMAgentExecution, getAgentTypeConfig } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
   AgentTypeBadge,
   AgentStatusBadge,
@@ -378,10 +378,46 @@ export default function AgentDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mx-auto mb-4"></div>
-          <p className="text-foreground">Loading agent...</p>
+      <div className="p-6 max-w-6xl mx-auto animate-pulse">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="h-8 w-8 bg-accent rounded-lg" />
+          <div className="h-6 w-48 bg-accent rounded" />
+          <div className="h-5 w-16 bg-accent rounded-full ml-2" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+              <div className="h-4 w-24 bg-accent rounded" />
+              <div className="grid grid-cols-3 gap-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-20 bg-accent rounded-lg" />
+                ))}
+              </div>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+              <div className="h-4 w-32 bg-accent rounded" />
+              <div className="h-48 bg-accent rounded-lg" />
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+              <div className="h-4 w-28 bg-accent rounded" />
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex justify-between">
+                  <div className="h-3 w-20 bg-accent rounded" />
+                  <div className="h-3 w-16 bg-accent rounded" />
+                </div>
+              ))}
+            </div>
+            <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+              <div className="h-4 w-24 bg-accent rounded" />
+              <div className="flex gap-2">
+                {[1, 2, 3].map((j) => (
+                  <div key={j} className="h-6 w-16 bg-accent rounded" />
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -394,14 +430,12 @@ export default function AgentDetailPage() {
           <Bot className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-medium text-foreground mb-2">Agent Not Found</h2>
           <p className="text-muted-foreground mb-4">
-            The agent you're looking for doesn't exist or has been deleted.
+            The agent you&apos;re looking for doesn&apos;t exist or has been deleted.
           </p>
-          <Link
-            href="/agents"
-            className="text-purple-400 hover:text-purple-300"
-          >
-            Back to Agents
-          </Link>
+          <Breadcrumb
+            items={[{ label: "Agents", href: "/agents" }]}
+            className="justify-center"
+          />
         </div>
       </div>
     );
@@ -417,14 +451,15 @@ export default function AgentDetailPage() {
       {/* Header */}
       <header className="border-b border-border bg-muted/50">
         <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4 space-y-3 sm:space-y-0">
+          <Breadcrumb
+            items={[
+              { label: "Agents", href: "/agents" },
+              { label: agent.name },
+            ]}
+            className="mb-3"
+          />
           {/* Desktop: single row / Mobile: two rows */}
           <div className="flex items-center gap-2 sm:gap-4">
-            <Link
-              href="/agents"
-              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition flex-shrink-0"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
             <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
               <div
                 className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0"

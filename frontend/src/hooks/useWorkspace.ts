@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { workspaceApi, WorkspaceListItem, Workspace, CustomTaskStatus, StatusCategory, WorkspacePendingInvite, WorkspaceAppSettings } from "@/lib/api";
 import { useAuth } from "./useAuth";
 
@@ -91,9 +92,13 @@ export function useWorkspace() {
   const createWorkspaceMutation = useMutation({
     mutationFn: workspaceApi.create,
     onSuccess: (newWorkspace) => {
+      toast.success("Workspace created");
       queryClient.invalidateQueries({ queryKey: ["workspaces"] });
       // Auto-switch to newly created workspace
       switchWorkspace(newWorkspace.id);
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to create workspace");
     },
   });
 
@@ -102,8 +107,12 @@ export function useWorkspace() {
     mutationFn: ({ workspaceId, data }: { workspaceId: string; data: Parameters<typeof workspaceApi.update>[1] }) =>
       workspaceApi.update(workspaceId, data),
     onSuccess: (_, variables) => {
+      toast.success("Workspace updated");
       queryClient.invalidateQueries({ queryKey: ["workspaces"] });
       queryClient.invalidateQueries({ queryKey: ["workspace", variables.workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update workspace");
     },
   });
 
@@ -111,12 +120,16 @@ export function useWorkspace() {
   const deleteWorkspaceMutation = useMutation({
     mutationFn: workspaceApi.delete,
     onSuccess: (_, deletedId) => {
+      toast.success("Workspace deleted");
       queryClient.invalidateQueries({ queryKey: ["workspaces"] });
       // If deleted workspace was current, clear selection
       if (deletedId === currentWorkspaceId) {
         setCurrentWorkspaceId(null);
         localStorage.removeItem(CURRENT_WORKSPACE_KEY);
       }
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to delete workspace");
     },
   });
 
@@ -171,9 +184,13 @@ export function useWorkspaceMembers(workspaceId: string | null) {
     mutationFn: ({ email, role }: { email: string; role?: string }) =>
       workspaceApi.inviteMember(workspaceId!, email, role),
     onSuccess: () => {
+      toast.success("Member invited");
       queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["pendingInvites", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to invite member");
     },
   });
 
@@ -181,22 +198,34 @@ export function useWorkspaceMembers(workspaceId: string | null) {
     mutationFn: ({ developerId, role }: { developerId: string; role: string }) =>
       workspaceApi.updateMemberRole(workspaceId!, developerId, role),
     onSuccess: () => {
+      toast.success("Member role updated");
       queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update member role");
     },
   });
 
   const removeMutation = useMutation({
     mutationFn: (developerId: string) => workspaceApi.removeMember(workspaceId!, developerId),
     onSuccess: () => {
+      toast.success("Member removed");
       queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to remove member");
     },
   });
 
   const resendInviteMutation = useMutation({
     mutationFn: (developerId: string) => workspaceApi.resendMemberInvite(workspaceId!, developerId),
     onSuccess: () => {
+      toast.success("Invite resent");
       queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to resend invite");
     },
   });
 
@@ -271,7 +300,11 @@ export function useCustomTaskStatuses(workspaceId: string | null) {
       is_default?: boolean;
     }) => workspaceApi.createTaskStatus(workspaceId!, data),
     onSuccess: () => {
+      toast.success("Status created");
       queryClient.invalidateQueries({ queryKey: ["customTaskStatuses", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to create status");
     },
   });
 
@@ -287,21 +320,33 @@ export function useCustomTaskStatuses(workspaceId: string | null) {
       };
     }) => workspaceApi.updateTaskStatus(workspaceId!, statusId, data),
     onSuccess: () => {
+      toast.success("Status updated");
       queryClient.invalidateQueries({ queryKey: ["customTaskStatuses", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update status");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (statusId: string) => workspaceApi.deleteTaskStatus(workspaceId!, statusId),
     onSuccess: () => {
+      toast.success("Status deleted");
       queryClient.invalidateQueries({ queryKey: ["customTaskStatuses", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to delete status");
     },
   });
 
   const reorderMutation = useMutation({
     mutationFn: (statusIds: string[]) => workspaceApi.reorderTaskStatuses(workspaceId!, statusIds),
     onSuccess: () => {
+      toast.success("Statuses reordered");
       queryClient.invalidateQueries({ queryKey: ["customTaskStatuses", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to reorder statuses");
     },
   });
 
@@ -349,14 +394,22 @@ export function usePendingInvites(workspaceId: string | null) {
   const revokeMutation = useMutation({
     mutationFn: (inviteId: string) => workspaceApi.revokePendingInvite(workspaceId!, inviteId),
     onSuccess: () => {
+      toast.success("Invite revoked");
       queryClient.invalidateQueries({ queryKey: ["pendingInvites", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to revoke invite");
     },
   });
 
   const resendMutation = useMutation({
     mutationFn: (inviteId: string) => workspaceApi.resendPendingInvite(workspaceId!, inviteId),
     onSuccess: () => {
+      toast.success("Invite resent");
       queryClient.invalidateQueries({ queryKey: ["pendingInvites", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to resend invite");
     },
   });
 
@@ -389,8 +442,12 @@ export function useWorkspaceAppSettings(workspaceId: string | null) {
   const updateMutation = useMutation({
     mutationFn: (apps: Record<string, boolean>) => workspaceApi.updateAppSettings(workspaceId!, apps),
     onSuccess: () => {
+      toast.success("App settings updated");
       queryClient.invalidateQueries({ queryKey: ["workspaceAppSettings", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["appAccess"] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update app settings");
     },
   });
 
@@ -398,7 +455,11 @@ export function useWorkspaceAppSettings(workspaceId: string | null) {
     mutationFn: ({ developerId, appPermissions }: { developerId: string; appPermissions: Record<string, boolean> }) =>
       workspaceApi.updateMemberAppPermissions(workspaceId!, developerId, appPermissions),
     onSuccess: () => {
+      toast.success("Member permissions updated");
       queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update member permissions");
     },
   });
 

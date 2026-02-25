@@ -19,6 +19,7 @@ import {
   Plus,
 } from "lucide-react";
 import { IndividualTrackingDashboard } from "@/components/tracking";
+import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
 import {
   MetricCard,
   metricPresets,
@@ -343,6 +344,9 @@ export default function TrackingPage() {
                 />
               )}
             </div>
+            <div className="mt-4">
+              <ModuleAutomationsPanel module="tracking" moduleLabel="Tracking" compact />
+            </div>
           </div>
         </div>
 
@@ -362,7 +366,7 @@ export default function TrackingPage() {
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <MetricCard
                 title="Open"
                 value={ticketStats.open_tickets}
