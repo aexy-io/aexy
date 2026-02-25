@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS table_audit_log (
     -- record_created, record_updated, record_deleted, field_changed,
     -- permission_changed, table_shared, bulk_delete, export
     changes JSONB,
-    ip_address INET,
+    ip_address VARCHAR(45),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
