@@ -24,6 +24,7 @@ class PermissionCategory(str, Enum):
     ONCALL = "oncall"
     INSIGHTS = "insights"
     COMPLIANCE = "compliance"
+    TABLES = "tables"
     LEAVES = "leaves"
 
 
@@ -270,6 +271,22 @@ PERMISSIONS: dict[str, dict] = {
         "category": PermissionCategory.COMPLIANCE,
         "description": "Upload documents, manage folders, and configure compliance",
         "default_for": ["admin", "hr"],
+    },
+    # Tables
+    "can_view_tables": {
+        "category": PermissionCategory.TABLES,
+        "description": "View standalone data tables",
+        "default_for": ["admin", "manager", "developer", "hr", "support", "sales"],
+    },
+    "can_create_tables": {
+        "category": PermissionCategory.TABLES,
+        "description": "Create new standalone tables",
+        "default_for": ["admin", "manager", "developer"],
+    },
+    "can_manage_tables": {
+        "category": PermissionCategory.TABLES,
+        "description": "Manage table settings, fields, and collaborators",
+        "default_for": ["admin", "manager"],
     },
     # Leaves
     "can_request_leaves": {

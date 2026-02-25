@@ -5,6 +5,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.4] - 2026-02-25
+
+### Added
+
+#### Standalone Data Tables
+- **Data Tables module**: New first-class `/tables` route for creating and managing standalone data tables, independent of CRM objects
+- **Table detail page**: Full table view with search, filtering, column visibility, view switching (table/kanban), and breadcrumb navigation
+- **DataTableService**: New service layer (~1000 lines) abstracting table operations away from the CRM service
+- **Tables API**: Complete REST API (`/api/v1/workspaces/{id}/tables`) with listing, detail, field CRUD, record CRUD, and bulk operations
+- **React hooks**: `useTables`, `useTableFields`, `useTableRecords`, `useTableAccess` hooks for frontend data fetching
+
+#### Field Type System
+- **Pluggable field type registry**: Extensible registry pattern for registering and rendering field types
+- **14 built-in field renderers**: Text, Number, Date, Email, Phone, URL, Currency, Rating, Checkbox, Select, Multi-Select, Textarea, Computed, Reference
+- **FieldRenderer component**: Unified component that resolves and renders fields by type from the registry
+- **InlineCell component**: Click-to-edit cells with Tab/Enter/Escape keyboard navigation
+- **Column add/edit UI**: Dedicated panel for adding new columns with type picker and configuring existing columns
+
+#### Document Integration
+- **InlineDatabase TipTap extension**: Embed live, interactive data tables inside documents with full CRUD support
+
+#### Sharing & Access Control
+- **Public share links**: Generate shareable table links with token-based auth, configurable hidden columns, and row filters
+- **Public tables API**: Dedicated `/api/v1/public/tables` endpoints for unauthenticated shared access
+- **7-layer authorization**: JWT, workspace, app, RBAC, table, row, and column-level access checks
+- **`owner_only` row access mode**: Restrict row visibility to the creating user, with admin bypass
+- **TableCollaborator visibility**: Private tables now visible to explicitly added collaborators
+
+#### Audit & Observability
+- **Table audit trail**: `table_audit_log` table and `TableAuditService` for tracking all table mutations
+- **Multi-entity shared views**: Extended `crm_lists` with `entity_type` for shared views across entity types
+
+### Fixed
+
+#### Security
+- Escape LIKE wildcards (`%`, `_`) in filter inputs to prevent filter injection
+- Switch share link passwords from SHA-256 to bcrypt
+- Validate record-to-table ownership before update/delete operations
+- Move share link password from query parameter to `X-Share-Password` header
+
+#### Performance
+- Replace N+1 bulk delete queries with batch validation and 100-record limit
+- Deduplicate 3 redundant `WorkspaceMember` queries into 1 in `resolve_access`
+
+#### Bug Fixes
+- Fix `__import__` hack, return type annotations, and `ip_address` type mismatches in backend
+- Allow clearing nullable table fields via update
+- Remove no-op `_strip_hidden_columns` method
+- Remove noisy chat toast notification
+- Fix `useMemo` unstable dependency array in frontend components
+- TypeScript type fixes across table components
+
+### Changed
+- Added Pydantic request models for `update_table` and `create_share_link` endpoints
+- Refactored CRM service to delegate table operations to new `DataTableService`
+
+### Database Migrations
+- `migrate_data_tables.sql` — Core tables for data table support
+- `migrate_data_tables_phase3_7.sql` — Audit log and share link tables
+
+---
+
 ## [0.6.3] - 2026-02-25
 
 ### Added

@@ -106,7 +106,7 @@ export function ColumnHeader({
       style={style}
       className={cn(
         "px-4 py-3 text-left relative group",
-        isDragging && "opacity-50 bg-accent",
+        isDragging && "opacity-50 bg-accent z-10",
         className
       )}
       {...attributes}
@@ -114,12 +114,12 @@ export function ColumnHeader({
       <div className="flex items-center gap-1">
         {/* Drag handle */}
         {isDraggable && (
-          <button
+          <div
             {...listeners}
-            className="p-0.5 -ml-1 cursor-grab opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
+            className="p-1 -ml-1.5 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition-colors"
           >
-            <GripVertical className="h-3 w-3" />
-          </button>
+            <GripVertical className="h-4 w-4" />
+          </div>
         )}
 
         {/* Label with sort */}
