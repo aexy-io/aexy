@@ -18,10 +18,11 @@ import {
 } from "@dnd-kit/sortable";
 import { Eye, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CRMAttribute, CRMRecord } from "@/lib/api";
+import { CRMAttribute, CRMRecord, ColumnDisplayConfig } from "@/lib/api";
 import { ColumnHeader, SimpleColumnHeader } from "./ColumnHeader";
 import { ColumnSelector } from "./ColumnSelector";
-import { FieldRenderer } from "@/components/fields";
+import { FieldRenderer, FieldDisplayConfigPanel, InlineCell } from "@/components/fields";
+import type { FieldDisplayConfig } from "@/components/fields";
 
 interface DataTableProps {
   records: CRMRecord[];
@@ -35,6 +36,9 @@ interface DataTableProps {
   onColumnOrderChange?: (order: string[]) => void;
   columnWidths?: Record<string, number>;
   onColumnWidthChange?: (slug: string, width: number) => void;
+  // Display variants (per-column display config from saved view)
+  columnDisplayConfig?: ColumnDisplayConfig[];
+  onColumnDisplayConfigChange?: (config: ColumnDisplayConfig[]) => void;
   // Sorting
   sortConfig?: { attribute: string; direction: "asc" | "desc" } | null;
   onSort?: (attribute: string) => void;
@@ -49,6 +53,11 @@ interface DataTableProps {
   enableColumnReorder?: boolean;
   enableColumnResize?: boolean;
   enableColumnSelector?: boolean;
+  enableInlineEdit?: boolean;
+  onCellSave?: (recordId: string, slug: string, value: unknown) => Promise<void>;
+  onAddColumn?: () => void;
+  onDeleteColumn?: (slug: string) => void;
+  onBulkDelete?: (recordIds: string[]) => void;
   showCheckboxes?: boolean;
   showActions?: boolean;
   showNameColumn?: boolean;
@@ -66,6 +75,8 @@ export function DataTable({
   onColumnOrderChange,
   columnWidths = {},
   onColumnWidthChange,
+  columnDisplayConfig = [],
+  onColumnDisplayConfigChange,
   sortConfig,
   onSort,
   selectedRecords = [],
@@ -76,6 +87,11 @@ export function DataTable({
   enableColumnReorder = true,
   enableColumnResize = false,
   enableColumnSelector = true,
+  enableInlineEdit = false,
+  onCellSave,
+  onAddColumn,
+  onDeleteColumn,
+  onBulkDelete,
   showCheckboxes = true,
   showActions = true,
   showNameColumn = true,
@@ -158,10 +174,43 @@ export function DataTable({
     setVisibleColumns([]);
   }, [setVisibleColumns]);
 
+  // Conditional formatting panel state
+  const [formatPanelSlug, setFormatPanelSlug] = useState<string | null>(null);
+
   // Handle column resize
   const handleResize = (slug: string, width: number) => {
     onColumnWidthChange?.(slug, width);
   };
+
+  // Get display config for a specific column
+  const getColumnDisplayConfig = useCallback((slug: string): FieldDisplayConfig | undefined => {
+    const cfg = columnDisplayConfig.find((c) => c.slug === slug);
+    if (!cfg?.variant) return undefined;
+    return { variant: cfg.variant };
+  }, [columnDisplayConfig]);
+
+  // Handle display variant change for a column
+  const handleDisplayVariantChange = useCallback((slug: string, variant: string) => {
+    if (!onColumnDisplayConfigChange) return;
+    const existing = columnDisplayConfig.filter((c) => c.slug !== slug);
+    onColumnDisplayConfigChange([...existing, { slug, variant }]);
+  }, [columnDisplayConfig, onColumnDisplayConfigChange]);
+
+  // Handle conditional format config update
+  const handleConditionalFormatChange = useCallback((slug: string, displayCfg: FieldDisplayConfig) => {
+    if (!onColumnDisplayConfigChange) return;
+    const existing = columnDisplayConfig.filter((c) => c.slug !== slug);
+    const current = columnDisplayConfig.find((c) => c.slug === slug);
+    onColumnDisplayConfigChange([
+      ...existing,
+      {
+        slug,
+        variant: current?.variant,
+        conditional_format: displayCfg.conditionalFormat as Record<string, unknown>[] | undefined,
+      },
+    ]);
+    setFormatPanelSlug(null);
+  }, [columnDisplayConfig, onColumnDisplayConfigChange]);
 
   const isAllSelected = records.length > 0 && selectedRecords.length === records.length;
 
@@ -216,6 +265,11 @@ export function DataTable({
                       isResizable={enableColumnResize}
                       width={columnWidths[attr.slug]}
                       onResize={(width) => handleResize(attr.slug, width)}
+                      fieldType={attr.attribute_type}
+                      displayVariant={columnDisplayConfig.find((c) => c.slug === attr.slug)?.variant}
+                      onDisplayVariantChange={onColumnDisplayConfigChange ? (v) => handleDisplayVariantChange(attr.slug, v) : undefined}
+                      onConditionalFormat={onColumnDisplayConfigChange ? () => setFormatPanelSlug(attr.slug) : undefined}
+                      onDelete={onDeleteColumn ? () => onDeleteColumn(attr.slug) : undefined}
                     />
                   ))}
                 </SortableContext>
@@ -228,6 +282,7 @@ export function DataTable({
                     onToggleColumn={handleToggleColumn}
                     onShowAll={handleShowAll}
                     onHideAll={handleHideAll}
+                    onAddColumn={onAddColumn}
                   />
                 )}
 
@@ -292,7 +347,16 @@ export function DataTable({
                         className="px-4 py-3 text-foreground"
                         style={{ width: columnWidths[attr.slug] ? `${columnWidths[attr.slug]}px` : undefined }}
                       >
-                        <FieldRenderer value={record.values[attr.slug]} attribute={attr} surface="table_cell" />
+                        {enableInlineEdit && onCellSave ? (
+                          <InlineCell
+                            value={record.values[attr.slug]}
+                            attribute={attr}
+                            access="edit"
+                            onSave={async (val) => onCellSave(record.id, attr.slug, val)}
+                          />
+                        ) : (
+                          <FieldRenderer value={record.values[attr.slug]} attribute={attr} surface="table_cell" displayConfig={getColumnDisplayConfig(attr.slug)} />
+                        )}
                       </td>
                     ))}
 
@@ -337,12 +401,46 @@ export function DataTable({
         </DndContext>
       </div>
 
-      {/* Footer with record count */}
+      {/* Footer with record count or bulk action bar */}
       {!isLoading && records.length > 0 && (
-        <div className="px-4 py-2 border-t border-border text-sm text-muted-foreground">
-          {records.length} record{records.length !== 1 ? "s" : ""}
-        </div>
+        selectedRecords.length > 0 && onBulkDelete ? (
+          <div className="px-4 py-2 border-t border-border flex items-center gap-3">
+            <span className="text-sm text-foreground font-medium">
+              {selectedRecords.length} selected
+            </span>
+            <button
+              onClick={() => onBulkDelete(selectedRecords)}
+              className="flex items-center gap-1 px-2 py-1 text-sm text-red-400 hover:bg-red-500/10 rounded transition-colors"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete
+            </button>
+          </div>
+        ) : (
+          <div className="px-4 py-2 border-t border-border text-sm text-muted-foreground">
+            {records.length} record{records.length !== 1 ? "s" : ""}
+          </div>
+        )
       )}
+
+      {/* Conditional formatting panel */}
+      {formatPanelSlug && (() => {
+        const attr = attributes.find((a) => a.slug === formatPanelSlug);
+        if (!attr) return null;
+        const cfg = columnDisplayConfig.find((c) => c.slug === formatPanelSlug);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+            <FieldDisplayConfigPanel
+              fieldName={attr.name}
+              displayConfig={cfg?.conditional_format ? {
+                conditionalFormat: cfg.conditional_format as unknown as import("@/components/fields").ConditionalFormatRule[],
+              } : undefined}
+              onChange={(displayCfg) => handleConditionalFormatChange(formatPanelSlug, displayCfg)}
+              onClose={() => setFormatPanelSlug(null)}
+            />
+          </div>
+        );
+      })()}
     </div>
   );
 }
