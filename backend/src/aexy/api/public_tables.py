@@ -4,31 +4,48 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.core.database import get_db
+from aexy.models.crm import TableShareLink
 from aexy.services.table_audit_service import TableShareService
 from aexy.services.data_table_service import DataTableService
 
 router = APIRouter(prefix="/public/tables")
 
 
-@router.get("/{token}")
-async def get_shared_table(
+async def _verify_share_link(
     token: str,
-    password: str | None = Query(None),
-    db: AsyncSession = Depends(get_db),
-):
-    """Get a shared table's schema and records via share link."""
+    password: str | None,
+    db: AsyncSession,
+    require_edit: bool = False,
+) -> TableShareLink:
+    """Common share link verification: token lookup, expiry, password, permission."""
     share_svc = TableShareService(db)
     link = await share_svc.get_by_token(token)
     if not link:
         raise HTTPException(404, "Share link not found or expired")
 
-    # Check password if required
     if link.password_hash:
         if not password or not await share_svc.verify_password(link, password):
             raise HTTPException(403, "Password required")
 
-    # Increment usage
+    if require_edit and link.permission != "edit":
+        raise HTTPException(403, "This share link is view-only")
+
+    return link
+
+
+@router.get("/{token}")
+async def get_shared_table(
+    token: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a shared table's schema and records via share link."""
+    password = request.headers.get("X-Share-Password")
+    link = await _verify_share_link(token, password, db)
+
+    share_svc = TableShareService(db)
     await share_svc.increment_usage(link.id)
+    await db.commit()
 
     dts = DataTableService(db)
     table = await dts.get_table(link.table_id)
@@ -62,20 +79,14 @@ async def get_shared_table(
 @router.get("/{token}/records")
 async def get_shared_records(
     token: str,
-    password: str | None = Query(None),
+    request: Request,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
 ):
     """Get paginated records from a shared table."""
-    share_svc = TableShareService(db)
-    link = await share_svc.get_by_token(token)
-    if not link:
-        raise HTTPException(404, "Share link not found or expired")
-
-    if link.password_hash:
-        if not password or not await share_svc.verify_password(link, password):
-            raise HTTPException(403, "Password required")
+    password = request.headers.get("X-Share-Password")
+    link = await _verify_share_link(token, password, db)
 
     dts = DataTableService(db)
     table = await dts.get_table(link.table_id)
@@ -107,21 +118,11 @@ async def get_shared_records(
 async def create_shared_record(
     token: str,
     request: Request,
-    password: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a record via edit-enabled share link."""
-    share_svc = TableShareService(db)
-    link = await share_svc.get_by_token(token)
-    if not link:
-        raise HTTPException(404, "Share link not found or expired")
-
-    if link.permission != "edit":
-        raise HTTPException(403, "This share link is view-only")
-
-    if link.password_hash:
-        if not password or not await share_svc.verify_password(link, password):
-            raise HTTPException(403, "Password required")
+    password = request.headers.get("X-Share-Password")
+    link = await _verify_share_link(token, password, db, require_edit=True)
 
     body = await request.json()
     values = body.get("values", {})
@@ -141,6 +142,7 @@ async def create_shared_record(
         values=values,
     )
 
+    share_svc = TableShareService(db)
     await share_svc.increment_usage(link.id)
     await db.commit()
 
