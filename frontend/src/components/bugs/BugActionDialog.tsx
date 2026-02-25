@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface BugActionDialogProps {
   isOpen: boolean;
@@ -35,7 +42,6 @@ export function BugActionDialog({
   isLoading = false,
 }: BugActionDialogProps) {
   const [formData, setFormData] = useState<Record<string, string>>({});
-  const [mounted, setMounted] = useState(false);
 
   // Initialize form data when fields change or dialog opens
   useEffect(() => {
@@ -47,13 +53,6 @@ export function BugActionDialog({
       setFormData(initial);
     }
   }, [isOpen, fields]);
-
-  // Prevent hydration mismatch by only rendering after mount
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted || !isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,23 +71,14 @@ export function BugActionDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-background border border-border rounded-xl w-full max-w-md m-4">
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-          <button
-            onClick={onClose}
-            className="p-1 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-md p-0 gap-0">
+        <DialogHeader className="p-4 border-b border-border">
+          <DialogTitle>{title}</DialogTitle>
+          {description && <DialogDescription>{description}</DialogDescription>}
+        </DialogHeader>
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
-          {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
-          )}
-
           {fields.map((field) => (
             <div key={field.name}>
               <label className="block text-sm font-medium text-foreground mb-1">
@@ -136,7 +126,7 @@ export function BugActionDialog({
             </div>
           ))}
 
-          <div className="flex justify-end gap-3 pt-2">
+          <DialogFooter className="pt-2">
             <button
               type="button"
               onClick={onClose}
@@ -151,9 +141,9 @@ export function BugActionDialog({
             >
               {isLoading ? "..." : confirmLabel}
             </button>
-          </div>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

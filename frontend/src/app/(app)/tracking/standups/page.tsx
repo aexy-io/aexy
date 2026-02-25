@@ -9,10 +9,10 @@ import {
   Users,
   Calendar,
   List,
-  Search,
   Filter,
   X,
 } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
 import {
   StandupForm,
   StandupTimeline,
@@ -226,7 +226,7 @@ export default function StandupsPage() {
                 Your standup history and submissions
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               {/* Team View Link */}
               {canViewTeamStandups && (
                 <button
@@ -290,7 +290,7 @@ export default function StandupsPage() {
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <MetricCard
             title="Total Standups"
             value={stats.total}
@@ -364,27 +364,15 @@ export default function StandupsPage() {
           </div>
 
           {/* Search */}
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search standups..."
-              className="w-full pl-10 pr-4 py-2 bg-input border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search standups..."
+            wrapperClassName="flex-1"
+          />
 
           {/* Date Range & Export */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <DateRangePicker
               value={dateRange}
               onChange={setDateRange}

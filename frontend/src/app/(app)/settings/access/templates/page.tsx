@@ -176,8 +176,28 @@ export default function AccessTemplatesPage() {
 
       <div>
         {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="space-y-8 animate-pulse">
+            <div>
+              <div className="h-5 w-36 bg-accent rounded mb-4" />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="bg-card border border-border rounded-xl p-5 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 bg-accent rounded-lg" />
+                      <div className="space-y-1">
+                        <div className="h-4 w-28 bg-accent rounded" />
+                        <div className="h-3 w-40 bg-accent rounded" />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      {[1, 2, 3].map((j) => (
+                        <div key={j} className="h-5 w-14 bg-accent rounded" />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         ) : (
           <div className="space-y-8">

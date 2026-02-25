@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Network, Sparkles, RefreshCw, Lock, AlertTriangle } from "lucide-react";
 import Link from "next/link";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useSubscription } from "@/hooks/useSubscription";
 import { knowledgeGraphApi, KnowledgeEntityType, KnowledgeRelationType } from "@/lib/api";
@@ -200,6 +201,15 @@ export default function KnowledgeGraphPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)]">
+      <div className="px-6 pt-4">
+        <Breadcrumb
+          items={[
+            { label: "Docs", href: "/docs" },
+            { label: "Knowledge Graph" },
+          ]}
+          className="mb-4"
+        />
+      </div>
       {/* Toolbar */}
       <KnowledgeGraphToolbar
         filters={filters}

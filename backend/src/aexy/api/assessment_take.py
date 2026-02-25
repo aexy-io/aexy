@@ -768,6 +768,42 @@ async def complete_assessment(
                 "completed_at": attempt.completed_at.isoformat() if attempt.completed_at else None,
             },
         )
+        # Dispatch score threshold triggers
+        pct = round((attempt.total_score / attempt.max_possible_score * 100), 2) if attempt.max_possible_score and attempt.total_score else 0
+        if pct >= 80:
+            await dispatch_automation_event(
+                db=db,
+                workspace_id=str(assessment.organization_id),
+                module="hiring",
+                trigger_type="assessment.score_above",
+                entity_id=str(attempt.id),
+                trigger_data={
+                    "attempt_id": str(attempt.id),
+                    "assessment_id": str(assessment.id),
+                    "assessment_title": assessment.title,
+                    "candidate_email": candidate.email if candidate else None,
+                    "candidate_name": candidate.name if candidate else None,
+                    "percentage_score": pct,
+                    "threshold": 80,
+                },
+            )
+        if pct < 50:
+            await dispatch_automation_event(
+                db=db,
+                workspace_id=str(assessment.organization_id),
+                module="hiring",
+                trigger_type="assessment.score_below",
+                entity_id=str(attempt.id),
+                trigger_data={
+                    "attempt_id": str(attempt.id),
+                    "assessment_id": str(assessment.id),
+                    "assessment_title": assessment.title,
+                    "candidate_email": candidate.email if candidate else None,
+                    "candidate_name": candidate.name if candidate else None,
+                    "percentage_score": pct,
+                    "threshold": 50,
+                },
+            )
     except Exception as e:
         import logging
         logging.error(f"Failed to dispatch assessment.completed automation: {e}")

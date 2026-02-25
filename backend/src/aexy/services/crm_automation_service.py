@@ -403,6 +403,19 @@ class CRMAutomationService:
             return record_value in (value if isinstance(value, list) else [value])
         elif operator == "not_in":
             return record_value not in (value if isinstance(value, list) else [value])
+        elif operator == "starts_with":
+            return str(record_value).lower().startswith(str(value).lower()) if record_value else False
+        elif operator == "ends_with":
+            return str(record_value).lower().endswith(str(value).lower()) if record_value else False
+        elif operator == "not_contains":
+            return str(value).lower() not in str(record_value).lower() if record_value else True
+        elif operator == "between":
+            if isinstance(value, list) and len(value) == 2:
+                try:
+                    return float(value[0]) <= float(record_value or 0) <= float(value[1])
+                except (ValueError, TypeError):
+                    return False
+            return False
         return True
 
     async def _execute_action(

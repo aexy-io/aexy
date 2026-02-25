@@ -517,6 +517,28 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     requiredPermissions: ['can_view_leaves'],
   },
 
+  // === TEAM HEALTH & BURNOUT ===
+  teamHealth: {
+    id: 'teamHealth',
+    name: 'Team Health',
+    category: 'analytics',
+    personas: ['manager'],
+    defaultSize: 'medium',
+    icon: 'Heart',
+    description: 'Aggregate team health score from blockers, workload, and activity',
+    requiredPermissions: ['can_view_teams'],
+  },
+  burnoutRisk: {
+    id: 'burnoutRisk',
+    name: 'Burnout Risk',
+    category: 'analytics',
+    personas: ['manager'],
+    defaultSize: 'medium',
+    icon: 'Flame',
+    description: 'Per-developer burnout risk indicators and trends',
+    requiredPermissions: ['can_view_teams'],
+  },
+
   // === AI AGENTS ===
   aiAgents: {
     id: 'aiAgents',

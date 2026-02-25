@@ -715,9 +715,35 @@ function CalendarPageContent() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
-<div className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+      <div className="min-h-screen bg-background flex flex-col animate-pulse">
+        <div className="border-b border-border px-6 py-4">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="h-4 w-12 bg-accent rounded" />
+              <div className="h-6 w-24 bg-accent rounded" />
+            </div>
+            <div className="flex gap-3">
+              <div className="h-9 w-24 bg-accent rounded-lg" />
+              <div className="h-9 w-20 bg-accent rounded-lg" />
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 max-w-7xl mx-auto w-full px-6 py-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="h-6 w-36 bg-accent rounded" />
+            <div className="flex gap-2">
+              <div className="h-8 w-8 bg-accent rounded" />
+              <div className="h-8 w-8 bg-accent rounded" />
+            </div>
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {[...Array(7)].map((_, i) => (
+              <div key={`h${i}`} className="h-4 w-8 bg-accent rounded mx-auto mb-2" />
+            ))}
+            {[...Array(35)].map((_, i) => (
+              <div key={i} className="h-24 bg-muted rounded-lg border border-border" />
+            ))}
+          </div>
         </div>
       </div>
     );

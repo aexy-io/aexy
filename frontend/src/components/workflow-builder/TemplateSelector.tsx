@@ -215,8 +215,18 @@ export function TemplateSelector({
 
             {/* Templates grid */}
             {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 text-blue-400 animate-spin" />
+              <div className="grid grid-cols-2 gap-4 animate-pulse">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="border border-border rounded-xl p-4">
+                    <div className="h-5 w-32 bg-accent rounded mb-2" />
+                    <div className="h-3 w-full bg-accent rounded mb-1" />
+                    <div className="h-3 w-2/3 bg-accent rounded mb-3" />
+                    <div className="flex gap-2">
+                      <div className="h-5 w-14 bg-accent rounded-full" />
+                      <div className="h-5 w-14 bg-accent rounded-full" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : filteredTemplates.length === 0 ? (
               <div className="text-center py-12">

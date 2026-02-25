@@ -50,10 +50,23 @@ export function ChatInterface({
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-background">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 text-purple-500 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading conversation...</p>
+      <div className="flex-1 flex flex-col bg-background animate-pulse">
+        <div className="flex-1 p-6 space-y-4">
+          <div className="flex gap-3">
+            <div className="h-8 w-8 bg-accent rounded-full" />
+            <div className="h-16 w-2/3 bg-accent rounded-xl" />
+          </div>
+          <div className="flex gap-3 justify-end">
+            <div className="h-12 w-1/2 bg-accent rounded-xl" />
+            <div className="h-8 w-8 bg-accent rounded-full" />
+          </div>
+          <div className="flex gap-3">
+            <div className="h-8 w-8 bg-accent rounded-full" />
+            <div className="h-20 w-3/4 bg-accent rounded-xl" />
+          </div>
+        </div>
+        <div className="border-t border-border p-4">
+          <div className="h-10 w-full bg-accent rounded-lg" />
         </div>
       </div>
     );

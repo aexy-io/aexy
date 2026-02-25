@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { redirect } from "next/navigation";
@@ -12,7 +12,6 @@ import {
   GitCommit,
   GitPullRequest,
   MessageSquare,
-  Code,
   AlertTriangle,
   ShieldAlert,
   Crown,
@@ -25,6 +24,7 @@ import {
   InsightsPeriodType,
   ExecutiveSummaryResponse,
 } from "@/lib/api";
+import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 
 const PERIOD_OPTIONS: { value: InsightsPeriodType; label: string }[] = [
   { value: "weekly", label: "Weekly" },
@@ -45,6 +45,87 @@ export default function ExecutiveDashboardPage() {
       }),
     enabled: !!currentWorkspaceId,
   });
+
+  type ContributorRow = {
+    rank: number;
+    developer_id: string;
+    developer_name?: string;
+    commits: number;
+    prs_merged: number;
+    lines_changed: number;
+  };
+
+  const contributorRows: ContributorRow[] = useMemo(
+    () =>
+      (summary?.top_contributors ?? []).map((dev, i) => ({
+        ...dev,
+        rank: i + 1,
+      })),
+    [summary?.top_contributors]
+  );
+
+  const contributorColumns = useMemo<DataTableColumn<ContributorRow>[]>(
+    () => [
+      {
+        id: "rank",
+        header: "#",
+        cell: (row) => (
+          <span className="text-muted-foreground">{row.rank}</span>
+        ),
+        sortValue: (row) => row.rank,
+        sortable: true,
+        cellClassName: "text-left",
+      },
+      {
+        id: "developer",
+        header: "Developer",
+        cell: (row) => (
+          <Link
+            href={`/insights/developers/${row.developer_id}`}
+            className="text-indigo-400 hover:text-indigo-300"
+          >
+            {row.developer_name || row.developer_id.slice(0, 12)}
+          </Link>
+        ),
+        sortValue: (row) =>
+          (row.developer_name || row.developer_id).toLowerCase(),
+        sortable: true,
+      },
+      {
+        id: "commits",
+        header: "Commits",
+        cell: (row) => (
+          <span className="font-medium">{row.commits}</span>
+        ),
+        sortValue: (row) => row.commits,
+        sortable: true,
+        headerClassName: "text-right",
+        cellClassName: "text-right",
+      },
+      {
+        id: "prs",
+        header: "PRs",
+        cell: (row) => row.prs_merged,
+        sortValue: (row) => row.prs_merged,
+        sortable: true,
+        headerClassName: "text-right",
+        cellClassName: "text-right",
+      },
+      {
+        id: "lines",
+        header: "Lines",
+        cell: (row) =>
+          row.lines_changed > 1000
+            ? `${(row.lines_changed / 1000).toFixed(1)}K`
+            : row.lines_changed,
+        sortValue: (row) => row.lines_changed,
+        sortable: true,
+        headerClassName: "text-right",
+        cellClassName: "text-right",
+      },
+    ],
+    []
+  );
 
   if (authLoading) {
     return (
@@ -284,41 +365,14 @@ export default function ExecutiveDashboardPage() {
               <Crown className="h-4 w-4 text-yellow-400" />
               Top Contributors
             </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[600px] text-sm">
-                <thead>
-                  <tr className="text-muted-foreground text-xs border-b border-border">
-                    <th className="text-left py-2 font-medium">#</th>
-                    <th className="text-left py-2 font-medium">Developer</th>
-                    <th className="text-right py-2 font-medium">Commits</th>
-                    <th className="text-right py-2 font-medium">PRs</th>
-                    <th className="text-right py-2 font-medium">Lines</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {summary.top_contributors.map((dev, i) => (
-                    <tr key={dev.developer_id} className="border-b border-border/50">
-                      <td className="py-2 text-muted-foreground">{i + 1}</td>
-                      <td className="py-2">
-                        <Link
-                          href={`/insights/developers/${dev.developer_id}`}
-                          className="text-indigo-400 hover:text-indigo-300"
-                        >
-                          {dev.developer_name || dev.developer_id.slice(0, 12)}
-                        </Link>
-                      </td>
-                      <td className="py-2 text-right text-foreground font-medium">{dev.commits}</td>
-                      <td className="py-2 text-right text-foreground">{dev.prs_merged}</td>
-                      <td className="py-2 text-right text-foreground">
-                        {dev.lines_changed > 1000
-                          ? `${(dev.lines_changed / 1000).toFixed(1)}K`
-                          : dev.lines_changed}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              columns={contributorColumns}
+              data={contributorRows}
+              rowKey={(row) => row.developer_id}
+              compact
+              emptyTitle="No contributors"
+              emptyDescription="No contributor data available for this period"
+            />
           </div>
         </>
       )}

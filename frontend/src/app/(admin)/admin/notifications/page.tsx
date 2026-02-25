@@ -1,71 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Bell,
-  Loader2,
-  AlertCircle,
   Search,
   Filter,
-  ChevronLeft,
-  ChevronRight,
   Mail,
   CheckCircle2,
 } from "lucide-react";
 import { useAdminNotifications } from "@/hooks/useAdmin";
 import { formatDistanceToNow } from "date-fns";
 import { AdminNotification } from "@/lib/api";
-
-function NotificationRow({ notification }: { notification: AdminNotification }) {
-  return (
-    <tr className="border-b border-border hover:bg-muted/50">
-      <td className="px-4 py-3">
-        <div>
-          <p className="text-foreground">{notification.recipient_name || notification.recipient_email}</p>
-          {notification.recipient_name && (
-            <p className="text-muted-foreground text-xs">{notification.recipient_email}</p>
-          )}
-        </div>
-      </td>
-      <td className="px-4 py-3">
-        <span className="px-2 py-1 bg-accent rounded text-xs text-foreground">
-          {notification.event_type.replace(/_/g, " ")}
-        </span>
-      </td>
-      <td className="px-4 py-3">
-        <p className="text-foreground max-w-xs truncate">{notification.title}</p>
-      </td>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          {notification.is_read ? (
-            <span className="text-emerald-400 text-xs flex items-center gap-1">
-              <CheckCircle2 className="h-3 w-3" />
-              Read
-            </span>
-          ) : (
-            <span className="text-muted-foreground text-xs">Unread</span>
-          )}
-        </div>
-      </td>
-      <td className="px-4 py-3">
-        {notification.email_sent ? (
-          <span className="text-blue-400 text-xs flex items-center gap-1">
-            <Mail className="h-3 w-3" />
-            Sent
-          </span>
-        ) : (
-          <span className="text-muted-foreground text-xs">-</span>
-        )}
-      </td>
-      <td className="px-4 py-3">
-        <span className="text-muted-foreground text-sm" title={notification.created_at}>
-          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-        </span>
-      </td>
-    </tr>
-  );
-}
+import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 
 const EVENT_TYPE_OPTIONS = [
   { value: "", label: "All Event Types" },
@@ -91,6 +38,102 @@ export default function AdminNotificationsPage() {
     event_type: eventType || undefined,
     search: search || undefined,
   });
+
+  const columns = useMemo<DataTableColumn<AdminNotification>[]>(
+    () => [
+      {
+        id: "recipient",
+        header: "Recipient",
+        sortable: true,
+        sortValue: (row) =>
+          (row.recipient_name || row.recipient_email || "").toLowerCase(),
+        cell: (row) => (
+          <div>
+            <p className="text-foreground">
+              {row.recipient_name || row.recipient_email}
+            </p>
+            {row.recipient_name && (
+              <p className="text-muted-foreground text-xs">
+                {row.recipient_email}
+              </p>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: "event_type",
+        header: "Event Type",
+        sortable: true,
+        sortValue: (row) => row.event_type,
+        cell: (row) => (
+          <span className="px-2 py-1 bg-accent rounded text-xs text-foreground">
+            {row.event_type.replace(/_/g, " ")}
+          </span>
+        ),
+      },
+      {
+        id: "title",
+        header: "Title",
+        sortable: true,
+        sortValue: (row) => row.title.toLowerCase(),
+        cell: (row) => (
+          <p className="text-foreground max-w-xs truncate">{row.title}</p>
+        ),
+      },
+      {
+        id: "read",
+        header: "Read",
+        sortable: true,
+        sortValue: (row) => (row.is_read ? 1 : 0),
+        cell: (row) => (
+          <div className="flex items-center gap-2">
+            {row.is_read ? (
+              <span className="text-emerald-400 text-xs flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3" />
+                Read
+              </span>
+            ) : (
+              <span className="text-muted-foreground text-xs">Unread</span>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: "email",
+        header: "Email",
+        sortable: true,
+        sortValue: (row) => (row.email_sent ? 1 : 0),
+        cell: (row) =>
+          row.email_sent ? (
+            <span className="text-blue-400 text-xs flex items-center gap-1">
+              <Mail className="h-3 w-3" />
+              Sent
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-xs">-</span>
+          ),
+      },
+      {
+        id: "created",
+        header: "Created",
+        sortable: true,
+        sortValue: (row) => new Date(row.created_at).getTime(),
+        cell: (row) => (
+          <span
+            className="text-muted-foreground text-sm"
+            title={row.created_at}
+          >
+            {formatDistanceToNow(new Date(row.created_at), {
+              addSuffix: true,
+            })}
+          </span>
+        ),
+      },
+    ],
+    []
+  );
+
+  const totalPages = data ? Math.ceil(data.total / 25) : undefined;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,70 +204,26 @@ export default function AdminNotificationsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-muted rounded-xl border border-border overflow-hidden">
-        {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
-          </div>
-        ) : error ? (
-          <div className="flex items-center justify-center h-64 text-red-400">
-            <AlertCircle className="h-5 w-5 mr-2" />
-            Failed to load notifications
-          </div>
-        ) : data?.items?.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-            <Bell className="h-12 w-12 mb-3 text-muted-foreground" />
-            <p>No notifications found</p>
-          </div>
-        ) : (
-          <>
-            <table className="w-full">
-              <thead className="bg-background/50">
-                <tr className="text-left text-muted-foreground text-sm">
-                  <th className="px-4 py-3 font-medium">Recipient</th>
-                  <th className="px-4 py-3 font-medium">Event Type</th>
-                  <th className="px-4 py-3 font-medium">Title</th>
-                  <th className="px-4 py-3 font-medium">Read</th>
-                  <th className="px-4 py-3 font-medium">Email</th>
-                  <th className="px-4 py-3 font-medium">Created</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data?.items?.map((notification) => (
-                  <NotificationRow key={notification.id} notification={notification} />
-                ))}
-              </tbody>
-            </table>
-
-            {/* Pagination */}
-            {data && data.total > 25 && (
-              <div className="px-4 py-3 border-t border-border flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">
-                  Showing {(page - 1) * 25 + 1} - {Math.min(page * 25, data.total)} of{" "}
-                  {data.total} notifications
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    className="p-2 rounded-lg bg-accent text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <span className="text-foreground px-3">Page {page}</span>
-                  <button
-                    onClick={() => setPage((p) => p + 1)}
-                    disabled={!data.has_next}
-                    className="p-2 rounded-lg bg-accent text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+      {error ? (
+        <div className="bg-muted rounded-xl border border-border flex items-center justify-center h-64 text-red-400">
+          <Bell className="h-5 w-5 mr-2" />
+          Failed to load notifications
+        </div>
+      ) : (
+        <DataTable<AdminNotification>
+          columns={columns}
+          data={data?.items ?? []}
+          rowKey={(row) => row.id}
+          isLoading={isLoading}
+          skeletonRows={10}
+          emptyIcon={<Bell className="h-12 w-12" />}
+          emptyTitle="No notifications found"
+          currentPage={page}
+          totalPages={totalPages}
+          totalItems={data?.total}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }

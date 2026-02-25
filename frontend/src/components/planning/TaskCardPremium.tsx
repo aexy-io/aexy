@@ -26,6 +26,7 @@ import {
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { SprintTask, TaskPriority, TaskStatus } from "@/lib/api";
+import { TASK_STATUS_COLORS } from "@/lib/statusColors";
 import { Badge } from "@/components/ui/premium-card";
 import { cn } from "@/lib/utils";
 
@@ -36,13 +37,10 @@ const PRIORITY_CONFIG: Record<TaskPriority, { label: string; variant: "error" | 
   low: { label: "Low", variant: "default" },
 };
 
-const STATUS_COLORS: Record<TaskStatus, string> = {
-  backlog: "bg-muted-foreground",
-  todo: "bg-blue-500",
-  in_progress: "bg-amber-500",
-  review: "bg-purple-500",
-  done: "bg-green-500",
-};
+// Dot colors derived from centralized tokens
+const STATUS_COLORS: Record<TaskStatus, string> = Object.fromEntries(
+  Object.entries(TASK_STATUS_COLORS).map(([k, v]) => [k, v.dot || "bg-muted-foreground"])
+) as Record<TaskStatus, string>;
 
 const SOURCE_ICONS: Record<string, React.ReactNode> = {
   github_issue: <GitBranch className="h-3 w-3" />,

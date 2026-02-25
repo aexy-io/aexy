@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   Plus,
-  Search,
   FileText,
   Trash2,
   Edit2,
@@ -24,16 +23,18 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { TaskTemplate, TaskTemplateCreate, TaskPriority, taskTemplatesApi } from "@/lib/api";
+import { PRIORITY_COLORS } from "@/lib/statusColors";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Badge, Skeleton } from "@/components/ui/premium-card";
+import { SearchInput } from "@/components/ui/search-input";
 
-// Priority configuration
+// Priority configuration – derives colors from centralized tokens, adds label
 const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string; bgColor: string }> = {
-  critical: { label: "Critical", color: "text-red-600 dark:text-red-400", bgColor: "bg-red-500/20" },
-  high: { label: "High", color: "text-orange-600 dark:text-orange-400", bgColor: "bg-orange-500/20" },
-  medium: { label: "Medium", color: "text-yellow-600 dark:text-yellow-400", bgColor: "bg-yellow-500/20" },
-  low: { label: "Low", color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-500/20" },
+  critical: { label: "Critical", color: PRIORITY_COLORS.critical.text, bgColor: PRIORITY_COLORS.critical.bg },
+  high: { label: "High", color: PRIORITY_COLORS.high.text, bgColor: PRIORITY_COLORS.high.bg },
+  medium: { label: "Medium", color: PRIORITY_COLORS.medium.text, bgColor: PRIORITY_COLORS.medium.bg },
+  low: { label: "Low", color: PRIORITY_COLORS.low.text, bgColor: PRIORITY_COLORS.low.bg },
 };
 
 interface TemplateCardProps {
@@ -516,10 +517,40 @@ export default function TaskTemplatesPage({
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-foreground">Loading...</p>
+      <div className="min-h-screen bg-background animate-pulse">
+        <header className="border-b border-border bg-muted/50 sticky top-0 z-30">
+          <div className="max-w-6xl mx-auto px-4 py-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="h-9 w-9 bg-accent rounded-lg" />
+                <div>
+                  <div className="h-5 w-36 bg-accent rounded mb-2" />
+                  <div className="h-3 w-56 bg-accent rounded" />
+                </div>
+              </div>
+              <div className="h-9 w-32 bg-accent rounded-lg" />
+            </div>
+            <div className="flex items-center gap-3 mt-4">
+              <div className="h-9 w-64 bg-accent rounded-lg" />
+              <div className="h-9 w-32 bg-accent rounded-lg" />
+            </div>
+          </div>
+        </header>
+        <div className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="bg-muted rounded-xl border border-border p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="h-8 w-8 bg-accent rounded-lg" />
+                <div className="h-5 w-32 bg-accent rounded" />
+              </div>
+              <div className="h-3 w-full bg-accent rounded mb-2" />
+              <div className="h-3 w-2/3 bg-accent rounded mb-4" />
+              <div className="flex gap-2">
+                <div className="h-5 w-16 bg-accent rounded-full" />
+                <div className="h-5 w-16 bg-accent rounded-full" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -564,16 +595,12 @@ export default function TaskTemplatesPage({
 
           {/* Filters */}
           <div className="flex items-center gap-3 mt-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search templates..."
-                className="w-full pl-10 pr-4 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500"
-              />
-            </div>
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Search templates..."
+              wrapperClassName="flex-1 max-w-md"
+            />
 
             {categories && categories.length > 0 && (
               <select

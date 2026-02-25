@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   Mail,
@@ -18,8 +18,13 @@ import {
   Loader2,
   AlertCircle,
   RefreshCw,
+  LayoutTemplate,
 } from "lucide-react";
+import { DataTable, DataTableColumn } from "@/components/ui/data-table";
+import { EmptyState } from "@/components/EmptyState";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { UpgradeBanner } from "@/components/UpgradeBanner";
+import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
 import {
   useEmailCampaigns,
   useEmailTemplates,
@@ -29,9 +34,11 @@ import {
   useBestSendTimes,
   useTopCampaigns,
 } from "@/hooks/useEmailMarketing";
+import { EmailCampaign } from "@/lib/api";
+import { CAMPAIGN_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
 export default function EmailMarketingPage() {
-  const [activeTab, setActiveTab] = useState<"campaigns" | "templates" | "analytics" | "infrastructure">("campaigns");
+  const [activeTab, setActiveTab] = useState<"campaigns" | "templates" | "analytics" | "infrastructure" | "automations">("campaigns");
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
 
@@ -52,23 +59,6 @@ export default function EmailMarketingPage() {
     activeCampaigns: campaigns.filter(c => c.status === "sending" || c.status === "scheduled").length,
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "sent":
-      case "completed":
-        return "bg-emerald-500/20 text-emerald-400";
-      case "sending":
-      case "scheduled":
-        return "bg-sky-500/20 text-sky-400";
-      case "paused":
-        return "bg-amber-500/20 text-amber-400";
-      case "cancelled":
-        return "bg-red-500/20 text-red-400";
-      default:
-        return "bg-muted text-muted-foreground";
-    }
-  };
-
   const getDomainStatusColor = (domain: { is_active: boolean; warming_status: string; health_score: number }) => {
     if (!domain.is_active) return "bg-muted-foreground";
     if (domain.warming_status === "in_progress") return "bg-amber-400";
@@ -76,6 +66,68 @@ export default function EmailMarketingPage() {
     if (domain.health_score >= 70) return "bg-amber-400";
     return "bg-red-400";
   };
+
+  const campaignColumns = useMemo<DataTableColumn<EmailCampaign>[]>(() => [
+    {
+      id: "name",
+      header: "Campaign",
+      cell: (campaign) => (
+        <Link href={`/email-marketing/campaigns/${campaign.id}`} className="flex items-center gap-3 group">
+          <div className="w-10 h-10 bg-gradient-to-br from-sky-500/30 to-blue-500/30 rounded-lg flex items-center justify-center">
+            <Mail className="h-5 w-5 text-sky-400" />
+          </div>
+          <span className="text-foreground font-medium group-hover:text-sky-400 transition">{campaign.name}</span>
+        </Link>
+      ),
+      sortValue: (campaign) => campaign.name,
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (campaign) => (
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(CAMPAIGN_STATUS_COLORS, campaign.status).bg} ${getStatusColor(CAMPAIGN_STATUS_COLORS, campaign.status).text}`}>
+          {campaign.status}
+        </span>
+      ),
+      sortValue: (campaign) => campaign.status,
+    },
+    {
+      id: "sent",
+      header: "Sent",
+      cell: (campaign) => campaign.sent_count.toLocaleString(),
+      sortValue: (campaign) => campaign.sent_count,
+      sortable: true,
+    },
+    {
+      id: "openRate",
+      header: "Open Rate",
+      cell: (campaign) => {
+        const openRate = campaign.sent_count > 0 ? (campaign.open_count / campaign.sent_count) * 100 : 0;
+        return <span className="text-emerald-400">{openRate.toFixed(1)}%</span>;
+      },
+      sortValue: (campaign) => campaign.sent_count > 0 ? (campaign.open_count / campaign.sent_count) * 100 : 0,
+      sortable: true,
+    },
+    {
+      id: "clickRate",
+      header: "Click Rate",
+      cell: (campaign) => {
+        const clickRate = campaign.sent_count > 0 ? (campaign.click_count / campaign.sent_count) * 100 : 0;
+        return <span className="text-purple-400">{clickRate.toFixed(1)}%</span>;
+      },
+      sortValue: (campaign) => campaign.sent_count > 0 ? (campaign.click_count / campaign.sent_count) * 100 : 0,
+      sortable: true,
+    },
+    {
+      id: "actions",
+      header: "",
+      cell: (campaign) => (
+        <Link href={`/email-marketing/campaigns/${campaign.id}`} className="text-muted-foreground hover:text-foreground transition">
+          <Settings className="h-4 w-4" />
+        </Link>
+      ),
+    },
+  ], []);
 
   if (!currentWorkspace) {
     return (
@@ -116,6 +168,8 @@ export default function EmailMarketingPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
+        <UpgradeBanner trigger="module_limit" compact />
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-background/50 border border-border rounded-xl p-5">
@@ -179,6 +233,7 @@ export default function EmailMarketingPage() {
             { id: "templates", label: "Templates", icon: Palette },
             { id: "analytics", label: "Analytics", icon: BarChart3 },
             { id: "infrastructure", label: "Infrastructure", icon: Globe },
+            { id: "automations", label: "Automations", icon: Zap },
           ].map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -218,69 +273,27 @@ export default function EmailMarketingPage() {
                 <AlertCircle className="h-8 w-8 text-red-400 mx-auto mb-2" />
                 <p className="text-red-400">Failed to load campaigns</p>
               </div>
-            ) : campaignsLoading ? (
-              <div className="bg-background/50 border border-border rounded-xl p-12 text-center">
-                <Loader2 className="h-8 w-8 text-muted-foreground animate-spin mx-auto" />
-              </div>
-            ) : campaigns.length === 0 ? (
-              <div className="bg-background/50 border border-border rounded-xl p-12 text-center">
-                <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-foreground mb-2">No campaigns yet</h3>
-                <p className="text-muted-foreground mb-4">Create your first email campaign to get started.</p>
-                <Link
-                  href="/email-marketing/campaigns/new"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition"
-                >
-                  <Plus className="h-4 w-4" />
-                  Create Campaign
-                </Link>
-              </div>
+            ) : !campaignsLoading && campaigns.length === 0 ? (
+              <EmptyState
+                icon={Mail}
+                title="No campaigns yet"
+                description="Create email campaigns to engage your audience with targeted messaging."
+                actions={[
+                  { label: "Create Campaign", href: "/email-marketing/campaigns/new" },
+                ]}
+                compact
+              />
             ) : (
-              <div className="bg-background/50 border border-border rounded-xl overflow-hidden">
-                <table className="w-full">
-                  <thead className="border-b border-border">
-                    <tr className="text-left text-sm text-muted-foreground">
-                      <th className="px-6 py-4 font-medium">Campaign</th>
-                      <th className="px-6 py-4 font-medium">Status</th>
-                      <th className="px-6 py-4 font-medium">Sent</th>
-                      <th className="px-6 py-4 font-medium">Open Rate</th>
-                      <th className="px-6 py-4 font-medium">Click Rate</th>
-                      <th className="px-6 py-4 font-medium"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {campaigns.map((campaign) => {
-                      const openRate = campaign.sent_count > 0 ? (campaign.open_count / campaign.sent_count) * 100 : 0;
-                      const clickRate = campaign.sent_count > 0 ? (campaign.click_count / campaign.sent_count) * 100 : 0;
-                      return (
-                        <tr key={campaign.id} className="hover:bg-muted/50 transition">
-                          <td className="px-6 py-4">
-                            <Link href={`/email-marketing/campaigns/${campaign.id}`} className="flex items-center gap-3 group">
-                              <div className="w-10 h-10 bg-gradient-to-br from-sky-500/30 to-blue-500/30 rounded-lg flex items-center justify-center">
-                                <Mail className="h-5 w-5 text-sky-400" />
-                              </div>
-                              <span className="text-foreground font-medium group-hover:text-sky-400 transition">{campaign.name}</span>
-                            </Link>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(campaign.status)}`}>
-                              {campaign.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-foreground">{campaign.sent_count.toLocaleString()}</td>
-                          <td className="px-6 py-4 text-emerald-400">{openRate.toFixed(1)}%</td>
-                          <td className="px-6 py-4 text-purple-400">{clickRate.toFixed(1)}%</td>
-                          <td className="px-6 py-4">
-                            <Link href={`/email-marketing/campaigns/${campaign.id}`} className="text-muted-foreground hover:text-foreground transition">
-                              <Settings className="h-4 w-4" />
-                            </Link>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable
+                columns={campaignColumns}
+                data={campaigns}
+                rowKey={(campaign) => campaign.id}
+                isLoading={campaignsLoading}
+                skeletonRows={5}
+                emptyIcon={<Mail className="h-8 w-8" />}
+                emptyTitle="No campaigns yet"
+                emptyDescription="Create email campaigns to engage your audience with targeted messaging."
+              />
             )}
           </div>
         )}
@@ -316,18 +329,15 @@ export default function EmailMarketingPage() {
                 <Loader2 className="h-8 w-8 text-muted-foreground animate-spin mx-auto" />
               </div>
             ) : templates.length === 0 ? (
-              <div className="bg-background/50 border border-border rounded-xl p-12 text-center">
-                <Palette className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-foreground mb-2">No templates yet</h3>
-                <p className="text-muted-foreground mb-4">Create reusable email templates for your campaigns.</p>
-                <Link
-                  href="/email-marketing/templates/new"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition"
-                >
-                  <Plus className="h-4 w-4" />
-                  Create Template
-                </Link>
-              </div>
+              <EmptyState
+                icon={LayoutTemplate}
+                title="No templates yet"
+                description="Design reusable email templates to speed up your campaign creation."
+                actions={[
+                  { label: "Create Template", href: "/email-marketing/templates/new" },
+                ]}
+                compact
+              />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {templates.map((template) => (
@@ -533,6 +543,10 @@ export default function EmailMarketingPage() {
               )}
             </div>
           </div>
+        )}
+
+        {activeTab === "automations" && (
+          <ModuleAutomationsPanel module="email_marketing" moduleLabel="Email Marketing" />
         )}
       </div>
     </div>

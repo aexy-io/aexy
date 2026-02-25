@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { UpgradeBanner } from "@/components/UpgradeBanner";
 import {
   ArrowLeft,
   Bot,
@@ -23,11 +24,13 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAgents } from "@/hooks/useAgents";
 import { CRMAgent, AgentType, AGENT_TYPE_CONFIG, getAgentTypeConfig } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { SearchInput } from "@/components/ui/search-input";
 import {
   AgentTypeBadge,
   AgentStatusBadge,
   ToolBadges,
 } from "@/components/agents/shared";
+import { EmptyState } from "@/components/EmptyState";
 
 function formatNumber(num: number): string {
   if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -228,27 +231,6 @@ function AgentCard({
   );
 }
 
-function AgentEmptyState() {
-  return (
-    <div className="bg-muted rounded-xl p-12 text-center border border-border">
-      <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-        <Bot className="h-8 w-8 text-purple-400" />
-      </div>
-      <h3 className="text-xl font-medium text-foreground mb-2">No Agents Yet</h3>
-      <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-        Create AI agents to automate email responses, schedule meetings, manage
-        CRM data, and more.
-      </p>
-      <Link
-        href="/agents/new"
-        className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition font-medium"
-      >
-        <Plus className="h-4 w-4" />
-        Create Your First Agent
-      </Link>
-    </div>
-  );
-}
 
 export default function AgentsListPage() {
   const router = useRouter();
@@ -305,10 +287,40 @@ export default function AgentsListPage() {
 
   if (currentWorkspaceLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mx-auto mb-4"></div>
-          <p className="text-foreground">Loading agents...</p>
+      <div className="p-6 max-w-6xl mx-auto animate-pulse">
+        <div className="flex items-center justify-between mb-6">
+          <div className="space-y-2">
+            <div className="h-7 w-32 bg-accent rounded" />
+            <div className="h-4 w-64 bg-accent rounded" />
+          </div>
+          <div className="h-9 w-32 bg-accent rounded-lg" />
+        </div>
+        <div className="flex items-center gap-4 mb-6">
+          <div className="h-10 w-64 bg-accent rounded-lg" />
+          <div className="h-10 w-24 bg-accent rounded-lg" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-card border border-border rounded-xl p-5 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 bg-accent rounded-lg" />
+                <div className="space-y-1.5">
+                  <div className="h-4 w-28 bg-accent rounded" />
+                  <div className="h-3 w-16 bg-accent rounded" />
+                </div>
+              </div>
+              <div className="h-3 w-full bg-accent rounded" />
+              <div className="flex gap-2">
+                {[1, 2, 3].map((j) => (
+                  <div key={j} className="h-5 w-14 bg-accent rounded" />
+                ))}
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-border">
+                <div className="h-3 w-20 bg-accent rounded" />
+                <div className="h-5 w-16 bg-accent rounded-full" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -349,6 +361,8 @@ export default function AgentsListPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
+        <UpgradeBanner trigger="ai_limit" compact />
+
         {/* Stats Summary */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           <div className="bg-muted rounded-xl p-4 border border-border">
@@ -367,16 +381,12 @@ export default function AgentsListPage() {
 
         {/* Search & Filters */}
         <div className="flex items-center gap-4 mb-6">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search agents..."
-              className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-          </div>
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search agents..."
+            wrapperClassName="flex-1"
+          />
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={cn(
@@ -431,15 +441,26 @@ export default function AgentsListPage() {
 
         {/* Agents Grid */}
         {agents.length === 0 ? (
-          <AgentEmptyState />
+          <EmptyState
+            icon={Bot}
+            title="No Agents Yet"
+            description="Create AI agents to automate email responses, schedule meetings, manage CRM data, and more."
+            actions={[
+              { label: "Create Your First Agent", href: "/agents/new" },
+            ]}
+            steps={[
+              { label: "Choose an agent type", description: "Support, sales, scheduling, or custom" },
+              { label: "Configure tools & persona", description: "Set up what your agent can do" },
+              { label: "Activate and monitor", description: "Watch your agent handle tasks" },
+            ]}
+          />
         ) : filteredAgents.length === 0 ? (
-          <div className="bg-muted rounded-xl p-8 text-center border border-border">
-            <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-2">No agents found</h3>
-            <p className="text-muted-foreground">
-              Try adjusting your search or filters
-            </p>
-          </div>
+          <EmptyState
+            icon={Search}
+            title="No agents found"
+            description="Try adjusting your search or filters"
+            compact
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredAgents.map((agent) => (

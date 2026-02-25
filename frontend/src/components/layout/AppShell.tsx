@@ -2,6 +2,7 @@
 
 import { Sidebar } from "./Sidebar";
 import { cn } from "@/lib/utils";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 interface AppShellProps {
     children: React.ReactNode;
@@ -28,7 +29,7 @@ export function AppShell({ children, user, logout }: AppShellProps) {
                             <span className="sr-only">Toggle menu</span>
                         </Button>
                     </SheetTrigger>
-                    <SheetContent side="left" className="p-0 w-[240px]">
+                    <SheetContent side="left" className="p-0 w-[240px] max-w-[85vw]">
                         <Sidebar user={user} logout={logout} className="border-none w-full h-full" />
                     </SheetContent>
                 </Sheet>
@@ -38,7 +39,9 @@ export function AppShell({ children, user, logout }: AppShellProps) {
             <Sidebar user={user} logout={logout} className="hidden md:flex" />
             <main className="flex-1 overflow-y-auto md:pt-0 pt-16">
                 <div className="mx-0 p-0">
-                    {children}
+                    <ErrorBoundary>
+                        {children}
+                    </ErrorBoundary>
                 </div>
             </main>
         </div>
