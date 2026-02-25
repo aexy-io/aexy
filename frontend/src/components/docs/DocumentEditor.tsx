@@ -18,6 +18,7 @@ import Underline from "@tiptap/extension-underline";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import { Markdown } from "tiptap-markdown";
 import { common, createLowlight } from "lowlight";
+import { InlineDatabase } from "./extensions/InlineDatabase";
 import { EditorToolbar } from "./EditorToolbar";
 import { debounce } from "@/lib/utils";
 import { Check, Cloud, Smile } from "lucide-react";
@@ -167,6 +168,7 @@ export function DocumentEditor({
         transformPastedText: true,
         transformCopiedText: true,
       }),
+      InlineDatabase,
     ],
     content: initialContentRef.current,
     editable: !readOnly,
