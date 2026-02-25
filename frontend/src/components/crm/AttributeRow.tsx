@@ -21,6 +21,7 @@ import {
   Calculator,
   Sparkles,
   Database,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CRMAttribute, CRMAttributeType } from "@/lib/api";
@@ -30,6 +31,7 @@ import { useState } from "react";
 // Icons for each attribute type
 const typeIcons: Record<CRMAttributeType, React.ReactNode> = {
   text: <Type className="h-4 w-4" />,
+  textarea: <FileText className="h-4 w-4" />,
   number: <Hash className="h-4 w-4" />,
   currency: <DollarSign className="h-4 w-4" />,
   date: <Calendar className="h-4 w-4" />,
@@ -51,6 +53,7 @@ const typeIcons: Record<CRMAttributeType, React.ReactNode> = {
 
 const typeLabels: Record<CRMAttributeType, string> = {
   text: "Text",
+  textarea: "Long Text",
   number: "Number",
   currency: "Currency",
   date: "Date",

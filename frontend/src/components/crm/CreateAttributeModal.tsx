@@ -18,6 +18,7 @@ import {
   Calculator,
   Sparkles,
   Database,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CRMAttributeType } from "@/lib/api";
@@ -34,6 +35,7 @@ import { HelpTooltip } from "@/components/ui/tooltip";
 // Type icons
 const typeIcons: Record<CRMAttributeType, React.ReactNode> = {
   text: <Type className="h-5 w-5" />,
+  textarea: <FileText className="h-5 w-5" />,
   number: <Hash className="h-5 w-5" />,
   currency: <DollarSign className="h-5 w-5" />,
   date: <Calendar className="h-5 w-5" />,
